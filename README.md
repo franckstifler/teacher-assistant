@@ -1,18 +1,19 @@
 # TeacherAssistant
 
-To start your Phoenix server:
+This project is a Web App that aims to assist Schools and Teachers in their different activities.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+It's structured based on the Cameroon educational system.
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+For Schools:
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+- Marks recording
+- Report card generation with AI assisted remarks on performance and assiduity (Configurable by option or level)
+- Roll-call and absence computation
+- ... Other functionnalities will be added here.
 
-## Learn more
-
-* Official website: https://www.phoenixframework.org/
-* Guides: https://hexdocs.pm/phoenix/overview.html
-* Docs: https://hexdocs.pm/phoenix
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+For Teachers:
+- Roll-call and Marks reporting
+- Curriculum and time table management
+- Lesson planning
+- Evaluation generation based on selected modules and lessons.
+- Other functionnalities to be added here.
