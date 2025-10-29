@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
       <.form for={@form} id="term-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:name]} type="text" label="Name" />
         <label class="label mt-4">{gettext("Terms")}</label>
-        <table class="table table-zebra">
+        <table class="table">
           <thead>
             <tr>
               <th>{gettext("Name")}</th>
@@ -45,6 +45,63 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
 
                     <.icon name="hero-x-mark" class="text-error" />
                   </label>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="4 mr-8">
+                  <div class="overflow-x-auto bg-secondary/10 p-4 border border-base-content/5 rounded-box">
+                    <label class="label mt-2">{gettext("Sequences")}</label>
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>{gettext("Name")}</th>
+                          <th>{gettext("Start")}</th>
+                          <th>{gettext("End")}</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <.inputs_for :let={sequence_form} field={term_form[:sequences]}>
+                          <tr>
+                            <td>
+                              <.input
+                                field={sequence_form[:name]}
+                                type="text"
+                                placeholder={gettext("1st Sequence")}
+                              />
+                            </td>
+                            <td>
+                              <.input field={sequence_form[:start_date]} type="date" />
+                            </td>
+                            <td>
+                              <.input field={sequence_form[:end_date]} type="date" />
+                            </td>
+                            <td>
+                              <label class="label">
+                                <input
+                                  type="checkbox"
+                                  name={"#{@form.name}[_drop_sequences][]"}
+                                  value={sequence_form.index}
+                                  class="hidden"
+                                />
+
+                                <.icon name="hero-x-mark" class="text-error" />
+                              </label>
+                            </td>
+                          </tr>
+                        </.inputs_for>
+                      </tbody>
+                    </table>
+                    <label class="label mt-2.5">
+                      <input
+                        type="checkbox"
+                        name={"#{term_form.name}[_add_sequences]"}
+                        value="end"
+                        class="hidden"
+                      />
+                      <.icon name="hero-plus" />{gettext("Add Sequence")}
+                    </label>
+                  </div>
                 </td>
               </tr>
             </.inputs_for>
@@ -85,7 +142,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
   defp apply_action(socket, :edit, %{"id" => id}) do
     term =
       Ash.get!(TeacherAssistant.Academics.AcademicYear, id,
-        load: [:terms],
+        load: [terms: [:sequences]],
         scope: socket.assigns.scope
       )
 
