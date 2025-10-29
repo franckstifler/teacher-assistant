@@ -1,8 +1,8 @@
-defmodule TeacherAssitant.Academics.AcademicYear do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssitant.Academics
+defmodule TeacherAssistant.Academics.AcademicYear do
+  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
 
   postgres do
-    repo TeacherAssitant.Repo
+    repo TeacherAssistant.Repo
     table "academic_years"
   end
 
@@ -48,12 +48,11 @@ defmodule TeacherAssitant.Academics.AcademicYear do
   end
 
   relationships do
-    belongs_to :school, TeacherAssitant.Academics.School
-    has_many :terms, TeacherAssitant.Academics.Term
+    belongs_to :school, TeacherAssistant.Academics.School
+    has_many :terms, TeacherAssistant.Academics.Term
   end
 
   identities do
     identity :unique_name, [:name]
-    identity :unique_active, [:active], where: expr(active == true)
   end
 end
