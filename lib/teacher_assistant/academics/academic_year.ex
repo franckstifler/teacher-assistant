@@ -37,7 +37,7 @@ defmodule TeacherAssitant.Academics.AcademicYear do
   end
 
   attributes do
-    uuid_primary_key :id
+    uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true
     attribute :description, :string, public?: true
     attribute :start_date, :date, allow_nil?: false, public?: true

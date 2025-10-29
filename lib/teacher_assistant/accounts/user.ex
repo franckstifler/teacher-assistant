@@ -88,7 +88,7 @@ defmodule TeacherAssistant.Accounts.User do
   end
 
   attributes do
-    uuid_primary_key :id
+    uuid_v7_primary_key :id
 
     attribute :email, :ci_string do
       allow_nil? false

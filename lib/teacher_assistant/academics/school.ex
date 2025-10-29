@@ -12,7 +12,7 @@ defmodule TeacherAssitant.Academics.School do
   end
 
   attributes do
-    uuid_primary_key :id
+    uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true
     attribute :abbreviation, :string, public?: true
     attribute :type, TeacherAssistant.Academics.Enums.SchoolType, public?: true

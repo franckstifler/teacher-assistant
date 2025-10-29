@@ -17,7 +17,7 @@ defmodule TeacherAssistant.Academics.Term do
   end
 
   attributes do
-    uuid_primary_key :id
+    uuid_v7_primary_key :id
     attribute :name, :string, public?: true, allow_nil?: false
     attribute :start_date, :date, public?: true
     attribute :end_date, :date, public?: true
