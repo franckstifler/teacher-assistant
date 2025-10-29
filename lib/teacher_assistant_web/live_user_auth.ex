@@ -14,10 +14,18 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   end
 
   def on_mount(:live_user_optional, _params, _session, socket) do
+    # TODO: replace this with actual tenant fetching logic
+    school = Ash.read!(TeacherAssistant.Academics.School) |> List.first()
+
     if socket.assigns[:current_user] do
-      {:cont, socket}
+      {:cont,
+       socket
+       |> assign(:scope, %TeacherAssistant.Scope{current_tenant: school, current_user: nil})}
     else
-      {:cont, assign(socket, :current_user, nil)}
+      {:cont,
+       socket
+       |> assign(:current_user, nil)
+       |> assign(:scope, %TeacherAssistant.Scope{current_tenant: school, current_user: nil})}
     end
   end
 
