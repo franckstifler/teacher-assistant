@@ -1,13 +1,13 @@
-defmodule TeacherAssitant.Academics.School do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssitant.Academics
+defmodule TeacherAssistant.Academics.School do
+  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
 
   postgres do
-    repo TeacherAssitant.Repo
+    repo TeacherAssistant.Repo
     table "schools"
   end
 
   actions do
-    default_accept [:name, :abbreviation, :type, :sub_system, :descripiton]
+    default_accept [:name, :abbreviation, :type, :sub_system, :description]
     defaults [:create, :update, :read, :destroy]
   end
 
@@ -23,6 +23,10 @@ defmodule TeacherAssitant.Academics.School do
   end
 
   identities do
-    identity :name, [:name]
+    identity :unique_name, [:name]
   end
+end
+
+defimpl Ash.ToTenant, for: TeacherAssistant.Academics.School do
+  def to_tenant(%{id: id}, _resource), do: id
 end

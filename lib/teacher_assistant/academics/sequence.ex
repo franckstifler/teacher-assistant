@@ -26,7 +26,7 @@ defmodule TeacherAssistant.Academics.Sequence do
   end
 
   relationships do
-    belongs_to :school, TeacherAssitant.Academics.School
+    belongs_to :school, TeacherAssistant.Academics.School
     belongs_to :term, TeacherAssistant.Academics.Term, allow_nil?: false
   end
 end

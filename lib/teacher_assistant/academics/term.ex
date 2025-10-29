@@ -8,7 +8,20 @@ defmodule TeacherAssistant.Academics.Term do
 
   actions do
     default_accept [:name, :start_date, :end_date]
-    defaults [:create, :update, :read, :destroy]
+    defaults [:read, :destroy]
+
+    create :create do
+      primary? true
+      argument :sequences, {:array, :map}, default: [], allow_nil?: false, constraints: [min: 1]
+      change manage_relationship(:sequences, :sequences, type: :direct_control)
+    end
+
+    update :update do
+      primary? true
+      require_atomic? false
+      argument :sequences, {:array, :map}, default: [], allow_nil?: false, constraints: [min: 1]
+      change manage_relationship(:sequences, :sequences, type: :direct_control)
+    end
   end
 
   multitenancy do
@@ -27,8 +40,9 @@ defmodule TeacherAssistant.Academics.Term do
   end
 
   relationships do
-    belongs_to :school, TeacherAssitant.Academics.School
-    belongs_to :academic_year, TeacherAssitant.Academics.AcademicYear, allow_nil?: false
+    belongs_to :school, TeacherAssistant.Academics.School
+    belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear, allow_nil?: false
+    has_many :sequences, TeacherAssistant.Academics.Sequence
   end
 
   identities do
