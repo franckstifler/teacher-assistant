@@ -2,7 +2,7 @@ defmodule TeacherAssistant.Academics.Option do
   use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
 
   postgres do
-    repo Ap.Repo
+    repo TeacherAssistant.Repo
     table "options"
   end
 
@@ -19,8 +19,8 @@ defmodule TeacherAssistant.Academics.Option do
   attributes do
     uuid_v7_primary_key :id
 
+    attribute :name, :ci_string, public?: true, allow_nil?: false
     attribute :description, :string, public?: true
-    attribute :name, :string, public?: true, allow_nil?: false
 
     timestamps()
   end
@@ -30,6 +30,6 @@ defmodule TeacherAssistant.Academics.Option do
   end
 
   identities do
-    identity :name, [:name]
+    identity :unique_name, [:name]
   end
 end
