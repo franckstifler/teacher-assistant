@@ -46,6 +46,6 @@ defmodule TeacherAssistant.Academics.Term do
   end
 
   identities do
-    identity :name, [:name]
+    identity :unique_name, [:school_id, :name]
   end
 end

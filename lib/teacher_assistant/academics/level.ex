@@ -29,6 +29,6 @@ defmodule TeacherAssistant.Academics.Level do
   end
 
   identities do
-    identity :unique_name, [:name]
+    identity :unique_name, [:school_id, :name]
   end
 end

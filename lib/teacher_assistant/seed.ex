@@ -1,4 +1,4 @@
-defmodule TeacherAssistantWeb.Seed do
+defmodule TeacherAssistant.Seed do
   @levels %{
     technical: %{
       francophone: [
@@ -86,95 +86,97 @@ defmodule TeacherAssistantWeb.Seed do
       )
 
     seed_default_data(school)
-    # {year, levels, options, subjects} = seed_default_data(school)
-
-    # levels_options =
-    #   for level <- levels, option <- options do
-    #     Ash.Seed.seed!(%TeacherAssistant.Academics.LevelOption{
-    #       level_id: level.id,
-    #       option_id: option.id
-    #     })
-    #   end
   end
 
   def seed_default_data(school) do
     year =
-      Ash.create!(
+      Ash.Seed.upsert!(
         TeacherAssistant.Academics.AcademicYear,
         %{
           name: "2025-2026",
           active: true,
           start_date: Date.utc_today(),
-          end_date: Date.utc_today() |> Date.add(270),
-          terms: [
-            %{
-              name: "1er Trimestre",
-              start_date: Date.utc_today(),
-              end_date: Date.utc_today() |> Date.add(90)
-            },
-            %{
-              name: "2eme Trimestre",
-              start_date: Date.utc_today() |> Date.add(91),
-              end_date: Date.utc_today() |> Date.add(180)
-            },
-            %{
-              name: "3eme Trimestre",
-              start_date: Date.utc_today() |> Date.add(181),
-              end_date: Date.utc_today() |> Date.add(270)
-            }
-          ]
+          end_date: Date.utc_today() |> Date.add(270)
         },
-        upsert?: true,
-        upsert_identity: :unique_name,
+        identity: :unique_name,
         scope: %TeacherAssistant.Scope{current_tenant: school}
       )
 
-    %Ash.BulkResult{records: levels} =
+    terms_input = [
+      %{
+        name: "1er Trimestre",
+        start_date: Date.utc_today(),
+        end_date: Date.utc_today() |> Date.add(90),
+        position: 1,
+        academic_year_id: year.id
+      },
+      %{
+        name: "2eme Trimestre",
+        start_date: Date.utc_today() |> Date.add(91),
+        end_date: Date.utc_today() |> Date.add(180),
+        position: 2,
+        academic_year_id: year.id
+      },
+      %{
+        name: "3eme Trimestre",
+        start_date: Date.utc_today() |> Date.add(181),
+        end_date: Date.utc_today() |> Date.add(270),
+        position: 3,
+        academic_year_id: year.id
+      }
+    ]
+
+    terms =
+      Ash.Seed.upsert!(
+        TeacherAssistant.Academics.Term,
+        terms_input,
+        identity: :unique_name,
+        scope: %TeacherAssistant.Scope{current_tenant: school}
+      )
+
+    levels_input =
       Map.get(@levels, school.type)
       |> Map.get(school.sub_system)
       |> Enum.map(fn level ->
         %{name: level}
       end)
-      |> Ash.bulk_create!(
+
+    levels =
+      Ash.Seed.upsert!(
         TeacherAssistant.Academics.Level,
-        :create,
+        levels_input,
         scope: %TeacherAssistant.Scope{current_tenant: school},
-        upsert?: true,
-        upsert_identity: :unique_name,
-        upsert_fields: [:description],
-        return_records?: true
+        identity: :unique_name
       )
 
-    %Ash.BulkResult{records: options} =
+    options_input =
       Map.get(@options, school.type)
       |> Enum.map(fn option ->
         %{name: option}
       end)
-      |> Ash.bulk_create!(
+
+    options =
+      Ash.Seed.upsert!(
         TeacherAssistant.Academics.Option,
-        :create,
+        options_input,
         scope: %TeacherAssistant.Scope{current_tenant: school},
-        upsert?: true,
-        upsert_identity: :unique_name,
-        upsert_fields: [:description],
-        return_records?: true
+        identity: :unique_name
       )
 
-    %Ash.BulkResult{records: subjects} =
+    subjects_input =
       @subjects
       |> Enum.map(fn subject ->
         %{name: subject}
       end)
-      |> Ash.bulk_create!(
+
+    subjects =
+      Ash.Seed.upsert!(
         TeacherAssistant.Academics.Subject,
-        :create,
-        scope: %TeacherAssistant.Scope{current_tenant: school},
-        upsert?: true,
-        upsert_identity: :unique_name,
-        upsert_fields: [:description],
-        return_records?: true
+        subjects_input,
+        identitty: :unique_name,
+        scope: %TeacherAssistant.Scope{current_tenant: school}
       )
 
-    {year, levels, options, subjects}
+    {year, terms, levels, options, subjects}
   end
 end
