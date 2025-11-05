@@ -59,7 +59,7 @@ config :spark,
 config :teacher_assistant,
   ecto_repos: [TeacherAssistant.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [TeacherAssistant.Accounts]
+  ash_domains: [TeacherAssistant.Accounts, TeacherAssistant.Academics]
 
 # Configures the endpoint
 config :teacher_assistant, TeacherAssistantWeb.Endpoint,
