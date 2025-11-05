@@ -99,7 +99,7 @@ defmodule TeacherAssistant.Seed do
           end_date: Date.utc_today() |> Date.add(270)
         },
         identity: :unique_name,
-        scope: %TeacherAssistant.Scope{current_tenant: school}
+        tenant: school.id
       )
 
     terms_input = [
@@ -131,7 +131,7 @@ defmodule TeacherAssistant.Seed do
         TeacherAssistant.Academics.Term,
         terms_input,
         identity: :unique_name,
-        scope: %TeacherAssistant.Scope{current_tenant: school}
+        tenant: school.id
       )
 
     levels_input =
@@ -145,7 +145,7 @@ defmodule TeacherAssistant.Seed do
       Ash.Seed.upsert!(
         TeacherAssistant.Academics.Level,
         levels_input,
-        scope: %TeacherAssistant.Scope{current_tenant: school},
+        tenant: school.id,
         identity: :unique_name
       )
 
@@ -159,7 +159,7 @@ defmodule TeacherAssistant.Seed do
       Ash.Seed.upsert!(
         TeacherAssistant.Academics.Option,
         options_input,
-        scope: %TeacherAssistant.Scope{current_tenant: school},
+        tenant: school.id,
         identity: :unique_name
       )
 
@@ -174,7 +174,7 @@ defmodule TeacherAssistant.Seed do
         TeacherAssistant.Academics.Subject,
         subjects_input,
         identitty: :unique_name,
-        scope: %TeacherAssistant.Scope{current_tenant: school}
+        tenant: school.id
       )
 
     {year, terms, levels, options, subjects}
