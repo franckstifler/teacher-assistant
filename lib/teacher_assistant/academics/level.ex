@@ -1,5 +1,8 @@
 defmodule TeacherAssistant.Academics.Level do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
+  use Ash.Resource,
+    data_layer: AshPostgres.DataLayer,
+    domain: TeacherAssistant.Academics,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     repo TeacherAssistant.Repo
@@ -9,6 +12,12 @@ defmodule TeacherAssistant.Academics.Level do
   actions do
     default_accept [:name, :description]
     defaults [:create, :update, :read, :destroy]
+  end
+
+  policies do
+    policy always() do
+      authorize_if always()
+    end
   end
 
   multitenancy do

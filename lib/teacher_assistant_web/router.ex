@@ -87,15 +87,20 @@ defmodule TeacherAssistantWeb.Router do
     live_session :configurations,
       on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_optional} do
       scope "/configurations" do
+        live "/academic_years", Configurations.AcademicYearLive.Index, :index
+        live "/academic_years/new", Configurations.AcademicYearLive.Form, :new
+        live "/academic_years/:id", Configurations.AcademicYearLive.Show, :show
+        live "/academic_years/:id/edit", Configurations.AcademicYearLive.Form, :edit
+
         live "/terms", Configurations.TermLive.Index, :index
         live "/terms/new", Configurations.TermLive.Form, :new
         live "/terms/:id", Configurations.TermLive.Show, :show
         live "/terms/:id/edit", Configurations.TermLive.Form, :edit
 
-        live "/academic_years", Configurations.AcademicYearLive.Index, :index
-        live "/academic_years/new", Configurations.AcademicYearLive.Form, :new
-        live "/academic_years/:id", Configurations.AcademicYearLive.Show, :show
-        live "/academic_years/:id/edit", Configurations.AcademicYearLive.Form, :edit
+        live "/levels", Configurations.LevelLive.Index, :index
+        live "/levels/new", Configurations.LevelLive.Form, :new
+        live "/levels/:id", Configurations.LevelLive.Show, :show
+        live "/levels/:id/edit", Configurations.LevelLive.Form, :edit
       end
     end
   end

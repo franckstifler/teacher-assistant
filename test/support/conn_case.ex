@@ -30,12 +30,26 @@ defmodule TeacherAssistantWeb.ConnCase do
       import TeacherAssistantWeb.ConnCase
 
       # Import fixtures
-      import TeacherAssistant.AcedemicFixtures
+      import TeacherAssistant.AcademicFixtures
     end
   end
 
   setup tags do
     TeacherAssistant.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+
+  def register_and_log_in_user(%{conn: conn}) do
+    school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
+    user = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.admin_user(tenant: school))
+
+    %{conn: log_in_user(conn, school, user), tenant: school, actor: user}
+  end
+
+  def log_in_user(conn, school, _user) do
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> Plug.Conn.put_session(:tenant, school.id)
+    # |> Plug.Conn.put_session(:user_token, token)
   end
 end
