@@ -28,6 +28,9 @@ defmodule TeacherAssistantWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import TeacherAssistantWeb.ConnCase
+
+      # Import fixtures
+      import TeacherAssistant.AcedemicFixtures
     end
   end
 

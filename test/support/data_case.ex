@@ -19,17 +19,19 @@ defmodule TeacherAssistant.DataCase do
   using do
     quote do
       alias TeacherAssistant.Repo
+      import ExUnitProperties
 
-      import Ecto
-      import Ecto.Changeset
-      import Ecto.Query
       import TeacherAssistant.DataCase
+      import TeacherAssistant.AcademicFixtures
     end
   end
 
   setup tags do
     TeacherAssistant.DataCase.setup_sandbox(tags)
-    :ok
+
+    school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
+
+    {:ok, %{tenant: school}}
   end
 
   @doc """
@@ -54,5 +56,34 @@ defmodule TeacherAssistant.DataCase do
         opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
       end)
     end)
+  end
+
+  def value_or_nil(input, key, default \\ nil) do
+    if Map.has_key?(input, key) do
+      case input[key] do
+        "" -> nil
+        value -> value
+      end
+    else
+      default
+    end
+  end
+
+  def assert_field_error(errors, field, opts \\ []) when is_list(errors) do
+    error_class = opts[:error_class]
+    message = opts[:message]
+    result = Enum.find(errors, &(&1.field == field))
+
+    if result do
+      if error_class do
+        assert result.__struct__ == error_class
+      end
+
+      if message do
+        assert result.message =~ message
+      end
+    else
+      flunk("Could not find error for field #{field}")
+    end
   end
 end
