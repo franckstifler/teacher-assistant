@@ -72,6 +72,10 @@ defmodule TeacherAssistant.Accounts.User do
       end
     end
 
+    create :create do
+      accept [:email]
+    end
+
     action :request_magic_link do
       argument :email, :ci_string do
         allow_nil? false
@@ -83,6 +87,11 @@ defmodule TeacherAssistant.Accounts.User do
 
   policies do
     bypass AshAuthentication.Checks.AshAuthenticationInteraction do
+      authorize_if always()
+    end
+
+    bypass action(:create) do
+      # TODO: Update this policy
       authorize_if always()
     end
   end
