@@ -6,30 +6,43 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Show do
     ~H"""
     <Layouts.app flash={@flash}>
       <.header>
-        <.button navigate={~p"/configurations/terms"}>
+        <.link class="btn btn-sm btn-ghost" navigate={~p"/configurations/academic_years"}>
           <.icon name="hero-arrow-left" />
-        </.button>
+        </.link>
         {@term.name}
 
         <:actions>
-          <.button variant="primary" navigate={~p"/configurations/terms/#{@term}/edit?return_to=show"}>
-            <.icon name="hero-pencil-square" />{gettext("Edit term")}
+          <.button
+            variant="primary"
+            navigate={
+              ~p"/configurations/academic_years/#{@term.academic_year_id}/terms/#{@term}/edit?return_to=show"
+            }
+          >
+            <.icon name="hero-pencil-square" />{gettext("Edit Term")}
           </.button>
         </:actions>
       </.header>
 
       <.list>
-        <:item title={gettext("Name")}>{@term.name}</:item>
-        <:item title={gettext("Start Date")}>{@term.start_date}</:item>
-        <:item title={gettext("End Date")}>{@term.end_date}</:item>
-        <:item title={gettext("Sequences")}>
-          <ul>
-            <%= for sequence <- @term.sequences do %>
-              <li>{sequence.name} ({sequence.start_date} - {sequence.end_date})</li>
-            <% end %>
-          </ul>
+        <:item title={gettext("Name")}>
+          {@term.name} {gettext("of")} {@term.academic_year.name}
         </:item>
+        <:item title={gettext("Interval")}>{@term.start_date} - {@term.end_date}</:item>
       </.list>
+      <div class="divider" />
+      <h3 class="font-semibold text-2xl">{gettext("Sequences")}</h3>
+      <div class="flex flex-wrap gap-x-4">
+        <div :for={sequence <- @term.sequences} class="card card-sm bg-base-100 shadow flex-1">
+          <.link href="#">
+            <div class="card-body">
+              <div class="card-title">{sequence.name}</div>
+              <div>
+                <p>{sequence.start_date} - {sequence.end_date}</p>
+              </div>
+            </div>
+          </.link>
+        </div>
+      </div>
     </Layouts.app>
     """
   end
@@ -42,7 +55,7 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Show do
      |> assign(
        :term,
        Ash.get!(TeacherAssistant.Academics.Term, id,
-         load: [:sequences],
+         load: [:academic_year, :sequences],
          scope: socket.assigns.scope
        )
      )}

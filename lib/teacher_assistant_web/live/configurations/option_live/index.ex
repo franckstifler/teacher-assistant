@@ -47,7 +47,10 @@ defmodule TeacherAssistantWeb.Configurations.OptionLive.Index do
     {:ok,
      socket
      |> assign(:page_title, gettext("Listing Options"))
-     |> stream(:options, Ash.read!(TeacherAssistant.Academics.Option, scope: socket.assigns.scope))}
+     |> stream(
+       :options,
+       Ash.read!(TeacherAssistant.Academics.Option, scope: socket.assigns.scope)
+     )}
   end
 
   @impl true
