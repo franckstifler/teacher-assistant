@@ -50,6 +50,13 @@ defmodule TeacherAssistantWeb.ConnCase do
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:tenant, school.id)
+
     # |> Plug.Conn.put_session(:user_token, token)
+  end
+
+  def update_nested_form(view, form_selector, trigger_element, position \\ "end") do
+    view
+    |> Phoenix.LiveViewTest.form(form_selector, %{trigger_element => position})
+    |> Phoenix.LiveViewTest.render_change()
   end
 end

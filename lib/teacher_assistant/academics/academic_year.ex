@@ -1,5 +1,8 @@
 defmodule TeacherAssistant.Academics.AcademicYear do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
+  use Ash.Resource,
+    data_layer: AshPostgres.DataLayer,
+    domain: TeacherAssistant.Academics,
+    extensions: [AshArchival.Resource]
 
   postgres do
     repo TeacherAssistant.Repo
@@ -49,7 +52,10 @@ defmodule TeacherAssistant.Academics.AcademicYear do
 
   relationships do
     belongs_to :school, TeacherAssistant.Academics.School
-    has_many :terms, TeacherAssistant.Academics.Term
+
+    has_many :terms, TeacherAssistant.Academics.Term do
+      sort position: :asc
+    end
   end
 
   identities do

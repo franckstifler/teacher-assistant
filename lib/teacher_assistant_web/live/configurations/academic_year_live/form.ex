@@ -7,13 +7,18 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
     <Layouts.app flash={@flash}>
       <.header>
         {@page_title}
-        <:subtitle>Use this form to manage term records in your database.</:subtitle>
       </.header>
 
-      <.form for={@form} id="term-form" phx-change="validate" phx-submit="save">
-        <.input field={@form[:name]} type="text" label="Name" />
-        <label class="label mt-4">{gettext("Terms")}</label>
-        <table class="table">
+      <.form for={@form} id="academic_year-form" phx-change="validate" phx-submit="save">
+        <.input field={@form[:name]} type="text" label={gettext("Name")} />
+        <.input field={@form[:description]} type="textarea" label={gettext("Description")} />
+        <div class="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+          <.input field={@form[:start_date]} type="date" label={gettext("Start date")} />
+          <.input field={@form[:end_date]} type="date" label={gettext("End date")} />
+        </div>
+        <div class="divider" />
+        <label class="font-semibold text-2xl">{gettext("Terms")}</label>
+        <table class="table mt-4">
           <thead>
             <tr>
               <th>{gettext("Name")}</th>
@@ -107,21 +112,16 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
             </.inputs_for>
           </tbody>
         </table>
-        <label class="label">
-          <input
-            type="checkbox"
-            name={"#{@form.name}[_add_terms]"}
-            value="end"
-            class="hidden"
-          />
+        <label class="label my-2">
+          <input type="checkbox" name={"#{@form.name}[_add_terms]"} value="end" class="hidden" />
           <.icon name="hero-plus" />{gettext("Add Term")}
         </label>
 
-        <footer class="mt-4">
+        <footer class="mt-6">
           <.button variant="primary" phx-disable-with="Saving...">
             {gettext("Save Academic Year")}
           </.button>
-          <.button navigate={return_path(@return_to, @term)}>{gettext("Cancel")}</.button>
+          <.button navigate={return_path(@return_to, @academic_year)}>{gettext("Cancel")}</.button>
         </footer>
       </.form>
     </Layouts.app>
@@ -140,23 +140,23 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
   defp return_to(_), do: "index"
 
   defp apply_action(socket, :edit, %{"id" => id}) do
-    term =
+    academic_year =
       Ash.get!(TeacherAssistant.Academics.AcademicYear, id,
         load: [terms: [:sequences]],
         scope: socket.assigns.scope
       )
 
     form =
-      AshPhoenix.Form.for_update(term, :update,
+      AshPhoenix.Form.for_update(academic_year, :update,
         domain: TeacherAssistant.Academics,
-        as: "term",
+        as: "academic_year",
         scope: socket.assigns.scope,
         forms: [auto?: true]
       )
 
     socket
     |> assign(:page_title, gettext("Edit Academic Year"))
-    |> assign(:term, term)
+    |> assign(:academic_year, academic_year)
     |> assign(:form, to_form(form))
   end
 
@@ -164,29 +164,31 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
     form =
       AshPhoenix.Form.for_create(TeacherAssistant.Academics.AcademicYear, :create,
         domain: TeacherAssistant.Academics,
-        as: "term",
+        extensions: [AshArchival.Resource],
+        as: "academic_year",
         scope: socket.assigns.scope,
         forms: [auto?: true]
       )
 
     socket
     |> assign(:page_title, gettext("New Academic Year"))
-    |> assign(:term, nil)
+    |> assign(:academic_year, nil)
     |> assign(:form, to_form(form))
   end
 
   @impl true
-  def handle_event("validate", %{"term" => term_params}, socket) do
-    {:noreply, assign(socket, form: AshPhoenix.Form.validate(socket.assigns.form, term_params))}
+  def handle_event("validate", %{"academic_year" => academic_year_params}, socket) do
+    {:noreply,
+     assign(socket, form: AshPhoenix.Form.validate(socket.assigns.form, academic_year_params))}
   end
 
-  def handle_event("save", %{"term" => term_params}, socket) do
-    case AshPhoenix.Form.submit(socket.assigns.form, params: term_params) do
-      {:ok, term} ->
+  def handle_event("save", %{"academic_year" => academic_year_params}, socket) do
+    case AshPhoenix.Form.submit(socket.assigns.form, params: academic_year_params) do
+      {:ok, academic_year} ->
         socket =
           socket
           |> put_flash(:info, "Academic Year #{socket.assigns.form.source.type}d successfully")
-          |> push_navigate(to: return_path(socket.assigns.return_to, term))
+          |> push_navigate(to: return_path("show", academic_year))
 
         {:noreply, socket}
 
@@ -195,6 +197,6 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
     end
   end
 
-  defp return_path("index", _term), do: ~p"/configurations/academic_years"
+  defp return_path("index", _academic_year), do: ~p"/configurations/academic_years"
   defp return_path("show", academic_year), do: ~p"/configurations/academic_years/#{academic_year}"
 end

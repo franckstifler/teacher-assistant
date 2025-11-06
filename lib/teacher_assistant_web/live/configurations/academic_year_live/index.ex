@@ -15,23 +15,32 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Index do
       </.header>
 
       <.table
-        id="terms"
-        rows={@streams.terms}
-        row_click={fn {_id, term} -> JS.navigate(~p"/configurations/academic_years/#{term}") end}
+        id="academic_years"
+        rows={@streams.academic_years}
+        row_click={
+          fn {_id, academic_year} ->
+            JS.navigate(~p"/configurations/academic_years/#{academic_year}")
+          end
+        }
       >
-        <:col :let={{_id, term}} label={gettext("Name")}>{term.name}</:col>
+        <:col :let={{_id, academic_year}} label={gettext("Name")}>{academic_year.name}</:col>
+        <:col :let={{_id, academic_year}} label={gettext("Active")}>{academic_year.active}</:col>
 
-        <:action :let={{_id, term}}>
+        <:action :let={{_id, academic_year}}>
           <div class="sr-only">
-            <.link navigate={~p"/configurations/academic_years/#{term}"}>{gettext("Show")}</.link>
+            <.link navigate={~p"/configurations/academic_years/#{academic_year}"}>
+              {gettext("Show")}
+            </.link>
           </div>
 
-          <.link patch={~p"/configurations/academic_years/#{term}/edit"}>{gettext("Edit")}</.link>
+          <.link navigate={~p"/configurations/academic_years/#{academic_year}/edit"}>
+            {gettext("Edit")}
+          </.link>
         </:action>
 
-        <:action :let={{id, term}}>
+        <:action :let={{id, academic_year}}>
           <.link
-            phx-click={JS.push("delete", value: %{id: term.id}) |> hide("##{id}")}
+            phx-click={JS.push("delete", value: %{id: academic_year.id}) |> hide("##{id}")}
             data-confirm="Are you sure?"
           >
             {gettext("Delete")}
@@ -44,22 +53,22 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    dbg(socket.assigns)
-
     {:ok,
      socket
      |> assign(:page_title, gettext("Listing Academic Years"))
      |> stream(
-       :terms,
+       :academic_years,
        Ash.read!(TeacherAssistant.Academics.AcademicYear, scope: socket.assigns.scope)
      )}
   end
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    term = Ash.get!(TeacherAssistant.Academics.AcademicYear, id, scope: socket.assigns.scope)
-    Ash.destroy!(term, scope: socket.assigns.scope)
+    academic_year =
+      Ash.get!(TeacherAssistant.Academics.AcademicYear, id, scope: socket.assigns.scope)
 
-    {:noreply, stream_delete(socket, :terms, term)}
+    Ash.destroy!(academic_year, scope: socket.assigns.scope)
+
+    {:noreply, stream_delete(socket, :academic_years, academic_year)}
   end
 end
