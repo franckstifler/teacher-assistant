@@ -28,6 +28,14 @@ defmodule TeacherAssistant.Academics.AcademicYear do
       change manage_relationship(:terms, :terms, type: :direct_control, order_is_key: :position)
     end
 
+    update :manage_classrooms do
+      require_atomic? false
+      accept []
+      argument :levels_options, {:array, :uuid_v7}, default: []
+
+      change manage_relationship(:levels_options, :classrooms, type: :append_and_remove)
+    end
+
     read :get_active_year do
       get? true
       filter expr(active == true)
@@ -55,6 +63,12 @@ defmodule TeacherAssistant.Academics.AcademicYear do
 
     has_many :terms, TeacherAssistant.Academics.Term do
       sort position: :asc
+    end
+
+    many_to_many :classrooms, TeacherAssistant.Academics.LevelOption do
+      through TeacherAssistant.Academics.Classroom
+      source_attribute_on_join_resource :academic_year_id
+      destination_attribute_on_join_resource :level_option_id
     end
   end
 

@@ -26,6 +26,26 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
         <:item title="Description">{@academic_year.description}</:item>
       </.list>
       <div class="divider" />
+      <div class="flex justify-between">
+        <h3 class="font-semibold text-2xl">{gettext("Classrooms")}</h3>
+        <.link
+          class="btn btn-sm btn-soft btn-ghost"
+          navigate={~p"/configurations/academic_years/#{@academic_year}/manage_classrooms"}
+        >
+          <.icon name="hero-pencil-square" />{gettext("Manage classrooms")}
+        </.link>
+      </div>
+      <table class="table table-zebra table-hover">
+        <tr>
+          <th>{gettext("Classroom")}</th>
+        </tr>
+
+        <tr :for={classroom <- @academic_year.classrooms}>
+          <td>{classroom.full_name}</td>
+        </tr>
+      </table>
+
+      <div class="divider" />
       <h3 class="font-semibold text-2xl">{gettext("Terms")}</h3>
       <div class="flex flex-wrap gap-x-4">
         <div :for={term <- @academic_year.terms} class="card card-sm bg-base-100 shadow flex-1">
@@ -51,7 +71,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
      |> assign(
        :academic_year,
        Ash.get!(TeacherAssistant.Academics.AcademicYear, id,
-         load: [terms: [:sequences]],
+         load: [classrooms: [:full_name], terms: [:sequences]],
          scope: socket.assigns.scope
        )
      )}

@@ -9,6 +9,7 @@ defmodule TeacherAssistant.Academics.LevelOption do
   end
 
   actions do
+    default_accept [:level_id, :option_id]
     defaults [:read, :destroy, create: :*, update: :*]
   end
 
@@ -23,8 +24,8 @@ defmodule TeacherAssistant.Academics.LevelOption do
 
   relationships do
     belongs_to :school, TeacherAssistant.Academics.School
-    belongs_to :option, TeacherAssistant.Academics.Option, allow_nil?: false
-    belongs_to :level, TeacherAssistant.Academics.Level, allow_nil?: false
+    belongs_to :option, TeacherAssistant.Academics.Option, allow_nil?: false, public?: true
+    belongs_to :level, TeacherAssistant.Academics.Level, allow_nil?: false, public?: true
   end
 
   calculations do

@@ -129,6 +129,48 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
     end
   end
 
+  describe "TeacherAssistant.Academics.manage_classrooms" do
+    test "updates a academic_year", %{tenant: tenant, user: user} do
+      check all(
+              academic_year <-
+                StreamData.repeatedly(fn ->
+                  generate(academic_year(tenant: tenant, actor: user))
+                end),
+              level_option <-
+                StreamData.repeatedly(fn ->
+                  generate(level_option(tenant: tenant, actor: user))
+                end)
+            ) do
+        params = %{levels_options: [level_option.id]}
+
+        updated_academic_year =
+          TeacherAssistant.Academics.manage_classrooms!(academic_year, params,
+            tenant: tenant,
+            actor: user,
+            authorize?: false
+          )
+
+        assert [classroom] = updated_academic_year.classrooms
+        assert classroom.id == level_option.id
+      end
+    end
+
+    test "with invalid data returns error changeset", %{tenant: tenant, user: user} do
+      academic_year = generate(academic_year(tenant: tenant, actor: user))
+
+      assert {:error, %Ash.Error.Invalid{errors: errors}} =
+               TeacherAssistant.Academics.update_academic_year(
+                 academic_year,
+                 %{name: nil, description: nil},
+                 tenant: tenant,
+                 actor: user,
+                 authorize?: false
+               )
+
+      assert_field_error(errors, :name, error_class: Ash.Error.Changes.Required)
+    end
+  end
+
   describe "TeacherAssistant.Academics.destroy_academic_year" do
     test "destroys a academic_year", %{tenant: tenant, user: user} do
       academic_year = generate(academic_year(tenant: tenant, actor: user))

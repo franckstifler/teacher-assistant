@@ -188,5 +188,42 @@ defmodule TeacherAssistantWeb.AcademicYearLiveTest do
       assert html =~ @update_attrs.name
       assert html =~ @update_attrs.description
     end
+
+    test "updates academic_year classrooms", %{
+      conn: conn,
+      tenant: tenant,
+      academic_year: academic_year
+    } do
+      {:ok, show_live, _html} = live(conn, ~p"/configurations/academic_years/#{academic_year}")
+
+      [level_option_1, level_option_2, level_option_3] =
+        generate_many(level_option(tenant: tenant), 3)
+        |> Ash.load!(:full_name)
+
+      assert {:ok, form_live, _} =
+               show_live
+               |> element("a", "Manage classrooms")
+               |> render_click()
+               |> follow_redirect(
+                 conn,
+                 ~p"/configurations/academic_years/#{academic_year}/manage_classrooms"
+               )
+
+      assert render(form_live) =~ "Edit Year Classrooms"
+
+      assert {:ok, show_live, _html} =
+               form_live
+               |> form("#academic_year-form",
+                 academic_year: %{levels_options: [level_option_1.id, level_option_2.id]}
+               )
+               |> render_submit()
+               |> follow_redirect(conn, ~p"/configurations/academic_years/#{academic_year}")
+
+      html = render(show_live)
+      assert html =~ "Classrooms updated successfully"
+      assert html =~ level_option_1.full_name
+      assert html =~ level_option_2.full_name
+      refute html =~ level_option_3.full_name
+    end
   end
 end
