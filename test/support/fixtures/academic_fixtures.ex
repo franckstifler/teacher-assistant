@@ -36,7 +36,6 @@ defmodule TeacherAssistant.AcademicFixtures do
     )
   end
 
-  @spec level_option(keyword()) :: StreamData.t(any())
   def level_option(opts \\ []) do
     actor = get_actor(opts)
     tenant = Keyword.fetch!(opts, :tenant)
@@ -53,6 +52,21 @@ defmodule TeacherAssistant.AcademicFixtures do
       defaults: [
         level_id: level_id,
         option_id: option_id
+      ],
+      overrides: opts,
+      actor: actor,
+      tenant: tenant
+    )
+  end
+
+  def subject(opts \\ []) do
+    actor = get_actor(opts)
+    tenant = Keyword.fetch!(opts, :tenant)
+
+    changeset_generator(TeacherAssistant.Academics.Subject, :create,
+      defaults: [
+        name: sequence(:subject, &"Subject #{&1}"),
+        decription: Faker.Lorem.sentence()
       ],
       overrides: opts,
       actor: actor,

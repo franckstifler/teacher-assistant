@@ -88,7 +88,7 @@ defmodule TeacherAssistantWeb.OptionLiveTest do
     setup [:register_and_log_in_user, :create_option]
 
     test "displays option", %{conn: conn, option: option} do
-      {:ok, show_live, html} = live(conn, ~p"/configurations/options/#{option}")
+      {:ok, _show_live, html} = live(conn, ~p"/configurations/options/#{option}")
 
       assert html =~ "Show Option"
       assert html =~ to_string(option.name)

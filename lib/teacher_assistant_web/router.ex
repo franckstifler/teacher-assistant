@@ -92,15 +92,32 @@ defmodule TeacherAssistantWeb.Router do
         live "/academic_years/:id", Configurations.AcademicYearLive.Show, :show
         live "/academic_years/:id/edit", Configurations.AcademicYearLive.Form, :edit
 
-        live "/terms", Configurations.TermLive.Index, :index
-        live "/terms/new", Configurations.TermLive.Form, :new
-        live "/terms/:id", Configurations.TermLive.Show, :show
-        live "/terms/:id/edit", Configurations.TermLive.Form, :edit
+        live "/academic_years/:id/manage_classrooms",
+             Configurations.AcademicYearLive.ClassRoomForm,
+             :edit
+
+        scope "/academic_years/:id" do
+          live "/terms/:term_id", Configurations.TermLive.Show, :show
+          live "/terms/:term_id/edit", Configurations.TermLive.Form, :edit
+        end
 
         live "/levels", Configurations.LevelLive.Index, :index
         live "/levels/new", Configurations.LevelLive.Form, :new
         live "/levels/:id", Configurations.LevelLive.Show, :show
         live "/levels/:id/edit", Configurations.LevelLive.Form, :edit
+
+        live "/options", Configurations.OptionLive.Index, :index
+        live "/options/new", Configurations.OptionLive.Form, :new
+        live "/options/:id", Configurations.OptionLive.Show, :show
+        live "/options/:id/edit", Configurations.OptionLive.Form, :edit
+
+        live "/levels_options", Configurations.LevelOptionLive.Index, :index
+        live "/levels_options/:id", Configurations.LevelOptionLive.Show, :show
+
+        live "/subjects", Configurations.SubjectLive.Index, :index
+        live "/subjects/new", Configurations.SubjectLive.Form, :new
+        live "/subjects/:id", Configurations.SubjectLive.Show, :show
+        live "/subjects/:id/edit", Configurations.SubjectLive.Form, :edit
       end
     end
   end
