@@ -1,5 +1,8 @@
 defmodule TeacherAssistant.Academics.Option do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
+  use Ash.Resource,
+    data_layer: AshPostgres.DataLayer,
+    domain: TeacherAssistant.Academics,
+    extensions: [AshArchival.Resource]
 
   postgres do
     repo TeacherAssistant.Repo

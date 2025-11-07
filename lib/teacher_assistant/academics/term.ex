@@ -1,5 +1,8 @@
 defmodule TeacherAssistant.Academics.Term do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
+  use Ash.Resource,
+    data_layer: AshPostgres.DataLayer,
+    domain: TeacherAssistant.Academics,
+    extensions: [AshArchival.Resource]
 
   postgres do
     repo TeacherAssistant.Repo
@@ -13,14 +16,22 @@ defmodule TeacherAssistant.Academics.Term do
     create :create do
       primary? true
       argument :sequences, {:array, :map}, default: [], allow_nil?: false, constraints: [min: 1]
-      change manage_relationship(:sequences, :sequences, type: :direct_control)
+
+      change manage_relationship(:sequences, :sequences,
+               type: :direct_control,
+               order_is_key: :position
+             )
     end
 
     update :update do
       primary? true
       require_atomic? false
       argument :sequences, {:array, :map}, default: [], allow_nil?: false, constraints: [min: 1]
-      change manage_relationship(:sequences, :sequences, type: :direct_control)
+
+      change manage_relationship(:sequences, :sequences,
+               type: :direct_control,
+               order_is_key: :position
+             )
     end
   end
 
@@ -46,6 +57,6 @@ defmodule TeacherAssistant.Academics.Term do
   end
 
   identities do
-    identity :unique_name, [:school_id, :name]
+    identity :unique_name, [:school_id, :name, :academic_year_id]
   end
 end

@@ -26,7 +26,19 @@ defmodule TeacherAssistant.Academics do
     resource TeacherAssistant.Academics.ClassroomStudent
     resource TeacherAssistant.Academics.Student
     resource TeacherAssistant.Academics.Subject
-    resource TeacherAssistant.Academics.Term
-    resource TeacherAssistant.Academics.AcademicYear
+
+    resource TeacherAssistant.Academics.Term do
+      define :create_term, action: :create
+      define :update_term, action: :update
+      define :read_terms, action: :read
+      define :destroy_term, action: :destroy
+    end
+
+    resource TeacherAssistant.Academics.AcademicYear do
+      define :create_academic_year, action: :create
+      define :update_academic_year, action: :update
+      define :read_academic_years, action: :read
+      define :destroy_academic_year, action: :destroy
+    end
   end
 end

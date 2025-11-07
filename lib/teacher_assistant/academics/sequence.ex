@@ -1,5 +1,8 @@
 defmodule TeacherAssistant.Academics.Sequence do
-  use Ash.Resource, data_layer: AshPostgres.DataLayer, domain: TeacherAssistant.Academics
+  use Ash.Resource,
+    data_layer: AshPostgres.DataLayer,
+    domain: TeacherAssistant.Academics,
+    extensions: [AshArchival.Resource]
 
   postgres do
     repo TeacherAssistant.Repo
@@ -7,7 +10,7 @@ defmodule TeacherAssistant.Academics.Sequence do
   end
 
   actions do
-    default_accept [:name, :start_date, :end_date]
+    default_accept [:name, :start_date, :end_date, :term_id]
     defaults [:create, :update, :read, :destroy]
   end
 
@@ -21,6 +24,7 @@ defmodule TeacherAssistant.Academics.Sequence do
     attribute :name, :string, public?: true, allow_nil?: false
     attribute :start_date, :date, public?: true
     attribute :end_date, :date, public?: true
+    attribute :position, :integer, public?: true
 
     timestamps()
   end
