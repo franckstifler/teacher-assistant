@@ -37,6 +37,26 @@ defmodule TeacherAssistant.Resources.LevelTest do
       end
     end
 
+    test "with valid data creates a level with options", %{tenant: tenant, user: user} do
+      check all(
+              input <- Ash.Generator.action_input(Level, :create),
+              options <- StreamData.repeatedly(fn -> generate_many(option(tenant: tenant), 2) end)
+            ) do
+        input = Map.put(input, :option_ids, Enum.map(options, & &1.id))
+
+        level =
+          TeacherAssistant.Academics.create_level!(input,
+            tenant: tenant,
+            actor: user,
+            authorize?: false
+          )
+
+        assert level.name == input[:name]
+        assert level.description == value_or_nil(input, :description)
+        assert Enum.count(level.options) == length(options)
+      end
+    end
+
     test "with invalid data returns error changeset", %{tenant: tenant, user: user} do
       assert {:error, %Ash.Error.Invalid{errors: errors}} =
                TeacherAssistant.Academics.create_level(%{name: nil, description: nil},
@@ -51,8 +71,20 @@ defmodule TeacherAssistant.Resources.LevelTest do
 
   describe "TeacherAssistant.Academics.update_level" do
     test "updates a level", %{tenant: tenant, user: user} do
-      check all(input <- Ash.Generator.action_input(Level, :update)) do
-        level = generate(level(tenant: tenant, actor: user))
+      check all(
+              input <- Ash.Generator.action_input(Level, :update),
+              option <-
+                StreamData.repeatedly(fn ->
+                  generate(option(tenant: tenant, actor: user))
+                end),
+              level <-
+                StreamData.repeatedly(fn ->
+                  generate(level(option_ids: [option.id], tenant: tenant, actor: user))
+                end)
+            ) do
+        new_option = generate(option(tenant: tenant, actor: user))
+
+        input = Map.put(input, :option_ids, [new_option.id])
 
         updated_level =
           TeacherAssistant.Academics.update_level!(level, input,
@@ -63,6 +95,10 @@ defmodule TeacherAssistant.Resources.LevelTest do
 
         assert updated_level.name == input[:name]
         assert updated_level.description == value_or_nil(input, :description, level.description)
+
+        updated_option_ids = Enum.map(updated_level.options, & &1.id)
+        refute option.id in updated_option_ids
+        assert new_option.id in updated_option_ids
       end
     end
 

@@ -24,6 +24,13 @@ defmodule TeacherAssistantWeb.Configurations.LevelLive.Show do
       <.list>
         <:item title={gettext("Name")}>{@level.name}</:item>
         <:item title={gettext("Description")}>{@level.description}</:item>
+        <:item title={gettext("Options")}>
+          <div class="flex gap-x-2 mt-2">
+            <div :for={option <- @level.options} class="badge badge-soft badge-primary">
+              {option.name}
+            </div>
+          </div>
+        </:item>
       </.list>
     </Layouts.app>
     """
@@ -36,7 +43,10 @@ defmodule TeacherAssistantWeb.Configurations.LevelLive.Show do
      |> assign(:page_title, gettext("Show Level"))
      |> assign(
        :level,
-       Ash.get!(TeacherAssistant.Academics.Level, id, scope: socket.assigns.scope)
+       Ash.get!(TeacherAssistant.Academics.Level, id,
+         load: [:options],
+         scope: socket.assigns.scope
+       )
      )}
   end
 end
