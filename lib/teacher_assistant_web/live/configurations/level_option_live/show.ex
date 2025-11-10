@@ -18,6 +18,26 @@ defmodule TeacherAssistantWeb.Configurations.LevelOptionLive.Show do
         <:item title={gettext("Level")}>{@level_option.level.name}</:item>
         <:item title={gettext("Option")}>{@level_option.option.name}</:item>
       </.list>
+      <div class="divider" />
+      <div class="flex justify-between">
+        <h3 class="text-xl font-semibold">{gettext("Subjects")}</h3>
+        <.link
+          class="btn btn-sm btn-soft btn-ghost"
+          navigate={~p"/configurations/levels_options/#{@level_option}/manage_subjects"}
+        >
+          <.icon name="hero-pencil-square" />{gettext("Manage Subjects")}
+        </.link>
+      </div>
+      <table class="table table-sm">
+        <tr>
+          <th>{gettext("Subject")}</th>
+          <th>{gettext("Coefficient")}</th>
+        </tr>
+        <tr :for={subject <- @level_option.subjects}>
+          <td>{subject.subject.name}</td>
+          <td>{subject.coefficient}</td>
+        </tr>
+      </table>
     </Layouts.app>
     """
   end
@@ -30,7 +50,7 @@ defmodule TeacherAssistantWeb.Configurations.LevelOptionLive.Show do
      |> assign(
        :level_option,
        Ash.get!(TeacherAssistant.Academics.LevelOption, id,
-         load: [:full_name, :level, :option],
+         load: [:full_name, :level, :option, subjects: [:subject]],
          scope: socket.assigns.scope
        )
      )}

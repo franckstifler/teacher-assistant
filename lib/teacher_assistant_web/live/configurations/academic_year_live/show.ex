@@ -27,7 +27,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
       </.list>
       <div class="divider" />
       <div class="flex justify-between">
-        <h3 class="font-semibold text-2xl">{gettext("Classrooms")}</h3>
+        <h3 class="font-semibold text-xl">{gettext("Classrooms")}</h3>
         <.link
           class="btn btn-sm btn-soft btn-ghost"
           navigate={~p"/configurations/academic_years/#{@academic_year}/manage_classrooms"}

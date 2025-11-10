@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.Configurations.LevelOptionLive.Index do
     ~H"""
     <Layouts.app flash={@flash}>
       <.header>
-        {gettext("Listing Levels")}
+        {gettext("Listing LevelsOptions")}
         <:subtitle>
           {gettext("Available classes and specialities in your institution")}
         </:subtitle>
