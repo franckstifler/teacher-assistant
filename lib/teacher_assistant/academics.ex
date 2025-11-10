@@ -12,7 +12,12 @@ defmodule TeacherAssistant.Academics do
       define :destroy_level, action: :destroy
     end
 
-    resource TeacherAssistant.Academics.LevelOption
+    resource TeacherAssistant.Academics.LevelOption do
+      define :read_levels_level_options, action: :read
+      define :manage_level_option_subjects, action: :manage_subjects
+      define :destroy_level_option, action: :destroy
+    end
+
     resource TeacherAssistant.Academics.LevelOptionSubject
 
     resource TeacherAssistant.Academics.Option do
@@ -25,7 +30,13 @@ defmodule TeacherAssistant.Academics do
     resource TeacherAssistant.Academics.Sequence
     resource TeacherAssistant.Academics.ClassroomStudent
     resource TeacherAssistant.Academics.Student
-    resource TeacherAssistant.Academics.Subject
+
+    resource TeacherAssistant.Academics.Subject do
+      define :create_subject, action: :create
+      define :update_subject, action: :update
+      define :read_subjects, action: :read
+      define :destroy_subject, action: :destroy
+    end
 
     resource TeacherAssistant.Academics.Term do
       define :create_term, action: :create
@@ -39,6 +50,7 @@ defmodule TeacherAssistant.Academics do
       define :update_academic_year, action: :update
       define :read_academic_years, action: :read
       define :destroy_academic_year, action: :destroy
+      define :manage_classrooms, action: :manage_classrooms
     end
   end
 end
