@@ -33,7 +33,7 @@ defmodule TeacherAssistant.Academics.AcademicYear do
       accept []
       argument :levels_options, {:array, :uuid_v7}, default: []
 
-      change manage_relationship(:levels_options, :classrooms, type: :append_and_remove)
+      change manage_relationship(:levels_options, :levels_options, type: :append_and_remove)
     end
 
     read :get_active_year do
@@ -65,11 +65,13 @@ defmodule TeacherAssistant.Academics.AcademicYear do
       sort position: :asc
     end
 
-    many_to_many :classrooms, TeacherAssistant.Academics.LevelOption do
+    many_to_many :levels_options, TeacherAssistant.Academics.LevelOption do
       through TeacherAssistant.Academics.Classroom
       source_attribute_on_join_resource :academic_year_id
       destination_attribute_on_join_resource :level_option_id
     end
+
+    has_many :classrooms, TeacherAssistant.Academics.Classroom
   end
 
   identities do

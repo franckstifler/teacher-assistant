@@ -92,9 +92,13 @@ defmodule TeacherAssistantWeb.Router do
         live "/academic_years/:id", Configurations.AcademicYearLive.Show, :show
         live "/academic_years/:id/edit", Configurations.AcademicYearLive.Form, :edit
 
+        live "/classrooms/:id/teachers_and_subjects",
+             Configurations.AcademicYearLive.TeacherSubjectForm,
+             :teachers_and_subjects
+
         live "/academic_years/:id/manage_classrooms",
              Configurations.AcademicYearLive.ClassRoomForm,
-             :edit
+             :edit_classrooms
 
         scope "/academic_years/:id" do
           live "/terms/:term_id", Configurations.TermLive.Show, :show
@@ -113,6 +117,10 @@ defmodule TeacherAssistantWeb.Router do
 
         live "/levels_options", Configurations.LevelOptionLive.Index, :index
         live "/levels_options/:id", Configurations.LevelOptionLive.Show, :show
+
+        live "/levels_options/:id/manage_subjects",
+             Configurations.LevelOptionLive.ManageSubjectForm,
+             :edit_subjects
 
         live "/subjects", Configurations.SubjectLive.Index, :index
         live "/subjects/new", Configurations.SubjectLive.Form, :new

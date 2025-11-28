@@ -43,15 +43,26 @@ defmodule TeacherAssistantWeb.Layouts do
         </a>
       </div>
       <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
+        <ul class="menu menu-horizontal px-1 items-center">
           <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
+            <details>
+              <summary>{gettext("Configuration")}</summary>
+              <ul class="bg-base-100 rounded-t-none p-2 min-w-42">
+                <li>
+                  <.link navigate={~p"/configurations/academic_years"}>
+                    {gettext("Years")}
+                  </.link>
+                </li>
+                <li><.link navigate={~p"/configurations/subjects"}>{gettext("Subjects")}</.link></li>
+                <li>
+                  <.link navigate={~p"/configurations/levels_options"}>
+                    {gettext("Levels & Options")}
+                  </.link>
+                </li>
+                <li><.link navigate={~p"/configurations/levels"}>{gettext("Levels")}</.link></li>
+                <li><.link navigate={~p"/configurations/options"}>{gettext("Options")}</.link></li>
+              </ul>
+            </details>
           </li>
           <li>
             <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">

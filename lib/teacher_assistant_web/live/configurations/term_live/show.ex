@@ -48,7 +48,7 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Show do
   end
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(%{"term_id" => id}, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, gettext("Show Term"))
