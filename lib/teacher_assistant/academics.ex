@@ -29,7 +29,14 @@ defmodule TeacherAssistant.Academics do
 
     resource TeacherAssistant.Academics.Sequence
     resource TeacherAssistant.Academics.ClassroomStudent
-    resource TeacherAssistant.Academics.Student
+    resource TeacherAssistant.Academics.SchoolYearSubjectTeacher
+
+    resource TeacherAssistant.Academics.Student do
+      define :create_student, action: :create
+      define :update_student, action: :update
+      define :read_students, action: :read
+      define :destroy_student, action: :destroy
+    end
 
     resource TeacherAssistant.Academics.Subject do
       define :create_subject, action: :create
@@ -37,6 +44,9 @@ defmodule TeacherAssistant.Academics do
       define :read_subjects, action: :read
       define :destroy_subject, action: :destroy
     end
+
+    resource TeacherAssistant.Academics.Mark
+    resource TeacherAssistant.Academics.Attendance
 
     resource TeacherAssistant.Academics.Term do
       define :create_term, action: :create

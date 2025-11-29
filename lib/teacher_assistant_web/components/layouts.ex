@@ -53,6 +53,11 @@ defmodule TeacherAssistantWeb.Layouts do
                     {gettext("Years")}
                   </.link>
                 </li>
+                <li>
+                  <.link navigate={~p"/configurations/students"}>
+                    {gettext("Students")}
+                  </.link>
+                </li>
                 <li><.link navigate={~p"/configurations/subjects"}>{gettext("Subjects")}</.link></li>
                 <li>
                   <.link navigate={~p"/configurations/levels_options"}>
@@ -61,8 +66,16 @@ defmodule TeacherAssistantWeb.Layouts do
                 </li>
                 <li><.link navigate={~p"/configurations/levels"}>{gettext("Levels")}</.link></li>
                 <li><.link navigate={~p"/configurations/options"}>{gettext("Options")}</.link></li>
+                <li>
+                  <.link navigate={~p"/configurations/marks"}>
+                    {gettext("Marks (Admin)")}
+                  </.link>
+                </li>
               </ul>
             </details>
+          </li>
+          <li>
+            <.link navigate={~p"/teacher/marks"}>{gettext("Enter Marks")}</.link>
           </li>
           <li>
             <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
@@ -74,7 +87,7 @@ defmodule TeacherAssistantWeb.Layouts do
     </header>
 
     <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
+      <div class="mx-auto container space-y-4">
         {render_slot(@inner_block)}
       </div>
     </main>

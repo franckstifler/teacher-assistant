@@ -37,7 +37,13 @@ defmodule TeacherAssistant.Academics.Student do
 
   relationships do
     belongs_to :school, TeacherAssistant.Academics.School
+    has_many :classrooms_students, TeacherAssistant.Academics.ClassroomStudent
   end
+
+  calculations do
+    calculate :full_name, :string, expr(first_name <> " " <> last_name)
+  end
+
 
   identities do
     identity :unique_name_and_date_of_birth, [:first_name, :last_name, :date_of_birth]

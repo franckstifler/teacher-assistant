@@ -84,6 +84,17 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
+    live_session :teacher,
+      on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_optional} do
+      scope "/teacher" do
+        live "/marks", TeacherMarksLive.Entry, :index
+      end
+    end
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through :browser
+
     live_session :configurations,
       on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_optional} do
       scope "/configurations" do
@@ -103,6 +114,10 @@ defmodule TeacherAssistantWeb.Router do
         scope "/academic_years/:id" do
           live "/terms/:term_id", Configurations.TermLive.Show, :show
           live "/terms/:term_id/edit", Configurations.TermLive.Form, :edit
+
+          live "/classrooms/:classroom_id/students",
+               Configurations.AcademicYearLive.ClassroomStudentsForm,
+               :manage_students
         end
 
         live "/levels", Configurations.LevelLive.Index, :index
@@ -131,6 +146,8 @@ defmodule TeacherAssistantWeb.Router do
         live "/students/new", Configurations.StudentLive.Form, :new
         live "/students/:id", Configurations.StudentLive.Show, :show
         live "/students/:id/edit", Configurations.StudentLive.Form, :edit
+
+        live "/marks", Configurations.MarksLive.Entry, :index
       end
     end
   end

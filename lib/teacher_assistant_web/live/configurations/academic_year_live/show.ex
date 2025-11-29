@@ -63,6 +63,16 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
 
         <tr :for={classroom <- @academic_year.classrooms}>
           <td>{classroom.level_option.full_name}</td>
+          <td>
+            <div class="flex gap-2">
+              <.link
+                class="btn btn-xs btn-soft btn-ghost"
+                navigate={~p"/configurations/academic_years/#{@academic_year}/classrooms/#{classroom}/students"}
+              >
+                <.icon name="hero-user-group" /> {gettext("Manage students")}
+              </.link>
+            </div>
+          </td>
         </tr>
       </table>
     </Layouts.app>
