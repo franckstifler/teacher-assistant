@@ -74,6 +74,25 @@ defmodule TeacherAssistant.AcademicFixtures do
     )
   end
 
+  def student(opts \\ []) do
+    actor = get_actor(opts)
+    tenant = Keyword.fetch!(opts, :tenant)
+
+    changeset_generator(TeacherAssistant.Academics.Student, :create,
+      defaults: [
+        first_name: sequence(:student_first_name, &"First #{&1}"),
+        last_name: sequence(:student_last_name, &"Last #{&1}"),
+        matricule: sequence(:student_matricule, &"M-#{&1}"),
+        place_of_birth: Faker.Address.city(),
+        date_of_birth: Date.add(Date.utc_today(), -365 * 10),
+        gender: :male
+      ],
+      overrides: opts,
+      actor: actor,
+      tenant: tenant
+    )
+  end
+
   def term(opts \\ []) do
     actor = get_actor(opts)
     tenant = Keyword.fetch!(opts, :tenant)
@@ -185,15 +204,12 @@ defmodule TeacherAssistant.AcademicFixtures do
     )
   end
 
-  defp get_actor(_opts) do
-    # opts[:actor] ||
-    #   :default_actor
-    #   |> once(fn ->
-    #     nil
-    #     # generate(root_user(tenant: opts[:tenant]))
-    #   end)
-    #   |> Enum.at(0)
-
-    nil
+  defp get_actor(opts) do
+    opts[:actor] ||
+      :default_actor
+      |> once(fn ->
+        generate(admin_user(tenant: opts[:tenant]))
+      end)
+      |> Enum.at(0)
   end
 end

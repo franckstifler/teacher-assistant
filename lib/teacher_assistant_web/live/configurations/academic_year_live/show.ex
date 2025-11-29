@@ -63,11 +63,6 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
 
         <tr :for={classroom <- @academic_year.classrooms}>
           <td>{classroom.level_option.full_name}</td>
-          <td>
-            <.link navigate={~p"/configurations/classrooms/#{classroom.id}/teachers_and_subjects"}>
-              {gettext("Assign Teachers/Subjects")}
-            </.link>
-          </td>
         </tr>
       </table>
     </Layouts.app>

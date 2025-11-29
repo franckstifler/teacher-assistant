@@ -126,6 +126,11 @@ defmodule TeacherAssistantWeb.Router do
         live "/subjects/new", Configurations.SubjectLive.Form, :new
         live "/subjects/:id", Configurations.SubjectLive.Show, :show
         live "/subjects/:id/edit", Configurations.SubjectLive.Form, :edit
+
+        live "/students", Configurations.StudentLive.Index, :index
+        live "/students/new", Configurations.StudentLive.Form, :new
+        live "/students/:id", Configurations.StudentLive.Show, :show
+        live "/students/:id/edit", Configurations.StudentLive.Form, :edit
       end
     end
   end
