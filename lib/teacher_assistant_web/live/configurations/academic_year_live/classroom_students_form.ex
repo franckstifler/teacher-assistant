@@ -43,8 +43,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.ClassroomStudentsF
         scope: scope
       )
 
-    {:noreply,
-     Cinder.Table.Refresh.refresh_tables(socket, ["all_students", "students_in_classroom"])}
+    {:noreply, Cinder.Refresh.refresh_tables(socket, ["all_students", "students_in_classroom"])}
   end
 
   def handle_event("remove_student", %{"id" => student_id}, socket) do
@@ -57,14 +56,13 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.ClassroomStudentsF
 
     Ash.destroy!(classroom_student, scope: scope)
 
-    {:noreply,
-     Cinder.Table.Refresh.refresh_tables(socket, ["all_students", "students_in_classroom"])}
+    {:noreply, Cinder.Refresh.refresh_tables(socket, ["all_students", "students_in_classroom"])}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
         {gettext("Manage classroom students")}
         <:actions>

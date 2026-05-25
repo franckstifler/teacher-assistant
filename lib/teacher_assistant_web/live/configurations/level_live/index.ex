@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.Configurations.LevelLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
         {gettext("Listing Levels")}
         <:actions>

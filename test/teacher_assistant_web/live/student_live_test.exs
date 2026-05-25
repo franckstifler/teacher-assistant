@@ -38,7 +38,7 @@ defmodule TeacherAssistantWeb.StudentLiveTest do
     setup [:register_and_log_in_user, :create_student]
 
     test "lists all students", %{conn: conn, student: student} do
-      {:ok, index_live, html} = live(conn, ~p"/configurations/students")
+      {:ok, _index_live, html} = live(conn, ~p"/configurations/students")
 
       assert html =~ "Listing Students"
       assert html =~ to_string(student.first_name)

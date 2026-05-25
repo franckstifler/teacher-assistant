@@ -172,7 +172,8 @@ defmodule TeacherAssistant.AcademicFixtures do
 
     changeset_generator(TeacherAssistant.Accounts.User, :create,
       defaults: [
-        email: Faker.Internet.email()
+        email: Faker.Internet.email(),
+        role: :admin
       ],
       overrides: opts,
       tenant: tenant
@@ -184,7 +185,25 @@ defmodule TeacherAssistant.AcademicFixtures do
 
     changeset_generator(TeacherAssistant.Accounts.User, :create,
       defaults: [
-        email: Faker.Internet.email()
+        email: Faker.Internet.email(),
+        role: :teacher
+      ],
+      overrides: opts,
+      tenant: tenant
+    )
+  end
+
+  def user_school(opts \\ []) do
+    tenant = Keyword.fetch!(opts, :tenant)
+
+    user_id =
+      opts[:user_id] ||
+        StreamData.repeatedly(fn -> generate(user(tenant: tenant)).id end)
+
+    changeset_generator(TeacherAssistant.Accounts.UserSchool, :create,
+      defaults: [
+        user_id: user_id,
+        role: opts[:role] || :teacher
       ],
       overrides: opts,
       tenant: tenant

@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.TeacherSubjectForm
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mb-6">
         <.link
           navigate={~p"/configurations/academic_years/#{@classroom.academic_year_id}"}
@@ -16,13 +16,13 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.TeacherSubjectForm
       </div>
 
       <.header>
-          <span>
-            {gettext("Academic Year")}: {@academic_year.name}
-          </span>
-          <span class="mx-2 text-base-content/50">•</span>
-          <span>
-            {gettext("Classroom")}: {@level_option_name}
-          </span>
+        <span>
+          {gettext("Academic Year")}: {@academic_year.name}
+        </span>
+        <span class="mx-2 text-base-content/50">•</span>
+        <span>
+          {gettext("Classroom")}: {@level_option_name}
+        </span>
       </.header>
 
       <div class="card bg-base-100 shadow-xl mt-6">
@@ -253,6 +253,7 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.TeacherSubjectForm
             load: [:teacher, :level_option_subject],
             scope: socket.assigns.scope
           )
+
         {:noreply,
          socket
          |> assign(:assignments, assignments)

@@ -35,68 +35,89 @@ defmodule TeacherAssistantWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="menu menu-horizontal px-1 items-center">
-          <li>
-            <details>
-              <summary>{gettext("Configuration")}</summary>
-              <ul class="bg-base-100 rounded-t-none p-2 min-w-42">
-                <li>
-                  <.link navigate={~p"/configurations/academic_years"}>
-                    {gettext("Years")}
-                  </.link>
-                </li>
-                <li>
-                  <.link navigate={~p"/configurations/students"}>
-                    {gettext("Students")}
-                  </.link>
-                </li>
-                <li><.link navigate={~p"/configurations/subjects"}>{gettext("Subjects")}</.link></li>
-                <li>
-                  <.link navigate={~p"/configurations/levels_options"}>
-                    {gettext("Levels & Options")}
-                  </.link>
-                </li>
-                <li><.link navigate={~p"/configurations/levels"}>{gettext("Levels")}</.link></li>
-                <li><.link navigate={~p"/configurations/options"}>{gettext("Options")}</.link></li>
-              </ul>
-            </details>
-          </li>
-          <li>
-            <details>
-              <summary>
-                <.icon name="hero-academic-cap" class="w-5 h-5" />
-                {gettext("Teacher")}
-              </summary>
-              <ul class="bg-base-100 rounded-t-none p-2 min-w-42">
-                <li>
-                  <.link navigate={~p"/teacher/marks"}>
-                    <.icon name="hero-clipboard-document-list" class="w-4 h-4" />
-                    {gettext("Enter Marks")}
-                  </.link>
-                </li>
-                <li>
-                  <.link navigate={~p"/teacher/attendance"}>
-                    <.icon name="hero-clipboard-document-check" class="w-4 h-4" />
-                    {gettext("Attendance")}
-                  </.link>
-                </li>
-              </ul>
-            </details>
-          </li>
-        </ul>
+    <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/95 backdrop-blur">
+      <div class="navbar min-h-14 px-4 sm:px-6 lg:px-8">
+        <div class="flex-1">
+          <a href="/" class="flex w-fit items-center gap-3">
+            <img src={~p"/images/logo.svg"} width="32" />
+            <span class="text-sm font-semibold tracking-wide">Teacher Assistant</span>
+          </a>
+        </div>
+
+        <nav class="hidden flex-none lg:block" aria-label={gettext("Main navigation")}>
+          <ul class="menu menu-horizontal items-center gap-1 px-1">
+            <li>
+              <details>
+                <summary>
+                  <.icon name="hero-cog-6-tooth" class="size-4" />
+                  {gettext("Configuration")}
+                </summary>
+                <ul class="z-40 min-w-56 rounded-md border border-base-300 bg-base-100 p-2 shadow-lg">
+                  <li>
+                    <.link navigate={~p"/configurations/academic_years"}>
+                      {gettext("Academic years")}
+                    </.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/configurations/students"}>{gettext("Students")}</.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/configurations/subjects"}>{gettext("Subjects")}</.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/configurations/levels_options"}>
+                      {gettext("Levels and options")}
+                    </.link>
+                  </li>
+                  <li><.link navigate={~p"/configurations/levels"}>{gettext("Levels")}</.link></li>
+                  <li><.link navigate={~p"/configurations/options"}>{gettext("Options")}</.link></li>
+                </ul>
+              </details>
+            </li>
+            <li>
+              <details>
+                <summary>
+                  <.icon name="hero-academic-cap" class="size-4" />
+                  {gettext("Teacher")}
+                </summary>
+                <ul class="z-40 min-w-52 rounded-md border border-base-300 bg-base-100 p-2 shadow-lg">
+                  <li>
+                    <.link navigate={~p"/teacher/marks"}>
+                      <.icon name="hero-clipboard-document-list" class="size-4" />
+                      {gettext("Marks")}
+                    </.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/teacher/attendance"}>
+                      <.icon name="hero-clipboard-document-check" class="size-4" />
+                      {gettext("Attendance")}
+                    </.link>
+                  </li>
+                </ul>
+              </details>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="ml-2 flex items-center gap-2">
+          <Layouts.theme_toggle />
+          <%= if @current_scope && @current_scope.current_user do %>
+            <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
+              <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
+              {gettext("Sign out")}
+            </.link>
+          <% else %>
+            <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
+              <.icon name="hero-arrow-left-on-rectangle" class="size-4" />
+              {gettext("Sign in")}
+            </.link>
+          <% end %>
+        </div>
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto container space-y-4">
+    <main class="px-4 py-8 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-7xl space-y-6">
         {render_slot(@inner_block)}
       </div>
     </main>
@@ -155,7 +176,7 @@ defmodule TeacherAssistantWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
+    <div class="relative flex flex-row items-center rounded-full border border-base-300 bg-base-200">
       <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-[left]" />
 
       <button

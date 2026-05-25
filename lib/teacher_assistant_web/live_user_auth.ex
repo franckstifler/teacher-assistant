@@ -4,44 +4,73 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   """
 
   import Phoenix.Component
+  require Ash.Query
   use TeacherAssistantWeb, :verified_routes
 
-  # This is used for nested liveviews to fetch the current user.
-  # To use, place the following at the top of that liveview:
-  # on_mount {TeacherAssistantWeb.LiveUserAuth, :current_user}
   def on_mount(:current_user, _params, session, socket) do
-    {:cont, AshAuthentication.Phoenix.LiveSession.assign_new_resources(socket, session)}
+    {:cont, assign_scope(socket, session)}
   end
 
-  def on_mount(:live_user_optional, _params, _session, socket) do
-    # TODO: replace this with actual tenant fetching logic
-    school = Ash.read!(TeacherAssistant.Academics.School) |> List.first()
-
-    if socket.assigns[:current_user] do
-      {:cont,
-       socket
-       |> assign(:scope, %TeacherAssistant.Scope{current_tenant: school, current_user: nil})}
-    else
-      {:cont,
-       socket
-       |> assign(:current_user, nil)
-       |> assign(:scope, %TeacherAssistant.Scope{current_tenant: school, current_user: nil})}
-    end
+  def on_mount(:live_user_optional, _params, session, socket) do
+    {:cont, assign_scope(socket, session)}
   end
 
-  def on_mount(:live_user_required, _params, _session, socket) do
-    if socket.assigns[:current_user] do
+  def on_mount(:live_user_required, _params, session, socket) do
+    socket = assign_scope(socket, session)
+
+    if socket.assigns.current_user do
       {:cont, socket}
     else
       {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
     end
   end
 
-  def on_mount(:live_no_user, _params, _session, socket) do
-    if socket.assigns[:current_user] do
+  def on_mount(:live_no_user, _params, session, socket) do
+    socket = assign_scope(socket, session)
+
+    if socket.assigns.current_user do
       {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/")}
     else
-      {:cont, assign(socket, :current_user, nil)}
+      {:cont, socket}
+    end
+  end
+
+  defp assign_scope(socket, session) do
+    user = load_user(session["user_id"])
+    school = load_school(session["tenant"], user)
+    scope = %TeacherAssistant.Scope{current_tenant: school, current_user: user}
+
+    socket
+    |> assign(:current_user, user)
+    |> assign(:current_scope, scope)
+    |> assign(:scope, scope)
+  end
+
+  defp load_user(nil), do: nil
+
+  defp load_user(user_id) do
+    case Ash.get(TeacherAssistant.Accounts.User, user_id, authorize?: false) do
+      {:ok, user} -> user
+      _ -> nil
+    end
+  end
+
+  defp load_school(nil, nil), do: nil
+
+  defp load_school(school_id, _user) when is_binary(school_id) do
+    case Ash.get(TeacherAssistant.Academics.School, school_id, authorize?: false) do
+      {:ok, school} -> school
+      _ -> nil
+    end
+  end
+
+  defp load_school(nil, user) do
+    TeacherAssistant.Accounts.UserSchool
+    |> Ash.Query.filter(user_id: user.id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, %{school_id: school_id}} -> load_school(school_id, user)
+      _ -> nil
     end
   end
 end

@@ -34,6 +34,7 @@ defmodule TeacherAssistant.Academics.AcademicYear do
       argument :levels_options, {:array, :uuid_v7}, default: []
 
       change manage_relationship(:levels_options, :levels_options, type: :append_and_remove)
+      change load(:classrooms)
     end
 
     read :get_active_year do

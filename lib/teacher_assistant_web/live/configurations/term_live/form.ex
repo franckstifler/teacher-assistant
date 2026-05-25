@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Form do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>{@page_title}</.header>
 
       <.form for={@form} id="term-form" phx-change="validate" phx-submit="save">

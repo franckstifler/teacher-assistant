@@ -3,8 +3,6 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
 
   alias TeacherAssistant.Academics.AcademicYear
 
-  require Ash.Query
-
   setup %{tenant: tenant} do
     user = generate(admin_user(tenant: tenant))
     %{user: user}
@@ -57,7 +55,6 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
 
         Enum.each(academic_year.terms, fn term ->
           assert Enum.find(terms, &(&1.name == term.name))
-          # dbg(term_data)
           # assert term.description == term_data.description
           # assert term.start_date == term_data.start_date
           # assert term.end_date == term_data.end_date
@@ -151,7 +148,7 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
           )
 
         assert [classroom] = updated_academic_year.classrooms
-        assert classroom.id == level_option.id
+        assert classroom.level_option_id == level_option.id
       end
     end
 

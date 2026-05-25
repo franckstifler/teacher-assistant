@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
         <.icon name="hero-clipboard-document-list" class="w-8 h-8 inline" />
         {gettext("Marks Entry")}
@@ -330,8 +330,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
         assignments =
           TeacherAssistant.Academics.TeachingAssignment
           |> Ash.Query.filter(
-            # teacher_id == user_id and
-            classroom.academic_year_id == ^socket.assigns.selected_academic_year_id
+            teacher_id == ^socket.assigns.current_user.id and
+              classroom.academic_year_id == ^socket.assigns.selected_academic_year_id
           )
           |> Ash.read!(
             load: [level_option_subject: [:subject]],
@@ -414,11 +414,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
     }
 
     case TeacherAssistant.Academics.save_mark(params, scope: socket.assigns.scope) do
-      {:ok, mark} ->
-        dbg(socket.assigns.marks)
-        dbg(mark)
-        # assign(socket, :marks, marks)
-        {:noreply, socket}
+      {:ok, _mark} ->
+        {:noreply, assign(socket, :marks, read_marks(socket))}
 
       {:error, _error} ->
         {:noreply, put_flash(socket, :error, gettext("Failed to save mark"))}
@@ -454,17 +451,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
 
     case result do
       {:ok, _mark} ->
-        marks =
-          Ash.read!(TeacherAssistant.Academics.Mark,
-            filter: [
-              sequence_id: socket.assigns.selected_sequence_id,
-              classroom_id: socket.assigns.selected_classroom_id,
-              level_option_subject_id: socket.assigns.selected_subject_id
-            ],
-            scope: socket.assigns.scope
-          )
-
-        {:noreply, assign(socket, :marks, marks)}
+        {:noreply, assign(socket, :marks, read_marks(socket))}
 
       {:error, _error} ->
         {:noreply, put_flash(socket, :error, gettext("Failed to save comment"))}
@@ -478,8 +465,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
   defp classrooms_for_subject(level_option_subject_id, socket) do
     TeacherAssistant.Academics.TeachingAssignment
     |> Ash.Query.filter(
-      # teacher_id == ^user_id and
-      level_option_subject_id == ^level_option_subject_id and
+      teacher_id == ^socket.assigns.current_user.id and
+        level_option_subject_id == ^level_option_subject_id and
         classroom.academic_year_id == ^socket.assigns.selected_academic_year_id
     )
     |> Ash.read!(
@@ -497,16 +484,28 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
         scope: socket.assigns.scope
       )
 
-    marks =
-      TeacherAssistant.Academics.Mark
-      |> Ash.Query.filter(
-        sequence_id == sequence_id and
-          classroom_id == classroom_id and
-          level_option_subject_id == level_option_subject_id
-      )
-      |> Ash.read!(scope: socket.assigns.scope)
+    marks = read_marks(socket, classroom_id, level_option_subject_id, sequence_id)
 
     {students, marks}
+  end
+
+  defp read_marks(socket) do
+    read_marks(
+      socket,
+      socket.assigns.selected_classroom_id,
+      socket.assigns.selected_subject_id,
+      socket.assigns.selected_sequence_id
+    )
+  end
+
+  defp read_marks(socket, classroom_id, level_option_subject_id, sequence_id) do
+    TeacherAssistant.Academics.Mark
+    |> Ash.Query.filter(
+      sequence_id == ^sequence_id and
+        classroom_id == ^classroom_id and
+        level_option_subject_id == ^level_option_subject_id
+    )
+    |> Ash.read!(scope: socket.assigns.scope)
   end
 
   defp find_mark(marks, student_id) do

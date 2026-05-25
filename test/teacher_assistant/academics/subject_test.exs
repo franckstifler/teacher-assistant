@@ -3,8 +3,6 @@ defmodule TeacherAssistant.Resources.SubjectTest do
 
   alias TeacherAssistant.Academics.Subject
 
-  require Ash.Query
-
   setup %{tenant: tenant} do
     user = generate(admin_user(tenant: tenant))
     %{user: user}

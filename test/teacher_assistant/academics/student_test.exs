@@ -3,8 +3,6 @@ defmodule TeacherAssistant.Resources.StudentTest do
 
   alias TeacherAssistant.Academics.Student
 
-  require Ash.Query
-
   setup %{tenant: tenant} do
     user = generate(admin_user(tenant: tenant))
     %{user: user}
@@ -72,8 +70,8 @@ defmodule TeacherAssistant.Resources.StudentTest do
             authorize?: false
           )
 
-        assert updated_student.first_name == input[:first_name]
-        assert updated_student.last_name == input[:last_name]
+        assert to_string(updated_student.first_name) == String.trim(to_string(input[:first_name]))
+        assert to_string(updated_student.last_name) == String.trim(to_string(input[:last_name]))
 
         assert updated_student.matricule ==
                  value_or_nil(input, :matricule, student.matricule)

@@ -15,6 +15,9 @@ defmodule TeacherAssistant.Academics.Attendance do
 
     create :create do
       primary? true
+      upsert? true
+      upsert_identity :unique_attendance
+      upsert_fields [:status, :comment]
     end
 
     update :update do

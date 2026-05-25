@@ -30,8 +30,17 @@ defmodule TeacherAssistant.DataCase do
     TeacherAssistant.DataCase.setup_sandbox(tags)
 
     school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
+    user = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.admin_user(tenant: school))
 
-    {:ok, %{tenant: school}}
+    Ash.Generator.generate(
+      TeacherAssistant.AcademicFixtures.user_school(
+        tenant: school,
+        user_id: user.id,
+        role: user.role
+      )
+    )
+
+    {:ok, %{tenant: school, user: user}}
   end
 
   @doc """

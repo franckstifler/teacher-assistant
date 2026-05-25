@@ -5,5 +5,6 @@ defmodule TeacherAssistant.Accounts do
   resources do
     resource TeacherAssistant.Accounts.Token
     resource TeacherAssistant.Accounts.User
+    resource TeacherAssistant.Accounts.UserSchool
   end
 end

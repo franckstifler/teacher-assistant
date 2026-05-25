@@ -43,15 +43,22 @@ defmodule TeacherAssistantWeb.ConnCase do
     school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
     user = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.admin_user(tenant: school))
 
+    Ash.Generator.generate(
+      TeacherAssistant.AcademicFixtures.user_school(
+        tenant: school,
+        user_id: user.id,
+        role: user.role
+      )
+    )
+
     %{conn: log_in_user(conn, school, user), tenant: school, actor: user}
   end
 
-  def log_in_user(conn, school, _user) do
+  def log_in_user(conn, school, user) do
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:tenant, school.id)
-
-    # |> Plug.Conn.put_session(:user_token, token)
+    |> Plug.Conn.put_session(:user_id, user.id)
   end
 
   def update_nested_form(view, form_selector, trigger_element, position \\ "end") do

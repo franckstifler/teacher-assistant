@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Academics do
     resource TeacherAssistant.Academics.Classroom do
       define :list_teacher_classrooms,
         action: :list_teacher_classrooms,
-        args: [:academic_year_id]
+        args: [:academic_year_id, :teacher_id]
     end
 
     resource TeacherAssistant.Academics.Level do
@@ -42,7 +42,10 @@ defmodule TeacherAssistant.Academics do
       define :update_student, action: :update
       define :read_students, action: :read
       define :destroy_student, action: :destroy
-      define :list_students_by_classroom, action: :list_students_by_classroom, args: [:classroom_id]
+
+      define :list_students_by_classroom,
+        action: :list_students_by_classroom,
+        args: [:classroom_id]
     end
 
     resource TeacherAssistant.Academics.Subject do
@@ -65,6 +68,11 @@ defmodule TeacherAssistant.Academics do
       define :read_attendances, action: :read
       define :destroy_attendance, action: :destroy
     end
+
+    resource TeacherAssistant.Academics.ProgressionPlan
+    resource TeacherAssistant.Academics.ProgressionEntry
+    resource TeacherAssistant.Academics.TeachingLog
+    resource TeacherAssistant.Academics.ApcLessonPlan
 
     resource TeacherAssistant.Academics.Term do
       define :create_term, action: :create

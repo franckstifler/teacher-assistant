@@ -73,7 +73,7 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     create :create do
-      accept [:email]
+      accept [:email, :role]
     end
 
     action :request_magic_link do
@@ -110,6 +110,10 @@ defmodule TeacherAssistant.Accounts.User do
 
     attribute :role, TeacherAssistant.Accounts.UserRole, default: :teacher, public?: true
     # attribute :full_name, :string, allow_nil?: false, public?: true
+  end
+
+  relationships do
+    has_many :school_memberships, TeacherAssistant.Accounts.UserSchool
   end
 
   identities do

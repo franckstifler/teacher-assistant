@@ -81,8 +81,7 @@ defmodule TeacherAssistant.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"},
-      {:faker, "~> 0.18", only: :test}
+      {:bandit, "~> 1.5"}
       # {:live_select, "~> 1.7"}
     ]
   end

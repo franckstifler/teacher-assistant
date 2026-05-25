@@ -1,10 +1,12 @@
 defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
   use TeacherAssistantWeb, :live_view
 
+  require Ash.Query
+
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
         <.icon name="hero-clipboard-document-check" class="w-8 h-8 inline" />
         {gettext("Attendance Tracking")}
@@ -296,40 +298,14 @@ defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
         %{"student-id" => student_id, "attendance-id" => attendance_id, "status" => status},
         socket
       ) do
-    status_atom = String.to_existing_atom(status)
     date = Date.from_iso8601!(socket.assigns.selected_date)
 
-    result =
-      if attendance_id != "" do
-        attendance = Enum.find(socket.assigns.attendances, &(&1.id == attendance_id))
-
-        Ash.update(attendance, :update,
-          params: %{status: status_atom},
-          scope: socket.assigns.scope
-        )
-      else
-        Ash.create(TeacherAssistant.Academics.Attendance, :create,
-          params: %{
-            student_id: student_id,
-            classroom_id: socket.assigns.selected_classroom_id,
-            date: date,
-            status: status_atom
-          },
-          scope: socket.assigns.scope
-        )
-      end
-
-    case result do
-      {:ok, _attendance} ->
-        attendances =
-          Ash.read!(TeacherAssistant.Academics.Attendance,
-            filter: [classroom_id: socket.assigns.selected_classroom_id, date: date],
-            scope: socket.assigns.scope
-          )
-
-        {:noreply, assign(socket, :attendances, attendances)}
-
-      {:error, _error} ->
+    with {:ok, status_atom} <- parse_attendance_status(status),
+         {:ok, _attendance} <-
+           save_attendance(socket, student_id, attendance_id, date, %{status: status_atom}) do
+      {:noreply, assign(socket, :attendances, read_attendances(socket, date))}
+    else
+      _error ->
         {:noreply, put_flash(socket, :error, gettext("Failed to save attendance"))}
     end
   end
@@ -341,36 +317,9 @@ defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
       ) do
     date = Date.from_iso8601!(socket.assigns.selected_date)
 
-    result =
-      if attendance_id != "" do
-        attendance = Enum.find(socket.assigns.attendances, &(&1.id == attendance_id))
-
-        Ash.update(attendance, :update,
-          params: %{comment: comment},
-          scope: socket.assigns.scope
-        )
-      else
-        Ash.create(TeacherAssistant.Academics.Attendance, :create,
-          params: %{
-            student_id: student_id,
-            classroom_id: socket.assigns.selected_classroom_id,
-            date: date,
-            status: :present,
-            comment: comment
-          },
-          scope: socket.assigns.scope
-        )
-      end
-
-    case result do
+    case save_attendance(socket, student_id, attendance_id, date, %{comment: comment}) do
       {:ok, _attendance} ->
-        attendances =
-          Ash.read!(TeacherAssistant.Academics.Attendance,
-            filter: [classroom_id: socket.assigns.selected_classroom_id, date: date],
-            scope: socket.assigns.scope
-          )
-
-        {:noreply, assign(socket, :attendances, attendances)}
+        {:noreply, assign(socket, :attendances, read_attendances(socket, date))}
 
       {:error, _error} ->
         {:noreply, put_flash(socket, :error, gettext("Failed to save comment"))}
@@ -381,30 +330,12 @@ defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
     date = Date.from_iso8601!(socket.assigns.selected_date)
 
     Enum.each(socket.assigns.students, fn student ->
-      existing = find_attendance(socket.assigns.attendances, student.id)
-
-      unless existing do
-        Ash.create(TeacherAssistant.Academics.Attendance, :create,
-          params: %{
-            student_id: student.id,
-            classroom_id: socket.assigns.selected_classroom_id,
-            date: date,
-            status: :present
-          },
-          scope: socket.assigns.scope
-        )
-      end
+      save_attendance(socket, student.id, nil, date, %{status: :present})
     end)
-
-    attendances =
-      Ash.read!(TeacherAssistant.Academics.Attendance,
-        filter: [classroom_id: socket.assigns.selected_classroom_id, date: date],
-        scope: socket.assigns.scope
-      )
 
     {:noreply,
      socket
-     |> assign(:attendances, attendances)
+     |> assign(:attendances, read_attendances(socket, date))
      |> put_flash(:info, gettext("All students marked as present"))}
   end
 
@@ -446,6 +377,48 @@ defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
   defp find_attendance(attendances, student_id) do
     Enum.find(attendances, &(&1.student_id == student_id))
   end
+
+  defp save_attendance(socket, student_id, attendance_id, date, params) do
+    params =
+      params
+      |> Map.put_new(:student_id, student_id)
+      |> Map.put_new(:classroom_id, socket.assigns.selected_classroom_id)
+      |> Map.put_new(:date, date)
+      |> Map.put_new(:status, :present)
+
+    case attendance_id do
+      attendance_id when is_binary(attendance_id) and attendance_id != "" ->
+        case Enum.find(socket.assigns.attendances, &(&1.id == attendance_id)) do
+          nil ->
+            Ash.create(TeacherAssistant.Academics.Attendance, :create,
+              params: params,
+              scope: socket.assigns.scope
+            )
+
+          attendance ->
+            Ash.update(attendance, :update, params: params, scope: socket.assigns.scope)
+        end
+
+      _ ->
+        Ash.create(TeacherAssistant.Academics.Attendance, :create,
+          params: params,
+          scope: socket.assigns.scope
+        )
+    end
+  end
+
+  defp read_attendances(socket, date) do
+    classroom_id = socket.assigns.selected_classroom_id
+
+    TeacherAssistant.Academics.Attendance
+    |> Ash.Query.filter(classroom_id == ^classroom_id and date == ^date)
+    |> Ash.read!(scope: socket.assigns.scope)
+  end
+
+  defp parse_attendance_status("present"), do: {:ok, :present}
+  defp parse_attendance_status("absent"), do: {:ok, :absent}
+  defp parse_attendance_status("excused"), do: {:ok, :excused}
+  defp parse_attendance_status(_status), do: :error
 
   defp count_by_status(attendances, status) do
     Enum.count(attendances, &(&1.status == status))

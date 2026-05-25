@@ -1,8 +1,6 @@
 defmodule TeacherAssistant.Resources.LevelOptionTest do
   use TeacherAssistant.DataCase
 
-  require Ash.Query
-
   setup %{tenant: tenant} do
     user = generate(admin_user(tenant: tenant))
     %{user: user}

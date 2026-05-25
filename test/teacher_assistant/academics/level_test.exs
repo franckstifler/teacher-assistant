@@ -3,8 +3,6 @@ defmodule TeacherAssistant.Resources.LevelTest do
 
   alias TeacherAssistant.Academics.Level
 
-  require Ash.Query
-
   setup %{tenant: tenant} do
     user = generate(admin_user(tenant: tenant))
     %{user: user}
