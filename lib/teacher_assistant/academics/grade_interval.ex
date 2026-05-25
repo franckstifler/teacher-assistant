@@ -1,18 +1,17 @@
-defmodule TeacherAssistant.Academics.Option do
+defmodule TeacherAssistant.Academics.GradeInterval do
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource],
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
+    table "grade_intervals"
     repo TeacherAssistant.Repo
-    table "options"
   end
 
   actions do
-    default_accept [:name, :description]
-    defaults [:create, :update, :read, :destroy]
+    default_accept [:min_score, :max_score, :label, :appreciation, :position]
+    defaults [:create, :read, :update, :destroy]
   end
 
   policies do
@@ -35,17 +34,24 @@ defmodule TeacherAssistant.Academics.Option do
   attributes do
     uuid_v7_primary_key :id
 
-    attribute :name, :ci_string, public?: true, allow_nil?: false
-    attribute :description, :string, public?: true
+    attribute :min_score, :decimal,
+      public?: true,
+      allow_nil?: false,
+      constraints: [min: Decimal.new("0"), max: Decimal.new("20")]
+
+    attribute :max_score, :decimal,
+      public?: true,
+      allow_nil?: false,
+      constraints: [min: Decimal.new("0"), max: Decimal.new("20")]
+
+    attribute :label, :string, public?: true, allow_nil?: false
+    attribute :appreciation, :string, public?: true, allow_nil?: false
+    attribute :position, :integer, public?: true, default: 0
 
     timestamps()
   end
 
   relationships do
     belongs_to :school, TeacherAssistant.Academics.School
-  end
-
-  identities do
-    identity :unique_name, [:school_id, :name]
   end
 end

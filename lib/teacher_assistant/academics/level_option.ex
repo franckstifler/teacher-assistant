@@ -1,7 +1,8 @@
 defmodule TeacherAssistant.Academics.LevelOption do
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
-    domain: TeacherAssistant.Academics
+    domain: TeacherAssistant.Academics,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     repo TeacherAssistant.Repo
@@ -18,6 +19,18 @@ defmodule TeacherAssistant.Academics.LevelOption do
       argument :selected_subjects, {:array, :uuid_v7}, default: []
 
       change manage_relationship(:subjects, :subjects, type: :direct_control)
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if actor_present()
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :principal)
+      authorize_if actor_attribute_equals(:role, :vice_principal)
     end
   end
 

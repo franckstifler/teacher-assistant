@@ -2,7 +2,8 @@ defmodule TeacherAssistant.Academics.Mark do
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource]
+    extensions: [AshArchival.Resource],
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "marks"
@@ -38,6 +39,24 @@ defmodule TeacherAssistant.Academics.Mark do
                  (is_nil(^arg(:level_option_subject_id)) or
                     level_option_subject_id == ^arg(:level_option_subject_id))
              )
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if actor_present()
+    end
+
+    policy action_type([:create, :update]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :teacher)
+      authorize_if actor_attribute_equals(:role, :principal_teacher)
+    end
+
+    policy action_type(:destroy) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :principal)
+      authorize_if actor_attribute_equals(:role, :vice_principal)
     end
   end
 

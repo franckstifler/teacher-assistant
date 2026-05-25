@@ -204,7 +204,7 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
       user = generate(user(tenant: tenant))
 
       assert TeacherAssistant.Academics.can_create_academic_year?(admin, tenant: tenant)
-      assert TeacherAssistant.Academics.can_create_academic_year?(user, tenant: tenant)
+      refute TeacherAssistant.Academics.can_create_academic_year?(user, tenant: tenant)
     end
 
     test "update academic_year", %{tenant: tenant} do
@@ -216,7 +216,7 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
                tenant: tenant
              )
 
-      assert TeacherAssistant.Academics.can_update_academic_year?(user, academic_year,
+      refute TeacherAssistant.Academics.can_update_academic_year?(user, academic_year,
                tenant: tenant
              )
     end
@@ -230,7 +230,7 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
                tenant: tenant
              )
 
-      assert TeacherAssistant.Academics.can_destroy_academic_year?(user, academic_year,
+      refute TeacherAssistant.Academics.can_destroy_academic_year?(user, academic_year,
                tenant: tenant
              )
     end

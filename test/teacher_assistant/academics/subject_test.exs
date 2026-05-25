@@ -114,7 +114,7 @@ defmodule TeacherAssistant.Resources.SubjectTest do
       user = generate(user(tenant: tenant))
 
       assert TeacherAssistant.Academics.can_create_subject?(admin, tenant: tenant)
-      assert TeacherAssistant.Academics.can_create_subject?(user, tenant: tenant)
+      refute TeacherAssistant.Academics.can_create_subject?(user, tenant: tenant)
     end
 
     test "update subject", %{tenant: tenant} do
@@ -123,7 +123,7 @@ defmodule TeacherAssistant.Resources.SubjectTest do
       subject = generate(subject(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_update_subject?(admin, subject, tenant: tenant)
-      assert TeacherAssistant.Academics.can_update_subject?(user, subject, tenant: tenant)
+      refute TeacherAssistant.Academics.can_update_subject?(user, subject, tenant: tenant)
     end
 
     test "destroy subject", %{tenant: tenant} do
@@ -132,7 +132,7 @@ defmodule TeacherAssistant.Resources.SubjectTest do
       subject = generate(subject(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_destroy_subject?(admin, subject, tenant: tenant)
-      assert TeacherAssistant.Academics.can_destroy_subject?(user, subject, tenant: tenant)
+      refute TeacherAssistant.Academics.can_destroy_subject?(user, subject, tenant: tenant)
     end
   end
 end

@@ -52,6 +52,21 @@ defmodule TeacherAssistant.Academics.ReportCards do
     |> Enum.reverse()
   end
 
+  def appreciation_for(score, intervals) do
+    score = to_decimal(score)
+
+    intervals
+    |> Enum.sort_by(&Map.get(&1, :position, 0))
+    |> Enum.find(fn interval ->
+      Decimal.compare(score, to_decimal(interval.min_score)) in [:eq, :gt] and
+        Decimal.compare(score, to_decimal(interval.max_score)) in [:eq, :lt]
+    end)
+    |> case do
+      nil -> nil
+      interval -> interval.appreciation
+    end
+  end
+
   defp to_decimal(%Decimal{} = value), do: value
   defp to_decimal(value) when is_integer(value), do: Decimal.new(value)
   defp to_decimal(value) when is_float(value), do: Decimal.from_float(value)

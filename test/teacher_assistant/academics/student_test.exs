@@ -134,7 +134,7 @@ defmodule TeacherAssistant.Resources.StudentTest do
       user = generate(user(tenant: tenant))
 
       assert TeacherAssistant.Academics.can_create_student?(admin, tenant: tenant)
-      assert TeacherAssistant.Academics.can_create_student?(user, tenant: tenant)
+      refute TeacherAssistant.Academics.can_create_student?(user, tenant: tenant)
     end
 
     test "update student", %{tenant: tenant} do
@@ -143,7 +143,7 @@ defmodule TeacherAssistant.Resources.StudentTest do
       student = generate(student(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_update_student?(admin, student, tenant: tenant)
-      assert TeacherAssistant.Academics.can_update_student?(user, student, tenant: tenant)
+      refute TeacherAssistant.Academics.can_update_student?(user, student, tenant: tenant)
     end
 
     test "destroy student", %{tenant: tenant} do
@@ -152,7 +152,7 @@ defmodule TeacherAssistant.Resources.StudentTest do
       student = generate(student(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_destroy_student?(admin, student, tenant: tenant)
-      assert TeacherAssistant.Academics.can_destroy_student?(user, student, tenant: tenant)
+      refute TeacherAssistant.Academics.can_destroy_student?(user, student, tenant: tenant)
     end
   end
 end

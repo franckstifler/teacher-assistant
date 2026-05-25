@@ -2,7 +2,8 @@ defmodule TeacherAssistant.Academics.ClassroomStudent do
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource]
+    extensions: [AshArchival.Resource],
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "classrooms_students"
@@ -19,6 +20,24 @@ defmodule TeacherAssistant.Academics.ClassroomStudent do
       change fn changeset, _context ->
         Ash.Changeset.change_attribute(changeset, :access_set_at, DateTime.utc_now())
       end
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if actor_present()
+    end
+
+    policy action(:set_access_status) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :accountant)
+      authorize_if actor_attribute_equals(:role, :principal)
+    end
+
+    policy action([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :principal)
+      authorize_if actor_attribute_equals(:role, :vice_principal)
     end
   end
 

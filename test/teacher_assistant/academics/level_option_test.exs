@@ -88,7 +88,7 @@ defmodule TeacherAssistant.Resources.LevelOptionTest do
                tenant: tenant
              )
 
-      assert TeacherAssistant.Academics.can_manage_level_option_subjects?(user, level_option,
+      refute TeacherAssistant.Academics.can_manage_level_option_subjects?(user, level_option,
                tenant: tenant
              )
     end
@@ -102,7 +102,7 @@ defmodule TeacherAssistant.Resources.LevelOptionTest do
                tenant: tenant
              )
 
-      assert TeacherAssistant.Academics.can_destroy_level_option?(user, level_option,
+      refute TeacherAssistant.Academics.can_destroy_level_option?(user, level_option,
                tenant: tenant
              )
     end

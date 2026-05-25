@@ -5,6 +5,7 @@ defmodule TeacherAssistant.Accounts.UserRole do
     values: [
       admin: gettext("Admin"),
       teacher: gettext("Teacher"),
+      accountant: gettext("Accountant"),
       principal_teacher: gettext("Principal Teacher"),
       discipline_master: gettext("Discipline-Master"),
       vice_principal: gettext("Vice-Principal"),

@@ -143,7 +143,7 @@ defmodule TeacherAssistant.Resources.LevelTest do
       user = generate(user(tenant: tenant))
 
       assert TeacherAssistant.Academics.can_create_level?(admin, tenant: tenant)
-      assert TeacherAssistant.Academics.can_create_level?(user, tenant: tenant)
+      refute TeacherAssistant.Academics.can_create_level?(user, tenant: tenant)
     end
 
     test "update level", %{tenant: tenant} do
@@ -152,7 +152,7 @@ defmodule TeacherAssistant.Resources.LevelTest do
       level = generate(level(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_update_level?(admin, level, tenant: tenant)
-      assert TeacherAssistant.Academics.can_update_level?(user, level, tenant: tenant)
+      refute TeacherAssistant.Academics.can_update_level?(user, level, tenant: tenant)
     end
 
     test "destroy level", %{tenant: tenant} do
@@ -161,7 +161,7 @@ defmodule TeacherAssistant.Resources.LevelTest do
       level = generate(level(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_destroy_level?(admin, level, tenant: tenant)
-      assert TeacherAssistant.Academics.can_destroy_level?(user, level, tenant: tenant)
+      refute TeacherAssistant.Academics.can_destroy_level?(user, level, tenant: tenant)
     end
   end
 end

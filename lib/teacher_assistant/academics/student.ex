@@ -2,7 +2,8 @@ defmodule TeacherAssistant.Academics.Student do
   use Ash.Resource,
     data_layer: AshPostgres.DataLayer,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource]
+    extensions: [AshArchival.Resource],
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "students"
@@ -18,6 +19,18 @@ defmodule TeacherAssistant.Academics.Student do
 
       prepare build(sort: [full_name: :asc])
       filter expr(classrooms_students.classroom_id == ^arg(:classroom_id))
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if actor_present()
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :principal)
+      authorize_if actor_attribute_equals(:role, :vice_principal)
     end
   end
 

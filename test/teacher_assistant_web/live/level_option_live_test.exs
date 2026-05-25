@@ -3,9 +3,11 @@ defmodule TeacherAssistantWeb.LevelOptionLiveTest do
 
   import Phoenix.LiveViewTest
 
-  defp create_level_option(%{tenant: tenant}) do
-    level_option = generate(level_option(tenant: tenant))
-    level_option = Ash.load!(level_option, [:option, :level, :full_name])
+  defp create_level_option(%{tenant: tenant, actor: actor}) do
+    level_option = generate(level_option(tenant: tenant, actor: actor))
+
+    level_option =
+      Ash.load!(level_option, [:option, :level, :full_name], tenant: tenant, actor: actor)
 
     %{level_option: level_option}
   end

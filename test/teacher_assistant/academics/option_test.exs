@@ -107,7 +107,7 @@ defmodule TeacherAssistant.Resources.OptionTest do
       user = generate(user(tenant: tenant))
 
       assert TeacherAssistant.Academics.can_create_option?(admin, tenant: tenant)
-      assert TeacherAssistant.Academics.can_create_option?(user, tenant: tenant)
+      refute TeacherAssistant.Academics.can_create_option?(user, tenant: tenant)
     end
 
     test "update option", %{tenant: tenant} do
@@ -116,7 +116,7 @@ defmodule TeacherAssistant.Resources.OptionTest do
       option = generate(option(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_update_option?(admin, option, tenant: tenant)
-      assert TeacherAssistant.Academics.can_update_option?(user, option, tenant: tenant)
+      refute TeacherAssistant.Academics.can_update_option?(user, option, tenant: tenant)
     end
 
     test "destroy option", %{tenant: tenant} do
@@ -125,7 +125,7 @@ defmodule TeacherAssistant.Resources.OptionTest do
       option = generate(option(tenant: tenant, actor: admin))
 
       assert TeacherAssistant.Academics.can_destroy_option?(admin, option, tenant: tenant)
-      assert TeacherAssistant.Academics.can_destroy_option?(user, option, tenant: tenant)
+      refute TeacherAssistant.Academics.can_destroy_option?(user, option, tenant: tenant)
     end
   end
 end

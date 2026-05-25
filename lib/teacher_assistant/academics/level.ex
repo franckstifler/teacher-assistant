@@ -32,8 +32,14 @@ defmodule TeacherAssistant.Academics.Level do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if actor_present()
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :principal)
+      authorize_if actor_attribute_equals(:role, :vice_principal)
     end
   end
 

@@ -69,6 +69,7 @@ defmodule TeacherAssistant.Academics do
       define :destroy_attendance, action: :destroy
     end
 
+    resource TeacherAssistant.Academics.GradeInterval
     resource TeacherAssistant.Academics.ProgressionPlan
     resource TeacherAssistant.Academics.ProgressionEntry
     resource TeacherAssistant.Academics.TeachingLog
