@@ -6,7 +6,10 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Show do
     ~H"""
     <Layouts.app flash={@flash}>
       <.header>
-        <.link class="btn btn-sm btn-ghost" navigate={~p"/configurations/academic_years"}>
+        <.link
+          class="btn btn-sm btn-ghost"
+          navigate={~p"/configurations/academic_years/#{@term.academic_year_id}"}
+        >
           <.icon name="hero-arrow-left" />
         </.link>
         {@term.name}

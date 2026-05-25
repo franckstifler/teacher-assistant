@@ -24,7 +24,11 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Form do
           <.inputs_for :let={sequence_form} field={@form[:sequences]}>
             <tr>
               <td>
-                <.input field={sequence_form[:name]} type="text" placeholder={gettext("1st Term")} />
+                <.input
+                  field={sequence_form[:name]}
+                  type="text"
+                  placeholder={gettext("1st Sequence")}
+                />
               </td>
               <td>
                 <.input field={sequence_form[:start_date]} type="date" />
@@ -70,7 +74,7 @@ defmodule TeacherAssistantWeb.Configurations.TermLive.Form do
     {:ok, apply_action(socket, socket.assigns.live_action, params)}
   end
 
-  defp apply_action(socket, :edit, %{"id" => id}) do
+  defp apply_action(socket, :edit, %{"term_id" => id}) do
     term =
       Ash.get!(TeacherAssistant.Academics.Term, id,
         load: [:sequences],

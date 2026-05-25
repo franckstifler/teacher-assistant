@@ -63,7 +63,10 @@ defmodule TeacherAssistantWeb.Configurations.StudentLive.Index do
     {:ok,
      socket
      |> assign(:page_title, gettext("Listing Students"))
-     |> stream(:students, Ash.read!(TeacherAssistant.Academics.Student, scope: socket.assigns.scope))}
+     |> stream(
+       :students,
+       Ash.read!(TeacherAssistant.Academics.Student, scope: socket.assigns.scope)
+     )}
   end
 
   @impl true

@@ -45,6 +45,7 @@ defmodule TeacherAssistantWeb.Configurations.LevelLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     levels = TeacherAssistant.Academics.read_levels!(scope: socket.assigns.scope)
+
     {:ok,
      socket
      |> assign(:page_title, gettext("Listing Levels"))

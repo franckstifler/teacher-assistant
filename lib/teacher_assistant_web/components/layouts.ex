@@ -66,21 +66,30 @@ defmodule TeacherAssistantWeb.Layouts do
                 </li>
                 <li><.link navigate={~p"/configurations/levels"}>{gettext("Levels")}</.link></li>
                 <li><.link navigate={~p"/configurations/options"}>{gettext("Options")}</.link></li>
-                <li>
-                  <.link navigate={~p"/configurations/marks"}>
-                    {gettext("Marks (Admin)")}
-                  </.link>
-                </li>
               </ul>
             </details>
           </li>
           <li>
-            <.link navigate={~p"/teacher/marks"}>{gettext("Enter Marks")}</.link>
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
+            <details>
+              <summary>
+                <.icon name="hero-academic-cap" class="w-5 h-5" />
+                {gettext("Teacher")}
+              </summary>
+              <ul class="bg-base-100 rounded-t-none p-2 min-w-42">
+                <li>
+                  <.link navigate={~p"/teacher/marks"}>
+                    <.icon name="hero-clipboard-document-list" class="w-4 h-4" />
+                    {gettext("Enter Marks")}
+                  </.link>
+                </li>
+                <li>
+                  <.link navigate={~p"/teacher/attendance"}>
+                    <.icon name="hero-clipboard-document-check" class="w-4 h-4" />
+                    {gettext("Attendance")}
+                  </.link>
+                </li>
+              </ul>
+            </details>
           </li>
         </ul>
       </div>

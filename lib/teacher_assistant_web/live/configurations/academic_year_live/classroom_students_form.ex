@@ -43,7 +43,6 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.ClassroomStudentsF
         scope: scope
       )
 
-
     {:noreply,
      Cinder.Table.Refresh.refresh_tables(socket, ["all_students", "students_in_classroom"])}
   end

@@ -71,6 +71,11 @@ defmodule TeacherAssistant.Seed do
     "TM"
   ]
 
+  @teachers [
+    %{email: "teacher@teacher.com", role: :teacher},
+    %{email: "admin@admin.com", role: :admin}
+  ]
+
   def seed do
     school =
       Ash.create!(
@@ -173,7 +178,15 @@ defmodule TeacherAssistant.Seed do
       Ash.Seed.upsert!(
         TeacherAssistant.Academics.Subject,
         subjects_input,
-        identitty: :unique_name,
+        identity: :unique_name,
+        tenant: school.id
+      )
+
+    _teachers =
+      Ash.Seed.upsert!(
+        TeacherAssistant.Accounts.User,
+        @teachers,
+        identity: :unique_email,
         tenant: school.id
       )
 

@@ -3,7 +3,12 @@ defmodule TeacherAssistant.Academics do
 
   resources do
     resource TeacherAssistant.Academics.School
-    resource TeacherAssistant.Academics.Classroom
+
+    resource TeacherAssistant.Academics.Classroom do
+      define :list_teacher_classrooms,
+        action: :list_teacher_classrooms,
+        args: [:academic_year_id]
+    end
 
     resource TeacherAssistant.Academics.Level do
       define :create_level, action: :create
@@ -19,6 +24,7 @@ defmodule TeacherAssistant.Academics do
     end
 
     resource TeacherAssistant.Academics.LevelOptionSubject
+    resource TeacherAssistant.Academics.SequenceSubjectObjective
 
     resource TeacherAssistant.Academics.Option do
       define :create_option, action: :create
@@ -29,13 +35,14 @@ defmodule TeacherAssistant.Academics do
 
     resource TeacherAssistant.Academics.Sequence
     resource TeacherAssistant.Academics.ClassroomStudent
-    resource TeacherAssistant.Academics.SchoolYearSubjectTeacher
+    resource TeacherAssistant.Academics.TeachingAssignment
 
     resource TeacherAssistant.Academics.Student do
       define :create_student, action: :create
       define :update_student, action: :update
       define :read_students, action: :read
       define :destroy_student, action: :destroy
+      define :list_students_by_classroom, action: :list_students_by_classroom, args: [:classroom_id]
     end
 
     resource TeacherAssistant.Academics.Subject do
@@ -43,10 +50,21 @@ defmodule TeacherAssistant.Academics do
       define :update_subject, action: :update
       define :read_subjects, action: :read
       define :destroy_subject, action: :destroy
+      define :list_teacher_subjects, action: :list_teacher_subjects, args: [:year_id]
     end
 
-    resource TeacherAssistant.Academics.Mark
-    resource TeacherAssistant.Academics.Attendance
+    resource TeacherAssistant.Academics.Mark do
+      define :save_mark, action: :create
+      define :read_marks, action: :read
+      define :destroy_mark, action: :destroy
+    end
+
+    resource TeacherAssistant.Academics.Attendance do
+      define :create_attendance, action: :create
+      define :update_attendance, action: :update
+      define :read_attendances, action: :read
+      define :destroy_attendance, action: :destroy
+    end
 
     resource TeacherAssistant.Academics.Term do
       define :create_term, action: :create

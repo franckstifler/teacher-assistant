@@ -2,7 +2,7 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "fragment(\"gen_random_uuid()\")",
+      "default": "fragment(\"uuid_generate_v7()\")",
       "generated?": false,
       "precision": null,
       "primary_key?": true,
@@ -23,6 +23,18 @@
       "size": null,
       "source": "email",
       "type": "citext"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"teacher\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "role",
+      "type": "text"
     }
   ],
   "base_filter": null,
@@ -30,7 +42,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "F11B4E5D72C1C85C87B1D76334E7C009DF33754733203078B308BFE7DF8B0269",
+  "hash": "C3AAC86217F5A3885BE223E7025C63407C7BC0EDFCA306D7B6137E898CE65933",
   "identities": [
     {
       "all_tenants?": false,

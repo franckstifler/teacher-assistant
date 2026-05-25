@@ -11,6 +11,16 @@ defmodule TeacherAssistant.Academics.Classroom do
 
   actions do
     defaults [:read, :destroy, create: :*, update: :*]
+
+    read :list_teacher_classrooms do
+      # argument :teacher_id, :uuid_v7, allow_nil?: false
+      argument :academic_year_id, :uuid_v7, allow_nil?: false
+
+      filter expr(
+              #  teacher_assignments.teacher_id == ^arg(:teacher_id) and
+                 academic_year_id == ^arg(:academic_year_id)
+             )
+    end
   end
 
   multitenancy do

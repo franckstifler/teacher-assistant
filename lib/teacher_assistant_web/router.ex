@@ -87,7 +87,8 @@ defmodule TeacherAssistantWeb.Router do
     live_session :teacher,
       on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_optional} do
       scope "/teacher" do
-        live "/marks", TeacherMarksLive.Entry, :index
+        live "/marks", Teacher.MarksLive.Entry, :index
+        live "/attendance", Teacher.AttendanceLive.Entry, :index
       end
     end
   end
@@ -146,8 +147,6 @@ defmodule TeacherAssistantWeb.Router do
         live "/students/new", Configurations.StudentLive.Form, :new
         live "/students/:id", Configurations.StudentLive.Show, :show
         live "/students/:id/edit", Configurations.StudentLive.Form, :edit
-
-        live "/marks", Configurations.MarksLive.Entry, :index
       end
     end
   end

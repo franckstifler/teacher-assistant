@@ -41,9 +41,10 @@ defmodule TeacherAssistant.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:cinder, "~> 0.14"},
       {:picosat_elixir, "~> 0.2"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
-      {:oban, "~> 2.0"},
+      {:oban, "~> 2.22"},
       {:live_debugger, "~> 0.4", only: [:dev]},
       {:ash_archival, "~> 2.0"},
       {:ash_state_machine, "~> 0.2"},
@@ -53,7 +54,7 @@ defmodule TeacherAssistant.MixProject do
       {:ash_authentication, "~> 4.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.0"},
-      {:ash, "~> 3.0"},
+      {:ash, "~> 3.26"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_ecto, "~> 4.5"},
@@ -77,11 +78,12 @@ defmodule TeacherAssistant.MixProject do
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.26"},
+      {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:faker, "~> 0.18", only: :test}
+      # {:live_select, "~> 1.7"}
     ]
   end
 

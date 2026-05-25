@@ -26,24 +26,46 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
         <:item title="Description">{@academic_year.description}</:item>
       </.list>
       <div class="divider" />
-      <h3 class="font-semibold text-2xl">{gettext("Terms")}</h3>
-      <table class="table table-hover">
-        <tr>
-          <th>{gettext("Name")}</th>
-          <th>{gettext("Period")}</th>
-          <th></th>
-        </tr>
-
-        <tr :for={term <- @academic_year.terms}>
-          <td>{term.name}</td>
-          <td>{term.start_date} - {term.end_date}</td>
-          <td>
-            <.link navigate={~p"/configurations/academic_years/#{@academic_year}/terms/#{term}"}>
-              {gettext("View")}
-            </.link>
-          </td>
-        </tr>
-      </table>
+      <h3 class="font-semibold text-2xl mb-4">
+        <.icon name="hero-calendar-days" class="w-6 h-6 inline" />
+        {gettext("Terms")}
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          :for={term <- @academic_year.terms}
+          class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+        >
+          <div class="card-body">
+            <h2 class="card-title">
+              <.icon name="hero-bookmark" class="w-5 h-5 text-primary" />
+              {term.name}
+            </h2>
+            <div class="text-sm text-base-content/70">
+              <div class="flex items-center gap-2 mb-2">
+                <.icon name="hero-calendar" class="w-4 h-4" />
+                <span>{term.start_date} - {term.end_date}</span>
+              </div>
+              <div class="mt-3">
+                <p class="font-semibold mb-1">{gettext("Sequences")}:</p>
+                <ul class="list-disc list-inside space-y-1">
+                  <li :for={sequence <- term.sequences} class="text-xs">
+                    {sequence.name}
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="card-actions justify-end mt-4">
+              <.link
+                navigate={~p"/configurations/academic_years/#{@academic_year}/terms/#{term}"}
+                class="btn btn-primary btn-sm"
+              >
+                <.icon name="hero-eye" class="w-4 h-4" />
+                {gettext("View Details")}
+              </.link>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="divider" />
       <div class="flex justify-between">
@@ -55,26 +77,46 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Show do
           <.icon name="hero-pencil-square" />{gettext("Manage classrooms")}
         </.link>
       </div>
-      <table class="table table-hover">
-        <tr>
-          <th>{gettext("Classroom")}</th>
-          <th>{gettext("Actions")}</th>
-        </tr>
-
-        <tr :for={classroom <- @academic_year.classrooms}>
-          <td>{classroom.level_option.full_name}</td>
-          <td>
-            <div class="flex gap-2">
-              <.link
-                class="btn btn-xs btn-soft btn-ghost"
-                navigate={~p"/configurations/academic_years/#{@academic_year}/classrooms/#{classroom}/students"}
-              >
-                <.icon name="hero-user-group" /> {gettext("Manage students")}
-              </.link>
-            </div>
-          </td>
-        </tr>
-      </table>
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead>
+            <tr>
+              <th class="w-1/3">{gettext("Classroom")}</th>
+              <th class="w-2/3">{gettext("Actions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={classroom <- @academic_year.classrooms} class="hover">
+              <td>
+                <div class="flex items-center gap-2">
+                  <.icon name="hero-academic-cap" class="w-5 h-5 text-primary" />
+                  <span class="font-semibold">{classroom.level_option.full_name}</span>
+                </div>
+              </td>
+              <td>
+                <div class="flex gap-2 flex-wrap">
+                  <.link
+                    class="btn btn-sm btn-primary"
+                    navigate={~p"/configurations/classrooms/#{classroom}/teachers_and_subjects"}
+                  >
+                    <.icon name="hero-user-plus" class="w-4 h-4" />
+                    {gettext("Assign Teachers")}
+                  </.link>
+                  <.link
+                    class="btn btn-sm btn-secondary"
+                    navigate={
+                      ~p"/configurations/academic_years/#{@academic_year}/classrooms/#{classroom}/students"
+                    }
+                  >
+                    <.icon name="hero-user-group" class="w-4 h-4" />
+                    {gettext("Manage Students")}
+                  </.link>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </Layouts.app>
     """
   end

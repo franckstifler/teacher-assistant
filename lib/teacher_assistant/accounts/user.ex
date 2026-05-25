@@ -90,6 +90,10 @@ defmodule TeacherAssistant.Accounts.User do
       authorize_if always()
     end
 
+    bypass action(:read) do
+      authorize_if always()
+    end
+
     bypass action(:create) do
       # TODO: Update this policy
       authorize_if always()
@@ -103,6 +107,9 @@ defmodule TeacherAssistant.Accounts.User do
       allow_nil? false
       public? true
     end
+
+    attribute :role, TeacherAssistant.Accounts.UserRole, default: :teacher, public?: true
+    # attribute :full_name, :string, allow_nil?: false, public?: true
   end
 
   identities do

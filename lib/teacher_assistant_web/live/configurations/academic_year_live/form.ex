@@ -59,10 +59,10 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
                     <table class="table table-sm">
                       <thead>
                         <tr>
-                          <th>{gettext("Name")}</th>
-                          <th>{gettext("Start")}</th>
-                          <th>{gettext("End")}</th>
-                          <th></th>
+                          <th class="w-1/4">{gettext("Name")}</th>
+                          <th class="w-1/4">{gettext("Start")}</th>
+                          <th class="w-1/4">{gettext("End")}</th>
+                          <th class="w-1/12"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -92,6 +92,16 @@ defmodule TeacherAssistantWeb.Configurations.AcademicYearLive.Form do
 
                                 <.icon name="hero-x-mark" class="text-error" />
                               </label>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colspan="4">
+                              <.input
+                                field={sequence_form[:objective]}
+                                type="textarea"
+                                label={gettext("Objective (for report card)")}
+                                placeholder={gettext("Enter the sequence objective...")}
+                              />
                             </td>
                           </tr>
                         </.inputs_for>

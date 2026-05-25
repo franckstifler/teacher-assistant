@@ -12,6 +12,13 @@ defmodule TeacherAssistant.Academics.Student do
   actions do
     default_accept [:first_name, :last_name, :matricule, :place_of_birth, :date_of_birth, :gender]
     defaults [:create, :update, :read, :destroy]
+
+    read :list_students_by_classroom do
+      argument :classroom_id, :uuid_v7, allow_nil?: false
+
+      prepare build(sort: [full_name: :asc])
+      filter expr(classrooms_students.classroom_id == ^arg(:classroom_id))
+    end
   end
 
   multitenancy do
@@ -43,7 +50,6 @@ defmodule TeacherAssistant.Academics.Student do
   calculations do
     calculate :full_name, :string, expr(first_name <> " " <> last_name)
   end
-
 
   identities do
     identity :unique_name_and_date_of_birth, [:first_name, :last_name, :date_of_birth]

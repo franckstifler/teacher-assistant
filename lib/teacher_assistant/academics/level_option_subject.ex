@@ -35,6 +35,7 @@ defmodule TeacherAssistant.Academics.LevelOptionSubject do
   relationships do
     belongs_to :level_option, TeacherAssistant.Academics.LevelOption, allow_nil?: false
     belongs_to :subject, TeacherAssistant.Academics.Subject, allow_nil?: false
+    has_many :teaching_assignments, TeacherAssistant.Academics.TeachingAssignment
   end
 
   identities do

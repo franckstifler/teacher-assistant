@@ -28,14 +28,21 @@ defmodule TeacherAssistantWeb.Configurations.LevelOptionLive.Show do
           <.icon name="hero-pencil-square" />{gettext("Manage Subjects")}
         </.link>
       </div>
-      <table class="table table-sm">
+      <table class="table">
         <tr>
           <th>{gettext("Subject")}</th>
           <th>{gettext("Coefficient")}</th>
         </tr>
         <tr :for={subject <- @level_option.subjects}>
-          <td>{subject.subject.name}</td>
-          <td>{subject.coefficient}</td>
+          <td>
+            <div class="flex items-center gap-2">
+              <.icon name="hero-book-open" class="w-5 h-5 text-primary" />
+              <span class="font-semibold">{subject.subject.name}</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-primary badge-lg">{subject.coefficient}</span>
+          </td>
         </tr>
       </table>
     </Layouts.app>

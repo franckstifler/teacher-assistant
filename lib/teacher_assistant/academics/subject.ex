@@ -12,6 +12,16 @@ defmodule TeacherAssistant.Academics.Subject do
   actions do
     default_accept [:name, :description, :default_coefficient]
     defaults [:create, :update, :read, :destroy]
+
+    read :list_teacher_subjects do
+      argument :year_id, :uuid_v7, allow_nil?: false
+
+      filter expr(
+               #  school_year_subject_teacher.teacher_id == ^actor(:id) and
+               level_option_subjects.teaching_assignments.classroom.academic_year_id ==
+                 ^arg(:year_id)
+             )
+    end
   end
 
   multitenancy do
@@ -31,6 +41,14 @@ defmodule TeacherAssistant.Academics.Subject do
 
   relationships do
     belongs_to :school, TeacherAssistant.Academics.School
+
+    has_many :level_option_subjects, TeacherAssistant.Academics.LevelOptionSubject
+
+    many_to_many :levels_options, TeacherAssistant.Academics.LevelOption do
+      through TeacherAssistant.Academics.LevelOptionSubject
+      source_attribute_on_join_resource :subject_id
+      destination_attribute_on_join_resource :level_option_id
+    end
   end
 
   identities do
