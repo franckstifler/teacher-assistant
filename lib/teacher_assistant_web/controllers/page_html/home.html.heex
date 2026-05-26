@@ -1,105 +1,175 @@
 <Layouts.app flash={@flash} current_scope={assigns[:current_scope]}>
-  <section id="home-overview" class="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-    <div class="space-y-6">
-      <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-          Cameroon secondary school operations
-        </p>
-        <h1 class="mt-3 max-w-3xl text-4xl font-semibold leading-tight text-base-content sm:text-5xl">
-          Teacher Assistant
-        </h1>
-        <p class="mt-4 max-w-2xl text-base leading-7 text-base-content/70">
-          Configure the school year, assign classes and subjects, track attendance and marks, then follow programme coverage from weekly progression plans.
-        </p>
-      </div>
-
-      <div id="home-actions" class="flex flex-col gap-3 sm:flex-row">
-        <.link navigate={~p"/teacher/attendance"} class="btn btn-primary">
-          <.icon name="hero-clipboard-document-check" class="size-5" /> Attendance
-        </.link>
-        <.link navigate={~p"/teacher/marks"} class="btn btn-outline">
-          <.icon name="hero-pencil-square" class="size-5" /> Marks
-        </.link>
-        <.link navigate={~p"/configurations/academic_years"} class="btn btn-ghost">
-          <.icon name="hero-calendar-days" class="size-5" /> School year
-        </.link>
-      </div>
-
-      <div
-        id="home-workflows"
-        class="overflow-x-auto rounded-md border border-base-300 bg-base-100"
-      >
-        <table class="table table-sm">
-          <thead>
-            <tr>
-              <th>Role</th>
-              <th>Primary work</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="font-medium">Admin</td>
-              <td>Academic years, classes, students, subjects, assignments</td>
-              <td><span class="badge badge-success badge-sm">Foundation</span></td>
-            </tr>
-            <tr>
-              <td class="font-medium">Teacher</td>
-              <td>Marks, attendance, teaching logs, APC lesson structures</td>
-              <td><span class="badge badge-warning badge-sm">In progress</span></td>
-            </tr>
-            <tr>
-              <td class="font-medium">Vice principal</td>
-              <td>Programme coverage and yearly progression reports</td>
-              <td><span class="badge badge-outline badge-sm">Planned</span></td>
-            </tr>
-            <tr>
-              <td class="font-medium">Accountant</td>
-              <td>Classroom access status for enrolled students</td>
-              <td><span class="badge badge-warning badge-sm">Foundation</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <aside
-      id="home-readiness-panel"
-      class="rounded-md border border-base-300 bg-base-100 p-5 shadow-sm"
+  <div class="bg-base-200">
+    <section
+      id="landing-hero"
+      class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-16"
     >
-      <div class="flex items-start justify-between gap-4">
+      <div class="flex flex-col justify-center">
+        <p class="ta-section-label">Cameroon secondary schools</p>
+        <h1 class="mt-4 max-w-4xl text-4xl font-semibold leading-tight tracking-normal text-base-content sm:text-6xl">
+          Run marks, attendance, access control, and programme coverage from one school desk.
+        </h1>
+        <p class="mt-5 max-w-2xl text-lg leading-8 text-base-content/70">
+          Teacher Assistant gives principals, teachers, accountants, and discipline teams a shared operational system for the academic year, not another spreadsheet to reconcile at the end of term.
+        </p>
+
+        <div id="home-actions" class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <.link navigate={~p"/sign-in"} class="btn btn-primary">
+            <.icon name="hero-arrow-left-on-rectangle" class="size-5" /> Sign in
+          </.link>
+          <.link navigate={~p"/reports/report_cards"} class="btn btn-outline">
+            <.icon name="hero-document-chart-bar" class="size-5" /> View report cards
+          </.link>
+          <.link navigate={~p"/teacher/progression"} class="btn btn-ghost">
+            <.icon name="hero-calendar-days" class="size-5" /> Track progression
+          </.link>
+        </div>
+      </div>
+
+      <div class="ta-panel overflow-hidden">
+        <div class="border-b border-base-300 px-5 py-4">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-semibold">Academic operations</p>
+              <p class="text-xs text-base-content/55">Live school workflow index</p>
+            </div>
+            <span class="badge badge-success badge-sm">Ready for pilot</span>
+          </div>
+        </div>
+
+        <div class="grid gap-3 p-5">
+          <div class="grid grid-cols-3 gap-3">
+            <div class="ta-kpi">
+              <div class="text-2xl font-semibold">20</div>
+              <div class="text-xs text-base-content/55">Mark scale</div>
+            </div>
+            <div class="ta-kpi">
+              <div class="text-2xl font-semibold">4</div>
+              <div class="text-xs text-base-content/55">Access states</div>
+            </div>
+            <div class="ta-kpi">
+              <div class="text-2xl font-semibold">APC</div>
+              <div class="text-xs text-base-content/55">Lesson structure</div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-md border border-base-300">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Workflow</th>
+                  <th>Owner</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="font-medium">Report-card preview</td>
+                  <td>Admin</td>
+                  <td><span class="badge badge-success badge-sm">Live</span></td>
+                </tr>
+                <tr>
+                  <td class="font-medium">Programme coverage</td>
+                  <td>Vice principal</td>
+                  <td><span class="badge badge-success badge-sm">Live</span></td>
+                </tr>
+                <tr>
+                  <td class="font-medium">Classroom access</td>
+                  <td>Accountant</td>
+                  <td><span class="badge badge-success badge-sm">Live</span></td>
+                </tr>
+                <tr>
+                  <td class="font-medium">PDF progression import</td>
+                  <td>Admin</td>
+                  <td><span class="badge badge-warning badge-sm">Next</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="product-proof" class="ta-landing-band">
+      <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:px-8">
         <div>
-          <h2 class="text-lg font-semibold">Foundation Checklist</h2>
-          <p class="mt-1 text-sm text-base-content/60">
-            Core workflows needed before printable reports and AI suggestions.
+          <p class="ta-section-label">Why it matters</p>
+          <h2 class="mt-3 text-2xl font-semibold">
+            Built around the school year, not isolated forms.
+          </h2>
+        </div>
+        <div class="space-y-3 text-sm leading-6 text-base-content/70">
+          <p>
+            A teacher can see planned weekly progression, log what was actually taught, and structure a lesson with competence-based fields.
+          </p>
+          <p>
+            A vice principal can read the taux de couverture du programme before inspections and term reports.
           </p>
         </div>
-        <Layouts.theme_toggle />
+        <div class="space-y-3 text-sm leading-6 text-base-content/70">
+          <p>
+            An accountant or admin can suspend, block, or allow classroom access without relying on informal paper lists.
+          </p>
+          <p>
+            Report-card numbers come from deterministic marks, coefficients, rankings, and attendance data.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow-index" class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="ta-section-label">Index</p>
+          <h2 class="mt-3 text-2xl font-semibold">Choose the desk you work from.</h2>
+        </div>
+        <p class="max-w-xl text-sm leading-6 text-base-content/60">
+          Each desk exposes only the workflows that role needs. The same school scope protects all records.
+        </p>
       </div>
 
-      <div class="divider my-4"></div>
-
-      <ul class="space-y-3 text-sm">
-        <li class="flex items-center gap-3">
-          <.icon name="hero-check-circle" class="size-5 text-success" />
-          Real school scope and membership
-        </li>
-        <li class="flex items-center gap-3">
-          <.icon name="hero-check-circle" class="size-5 text-success" />
-          Deterministic mark and report-card calculations
-        </li>
-        <li class="flex items-center gap-3">
-          <.icon name="hero-check-circle" class="size-5 text-success" />
-          Duplicate-safe attendance records
-        </li>
-        <li class="flex items-center gap-3">
-          <.icon name="hero-clock" class="size-5 text-warning" />
-          Progression import review screens
-        </li>
-        <li class="flex items-center gap-3">
-          <.icon name="hero-clock" class="size-5 text-warning" /> Coverage dashboards by role
-        </li>
-      </ul>
-    </aside>
-  </section>
+      <div class="grid gap-4 lg:grid-cols-4">
+        <.link
+          navigate={~p"/configurations/academic_years"}
+          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
+        >
+          <.icon name="hero-building-office-2" class="size-6 text-primary" />
+          <h3 class="mt-4 font-semibold">Administration</h3>
+          <p class="mt-2 text-sm leading-6 text-base-content/65">
+            Academic years, classrooms, students, subjects, coefficients, and settings.
+          </p>
+        </.link>
+        <.link
+          navigate={~p"/teacher/marks"}
+          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
+        >
+          <.icon name="hero-pencil-square" class="size-6 text-primary" />
+          <h3 class="mt-4 font-semibold">Teacher desk</h3>
+          <p class="mt-2 text-sm leading-6 text-base-content/65">
+            Marks, attendance, weekly progression logs, and APC lesson structures.
+          </p>
+        </.link>
+        <.link
+          navigate={~p"/reports/programme_coverage"}
+          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
+        >
+          <.icon name="hero-chart-bar" class="size-6 text-primary" />
+          <h3 class="mt-4 font-semibold">Vice principal</h3>
+          <p class="mt-2 text-sm leading-6 text-base-content/65">
+            Coverage dashboards, report-card preview, ranking, and programme follow-up.
+          </p>
+        </.link>
+        <.link
+          navigate={~p"/configurations/student_access"}
+          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
+        >
+          <.icon name="hero-identification" class="size-6 text-primary" />
+          <h3 class="mt-4 font-semibold">Access control</h3>
+          <p class="mt-2 text-sm leading-6 text-base-content/65">
+            Allowed, pending, suspended, and blocked student classroom access with audit notes.
+          </p>
+        </.link>
+      </div>
+    </section>
+  </div>
 </Layouts.app>

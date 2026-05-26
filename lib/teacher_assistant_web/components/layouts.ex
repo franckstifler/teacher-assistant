@@ -35,9 +35,13 @@ defmodule TeacherAssistantWeb.Layouts do
 
   def app(assigns) do
     current_scope = assigns[:current_scope]
+    current_user = current_scope && current_scope.current_user
 
     assigns =
       assigns
+      |> assign(:current_user, current_user)
+      |> assign(:school_name, school_name(current_scope))
+      |> assign(:role_label, role_label(current_user))
       |> assign(
         :show_configuration_nav?,
         role_in?(current_scope, [:admin, :principal, :vice_principal])
@@ -53,136 +57,207 @@ defmodule TeacherAssistantWeb.Layouts do
       )
 
     ~H"""
-    <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/95 backdrop-blur">
-      <div class="navbar min-h-14 px-4 sm:px-6 lg:px-8">
-        <div class="flex-1">
-          <a href="/" class="flex w-fit items-center gap-3">
-            <img src={~p"/images/logo.svg"} width="32" />
-            <span class="text-sm font-semibold tracking-wide">Teacher Assistant</span>
+    <div class="min-h-screen bg-base-200 text-base-content">
+      <header class="sticky top-0 z-40 border-b border-base-300 bg-base-100">
+        <div class="flex min-h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <a href="/" class="flex min-w-0 items-center gap-3">
+            <span class="grid size-9 place-items-center rounded-md bg-primary text-primary-content shadow-sm">
+              <.icon name="hero-academic-cap" class="size-5" />
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm font-semibold leading-5">Teacher Assistant</span>
+              <span class="block truncate text-xs text-base-content/55">
+                {@school_name || gettext("Cameroon schools")}
+              </span>
+            </span>
           </a>
-        </div>
 
-        <nav class="hidden flex-none lg:block" aria-label={gettext("Main navigation")}>
-          <ul class="menu menu-horizontal items-center gap-1 px-1">
-            <li :if={@show_configuration_nav?} id="nav-configuration">
-              <details>
-                <summary>
-                  <.icon name="hero-cog-6-tooth" class="size-4" />
-                  {gettext("Configuration")}
-                </summary>
-                <ul class="z-40 min-w-56 rounded-md border border-base-300 bg-base-100 p-2 shadow-lg">
-                  <li>
-                    <.link navigate={~p"/configurations/academic_years"}>
-                      {gettext("Academic years")}
-                    </.link>
-                  </li>
-                  <li id="nav-grade-intervals">
-                    <.link navigate={~p"/configurations/grade_intervals"}>
-                      {gettext("Grade intervals")}
-                    </.link>
-                  </li>
-                  <li>
-                    <.link navigate={~p"/configurations/students"}>{gettext("Students")}</.link>
-                  </li>
-                  <li>
-                    <.link navigate={~p"/configurations/subjects"}>{gettext("Subjects")}</.link>
-                  </li>
-                  <li>
-                    <.link navigate={~p"/configurations/levels_options"}>
-                      {gettext("Levels and options")}
-                    </.link>
-                  </li>
-                  <li><.link navigate={~p"/configurations/levels"}>{gettext("Levels")}</.link></li>
-                  <li><.link navigate={~p"/configurations/options"}>{gettext("Options")}</.link></li>
-                </ul>
-              </details>
-            </li>
-            <li :if={@show_access_nav?} id="nav-student-access">
-              <.link navigate={~p"/configurations/student_access"}>
-                <.icon name="hero-identification" class="size-4" />
-                {gettext("Student access")}
+          <nav
+            class="ml-auto hidden items-center gap-1 lg:flex"
+            aria-label={gettext("Main navigation")}
+          >
+            <.top_nav_link
+              :if={@show_teacher_nav?}
+              href={~p"/teacher/marks"}
+              icon="hero-pencil-square"
+            >
+              {gettext("Marks")}
+            </.top_nav_link>
+            <.top_nav_link
+              :if={@show_teacher_nav?}
+              href={~p"/teacher/attendance"}
+              icon="hero-clipboard-document-check"
+            >
+              {gettext("Attendance")}
+            </.top_nav_link>
+            <.top_nav_link
+              :if={@show_reports_nav?}
+              href={~p"/reports/report_cards"}
+              icon="hero-document-chart-bar"
+            >
+              {gettext("Reports")}
+            </.top_nav_link>
+            <.top_nav_link :if={!@current_user} href={~p"/"} icon="hero-squares-2x2">
+              {gettext("Overview")}
+            </.top_nav_link>
+          </nav>
+
+          <div class="ml-auto flex items-center gap-2 lg:ml-3">
+            <Layouts.theme_toggle />
+            <%= if @current_user do %>
+              <div class="hidden text-right sm:block">
+                <div class="text-xs font-semibold">{@current_user.email}</div>
+                <div class="text-[0.7rem] uppercase tracking-wide text-base-content/50">
+                  {@role_label}
+                </div>
+              </div>
+              <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
+                <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
+                {gettext("Sign out")}
               </.link>
-            </li>
-            <li :if={@show_teacher_nav?} id="nav-teacher-tools">
-              <details>
-                <summary>
-                  <.icon name="hero-academic-cap" class="size-4" />
-                  {gettext("Teacher")}
-                </summary>
-                <ul class="z-40 min-w-52 rounded-md border border-base-300 bg-base-100 p-2 shadow-lg">
-                  <li>
-                    <.link navigate={~p"/teacher/marks"}>
-                      <.icon name="hero-clipboard-document-list" class="size-4" />
-                      {gettext("Marks")}
-                    </.link>
-                  </li>
-                  <li>
-                    <.link navigate={~p"/teacher/attendance"}>
-                      <.icon name="hero-clipboard-document-check" class="size-4" />
-                      {gettext("Attendance")}
-                    </.link>
-                  </li>
-                  <li>
-                    <.link navigate={~p"/teacher/progression"}>
-                      <.icon name="hero-calendar-days" class="size-4" />
-                      {gettext("Progression")}
-                    </.link>
-                  </li>
-                </ul>
-              </details>
-            </li>
-            <li :if={@show_reports_nav?} id="nav-reports">
-              <details>
-                <summary>
-                  <.icon name="hero-chart-bar" class="size-4" />
-                  {gettext("Reports")}
-                </summary>
-                <ul class="z-40 min-w-52 rounded-md border border-base-300 bg-base-100 p-2 shadow-lg">
-                  <li>
-                    <.link navigate={~p"/reports/programme_coverage"}>
-                      {gettext("Coverage")}
-                    </.link>
-                  </li>
-                  <li>
-                    <.link navigate={~p"/reports/report_cards"}>
-                      {gettext("Report cards")}
-                    </.link>
-                  </li>
-                </ul>
-              </details>
-            </li>
-          </ul>
-        </nav>
-
-        <div class="ml-2 flex items-center gap-2">
-          <Layouts.theme_toggle />
-          <%= if @current_scope && @current_scope.current_user do %>
-            <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
-              <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
-              {gettext("Sign out")}
-            </.link>
-          <% else %>
-            <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
-              <.icon name="hero-arrow-left-on-rectangle" class="size-4" />
-              {gettext("Sign in")}
-            </.link>
-          <% end %>
+            <% else %>
+              <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
+                <.icon name="hero-arrow-left-on-rectangle" class="size-4" />
+                {gettext("Sign in")}
+              </.link>
+            <% end %>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <main class="px-4 py-8 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-7xl space-y-6">
-        {render_slot(@inner_block)}
+      <div class={["mx-auto flex w-full", @current_user && "max-w-[1600px]"]}>
+        <aside
+          :if={@current_user}
+          class="hidden min-h-[calc(100vh-4rem)] w-72 shrink-0 border-r border-base-300 bg-base-100 px-4 py-5 lg:block"
+        >
+          <nav class="space-y-6" aria-label={gettext("Workspace navigation")}>
+            <div :if={@show_teacher_nav?} id="nav-teacher-tools" class="space-y-2">
+              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
+                {gettext("Operate")}
+              </div>
+              <.side_nav_link href={~p"/teacher/marks"} icon="hero-clipboard-document-list">
+                {gettext("Marks entry")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/teacher/attendance"} icon="hero-clipboard-document-check">
+                {gettext("Attendance")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/teacher/progression"} icon="hero-calendar-days">
+                {gettext("Progression")}
+              </.side_nav_link>
+            </div>
+
+            <div :if={@show_reports_nav?} id="nav-reports" class="space-y-2">
+              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
+                {gettext("Reports")}
+              </div>
+              <.side_nav_link href={~p"/reports/report_cards"} icon="hero-document-chart-bar">
+                {gettext("Report cards")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/reports/programme_coverage"} icon="hero-chart-bar">
+                {gettext("Programme coverage")}
+              </.side_nav_link>
+            </div>
+
+            <div :if={@show_access_nav?} id="nav-student-access" class="space-y-2">
+              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
+                {gettext("Access")}
+              </div>
+              <.side_nav_link href={~p"/configurations/student_access"} icon="hero-identification">
+                {gettext("Classroom access")}
+              </.side_nav_link>
+            </div>
+
+            <div :if={@show_configuration_nav?} id="nav-configuration" class="space-y-2">
+              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
+                {gettext("Configuration")}
+              </div>
+              <.side_nav_link href={~p"/configurations/academic_years"} icon="hero-calendar">
+                {gettext("Academic years")}
+              </.side_nav_link>
+              <.side_nav_link
+                id="nav-grade-intervals"
+                href={~p"/configurations/grade_intervals"}
+                icon="hero-chart-pie"
+              >
+                {gettext("Grade intervals")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/configurations/students"} icon="hero-users">
+                {gettext("Students")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/configurations/subjects"} icon="hero-book-open">
+                {gettext("Subjects")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/configurations/levels_options"} icon="hero-rectangle-group">
+                {gettext("Levels and options")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/configurations/levels"} icon="hero-bars-3-bottom-left">
+                {gettext("Levels")}
+              </.side_nav_link>
+              <.side_nav_link href={~p"/configurations/options"} icon="hero-squares-2x2">
+                {gettext("Options")}
+              </.side_nav_link>
+            </div>
+          </nav>
+        </aside>
+
+        <main class={
+          if(@current_user, do: "min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8", else: "w-full")
+        }>
+          <div class={if(@current_user, do: "mx-auto max-w-7xl space-y-6", else: "mx-auto w-full")}>
+            {render_slot(@inner_block)}
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
 
     <.flash_group flash={@flash} />
     """
   end
 
+  attr :href, :string, required: true
+  attr :icon, :string, required: true
+  slot :inner_block, required: true
+
+  defp top_nav_link(assigns) do
+    ~H"""
+    <.link navigate={@href} class="btn btn-ghost btn-sm gap-2">
+      <.icon name={@icon} class="size-4" />
+      {render_slot(@inner_block)}
+    </.link>
+    """
+  end
+
+  attr :id, :string, default: nil
+  attr :href, :string, required: true
+  attr :icon, :string, required: true
+  slot :inner_block, required: true
+
+  defp side_nav_link(assigns) do
+    ~H"""
+    <.link
+      id={@id}
+      navigate={@href}
+      class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-base-content/72 transition hover:bg-base-200 hover:text-base-content"
+    >
+      <.icon name={@icon} class="size-4 text-base-content/45 transition group-hover:text-primary" />
+      <span>{render_slot(@inner_block)}</span>
+    </.link>
+    """
+  end
+
   defp role_in?(%{current_user: %{role: role}}, roles), do: role in roles
   defp role_in?(_, _roles), do: false
+
+  defp school_name(%{current_tenant: %{name: name}}), do: name
+  defp school_name(_), do: nil
+
+  defp role_label(%{role: role}) do
+    role
+    |> to_string()
+    |> String.replace("_", " ")
+  end
+
+  defp role_label(_), do: nil
 
   @doc """
   Shows the flash group with standard titles and content.
@@ -234,7 +309,7 @@ defmodule TeacherAssistantWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div class="relative flex flex-row items-center rounded-full border border-base-300 bg-base-200">
+    <div class="relative flex flex-row items-center rounded-md border border-base-300 bg-base-200">
       <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-[left]" />
 
       <button

@@ -31,3 +31,139 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+:root {
+  color-scheme: light;
+  --ta-ink: oklch(24% 0.018 245);
+  --ta-muted: oklch(51% 0.028 245);
+  --ta-paper: oklch(98% 0.008 92);
+  --ta-panel: oklch(99% 0.006 92);
+  --ta-line: oklch(88% 0.018 95);
+  --ta-primary: oklch(42% 0.095 168);
+  --ta-primary-strong: oklch(34% 0.1 168);
+  --ta-accent: oklch(56% 0.12 238);
+  --ta-warning: oklch(70% 0.135 75);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ta-ink: oklch(92% 0.012 245);
+  --ta-muted: oklch(70% 0.02 245);
+  --ta-paper: oklch(18% 0.016 245);
+  --ta-panel: oklch(22% 0.018 245);
+  --ta-line: oklch(32% 0.022 245);
+  --ta-primary: oklch(66% 0.11 168);
+  --ta-primary-strong: oklch(78% 0.09 168);
+  --ta-accent: oklch(72% 0.1 238);
+  --ta-warning: oklch(78% 0.13 75);
+}
+
+html {
+  background: var(--ta-paper);
+}
+
+body {
+  color: var(--ta-ink);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--ta-paper) 92%, var(--ta-primary) 8%), var(--ta-paper) 32rem);
+  font-feature-settings: "kern", "liga", "calt";
+}
+
+.btn {
+  border-radius: 0.45rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.card,
+.stats,
+.alert,
+.table,
+.input,
+.select,
+.textarea {
+  border-radius: 0.45rem;
+}
+
+.card {
+  border: 1px solid var(--ta-line);
+  box-shadow: 0 10px 30px color-mix(in oklch, var(--ta-ink) 8%, transparent);
+}
+
+.card-body {
+  gap: 1rem;
+}
+
+.table {
+  background: var(--ta-panel);
+}
+
+.table thead th {
+  color: var(--ta-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.table tbody tr {
+  border-color: var(--ta-line);
+}
+
+.input,
+.select,
+.textarea {
+  border-color: var(--ta-line);
+  background: color-mix(in oklch, var(--ta-panel) 96%, var(--ta-primary) 4%);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid color-mix(in oklch, var(--ta-primary) 35%, transparent);
+  outline-offset: 1px;
+  border-color: var(--ta-primary);
+}
+
+.badge {
+  border-radius: 999px;
+  font-weight: 650;
+}
+
+.ta-panel {
+  border: 1px solid var(--ta-line);
+  border-radius: 0.55rem;
+  background: var(--ta-panel);
+  box-shadow: 0 16px 45px color-mix(in oklch, var(--ta-ink) 7%, transparent);
+}
+
+.ta-muted {
+  color: var(--ta-muted);
+}
+
+.ta-kpi {
+  border: 1px solid var(--ta-line);
+  border-radius: 0.55rem;
+  background: color-mix(in oklch, var(--ta-panel) 94%, var(--ta-primary) 6%);
+  padding: 1rem;
+}
+
+.ta-section-label {
+  color: var(--ta-primary-strong);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ta-landing-band {
+  border-top: 1px solid var(--ta-line);
+  background: color-mix(in oklch, var(--ta-panel) 92%, var(--ta-accent) 8%);
+}
