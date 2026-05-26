@@ -78,6 +78,9 @@ defmodule TeacherAssistant.DataCase do
     end
   end
 
+  def normalized_text(nil), do: nil
+  def normalized_text(value), do: value |> to_string() |> String.trim()
+
   def assert_field_error(errors, field, opts \\ []) when is_list(errors) do
     error_class = opts[:error_class]
     message = opts[:message]

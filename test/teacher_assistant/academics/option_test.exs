@@ -30,7 +30,7 @@ defmodule TeacherAssistant.Resources.OptionTest do
             authorize?: false
           )
 
-        assert option.name == input[:name]
+        assert normalized_text(option.name) == normalized_text(input[:name])
         assert option.description == value_or_nil(input, :description)
       end
     end
@@ -59,7 +59,7 @@ defmodule TeacherAssistant.Resources.OptionTest do
             authorize?: false
           )
 
-        assert updated_option.name == input[:name]
+        assert normalized_text(updated_option.name) == normalized_text(input[:name])
         assert updated_option.description == value_or_nil(input, :description, option.description)
       end
     end

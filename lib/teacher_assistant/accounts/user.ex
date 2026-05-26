@@ -22,9 +22,14 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     strategies do
+      password :password do
+        identity_field :email
+        hashed_password_field :hashed_password
+      end
+
       magic_link do
         identity_field :email
-        registration_enabled? true
+        registration_enabled? false
         require_interaction? true
 
         sender TeacherAssistant.Accounts.User.Senders.SendMagicLinkEmail
@@ -52,20 +57,57 @@ defmodule TeacherAssistant.Accounts.User do
       get_by :email
     end
 
-    create :sign_in_with_magic_link do
-      description "Sign in or register a user with magic link."
+    read :sign_in_with_password do
+      description "Attempt to sign in using an email and password."
+      get? true
+
+      argument :email, :ci_string do
+        description "The email to use for retrieving the user."
+        allow_nil? false
+      end
+
+      argument :password, :string do
+        description "The password to check for the matching user."
+        allow_nil? false
+        sensitive? true
+      end
+
+      prepare AshAuthentication.Strategy.Password.SignInPreparation
+
+      metadata :token, :string do
+        description "A JWT that can be used to authenticate the user."
+        allow_nil? false
+      end
+    end
+
+    read :sign_in_with_token do
+      description "Attempt to sign in using a short-lived sign in token."
+      get? true
+
+      argument :token, :string do
+        description "The short-lived sign in token."
+        allow_nil? false
+        sensitive? true
+      end
+
+      prepare AshAuthentication.Strategy.Password.SignInWithTokenPreparation
+
+      metadata :token, :string do
+        description "A JWT that can be used to authenticate the user."
+        allow_nil? false
+      end
+    end
+
+    read :sign_in_with_magic_link do
+      description "Sign in a user with magic link."
+      get? true
 
       argument :token, :string do
         description "The token from the magic link that was sent to the user"
         allow_nil? false
       end
 
-      upsert? true
-      upsert_identity :unique_email
-      upsert_fields [:email]
-
-      # Uses the information from the token to create or sign in the user
-      change AshAuthentication.Strategy.MagicLink.SignInChange
+      prepare AshAuthentication.Strategy.MagicLink.SignInPreparation
 
       metadata :token, :string do
         allow_nil? false
@@ -73,7 +115,38 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     create :create do
-      accept [:email, :role]
+      accept [:email, :role, :hashed_password]
+    end
+
+    create :register_with_password do
+      description "Register a new user with an email and password."
+
+      argument :email, :ci_string do
+        allow_nil? false
+      end
+
+      argument :password, :string do
+        description "The proposed password for the user, in plain text."
+        allow_nil? false
+        constraints min_length: 8
+        sensitive? true
+      end
+
+      argument :password_confirmation, :string do
+        description "The proposed password for the user again, in plain text."
+        allow_nil? false
+        sensitive? true
+      end
+
+      change set_attribute(:email, arg(:email))
+      change AshAuthentication.Strategy.Password.HashPasswordChange
+      change AshAuthentication.GenerateTokenChange
+      validate AshAuthentication.Strategy.Password.PasswordConfirmationValidation
+
+      metadata :token, :string do
+        description "A JWT that can be used to authenticate the user."
+        allow_nil? false
+      end
     end
 
     action :request_magic_link do
@@ -109,6 +182,12 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     attribute :role, TeacherAssistant.Accounts.UserRole, default: :teacher, public?: true
+
+    attribute :hashed_password, :string do
+      allow_nil? true
+      sensitive? true
+    end
+
     # attribute :full_name, :string, allow_nil?: false, public?: true
   end
 

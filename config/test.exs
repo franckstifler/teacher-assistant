@@ -1,4 +1,6 @@
 import Config
+
+config :bcrypt_elixir, log_rounds: 1
 config :teacher_assistant, Oban, testing: :manual
 config :teacher_assistant, token_signing_secret: "stzKJzc4mx3IO7M9Pw+9nK9sEIlPXcOa"
 config :bcrypt_elixir, log_rounds: 1

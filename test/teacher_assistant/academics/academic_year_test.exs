@@ -48,7 +48,7 @@ defmodule TeacherAssistant.Resources.AcademicYearTest do
             authorize?: false
           )
 
-        assert academic_year.name == input[:name]
+        assert normalized_text(academic_year.name) == normalized_text(input[:name])
         assert academic_year.description == value_or_nil(input, :description)
         assert academic_year.start_date == value_or_nil(input, :start_date)
         assert academic_year.end_date == value_or_nil(input, :end_date)

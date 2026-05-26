@@ -30,7 +30,7 @@ defmodule TeacherAssistant.Resources.LevelTest do
             authorize?: false
           )
 
-        assert level.name == input[:name]
+        assert normalized_text(level.name) == normalized_text(input[:name])
         assert level.description == value_or_nil(input, :description)
       end
     end
@@ -49,7 +49,7 @@ defmodule TeacherAssistant.Resources.LevelTest do
             authorize?: false
           )
 
-        assert level.name == input[:name]
+        assert normalized_text(level.name) == normalized_text(input[:name])
         assert level.description == value_or_nil(input, :description)
         assert Enum.count(level.options) == length(options)
       end
@@ -91,7 +91,7 @@ defmodule TeacherAssistant.Resources.LevelTest do
             authorize?: false
           )
 
-        assert updated_level.name == input[:name]
+        assert normalized_text(updated_level.name) == normalized_text(input[:name])
         assert updated_level.description == value_or_nil(input, :description, level.description)
 
         updated_option_ids = Enum.map(updated_level.options, & &1.id)

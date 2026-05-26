@@ -132,10 +132,24 @@ defmodule TeacherAssistantWeb.Layouts do
               </details>
             </li>
             <li :if={@show_reports_nav?} id="nav-reports">
-              <.link navigate={~p"/reports/programme_coverage"}>
-                <.icon name="hero-chart-bar" class="size-4" />
-                {gettext("Coverage")}
-              </.link>
+              <details>
+                <summary>
+                  <.icon name="hero-chart-bar" class="size-4" />
+                  {gettext("Reports")}
+                </summary>
+                <ul class="z-40 min-w-52 rounded-md border border-base-300 bg-base-100 p-2 shadow-lg">
+                  <li>
+                    <.link navigate={~p"/reports/programme_coverage"}>
+                      {gettext("Coverage")}
+                    </.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/reports/report_cards"}>
+                      {gettext("Report cards")}
+                    </.link>
+                  </li>
+                </ul>
+              </details>
             </li>
           </ul>
         </nav>

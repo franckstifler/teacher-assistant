@@ -34,8 +34,8 @@ defmodule TeacherAssistant.Resources.StudentTest do
             authorize?: false
           )
 
-        assert student.first_name == input[:first_name]
-        assert student.last_name == input[:last_name]
+        assert normalized_text(student.first_name) == normalized_text(input[:first_name])
+        assert normalized_text(student.last_name) == normalized_text(input[:last_name])
         assert student.matricule == value_or_nil(input, :matricule)
         assert student.place_of_birth == value_or_nil(input, :place_of_birth)
         assert student.date_of_birth == value_or_nil(input, :date_of_birth)

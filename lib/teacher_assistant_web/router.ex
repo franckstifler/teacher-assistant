@@ -173,6 +173,7 @@ defmodule TeacherAssistantWeb.Router do
       ] do
       scope "/reports" do
         live "/programme_coverage", Reports.ProgrammeCoverageLive.Index, :index
+        live "/report_cards", Reports.ReportCardLive.Index, :index
       end
     end
   end

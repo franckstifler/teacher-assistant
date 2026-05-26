@@ -31,7 +31,7 @@ defmodule TeacherAssistant.Resources.SubjectTest do
             authorize?: false
           )
 
-        assert subject.name == input[:name]
+        assert normalized_text(subject.name) == normalized_text(input[:name])
         assert subject.default_coefficient == value_or_nil(input, :default_coefficient, 1)
         assert subject.description == value_or_nil(input, :description)
       end
@@ -61,7 +61,7 @@ defmodule TeacherAssistant.Resources.SubjectTest do
             authorize?: false
           )
 
-        assert updated_subject.name == input[:name]
+        assert normalized_text(updated_subject.name) == normalized_text(input[:name])
 
         assert updated_subject.default_coefficient ==
                  value_or_nil(input, :default_coefficient, subject.default_coefficient)

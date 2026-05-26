@@ -76,6 +76,8 @@ defmodule TeacherAssistant.Seed do
     %{email: "admin@admin.com", role: :admin}
   ]
 
+  @default_password "password1234"
+
   def seed do
     school =
       Ash.create!(
@@ -182,13 +184,31 @@ defmodule TeacherAssistant.Seed do
         tenant: school.id
       )
 
-    _teachers =
+    {:ok, hashed_password} = AshAuthentication.BcryptProvider.hash(@default_password)
+
+    teachers_input =
+      Enum.map(@teachers, fn teacher ->
+        Map.put(teacher, :hashed_password, hashed_password)
+      end)
+
+    teachers =
       Ash.Seed.upsert!(
         TeacherAssistant.Accounts.User,
-        @teachers,
+        teachers_input,
         identity: :unique_email,
         tenant: school.id
       )
+
+    teachers
+    |> List.wrap()
+    |> Enum.each(fn user ->
+      Ash.Seed.upsert!(
+        TeacherAssistant.Accounts.UserSchool,
+        %{user_id: user.id, role: user.role},
+        identity: :unique_user_school,
+        tenant: school.id
+      )
+    end)
 
     {year, terms, levels, options, subjects}
   end
