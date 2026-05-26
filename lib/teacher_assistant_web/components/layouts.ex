@@ -34,6 +34,24 @@ defmodule TeacherAssistantWeb.Layouts do
   slot :inner_block, required: true
 
   def app(assigns) do
+    current_scope = assigns[:current_scope]
+
+    assigns =
+      assigns
+      |> assign(
+        :show_configuration_nav?,
+        role_in?(current_scope, [:admin, :principal, :vice_principal])
+      )
+      |> assign(:show_access_nav?, role_in?(current_scope, [:admin, :accountant, :principal]))
+      |> assign(
+        :show_teacher_nav?,
+        role_in?(current_scope, [:admin, :teacher, :principal_teacher])
+      )
+      |> assign(
+        :show_reports_nav?,
+        role_in?(current_scope, [:admin, :principal, :vice_principal])
+      )
+
     ~H"""
     <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/95 backdrop-blur">
       <div class="navbar min-h-14 px-4 sm:px-6 lg:px-8">
@@ -46,7 +64,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
         <nav class="hidden flex-none lg:block" aria-label={gettext("Main navigation")}>
           <ul class="menu menu-horizontal items-center gap-1 px-1">
-            <li>
+            <li :if={@show_configuration_nav?} id="nav-configuration">
               <details>
                 <summary>
                   <.icon name="hero-cog-6-tooth" class="size-4" />
@@ -56,6 +74,11 @@ defmodule TeacherAssistantWeb.Layouts do
                   <li>
                     <.link navigate={~p"/configurations/academic_years"}>
                       {gettext("Academic years")}
+                    </.link>
+                  </li>
+                  <li id="nav-grade-intervals">
+                    <.link navigate={~p"/configurations/grade_intervals"}>
+                      {gettext("Grade intervals")}
                     </.link>
                   </li>
                   <li>
@@ -74,7 +97,13 @@ defmodule TeacherAssistantWeb.Layouts do
                 </ul>
               </details>
             </li>
-            <li>
+            <li :if={@show_access_nav?} id="nav-student-access">
+              <.link navigate={~p"/configurations/student_access"}>
+                <.icon name="hero-identification" class="size-4" />
+                {gettext("Student access")}
+              </.link>
+            </li>
+            <li :if={@show_teacher_nav?} id="nav-teacher-tools">
               <details>
                 <summary>
                   <.icon name="hero-academic-cap" class="size-4" />
@@ -93,8 +122,20 @@ defmodule TeacherAssistantWeb.Layouts do
                       {gettext("Attendance")}
                     </.link>
                   </li>
+                  <li>
+                    <.link navigate={~p"/teacher/progression"}>
+                      <.icon name="hero-calendar-days" class="size-4" />
+                      {gettext("Progression")}
+                    </.link>
+                  </li>
                 </ul>
               </details>
+            </li>
+            <li :if={@show_reports_nav?} id="nav-reports">
+              <.link navigate={~p"/reports/programme_coverage"}>
+                <.icon name="hero-chart-bar" class="size-4" />
+                {gettext("Coverage")}
+              </.link>
             </li>
           </ul>
         </nav>
@@ -125,6 +166,9 @@ defmodule TeacherAssistantWeb.Layouts do
     <.flash_group flash={@flash} />
     """
   end
+
+  defp role_in?(%{current_user: %{role: role}}, roles), do: role in roles
+  defp role_in?(_, _roles), do: false
 
   @doc """
   Shows the flash group with standard titles and content.

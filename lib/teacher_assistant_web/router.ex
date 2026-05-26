@@ -85,10 +85,15 @@ defmodule TeacherAssistantWeb.Router do
     pipe_through :browser
 
     live_session :teacher,
-      on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_required} do
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth,
+         {:role_required, [:admin, :teacher, :principal_teacher]}}
+      ] do
       scope "/teacher" do
         live "/marks", Teacher.MarksLive.Entry, :index
         live "/attendance", Teacher.AttendanceLive.Entry, :index
+        live "/progression", Teacher.ProgressionLive.Index, :index
       end
     end
   end
@@ -97,7 +102,11 @@ defmodule TeacherAssistantWeb.Router do
     pipe_through :browser
 
     live_session :configurations,
-      on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_required} do
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth,
+         {:role_required, [:admin, :principal, :vice_principal]}}
+      ] do
       scope "/configurations" do
         live "/academic_years", Configurations.AcademicYearLive.Index, :index
         live "/academic_years/new", Configurations.AcademicYearLive.Form, :new
@@ -147,6 +156,37 @@ defmodule TeacherAssistantWeb.Router do
         live "/students/new", Configurations.StudentLive.Form, :new
         live "/students/:id", Configurations.StudentLive.Show, :show
         live "/students/:id/edit", Configurations.StudentLive.Form, :edit
+
+        live "/grade_intervals", Configurations.GradeIntervalLive.Index, :index
+      end
+    end
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through :browser
+
+    live_session :reports,
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth,
+         {:role_required, [:admin, :principal, :vice_principal]}}
+      ] do
+      scope "/reports" do
+        live "/programme_coverage", Reports.ProgrammeCoverageLive.Index, :index
+      end
+    end
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through :browser
+
+    live_session :student_access,
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, {:role_required, [:admin, :accountant, :principal]}}
+      ] do
+      scope "/configurations" do
+        live "/student_access", Configurations.StudentAccessLive.Index, :index
       end
     end
   end

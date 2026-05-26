@@ -347,11 +347,10 @@ defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
     user_id = socket.assigns.current_user.id
 
     assignments =
-      Ash.read!(TeacherAssistant.Academics.TeachingAssignment,
-        filter: [teacher_id: user_id],
-        load: [:classroom],
-        scope: socket.assigns.scope
-      )
+      TeacherAssistant.Academics.TeachingAssignment
+      |> Ash.Query.filter(teacher_id == ^user_id)
+      |> Ash.Query.load(:classroom)
+      |> Ash.read!(scope: socket.assigns.scope)
 
     classrooms =
       assignments

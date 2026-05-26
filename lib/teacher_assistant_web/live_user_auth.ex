@@ -25,6 +25,19 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     end
   end
 
+  def on_mount({:role_required, roles}, _params, session, socket) do
+    socket = assign_scope(socket, session)
+
+    if socket.assigns.current_user && socket.assigns.current_user.role in roles do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(:error, "You are not authorized to access this page")
+       |> Phoenix.LiveView.redirect(to: ~p"/")}
+    end
+  end
+
   def on_mount(:live_no_user, _params, session, socket) do
     socket = assign_scope(socket, session)
 
