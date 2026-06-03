@@ -193,6 +193,16 @@ defmodule TeacherAssistant.AcademicFixtures do
     )
   end
 
+  def user_without_school(opts \\ []) do
+    changeset_generator(TeacherAssistant.Accounts.User, :create,
+      defaults: [
+        email: Faker.Internet.email(),
+        role: :teacher
+      ],
+      overrides: opts
+    )
+  end
+
   def user_school(opts \\ []) do
     tenant = Keyword.fetch!(opts, :tenant)
 
@@ -215,6 +225,8 @@ defmodule TeacherAssistant.AcademicFixtures do
       defaults: [
         name: sequence(:school, &"School #{&1}"),
         abbreviation: "GBHS Bda",
+        workspace_type: :school,
+        owner_user_id: nil,
         type: :technical,
         sub_system: :francophone,
         description: Faker.Lorem.sentence()

@@ -10,7 +10,16 @@ defmodule TeacherAssistant.Academics.School do
   end
 
   actions do
-    default_accept [:name, :abbreviation, :type, :sub_system, :description]
+    default_accept [
+      :name,
+      :abbreviation,
+      :type,
+      :sub_system,
+      :description,
+      :workspace_type,
+      :owner_user_id
+    ]
+
     defaults [:create, :update, :read, :destroy]
   end
 
@@ -20,9 +29,23 @@ defmodule TeacherAssistant.Academics.School do
     attribute :abbreviation, :string, public?: true
     attribute :type, TeacherAssistant.Academics.Enums.SchoolType, public?: true
     attribute :sub_system, TeacherAssistant.Academics.Enums.SchoolSubsystem, public?: true
+
+    attribute :workspace_type, TeacherAssistant.Academics.Enums.WorkspaceType,
+      default: :school,
+      allow_nil?: false,
+      public?: true
+
+    attribute :owner_user_id, :uuid_v7, public?: true
     attribute :description, :string, public?: true
 
     timestamps()
+  end
+
+  relationships do
+    belongs_to :owner_user, TeacherAssistant.Accounts.User do
+      source_attribute :owner_user_id
+      allow_nil? true
+    end
   end
 
   identities do

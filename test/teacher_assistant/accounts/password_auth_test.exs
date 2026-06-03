@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Accounts.PasswordAuthTest do
     assert {:ok, user} =
              AshAuthentication.Strategy.action(strategy, :sign_in, %{
                email: "admin@admin.com",
-               password: "password1234"
+               password: "password"
              })
 
     assert user.role == :admin

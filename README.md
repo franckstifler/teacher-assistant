@@ -4,6 +4,11 @@ This project is a Web App that aims to assist Schools and Teachers in their diff
 
 It's structured based on the Cameroon educational system.
 
+## Project documents
+
+- [Product definition](docs/PRODUCT.md)
+- [Design system and UX direction](docs/DESIGN.md)
+
 For Schools:
 
 - Marks recording

@@ -41,7 +41,8 @@ defmodule TeacherAssistantWeb.Layouts do
       assigns
       |> assign(:current_user, current_user)
       |> assign(:school_name, school_name(current_scope))
-      |> assign(:role_label, role_label(current_user))
+      |> assign(:role_label, role_label(current_scope))
+      |> assign(:workspace_type_label, workspace_type_label(current_scope))
       |> assign(
         :show_configuration_nav?,
         role_in?(current_scope, [:admin, :principal, :vice_principal])
@@ -108,9 +109,13 @@ defmodule TeacherAssistantWeb.Layouts do
               <div class="hidden text-right sm:block">
                 <div class="text-xs font-semibold">{@current_user.email}</div>
                 <div class="text-[0.7rem] uppercase tracking-wide text-base-content/50">
-                  {@role_label}
+                  {@workspace_type_label} · {@role_label}
                 </div>
               </div>
+              <.link id="workspace-switcher" navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+                <.icon name="hero-arrows-right-left" class="size-4" />
+                {gettext("Workspace")}
+              </.link>
               <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
                 <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
                 {gettext("Sign out")}
@@ -184,6 +189,9 @@ defmodule TeacherAssistantWeb.Layouts do
               <.side_nav_link href={~p"/configurations/students"} icon="hero-users">
                 {gettext("Students")}
               </.side_nav_link>
+              <.side_nav_link href={~p"/configurations/invitations"} icon="hero-user-plus">
+                {gettext("Invitations")}
+              </.side_nav_link>
               <.side_nav_link href={~p"/configurations/subjects"} icon="hero-book-open">
                 {gettext("Subjects")}
               </.side_nav_link>
@@ -245,19 +253,24 @@ defmodule TeacherAssistantWeb.Layouts do
     """
   end
 
-  defp role_in?(%{current_user: %{role: role}}, roles), do: role in roles
+  defp role_in?(%{current_role: role}, roles), do: role in roles
   defp role_in?(_, _roles), do: false
 
   defp school_name(%{current_tenant: %{name: name}}), do: name
+  defp school_name(%{current_user: %{} = _user}), do: gettext("Select a workspace")
   defp school_name(_), do: nil
 
-  defp role_label(%{role: role}) do
+  defp role_label(%{current_role: role}) when not is_nil(role) do
     role
     |> to_string()
     |> String.replace("_", " ")
   end
 
   defp role_label(_), do: nil
+
+  defp workspace_type_label(%{current_workspace_type: :personal_teacher}), do: gettext("Personal")
+  defp workspace_type_label(%{current_workspace_type: :school}), do: gettext("School")
+  defp workspace_type_label(_), do: gettext("No workspace")
 
   @doc """
   Shows the flash group with standard titles and content.

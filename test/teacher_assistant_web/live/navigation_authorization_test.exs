@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.NavigationAuthorizationTest do
   import Phoenix.LiveViewTest
 
   describe "role-aware navigation" do
-    setup [:register_and_log_in_user]
+    setup [:register_and_log_in_user, :create_academic_year]
 
     test "admin sees configuration, access control, and teacher tools", %{conn: conn} do
       {:ok, _view, _html} = live(conn, ~p"/teacher/marks")
@@ -33,6 +33,10 @@ defmodule TeacherAssistantWeb.NavigationAuthorizationTest do
       refute has_element?(view, "#nav-configuration")
       refute has_element?(view, "#nav-student-access")
     end
+  end
+
+  defp create_academic_year(%{tenant: tenant, actor: actor}) do
+    %{academic_year: generate(academic_year(tenant: tenant, actor: actor))}
   end
 
   describe "route authorization" do

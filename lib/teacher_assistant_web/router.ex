@@ -25,7 +25,8 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    ash_authentication_live_session :authenticated_routes do
+    ash_authentication_live_session :authenticated_routes,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}] do
       # in each liveview, add one of the following at the top of the module:
       #
       # If an authenticated user must be present:
@@ -45,6 +46,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/", PageController, :home
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
     sign_out_route AuthController
+    get "/workspaces/select/:id", WorkspaceController, :select
 
     # Remove these if you'd like to use your own authentication views
     sign_in_route register_path: "/register",
@@ -84,9 +86,37 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    live_session :teacher,
+    ash_authentication_live_session :workspace_routes,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required}
+      ] do
+      live "/workspaces", WorkspaceLive.Index, :index
+    end
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through :browser
+
+    ash_authentication_live_session :setup_routes,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :workspace_required}
+      ] do
+      live "/setup/academic-year", Setup.AcademicYearLive, :new
+    end
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through :browser
+
+    ash_authentication_live_session :teacher,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :workspace_required},
+        {TeacherAssistantWeb.LiveUserAuth, :academic_year_required},
         {TeacherAssistantWeb.LiveUserAuth,
          {:role_required, [:admin, :teacher, :principal_teacher]}}
       ] do
@@ -101,9 +131,12 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    live_session :configurations,
+    ash_authentication_live_session :configurations,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :workspace_required},
+        {TeacherAssistantWeb.LiveUserAuth, :school_required},
         {TeacherAssistantWeb.LiveUserAuth,
          {:role_required, [:admin, :principal, :vice_principal]}}
       ] do
@@ -158,6 +191,7 @@ defmodule TeacherAssistantWeb.Router do
         live "/students/:id/edit", Configurations.StudentLive.Form, :edit
 
         live "/grade_intervals", Configurations.GradeIntervalLive.Index, :index
+        live "/invitations", Configurations.SchoolInvitationLive.Index, :index
       end
     end
   end
@@ -165,11 +199,14 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    live_session :reports,
+    ash_authentication_live_session :reports,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :workspace_required},
+        {TeacherAssistantWeb.LiveUserAuth, :academic_year_required},
         {TeacherAssistantWeb.LiveUserAuth,
-         {:role_required, [:admin, :principal, :vice_principal]}}
+         {:role_required, [:teacher, :admin, :principal, :vice_principal]}}
       ] do
       scope "/reports" do
         live "/programme_coverage", Reports.ProgrammeCoverageLive.Index, :index
@@ -182,8 +219,11 @@ defmodule TeacherAssistantWeb.Router do
     pipe_through :browser
 
     live_session :student_access,
+      session: {TeacherAssistantWeb.LiveUserAuth, :session_context, []},
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :workspace_required},
+        {TeacherAssistantWeb.LiveUserAuth, :school_required},
         {TeacherAssistantWeb.LiveUserAuth, {:role_required, [:admin, :accountant, :principal]}}
       ] do
       scope "/configurations" do

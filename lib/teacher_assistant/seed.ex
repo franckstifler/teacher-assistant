@@ -72,11 +72,11 @@ defmodule TeacherAssistant.Seed do
   ]
 
   @teachers [
-    %{email: "teacher@teacher.com", role: :teacher},
+    %{email: "francktchowa@gmail.com", role: :teacher},
     %{email: "admin@admin.com", role: :admin}
   ]
 
-  @default_password "password1234"
+  @default_password "password"
 
   def seed do
     school =
