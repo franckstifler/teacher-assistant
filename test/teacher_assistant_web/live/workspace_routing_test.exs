@@ -30,13 +30,14 @@ defmodule TeacherAssistantWeb.WorkspaceRoutingTest do
       assert has_element?(view, "#nav-configuration")
     end
 
-    test "year-required teacher routes redirect to setup when no active academic year exists", %{
-      conn: conn
-    } do
+    test "year-required personal teacher routes redirect to personal setup when no active academic year exists",
+         %{
+           conn: conn
+         } do
       user = generate(user_without_school())
       workspace = Workspaces.ensure_personal_workspace!(user)
 
-      assert {:error, {:redirect, %{to: "/setup/academic-year"}}} =
+      assert {:error, {:redirect, %{to: "/teacher/setup"}}} =
                conn
                |> log_in_user(workspace, user)
                |> live(~p"/teacher/progression")
@@ -52,27 +53,29 @@ defmodule TeacherAssistantWeb.WorkspaceRoutingTest do
                |> live(~p"/configurations/students")
     end
 
-    test "academic year setup creates an active year for the selected workspace", %{conn: conn} do
+    test "personal setup creates an active year for the selected workspace", %{conn: conn} do
       user = generate(user_without_school())
       workspace = Workspaces.ensure_personal_workspace!(user)
 
       {:ok, view, _html} =
         conn
         |> log_in_user(workspace, user)
-        |> live(~p"/setup/academic-year")
+        |> live(~p"/teacher/setup")
 
-      assert has_element?(view, "#academic-year-setup-form")
+      assert has_element?(view, "#personal-setup-form")
 
-      assert {:error, {:live_redirect, %{to: "/teacher/progression"}}} =
+      assert {:error, {:live_redirect, %{to: "/teacher/students"}}} =
                view
-               |> form("#academic-year-setup-form",
+               |> form("#personal-setup-form",
                  setup: %{
-                   name: "2026-2027",
+                   academic_year_name: "2026-2027",
                    start_date: "2026-09-01",
                    end_date: "2027-06-30",
-                   term_1_name: "Term 1",
-                   term_2_name: "Term 2",
-                   term_3_name: "Term 3"
+                   class_name: "Form 5",
+                   option_name: "Science",
+                   subject_name: "Mathematics",
+                   coefficient: "4",
+                   students_csv: ""
                  }
                )
                |> render_submit()

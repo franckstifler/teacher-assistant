@@ -81,6 +81,22 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     end
   end
 
+  def on_mount(:personal_workspace_required, _params, session, socket) do
+    socket = assign_scope(socket, session)
+
+    if Scope.personal_context?(socket.assigns.current_scope) do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(
+         :error,
+         "Switch to your personal workspace to use this section"
+       )
+       |> Phoenix.LiveView.redirect(to: ~p"/workspaces")}
+    end
+  end
+
   def on_mount(:academic_year_required, _params, session, socket) do
     socket = assign_scope(socket, session)
 
@@ -93,6 +109,9 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
 
       Scope.academic_year_ready?(socket.assigns.current_scope) ->
         {:cont, socket}
+
+      Scope.personal_context?(socket.assigns.current_scope) ->
+        {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/teacher/setup")}
 
       true ->
         {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/setup/academic-year")}

@@ -261,25 +261,21 @@ defmodule TeacherAssistantWeb.Teacher.AttendanceLive.Entry do
   def handle_event("classroom_changed", %{"classroom_id" => classroom_id}, socket) do
     {students, attendances} =
       if classroom_id != "" do
-        classroom_students =
-          Ash.read!(TeacherAssistant.Academics.ClassroomStudent,
-            filter: [classroom_id: classroom_id],
-            load: [:student],
-            scope: socket.assigns.scope
-          )
-
         students =
-          classroom_students
-          |> Enum.map(& &1.student)
-          |> Enum.sort_by(& &1.full_name)
+          case TeacherAssistant.Academics.list_students_by_classroom(classroom_id,
+                 load: [:full_name],
+                 scope: socket.assigns.scope
+               ) do
+            {:ok, students} -> students
+            _ -> []
+          end
 
         date = Date.from_iso8601!(socket.assigns.selected_date)
 
         attendances =
-          Ash.read!(TeacherAssistant.Academics.Attendance,
-            filter: [classroom_id: classroom_id, date: date],
-            scope: socket.assigns.scope
-          )
+          TeacherAssistant.Academics.Attendance
+          |> Ash.Query.filter(classroom_id == ^classroom_id and date == ^date)
+          |> Ash.read!(scope: socket.assigns.scope)
 
         {students, attendances}
       else

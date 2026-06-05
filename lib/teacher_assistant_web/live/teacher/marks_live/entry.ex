@@ -479,10 +479,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive.Entry do
 
   defp load_students_and_marks(classroom_id, level_option_subject_id, sequence_id, socket) do
     students =
-      TeacherAssistant.Academics.list_students_by_classroom(classroom_id,
-        load: [:full_name],
-        scope: socket.assigns.scope
-      )
+      case TeacherAssistant.Academics.list_students_by_classroom(classroom_id,
+             load: [:full_name],
+             scope: socket.assigns.scope
+           ) do
+        {:ok, students} -> students
+        _ -> []
+      end
 
     marks = read_marks(socket, classroom_id, level_option_subject_id, sequence_id)
 

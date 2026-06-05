@@ -111,6 +111,24 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
+    ash_authentication_live_session :personal_teacher_management,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :workspace_required},
+        {TeacherAssistantWeb.LiveUserAuth, :personal_workspace_required},
+        {TeacherAssistantWeb.LiveUserAuth, {:role_required, [:teacher, :principal_teacher]}}
+      ] do
+      scope "/teacher" do
+        live "/setup", Teacher.SetupLive, :index
+        live "/students", Teacher.StudentLive, :index
+      end
+    end
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through :browser
+
     ash_authentication_live_session :teacher,
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
@@ -124,6 +142,7 @@ defmodule TeacherAssistantWeb.Router do
         live "/marks", Teacher.MarksLive.Entry, :index
         live "/attendance", Teacher.AttendanceLive.Entry, :index
         live "/progression", Teacher.ProgressionLive.Index, :index
+        live "/calendar", Teacher.CalendarLive, :index
       end
     end
   end

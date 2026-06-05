@@ -54,8 +54,9 @@ defmodule TeacherAssistantWeb.Layouts do
       )
       |> assign(
         :show_reports_nav?,
-        role_in?(current_scope, [:admin, :principal, :vice_principal])
+        role_in?(current_scope, [:admin, :principal, :vice_principal, :teacher])
       )
+      |> assign(:show_personal_management_nav?, personal_context?(current_scope))
 
     ~H"""
     <div class="min-h-screen bg-base-200 text-base-content">
@@ -148,6 +149,37 @@ defmodule TeacherAssistantWeb.Layouts do
               </.side_nav_link>
               <.side_nav_link href={~p"/teacher/progression"} icon="hero-calendar-days">
                 {gettext("Progression")}
+              </.side_nav_link>
+              <.side_nav_link
+                id="nav-teacher-calendar"
+                href={~p"/teacher/calendar"}
+                icon="hero-calendar"
+              >
+                {gettext("Calendar")}
+              </.side_nav_link>
+            </div>
+
+            <div
+              :if={@show_personal_management_nav?}
+              id="nav-personal-management"
+              class="space-y-2"
+            >
+              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
+                {gettext("Personal")}
+              </div>
+              <.side_nav_link
+                id="nav-personal-setup"
+                href={~p"/teacher/setup"}
+                icon="hero-cog-6-tooth"
+              >
+                {gettext("Setup")}
+              </.side_nav_link>
+              <.side_nav_link
+                id="nav-personal-students"
+                href={~p"/teacher/students"}
+                icon="hero-users"
+              >
+                {gettext("Students")}
               </.side_nav_link>
             </div>
 
@@ -255,6 +287,9 @@ defmodule TeacherAssistantWeb.Layouts do
 
   defp role_in?(%{current_role: role}, roles), do: role in roles
   defp role_in?(_, _roles), do: false
+
+  defp personal_context?(%{current_workspace_type: :personal_teacher}), do: true
+  defp personal_context?(_scope), do: false
 
   defp school_name(%{current_tenant: %{name: name}}), do: name
   defp school_name(%{current_user: %{} = _user}), do: gettext("Select a workspace")

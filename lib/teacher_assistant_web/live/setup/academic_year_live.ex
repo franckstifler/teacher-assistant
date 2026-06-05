@@ -51,7 +51,11 @@ defmodule TeacherAssistantWeb.Setup.AcademicYearLive do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :form, to_form(default_params(), as: :setup))}
+    if TeacherAssistant.Scope.personal_context?(socket.assigns.scope) do
+      {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+    else
+      {:ok, assign(socket, :form, to_form(default_params(), as: :setup))}
+    end
   end
 
   def handle_event("validate", %{"setup" => params}, socket) do
@@ -126,14 +130,11 @@ defmodule TeacherAssistantWeb.Setup.AcademicYearLive do
     end
   end
 
-  defp authorize_setup(%{current_workspace_type: :personal_teacher}), do: :ok
-
   defp authorize_setup(%{current_role: role}) when role in [:admin, :principal, :vice_principal],
     do: :ok
 
   defp authorize_setup(_scope), do: {:error, :not_allowed}
 
-  defp authorize_academic_year_create?(%{current_workspace_type: :personal_teacher}), do: false
   defp authorize_academic_year_create?(_scope), do: true
 
   defp default_params do

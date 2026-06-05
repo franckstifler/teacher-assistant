@@ -11,7 +11,17 @@ defmodule TeacherAssistant.Academics.Classroom do
   end
 
   actions do
-    defaults [:read, :destroy, create: :*, update: :*]
+    defaults [:read, :destroy]
+
+    create :create do
+      primary? true
+      accept [:academic_year_id, :level_option_id]
+    end
+
+    update :update do
+      primary? true
+      accept [:academic_year_id, :level_option_id]
+    end
 
     read :list_teacher_classrooms do
       argument :academic_year_id, :uuid_v7, allow_nil?: false
