@@ -7,12 +7,14 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
+  alias TeacherAssistant.Academics.TeachingContext
 
   resources do
     resource PersonalWorkspace
     resource AcademicYear
     resource Term
     resource Sequence
+    resource TeachingContext
   end
 
   def ensure_personal_workspace!(%User{} = user) do
@@ -104,4 +106,18 @@ defmodule TeacherAssistant.Academics do
     |> list_sequences()
     |> Enum.find(fn s -> Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt end)
   end
+
+  def create_teaching_context(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
+    attrs = attrs |> Map.put(:personal_workspace_id, ws.id) |> Map.put(:academic_year_id, year.id)
+    TeachingContext |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_teaching_contexts(%PersonalWorkspace{id: ws_id}, %AcademicYear{id: year_id}) do
+    TeachingContext
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id and academic_year_id == ^year_id)
+    |> Ash.Query.sort(subject: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def get_teaching_context(id), do: Ash.get(TeachingContext, id, authorize?: false)
 end
