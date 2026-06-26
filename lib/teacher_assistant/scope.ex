@@ -15,6 +15,10 @@ defmodule TeacherAssistant.Scope do
   def personal_context?(%__MODULE__{current_workspace_type: :personal_teacher}), do: true
   def personal_context?(_scope), do: false
 
+  # Task 4 will introduce TeacherAssistant.Academics.AcademicYear; until then always false.
+  def academic_year_ready?(%__MODULE__{current_academic_year: %{__struct__: TeacherAssistant.Academics.AcademicYear}}), do: true
+  def academic_year_ready?(_), do: false
+
   defimpl Ash.Scope.ToOpts do
     def get_actor(%{current_user: current_user}), do: {:ok, current_user}
     def get_tenant(_), do: :error
