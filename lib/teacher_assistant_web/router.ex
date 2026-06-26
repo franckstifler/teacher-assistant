@@ -62,6 +62,7 @@ defmodule TeacherAssistantWeb.Router do
       on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
       live "/teacher", Teacher.DashboardLive, :index
       live "/teacher/setup", Teacher.SetupLive, :index
+      live "/teacher/log", Teacher.LogLive, :index
       live "/teacher/plans/:id", Teacher.FicheLive, :show
     end
   end
