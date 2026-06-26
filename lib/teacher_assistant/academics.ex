@@ -10,6 +10,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
+  alias TeacherAssistant.Academics.TeachingLogEntry
 
   resources do
     resource PersonalWorkspace
@@ -19,6 +20,7 @@ defmodule TeacherAssistant.Academics do
     resource TeachingContext
     resource ProgressionPlan
     resource ProgressionEntry
+    resource TeachingLogEntry
   end
 
   def ensure_personal_workspace!(%User{} = user) do
@@ -187,5 +189,27 @@ defmodule TeacherAssistant.Academics do
 
   defp list_entries_query(plan_id) do
     ProgressionEntry |> Ash.Query.filter(progression_plan_id == ^plan_id)
+  end
+
+  def log_teaching(%PersonalWorkspace{id: ws_id}, attrs) do
+    attrs = Map.put(attrs, :personal_workspace_id, ws_id)
+    TeachingLogEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_logs_for_plan(%ProgressionPlan{id: plan_id}) do
+    entry_ids = list_entries_query(plan_id) |> Ash.read!(authorize?: false) |> Enum.map(& &1.id)
+
+    TeachingLogEntry
+    |> Ash.Query.filter(progression_entry_id in ^entry_ids)
+    |> Ash.Query.sort(date: :desc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def list_recent_logs(%PersonalWorkspace{id: ws_id}, limit \\ 10) do
+    TeachingLogEntry
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id)
+    |> Ash.Query.sort(date: :desc)
+    |> Ash.Query.limit(limit)
+    |> Ash.read!(authorize?: false)
   end
 end
