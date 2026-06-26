@@ -99,6 +99,23 @@ defmodule TeacherAssistantWeb.Layouts do
         </div>
       </header>
 
+      <nav
+        :if={@current_user}
+        id="main-nav"
+        class="navbar bg-base-100 px-4 gap-2 border-b border-base-300"
+      >
+        <.link id="nav-dashboard" navigate={~p"/teacher"} class="btn btn-ghost btn-sm">
+          {gettext("Dashboard")}
+        </.link>
+        <.link id="nav-log" navigate={~p"/teacher/log"} class="btn btn-ghost btn-sm">
+          {gettext("Log")}
+        </.link>
+        <div id="locale-switch" class="ml-auto flex gap-1">
+          <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs">FR</.link>
+          <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs">EN</.link>
+        </div>
+      </nav>
+
       <div class={["mx-auto flex w-full", @current_user && "max-w-[1600px]"]}>
         <aside
           :if={@current_user}
