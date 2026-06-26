@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Academics.AcademicYear do
+defmodule TeacherAssistant.Academics.Sequence do
   use Ash.Resource,
     otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
@@ -6,7 +6,7 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
-    table "academic_years"
+    table "sequences"
     repo TeacherAssistant.Repo
   end
 
@@ -14,8 +14,8 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     defaults [
       :read,
       :destroy,
-      create: [:name, :start_date, :end_date, :active, :personal_workspace_id],
-      update: [:name, :start_date, :end_date, :active]
+      create: [:number, :position_in_term, :start_date, :end_date, :integration_week, :term_id],
+      update: [:number, :position_in_term, :start_date, :end_date, :integration_week]
     ]
   end
 
@@ -27,24 +27,19 @@ defmodule TeacherAssistant.Academics.AcademicYear do
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :name, :string, allow_nil?: false, public?: true
+    attribute :number, :integer, allow_nil?: false, public?: true
+    attribute :position_in_term, :integer, allow_nil?: false, public?: true
     attribute :start_date, :date, allow_nil?: false, public?: true
     attribute :end_date, :date, allow_nil?: false, public?: true
-    attribute :active, :boolean, default: true, public?: true
+    attribute :integration_week, :boolean, default: false, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :personal_workspace, TeacherAssistant.Academics.PersonalWorkspace do
-      source_attribute :personal_workspace_id
+    belongs_to :term, TeacherAssistant.Academics.Term do
+      source_attribute :term_id
       allow_nil? false
       public? true
     end
-
-    has_many :terms, TeacherAssistant.Academics.Term
-  end
-
-  identities do
-    identity :unique_workspace_year, [:personal_workspace_id, :name]
   end
 end

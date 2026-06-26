@@ -5,10 +5,14 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Academics.PersonalWorkspace
   alias TeacherAssistant.Academics.AcademicYear
+  alias TeacherAssistant.Academics.Term
+  alias TeacherAssistant.Academics.Sequence
 
   resources do
     resource PersonalWorkspace
     resource AcademicYear
+    resource Term
+    resource Sequence
   end
 
   def ensure_personal_workspace!(%User{} = user) do
@@ -66,5 +70,38 @@ defmodule TeacherAssistant.Academics do
     |> Ash.Query.filter(personal_workspace_id == ^ws_id and id != ^keep_id and active == true)
     |> Ash.read!(authorize?: false)
     |> Enum.each(fn y -> y |> Ash.Changeset.for_update(:update, %{active: false}) |> Ash.update!(authorize?: false) end)
+  end
+
+  def build_default_calendar(%AcademicYear{} = year) do
+    preset = TeacherAssistant.Academics.Reference.default_calendar_preset()
+
+    Enum.each(preset.terms, fn term_spec ->
+      {:ok, term} =
+        Term
+        |> Ash.Changeset.for_create(:create, %{position: term_spec.position, academic_year_id: year.id})
+        |> Ash.create(authorize?: false)
+
+      Enum.each(term_spec.sequences, fn s ->
+        Sequence
+        |> Ash.Changeset.for_create(:create, Map.put(Map.take(s, [:number, :position_in_term, :start_date, :end_date, :integration_week]), :term_id, term.id))
+        |> Ash.create!(authorize?: false)
+      end)
+    end)
+
+    :ok
+  end
+
+  def list_sequences(%AcademicYear{id: year_id}) do
+    Sequence
+    |> Ash.Query.filter(term.academic_year_id == ^year_id)
+    |> Ash.Query.load(:term)
+    |> Ash.Query.sort(number: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def current_sequence(%AcademicYear{} = year, %Date{} = date) do
+    year
+    |> list_sequences()
+    |> Enum.find(fn s -> Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt end)
   end
 end
