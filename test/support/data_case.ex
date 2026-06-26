@@ -19,28 +19,15 @@ defmodule TeacherAssistant.DataCase do
   using do
     quote do
       alias TeacherAssistant.Repo
-      import ExUnitProperties
 
       import TeacherAssistant.DataCase
-      import TeacherAssistant.AcademicFixtures
+      import TeacherAssistant.TeacherFixtures
     end
   end
 
   setup tags do
     TeacherAssistant.DataCase.setup_sandbox(tags)
-
-    school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
-    user = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.admin_user(tenant: school))
-
-    Ash.Generator.generate(
-      TeacherAssistant.AcademicFixtures.user_school(
-        tenant: school,
-        user_id: user.id,
-        role: user.role
-      )
-    )
-
-    {:ok, %{tenant: school, user: user}}
+    :ok
   end
 
   @doc """

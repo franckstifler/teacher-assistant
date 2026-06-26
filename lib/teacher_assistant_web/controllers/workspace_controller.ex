@@ -10,14 +10,13 @@ defmodule TeacherAssistantWeb.WorkspaceController do
       {:ok, _scope} ->
         conn
         |> put_session(:workspace_id, workspace_id)
-        |> put_session(:tenant, workspace_id)
         |> put_flash(:info, "Workspace selected")
-        |> redirect(to: ~p"/teacher/progression")
+        |> redirect(to: ~p"/teacher")
 
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Select a workspace you belong to")
-        |> redirect(to: ~p"/workspaces")
+        |> redirect(to: ~p"/teacher")
     end
   end
 

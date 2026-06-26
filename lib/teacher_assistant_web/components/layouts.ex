@@ -40,23 +40,9 @@ defmodule TeacherAssistantWeb.Layouts do
     assigns =
       assigns
       |> assign(:current_user, current_user)
-      |> assign(:school_name, school_name(current_scope))
+      |> assign(:workspace_name, workspace_name(current_scope))
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
-      |> assign(
-        :show_configuration_nav?,
-        role_in?(current_scope, [:admin, :principal, :vice_principal])
-      )
-      |> assign(:show_access_nav?, role_in?(current_scope, [:admin, :accountant, :principal]))
-      |> assign(
-        :show_teacher_nav?,
-        role_in?(current_scope, [:admin, :teacher, :principal_teacher])
-      )
-      |> assign(
-        :show_reports_nav?,
-        role_in?(current_scope, [:admin, :principal, :vice_principal, :teacher])
-      )
-      |> assign(:show_personal_management_nav?, personal_context?(current_scope))
 
     ~H"""
     <div class="min-h-screen bg-base-200 text-base-content">
@@ -69,7 +55,7 @@ defmodule TeacherAssistantWeb.Layouts do
             <span class="min-w-0">
               <span class="block text-sm font-semibold leading-5">Teacher Assistant</span>
               <span class="block truncate text-xs text-base-content/55">
-                {@school_name || gettext("Cameroon schools")}
+                {@workspace_name || gettext("Cameroon teacher workspace")}
               </span>
             </span>
           </a>
@@ -79,25 +65,25 @@ defmodule TeacherAssistantWeb.Layouts do
             aria-label={gettext("Main navigation")}
           >
             <.top_nav_link
-              :if={@show_teacher_nav?}
-              href={~p"/teacher/marks"}
-              icon="hero-pencil-square"
+              :if={@current_user}
+              href={~p"/teacher"}
+              icon="hero-squares-2x2"
             >
-              {gettext("Marks")}
+              {gettext("Dashboard")}
             </.top_nav_link>
             <.top_nav_link
-              :if={@show_teacher_nav?}
-              href={~p"/teacher/attendance"}
+              :if={@current_user}
+              href={~p"/teacher/roll-call"}
               icon="hero-clipboard-document-check"
             >
-              {gettext("Attendance")}
+              {gettext("Roll call")}
             </.top_nav_link>
             <.top_nav_link
-              :if={@show_reports_nav?}
-              href={~p"/reports/report_cards"}
-              icon="hero-document-chart-bar"
+              :if={@current_user}
+              href={~p"/teacher/progress"}
+              icon="hero-calendar-days"
             >
-              {gettext("Reports")}
+              {gettext("Progress")}
             </.top_nav_link>
             <.top_nav_link :if={!@current_user} href={~p"/"} icon="hero-squares-2x2">
               {gettext("Overview")}
@@ -113,10 +99,6 @@ defmodule TeacherAssistantWeb.Layouts do
                   {@workspace_type_label} · {@role_label}
                 </div>
               </div>
-              <.link id="workspace-switcher" navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
-                <.icon name="hero-arrows-right-left" class="size-4" />
-                {gettext("Workspace")}
-              </.link>
               <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
                 <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
                 {gettext("Sign out")}
@@ -137,104 +119,24 @@ defmodule TeacherAssistantWeb.Layouts do
           class="hidden min-h-[calc(100vh-4rem)] w-72 shrink-0 border-r border-base-300 bg-base-100 px-4 py-5 lg:block"
         >
           <nav class="space-y-6" aria-label={gettext("Workspace navigation")}>
-            <div :if={@show_teacher_nav?} id="nav-teacher-tools" class="space-y-2">
+            <div id="nav-teacher-tools" class="space-y-2">
               <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Operate")}
+                {gettext("Teacher desk")}
               </div>
-              <.side_nav_link href={~p"/teacher/marks"} icon="hero-clipboard-document-list">
-                {gettext("Marks entry")}
+              <.side_nav_link href={~p"/teacher"} icon="hero-squares-2x2">
+                {gettext("Dashboard")}
               </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/attendance"} icon="hero-clipboard-document-check">
-                {gettext("Attendance")}
+              <.side_nav_link href={~p"/teacher/setup"} icon="hero-calendar">
+                {gettext("Academic year")}
               </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/progression"} icon="hero-calendar-days">
-                {gettext("Progression")}
+              <.side_nav_link href={~p"/teacher/classrooms"} icon="hero-users">
+                {gettext("Classrooms")}
               </.side_nav_link>
-              <.side_nav_link
-                id="nav-teacher-calendar"
-                href={~p"/teacher/calendar"}
-                icon="hero-calendar"
-              >
-                {gettext("Calendar")}
+              <.side_nav_link href={~p"/teacher/roll-call"} icon="hero-clipboard-document-check">
+                {gettext("Roll call")}
               </.side_nav_link>
-            </div>
-
-            <div
-              :if={@show_personal_management_nav?}
-              id="nav-personal-management"
-              class="space-y-2"
-            >
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Personal")}
-              </div>
-              <.side_nav_link
-                id="nav-personal-setup"
-                href={~p"/teacher/setup"}
-                icon="hero-cog-6-tooth"
-              >
-                {gettext("Setup")}
-              </.side_nav_link>
-              <.side_nav_link
-                id="nav-personal-students"
-                href={~p"/teacher/students"}
-                icon="hero-users"
-              >
-                {gettext("Students")}
-              </.side_nav_link>
-            </div>
-
-            <div :if={@show_reports_nav?} id="nav-reports" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Reports")}
-              </div>
-              <.side_nav_link href={~p"/reports/report_cards"} icon="hero-document-chart-bar">
-                {gettext("Report cards")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/reports/programme_coverage"} icon="hero-chart-bar">
-                {gettext("Programme coverage")}
-              </.side_nav_link>
-            </div>
-
-            <div :if={@show_access_nav?} id="nav-student-access" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Access")}
-              </div>
-              <.side_nav_link href={~p"/configurations/student_access"} icon="hero-identification">
-                {gettext("Classroom access")}
-              </.side_nav_link>
-            </div>
-
-            <div :if={@show_configuration_nav?} id="nav-configuration" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Configuration")}
-              </div>
-              <.side_nav_link href={~p"/configurations/academic_years"} icon="hero-calendar">
-                {gettext("Academic years")}
-              </.side_nav_link>
-              <.side_nav_link
-                id="nav-grade-intervals"
-                href={~p"/configurations/grade_intervals"}
-                icon="hero-chart-pie"
-              >
-                {gettext("Grade intervals")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/students"} icon="hero-users">
-                {gettext("Students")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/invitations"} icon="hero-user-plus">
-                {gettext("Invitations")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/subjects"} icon="hero-book-open">
-                {gettext("Subjects")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/levels_options"} icon="hero-rectangle-group">
-                {gettext("Levels and options")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/levels"} icon="hero-bars-3-bottom-left">
-                {gettext("Levels")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/options"} icon="hero-squares-2x2">
-                {gettext("Options")}
+              <.side_nav_link href={~p"/teacher/progress"} icon="hero-calendar-days">
+                {gettext("Lesson progress")}
               </.side_nav_link>
             </div>
           </nav>
@@ -285,15 +187,9 @@ defmodule TeacherAssistantWeb.Layouts do
     """
   end
 
-  defp role_in?(%{current_role: role}, roles), do: role in roles
-  defp role_in?(_, _roles), do: false
-
-  defp personal_context?(%{current_workspace_type: :personal_teacher}), do: true
-  defp personal_context?(_scope), do: false
-
-  defp school_name(%{current_tenant: %{name: name}}), do: name
-  defp school_name(%{current_user: %{} = _user}), do: gettext("Select a workspace")
-  defp school_name(_), do: nil
+  defp workspace_name(%{current_workspace: %{name: name}}), do: name
+  defp workspace_name(%{current_user: %{} = _user}), do: gettext("Personal workspace")
+  defp workspace_name(_), do: nil
 
   defp role_label(%{current_role: role}) when not is_nil(role) do
     role

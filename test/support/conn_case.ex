@@ -30,7 +30,7 @@ defmodule TeacherAssistantWeb.ConnCase do
       import TeacherAssistantWeb.ConnCase
 
       # Import fixtures
-      import TeacherAssistant.AcademicFixtures
+      import TeacherAssistant.TeacherFixtures
     end
   end
 
@@ -40,24 +40,16 @@ defmodule TeacherAssistantWeb.ConnCase do
   end
 
   def register_and_log_in_user(%{conn: conn}) do
-    school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
-    user = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.admin_user(tenant: school))
+    user = TeacherAssistant.TeacherFixtures.user_fixture()
+    workspace = TeacherAssistant.Accounts.ensure_personal_workspace!(user)
 
-    Ash.Generator.generate(
-      TeacherAssistant.AcademicFixtures.user_school(
-        tenant: school,
-        user_id: user.id,
-        role: user.role
-      )
-    )
-
-    %{conn: log_in_user(conn, school, user), tenant: school, actor: user}
+    %{conn: log_in_user(conn, workspace, user), workspace: workspace, actor: user}
   end
 
-  def log_in_user(conn, school, user) do
+  def log_in_user(conn, workspace, user) do
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:tenant, school.id)
+    |> Plug.Conn.put_session(:workspace_id, workspace.id)
     |> Plug.Conn.put_session(:user_id, user.id)
   end
 
