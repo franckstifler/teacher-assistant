@@ -43,6 +43,19 @@ defmodule TeacherAssistantWeb.ConnCase do
     |> Plug.Conn.put_session(:user_id, user.id)
   end
 
+  def register_and_log_in_user(%{conn: conn}) do
+    user = TeacherAssistant.TeacherFixtures.user_fixture()
+    workspace = TeacherAssistant.Academics.ensure_personal_workspace!(user)
+
+    conn =
+      conn
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, user.id)
+      |> Plug.Conn.put_session(:workspace_id, workspace.id)
+
+    {:ok, conn: conn, workspace: workspace, actor: user}
+  end
+
   def update_nested_form(view, form_selector, trigger_element, position \\ "end") do
     view
     |> Phoenix.LiveViewTest.form(form_selector, %{trigger_element => position})

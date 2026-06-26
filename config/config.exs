@@ -108,6 +108,8 @@ config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
+config :teacher_assistant, TeacherAssistantWeb.Gettext, locales: ~w(en fr), default_locale: "fr"
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 

@@ -12,7 +12,8 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   def session_context(conn) do
     %{
       "workspace_id" => Plug.Conn.get_session(conn, :workspace_id),
-      "user_id" => Plug.Conn.get_session(conn, :user_id)
+      "user_id" => Plug.Conn.get_session(conn, :user_id),
+      "locale" => Plug.Conn.get_session(conn, :locale)
     }
   end
 
@@ -42,7 +43,9 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
 
   defp assign_scope(socket, session) do
     user = socket.assigns[:current_user] || load_user(session["user_id"])
-    scope = resolve_scope(user, session["workspace_id"])
+    locale = session["locale"] || "fr"
+    Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
+    scope = %{resolve_scope(user, session["workspace_id"]) | locale: locale}
 
     socket
     |> assign(:current_user, user)

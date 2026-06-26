@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :load_from_session
+    plug TeacherAssistantWeb.Plug.Locale
   end
 
   pipeline :api do
@@ -27,6 +28,7 @@ defmodule TeacherAssistantWeb.Router do
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
     sign_out_route AuthController
     get "/workspaces/select/:id", WorkspaceController, :select
+    get "/locale/:locale", LocaleController, :set
 
     sign_in_route register_path: "/register",
                   reset_path: "/reset",
