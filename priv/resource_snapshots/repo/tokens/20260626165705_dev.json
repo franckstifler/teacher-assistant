@@ -2,26 +2,26 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "fragment(\"uuid_generate_v7()\")",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": true,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "first_name",
+      "source": "created_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": true,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "jti",
       "type": "text"
     },
     {
@@ -33,7 +33,31 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "last_name",
+      "source": "subject",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "expires_at",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "purpose",
       "type": "text"
     },
     {
@@ -45,8 +69,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "identifier",
-      "type": "text"
+      "source": "extra_data",
+      "type": "map"
     },
     {
       "allow_nil?": false,
@@ -71,37 +95,6 @@
       "size": null,
       "source": "updated_at",
       "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "learners_personal_classroom_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "personal_classrooms"
-      },
-      "scale": null,
-      "size": null,
-      "source": "personal_classroom_id",
-      "type": "uuid"
     }
   ],
   "base_filter": null,
@@ -110,7 +103,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "19DD0B1A5A38F0A83058F25D99BA451DAC1460285F0BA3E14D4734379D1E882C",
+  "hash": "EC6EF905F23ED78C4A16D824A051FFCD2C18215119722C1BB791E071DF30AC09",
   "identities": [],
   "multitenancy": {
     "attribute": null,
@@ -119,5 +112,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "learners"
+  "table": "tokens"
 }

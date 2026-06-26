@@ -21,7 +21,6 @@ defmodule TeacherAssistant.DataCase do
       alias TeacherAssistant.Repo
 
       import TeacherAssistant.DataCase
-      import TeacherAssistant.TeacherFixtures
     end
   end
 

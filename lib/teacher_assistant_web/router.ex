@@ -59,11 +59,6 @@ defmodule TeacherAssistantWeb.Router do
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
       live "/teacher", Teacher.DashboardLive, :index
-      live "/teacher/setup", Teacher.SetupLive, :index
-      live "/teacher/classrooms", Teacher.ClassroomsLive, :index
-      live "/teacher/classrooms/:id", Teacher.ClassroomShowLive, :show
-      live "/teacher/roll-call", Teacher.RollCallLive, :index
-      live "/teacher/progress", Teacher.ProgressLive, :index
     end
   end
 

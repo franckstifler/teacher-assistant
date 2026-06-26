@@ -132,12 +132,6 @@ defmodule TeacherAssistant.Accounts.User do
     timestamps()
   end
 
-  relationships do
-    has_one :personal_workspace, TeacherAssistant.Academics.PersonalWorkspace do
-      destination_attribute :owner_user_id
-    end
-  end
-
   identities do
     identity :unique_email, [:email]
   end

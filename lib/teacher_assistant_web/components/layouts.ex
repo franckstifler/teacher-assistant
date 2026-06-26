@@ -71,20 +71,6 @@ defmodule TeacherAssistantWeb.Layouts do
             >
               {gettext("Dashboard")}
             </.top_nav_link>
-            <.top_nav_link
-              :if={@current_user}
-              href={~p"/teacher/roll-call"}
-              icon="hero-clipboard-document-check"
-            >
-              {gettext("Roll call")}
-            </.top_nav_link>
-            <.top_nav_link
-              :if={@current_user}
-              href={~p"/teacher/progress"}
-              icon="hero-calendar-days"
-            >
-              {gettext("Progress")}
-            </.top_nav_link>
             <.top_nav_link :if={!@current_user} href={~p"/"} icon="hero-squares-2x2">
               {gettext("Overview")}
             </.top_nav_link>
@@ -125,18 +111,6 @@ defmodule TeacherAssistantWeb.Layouts do
               </div>
               <.side_nav_link href={~p"/teacher"} icon="hero-squares-2x2">
                 {gettext("Dashboard")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/setup"} icon="hero-calendar">
-                {gettext("Academic year")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/classrooms"} icon="hero-users">
-                {gettext("Classrooms")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/roll-call"} icon="hero-clipboard-document-check">
-                {gettext("Roll call")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/progress"} icon="hero-calendar-days">
-                {gettext("Lesson progress")}
               </.side_nav_link>
             </div>
           </nav>

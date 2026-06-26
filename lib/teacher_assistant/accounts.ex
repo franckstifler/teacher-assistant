@@ -3,7 +3,6 @@ defmodule TeacherAssistant.Accounts do
     otp_app: :teacher_assistant
 
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.Academics
 
   resources do
     resource TeacherAssistant.Accounts.Token
@@ -18,8 +17,4 @@ defmodule TeacherAssistant.Accounts do
 
   def get_user(id) when is_binary(id), do: Ash.get(User, id, authorize?: false)
   def get_user(_id), do: {:error, :not_found}
-
-  def ensure_personal_workspace!(%User{} = user) do
-    Academics.ensure_personal_workspace!(user)
-  end
 end

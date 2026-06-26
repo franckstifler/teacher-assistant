@@ -21,44 +21,32 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "start_date",
-      "type": "date"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "end_date",
-      "type": "date"
+      "source": "email",
+      "type": "citext"
     },
     {
       "allow_nil?": true,
-      "default": "true",
+      "default": "\"teacher\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "active",
-      "type": "boolean"
+      "source": "role",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "hashed_password",
+      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -83,37 +71,6 @@
       "size": null,
       "source": "updated_at",
       "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "academic_years_personal_workspace_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "personal_workspaces"
-      },
-      "scale": null,
-      "size": null,
-      "source": "personal_workspace_id",
-      "type": "uuid"
     }
   ],
   "base_filter": null,
@@ -122,23 +79,19 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "3FB01212F216C3C2B5414A523462F584AD0A41501E7D9202850E50B40EB5476D",
+  "hash": "609F39384AC668AE111EF79E79C65C8DFD1CBAB50A7FC960C618ABFA8CDA0C39",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "academic_years_unique_workspace_year_index",
+      "index_name": "users_unique_email_index",
       "keys": [
         {
           "type": "atom",
-          "value": "personal_workspace_id"
-        },
-        {
-          "type": "atom",
-          "value": "name"
+          "value": "email"
         }
       ],
-      "name": "unique_workspace_year",
+      "name": "unique_email",
       "nils_distinct?": true,
       "where": null
     }
@@ -150,5 +103,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "academic_years"
+  "table": "users"
 }

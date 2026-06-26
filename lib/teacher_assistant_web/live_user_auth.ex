@@ -62,12 +62,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   defp resolve_scope(nil, _workspace_id), do: %Scope{}
 
   defp resolve_scope(user, workspace_id) do
-    workspace = Workspaces.ensure_personal_workspace!(user)
-    selected_id = workspace_id || workspace.id
-
-    case Workspaces.scope_for(user, selected_id) do
-      {:ok, scope} -> scope
-      {:error, _reason} -> %Scope{current_user: user}
-    end
+    {:ok, scope} = Workspaces.scope_for(user, workspace_id)
+    scope
   end
 end
