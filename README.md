@@ -6,6 +6,9 @@ It's structured based on the Cameroon educational system.
 
 ## Project documents
 
+- [Domain knowledge base](docs/domain/README.md) — how the Cameroon education system actually
+  works (subsystems, CBA/APC, teacher documents, grading & report cards, school roles & fees).
+  **Source of truth for domain facts.**
 - [Product definition](docs/PRODUCT.md)
 - [Design system and UX direction](docs/DESIGN.md)
 
