@@ -51,5 +51,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       allow_nil? false
       public? true
     end
+
+    has_many :entries, TeacherAssistant.Academics.ProgressionEntry
   end
 end

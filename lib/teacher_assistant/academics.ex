@@ -9,6 +9,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.ProgressionPlan
+  alias TeacherAssistant.Academics.ProgressionEntry
 
   resources do
     resource PersonalWorkspace
@@ -17,6 +18,7 @@ defmodule TeacherAssistant.Academics do
     resource Sequence
     resource TeachingContext
     resource ProgressionPlan
+    resource ProgressionEntry
   end
 
   def ensure_personal_workspace!(%User{} = user) do
@@ -143,16 +145,47 @@ defmodule TeacherAssistant.Academics do
   def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
 
   def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
-    attrs =
-      %{
-        title: Map.get(overrides, :title, plan.title <> " (copy)"),
-        status: :draft,
-        template: Map.get(overrides, :template, false),
-        teaching_context_id: plan.teaching_context_id,
-        academic_year_id: plan.academic_year_id,
-        personal_workspace_id: plan.personal_workspace_id
-      }
+    attrs = %{
+      title: Map.get(overrides, :title, plan.title <> " (copy)"),
+      status: :draft,
+      template: Map.get(overrides, :template, false),
+      teaching_context_id: plan.teaching_context_id,
+      academic_year_id: plan.academic_year_id,
+      personal_workspace_id: plan.personal_workspace_id
+    }
 
-    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+    with {:ok, copy} <- ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false) do
+      for e <- list_progression_entries(plan) do
+        ProgressionEntry
+        |> Ash.Changeset.for_create(:create, %{
+          module: e.module, lesson_title: e.lesson_title, planned_hours: e.planned_hours,
+          entry_type: e.entry_type, week_no: e.week_no, position: e.position,
+          famille_de_situations: e.famille_de_situations, categories_action: e.categories_action,
+          competence_visee: e.competence_visee, progression_plan_id: copy.id, sequence_id: e.sequence_id
+        })
+        |> Ash.create!(authorize?: false)
+      end
+      {:ok, copy}
+    end
+  end
+
+  def add_progression_entry(%ProgressionPlan{id: plan_id}, attrs) do
+    next = (list_entries_query(plan_id) |> Ash.read!(authorize?: false) |> length()) + 1
+    attrs = attrs |> Map.put(:progression_plan_id, plan_id) |> Map.put_new(:position, next)
+    ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_progression_entries(%ProgressionPlan{id: plan_id}) do
+    list_entries_query(plan_id) |> Ash.Query.sort(position: :asc) |> Ash.read!(authorize?: false)
+  end
+
+  def update_progression_entry(%ProgressionEntry{} = e, attrs),
+    do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+
+  def delete_progression_entry(%ProgressionEntry{} = e), do: Ash.destroy(e, authorize?: false)
+  def get_progression_entry(id), do: Ash.get(ProgressionEntry, id, authorize?: false)
+
+  defp list_entries_query(plan_id) do
+    ProgressionEntry |> Ash.Query.filter(progression_plan_id == ^plan_id)
   end
 end
