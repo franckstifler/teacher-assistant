@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.ProgressionPlan
 
   resources do
     resource PersonalWorkspace
@@ -15,6 +16,7 @@ defmodule TeacherAssistant.Academics do
     resource Term
     resource Sequence
     resource TeachingContext
+    resource ProgressionPlan
   end
 
   def ensure_personal_workspace!(%User{} = user) do
@@ -120,4 +122,37 @@ defmodule TeacherAssistant.Academics do
   end
 
   def get_teaching_context(id), do: Ash.get(TeachingContext, id, authorize?: false)
+
+  def create_progression_plan(%TeachingContext{} = ctx, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:teaching_context_id, ctx.id)
+      |> Map.put(:academic_year_id, ctx.academic_year_id)
+      |> Map.put(:personal_workspace_id, ctx.personal_workspace_id)
+
+    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_progression_plans(%PersonalWorkspace{id: ws_id}) do
+    ProgressionPlan
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id)
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
+
+  def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
+    attrs =
+      %{
+        title: Map.get(overrides, :title, plan.title <> " (copy)"),
+        status: :draft,
+        template: Map.get(overrides, :template, false),
+        teaching_context_id: plan.teaching_context_id,
+        academic_year_id: plan.academic_year_id,
+        personal_workspace_id: plan.personal_workspace_id
+      }
+
+    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
 end
