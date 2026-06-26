@@ -16,7 +16,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
         current_workspace: ws,
         current_workspace_type: :personal_teacher,
         current_role: :teacher,
-        current_academic_year: nil
+        current_academic_year: Academics.current_academic_year(ws)
       }}
     else
       _ -> {:error, :workspace_not_found}
