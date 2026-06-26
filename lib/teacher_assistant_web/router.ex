@@ -64,6 +64,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/teacher/setup", Teacher.SetupLive, :index
       live "/teacher/log", Teacher.LogLive, :index
       live "/teacher/plans/:id", Teacher.FicheLive, :show
+      live "/teacher/plans/:id/coverage", Teacher.CoverageLive, :show
     end
   end
 
