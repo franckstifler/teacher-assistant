@@ -212,4 +212,10 @@ defmodule TeacherAssistant.Academics do
     |> Ash.Query.limit(limit)
     |> Ash.read!(authorize?: false)
   end
+
+  def coverage_for_plan(%ProgressionPlan{} = plan) do
+    entries = list_progression_entries(plan)
+    logs = list_logs_for_plan(plan)
+    TeacherAssistant.Academics.Coverage.summarize(entries, logs)
+  end
 end
