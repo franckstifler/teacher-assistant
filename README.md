@@ -12,16 +12,17 @@ It's structured based on the Cameroon educational system.
 - [Product definition](docs/PRODUCT.md)
 - [Design system and UX direction](docs/DESIGN.md)
 
-For Schools:
+It is **mobile-first**, **bilingual (FR/EN)**, and marketed around the **Competency-Based
+Approach (CBA / APC)**. It is built **teacher-first**: a teacher gets full value alone, and
+schools layer official administration on top later. See [Product definition](docs/PRODUCT.md)
+for the phased roadmap.
 
-- Marks recording
-- Report card generation with AI assisted remarks on performance and assiduity (Configurable by option or level)
-- Roll-call and absence computation
-- ... Other functionnalities will be added here.
+**Phase 1 — Independent teacher (in progress):**
 
-For Teachers:
-- Roll-call and Marks reporting
-- Curriculum and time table management
-- Lesson planning
-- Evaluation generation based on selected modules and lessons.
-- Other functionnalities to be added here.
+- v1 — Build a *fiche de progression* per subject × class and track **programme coverage**
+  (planned vs taught). *(See the current
+  [design spec](docs/superpowers/specs/2026-06-26-teacher-progression-coverage-v1-design.md).)*
+- Next: assisted import of existing fiches → marks & report cards → CBA lesson planning.
+
+**Phase 2 — School layer (later):** school workspaces, staff roles & councils, teacher
+invitations, official report cards & statistics, enrollment, fees and fee-based access control.

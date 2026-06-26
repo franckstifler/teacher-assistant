@@ -6,6 +6,21 @@ Teacher Assistant should feel like a professional school operations system: calm
 
 The landing page can introduce and sell the project, but authenticated screens should prioritize work: tables, filters, forms, tabs, compact summaries, and strong empty states.
 
+## Platform Constraints (set 2026-06-26)
+
+- **Mobile-first.** Design every authenticated flow for a phone first; most Cameroon teachers work
+  from smartphones. Dense desktop layouts are an enhancement of the mobile flow, not the baseline.
+  Where this doc says "table," on mobile prefer stacked rows / cards that collapse gracefully.
+- **Intermittent connectivity.** Keep interactions quick and forgiving: short forms, preserved
+  state on validation error, no multi-step actions that lose work if a request drops. (True
+  offline-first sync is a later phase, not v1.)
+- **Bilingual FR + EN.** Every UI string and data label exists in both languages; locale is a user
+  setting and switchable. Teacher-entered content stays in the teacher's chosen language. Use the
+  FR↔EN terms in [`docs/domain/glossary-fr-en.md`](domain/glossary-fr-en.md).
+- **Phased UI.** v1 is the independent-teacher experience only; school-workspace navigation and
+  admin surfaces arrive in Phase 2 (see [`PRODUCT.md`](PRODUCT.md)). Don't surface school-only
+  actions before that layer exists.
+
 ## Visual Principles
 
 - Use a restrained operational style, not decorative card-heavy layouts.

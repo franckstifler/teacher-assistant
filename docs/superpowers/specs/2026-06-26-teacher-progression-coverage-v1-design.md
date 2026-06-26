@@ -16,6 +16,11 @@ constraints:
 - **Mobile-first web app** (responsive Phoenix LiveView; built for phones + intermittent connectivity).
 - **Bilingual FR + EN** (both subsystems, switchable).
 - **Phoenix / Ash / LiveView** stack retained; product & data model rethought.
+- **Clean slate.** We do **not** carry over the existing domain/feature code (the old
+  school-centric `academics` model and the half-built personal-workspace resources/LiveViews are
+  all removed). We keep only the **framework scaffold** — the Phoenix/Ash project, `Repo`,
+  endpoint/router, `Layouts`/`core_components`, and **authentication** (`User` + magic-link/login)
+  — and build every domain resource and LiveView in this spec fresh on top of it.
 
 **Sequencing decision:** build **teacher-first** — a complete, delightful independent-teacher
 product — then layer the school workspace (roles, report cards, fees, access control, statistics)
@@ -72,8 +77,9 @@ This is a complete, self-contained loop that is useful to a single teacher with 
 
 ## 5. Data model
 
-Ash resources, all scoped to the teacher's `PersonalWorkspace` (owner-only policies). Reuse the
-existing `User` / `PersonalWorkspace` / `Scope` spine on the branch.
+Ash resources, all scoped to the teacher's `PersonalWorkspace` (owner-only policies). Built fresh
+on the retained auth scaffold (`User`) — the `PersonalWorkspace` and `Scope` below are **defined
+clean as part of v1**, not inherited from the previous branch code (see the clean-slate note in §1).
 
 ```
 User (locale: fr|en) ── owns ──> PersonalWorkspace

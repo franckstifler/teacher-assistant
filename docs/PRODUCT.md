@@ -1,135 +1,81 @@
-# Teacher Assistant Product Definition
+# Teacher Assistant — Product Definition
 
-## Product Summary
+> Rewritten 2026-06-26 for the from-scratch rethink. This is the evergreen product vision.
+> The detailed, current build target lives in
+> [`docs/superpowers/specs/`](superpowers/specs/). Domain facts live in
+> [`docs/domain/`](domain/README.md) and are the source of truth for how Cameroon's system works.
 
-Teacher Assistant is a Phoenix/Ash school operations and teacher productivity application built for Cameroon secondary education. It supports both schools and independent teachers:
+## Product summary
 
-- Schools use it to manage academic years, classes, subjects, marks, attendance, report cards, student classroom access, programme coverage, and staff workflows.
-- Teachers use it to manage pedagogic activities, progression plans, APC lesson structures, teaching logs, attendance, and marks, even when they are not attached to a school.
+Teacher Assistant is a **mobile-first, bilingual (FR/EN) platform for Cameroon secondary
+education**, marketed around the **Competency-Based Approach (CBA / APC)**. It serves both
+**independent teachers** and **schools**, built so a teacher gets full value alone and a school
+layers official administration on top.
 
-The product must reflect real Cameroon school operations: academic years, terms, sequences, fiches de progression, APC lesson planning, report-card calculations, programme coverage rates, and role-based administration.
+It must reflect *real* Cameroon school operations — academic years, terms and sequences, the
+*fiche de progression*, CBA lesson structure, /20 marks and coefficients, report cards, programme
+coverage, school roles and councils, fees and fee-based access. See [`docs/domain/`](domain/README.md).
 
-## Target Users
+## Principles
 
-- Teacher: enters marks, tracks attendance, follows weekly progression, logs taught content, and prepares APC lesson structures.
-- Independent teacher: uses a personal workspace for pedagogic planning, private learner tracking, attendance, and marks without official school administration.
-- Admin/principal: configures school data, academic years, classes, students, subjects, staff, report settings, and role access.
-- Vice principal: monitors programme coverage, teacher progression, and academic reporting.
-- Accountant/admin: manages classroom access statuses for students.
-- Discipline or school operations staff: may use attendance and classroom access views when enabled by school policy.
+- **Teacher-first, then school.** A teacher is the atomic unit; teacher↔school is many-to-many
+  (moonlighting is normal given the teacher shortage). We ship a complete independent-teacher
+  product first, then add the school layer teachers opt into. Bottom-up adoption is the on-ramp.
+- **Mobile-first.** Most teachers work from phones, over intermittent connectivity. Every flow is
+  designed for a few taps on a small screen first.
+- **Bilingual by law, not by translation.** Francophone (French model) and Anglophone (British
+  model) are two tracks of one national system. Carry FR + EN labels for every concept.
+- **CBA-ready, not CBA-mandatory.** CBA adoption is uneven in practice; CBA structure is available
+  and encouraged but never blocks a teacher who plans more traditionally.
+- **Configurable, not hard-coded.** Almost every Cameroon "number" (fees, coefficients by série,
+  devoirs per sequence, distinction thresholds, calendar) is a per-school / per-year setting. Only
+  the items marked ✅ in [`docs/domain/04`](domain/04-grading-and-report-cards.md) are constants.
+- **Deterministic before AI.** Calculations (coverage, averages, ranks) must be correct and tested
+  before any AI suggestion is layered on. AI produces editable suggestions, never authoritative numbers.
 
-## Core Product Model
+## Target users
 
-The app is organized around workspaces.
+- **Independent teacher** — plans the year, tracks teaching, (later) marks and lesson plans, with
+  no school involved. The starting persona.
+- **School-affiliated teacher** — same tools, plus participation in a school's classes, marks, and
+  report-card workflows.
+- **School pedagogic staff** — vice-principal (*censeur*) and heads of department follow programme
+  coverage and teacher progression.
+- **School discipline staff** — *surveillant général* tracks attendance and discipline.
+- **School admin / bursar** — configures the school, manages enrollment, fees, and fee-based access.
+- **Principal / head** — owns configuration, roles, report-card settings, and council decisions.
 
-- Personal teacher workspace: automatically available to each teacher; private to the user; supports pedagogic work, private marks, and private attendance.
-- School workspace: represents one school or organization; users enter by invitation or membership; all school-owned records are tenant scoped.
-- A user can belong to many school workspaces and keep a personal workspace.
-- The selected workspace determines tenant, role, navigation, permissions, and academic-year context.
+(Role definitions: [`docs/domain/05`](domain/05-school-roles-and-fees.md).)
 
-No workflow should assume a selected school or an existing academic year. When setup is missing, the user gets a guided setup or empty state instead of a crash.
+## Phased roadmap
 
-## Core Features
+The build is sequenced so each phase ships a usable product. Detailed specs are written per phase.
 
-### Authentication and Workspace Selection
+### Phase 1 — Independent teacher (in progress)
+- **v1 — Progression & Coverage** *(current spec:
+  [`2026-06-26-teacher-progression-coverage-v1-design.md`](superpowers/specs/2026-06-26-teacher-progression-coverage-v1-design.md))*.
+  Build a *fiche de progression* per subject × class (builder + templates), log what's actually
+  taught (lightweight *cahier de textes*), and see **taux de couverture du programme**. Clean slate
+  on the retained Phoenix/Ash + auth scaffold.
+- **v1.1** — assisted **import** of existing fiches (PDF/photo/Excel → editable draft rows).
+- **v1.2** — **marks & report cards** for the independent teacher (/20, sequences, averages).
+- **v1.3** — **lesson-plan (fiche de préparation)** editor scaffolded from a progression entry.
 
-- Password login.
-- Workspace selection after login when no workspace is selected.
-- Personal workspace creation for users without school membership.
-- Per-workspace role resolution instead of global role authorization.
-- School invitation by email with role assignment and acceptance flow.
+### Phase 2 — The school layer
+- School workspaces; staff **roles & councils**; teacher **invitations** (teacher↔school many-to-many).
+- Official **report cards** and **statistics** (with gender disaggregation, programme coverage).
+- **Enrollment**, **fees** (multi-tranche schedules), and **fee-based access control** —
+  configurable, overridable, audited (exam-gating is legally grey; never automatic).
 
-### Academic Setup
+### Later
+- National **syllabus library** · **offline-first** sync · **AI**-assisted remarks and scaffolding.
 
-- Academic years with start/end dates.
-- Terms and sequences.
-- Classes/classrooms tied to an academic year.
-- Levels, options, subjects, coefficients, and teacher assignments.
-- Guided academic-year setup when required data is missing.
+## Product quality bar
 
-### Marks
-
-- Teacher-filtered class and subject selection.
-- Mark entry and update with 0-20 validation.
-- Missing mark visibility.
-- Deterministic data foundation for report cards.
-
-### Attendance
-
-- Teacher-accessible attendance entry for assigned classes.
-- Present, absent, excused, and comment flows.
-- Duplicate-safe create/update behavior.
-- Attendance summaries for reports.
-
-### Report Cards
-
-- Deterministic calculations first: subject averages, coefficients, term averages, yearly averages, ranking, attendance counts, and appreciations.
-- Printable/exportable previews can be added after calculation correctness is stable.
-- AI remarks are optional editable suggestions, never authoritative calculations.
-
-### Fiche de Progression and Programme Coverage
-
-- Progression plans model planned weekly teaching content.
-- Progression entries include term, sequence, date range, content, planned hours, and entry type.
-- Entry types include lesson, integration, evaluation, correction, remediation, and holiday.
-- Teaching logs record actual taught entries and hours.
-- Programme coverage computes term and yearly taux de couverture du programme.
-- Dashboards support teachers, admins, and vice principals.
-
-### APC Lesson Structure
-
-APC lesson structures should be editable teacher workspaces generated from a progression entry. Fields include:
-
-- Competence.
-- Prerequisites.
-- Situation-problem.
-- Teacher and learner activities.
-- Resources.
-- Evaluation.
-- Remediation.
-- Timing.
-
-The app should not generate full lesson content by default in v1; it should generate or scaffold structure for teacher approval.
-
-### Student Classroom Access
-
-- Enrollment access statuses: allowed, pending, suspended, blocked.
-- Manual status in v1, not fee-balance automation.
-- Reason, set-by, and set-at audit fields.
-- Visible flags in attendance and classroom views.
-
-## Policy Model
-
-- Admin/principal: manage school configuration, users, classes, subjects, report-card settings, academic years, and invitations.
-- Accountant/admin/principal: manage student classroom access statuses.
-- Teacher: use assigned classes and subjects; enter marks, attendance, teaching logs, and APC lesson structures.
-- Vice principal/admin/principal: view coverage dashboards and academic reports.
-- Personal teacher workspace: teacher-only private scope; no official school report cards or student fee/access administration.
-
-## Roadmap
-
-### Current Foundation
-
-- Hybrid workspace model.
-- Personal and school workspace support.
-- Academic-year setup gate.
-- Marks, attendance, report-card preview, grade intervals, progression workspace, programme coverage, student access, and invitation basics.
-
-### Next Product Priorities
-
-- Formalize personal learner groups for independent teachers.
-- Add invitation acceptance UI from email/token links.
-- Improve missing-setup empty states in every teacher workflow.
-- Complete printable report-card export.
-- Add reviewed PDF import for fiches de progression.
-- Add APC structure templates by subject, level, and subsystem.
-- Add richer coverage dashboards by teacher, subject, class, term, and year.
-
-## Product Quality Bar
-
-- No tenant fallback through arbitrary first records.
-- No route should crash because academic year, class, subject, or assignment data is missing.
-- School-owned data must remain tenant isolated.
-- User permissions must derive from selected workspace role.
-- Deterministic calculations must be correct before AI suggestions are introduced.
-- All user-facing flows need stable DOM IDs for LiveView tests.
+- No route crashes because academic year, class, subject, or assignment data is missing — guide to
+  setup instead.
+- Data is workspace-scoped; no tenant fallback through arbitrary records.
+- Permissions derive from the selected workspace and role.
+- Deterministic calculations are correct and tested before AI suggestions are introduced.
+- Both languages render without overflow at mobile widths.
+- Every critical flow is testable via LiveView selectors against stable DOM IDs.
