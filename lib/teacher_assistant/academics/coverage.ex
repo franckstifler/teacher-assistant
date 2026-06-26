@@ -30,8 +30,8 @@ defmodule TeacherAssistant.Academics.Coverage do
     %{planned_hours: planned_total, covered_hours: covered_total, rate: rate(covered_total, planned_total), by_sequence: by_sequence}
   end
 
-  defp rate(_covered, planned) do
-    if Decimal.equal?(planned, Decimal.new(0)), do: 0.0, else: Decimal.to_float(Decimal.div(_covered, planned))
+  defp rate(covered, planned) do
+    if Decimal.equal?(planned, Decimal.new(0)), do: 0.0, else: Decimal.to_float(Decimal.div(covered, planned))
   end
 
   defp sum_hours(list), do: Enum.reduce(list, Decimal.new(0), fn l, acc -> Decimal.add(acc, to_decimal(l.hours)) end)
