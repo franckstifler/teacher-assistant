@@ -21,13 +21,17 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
   def handle_event("delete-entry", %{"id" => id}, socket) do
     {:ok, entry} = Academics.get_progression_entry(id)
-    Academics.delete_progression_entry(entry)
-    {:noreply, assign_entries(socket, socket.assigns.plan)}
+    case Academics.delete_progression_entry(entry) do
+      :ok -> {:noreply, assign_entries(socket, socket.assigns.plan)}
+      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
+    end
   end
 
   def handle_event("duplicate-plan", _params, socket) do
-    {:ok, copy} = Academics.duplicate_progression_plan(socket.assigns.plan, %{})
-    {:noreply, push_navigate(socket, to: ~p"/teacher/plans/#{copy.id}")}
+    case Academics.duplicate_progression_plan(socket.assigns.plan, %{}) do
+      {:ok, copy} -> {:noreply, push_navigate(socket, to: ~p"/teacher/plans/#{copy.id}")}
+      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not duplicate plan"))}
+    end
   end
 
   defp assign_entries(socket, plan) do
