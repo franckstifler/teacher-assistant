@@ -36,6 +36,13 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
             </span>
           </header>
 
+          <div class="flex flex-wrap gap-2">
+            <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm gap-2">
+              <.icon name="hero-arrow-up-tray" class="size-4" />
+              {gettext("Import a fiche")}
+            </.link>
+          </div>
+
           <div id="coverage-kpis" class="grid gap-3 sm:grid-cols-2">
             <div
               :for={kpi <- @kpis}
@@ -65,6 +72,9 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
               <p class="text-base-content/70">{gettext("No progression plan yet.")}</p>
               <.link navigate={~p"/teacher/setup"} class="btn btn-primary btn-sm">
                 {gettext("Set one up")}
+              </.link>
+              <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm">
+                {gettext("Import a fiche (PDF)")}
               </.link>
             </div>
           </div>
