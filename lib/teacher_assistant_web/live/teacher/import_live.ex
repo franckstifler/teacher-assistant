@@ -22,6 +22,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
       |> assign(:confidence, :high)
       |> assign(:raw_text, "")
       |> assign(:capped?, false)
+      |> assign(:sequences, (year && Academics.list_sequences(year)) || [])
       |> allow_upload(:fiche, accept: ~w(.pdf), max_entries: 1, max_file_size: @max_pdf_bytes)
 
     {:ok, socket}
@@ -92,7 +93,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
         </.form>
 
         <div :if={@stage == :review} id="import-review" class="space-y-4">
-          <div :if={@capped?} class="alert alert-warning text-sm">
+          <div :if={@capped?} id="import-truncation-notice" class="alert alert-warning text-sm">
             {gettext("This plan was truncated to 300 rows — the original fiche had more entries.")}
           </div>
 
@@ -113,18 +114,90 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
             {gettext("Review and fix before saving")}
           </p>
 
-          <ul id="import-rows" class="space-y-2">
-            <li
-              :for={{row, i} <- Enum.with_index(@rows)}
-              id={"import-row-#{i}"}
-              class="ta-leaf text-sm"
+          <.form for={%{}} id="import-review-form" phx-submit="save" class="space-y-3">
+            <input type="hidden" name="title" value={@title} />
+
+            <ul id="import-rows" class="space-y-2">
+              <li
+                :for={{row, i} <- Enum.with_index(@rows)}
+                id={"import-row-#{i}"}
+                class="ta-leaf space-y-2"
+              >
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <input
+                    name={"rows[#{i}][module]"}
+                    value={row.module}
+                    placeholder={gettext("Module")}
+                    class="w-full input input-sm"
+                  />
+                  <input
+                    name={"rows[#{i}][lesson_title]"}
+                    value={row.lesson_title}
+                    placeholder={gettext("Lesson")}
+                    class="w-full input input-sm"
+                  />
+                </div>
+                <div class="grid gap-2 sm:grid-cols-4">
+                  <input
+                    name={"rows[#{i}][planned_hours]"}
+                    value={row.planned_hours}
+                    type="number"
+                    step="0.5"
+                    placeholder={gettext("Hours")}
+                    class="w-full input input-sm"
+                  />
+                  <select name={"rows[#{i}][entry_type]"} class="w-full select select-sm">
+                    <option
+                      :for={t <- entry_type_options()}
+                      value={t.key}
+                      selected={to_string(t.key) == to_string(row.entry_type)}
+                    >
+                      {t.fr}
+                    </option>
+                  </select>
+                  <input
+                    name={"rows[#{i}][week_no]"}
+                    value={row.week_no}
+                    type="number"
+                    placeholder={gettext("Week")}
+                    class="w-full input input-sm"
+                  />
+                  <select name={"rows[#{i}][sequence_id]"} class="w-full select select-sm">
+                    <option value="">{gettext("Sequence…")}</option>
+                    <option
+                      :for={s <- @sequences}
+                      value={s.id}
+                      selected={s.number == row.sequence_no}
+                    >
+                      {gettext("Seq")} {s.number}
+                    </option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  phx-click="delete-row"
+                  phx-value-index={i}
+                  class="btn btn-ghost btn-xs text-error"
+                >
+                  <.icon name="hero-trash" class="size-4" />
+                  <span class="sr-only">{gettext("Delete row")}</span>
+                </button>
+              </li>
+            </ul>
+
+            <button
+              type="button"
+              id="import-add-row"
+              phx-click="add-row"
+              class="btn btn-ghost btn-sm gap-2"
             >
-              <div class="font-semibold">{row.module} · {row.lesson_title}</div>
-              <div class="ta-num text-xs text-base-content/60">
-                {row.planned_hours}h · {row.entry_type}{if row.week_no, do: " · S#{row.week_no}"}
-              </div>
-            </li>
-          </ul>
+              <.icon name="hero-plus" class="size-4" /> {gettext("Add row")}
+            </button>
+
+            <.button id="import-save" type="submit" class="btn btn-primary w-full gap-2">
+              <.icon name="hero-check" class="size-4" /> {gettext("Save as draft plan")}
+            </.button>
+          </.form>
         </div>
       </section>
     </Layouts.app>
@@ -177,6 +250,61 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
     end
   end
 
+  def handle_event("add-row", _params, socket) do
+    blank = %{
+      module: "",
+      lesson_title: "",
+      planned_hours: "1",
+      entry_type: :lesson,
+      week_no: nil,
+      sequence_no: nil
+    }
+
+    {:noreply, assign(socket, :rows, socket.assigns.rows ++ [blank])}
+  end
+
+  def handle_event("delete-row", %{"index" => index}, socket) do
+    i = String.to_integer(index)
+    {:noreply, assign(socket, :rows, List.delete_at(socket.assigns.rows, i))}
+  end
+
+  def handle_event("save", %{"rows" => rows_params} = params, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+    rows = build_rows(rows_params)
+
+    cond do
+      rows == [] ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Add at least one row with a module and lesson."))}
+
+      true ->
+        attrs = %{
+          teaching_context_id: socket.assigns.context_id,
+          title: title_or_default(params, socket)
+        }
+
+        case Academics.import_progression_plan(ws, attrs, rows) do
+          {:ok, plan} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, gettext("Plan imported."))
+             |> push_navigate(to: ~p"/teacher/plans/#{plan.id}")}
+
+          {:error, _reason} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               gettext("Could not save the plan. Check the rows and try again.")
+             )}
+        end
+    end
+  end
+
+  def handle_event("save", params, socket) do
+    handle_event("save", Map.put(params, "rows", %{}), socket)
+  end
+
   defp normalize_rows(rows) do
     Enum.map(rows, fn r ->
       %{
@@ -189,6 +317,59 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
       }
     end)
   end
+
+  defp build_rows(rows_params) do
+    rows_params
+    |> Enum.sort_by(fn {k, _} -> String.to_integer(k) end)
+    |> Enum.map(fn {_k, r} -> r end)
+    |> Enum.filter(fn r ->
+      String.trim(r["module"] || "") != "" and String.trim(r["lesson_title"] || "") != ""
+    end)
+    |> Enum.map(fn r ->
+      %{
+        module: String.trim(r["module"]),
+        lesson_title: String.trim(r["lesson_title"]),
+        planned_hours: parse_decimal(r["planned_hours"]),
+        entry_type: String.to_existing_atom(r["entry_type"] || "lesson"),
+        week_no: parse_optional_int(r["week_no"]),
+        sequence_id: blank_to_nil(r["sequence_id"])
+      }
+    end)
+  end
+
+  defp parse_decimal(value) do
+    case value |> to_string() |> String.replace(",", ".") |> Decimal.parse() do
+      {d, _} -> d
+      :error -> Decimal.new("1")
+    end
+  end
+
+  defp parse_optional_int(value) do
+    case Integer.parse(to_string(value)) do
+      {n, _} -> n
+      :error -> nil
+    end
+  end
+
+  defp blank_to_nil(nil), do: nil
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(v), do: v
+
+  defp title_or_default(params, socket) do
+    case String.trim(params["title"] || socket.assigns.title || "") do
+      "" -> default_title(socket)
+      title -> title
+    end
+  end
+
+  defp default_title(socket) do
+    case Enum.find(socket.assigns.contexts, &(&1.id == socket.assigns.context_id)) do
+      %{subject: subject, level: level} -> "#{subject} · #{level}"
+      _ -> gettext("Imported fiche")
+    end
+  end
+
+  defp entry_type_options, do: TeacherAssistant.Academics.Reference.entry_types()
 
   defp upload_error_to_string(:too_large), do: gettext("That file is too large (max 10 MB).")
   defp upload_error_to_string(:not_accepted), do: gettext("Please choose a PDF file.")
