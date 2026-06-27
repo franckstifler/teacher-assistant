@@ -26,3 +26,12 @@ for the phased roadmap.
 
 **Phase 2 — School layer (later):** school workspaces, staff roles & councils, teacher
 invitations, official report cards & statistics, enrollment, fees and fee-based access control.
+
+## System dependencies
+
+The **fiche import** feature (v1.1+) requires `pdftotext` (from `poppler-utils`) to extract text from PDF files. Without it installed, the import feature gracefully falls back to manual entry but PDF parsing will not be available.
+
+**Installation:**
+- **macOS:** `brew install poppler`
+- **Debian/Ubuntu:** `apt-get install poppler-utils`
+- **Other:** See [poppler documentation](https://poppler.freedesktop.org/)

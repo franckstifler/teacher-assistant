@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
+  alias TeacherAssistant.Repo
 
   resources do
     resource PersonalWorkspace
@@ -189,6 +190,88 @@ defmodule TeacherAssistant.Academics do
 
       error ->
         error
+    end
+  end
+
+  def fetch_owned_teaching_context(id, %PersonalWorkspace{id: ws_id}) do
+    TeachingContext
+    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  @doc """
+  Creates a draft ProgressionPlan and its entries from imported rows in a single
+  transaction. Rolls back entirely on any failure (no orphan plan). Owner-scoped:
+  the teaching context must belong to `ws`.
+
+  Notifications are deferred until after the transaction commits so that
+  rolled-back rows never produce phantom PubSub events and no
+  `:missed_notifications` advisory is emitted.
+  """
+  def import_progression_plan(
+        %PersonalWorkspace{} = ws,
+        %{teaching_context_id: ctx_id} = attrs,
+        rows
+      ) do
+    with {:ok, ctx} <- fetch_owned_teaching_context(ctx_id, ws) do
+      result =
+        Repo.transaction(fn ->
+          plan_attrs = %{
+            title: attrs.title,
+            status: :draft,
+            teaching_context_id: ctx.id,
+            academic_year_id: ctx.academic_year_id,
+            personal_workspace_id: ctx.personal_workspace_id
+          }
+
+          {plan, plan_notifs} =
+            case ProgressionPlan
+                 |> Ash.Changeset.for_create(:create, plan_attrs)
+                 |> Ash.create(authorize?: false, return_notifications?: true) do
+              {:ok, plan, notifs} -> {plan, notifs}
+              {:error, reason} -> Repo.rollback(reason)
+            end
+
+          entry_notifs =
+            rows
+            |> Enum.with_index(1)
+            |> Enum.flat_map(fn {row, position} ->
+              entry_attrs =
+                row
+                |> Map.take([
+                  :module,
+                  :lesson_title,
+                  :planned_hours,
+                  :entry_type,
+                  :week_no,
+                  :sequence_id
+                ])
+                |> Map.put(:progression_plan_id, plan.id)
+                |> Map.put(:position, position)
+
+              case ProgressionEntry
+                   |> Ash.Changeset.for_create(:create, entry_attrs)
+                   |> Ash.create(authorize?: false, return_notifications?: true) do
+                {:ok, _entry, notifs} -> notifs
+                {:error, reason} -> Repo.rollback(reason)
+              end
+            end)
+
+          {plan, plan_notifs ++ entry_notifs}
+        end)
+
+      case result do
+        {:ok, {plan, notifications}} ->
+          Ash.Notifier.notify(notifications)
+          {:ok, plan}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
