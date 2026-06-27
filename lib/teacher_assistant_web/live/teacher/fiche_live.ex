@@ -66,27 +66,45 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section id="fiche-builder" class="p-4 space-y-4">
-        <div class="flex items-center justify-between">
-          <h1 class="text-xl font-semibold">{@plan.title}</h1>
-          <.button id="duplicate-plan" phx-click="duplicate-plan" class="btn btn-ghost btn-sm">
+      <section id="fiche-builder" class="space-y-6">
+        <header class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p class="ta-eyebrow">{gettext("Fiche de progression")}</p>
+            <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@plan.title}</h1>
+          </div>
+          <.button id="duplicate-plan" phx-click="duplicate-plan" class="btn btn-ghost btn-sm gap-2">
+            <.icon name="hero-document-duplicate" class="size-4" />
             {gettext("Duplicate")}
           </.button>
-        </div>
+        </header>
 
         <ul id="fiche-entries" class="space-y-2">
           <li
             :for={e <- @entries}
             id={"entry-#{e.id}"}
-            class="card bg-base-100 shadow p-3 flex flex-row justify-between items-center"
+            class="ta-leaf flex flex-row items-center justify-between gap-3"
           >
-            <div>
-              <div class="font-medium">{e.lesson_title}</div>
-              <div class="text-sm opacity-70">{e.module} · {e.planned_hours}h · {e.entry_type}</div>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-display font-semibold">{e.lesson_title}</span>
+                <span class="badge badge-soft badge-sm">{e.entry_type}</span>
+              </div>
+              <div class="mt-0.5 text-sm text-base-content/65">
+                {e.module} <span class="text-base-content/40">·</span>
+                <span class="ta-num">{e.planned_hours}h</span>
+              </div>
             </div>
-            <.button phx-click="delete-entry" phx-value-id={e.id} class="btn btn-ghost btn-xs">
-              {gettext("Delete")}
+            <.button
+              phx-click="delete-entry"
+              phx-value-id={e.id}
+              class="btn btn-ghost btn-xs text-error"
+            >
+              <.icon name="hero-trash" class="size-4" />
+              <span class="sr-only">{gettext("Delete")}</span>
             </.button>
+          </li>
+          <li :if={@entries == []} class="ta-leaf text-sm text-base-content/60">
+            {gettext("No entries yet — add your first lesson below.")}
           </li>
         </ul>
 
@@ -94,23 +112,27 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
           for={@entry_form}
           id="add-entry-form"
           phx-submit="add-entry"
-          class="card bg-base-200 p-3 space-y-2"
+          class="card bg-base-100 p-4 space-y-2"
         >
+          <p class="ta-eyebrow">{gettext("Add entry")}</p>
           <.input field={@entry_form[:module]} label={gettext("Module")} />
           <.input field={@entry_form[:lesson_title]} label={gettext("Lesson")} />
-          <.input
-            type="number"
-            field={@entry_form[:planned_hours]}
-            label={gettext("Hours")}
-            value="1"
-          />
-          <.input
-            type="select"
-            field={@entry_form[:entry_type]}
-            label={gettext("Type")}
-            options={for t <- Reference.entry_types(), do: {t.fr, t.key}}
-          />
-          <.button id="add-entry-submit" type="submit" class="btn btn-primary">
+          <div class="grid gap-2 sm:grid-cols-2">
+            <.input
+              type="number"
+              field={@entry_form[:planned_hours]}
+              label={gettext("Hours")}
+              value="1"
+            />
+            <.input
+              type="select"
+              field={@entry_form[:entry_type]}
+              label={gettext("Type")}
+              options={for t <- Reference.entry_types(), do: {t.fr, t.key}}
+            />
+          </div>
+          <.button id="add-entry-submit" type="submit" class="btn btn-primary w-full gap-2">
+            <.icon name="hero-plus" class="size-4" />
             {gettext("Add entry")}
           </.button>
         </.form>

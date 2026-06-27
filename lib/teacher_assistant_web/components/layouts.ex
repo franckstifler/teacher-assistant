@@ -45,38 +45,22 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
 
     ~H"""
-    <div class="min-h-screen bg-base-200 text-base-content">
-      <header class="sticky top-0 z-40 border-b border-base-300 bg-base-100">
-        <div class="flex min-h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <a href="/" class="flex min-w-0 items-center gap-3">
-            <span class="grid size-9 place-items-center rounded-md bg-primary text-primary-content shadow-sm">
+    <div class="flex min-h-screen flex-col bg-base-200 text-base-content">
+      <header class="sticky top-0 z-40 border-b border-base-300 bg-base-100/95 backdrop-blur">
+        <div class="mx-auto flex min-h-16 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
+          <a href="/" class="flex min-w-0 items-center gap-2.5">
+            <span class="grid size-9 place-items-center rounded-lg bg-primary text-primary-content shadow-sm">
               <.icon name="hero-academic-cap" class="size-5" />
             </span>
-            <span class="min-w-0">
-              <span class="block text-sm font-semibold leading-5">Teacher Assistant</span>
-              <span class="block truncate text-xs text-base-content/55">
+            <span class="min-w-0 leading-tight">
+              <span class="block text-sm font-semibold ta-display">Teacher Assistant</span>
+              <span class="block truncate text-[0.7rem] text-base-content/55">
                 {@workspace_name || gettext("Cameroon teacher workspace")}
               </span>
             </span>
           </a>
 
-          <nav
-            class="ml-auto hidden items-center gap-1 lg:flex"
-            aria-label={gettext("Main navigation")}
-          >
-            <.top_nav_link
-              :if={@current_user}
-              href={~p"/teacher"}
-              icon="hero-squares-2x2"
-            >
-              {gettext("Dashboard")}
-            </.top_nav_link>
-            <.top_nav_link :if={!@current_user} href={~p"/"} icon="hero-squares-2x2">
-              {gettext("Overview")}
-            </.top_nav_link>
-          </nav>
-
-          <div class="ml-auto flex items-center gap-2 lg:ml-3">
+          <div class="ml-auto flex items-center gap-2">
             <Layouts.theme_toggle />
             <%= if @current_user do %>
               <div class="hidden text-right sm:block">
@@ -87,7 +71,7 @@ defmodule TeacherAssistantWeb.Layouts do
               </div>
               <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
                 <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
-                {gettext("Sign out")}
+                <span class="hidden sm:inline">{gettext("Sign out")}</span>
               </.link>
             <% else %>
               <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
@@ -97,66 +81,36 @@ defmodule TeacherAssistantWeb.Layouts do
             <% end %>
           </div>
         </div>
+
+        <nav
+          :if={@current_user}
+          id="main-nav"
+          class="mx-auto flex w-full max-w-6xl items-center gap-1 px-3 pb-2 sm:px-5"
+          aria-label={gettext("Main navigation")}
+        >
+          <.tab_link id="nav-dashboard" href={~p"/teacher"} icon="hero-squares-2x2">
+            {gettext("Dashboard")}
+          </.tab_link>
+          <.tab_link id="nav-log" href={~p"/teacher/log"} icon="hero-pencil-square">
+            {gettext("Log")}
+          </.tab_link>
+          <div id="locale-switch" class="ml-auto flex items-center gap-1">
+            <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs ta-num">FR</.link>
+            <span class="text-base-content/30">·</span>
+            <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs ta-num">EN</.link>
+          </div>
+        </nav>
       </header>
 
-      <nav
-        :if={@current_user}
-        id="main-nav"
-        class="navbar bg-base-100 px-4 gap-2 border-b border-base-300"
-      >
-        <.link id="nav-dashboard" navigate={~p"/teacher"} class="btn btn-ghost btn-sm">
-          {gettext("Dashboard")}
-        </.link>
-        <.link id="nav-log" navigate={~p"/teacher/log"} class="btn btn-ghost btn-sm">
-          {gettext("Log")}
-        </.link>
-        <div id="locale-switch" class="ml-auto flex gap-1">
-          <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs">FR</.link>
-          <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs">EN</.link>
-        </div>
-      </nav>
-
-      <div class={["mx-auto flex w-full", @current_user && "max-w-[1600px]"]}>
-        <aside
-          :if={@current_user}
-          class="hidden min-h-[calc(100vh-4rem)] w-72 shrink-0 border-r border-base-300 bg-base-100 px-4 py-5 lg:block"
-        >
-          <nav class="space-y-6" aria-label={gettext("Workspace navigation")}>
-            <div id="nav-teacher-tools" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Teacher desk")}
-              </div>
-              <.side_nav_link href={~p"/teacher"} icon="hero-squares-2x2">
-                {gettext("Dashboard")}
-              </.side_nav_link>
-            </div>
-          </nav>
-        </aside>
-
-        <main class={
-          if(@current_user, do: "min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8", else: "w-full")
-        }>
-          <div class={if(@current_user, do: "mx-auto max-w-7xl space-y-6", else: "mx-auto w-full")}>
-            {render_slot(@inner_block)}
-          </div>
-        </main>
-      </div>
+      <main class={[
+        "flex-1",
+        if(@current_user, do: "mx-auto w-full max-w-6xl px-4 py-6 sm:px-6", else: "w-full")
+      ]}>
+        {render_slot(@inner_block)}
+      </main>
     </div>
 
     <.flash_group flash={@flash} />
-    """
-  end
-
-  attr :href, :string, required: true
-  attr :icon, :string, required: true
-  slot :inner_block, required: true
-
-  defp top_nav_link(assigns) do
-    ~H"""
-    <.link navigate={@href} class="btn btn-ghost btn-sm gap-2">
-      <.icon name={@icon} class="size-4" />
-      {render_slot(@inner_block)}
-    </.link>
     """
   end
 
@@ -165,15 +119,15 @@ defmodule TeacherAssistantWeb.Layouts do
   attr :icon, :string, required: true
   slot :inner_block, required: true
 
-  defp side_nav_link(assigns) do
+  defp tab_link(assigns) do
     ~H"""
     <.link
       id={@id}
       navigate={@href}
-      class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-base-content/72 transition hover:bg-base-200 hover:text-base-content"
+      class="group inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-base-content/70 transition hover:bg-base-200 hover:text-base-content"
     >
       <.icon name={@icon} class="size-4 text-base-content/45 transition group-hover:text-primary" />
-      <span>{render_slot(@inner_block)}</span>
+      {render_slot(@inner_block)}
     </.link>
     """
   end
