@@ -61,4 +61,37 @@ defmodule TeacherAssistant.Academics.FicheParserTest do
   test "never raises on garbage input" do
     assert {:ok, %{confidence: :low}} = FicheParser.parse("")
   end
+
+  test "correctly parses accented French headers (Leçon, Durée, Thème)" do
+    # Regression: byte offsets from Regex.run must be converted to char offsets
+    # before using with String.slice. Accented chars (multi-byte UTF-8) would shift
+    # later columns if offsets weren't converted.
+    text = """
+    Module                 Leçon                      Durée
+    Nombres et calculs     Les entiers naturels       2
+    Nombres et calculs     Addition et soustraction   3
+    Géométrie              Les droites                1
+    """
+
+    assert {:ok, %{rows: rows, confidence: :high}} = FicheParser.parse(text)
+    assert length(rows) == 3
+
+    # First row: check module, lesson, and hours are correct
+    assert %{
+             module: "Nombres et calculs",
+             lesson_title: "Les entiers naturels",
+             planned_hours: hours
+           } = hd(rows)
+
+    assert Decimal.equal?(hours, Decimal.new("2"))
+
+    # Third row: check "Géométrie" with accented character is parsed correctly
+    assert %{
+             module: "Géométrie",
+             lesson_title: "Les droites",
+             planned_hours: hours3
+           } = Enum.at(rows, 2)
+
+    assert Decimal.equal?(hours3, Decimal.new("1"))
+  end
 end

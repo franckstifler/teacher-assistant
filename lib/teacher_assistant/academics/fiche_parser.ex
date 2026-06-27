@@ -60,8 +60,13 @@ defmodule TeacherAssistant.Academics.FicheParser do
     @groups
     |> Enum.flat_map(fn {field, regex} ->
       case Regex.run(regex, line, return: :index) do
-        [{start, _len} | _] -> [{field, start}]
-        _ -> []
+        [{start, _len} | _] ->
+          # Convert byte offset (from regex) to character offset using the header line
+          char_offset = byte_offset_to_char_offset(line, start)
+          [{field, char_offset}]
+
+        _ ->
+          []
       end
     end)
   end
@@ -95,20 +100,27 @@ defmodule TeacherAssistant.Academics.FicheParser do
     Enum.reverse(rows)
   end
 
-  # Slice the line into %{field => substring} by column start positions.
+  # Slice the line into %{field => substring} by column start positions (character offsets).
   defp slice_cells(line, columns) do
     columns
     |> Enum.with_index()
-    |> Enum.map(fn {{field, start}, i} ->
-      stop =
+    |> Enum.map(fn {{field, char_start}, i} ->
+      char_stop =
         case Enum.at(columns, i + 1) do
-          {_f, next_start} -> next_start
+          {_f, next_char_start} -> next_char_start
           nil -> String.length(line)
         end
 
-      {field, String.slice(line, start, max(stop - start, 0))}
+      {field, String.slice(line, char_start, max(char_stop - char_start, 0))}
     end)
     |> Map.new()
+  end
+
+  # Convert byte offset (from Regex.run) to character offset.
+  # Clamps offset to binary size to avoid raising.
+  defp byte_offset_to_char_offset(binary, byte_offset) do
+    clamped = min(byte_offset, byte_size(binary))
+    binary |> binary_part(0, clamped) |> String.length()
   end
 
   defp cell(cells, field), do: Map.get(cells, field, "")
