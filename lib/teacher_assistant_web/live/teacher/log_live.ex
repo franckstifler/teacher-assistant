@@ -42,18 +42,23 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section id="teacher-log" class="p-4 max-w-md mx-auto space-y-3">
-        <h1 class="text-xl font-semibold">{gettext("Log what you taught")}</h1>
-        <.form for={@form} id="log-form" phx-submit="save" class="space-y-3">
+      <section id="teacher-log" class="mx-auto max-w-md space-y-5">
+        <header>
+          <p class="ta-eyebrow">{gettext("Cahier de textes")}</p>
+          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{gettext("Log what you taught")}</h1>
+        </header>
+        <.form for={@form} id="log-form" phx-submit="save" class="ta-leaf space-y-2">
           <.input
             type="select"
             field={@form[:progression_entry_id]}
             label={gettext("Lesson")}
             options={for e <- @entries, do: {"#{e.module} · #{e.lesson_title}", e.id}}
           />
-          <.input type="date" field={@form[:date]} label={gettext("Date")} />
+          <div class="grid gap-2 sm:grid-cols-2">
+            <.input type="date" field={@form[:date]} label={gettext("Date")} />
+            <.input type="number" field={@form[:hours]} label={gettext("Hours")} value="1" />
+          </div>
           <.input field={@form[:content_taught]} label={gettext("What was taught")} />
-          <.input type="number" field={@form[:hours]} label={gettext("Hours")} value="1" />
           <.input
             type="select"
             field={@form[:status]}
@@ -62,7 +67,8 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
           />
           <.input field={@form[:homework]} label={gettext("Homework (optional)")} />
           <.input field={@form[:note]} label={gettext("Note (optional)")} />
-          <.button id="log-submit" type="submit" class="btn btn-primary w-full">
+          <.button id="log-submit" type="submit" class="btn btn-primary w-full gap-2">
+            <.icon name="hero-check" class="size-4" />
             {gettext("Save")}
           </.button>
         </.form>

@@ -1,139 +1,207 @@
 <Layouts.app flash={@flash} current_scope={assigns[:current_scope]}>
-  <div class="bg-base-200">
-    <section
-      id="landing-hero"
-      class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-16"
-    >
-      <div class="flex flex-col justify-center">
-        <p class="ta-section-label">Cameroon secondary schools</p>
-        <h1 class="mt-4 max-w-4xl text-4xl font-semibold leading-tight tracking-normal text-base-content sm:text-6xl">
-          Run marks, attendance, access control, and programme coverage from one school desk.
-        </h1>
-        <p class="mt-5 max-w-2xl text-lg leading-8 text-base-content/70">
-          Teacher Assistant gives principals, teachers, accountants, and discipline teams a shared operational system for the academic year, not another spreadsheet to reconcile at the end of term.
-        </p>
+  <section
+    id="landing-hero"
+    class="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-24"
+  >
+    <div class="flex flex-col justify-center">
+      <p class="ta-eyebrow">For Cameroon secondary teachers · APC / CBA</p>
+      <h1 class="mt-4 max-w-2xl text-4xl font-bold leading-[1.05] tracking-tight text-base-content sm:text-6xl">
+        Teach the whole programme. <span class="ta-mark">Know it</span> at a glance.
+      </h1>
+      <p class="mt-6 max-w-xl text-lg leading-8 text-base-content/75">
+        Every term starts with a <em>fiche de progression</em>
+        shared as a PDF in a WhatsApp group —
+        and ends with no one quite sure how much of the syllabus was actually covered. Teacher
+        Assistant turns that plan into a living tracker: build it once, tick off what you teach each
+        week, and watch your <em>taux de couverture</em>
+        climb. On your phone, in French or English.
+      </p>
 
-        <div id="home-actions" class="mt-8 flex flex-col gap-3 sm:flex-row">
-          <.link navigate={~p"/sign-in"} class="btn btn-primary">
-            <.icon name="hero-arrow-left-on-rectangle" class="size-5" /> Sign in
-          </.link>
-          <.link navigate={~p"/teacher"} class="btn btn-outline">
-            <.icon name="hero-squares-2x2" class="size-5" /> Open teacher desk
-          </.link>
-        </div>
-      </div>
-
-      <div class="ta-panel overflow-hidden">
-        <div class="border-b border-base-300 px-5 py-4">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <p class="text-sm font-semibold">Academic operations</p>
-              <p class="text-xs text-base-content/55">Live school workflow index</p>
-            </div>
-            <span class="badge badge-success badge-sm">Ready for pilot</span>
-          </div>
-        </div>
-
-        <div class="grid gap-3 p-5">
-          <div class="grid grid-cols-3 gap-3">
-            <div class="ta-kpi">
-              <div class="text-2xl font-semibold">20</div>
-              <div class="text-xs text-base-content/55">Mark scale</div>
-            </div>
-            <div class="ta-kpi">
-              <div class="text-2xl font-semibold">4</div>
-              <div class="text-xs text-base-content/55">Access states</div>
-            </div>
-            <div class="ta-kpi">
-              <div class="text-2xl font-semibold">APC</div>
-              <div class="text-xs text-base-content/55">Lesson structure</div>
-            </div>
-          </div>
-
-          <div class="overflow-x-auto rounded-md border border-base-300">
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>Workflow</th>
-                  <th>Owner</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="font-medium">Personal classrooms</td>
-                  <td>Teacher</td>
-                  <td><span class="badge badge-success badge-sm">Live</span></td>
-                </tr>
-                <tr>
-                  <td class="font-medium">Roll call</td>
-                  <td>Teacher</td>
-                  <td><span class="badge badge-success badge-sm">Live</span></td>
-                </tr>
-                <tr>
-                  <td class="font-medium">Plan versus taught progress</td>
-                  <td>Teacher</td>
-                  <td><span class="badge badge-success badge-sm">Live</span></td>
-                </tr>
-                <tr>
-                  <td class="font-medium">School workspaces</td>
-                  <td>Schools</td>
-                  <td><span class="badge badge-warning badge-sm">Next</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="product-proof" class="ta-landing-band">
-      <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:px-8">
-        <div>
-          <p class="ta-section-label">Why it matters</p>
-          <h2 class="mt-3 text-2xl font-semibold">
-            Built around the school year, not isolated forms.
-          </h2>
-        </div>
-        <div class="space-y-3 text-sm leading-6 text-base-content/70">
-          <p>
-            A teacher can see planned weekly progression, log what was actually taught, and structure a lesson with competence-based fields.
-          </p>
-          <p>
-            School dashboards, report cards, and programme coverage will build on the same classroom foundation later.
-          </p>
-        </div>
-        <div class="space-y-3 text-sm leading-6 text-base-content/70">
-          <p>
-            The first version gives individual teachers a private workspace before institution-level administration is added.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section id="workflow-index" class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p class="ta-section-label">Index</p>
-          <h2 class="mt-3 text-2xl font-semibold">Choose the desk you work from.</h2>
-        </div>
-        <p class="max-w-xl text-sm leading-6 text-base-content/60">
-          Each desk exposes only the workflows that role needs. The same school scope protects all records.
-        </p>
-      </div>
-
-      <div class="grid gap-4 lg:grid-cols-1">
-        <.link
-          navigate={~p"/teacher"}
-          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
-        >
-          <.icon name="hero-squares-2x2" class="size-6 text-primary" />
-          <h3 class="mt-4 font-semibold">Teacher desk</h3>
-          <p class="mt-2 text-sm leading-6 text-base-content/65">
-            Your personal teaching workspace — classrooms, progression, and more coming soon.
-          </p>
+      <div id="home-actions" class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <.link navigate={~p"/register"} class="btn btn-primary btn-lg">
+          <.icon name="hero-academic-cap" class="size-5" /> Create your free account
+        </.link>
+        <.link navigate={~p"/sign-in"} class="btn btn-outline btn-lg">
+          <.icon name="hero-arrow-left-on-rectangle" class="size-5" /> Sign in
         </.link>
       </div>
-    </section>
-  </div>
+
+      <dl class="mt-10 grid max-w-md grid-cols-3 gap-6">
+        <div>
+          <dt class="ta-num text-2xl font-semibold text-base-content">6</dt>
+          <dd class="text-xs text-base-content/60">administrative sequences</dd>
+        </div>
+        <div>
+          <dt class="ta-num text-2xl font-semibold text-base-content">36</dt>
+          <dd class="text-xs text-base-content/60">weeks tracked</dd>
+        </div>
+        <div>
+          <dt class="ta-num text-2xl font-semibold text-base-content">FR·EN</dt>
+          <dd class="text-xs text-base-content/60">both subsystems</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="ta-board flex flex-col gap-5 self-center p-6 sm:p-7">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="ta-eyebrow">Taux de couverture</p>
+          <p class="font-display text-lg font-semibold">This year, so far</p>
+        </div>
+        <span class="ta-num rounded-full border border-base-300 px-3 py-1 text-xs font-semibold text-base-content/70">
+          Week 6 · Seq 2
+        </span>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <div class="mb-1.5 text-sm font-semibold">Mathématiques · 6e A</div>
+          <.coverage_ribbon rate={62} />
+        </div>
+        <div>
+          <div class="mb-1.5 text-sm font-semibold">Français · 5e B</div>
+          <.coverage_ribbon rate={48} behind?={true} />
+        </div>
+        <div>
+          <div class="mb-1.5 text-sm font-semibold">SVT · 4e A</div>
+          <.coverage_ribbon rate={81} />
+        </div>
+      </div>
+
+      <p class="text-xs leading-5 text-base-content/60">
+        Each track is split into the six sequences of the school year. Green is on pace; yellow is
+        falling behind.
+      </p>
+    </div>
+  </section>
+
+  <section id="landing-reality" class="border-y border-base-300 bg-base-100">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <p class="ta-eyebrow">The reality today</p>
+      <h2 class="mt-3 max-w-3xl text-2xl font-bold leading-snug sm:text-3xl">
+        The plan lives in a PDF, coverage is a guess, and the scramble always comes in June.
+      </h2>
+      <div class="mt-8 grid gap-6 text-sm leading-6 text-base-content/75 sm:grid-cols-3">
+        <p>
+          You teach across one or more schools, juggling several subject–class pairs — and the only
+          record of the plan is a screenshot in a chat.
+        </p>
+        <p>
+          Mid-year, “Where are we in the programme?” has no honest answer until someone counts back
+          through the cahier de textes by hand.
+        </p>
+        <p>
+          By the third term, the gap between what was planned and what was taught is a surprise — at
+          exactly the wrong moment.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="product-proof" class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <p class="ta-eyebrow">The weekly loop</p>
+    <h2 class="mt-3 max-w-2xl text-2xl font-bold sm:text-3xl">
+      Built around the school year — not another spreadsheet to reconcile at term's end.
+    </h2>
+
+    <div class="mt-10 grid gap-6 sm:grid-cols-3">
+      <div class="ta-leaf">
+        <span class="ta-num text-sm font-semibold text-primary">01</span>
+        <h3 class="mt-2 font-display text-lg font-semibold">Build the fiche</h3>
+        <p class="mt-2 text-sm leading-6 text-base-content/75">
+          Lay out modules and lessons across the six sequences — planned hours, lesson type, and
+          optional competence-based fields. Reuse a plan to set up the next class in minutes.
+        </p>
+      </div>
+      <div class="ta-leaf">
+        <span class="ta-num text-sm font-semibold text-primary">02</span>
+        <h3 class="mt-2 font-display text-lg font-semibold">Log what you taught</h3>
+        <p class="mt-2 text-sm leading-6 text-base-content/75">
+          A few taps after class: pick the lesson, mark it done or partial, record the hours. Your <em>cahier de textes</em>, kept current without the paperwork.
+        </p>
+      </div>
+      <div class="ta-leaf">
+        <span class="ta-num text-sm font-semibold text-primary">03</span>
+        <h3 class="mt-2 font-display text-lg font-semibold">Watch the coverage</h3>
+        <p class="mt-2 text-sm leading-6 text-base-content/75">
+          Your <em>taux de couverture</em> per subject and sequence — always honest about what was
+          planned versus what was actually taught. No more June surprises.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="landing-features" class="border-y border-base-300 bg-base-100">
+    <div class="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-2">
+      <div class="flex items-start gap-4">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+          <.icon name="hero-device-phone-mobile" class="size-5" />
+        </span>
+        <div>
+          <h3 class="font-display text-lg font-semibold">Made for your phone</h3>
+          <p class="mt-1 text-sm leading-6 text-base-content/70">
+            Quick, forgiving interactions built for a smartphone on a patchy connection — your work
+            is never lost to a dropped request.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-start gap-4">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+          <.icon name="hero-language" class="size-5" />
+        </span>
+        <div>
+          <h3 class="font-display text-lg font-semibold">Bilingual by design</h3>
+          <p class="mt-1 text-sm leading-6 text-base-content/70">
+            Francophone and Anglophone subsystems, French or English interface — switch any time.
+            Built for one national system, two tracks.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-start gap-4">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+          <.icon name="hero-lock-closed" class="size-5" />
+        </span>
+        <div>
+          <h3 class="font-display text-lg font-semibold">Yours, and private</h3>
+          <p class="mt-1 text-sm leading-6 text-base-content/70">
+            Your personal workspace belongs to you alone — no school required. School workspaces
+            build on the same foundation, later.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-start gap-4">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+          <.icon name="hero-academic-cap" class="size-5" />
+        </span>
+        <div>
+          <h3 class="font-display text-lg font-semibold">Grounded in real practice</h3>
+          <p class="mt-1 text-sm leading-6 text-base-content/70">
+            Six sequences, 36 weeks, integration weeks, APC fields — modeled on how Cameroonian
+            schools actually run, not a generic template.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="workflow-index" class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <div class="ta-board flex flex-col items-center gap-5 px-6 py-12 text-center sm:px-8">
+      <p class="ta-eyebrow">Start free, in one sitting</p>
+      <h2 class="max-w-2xl text-2xl font-bold sm:text-3xl">
+        Set up your first fiche de progression today — on the bus home, if you like.
+      </h2>
+      <p class="max-w-xl text-sm leading-6 text-base-content/70">
+        Sign up free and you'll have an active plan and your first coverage reading before the kettle
+        boils. School tools — roll call, report cards, fees — build on the same desk later.
+      </p>
+      <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+        <.link navigate={~p"/register"} class="btn btn-primary btn-lg">
+          <.icon name="hero-academic-cap" class="size-5" /> Create your free account
+        </.link>
+        <.link navigate={~p"/teacher"} class="btn btn-ghost btn-lg">
+          Open teacher desk <.icon name="hero-arrow-right" class="size-4" />
+        </.link>
+      </div>
+    </div>
+  </section>
 </Layouts.app>

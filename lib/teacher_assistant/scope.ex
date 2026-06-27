@@ -17,7 +17,8 @@ defmodule TeacherAssistant.Scope do
 
   def academic_year_ready?(%__MODULE__{
         current_academic_year: %TeacherAssistant.Academics.AcademicYear{}
-      }), do: true
+      }),
+      do: true
 
   def academic_year_ready?(_), do: false
 

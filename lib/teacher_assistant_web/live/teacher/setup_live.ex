@@ -42,49 +42,70 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section id="teacher-setup" class="p-4 max-w-md mx-auto space-y-4">
-        <h1 class="text-xl font-semibold">{gettext("Set up your year")}</h1>
+      <section id="teacher-setup" class="mx-auto max-w-md space-y-5">
+        <header>
+          <p class="ta-eyebrow">{gettext("First, the basics")}</p>
+          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{gettext("Set up your year")}</h1>
+        </header>
         <.form
           for={@form}
           id="setup-form"
           phx-change="subsystem-changed"
           phx-submit="save"
-          class="space-y-3"
+          class="space-y-5"
         >
-          <.input field={@form[:name]} label={gettext("Academic year")} value="2025-2026" />
-          <.input
-            type="date"
-            field={@form[:start_date]}
-            label={gettext("Start date")}
-            value="2025-09-08"
-          />
-          <.input type="date" field={@form[:end_date]} label={gettext("End date")} value="2026-07-31" />
-          <.input
-            type="select"
-            field={@form[:subsystem]}
-            label={gettext("Subsystem")}
-            options={for s <- Reference.subsystems(), do: {s.fr, s.key}}
-          />
-          <.input
-            type="select"
-            field={@form[:subject]}
-            label={gettext("Subject")}
-            options={for s <- Reference.subjects(), do: {s.fr, s.fr}}
-          />
-          <.input
-            type="select"
-            field={@form[:level]}
-            label={gettext("Class")}
-            options={for l <- Reference.levels(@subsystem), do: {l, l}}
-          />
-          <.input
-            type="number"
-            field={@form[:weekly_hours]}
-            label={gettext("Weekly hours")}
-            value="4"
-          />
-          <.button id="setup-submit" type="submit" class="btn btn-primary w-full">
+          <fieldset class="ta-leaf space-y-2">
+            <legend class="ta-eyebrow px-1">{gettext("Academic year")}</legend>
+            <.input field={@form[:name]} label={gettext("Academic year")} value="2025-2026" />
+            <div class="grid gap-2 sm:grid-cols-2">
+              <.input
+                type="date"
+                field={@form[:start_date]}
+                label={gettext("Start date")}
+                value="2025-09-08"
+              />
+              <.input
+                type="date"
+                field={@form[:end_date]}
+                label={gettext("End date")}
+                value="2026-07-31"
+              />
+            </div>
+          </fieldset>
+
+          <fieldset class="ta-leaf space-y-2">
+            <legend class="ta-eyebrow px-1">{gettext("What you teach")}</legend>
+            <.input
+              type="select"
+              field={@form[:subsystem]}
+              label={gettext("Subsystem")}
+              options={for s <- Reference.subsystems(), do: {s.fr, s.key}}
+            />
+            <div class="grid gap-2 sm:grid-cols-2">
+              <.input
+                type="select"
+                field={@form[:subject]}
+                label={gettext("Subject")}
+                options={for s <- Reference.subjects(), do: {s.fr, s.fr}}
+              />
+              <.input
+                type="select"
+                field={@form[:level]}
+                label={gettext("Class")}
+                options={for l <- Reference.levels(@subsystem), do: {l, l}}
+              />
+            </div>
+            <.input
+              type="number"
+              field={@form[:weekly_hours]}
+              label={gettext("Weekly hours")}
+              value="4"
+            />
+          </fieldset>
+
+          <.button id="setup-submit" type="submit" class="btn btn-primary w-full gap-2">
             {gettext("Finish")}
+            <.icon name="hero-arrow-right" class="size-4" />
           </.button>
         </.form>
       </section>

@@ -393,6 +393,58 @@ defmodule TeacherAssistantWeb.CoreComponents do
   end
 
   @doc """
+  Renders the signature coverage ribbon: the *taux de couverture* drawn as the
+  year-line, a ruled track split into the 6 administrative sequences and filled
+  in chalk-green to the covered percentage.
+
+  ## Examples
+
+      <.coverage_ribbon rate={62} />
+      <.coverage_ribbon rate={Decimal.new("50")} behind?={true} />
+  """
+  attr :rate, :any, required: true, doc: "percentage covered (number or Decimal, 0–100)"
+  attr :behind?, :boolean, default: false, doc: "render the fill in ochre to flag falling behind"
+  attr :class, :string, default: nil
+  attr :rest, :global
+
+  def coverage_ribbon(assigns) do
+    pct =
+      assigns.rate
+      |> to_pct()
+      |> max(0)
+      |> min(100)
+
+    assigns = assign(assigns, :pct, pct)
+
+    ~H"""
+    <div
+      class={["ta-ribbon", @class]}
+      role="img"
+      aria-label={gettext("%{pct}% covered", pct: @pct)}
+      {@rest}
+    >
+      <div class="ta-ribbon__track">
+        <span class="ta-ribbon__fill" data-behind={to_string(@behind?)} style={"width:#{@pct}%"} />
+      </div>
+      <span class="ta-ribbon__pct ta-num">{@pct}%</span>
+    </div>
+    """
+  end
+
+  defp to_pct(%Decimal{} = d), do: d |> Decimal.round(0) |> Decimal.to_integer()
+  defp to_pct(n) when is_float(n), do: round(n)
+  defp to_pct(n) when is_integer(n), do: n
+
+  defp to_pct(n) when is_binary(n) do
+    case Float.parse(n) do
+      {f, _} -> round(f)
+      :error -> 0
+    end
+  end
+
+  defp to_pct(_), do: 0
+
+  @doc """
   Renders a [Heroicon](https://heroicons.com).
 
   Heroicons come in three styles – outline, solid, and mini.
