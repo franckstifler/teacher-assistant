@@ -38,4 +38,70 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     assert has_element?(view, "#import-context-gate")
     refute has_element?(view, "#import-upload-form")
   end
+
+  test "extracts and renders a review table from the uploaded PDF", %{conn: conn, workspace: ws} do
+    seed_year_and_context(ws)
+    Application.put_env(:teacher_assistant, :fiche_extractor, TeacherAssistant.FicheExtractorStub)
+
+    Application.put_env(:teacher_assistant, :fiche_extractor_stub_text, """
+    Module             Lecon                Duree
+    Algebre            Les entiers          2
+    Algebre            Evaluation           1
+    """)
+
+    on_exit(fn ->
+      Application.delete_env(:teacher_assistant, :fiche_extractor)
+      Application.delete_env(:teacher_assistant, :fiche_extractor_stub_text)
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+
+    pdf = %{name: "fiche.pdf", content: "%PDF-1.4 stub", type: "application/pdf"}
+    input = file_input(view, "#import-upload-form", :fiche, [pdf])
+    render_upload(input, "fiche.pdf")
+
+    view
+    |> element("#import-upload-form")
+    |> render_submit(%{"context_id" => "", "title" => "Imported"})
+
+    assert has_element?(view, "#import-review")
+    assert has_element?(view, "#import-rows")
+    assert render(view) =~ "Les entiers"
+    assert render(view) =~ "Evaluation"
+  end
+
+  test "caps parsed rows at 300 and shows truncation notice", %{conn: conn, workspace: ws} do
+    seed_year_and_context(ws)
+    Application.put_env(:teacher_assistant, :fiche_extractor, TeacherAssistant.FicheExtractorStub)
+
+    header = "Module             Lecon                Duree\n"
+
+    data_lines =
+      Enum.map_join(1..350, "\n", fn i ->
+        String.pad_trailing("Algebre", 19) <>
+          String.pad_trailing("Lecon #{i}", 21) <>
+          "1"
+      end)
+
+    Application.put_env(:teacher_assistant, :fiche_extractor_stub_text, header <> data_lines)
+
+    on_exit(fn ->
+      Application.delete_env(:teacher_assistant, :fiche_extractor)
+      Application.delete_env(:teacher_assistant, :fiche_extractor_stub_text)
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+
+    pdf = %{name: "fiche.pdf", content: "%PDF-1.4 stub", type: "application/pdf"}
+    input = file_input(view, "#import-upload-form", :fiche, [pdf])
+    render_upload(input, "fiche.pdf")
+
+    view
+    |> element("#import-upload-form")
+    |> render_submit(%{"context_id" => "", "title" => "Imported"})
+
+    assert has_element?(view, "#import-row-299")
+    refute has_element?(view, "#import-row-300")
+    assert render(view) =~ "truncated to 300"
+  end
 end

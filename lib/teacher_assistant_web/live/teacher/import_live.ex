@@ -4,6 +4,8 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
 
   @max_pdf_bytes 10_000_000
 
+  @max_rows 300
+
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
@@ -12,11 +14,14 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
 
     socket =
       socket
-      |> assign(:year, year)
       |> assign(:contexts, contexts)
       |> assign(:stage, :upload)
       |> assign(:title, "")
       |> assign(:context_id, contexts |> List.first() |> then(&(&1 && &1.id)))
+      |> assign(:rows, [])
+      |> assign(:confidence, :high)
+      |> assign(:raw_text, "")
+      |> assign(:capped?, false)
       |> allow_upload(:fiche, accept: ~w(.pdf), max_entries: 1, max_file_size: @max_pdf_bytes)
 
     {:ok, socket}
@@ -85,6 +90,42 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
             {gettext("Extract rows")}
           </.button>
         </.form>
+
+        <div :if={@stage == :review} id="import-review" class="space-y-4">
+          <div :if={@capped?} class="alert alert-warning text-sm">
+            {gettext("This plan was truncated to 300 rows — the original fiche had more entries.")}
+          </div>
+
+          <div :if={@confidence == :low} class="ta-leaf space-y-2 text-sm">
+            <p class="font-semibold text-warning">
+              {gettext("We couldn't read this fiche as a table.")}
+            </p>
+            <p class="text-base-content/70">
+              {gettext("Add rows manually below. The extracted text is shown for reference.")}
+            </p>
+            <pre
+              id="import-raw-text"
+              class="ta-num max-h-48 overflow-auto whitespace-pre-wrap text-xs text-base-content/60"
+            >{@raw_text}</pre>
+          </div>
+
+          <p :if={@confidence == :high} class="ta-eyebrow">
+            {gettext("Review and fix before saving")}
+          </p>
+
+          <ul id="import-rows" class="space-y-2">
+            <li
+              :for={{row, i} <- Enum.with_index(@rows)}
+              id={"import-row-#{i}"}
+              class="ta-leaf text-sm"
+            >
+              <div class="font-semibold">{row.module} · {row.lesson_title}</div>
+              <div class="ta-num text-xs text-base-content/60">
+                {row.planned_hours}h · {row.entry_type}{if row.week_no, do: " · S#{row.week_no}"}
+              </div>
+            </li>
+          </ul>
+        </div>
       </section>
     </Layouts.app>
     """
@@ -97,8 +138,57 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
      |> assign(:context_id, params["context_id"] || socket.assigns.context_id)}
   end
 
-  # "extract" is implemented in Task 6.
-  def handle_event("extract", _params, socket), do: {:noreply, socket}
+  def handle_event("extract", params, socket) do
+    title = params["title"] || socket.assigns.title
+    context_id = params["context_id"] || socket.assigns.context_id
+
+    result =
+      consume_uploaded_entries(socket, :fiche, fn %{path: path}, _entry ->
+        {:ok, TeacherAssistant.Academics.FicheExtractor.extract(path)}
+      end)
+
+    case result do
+      [{:ok, text}] ->
+        {:ok, %{rows: rows, confidence: confidence, raw_text: raw}} =
+          TeacherAssistant.Academics.FicheParser.parse(text)
+
+        normalized = normalize_rows(rows)
+        total = length(normalized)
+        kept = Enum.take(normalized, @max_rows)
+        capped? = total > @max_rows
+
+        {:noreply,
+         socket
+         |> assign(:stage, :review)
+         |> assign(:title, title)
+         |> assign(:context_id, context_id)
+         |> assign(:rows, kept)
+         |> assign(:confidence, confidence)
+         |> assign(:raw_text, raw)
+         |> assign(:capped?, capped?)}
+
+      _ ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Couldn't read that PDF. Try another file, or build the plan manually.")
+         )}
+    end
+  end
+
+  defp normalize_rows(rows) do
+    Enum.map(rows, fn r ->
+      %{
+        module: r.module,
+        lesson_title: r.lesson_title,
+        planned_hours: Decimal.to_string(r.planned_hours),
+        entry_type: r.entry_type,
+        week_no: r.week_no,
+        sequence_no: r.sequence_no
+      }
+    end)
+  end
 
   defp upload_error_to_string(:too_large), do: gettext("That file is too large (max 10 MB).")
   defp upload_error_to_string(:not_accepted), do: gettext("Please choose a PDF file.")
