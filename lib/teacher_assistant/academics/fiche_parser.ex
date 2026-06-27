@@ -88,9 +88,9 @@ defmodule TeacherAssistant.Academics.FicheParser do
             module: current_module,
             lesson_title: lesson,
             planned_hours: parse_hours(cell(cells, :hours)),
-            entry_type: :lesson,
-            week_no: nil,
-            sequence_no: nil
+            entry_type: detect_type(current_module <> " " <> lesson),
+            week_no: parse_int(cell(cells, :week)),
+            sequence_no: parse_int(cell(cells, :sequence))
           }
 
           {[row | acc], current_module}
@@ -131,6 +131,25 @@ defmodule TeacherAssistant.Academics.FicheParser do
     case Regex.run(~r/\d+(\.\d+)?/, normalized) do
       [match | _] -> Decimal.new(match)
       _ -> Decimal.new("1")
+    end
+  end
+
+  defp detect_type(text) do
+    cond do
+      Regex.match?(~r/[eé]valuation|devoir|composition|exam|test/iu, text) -> :evaluation
+      Regex.match?(~r/int[eé]gration|integration/iu, text) -> :integration
+      Regex.match?(~r/rem[eé]diation|remediation/iu, text) -> :remediation
+      Regex.match?(~r/r[eé]vision|revision/iu, text) -> :revision
+      Regex.match?(~r/correction/iu, text) -> :correction
+      Regex.match?(~r/cong[eé]|holiday|vacances/iu, text) -> :holiday
+      true -> :lesson
+    end
+  end
+
+  defp parse_int(text) do
+    case Regex.run(~r/\d+/, to_string(text)) do
+      [match | _] -> String.to_integer(match)
+      _ -> nil
     end
   end
 

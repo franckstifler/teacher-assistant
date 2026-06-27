@@ -94,4 +94,38 @@ defmodule TeacherAssistant.Academics.FicheParserTest do
 
     assert Decimal.equal?(hours3, Decimal.new("1"))
   end
+
+  test "detects entry_type from content keywords (FR + EN)" do
+    text = """
+    Module      Lecon                    Duree
+    Bloc 1      Evaluation sequentielle  1
+    Bloc 1      Integration partielle    2
+    Bloc 1      Remediation              1
+    Bloc 1      Cours normal             2
+    """
+
+    assert {:ok, %{rows: rows}} = FicheParser.parse(text)
+    assert Enum.map(rows, & &1.entry_type) == [:evaluation, :integration, :remediation, :lesson]
+  end
+
+  test "captures week and sequence numbers when columns exist" do
+    text = """
+    Sequence   Semaine   Module     Lecon              Duree
+    1          2         Algebre    Les puissances     3
+    """
+
+    assert {:ok, %{rows: [row]}} = FicheParser.parse(text)
+    assert row.sequence_no == 1
+    assert row.week_no == 2
+  end
+
+  test "recognizes an English header" do
+    text = """
+    Module      Lesson              Hours
+    Algebra     Linear equations    2
+    """
+
+    assert {:ok, %{rows: [row], confidence: :high}} = FicheParser.parse(text)
+    assert row.lesson_title == "Linear equations"
+  end
 end
