@@ -30,7 +30,9 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
               <div class="font-medium">{kpi.plan.title}</div>
               <div class="text-2xl font-bold">{round(kpi.coverage.rate * 100)}%</div>
               <div class="text-sm opacity-70">{gettext("covered")}</div>
-              <.link navigate={~p"/teacher/plans/#{kpi.plan.id}"} class="link link-primary text-sm">{gettext("Open plan")}</.link>
+              <.link navigate={~p"/teacher/plans/#{kpi.plan.id}"} class="link link-primary text-sm">
+                {gettext("Open plan")}
+              </.link>
             </div>
             <div :if={@kpis == []} class="opacity-70">
               {gettext("No progression plan yet.")}
@@ -42,7 +44,9 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
         <section id="academic-year-setup-gate" class="p-4 space-y-3 text-center">
           <h1 class="text-xl font-semibold">{gettext("Welcome")}</h1>
           <p class="opacity-70">{gettext("Set up your academic year to get started.")}</p>
-          <.link navigate={~p"/teacher/setup"} class="btn btn-primary">{gettext("Start setup")}</.link>
+          <.link navigate={~p"/teacher/setup"} class="btn btn-primary">
+            {gettext("Start setup")}
+          </.link>
         </section>
       <% end %>
     </Layouts.app>

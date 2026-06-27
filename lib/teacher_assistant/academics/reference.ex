@@ -9,7 +9,9 @@ defmodule TeacherAssistant.Academics.Reference do
   end
 
   def levels(:francophone), do: ["6ème", "5ème", "4ème", "3ème", "2nde", "1ère", "Terminale"]
-  def levels(:anglophone), do: ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Lower Sixth", "Upper Sixth"]
+
+  def levels(:anglophone),
+    do: ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Lower Sixth", "Upper Sixth"]
 
   def subjects do
     [
@@ -45,18 +47,63 @@ defmodule TeacherAssistant.Academics.Reference do
   def default_calendar_preset do
     %{
       terms: [
-        %{position: 1, sequences: [
-          %{number: 1, position_in_term: 1, start_date: ~D[2025-09-08], end_date: ~D[2025-10-24], integration_week: false},
-          %{number: 2, position_in_term: 2, start_date: ~D[2025-10-27], end_date: ~D[2025-11-28], integration_week: true}
-        ]},
-        %{position: 2, sequences: [
-          %{number: 3, position_in_term: 1, start_date: ~D[2025-12-01], end_date: ~D[2026-01-30], integration_week: false},
-          %{number: 4, position_in_term: 2, start_date: ~D[2026-02-02], end_date: ~D[2026-03-06], integration_week: true}
-        ]},
-        %{position: 3, sequences: [
-          %{number: 5, position_in_term: 1, start_date: ~D[2026-03-09], end_date: ~D[2026-04-30], integration_week: false},
-          %{number: 6, position_in_term: 2, start_date: ~D[2026-05-04], end_date: ~D[2026-06-12], integration_week: true}
-        ]}
+        %{
+          position: 1,
+          sequences: [
+            %{
+              number: 1,
+              position_in_term: 1,
+              start_date: ~D[2025-09-08],
+              end_date: ~D[2025-10-24],
+              integration_week: false
+            },
+            %{
+              number: 2,
+              position_in_term: 2,
+              start_date: ~D[2025-10-27],
+              end_date: ~D[2025-11-28],
+              integration_week: true
+            }
+          ]
+        },
+        %{
+          position: 2,
+          sequences: [
+            %{
+              number: 3,
+              position_in_term: 1,
+              start_date: ~D[2025-12-01],
+              end_date: ~D[2026-01-30],
+              integration_week: false
+            },
+            %{
+              number: 4,
+              position_in_term: 2,
+              start_date: ~D[2026-02-02],
+              end_date: ~D[2026-03-06],
+              integration_week: true
+            }
+          ]
+        },
+        %{
+          position: 3,
+          sequences: [
+            %{
+              number: 5,
+              position_in_term: 1,
+              start_date: ~D[2026-03-09],
+              end_date: ~D[2026-04-30],
+              integration_week: false
+            },
+            %{
+              number: 6,
+              position_in_term: 2,
+              start_date: ~D[2026-05-04],
+              end_date: ~D[2026-06-12],
+              integration_week: true
+            }
+          ]
+        }
       ]
     }
   end

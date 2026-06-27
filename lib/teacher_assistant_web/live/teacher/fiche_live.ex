@@ -10,7 +10,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
   def handle_event("add-entry", %{"entry" => p}, socket) do
     case Academics.add_progression_entry(socket.assigns.plan, %{
-           module: p["module"], lesson_title: p["lesson_title"],
+           module: p["module"],
+           lesson_title: p["lesson_title"],
            planned_hours: Decimal.new(blank_to(p["planned_hours"], "1")),
            entry_type: String.to_existing_atom(p["entry_type"])
          }) do
@@ -21,6 +22,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
   def handle_event("delete-entry", %{"id" => id}, socket) do
     {:ok, entry} = Academics.get_progression_entry(id)
+
     case Academics.delete_progression_entry(entry) do
       :ok -> {:noreply, assign_entries(socket, socket.assigns.plan)}
       {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
@@ -51,26 +53,50 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       <section id="fiche-builder" class="p-4 space-y-4">
         <div class="flex items-center justify-between">
           <h1 class="text-xl font-semibold">{@plan.title}</h1>
-          <.button id="duplicate-plan" phx-click="duplicate-plan" class="btn btn-ghost btn-sm">{gettext("Duplicate")}</.button>
+          <.button id="duplicate-plan" phx-click="duplicate-plan" class="btn btn-ghost btn-sm">
+            {gettext("Duplicate")}
+          </.button>
         </div>
 
         <ul id="fiche-entries" class="space-y-2">
-          <li :for={e <- @entries} id={"entry-#{e.id}"} class="card bg-base-100 shadow p-3 flex flex-row justify-between items-center">
+          <li
+            :for={e <- @entries}
+            id={"entry-#{e.id}"}
+            class="card bg-base-100 shadow p-3 flex flex-row justify-between items-center"
+          >
             <div>
               <div class="font-medium">{e.lesson_title}</div>
               <div class="text-sm opacity-70">{e.module} · {e.planned_hours}h · {e.entry_type}</div>
             </div>
-            <.button phx-click="delete-entry" phx-value-id={e.id} class="btn btn-ghost btn-xs">{gettext("Delete")}</.button>
+            <.button phx-click="delete-entry" phx-value-id={e.id} class="btn btn-ghost btn-xs">
+              {gettext("Delete")}
+            </.button>
           </li>
         </ul>
 
-        <.form for={@entry_form} id="add-entry-form" phx-submit="add-entry" class="card bg-base-200 p-3 space-y-2">
+        <.form
+          for={@entry_form}
+          id="add-entry-form"
+          phx-submit="add-entry"
+          class="card bg-base-200 p-3 space-y-2"
+        >
           <.input field={@entry_form[:module]} label={gettext("Module")} />
           <.input field={@entry_form[:lesson_title]} label={gettext("Lesson")} />
-          <.input type="number" field={@entry_form[:planned_hours]} label={gettext("Hours")} value="1" />
-          <.input type="select" field={@entry_form[:entry_type]} label={gettext("Type")}
-            options={for t <- Reference.entry_types(), do: {t.fr, t.key}} />
-          <.button id="add-entry-submit" type="submit" class="btn btn-primary">{gettext("Add entry")}</.button>
+          <.input
+            type="number"
+            field={@entry_form[:planned_hours]}
+            label={gettext("Hours")}
+            value="1"
+          />
+          <.input
+            type="select"
+            field={@entry_form[:entry_type]}
+            label={gettext("Type")}
+            options={for t <- Reference.entry_types(), do: {t.fr, t.key}}
+          />
+          <.button id="add-entry-submit" type="submit" class="btn btn-primary">
+            {gettext("Add entry")}
+          </.button>
         </.form>
       </section>
     </Layouts.app>

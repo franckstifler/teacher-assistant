@@ -14,7 +14,14 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     defaults [
       :read,
       :destroy,
-      create: [:title, :status, :template, :teaching_context_id, :academic_year_id, :personal_workspace_id],
+      create: [
+        :title,
+        :status,
+        :template,
+        :teaching_context_id,
+        :academic_year_id,
+        :personal_workspace_id
+      ],
       update: [:title, :status, :template]
     ]
   end
@@ -28,7 +35,12 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
   attributes do
     uuid_v7_primary_key :id
     attribute :title, :string, allow_nil?: false, public?: true
-    attribute :status, :atom, constraints: [one_of: [:draft, :active]], default: :draft, public?: true
+
+    attribute :status, :atom,
+      constraints: [one_of: [:draft, :active]],
+      default: :draft,
+      public?: true
+
     attribute :template, :boolean, allow_nil?: false, default: false, public?: true
     timestamps()
   end

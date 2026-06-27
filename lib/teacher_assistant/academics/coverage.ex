@@ -27,15 +27,26 @@ defmodule TeacherAssistant.Academics.Coverage do
         {sid, %{planned: p, covered: c, rate: rate(c, p)}}
       end)
 
-    %{planned_hours: planned_total, covered_hours: covered_total, rate: rate(covered_total, planned_total), by_sequence: by_sequence}
+    %{
+      planned_hours: planned_total,
+      covered_hours: covered_total,
+      rate: rate(covered_total, planned_total),
+      by_sequence: by_sequence
+    }
   end
 
   defp rate(covered, planned) do
-    if Decimal.equal?(planned, Decimal.new(0)), do: 0.0, else: Decimal.to_float(Decimal.div(covered, planned))
+    if Decimal.equal?(planned, Decimal.new(0)),
+      do: 0.0,
+      else: Decimal.to_float(Decimal.div(covered, planned))
   end
 
-  defp sum_hours(list), do: Enum.reduce(list, Decimal.new(0), fn l, acc -> Decimal.add(acc, to_decimal(l.hours)) end)
-  defp sum_field(list, key), do: Enum.reduce(list, Decimal.new(0), fn m, acc -> Decimal.add(acc, Map.fetch!(m, key)) end)
+  defp sum_hours(list),
+    do: Enum.reduce(list, Decimal.new(0), fn l, acc -> Decimal.add(acc, to_decimal(l.hours)) end)
+
+  defp sum_field(list, key),
+    do: Enum.reduce(list, Decimal.new(0), fn m, acc -> Decimal.add(acc, Map.fetch!(m, key)) end)
+
   defp to_decimal(%Decimal{} = d), do: d
   defp to_decimal(n) when is_integer(n), do: Decimal.new(n)
   defp to_decimal(n) when is_float(n), do: Decimal.from_float(n)

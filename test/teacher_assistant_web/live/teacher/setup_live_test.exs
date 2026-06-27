@@ -4,14 +4,24 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
   alias TeacherAssistant.Academics
   setup :register_and_log_in_user
 
-  test "completing setup creates a year, calendar and teaching context", %{conn: conn, workspace: ws} do
+  test "completing setup creates a year, calendar and teaching context", %{
+    conn: conn,
+    workspace: ws
+  } do
     {:ok, view, _html} = live(conn, ~p"/teacher/setup")
 
     view
-    |> form("#setup-form", setup: %{
-      name: "2025-2026", start_date: "2025-09-08", end_date: "2026-07-31",
-      subsystem: "francophone", subject: "Mathématiques", level: "6ème", weekly_hours: "4"
-    })
+    |> form("#setup-form",
+      setup: %{
+        name: "2025-2026",
+        start_date: "2025-09-08",
+        end_date: "2026-07-31",
+        subsystem: "francophone",
+        subject: "Mathématiques",
+        level: "6ème",
+        weekly_hours: "4"
+      }
+    )
     |> render_submit()
 
     year = Academics.current_academic_year(ws)

@@ -28,7 +28,6 @@ defmodule TeacherAssistantWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import TeacherAssistantWeb.ConnCase
-
     end
   end
 

@@ -25,12 +25,18 @@ defmodule TeacherAssistant.Academics do
 
   def ensure_personal_workspace!(%User{} = user) do
     case personal_workspace_for_user(user) do
-      {:ok, ws} -> ws
+      {:ok, ws} ->
+        ws
+
       {:error, :not_found} ->
         {:ok, ws} =
           PersonalWorkspace
-          |> Ash.Changeset.for_create(:create, %{name: "Personal workspace", owner_user_id: user.id})
+          |> Ash.Changeset.for_create(:create, %{
+            name: "Personal workspace",
+            owner_user_id: user.id
+          })
           |> Ash.create(authorize?: false)
+
         ws
     end
   end
@@ -50,7 +56,10 @@ defmodule TeacherAssistant.Academics do
   def create_academic_year(%PersonalWorkspace{} = ws, attrs) do
     attrs = attrs |> Map.put(:personal_workspace_id, ws.id) |> Map.put_new(:active, true)
 
-    with {:ok, year} <- AcademicYear |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false) do
+    with {:ok, year} <-
+           AcademicYear
+           |> Ash.Changeset.for_create(:create, attrs)
+           |> Ash.create(authorize?: false) do
       if year.active, do: deactivate_other_years(ws, year.id)
       {:ok, year}
     end
@@ -77,7 +86,9 @@ defmodule TeacherAssistant.Academics do
     AcademicYear
     |> Ash.Query.filter(personal_workspace_id == ^ws_id and id != ^keep_id and active == true)
     |> Ash.read!(authorize?: false)
-    |> Enum.each(fn y -> y |> Ash.Changeset.for_update(:update, %{active: false}) |> Ash.update!(authorize?: false) end)
+    |> Enum.each(fn y ->
+      y |> Ash.Changeset.for_update(:update, %{active: false}) |> Ash.update!(authorize?: false)
+    end)
   end
 
   def build_default_calendar(%AcademicYear{} = year) do
@@ -86,12 +97,22 @@ defmodule TeacherAssistant.Academics do
     Enum.each(preset.terms, fn term_spec ->
       {:ok, term} =
         Term
-        |> Ash.Changeset.for_create(:create, %{position: term_spec.position, academic_year_id: year.id})
+        |> Ash.Changeset.for_create(:create, %{
+          position: term_spec.position,
+          academic_year_id: year.id
+        })
         |> Ash.create(authorize?: false)
 
       Enum.each(term_spec.sequences, fn s ->
         Sequence
-        |> Ash.Changeset.for_create(:create, Map.put(Map.take(s, [:number, :position_in_term, :start_date, :end_date, :integration_week]), :term_id, term.id))
+        |> Ash.Changeset.for_create(
+          :create,
+          Map.put(
+            Map.take(s, [:number, :position_in_term, :start_date, :end_date, :integration_week]),
+            :term_id,
+            term.id
+          )
+        )
         |> Ash.create!(authorize?: false)
       end)
     end)
@@ -110,7 +131,9 @@ defmodule TeacherAssistant.Academics do
   def current_sequence(%AcademicYear{} = year, %Date{} = date) do
     year
     |> list_sequences()
-    |> Enum.find(fn s -> Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt end)
+    |> Enum.find(fn s ->
+      Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
+    end)
   end
 
   def create_teaching_context(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
@@ -156,17 +179,28 @@ defmodule TeacherAssistant.Academics do
       personal_workspace_id: plan.personal_workspace_id
     }
 
-    with {:ok, copy} <- ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false) do
+    with {:ok, copy} <-
+           ProgressionPlan
+           |> Ash.Changeset.for_create(:create, attrs)
+           |> Ash.create(authorize?: false) do
       for e <- list_progression_entries(plan) do
         ProgressionEntry
         |> Ash.Changeset.for_create(:create, %{
-          module: e.module, lesson_title: e.lesson_title, planned_hours: e.planned_hours,
-          entry_type: e.entry_type, week_no: e.week_no, position: e.position,
-          famille_de_situations: e.famille_de_situations, categories_action: e.categories_action,
-          competence_visee: e.competence_visee, progression_plan_id: copy.id, sequence_id: e.sequence_id
+          module: e.module,
+          lesson_title: e.lesson_title,
+          planned_hours: e.planned_hours,
+          entry_type: e.entry_type,
+          week_no: e.week_no,
+          position: e.position,
+          famille_de_situations: e.famille_de_situations,
+          categories_action: e.categories_action,
+          competence_visee: e.competence_visee,
+          progression_plan_id: copy.id,
+          sequence_id: e.sequence_id
         })
         |> Ash.create!(authorize?: false)
       end
+
       {:ok, copy}
     end
   end

@@ -5,7 +5,15 @@ defmodule TeacherAssistant.Academics.CalendarTest do
 
   setup do
     ws = TeacherFixtures.workspace_fixture()
-    {:ok, year} = Academics.create_academic_year(ws, %{name: "2025-2026", start_date: ~D[2025-09-08], end_date: ~D[2026-07-31], active: true})
+
+    {:ok, year} =
+      Academics.create_academic_year(ws, %{
+        name: "2025-2026",
+        start_date: ~D[2025-09-08],
+        end_date: ~D[2026-07-31],
+        active: true
+      })
+
     %{year: year}
   end
 

@@ -14,11 +14,31 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
     defaults [
       :read,
       :destroy,
-      create: [:module, :lesson_title, :planned_hours, :entry_type, :week_no, :position,
-               :famille_de_situations, :categories_action, :competence_visee,
-               :progression_plan_id, :sequence_id],
-      update: [:module, :lesson_title, :planned_hours, :entry_type, :week_no, :position,
-               :famille_de_situations, :categories_action, :competence_visee, :sequence_id]
+      create: [
+        :module,
+        :lesson_title,
+        :planned_hours,
+        :entry_type,
+        :week_no,
+        :position,
+        :famille_de_situations,
+        :categories_action,
+        :competence_visee,
+        :progression_plan_id,
+        :sequence_id
+      ],
+      update: [
+        :module,
+        :lesson_title,
+        :planned_hours,
+        :entry_type,
+        :week_no,
+        :position,
+        :famille_de_situations,
+        :categories_action,
+        :competence_visee,
+        :sequence_id
+      ]
     ]
   end
 
@@ -33,9 +53,23 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
     attribute :module, :string, allow_nil?: false, public?: true
     attribute :lesson_title, :string, allow_nil?: false, public?: true
     attribute :planned_hours, :decimal, default: Decimal.new("1"), public?: true
+
     attribute :entry_type, :atom,
-      constraints: [one_of: [:lesson, :integration, :evaluation, :revision, :correction, :remediation, :holiday]],
-      allow_nil?: false, default: :lesson, public?: true
+      constraints: [
+        one_of: [
+          :lesson,
+          :integration,
+          :evaluation,
+          :revision,
+          :correction,
+          :remediation,
+          :holiday
+        ]
+      ],
+      allow_nil?: false,
+      default: :lesson,
+      public?: true
+
     attribute :week_no, :integer, allow_nil?: true, public?: true
     attribute :position, :integer, allow_nil?: false, public?: true
     attribute :famille_de_situations, :string, allow_nil?: true, public?: true

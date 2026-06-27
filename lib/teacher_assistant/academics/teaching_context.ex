@@ -14,7 +14,15 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     defaults [
       :read,
       :destroy,
-      create: [:subject, :level, :serie, :subsystem, :weekly_hours, :personal_workspace_id, :academic_year_id],
+      create: [
+        :subject,
+        :level,
+        :serie,
+        :subsystem,
+        :weekly_hours,
+        :personal_workspace_id,
+        :academic_year_id
+      ],
       update: [:subject, :level, :serie, :subsystem, :weekly_hours]
     ]
   end
@@ -30,7 +38,12 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     attribute :subject, :string, allow_nil?: false, public?: true
     attribute :level, :string, allow_nil?: false, public?: true
     attribute :serie, :string, allow_nil?: true, public?: true
-    attribute :subsystem, :atom, constraints: [one_of: [:francophone, :anglophone]], allow_nil?: false, public?: true
+
+    attribute :subsystem, :atom,
+      constraints: [one_of: [:francophone, :anglophone]],
+      allow_nil?: false,
+      public?: true
+
     attribute :weekly_hours, :integer, default: 4, public?: true
     timestamps()
   end
@@ -50,6 +63,12 @@ defmodule TeacherAssistant.Academics.TeachingContext do
   end
 
   identities do
-    identity :unique_context, [:personal_workspace_id, :academic_year_id, :subject, :level, :serie]
+    identity :unique_context, [
+      :personal_workspace_id,
+      :academic_year_id,
+      :subject,
+      :level,
+      :serie
+    ]
   end
 end

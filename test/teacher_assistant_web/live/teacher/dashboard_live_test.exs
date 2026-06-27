@@ -15,10 +15,26 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
     end
 
     test "shows coverage kpis after setup", %{conn: conn, workspace: ws} do
-      {:ok, year} = TeacherAssistant.Academics.create_academic_year(ws, %{name: "2025-2026", start_date: ~D[2025-09-08], end_date: ~D[2026-07-31], active: true})
+      {:ok, year} =
+        TeacherAssistant.Academics.create_academic_year(ws, %{
+          name: "2025-2026",
+          start_date: ~D[2025-09-08],
+          end_date: ~D[2026-07-31],
+          active: true
+        })
+
       :ok = TeacherAssistant.Academics.build_default_calendar(year)
-      {:ok, ctx} = TeacherAssistant.Academics.create_teaching_context(ws, year, %{subject: "Maths", level: "6ème", subsystem: :francophone, weekly_hours: 4})
-      {:ok, _plan} = TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+
+      {:ok, ctx} =
+        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+          subject: "Maths",
+          level: "6ème",
+          subsystem: :francophone,
+          weekly_hours: 4
+        })
+
+      {:ok, _plan} =
+        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
       assert has_element?(view, "#coverage-kpis")

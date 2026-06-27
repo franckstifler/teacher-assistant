@@ -14,7 +14,16 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
     defaults [
       :read,
       :destroy,
-      create: [:date, :content_taught, :hours, :status, :homework, :note, :personal_workspace_id, :progression_entry_id],
+      create: [
+        :date,
+        :content_taught,
+        :hours,
+        :status,
+        :homework,
+        :note,
+        :personal_workspace_id,
+        :progression_entry_id
+      ],
       update: [:date, :content_taught, :hours, :status, :homework, :note, :progression_entry_id]
     ]
   end
@@ -30,7 +39,13 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
     attribute :date, :date, allow_nil?: false, public?: true
     attribute :content_taught, :string, allow_nil?: false, public?: true
     attribute :hours, :decimal, default: Decimal.new("1"), public?: true
-    attribute :status, :atom, constraints: [one_of: [:done, :partial]], default: :done, allow_nil?: false, public?: true
+
+    attribute :status, :atom,
+      constraints: [one_of: [:done, :partial]],
+      default: :done,
+      allow_nil?: false,
+      public?: true
+
     attribute :homework, :string, allow_nil?: true, public?: true
     attribute :note, :string, allow_nil?: true, public?: true
     timestamps()

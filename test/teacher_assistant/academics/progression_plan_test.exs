@@ -5,8 +5,23 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
 
   setup do
     ws = TeacherFixtures.workspace_fixture()
-    {:ok, year} = Academics.create_academic_year(ws, %{name: "2025-2026", start_date: ~D[2025-09-08], end_date: ~D[2026-07-31], active: true})
-    {:ok, ctx} = Academics.create_teaching_context(ws, year, %{subject: "Maths", level: "6ème", subsystem: :francophone, weekly_hours: 4})
+
+    {:ok, year} =
+      Academics.create_academic_year(ws, %{
+        name: "2025-2026",
+        start_date: ~D[2025-09-08],
+        end_date: ~D[2026-07-31],
+        active: true
+      })
+
+    {:ok, ctx} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "Maths",
+        level: "6ème",
+        subsystem: :francophone,
+        weekly_hours: 4
+      })
+
     %{ws: ws, year: year, ctx: ctx}
   end
 
@@ -26,8 +41,12 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
 
   test "duplicate copies progression entries onto the new plan", %{ctx: ctx} do
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Original"})
-    {:ok, e1} = Academics.add_progression_entry(plan, %{module: "M1", lesson_title: "Lesson 1", position: 1})
-    {:ok, e2} = Academics.add_progression_entry(plan, %{module: "M2", lesson_title: "Lesson 2", position: 2})
+
+    {:ok, e1} =
+      Academics.add_progression_entry(plan, %{module: "M1", lesson_title: "Lesson 1", position: 1})
+
+    {:ok, e2} =
+      Academics.add_progression_entry(plan, %{module: "M2", lesson_title: "Lesson 2", position: 2})
 
     {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
 
@@ -37,6 +56,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     assert length(copied_entries) == 2
 
     original_ids = Enum.map(original_entries, & &1.id) |> MapSet.new()
+
     for ce <- copied_entries do
       refute MapSet.member?(original_ids, ce.id)
     end

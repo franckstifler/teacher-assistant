@@ -15,7 +15,10 @@ defmodule TeacherAssistant.Scope do
   def personal_context?(%__MODULE__{current_workspace_type: :personal_teacher}), do: true
   def personal_context?(_scope), do: false
 
-  def academic_year_ready?(%__MODULE__{current_academic_year: %TeacherAssistant.Academics.AcademicYear{}}), do: true
+  def academic_year_ready?(%__MODULE__{
+        current_academic_year: %TeacherAssistant.Academics.AcademicYear{}
+      }), do: true
+
   def academic_year_ready?(_), do: false
 
   defimpl Ash.Scope.ToOpts do
