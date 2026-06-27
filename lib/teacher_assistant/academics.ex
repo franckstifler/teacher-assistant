@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
+  alias TeacherAssistant.Repo
 
   resources do
     resource PersonalWorkspace
@@ -189,6 +190,63 @@ defmodule TeacherAssistant.Academics do
 
       error ->
         error
+    end
+  end
+
+  def fetch_owned_teaching_context(id, %PersonalWorkspace{id: ws_id}) do
+    TeachingContext
+    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  @doc """
+  Creates a draft ProgressionPlan and its entries from imported rows in a single
+  transaction. Rolls back entirely on any failure (no orphan plan). Owner-scoped:
+  the teaching context must belong to `ws`.
+  """
+  def import_progression_plan(
+        %PersonalWorkspace{} = ws,
+        %{teaching_context_id: ctx_id} = attrs,
+        rows
+      ) do
+    with {:ok, ctx} <- fetch_owned_teaching_context(ctx_id, ws) do
+      Repo.transaction(fn ->
+        plan =
+          case create_progression_plan(ctx, %{title: attrs.title, status: :draft}) do
+            {:ok, plan} -> plan
+            {:error, reason} -> Repo.rollback(reason)
+          end
+
+        rows
+        |> Enum.with_index(1)
+        |> Enum.each(fn {row, position} ->
+          entry_attrs =
+            row
+            |> Map.take([
+              :module,
+              :lesson_title,
+              :planned_hours,
+              :entry_type,
+              :week_no,
+              :sequence_id
+            ])
+            |> Map.put(:progression_plan_id, plan.id)
+            |> Map.put(:position, position)
+
+          case ProgressionEntry
+               |> Ash.Changeset.for_create(:create, entry_attrs)
+               |> Ash.create(authorize?: false) do
+            {:ok, _entry} -> :ok
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end)
+
+        plan
+      end)
     end
   end
 
