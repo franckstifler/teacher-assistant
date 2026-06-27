@@ -4,8 +4,18 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   alias TeacherAssistant.Academics.Reference
 
   def mount(%{"id" => id}, _session, socket) do
-    {:ok, plan} = Academics.get_progression_plan(id)
-    {:ok, assign_entries(socket, plan)}
+    ws = socket.assigns.current_scope.current_workspace
+
+    case ws && Academics.fetch_owned_plan(id, ws) do
+      {:ok, plan} ->
+        {:ok, assign_entries(socket, plan)}
+
+      _ ->
+        {:ok,
+         socket
+         |> put_flash(:error, gettext("Plan not found"))
+         |> push_navigate(to: ~p"/teacher")}
+    end
   end
 
   def handle_event("add-entry", %{"entry" => p}, socket) do
@@ -21,11 +31,17 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   end
 
   def handle_event("delete-entry", %{"id" => id}, socket) do
-    {:ok, entry} = Academics.get_progression_entry(id)
+    ws = socket.assigns.current_scope.current_workspace
 
-    case Academics.delete_progression_entry(entry) do
-      :ok -> {:noreply, assign_entries(socket, socket.assigns.plan)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
+    case ws && Academics.fetch_owned_entry(id, ws) do
+      {:ok, entry} ->
+        case Academics.delete_progression_entry(entry) do
+          :ok -> {:noreply, assign_entries(socket, socket.assigns.plan)}
+          {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
     end
   end
 

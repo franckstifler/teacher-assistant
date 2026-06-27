@@ -15,20 +15,22 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
   end
 
   def handle_event("save", %{"log" => p}, socket) do
-    case Academics.log_teaching(socket.assigns.ws, %{
-           progression_entry_id: p["progression_entry_id"],
-           date: p["date"],
-           content_taught: p["content_taught"],
-           hours: Decimal.new(blank_to(p["hours"], "1")),
-           status: String.to_existing_atom(p["status"]),
-           homework: blank_to(p["homework"], nil),
-           note: blank_to(p["note"], nil)
-         }) do
-      {:ok, _} ->
-        {:noreply,
-         socket |> put_flash(:info, gettext("Logged")) |> push_navigate(to: ~p"/teacher")}
+    ws = socket.assigns.ws
 
-      {:error, _} ->
+    with {:ok, _entry} <- ws && Academics.fetch_owned_entry(p["progression_entry_id"], ws),
+         {:ok, _} <-
+           Academics.log_teaching(ws, %{
+             progression_entry_id: p["progression_entry_id"],
+             date: p["date"],
+             content_taught: p["content_taught"],
+             hours: Decimal.new(blank_to(p["hours"], "1")),
+             status: String.to_existing_atom(p["status"]),
+             homework: blank_to(p["homework"], nil),
+             note: blank_to(p["note"], nil)
+           }) do
+      {:noreply, socket |> put_flash(:info, gettext("Logged")) |> push_navigate(to: ~p"/teacher")}
+    else
+      _ ->
         {:noreply, put_flash(socket, :error, gettext("Could not log"))}
     end
   end

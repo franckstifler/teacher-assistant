@@ -3,16 +3,28 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLive do
   alias TeacherAssistant.Academics
 
   def mount(%{"id" => id}, _session, socket) do
-    {:ok, plan} = Academics.get_progression_plan(id)
-    coverage = Academics.coverage_for_plan(plan)
-    entries = Academics.list_progression_entries(plan)
+    ws = socket.assigns.current_scope.current_workspace
 
-    logged_ids =
-      Academics.list_logs_for_plan(plan) |> Enum.map(& &1.progression_entry_id) |> MapSet.new()
+    case ws && Academics.fetch_owned_plan(id, ws) do
+      {:ok, plan} ->
+        coverage = Academics.coverage_for_plan(plan)
+        entries = Academics.list_progression_entries(plan)
 
-    uncovered = Enum.reject(entries, &MapSet.member?(logged_ids, &1.id))
+        covered_ids =
+          coverage.per_entry
+          |> Enum.filter(fn pe -> Decimal.compare(pe.covered, pe.planned) != :lt end)
+          |> MapSet.new(& &1.entry_id)
 
-    {:ok, assign(socket, plan: plan, coverage: coverage, uncovered: uncovered)}
+        uncovered = Enum.reject(entries, &MapSet.member?(covered_ids, &1.id))
+
+        {:ok, assign(socket, plan: plan, coverage: coverage, uncovered: uncovered)}
+
+      _ ->
+        {:ok,
+         socket
+         |> put_flash(:error, gettext("Plan not found"))
+         |> push_navigate(to: ~p"/teacher")}
+    end
   end
 
   def render(assigns) do

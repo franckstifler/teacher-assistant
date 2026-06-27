@@ -12,7 +12,13 @@ defmodule TeacherAssistant.Academics.Coverage do
         planned = to_decimal(e.planned_hours)
         logged = Map.get(logs_by_entry, e.id, Decimal.new(0))
         covered = if Decimal.compare(logged, planned) == :gt, do: planned, else: logged
-        %{sequence_id: Map.get(e, :sequence_id), planned: planned, covered: covered}
+
+        %{
+          entry_id: e.id,
+          sequence_id: Map.get(e, :sequence_id),
+          planned: planned,
+          covered: covered
+        }
       end)
 
     planned_total = sum_field(per_entry, :planned)
@@ -31,7 +37,8 @@ defmodule TeacherAssistant.Academics.Coverage do
       planned_hours: planned_total,
       covered_hours: covered_total,
       rate: rate(covered_total, planned_total),
-      by_sequence: by_sequence
+      by_sequence: by_sequence,
+      per_entry: per_entry
     }
   end
 

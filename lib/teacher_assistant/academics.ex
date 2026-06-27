@@ -169,6 +169,29 @@ defmodule TeacherAssistant.Academics do
 
   def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
 
+  def fetch_owned_plan(id, %PersonalWorkspace{id: ws_id}) do
+    ProgressionPlan
+    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  def fetch_owned_entry(id, %PersonalWorkspace{} = ws) do
+    case Ash.get(ProgressionEntry, id, authorize?: false) do
+      {:ok, entry} ->
+        case fetch_owned_plan(entry.progression_plan_id, ws) do
+          {:ok, _} -> {:ok, entry}
+          _ -> {:error, :not_found}
+        end
+
+      error ->
+        error
+    end
+  end
+
   def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
     attrs = %{
       title: Map.get(overrides, :title, plan.title <> " (copy)"),
