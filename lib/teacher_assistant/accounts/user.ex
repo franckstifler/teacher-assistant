@@ -7,12 +7,6 @@ defmodule TeacherAssistant.Accounts.User do
     extensions: [AshAuthentication]
 
   authentication do
-    add_ons do
-      log_out_everywhere do
-        apply_on_password_change? true
-      end
-    end
-
     tokens do
       enabled? true
       token_resource TeacherAssistant.Accounts.Token
@@ -31,7 +25,6 @@ defmodule TeacherAssistant.Accounts.User do
         identity_field :email
         registration_enabled? false
         require_interaction? true
-
         sender TeacherAssistant.Accounts.User.Senders.SendMagicLinkEmail
       end
     end
@@ -46,72 +39,42 @@ defmodule TeacherAssistant.Accounts.User do
     defaults [:read]
 
     read :get_by_subject do
-      description "Get a user by the subject claim in a JWT"
       argument :subject, :string, allow_nil?: false
       get? true
       prepare AshAuthentication.Preparations.FilterBySubject
     end
 
     read :get_by_email do
-      description "Looks up a user by their email"
       get_by :email
     end
 
     read :sign_in_with_password do
-      description "Attempt to sign in using an email and password."
       get? true
 
-      argument :email, :ci_string do
-        description "The email to use for retrieving the user."
-        allow_nil? false
-      end
-
-      argument :password, :string do
-        description "The password to check for the matching user."
-        allow_nil? false
-        sensitive? true
-      end
+      argument :email, :ci_string, allow_nil?: false
+      argument :password, :string, allow_nil?: false, sensitive?: true
 
       prepare AshAuthentication.Strategy.Password.SignInPreparation
 
-      metadata :token, :string do
-        description "A JWT that can be used to authenticate the user."
-        allow_nil? false
-      end
+      metadata :token, :string, allow_nil?: false
     end
 
     read :sign_in_with_token do
-      description "Attempt to sign in using a short-lived sign in token."
       get? true
 
-      argument :token, :string do
-        description "The short-lived sign in token."
-        allow_nil? false
-        sensitive? true
-      end
-
+      argument :token, :string, allow_nil?: false, sensitive?: true
       prepare AshAuthentication.Strategy.Password.SignInWithTokenPreparation
 
-      metadata :token, :string do
-        description "A JWT that can be used to authenticate the user."
-        allow_nil? false
-      end
+      metadata :token, :string, allow_nil?: false
     end
 
     read :sign_in_with_magic_link do
-      description "Sign in a user with magic link."
       get? true
 
-      argument :token, :string do
-        description "The token from the magic link that was sent to the user"
-        allow_nil? false
-      end
-
+      argument :token, :string, allow_nil?: false
       prepare AshAuthentication.Strategy.MagicLink.SignInPreparation
 
-      metadata :token, :string do
-        allow_nil? false
-      end
+      metadata :token, :string, allow_nil?: false
     end
 
     create :create do
@@ -119,41 +82,28 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     create :register_with_password do
-      description "Register a new user with an email and password."
+      argument :email, :ci_string, allow_nil?: false
 
-      argument :email, :ci_string do
-        allow_nil? false
-      end
+      argument :password, :string,
+        allow_nil?: false,
+        constraints: [min_length: 8],
+        sensitive?: true
 
-      argument :password, :string do
-        description "The proposed password for the user, in plain text."
-        allow_nil? false
-        constraints min_length: 8
-        sensitive? true
-      end
-
-      argument :password_confirmation, :string do
-        description "The proposed password for the user again, in plain text."
-        allow_nil? false
-        sensitive? true
-      end
+      argument :password_confirmation, :string,
+        allow_nil?: false,
+        constraints: [min_length: 8],
+        sensitive?: true
 
       change set_attribute(:email, arg(:email))
       change AshAuthentication.Strategy.Password.HashPasswordChange
       change AshAuthentication.GenerateTokenChange
       validate AshAuthentication.Strategy.Password.PasswordConfirmationValidation
 
-      metadata :token, :string do
-        description "A JWT that can be used to authenticate the user."
-        allow_nil? false
-      end
+      metadata :token, :string, allow_nil?: false
     end
 
     action :request_magic_link do
-      argument :email, :ci_string do
-        allow_nil? false
-      end
-
+      argument :email, :ci_string, allow_nil?: false
       run AshAuthentication.Strategy.MagicLink.Request
     end
   end
@@ -163,12 +113,7 @@ defmodule TeacherAssistant.Accounts.User do
       authorize_if always()
     end
 
-    bypass action(:read) do
-      authorize_if always()
-    end
-
-    bypass action(:create) do
-      # TODO: Update this policy
+    policy always() do
       authorize_if always()
     end
   end
@@ -176,11 +121,7 @@ defmodule TeacherAssistant.Accounts.User do
   attributes do
     uuid_v7_primary_key :id
 
-    attribute :email, :ci_string do
-      allow_nil? false
-      public? true
-    end
-
+    attribute :email, :ci_string, allow_nil?: false, public?: true
     attribute :role, TeacherAssistant.Accounts.UserRole, default: :teacher, public?: true
 
     attribute :hashed_password, :string do
@@ -188,11 +129,7 @@ defmodule TeacherAssistant.Accounts.User do
       sensitive? true
     end
 
-    # attribute :full_name, :string, allow_nil?: false, public?: true
-  end
-
-  relationships do
-    has_many :school_memberships, TeacherAssistant.Accounts.UserSchool
+    timestamps()
   end
 
   identities do

@@ -40,21 +40,9 @@ defmodule TeacherAssistantWeb.Layouts do
     assigns =
       assigns
       |> assign(:current_user, current_user)
-      |> assign(:school_name, school_name(current_scope))
-      |> assign(:role_label, role_label(current_user))
-      |> assign(
-        :show_configuration_nav?,
-        role_in?(current_scope, [:admin, :principal, :vice_principal])
-      )
-      |> assign(:show_access_nav?, role_in?(current_scope, [:admin, :accountant, :principal]))
-      |> assign(
-        :show_teacher_nav?,
-        role_in?(current_scope, [:admin, :teacher, :principal_teacher])
-      )
-      |> assign(
-        :show_reports_nav?,
-        role_in?(current_scope, [:admin, :principal, :vice_principal])
-      )
+      |> assign(:workspace_name, workspace_name(current_scope))
+      |> assign(:role_label, role_label(current_scope))
+      |> assign(:workspace_type_label, workspace_type_label(current_scope))
 
     ~H"""
     <div class="min-h-screen bg-base-200 text-base-content">
@@ -67,7 +55,7 @@ defmodule TeacherAssistantWeb.Layouts do
             <span class="min-w-0">
               <span class="block text-sm font-semibold leading-5">Teacher Assistant</span>
               <span class="block truncate text-xs text-base-content/55">
-                {@school_name || gettext("Cameroon schools")}
+                {@workspace_name || gettext("Cameroon teacher workspace")}
               </span>
             </span>
           </a>
@@ -77,25 +65,11 @@ defmodule TeacherAssistantWeb.Layouts do
             aria-label={gettext("Main navigation")}
           >
             <.top_nav_link
-              :if={@show_teacher_nav?}
-              href={~p"/teacher/marks"}
-              icon="hero-pencil-square"
+              :if={@current_user}
+              href={~p"/teacher"}
+              icon="hero-squares-2x2"
             >
-              {gettext("Marks")}
-            </.top_nav_link>
-            <.top_nav_link
-              :if={@show_teacher_nav?}
-              href={~p"/teacher/attendance"}
-              icon="hero-clipboard-document-check"
-            >
-              {gettext("Attendance")}
-            </.top_nav_link>
-            <.top_nav_link
-              :if={@show_reports_nav?}
-              href={~p"/reports/report_cards"}
-              icon="hero-document-chart-bar"
-            >
-              {gettext("Reports")}
+              {gettext("Dashboard")}
             </.top_nav_link>
             <.top_nav_link :if={!@current_user} href={~p"/"} icon="hero-squares-2x2">
               {gettext("Overview")}
@@ -108,7 +82,7 @@ defmodule TeacherAssistantWeb.Layouts do
               <div class="hidden text-right sm:block">
                 <div class="text-xs font-semibold">{@current_user.email}</div>
                 <div class="text-[0.7rem] uppercase tracking-wide text-base-content/50">
-                  {@role_label}
+                  {@workspace_type_label} · {@role_label}
                 </div>
               </div>
               <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
@@ -125,76 +99,35 @@ defmodule TeacherAssistantWeb.Layouts do
         </div>
       </header>
 
+      <nav
+        :if={@current_user}
+        id="main-nav"
+        class="navbar bg-base-100 px-4 gap-2 border-b border-base-300"
+      >
+        <.link id="nav-dashboard" navigate={~p"/teacher"} class="btn btn-ghost btn-sm">
+          {gettext("Dashboard")}
+        </.link>
+        <.link id="nav-log" navigate={~p"/teacher/log"} class="btn btn-ghost btn-sm">
+          {gettext("Log")}
+        </.link>
+        <div id="locale-switch" class="ml-auto flex gap-1">
+          <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs">FR</.link>
+          <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs">EN</.link>
+        </div>
+      </nav>
+
       <div class={["mx-auto flex w-full", @current_user && "max-w-[1600px]"]}>
         <aside
           :if={@current_user}
           class="hidden min-h-[calc(100vh-4rem)] w-72 shrink-0 border-r border-base-300 bg-base-100 px-4 py-5 lg:block"
         >
           <nav class="space-y-6" aria-label={gettext("Workspace navigation")}>
-            <div :if={@show_teacher_nav?} id="nav-teacher-tools" class="space-y-2">
+            <div id="nav-teacher-tools" class="space-y-2">
               <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Operate")}
+                {gettext("Teacher desk")}
               </div>
-              <.side_nav_link href={~p"/teacher/marks"} icon="hero-clipboard-document-list">
-                {gettext("Marks entry")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/attendance"} icon="hero-clipboard-document-check">
-                {gettext("Attendance")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/teacher/progression"} icon="hero-calendar-days">
-                {gettext("Progression")}
-              </.side_nav_link>
-            </div>
-
-            <div :if={@show_reports_nav?} id="nav-reports" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Reports")}
-              </div>
-              <.side_nav_link href={~p"/reports/report_cards"} icon="hero-document-chart-bar">
-                {gettext("Report cards")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/reports/programme_coverage"} icon="hero-chart-bar">
-                {gettext("Programme coverage")}
-              </.side_nav_link>
-            </div>
-
-            <div :if={@show_access_nav?} id="nav-student-access" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Access")}
-              </div>
-              <.side_nav_link href={~p"/configurations/student_access"} icon="hero-identification">
-                {gettext("Classroom access")}
-              </.side_nav_link>
-            </div>
-
-            <div :if={@show_configuration_nav?} id="nav-configuration" class="space-y-2">
-              <div class="px-3 text-[0.7rem] font-semibold uppercase tracking-wide text-base-content/45">
-                {gettext("Configuration")}
-              </div>
-              <.side_nav_link href={~p"/configurations/academic_years"} icon="hero-calendar">
-                {gettext("Academic years")}
-              </.side_nav_link>
-              <.side_nav_link
-                id="nav-grade-intervals"
-                href={~p"/configurations/grade_intervals"}
-                icon="hero-chart-pie"
-              >
-                {gettext("Grade intervals")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/students"} icon="hero-users">
-                {gettext("Students")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/subjects"} icon="hero-book-open">
-                {gettext("Subjects")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/levels_options"} icon="hero-rectangle-group">
-                {gettext("Levels and options")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/levels"} icon="hero-bars-3-bottom-left">
-                {gettext("Levels")}
-              </.side_nav_link>
-              <.side_nav_link href={~p"/configurations/options"} icon="hero-squares-2x2">
-                {gettext("Options")}
+              <.side_nav_link href={~p"/teacher"} icon="hero-squares-2x2">
+                {gettext("Dashboard")}
               </.side_nav_link>
             </div>
           </nav>
@@ -245,19 +178,21 @@ defmodule TeacherAssistantWeb.Layouts do
     """
   end
 
-  defp role_in?(%{current_user: %{role: role}}, roles), do: role in roles
-  defp role_in?(_, _roles), do: false
+  defp workspace_name(%{current_workspace: %{name: name}}), do: name
+  defp workspace_name(%{current_user: %{} = _user}), do: gettext("Personal workspace")
+  defp workspace_name(_), do: nil
 
-  defp school_name(%{current_tenant: %{name: name}}), do: name
-  defp school_name(_), do: nil
-
-  defp role_label(%{role: role}) do
+  defp role_label(%{current_role: role}) when not is_nil(role) do
     role
     |> to_string()
     |> String.replace("_", " ")
   end
 
   defp role_label(_), do: nil
+
+  defp workspace_type_label(%{current_workspace_type: :personal_teacher}), do: gettext("Personal")
+  defp workspace_type_label(%{current_workspace_type: :school}), do: gettext("School")
+  defp workspace_type_label(_), do: gettext("No workspace")
 
   @doc """
   Shows the flash group with standard titles and content.

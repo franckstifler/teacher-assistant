@@ -1,8 +1,8 @@
 defmodule TeacherAssistant.Academics.ProgressionEntry do
   use Ash.Resource,
-    data_layer: AshPostgres.DataLayer,
+    otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource],
+    data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
@@ -11,73 +11,84 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
   end
 
   actions do
-    default_accept [
-      :progression_plan_id,
-      :term_id,
-      :sequence_id,
-      :week_number,
-      :start_date,
-      :end_date,
-      :title,
-      :planned_content,
-      :planned_hours,
-      :entry_type
+    defaults [
+      :read,
+      :destroy,
+      create: [
+        :module,
+        :lesson_title,
+        :planned_hours,
+        :entry_type,
+        :week_no,
+        :position,
+        :famille_de_situations,
+        :categories_action,
+        :competence_visee,
+        :progression_plan_id,
+        :sequence_id
+      ],
+      update: [
+        :module,
+        :lesson_title,
+        :planned_hours,
+        :entry_type,
+        :week_no,
+        :position,
+        :famille_de_situations,
+        :categories_action,
+        :competence_visee,
+        :sequence_id
+      ]
     ]
-
-    defaults [:create, :read, :update, :destroy]
   end
 
   policies do
-    policy action_type(:read) do
-      authorize_if actor_present()
+    policy always() do
+      authorize_if always()
     end
-
-    policy action_type([:create, :update]) do
-      authorize_if actor_attribute_equals(:role, :admin)
-      authorize_if actor_attribute_equals(:role, :teacher)
-      authorize_if actor_attribute_equals(:role, :principal_teacher)
-      authorize_if actor_attribute_equals(:role, :vice_principal)
-    end
-
-    policy action_type(:destroy) do
-      authorize_if actor_attribute_equals(:role, :admin)
-      authorize_if actor_attribute_equals(:role, :principal)
-      authorize_if actor_attribute_equals(:role, :vice_principal)
-    end
-  end
-
-  multitenancy do
-    strategy :attribute
-    attribute :school_id
   end
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :week_number, :integer, public?: true, constraints: [min: 1]
-    attribute :start_date, :date, public?: true
-    attribute :end_date, :date, public?: true
-    attribute :title, :string, public?: true, allow_nil?: false
-    attribute :planned_content, :string, public?: true
+    attribute :module, :string, allow_nil?: false, public?: true
+    attribute :lesson_title, :string, allow_nil?: false, public?: true
+    attribute :planned_hours, :decimal, default: Decimal.new("1"), public?: true
 
-    attribute :planned_hours, :decimal,
-      public?: true,
+    attribute :entry_type, :atom,
+      constraints: [
+        one_of: [
+          :lesson,
+          :integration,
+          :evaluation,
+          :revision,
+          :correction,
+          :remediation,
+          :holiday
+        ]
+      ],
       allow_nil?: false,
-      default: Decimal.new("0")
+      default: :lesson,
+      public?: true
 
-    attribute :entry_type, TeacherAssistant.Academics.Enums.ProgressionEntryType,
-      public?: true,
-      allow_nil?: false,
-      default: :lesson
-
+    attribute :week_no, :integer, allow_nil?: true, public?: true
+    attribute :position, :integer, allow_nil?: false, public?: true
+    attribute :famille_de_situations, :string, allow_nil?: true, public?: true
+    attribute :categories_action, :string, allow_nil?: true, public?: true
+    attribute :competence_visee, :string, allow_nil?: true, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :school, TeacherAssistant.Academics.School
-    belongs_to :progression_plan, TeacherAssistant.Academics.ProgressionPlan, allow_nil?: false
-    belongs_to :term, TeacherAssistant.Academics.Term
-    belongs_to :sequence, TeacherAssistant.Academics.Sequence
-    has_many :teaching_logs, TeacherAssistant.Academics.TeachingLog
-    has_many :apc_lesson_plans, TeacherAssistant.Academics.ApcLessonPlan
+    belongs_to :progression_plan, TeacherAssistant.Academics.ProgressionPlan do
+      source_attribute :progression_plan_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :sequence, TeacherAssistant.Academics.Sequence do
+      source_attribute :sequence_id
+      allow_nil? true
+      public? true
+    end
   end
 end

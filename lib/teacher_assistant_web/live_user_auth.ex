@@ -1,18 +1,20 @@
 defmodule TeacherAssistantWeb.LiveUserAuth do
   @moduledoc """
-  Helpers for authenticating users in LiveViews.
+  LiveView authentication and personal workspace scope assignment.
   """
 
   import Phoenix.Component
-  require Ash.Query
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Accounts.Workspaces
+  alias TeacherAssistant.Scope
   use TeacherAssistantWeb, :verified_routes
 
-  def on_mount(:current_user, _params, session, socket) do
-    {:cont, assign_scope(socket, session)}
-  end
-
-  def on_mount(:live_user_optional, _params, session, socket) do
-    {:cont, assign_scope(socket, session)}
+  def session_context(conn) do
+    %{
+      "workspace_id" => Plug.Conn.get_session(conn, :workspace_id),
+      "user_id" => Plug.Conn.get_session(conn, :user_id),
+      "locale" => Plug.Conn.get_session(conn, :locale)
+    }
   end
 
   def on_mount(:live_user_required, _params, session, socket) do
@@ -25,33 +27,25 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     end
   end
 
-  def on_mount({:role_required, roles}, _params, session, socket) do
-    socket = assign_scope(socket, session)
-
-    if socket.assigns.current_user && socket.assigns.current_user.role in roles do
-      {:cont, socket}
-    else
-      {:halt,
-       socket
-       |> Phoenix.LiveView.put_flash(:error, "You are not authorized to access this page")
-       |> Phoenix.LiveView.redirect(to: ~p"/")}
-    end
-  end
-
   def on_mount(:live_no_user, _params, session, socket) do
     socket = assign_scope(socket, session)
 
     if socket.assigns.current_user do
-      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/")}
+      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/teacher")}
     else
       {:cont, socket}
     end
   end
 
+  def on_mount(:live_user_optional, _params, session, socket) do
+    {:cont, assign_scope(socket, session)}
+  end
+
   defp assign_scope(socket, session) do
-    user = load_user(session["user_id"])
-    school = load_school(session["tenant"], user)
-    scope = %TeacherAssistant.Scope{current_tenant: school, current_user: user}
+    user = socket.assigns[:current_user] || load_user(session["user_id"])
+    locale = session["locale"] || "fr"
+    Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
+    scope = %{resolve_scope(user, session["workspace_id"]) | locale: locale}
 
     socket
     |> assign(:current_user, user)
@@ -62,28 +56,18 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   defp load_user(nil), do: nil
 
   defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id, authorize?: false) do
+    case Accounts.get_user(user_id) do
       {:ok, user} -> user
       _ -> nil
     end
   end
 
-  defp load_school(nil, nil), do: nil
+  defp resolve_scope(nil, _workspace_id), do: %Scope{}
 
-  defp load_school(school_id, _user) when is_binary(school_id) do
-    case Ash.get(TeacherAssistant.Academics.School, school_id, authorize?: false) do
-      {:ok, school} -> school
-      _ -> nil
-    end
-  end
-
-  defp load_school(nil, user) do
-    TeacherAssistant.Accounts.UserSchool
-    |> Ash.Query.filter(user_id: user.id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, %{school_id: school_id}} -> load_school(school_id, user)
-      _ -> nil
+  defp resolve_scope(user, workspace_id) do
+    case Workspaces.scope_for(user, workspace_id) do
+      {:ok, scope} -> scope
+      {:error, _} -> %Scope{current_user: user}
     end
   end
 end

@@ -1,75 +1,42 @@
 defmodule TeacherAssistant.Academics.Term do
   use Ash.Resource,
-    data_layer: AshPostgres.DataLayer,
+    otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource],
+    data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
-    repo TeacherAssistant.Repo
     table "terms"
+    repo TeacherAssistant.Repo
   end
 
   actions do
-    default_accept [:name, :start_date, :end_date]
-    defaults [:read, :destroy]
-
-    create :create do
-      primary? true
-      argument :sequences, {:array, :map}, default: [], allow_nil?: false, constraints: [min: 1]
-
-      change manage_relationship(:sequences, :sequences,
-               type: :direct_control,
-               order_is_key: :position
-             )
-    end
-
-    update :update do
-      primary? true
-      require_atomic? false
-      argument :sequences, {:array, :map}, default: [], allow_nil?: false, constraints: [min: 1]
-
-      change manage_relationship(:sequences, :sequences,
-               type: :direct_control,
-               order_is_key: :position
-             )
-    end
+    defaults [:read, :destroy, create: [:position, :academic_year_id], update: [:position]]
   end
 
   policies do
-    policy action_type(:read) do
-      authorize_if actor_present()
+    policy always() do
+      authorize_if always()
     end
-
-    policy action_type([:create, :update, :destroy]) do
-      authorize_if actor_attribute_equals(:role, :admin)
-      authorize_if actor_attribute_equals(:role, :principal)
-      authorize_if actor_attribute_equals(:role, :vice_principal)
-    end
-  end
-
-  multitenancy do
-    strategy :attribute
-    attribute :school_id
   end
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :name, :string, public?: true, allow_nil?: false
-    attribute :start_date, :date, public?: true
-    attribute :end_date, :date, public?: true
-    attribute :position, :integer
-
+    attribute :position, :integer, allow_nil?: false, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :school, TeacherAssistant.Academics.School
-    belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear, allow_nil?: false
+    belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear do
+      source_attribute :academic_year_id
+      allow_nil? false
+      public? true
+    end
+
     has_many :sequences, TeacherAssistant.Academics.Sequence
   end
 
   identities do
-    identity :unique_name, [:school_id, :name, :academic_year_id]
+    identity :unique_year_term, [:academic_year_id, :position]
   end
 end

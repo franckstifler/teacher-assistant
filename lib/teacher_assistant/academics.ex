@@ -1,93 +1,278 @@
 defmodule TeacherAssistant.Academics do
-  use Ash.Domain
+  use Ash.Domain, otp_app: :teacher_assistant
+
+  require Ash.Query
+  alias TeacherAssistant.Accounts.User
+  alias TeacherAssistant.Academics.PersonalWorkspace
+  alias TeacherAssistant.Academics.AcademicYear
+  alias TeacherAssistant.Academics.Term
+  alias TeacherAssistant.Academics.Sequence
+  alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.ProgressionPlan
+  alias TeacherAssistant.Academics.ProgressionEntry
+  alias TeacherAssistant.Academics.TeachingLogEntry
 
   resources do
-    resource TeacherAssistant.Academics.School
+    resource PersonalWorkspace
+    resource AcademicYear
+    resource Term
+    resource Sequence
+    resource TeachingContext
+    resource ProgressionPlan
+    resource ProgressionEntry
+    resource TeachingLogEntry
+  end
 
-    resource TeacherAssistant.Academics.Classroom do
-      define :list_teacher_classrooms,
-        action: :list_teacher_classrooms,
-        args: [:academic_year_id, :teacher_id]
+  def ensure_personal_workspace!(%User{} = user) do
+    case personal_workspace_for_user(user) do
+      {:ok, ws} ->
+        ws
+
+      {:error, :not_found} ->
+        {:ok, ws} =
+          PersonalWorkspace
+          |> Ash.Changeset.for_create(:create, %{
+            name: "Personal workspace",
+            owner_user_id: user.id
+          })
+          |> Ash.create(authorize?: false)
+
+        ws
     end
+  end
 
-    resource TeacherAssistant.Academics.Level do
-      define :create_level, action: :create
-      define :update_level, action: :update
-      define :read_levels, action: :read
-      define :destroy_level, action: :destroy
+  def personal_workspace_for_user(%User{id: user_id}) do
+    PersonalWorkspace
+    |> Ash.Query.filter(owner_user_id == ^user_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
     end
+  end
 
-    resource TeacherAssistant.Academics.LevelOption do
-      define :read_levels_level_options, action: :read
-      define :manage_level_option_subjects, action: :manage_subjects
-      define :destroy_level_option, action: :destroy
+  def get_personal_workspace(id), do: Ash.get(PersonalWorkspace, id, authorize?: false)
+
+  def create_academic_year(%PersonalWorkspace{} = ws, attrs) do
+    attrs = attrs |> Map.put(:personal_workspace_id, ws.id) |> Map.put_new(:active, true)
+
+    with {:ok, year} <-
+           AcademicYear
+           |> Ash.Changeset.for_create(:create, attrs)
+           |> Ash.create(authorize?: false) do
+      if year.active, do: deactivate_other_years(ws, year.id)
+      {:ok, year}
     end
+  end
 
-    resource TeacherAssistant.Academics.LevelOptionSubject
-    resource TeacherAssistant.Academics.SequenceSubjectObjective
+  def list_academic_years(%PersonalWorkspace{id: id}) do
+    AcademicYear
+    |> Ash.Query.filter(personal_workspace_id == ^id)
+    |> Ash.Query.sort(start_date: :desc)
+    |> Ash.read!(authorize?: false)
+  end
 
-    resource TeacherAssistant.Academics.Option do
-      define :create_option, action: :create
-      define :update_option, action: :update
-      define :read_options, action: :read
-      define :destroy_option, action: :destroy
+  def current_academic_year(%PersonalWorkspace{id: id}) do
+    AcademicYear
+    |> Ash.Query.filter(personal_workspace_id == ^id and active == true)
+    |> Ash.Query.sort(start_date: :desc)
+    |> Ash.read!(authorize?: false)
+    |> List.first()
+  end
+
+  def get_academic_year(id), do: Ash.get(AcademicYear, id, authorize?: false)
+
+  defp deactivate_other_years(%PersonalWorkspace{id: ws_id}, keep_id) do
+    AcademicYear
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id and id != ^keep_id and active == true)
+    |> Ash.read!(authorize?: false)
+    |> Enum.each(fn y ->
+      y |> Ash.Changeset.for_update(:update, %{active: false}) |> Ash.update!(authorize?: false)
+    end)
+  end
+
+  def build_default_calendar(%AcademicYear{} = year) do
+    preset = TeacherAssistant.Academics.Reference.default_calendar_preset()
+
+    Enum.each(preset.terms, fn term_spec ->
+      {:ok, term} =
+        Term
+        |> Ash.Changeset.for_create(:create, %{
+          position: term_spec.position,
+          academic_year_id: year.id
+        })
+        |> Ash.create(authorize?: false)
+
+      Enum.each(term_spec.sequences, fn s ->
+        Sequence
+        |> Ash.Changeset.for_create(
+          :create,
+          Map.put(
+            Map.take(s, [:number, :position_in_term, :start_date, :end_date, :integration_week]),
+            :term_id,
+            term.id
+          )
+        )
+        |> Ash.create!(authorize?: false)
+      end)
+    end)
+
+    :ok
+  end
+
+  def list_sequences(%AcademicYear{id: year_id}) do
+    Sequence
+    |> Ash.Query.filter(term.academic_year_id == ^year_id)
+    |> Ash.Query.load(:term)
+    |> Ash.Query.sort(number: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def current_sequence(%AcademicYear{} = year, %Date{} = date) do
+    year
+    |> list_sequences()
+    |> Enum.find(fn s ->
+      Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
+    end)
+  end
+
+  def create_teaching_context(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
+    attrs = attrs |> Map.put(:personal_workspace_id, ws.id) |> Map.put(:academic_year_id, year.id)
+    TeachingContext |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_teaching_contexts(%PersonalWorkspace{id: ws_id}, %AcademicYear{id: year_id}) do
+    TeachingContext
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id and academic_year_id == ^year_id)
+    |> Ash.Query.sort(subject: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def get_teaching_context(id), do: Ash.get(TeachingContext, id, authorize?: false)
+
+  def create_progression_plan(%TeachingContext{} = ctx, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:teaching_context_id, ctx.id)
+      |> Map.put(:academic_year_id, ctx.academic_year_id)
+      |> Map.put(:personal_workspace_id, ctx.personal_workspace_id)
+
+    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_progression_plans(%PersonalWorkspace{id: ws_id}) do
+    ProgressionPlan
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id)
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
+
+  def fetch_owned_plan(id, %PersonalWorkspace{id: ws_id}) do
+    ProgressionPlan
+    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
     end
+  end
 
-    resource TeacherAssistant.Academics.Sequence
-    resource TeacherAssistant.Academics.ClassroomStudent
-    resource TeacherAssistant.Academics.TeachingAssignment
+  def fetch_owned_entry(id, %PersonalWorkspace{} = ws) do
+    case Ash.get(ProgressionEntry, id, authorize?: false) do
+      {:ok, entry} ->
+        case fetch_owned_plan(entry.progression_plan_id, ws) do
+          {:ok, _} -> {:ok, entry}
+          _ -> {:error, :not_found}
+        end
 
-    resource TeacherAssistant.Academics.Student do
-      define :create_student, action: :create
-      define :update_student, action: :update
-      define :read_students, action: :read
-      define :destroy_student, action: :destroy
-
-      define :list_students_by_classroom,
-        action: :list_students_by_classroom,
-        args: [:classroom_id]
+      error ->
+        error
     end
+  end
 
-    resource TeacherAssistant.Academics.Subject do
-      define :create_subject, action: :create
-      define :update_subject, action: :update
-      define :read_subjects, action: :read
-      define :destroy_subject, action: :destroy
-      define :list_teacher_subjects, action: :list_teacher_subjects, args: [:year_id]
+  def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
+    attrs = %{
+      title: Map.get(overrides, :title, plan.title <> " (copy)"),
+      status: :draft,
+      template: Map.get(overrides, :template, false),
+      teaching_context_id: plan.teaching_context_id,
+      academic_year_id: plan.academic_year_id,
+      personal_workspace_id: plan.personal_workspace_id
+    }
+
+    with {:ok, copy} <-
+           ProgressionPlan
+           |> Ash.Changeset.for_create(:create, attrs)
+           |> Ash.create(authorize?: false) do
+      for e <- list_progression_entries(plan) do
+        ProgressionEntry
+        |> Ash.Changeset.for_create(:create, %{
+          module: e.module,
+          lesson_title: e.lesson_title,
+          planned_hours: e.planned_hours,
+          entry_type: e.entry_type,
+          week_no: e.week_no,
+          position: e.position,
+          famille_de_situations: e.famille_de_situations,
+          categories_action: e.categories_action,
+          competence_visee: e.competence_visee,
+          progression_plan_id: copy.id,
+          sequence_id: e.sequence_id
+        })
+        |> Ash.create!(authorize?: false)
+      end
+
+      {:ok, copy}
     end
+  end
 
-    resource TeacherAssistant.Academics.Mark do
-      define :save_mark, action: :create
-      define :read_marks, action: :read
-      define :destroy_mark, action: :destroy
-    end
+  def add_progression_entry(%ProgressionPlan{id: plan_id}, attrs) do
+    next = (list_entries_query(plan_id) |> Ash.read!(authorize?: false) |> length()) + 1
+    attrs = attrs |> Map.put(:progression_plan_id, plan_id) |> Map.put_new(:position, next)
+    ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
 
-    resource TeacherAssistant.Academics.Attendance do
-      define :create_attendance, action: :create
-      define :update_attendance, action: :update
-      define :read_attendances, action: :read
-      define :destroy_attendance, action: :destroy
-    end
+  def list_progression_entries(%ProgressionPlan{id: plan_id}) do
+    list_entries_query(plan_id) |> Ash.Query.sort(position: :asc) |> Ash.read!(authorize?: false)
+  end
 
-    resource TeacherAssistant.Academics.GradeInterval
-    resource TeacherAssistant.Academics.ProgressionPlan
-    resource TeacherAssistant.Academics.ProgressionEntry
-    resource TeacherAssistant.Academics.TeachingLog
-    resource TeacherAssistant.Academics.ApcLessonPlan
+  def update_progression_entry(%ProgressionEntry{} = e, attrs),
+    do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
-    resource TeacherAssistant.Academics.Term do
-      define :create_term, action: :create
-      define :update_term, action: :update
-      define :read_terms, action: :read
-      define :destroy_term, action: :destroy
-    end
+  def delete_progression_entry(%ProgressionEntry{} = e), do: Ash.destroy(e, authorize?: false)
+  def get_progression_entry(id), do: Ash.get(ProgressionEntry, id, authorize?: false)
 
-    resource TeacherAssistant.Academics.AcademicYear do
-      define :create_academic_year, action: :create
-      define :update_academic_year, action: :update
-      define :read_academic_years, action: :read
-      define :destroy_academic_year, action: :destroy
-      define :manage_classrooms, action: :manage_classrooms
-    end
+  defp list_entries_query(plan_id) do
+    ProgressionEntry |> Ash.Query.filter(progression_plan_id == ^plan_id)
+  end
+
+  def log_teaching(%PersonalWorkspace{id: ws_id}, attrs) do
+    attrs = Map.put(attrs, :personal_workspace_id, ws_id)
+    TeachingLogEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_logs_for_plan(%ProgressionPlan{id: plan_id}) do
+    entry_ids = list_entries_query(plan_id) |> Ash.read!(authorize?: false) |> Enum.map(& &1.id)
+
+    TeachingLogEntry
+    |> Ash.Query.filter(progression_entry_id in ^entry_ids)
+    |> Ash.Query.sort(date: :desc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def list_recent_logs(%PersonalWorkspace{id: ws_id}, limit \\ 10) do
+    TeachingLogEntry
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id)
+    |> Ash.Query.sort(date: :desc)
+    |> Ash.Query.limit(limit)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def coverage_for_plan(%ProgressionPlan{} = plan) do
+    entries = list_progression_entries(plan)
+    logs = list_logs_for_plan(plan)
+    TeacherAssistant.Academics.Coverage.summarize(entries, logs)
   end
 end

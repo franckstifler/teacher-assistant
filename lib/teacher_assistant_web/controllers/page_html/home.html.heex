@@ -17,11 +17,8 @@
           <.link navigate={~p"/sign-in"} class="btn btn-primary">
             <.icon name="hero-arrow-left-on-rectangle" class="size-5" /> Sign in
           </.link>
-          <.link navigate={~p"/reports/report_cards"} class="btn btn-outline">
-            <.icon name="hero-document-chart-bar" class="size-5" /> View report cards
-          </.link>
-          <.link navigate={~p"/teacher/progression"} class="btn btn-ghost">
-            <.icon name="hero-calendar-days" class="size-5" /> Track progression
+          <.link navigate={~p"/teacher"} class="btn btn-outline">
+            <.icon name="hero-squares-2x2" class="size-5" /> Open teacher desk
           </.link>
         </div>
       </div>
@@ -64,23 +61,23 @@
               </thead>
               <tbody>
                 <tr>
-                  <td class="font-medium">Report-card preview</td>
-                  <td>Admin</td>
+                  <td class="font-medium">Personal classrooms</td>
+                  <td>Teacher</td>
                   <td><span class="badge badge-success badge-sm">Live</span></td>
                 </tr>
                 <tr>
-                  <td class="font-medium">Programme coverage</td>
-                  <td>Vice principal</td>
+                  <td class="font-medium">Roll call</td>
+                  <td>Teacher</td>
                   <td><span class="badge badge-success badge-sm">Live</span></td>
                 </tr>
                 <tr>
-                  <td class="font-medium">Classroom access</td>
-                  <td>Accountant</td>
+                  <td class="font-medium">Plan versus taught progress</td>
+                  <td>Teacher</td>
                   <td><span class="badge badge-success badge-sm">Live</span></td>
                 </tr>
                 <tr>
-                  <td class="font-medium">PDF progression import</td>
-                  <td>Admin</td>
+                  <td class="font-medium">School workspaces</td>
+                  <td>Schools</td>
                   <td><span class="badge badge-warning badge-sm">Next</span></td>
                 </tr>
               </tbody>
@@ -103,15 +100,12 @@
             A teacher can see planned weekly progression, log what was actually taught, and structure a lesson with competence-based fields.
           </p>
           <p>
-            A vice principal can read the taux de couverture du programme before inspections and term reports.
+            School dashboards, report cards, and programme coverage will build on the same classroom foundation later.
           </p>
         </div>
         <div class="space-y-3 text-sm leading-6 text-base-content/70">
           <p>
-            An accountant or admin can suspend, block, or allow classroom access without relying on informal paper lists.
-          </p>
-          <p>
-            Report-card numbers come from deterministic marks, coefficients, rankings, and attendance data.
+            The first version gives individual teachers a private workspace before institution-level administration is added.
           </p>
         </div>
       </div>
@@ -128,45 +122,15 @@
         </p>
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-4">
+      <div class="grid gap-4 lg:grid-cols-1">
         <.link
-          navigate={~p"/configurations/academic_years"}
+          navigate={~p"/teacher"}
           class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
         >
-          <.icon name="hero-building-office-2" class="size-6 text-primary" />
-          <h3 class="mt-4 font-semibold">Administration</h3>
-          <p class="mt-2 text-sm leading-6 text-base-content/65">
-            Academic years, classrooms, students, subjects, coefficients, and settings.
-          </p>
-        </.link>
-        <.link
-          navigate={~p"/teacher/marks"}
-          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
-        >
-          <.icon name="hero-pencil-square" class="size-6 text-primary" />
+          <.icon name="hero-squares-2x2" class="size-6 text-primary" />
           <h3 class="mt-4 font-semibold">Teacher desk</h3>
           <p class="mt-2 text-sm leading-6 text-base-content/65">
-            Marks, attendance, weekly progression logs, and APC lesson structures.
-          </p>
-        </.link>
-        <.link
-          navigate={~p"/reports/programme_coverage"}
-          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
-        >
-          <.icon name="hero-chart-bar" class="size-6 text-primary" />
-          <h3 class="mt-4 font-semibold">Vice principal</h3>
-          <p class="mt-2 text-sm leading-6 text-base-content/65">
-            Coverage dashboards, report-card preview, ranking, and programme follow-up.
-          </p>
-        </.link>
-        <.link
-          navigate={~p"/configurations/student_access"}
-          class="ta-panel block p-5 transition hover:-translate-y-0.5 hover:border-primary"
-        >
-          <.icon name="hero-identification" class="size-6 text-primary" />
-          <h3 class="mt-4 font-semibold">Access control</h3>
-          <p class="mt-2 text-sm leading-6 text-base-content/65">
-            Allowed, pending, suspended, and blocked student classroom access with audit notes.
+            Your personal teaching workspace — classrooms, progression, and more coming soon.
           </p>
         </.link>
       </div>
