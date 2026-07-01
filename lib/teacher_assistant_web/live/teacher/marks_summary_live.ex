@@ -106,7 +106,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
                     ({@summary.per_student[s.id].rank})
                   </span>
                 </span>
-                <.mention_badge mention={@summary.per_student[s.id].mention} />
+                <.mention_badge
+                  :if={@summary.per_student[s.id].average}
+                  mention={@summary.per_student[s.id].mention}
+                />
               </span>
             </li>
           </ul>

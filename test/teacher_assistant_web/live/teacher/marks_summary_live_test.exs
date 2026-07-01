@@ -36,7 +36,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
         %{student_id: s2.id, score: Decimal.new("8")}
       ])
 
-    %{ws: ws, ctx: ctx, seq: seq, s1: s1, s2: s2}
+    %{ws: ws, ctx: ctx, seq: seq, cg: cg, s1: s1, s2: s2}
   end
 
   test "shows class average and pass rate", %{conn: conn, ctx: ctx, seq: seq, s1: s1} do
@@ -50,6 +50,27 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert has_element?(view, "#summary-pass-rate", "50")
     assert has_element?(view, "#summary-row-#{s1.id}", "Awa")
     assert has_element?(view, "#summary-row-#{s1.id}", "14")
+  end
+
+  test "ungraded student is not badged as failing", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    cg: cg,
+    s2: s2
+  } do
+    {:ok, ungraded} = Academics.add_student(cg, %{full_name: "Chantal", sex: :f})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+
+    # ungraded student shows "—" and no mention badge at all
+    ungraded_row = render(element(view, "#summary-row-#{ungraded.id}"))
+    assert ungraded_row =~ "—"
+    refute ungraded_row =~ "Insuffisant"
+
+    # graded failing student (score 8 < 10) is still badged "Insuffisant"
+    assert render(element(view, "#summary-row-#{s2.id}")) =~ "Insuffisant"
   end
 
   test "context without class group redirects to roster", %{conn: conn, ws: ws} do
