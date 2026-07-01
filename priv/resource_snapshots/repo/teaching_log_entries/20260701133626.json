@@ -21,12 +21,36 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "title",
+      "source": "date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "content_taught",
       "type": "text"
     },
     {
       "allow_nil?": true,
-      "default": "\"draft\"",
+      "default": "\"1\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "hours",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"done\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
@@ -37,16 +61,28 @@
       "type": "text"
     },
     {
-      "allow_nil?": false,
-      "default": "false",
+      "allow_nil?": true,
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "template",
-      "type": "boolean"
+      "source": "homework",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "note",
+      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -91,69 +127,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_plans_teaching_context_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "teaching_contexts"
-      },
-      "scale": null,
-      "size": null,
-      "source": "teaching_context_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "progression_plans_academic_year_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "academic_years"
-      },
-      "scale": null,
-      "size": null,
-      "source": "academic_year_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "progression_plans_personal_workspace_id_fkey",
+        "name": "teaching_log_entries_personal_workspace_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
@@ -164,6 +138,37 @@
       "size": null,
       "source": "personal_workspace_id",
       "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "teaching_log_entries_progression_entry_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "progression_entries"
+      },
+      "scale": null,
+      "size": null,
+      "source": "progression_entry_id",
+      "type": "uuid"
     }
   ],
   "base_filter": null,
@@ -172,7 +177,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "5B983ED8971B18DAF7086BEC811DBD7D56D9FD418F78698BBBB281C447F83BB8",
+  "hash": "91D5BAD39858E9948EDE39B039C7FCAD0747928C70CF55E789EC13C58556AF5A",
   "identities": [],
   "multitenancy": {
     "attribute": null,
@@ -181,5 +186,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "progression_plans"
+  "table": "teaching_log_entries"
 }

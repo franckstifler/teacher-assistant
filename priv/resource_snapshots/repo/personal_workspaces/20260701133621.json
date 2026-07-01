@@ -21,31 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "email",
-      "type": "citext"
-    },
-    {
-      "allow_nil?": true,
-      "default": "\"teacher\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "role",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "hashed_password",
+      "source": "name",
       "type": "text"
     },
     {
@@ -71,6 +47,37 @@
       "size": null,
       "source": "updated_at",
       "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "personal_workspaces_owner_user_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "users"
+      },
+      "scale": null,
+      "size": null,
+      "source": "owner_user_id",
+      "type": "uuid"
     }
   ],
   "base_filter": null,
@@ -79,19 +86,19 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "609F39384AC668AE111EF79E79C65C8DFD1CBAB50A7FC960C618ABFA8CDA0C39",
+  "hash": "253E0919BDF9890D37C60745D59EB1533467382630906E9635E02CD45FCACB55",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "users_unique_email_index",
+      "index_name": "personal_workspaces_unique_owner_user_index",
       "keys": [
         {
           "type": "atom",
-          "value": "email"
+          "value": "owner_user_id"
         }
       ],
-      "name": "unique_email",
+      "name": "unique_owner_user",
       "nils_distinct?": true,
       "where": null
     }
@@ -103,5 +110,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "users"
+  "table": "personal_workspaces"
 }

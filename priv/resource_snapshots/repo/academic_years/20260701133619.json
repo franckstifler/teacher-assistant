@@ -21,7 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "module",
+      "source": "name",
       "type": "text"
     },
     {
@@ -33,44 +33,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "lesson_title",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "\"1\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "planned_hours",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "\"lesson\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "entry_type",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "week_no",
-      "type": "bigint"
+      "source": "start_date",
+      "type": "date"
     },
     {
       "allow_nil?": false,
@@ -81,44 +45,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "position",
-      "type": "bigint"
+      "source": "end_date",
+      "type": "date"
     },
     {
       "allow_nil?": true,
-      "default": "nil",
+      "default": "true",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "famille_de_situations",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "categories_action",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "competence_visee",
-      "type": "text"
+      "source": "active",
+      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -163,47 +103,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_entries_progression_plan_id_fkey",
+        "name": "academic_years_personal_workspace_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "progression_plans"
+        "table": "personal_workspaces"
       },
       "scale": null,
       "size": null,
-      "source": "progression_plan_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "progression_entries_sequence_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "sequences"
-      },
-      "scale": null,
-      "size": null,
-      "source": "sequence_id",
+      "source": "personal_workspace_id",
       "type": "uuid"
     }
   ],
@@ -213,8 +122,27 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "983C325E846562BCB92D0E17300CD9D77385902968111E77FD35FC03F7A4E725",
-  "identities": [],
+  "hash": "7BA6CFD94DD4C47C306F0E71C7240C39B2FA732F34830AF37A366EC4B9F872C4",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "academic_years_unique_workspace_year_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "personal_workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "name"
+        }
+      ],
+      "name": "unique_workspace_year",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -222,5 +150,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "progression_entries"
+  "table": "academic_years"
 }

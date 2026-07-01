@@ -21,8 +21,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "name",
-      "type": "text"
+      "source": "position",
+      "type": "bigint"
     },
     {
       "allow_nil?": false,
@@ -67,16 +67,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "personal_workspaces_owner_user_id_fkey",
+        "name": "terms_academic_year_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "users"
+        "table": "academic_years"
       },
       "scale": null,
       "size": null,
-      "source": "owner_user_id",
+      "source": "academic_year_id",
       "type": "uuid"
     }
   ],
@@ -86,19 +86,23 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "0F7FCD11C6EA067871FE89CBDC4407A3D6C91F2BB28102BC8F0E3CFA22547234",
+  "hash": "1291A2B8B3CF31AE36BA5B4D15C3B248546F99F0AAEE419DBE79E1EAF04368F5",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "personal_workspaces_unique_owner_user_index",
+      "index_name": "terms_unique_year_term_index",
       "keys": [
         {
           "type": "atom",
-          "value": "owner_user_id"
+          "value": "academic_year_id"
+        },
+        {
+          "type": "atom",
+          "value": "position"
         }
       ],
-      "name": "unique_owner_user",
+      "name": "unique_year_term",
       "nils_distinct?": true,
       "where": null
     }
@@ -110,5 +114,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "personal_workspaces"
+  "table": "terms"
 }

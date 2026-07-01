@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
@@ -19,6 +20,7 @@ defmodule TeacherAssistant.Academics do
     resource Term
     resource Sequence
     resource TeachingContext
+    resource ClassGroup
     resource ProgressionPlan
     resource ProgressionEntry
     resource TeachingLogEntry
@@ -195,6 +197,33 @@ defmodule TeacherAssistant.Academics do
 
   def fetch_owned_teaching_context(id, %PersonalWorkspace{id: ws_id}) do
     TeachingContext
+    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  def create_class_group(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:personal_workspace_id, ws.id)
+      |> Map.put(:academic_year_id, year.id)
+      |> Map.put_new(:subsystem, :francophone)
+
+    ClassGroup |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_class_groups(%PersonalWorkspace{id: ws_id}, %AcademicYear{id: year_id}) do
+    ClassGroup
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id and academic_year_id == ^year_id)
+    |> Ash.Query.sort(label: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def fetch_owned_class_group(id, %PersonalWorkspace{id: ws_id}) do
+    ClassGroup
     |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
     |> Ash.read_one(authorize?: false)
     |> case do

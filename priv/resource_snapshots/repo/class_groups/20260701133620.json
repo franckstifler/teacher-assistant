@@ -21,8 +21,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "number",
-      "type": "bigint"
+      "source": "label",
+      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -33,44 +33,32 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "position_in_term",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "start_date",
-      "type": "date"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "end_date",
-      "type": "date"
+      "source": "level",
+      "type": "text"
     },
     {
       "allow_nil?": true,
-      "default": "false",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "integration_week",
-      "type": "boolean"
+      "source": "serie",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"francophone\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "subsystem",
+      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -115,16 +103,47 @@
           "global": null,
           "strategy": null
         },
-        "name": "sequences_term_id_fkey",
+        "name": "class_groups_personal_workspace_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "terms"
+        "table": "personal_workspaces"
       },
       "scale": null,
       "size": null,
-      "source": "term_id",
+      "source": "personal_workspace_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "class_groups_academic_year_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "academic_years"
+      },
+      "scale": null,
+      "size": null,
+      "source": "academic_year_id",
       "type": "uuid"
     }
   ],
@@ -134,8 +153,31 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "2672238C4C61317FF4D59F8A571E554CF7A651E7CCD85403453DE9A4DCB88506",
-  "identities": [],
+  "hash": "5AEA1DA583B9C9EE4F8FF82A6C147372715312D8398DC726B0DF76384B0C21C4",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "class_groups_unique_class_group_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "personal_workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "academic_year_id"
+        },
+        {
+          "type": "atom",
+          "value": "label"
+        }
+      ],
+      "name": "unique_class_group",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -143,5 +185,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "sequences"
+  "table": "class_groups"
 }
