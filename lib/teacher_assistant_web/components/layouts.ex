@@ -37,12 +37,24 @@ defmodule TeacherAssistantWeb.Layouts do
     current_scope = assigns[:current_scope]
     current_user = current_scope && current_scope.current_user
 
+    contexts =
+      case current_scope do
+        %{current_workspace: %{} = ws, current_academic_year: %{} = year} ->
+          TeacherAssistant.Academics.list_teaching_contexts(ws, year)
+
+        _ ->
+          []
+      end
+
     assigns =
       assigns
       |> assign(:current_user, current_user)
       |> assign(:workspace_name, workspace_name(current_scope))
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
+      |> assign(:contexts, contexts)
+      |> assign(:current_context, current_scope && current_scope.current_context)
+      |> assign(:current_path, assigns[:current_path] || "/teacher")
 
     ~H"""
     <div class="flex min-h-screen flex-col bg-base-200 text-base-content">
@@ -85,30 +97,151 @@ defmodule TeacherAssistantWeb.Layouts do
         <nav
           :if={@current_user}
           id="main-nav"
-          class="mx-auto flex w-full max-w-6xl items-center gap-1 px-3 pb-2 sm:px-5"
+          class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-3 pb-2 sm:px-5"
           aria-label={gettext("Main navigation")}
         >
-          <.tab_link id="nav-dashboard" href={~p"/teacher"} icon="hero-squares-2x2">
+          <div :if={@contexts != []} id="class-switcher" class="dropdown">
+            <div
+              tabindex="0"
+              role="button"
+              class="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-sm font-semibold"
+            >
+              <.icon name="hero-users" class="size-4 text-primary" />
+              <span>{context_label(@current_context)}</span>
+              <.icon name="hero-chevron-down" class="size-3.5 text-base-content/50" />
+            </div>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow"
+            >
+              <li :for={c <- @contexts} id={"class-switcher-item-#{c.id}"}>
+                <.link href={~p"/teacher/select-context/#{c.id}?return_to=#{@current_path}"}>
+                  {c.level} · {c.subject}
+                </.link>
+              </li>
+            </ul>
+          </div>
+
+          <.link
+            :if={@contexts == []}
+            id="class-switcher"
+            navigate={~p"/teacher/setup"}
+            class="inline-flex items-center gap-2 rounded-md border border-dashed border-base-300 px-3 py-1.5 text-sm font-semibold text-base-content/70"
+          >
+            <.icon name="hero-plus" class="size-4" />
+            {gettext("Set up a class")}
+          </.link>
+
+          <span class="mx-1 hidden h-5 w-px bg-base-300 sm:block"></span>
+
+          <.tab_link
+            id="nav-dashboard"
+            href={~p"/teacher"}
+            icon="hero-squares-2x2"
+            current_path={@current_path}
+          >
             {gettext("Dashboard")}
           </.tab_link>
-          <.tab_link id="nav-log" href={~p"/teacher/log"} icon="hero-pencil-square">
+          <.tab_link
+            id="nav-log"
+            href={~p"/teacher/log"}
+            icon="hero-pencil-square"
+            current_path={@current_path}
+          >
             {gettext("Log")}
           </.tab_link>
+          <.tab_link
+            id="nav-import"
+            href={~p"/teacher/import"}
+            icon="hero-arrow-up-tray"
+            current_path={@current_path}
+          >
+            {gettext("Import")}
+          </.tab_link>
+
           <div id="locale-switch" class="ml-auto flex items-center gap-1">
             <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs ta-num">FR</.link>
             <span class="text-base-content/30">·</span>
             <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs ta-num">EN</.link>
           </div>
         </nav>
+
+        <nav
+          :if={@current_user && @current_context}
+          id="per-class-nav"
+          class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-1 border-t border-base-300 px-3 py-1.5 sm:px-5"
+          aria-label={gettext("Class navigation")}
+        >
+          <.tab_link
+            id="nav-roster"
+            href={~p"/teacher/contexts/#{@current_context.id}/roster"}
+            icon="hero-user-group"
+            current_path={@current_path}
+          >
+            {gettext("Roster")}
+          </.tab_link>
+          <.tab_link
+            id="nav-marks"
+            href={~p"/teacher/contexts/#{@current_context.id}/marks"}
+            icon="hero-pencil-square"
+            current_path={@current_path}
+          >
+            {gettext("Marks")}
+          </.tab_link>
+          <.tab_link
+            id="nav-results"
+            href={~p"/teacher/contexts/#{@current_context.id}/marks/summary"}
+            icon="hero-trophy"
+            current_path={@current_path}
+          >
+            {gettext("Results")}
+          </.tab_link>
+        </nav>
       </header>
 
       <main class={[
         "flex-1",
-        if(@current_user, do: "mx-auto w-full max-w-6xl px-4 py-6 sm:px-6", else: "w-full")
+        if(@current_user,
+          do: "mx-auto w-full max-w-6xl px-4 py-6 pb-20 sm:px-6 sm:pb-6",
+          else: "w-full"
+        )
       ]}>
         {render_slot(@inner_block)}
       </main>
     </div>
+
+    <nav
+      :if={@current_user}
+      id="mobile-nav"
+      class="fixed inset-x-0 bottom-0 z-40 flex border-t border-base-300 bg-base-100/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+      aria-label={gettext("Bottom navigation")}
+    >
+      <.link
+        navigate={~p"/teacher"}
+        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
+      >
+        <.icon name="hero-squares-2x2" class="size-5" />{gettext("Dashboard")}
+      </.link>
+      <.link
+        :if={@current_context}
+        navigate={~p"/teacher/contexts/#{@current_context.id}/marks"}
+        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
+      >
+        <.icon name="hero-pencil-square" class="size-5" />{gettext("Marks")}
+      </.link>
+      <.link
+        navigate={~p"/teacher/log"}
+        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
+      >
+        <.icon name="hero-book-open" class="size-5" />{gettext("Log")}
+      </.link>
+      <.link
+        navigate={~p"/teacher/import"}
+        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
+      >
+        <.icon name="hero-arrow-up-tray" class="size-5" />{gettext("Import")}
+      </.link>
+    </nav>
 
     <.flash_group flash={@flash} />
     """
@@ -117,20 +250,31 @@ defmodule TeacherAssistantWeb.Layouts do
   attr :id, :string, default: nil
   attr :href, :string, required: true
   attr :icon, :string, required: true
+  attr :current_path, :string, default: nil
   slot :inner_block, required: true
 
   defp tab_link(assigns) do
+    assigns = assign(assigns, :active, assigns.current_path == assigns.href)
+
     ~H"""
     <.link
       id={@id}
       navigate={@href}
-      class="group inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-base-content/70 transition hover:bg-base-200 hover:text-base-content"
+      aria-current={@active && "page"}
+      class={[
+        "group inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition",
+        @active && "bg-base-200 text-base-content",
+        !@active && "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+      ]}
     >
       <.icon name={@icon} class="size-4 text-base-content/45 transition group-hover:text-primary" />
       {render_slot(@inner_block)}
     </.link>
     """
   end
+
+  defp context_label(%{level: level, subject: subject}), do: "#{level} · #{subject}"
+  defp context_label(_), do: Gettext.gettext(TeacherAssistantWeb.Gettext, "Select a class")
 
   defp workspace_name(%{current_workspace: %{name: name}}), do: name
   defp workspace_name(%{current_user: %{} = _user}), do: gettext("Personal workspace")

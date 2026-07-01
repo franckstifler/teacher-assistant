@@ -22,6 +22,13 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     socket = assign_scope(socket, session)
 
     if socket.assigns.current_user do
+      socket =
+        Phoenix.LiveView.attach_hook(socket, :current_path, :handle_params, fn _params,
+                                                                                uri,
+                                                                                socket ->
+          {:cont, Phoenix.Component.assign(socket, :current_path, URI.parse(uri).path)}
+        end)
+
       {:cont, socket}
     else
       {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
