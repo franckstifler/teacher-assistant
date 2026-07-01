@@ -278,8 +278,13 @@ Bands from [`docs/domain/04`](../../domain/04-grading-and-report-cards.md) §7 �
 | `:bien` (14–15.99) | Bien | Good | primary |
 | `:assez_bien` (12–13.99) | Assez bien | Fairly good | primary |
 | `:passable` (10–11.99) | Passable | Pass | secondary (chalk-yellow) |
-| `nil` (< 10) | Non admis | Not passing | accent (coral) |
+| `nil` (< 10) | Insuffisant | Below pass | accent (coral) |
 
 Display rules: pass ≥ 10/20 is hard-coded; every mention shows **word + icon** (`hero-check-circle`
 for ≥10, `hero-x-circle` for <10) so color is never the sole signal `[color-not-only]`. Ungraded
 (no marks entered) renders "—", not a mention. These labels flow through `gettext`.
+
+> Terminology note: at the **subject × séquence** level, below-10 is *Insuffisant* (under the
+> moyenne) — **not** *Non admis*. Admission/redoublement is an **annual, cross-subject** decision
+> that belongs to the school-layer bulletin (Phase 2), not to a solo teacher's per-subject register.
+> (The earlier preview mockup used "Non admis"; this spec is the source of truth — use *Insuffisant*.)
