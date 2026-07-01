@@ -24,8 +24,8 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     if socket.assigns.current_user do
       socket =
         Phoenix.LiveView.attach_hook(socket, :current_path, :handle_params, fn _params,
-                                                                                uri,
-                                                                                socket ->
+                                                                               uri,
+                                                                               socket ->
           {:cont, Phoenix.Component.assign(socket, :current_path, URI.parse(uri).path)}
         end)
 
@@ -53,7 +53,11 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     user = socket.assigns[:current_user] || load_user(session["user_id"])
     locale = session["locale"] || "fr"
     Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
-    scope = %{resolve_scope(user, session["workspace_id"], session["context_id"]) | locale: locale}
+
+    scope = %{
+      resolve_scope(user, session["workspace_id"], session["context_id"])
+      | locale: locale
+    }
 
     socket
     |> assign(:current_user, user)

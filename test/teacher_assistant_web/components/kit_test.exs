@@ -5,7 +5,11 @@ defmodule TeacherAssistantWeb.KitTest do
 
   test "page_header renders eyebrow, title, and actions" do
     html =
-      render_component(&page_header/1, %{eyebrow: "Séquence 2", title: "Maths · 3e M2", actions: [%{inner_block: fn _, _ -> "ACT" end}]})
+      render_component(&page_header/1, %{
+        eyebrow: "Séquence 2",
+        title: "Maths · 3e M2",
+        actions: [%{inner_block: fn _, _ -> "ACT" end}]
+      })
 
     assert html =~ "Séquence 2"
     assert html =~ "Maths · 3e M2"
@@ -21,13 +25,27 @@ defmodule TeacherAssistantWeb.KitTest do
   end
 
   test "empty_state renders icon title and action" do
-    html = render_component(&empty_state/1, %{icon: "hero-inbox", title: "Nothing yet", action: [%{inner_block: fn _, _ -> "GO" end}]})
+    html =
+      render_component(&empty_state/1, %{
+        icon: "hero-inbox",
+        title: "Nothing yet",
+        action: [%{inner_block: fn _, _ -> "GO" end}]
+      })
+
     assert html =~ "Nothing yet"
     assert html =~ "GO"
   end
 
   test "setup_gate renders message and action" do
-    html = render_component(&setup_gate/1, %{icon: "hero-academic-cap", eyebrow: "Get started", title: "Welcome", message: "Set up your year", action: [%{inner_block: fn _, _ -> "START" end}]})
+    html =
+      render_component(&setup_gate/1, %{
+        icon: "hero-academic-cap",
+        eyebrow: "Get started",
+        title: "Welcome",
+        message: "Set up your year",
+        action: [%{inner_block: fn _, _ -> "START" end}]
+      })
+
     assert html =~ "Welcome"
     assert html =~ "Set up your year"
     assert html =~ "START"
