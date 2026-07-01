@@ -5,8 +5,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with true <- not is_nil(ws),
-         {:ok, ctx} <- Academics.fetch_owned_teaching_context(ctx_id, ws),
+    with {:ok, ctx} <- owned_context(ws, ctx_id),
          false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Academics.current_academic_year(ws)
@@ -28,6 +27,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:scores, existing_scores(assessment))
        |> assign(:new_assessment_form, to_form(%{}, as: :assessment))}
     else
+      # true => context owned but has no class group (go set up the roster); anything else => not found / not owned
       true ->
         {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx_id}/roster")}
 
@@ -35,6 +35,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
     end
   end
+
+  defp owned_context(nil, _ctx_id), do: :error
+  defp owned_context(ws, ctx_id), do: Academics.fetch_owned_teaching_context(ctx_id, ws)
 
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
