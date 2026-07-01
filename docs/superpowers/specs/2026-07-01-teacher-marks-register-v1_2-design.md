@@ -37,13 +37,17 @@ whole class, adds conduct and promotion decisions) and belongs to **Phase 2 (sch
 New Ash resources in the `TeacherAssistant.Academics` domain, following the v1 resource pattern
 (AshPostgres, uuid_v7 primary keys, ownership policies, timestamps).
 
+**Convention:** closed value sets use a dedicated `Ash.Type.Enum` module, never a bare `:atom`
+attribute. This spec introduces `Sex` (`[:m, :f]`) and reuses/introduces a `Subsystem`
+(`[:francophone, :anglophone]`) enum; attributes reference these modules.
+
 ### `ClassGroup`
 Owns a roster. A teacher enters students once per class and reuses across subjects.
 - `belongs_to :personal_workspace` (required), `belongs_to :academic_year` (required)
 - `label` :string, required (e.g. "3e M2")
 - `level` :string, required
 - `serie` :string, nullable
-- `subsystem` :atom, `one_of: [:francophone]` for v1.2 (constraint widened when Anglophone lands)
+- `subsystem` — `Subsystem` enum; only `:francophone` is used in v1.2 (Anglophone lands later)
 - Identity: unique on `(personal_workspace_id, academic_year_id, label)`
 
 `TeachingContext` gains an **optional** `belongs_to :class_group` (nullable) so existing v1 contexts
@@ -52,7 +56,7 @@ keep working. Setup flow can link an existing class group or create one.
 ### `Student`
 - `belongs_to :class_group` (required)
 - `full_name` :string, required
-- `sex` :atom, `one_of: [:m, :f]`, required (garçons/filles statistics are a required output)
+- `sex` — `Sex` enum (`[:m, :f]`), required (garçons/filles statistics are a required output)
 - `matricule` :string, nullable
 - `repeater?` :boolean, default false
 - Ordered by `full_name` for display.
