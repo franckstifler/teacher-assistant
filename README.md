@@ -19,10 +19,19 @@ for the phased roadmap.
 
 **Phase 1 — Independent teacher (in progress):**
 
-- v1 — Build a *fiche de progression* per subject × class and track **programme coverage**
-  (planned vs taught). *(See the current
-  [design spec](docs/superpowers/specs/2026-06-26-teacher-progression-coverage-v1-design.md).)*
-- Next: assisted import of existing fiches → marks & report cards → CBA lesson planning.
+- ✅ **v1 — Progression & Coverage (shipped).** Build a *fiche de progression* per subject × class,
+  log what's actually taught (*cahier de textes*), and track **programme coverage** (*taux de
+  couverture* — planned vs taught), with a guided year-setup wizard and a teacher dashboard.
+  *(See the [design spec](docs/superpowers/specs/2026-06-26-teacher-progression-coverage-v1-design.md).)*
+- ✅ **v1.1 — Assisted fiche import (shipped).** Upload an existing text-based fiche PDF and turn it
+  into an editable draft progression plan, **deterministically (no AI)**. Requires `pdftotext`
+  (see [System dependencies](#system-dependencies)). *(See the
+  [design spec](docs/superpowers/specs/2026-06-27-fiche-import-v1_1-design.md).)*
+- Next: **v1.2** marks & report cards → **v1.3** CBA lesson-plan editor.
+
+The app also ships a distinct visual identity — the **"Tableau" chalkboard theme** (dark default +
+light *craie*), Fraunces + IBM Plex Mono, branded sign-in/registration, and a marketing landing
+page. See the [Design system](docs/DESIGN.md).
 
 **Phase 2 — School layer (later):** school workspaces, staff roles & councils, teacher
 invitations, official report cards & statistics, enrollment, fees and fee-based access control.

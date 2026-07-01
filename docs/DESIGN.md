@@ -21,6 +21,26 @@ The landing page can introduce and sell the project, but authenticated screens s
   admin surfaces arrive in Phase 2 (see [`PRODUCT.md`](PRODUCT.md)). Don't surface school-only
   actions before that layer exists.
 
+## Visual Identity — "Tableau" (implemented 2026-06-27)
+
+The app's visual language is **Tableau**, a chalkboard-inspired identity:
+
+- **Themes.** A dark **chalkboard** theme is the **default**; a light **craie** (chalk-on-paper)
+  theme is the alternate. Both are daisyUI themes built from CSS-variable overrides in
+  `assets/css/app.css`, with a `data-theme` toggle (dark / light / system) wired in `app.js`.
+- **Type.** **Fraunces** for display (`font-display`) and **IBM Plex Mono** for data/mono
+  (`font-mono`), registered via a Tailwind v4 `@theme {}` block; the body uses a clean sans. Reserve
+  Fraunces display sizes for the landing and section headers, not dense work surfaces.
+- **Palette.** Chalk-green primary, warm-yellow secondary, coral accent over lifted-panel / board
+  base layers — a deliberate, identity-bearing palette, not a flat SaaS gray.
+- **Auth & landing.** AshAuthentication sign-in/registration are branded through override modules
+  (`auth_overrides.ex`); the public landing page sells the product (hero, 3-step loop, closing CTA).
+- **Signature element.** The **Coverage Ribbon** (`coverage_ribbon/1` in `core_components.ex`)
+  visualizes *taux de couverture* — the one place boldness is spent.
+
+Tableau sets the skin; the operational principles below still govern dense authenticated screens
+(forms, tables, dashboards) — it is not a license for decoration inside work surfaces.
+
 ## Visual Principles
 
 - Use a restrained operational style, not decorative card-heavy layouts.
@@ -98,9 +118,10 @@ Setup screens should replace crashes and unclear redirects.
 
 ## Color and Density
 
-- Use a calm neutral base with clear semantic accents.
-- Avoid one-note palettes dominated by one hue.
-- Avoid oversized hero-scale headings inside app panels.
+- Follow the **Tableau** palette (see Visual Identity): identity-bearing base layers with clear
+  semantic accents — neither a flat neutral gray nor a one-note single-hue wash.
+- Avoid oversized hero-scale headings inside app panels (reserve Fraunces display sizes for the
+  landing and section headers).
 - Keep cards/panels at 8px radius or less unless the existing system changes globally.
 - Prioritize spacing that supports scanning rather than large decorative gaps.
 

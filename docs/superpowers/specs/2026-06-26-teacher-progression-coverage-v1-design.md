@@ -1,7 +1,7 @@
 # Design Spec — Independent Teacher: Progression & Coverage (v1)
 
 **Date:** 2026-06-26
-**Status:** Approved design → ready for implementation planning
+**Status:** Implemented — merged to `main` (2026-06-27)
 **Branch context:** `codex/hybrid-workspace-context` (old school-centric model being removed)
 **Domain source of truth:** [`docs/domain/`](../../domain/README.md)
 

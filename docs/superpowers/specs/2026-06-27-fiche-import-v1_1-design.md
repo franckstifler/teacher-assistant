@@ -1,7 +1,7 @@
 # Design Spec — Assisted Fiche Import (v1.1)
 
 **Date:** 2026-06-27
-**Status:** Approved design → ready for implementation planning
+**Status:** Implemented — merged to `main` (2026-06-27)
 **Builds on:** v1 (Progression & Coverage) — see
 [`2026-06-26-teacher-progression-coverage-v1-design.md`](2026-06-26-teacher-progression-coverage-v1-design.md)
 **Domain source of truth:** [`docs/domain/`](../../domain/README.md) (esp.
