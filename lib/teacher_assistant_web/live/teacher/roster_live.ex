@@ -95,7 +95,12 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
         </header>
 
         <%= if @class_group do %>
-          <.form for={@student_form} id="student-form" phx-submit="add_student" class="ta-leaf space-y-2">
+          <.form
+            for={@student_form}
+            id="student-form"
+            phx-submit="add_student"
+            class="ta-leaf space-y-2"
+          >
             <.input field={@student_form[:full_name]} label={gettext("Full name")} />
             <.input
               type="select"
@@ -110,7 +115,11 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           </.form>
 
           <ul class="space-y-1">
-            <li :for={s <- @students} id={"student-row-#{s.id}"} class="ta-leaf flex items-center justify-between">
+            <li
+              :for={s <- @students}
+              id={"student-row-#{s.id}"}
+              class="ta-leaf flex items-center justify-between"
+            >
               <span>{s.full_name}</span>
               <button
                 id={"student-delete-#{s.id}"}
@@ -123,7 +132,12 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
             </li>
           </ul>
         <% else %>
-          <.form for={@class_form} id="roster-create-class-form" phx-submit="create_class" class="ta-leaf space-y-2">
+          <.form
+            for={@class_form}
+            id="roster-create-class-form"
+            phx-submit="create_class"
+            class="ta-leaf space-y-2"
+          >
             <p class="text-sm opacity-80">{gettext("Create the class this subject is taught to.")}</p>
             <.input field={@class_form[:label]} label={gettext("Class label")} />
             <.input field={@class_form[:level]} label={gettext("Level")} value={@ctx.level} />

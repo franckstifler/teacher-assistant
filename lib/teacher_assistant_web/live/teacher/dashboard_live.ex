@@ -56,13 +56,28 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
                 <span class="ta-eyebrow shrink-0">{gettext("covered")}</span>
               </div>
               <.coverage_ribbon rate={kpi.coverage.rate * 100} />
-              <.link
-                navigate={~p"/teacher/plans/#{kpi.plan.id}"}
-                class="inline-flex w-fit items-center gap-1 text-sm font-semibold text-primary hover:underline"
-              >
-                {gettext("Open plan")}
-                <.icon name="hero-arrow-right" class="size-3.5" />
-              </.link>
+              <div class="flex flex-wrap items-center gap-2">
+                <.link
+                  navigate={~p"/teacher/plans/#{kpi.plan.id}"}
+                  class="inline-flex w-fit items-center gap-1 text-sm font-semibold text-primary hover:underline"
+                >
+                  {gettext("Open plan")}
+                  <.icon name="hero-arrow-right" class="size-3.5" />
+                </.link>
+                <.link
+                  navigate={~p"/teacher/contexts/#{kpi.plan.teaching_context_id}/marks"}
+                  class="btn btn-outline btn-xs gap-1"
+                >
+                  <.icon name="hero-pencil-square" class="size-3" />
+                  {gettext("Marks")}
+                </.link>
+                <.link
+                  navigate={~p"/teacher/contexts/#{kpi.plan.teaching_context_id}/marks/summary"}
+                  class="btn btn-ghost btn-xs"
+                >
+                  {gettext("Results")}
+                </.link>
+              </div>
             </div>
 
             <div
