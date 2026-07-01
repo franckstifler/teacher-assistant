@@ -21,56 +21,56 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "subject",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "level",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "serie",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "subsystem",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "4",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "weekly_hours",
+      "source": "number",
       "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "position_in_term",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "start_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "end_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": true,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "integration_week",
+      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -115,47 +115,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "teaching_contexts_personal_workspace_id_fkey",
+        "name": "sequences_term_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "personal_workspaces"
+        "table": "terms"
       },
       "scale": null,
       "size": null,
-      "source": "personal_workspace_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "teaching_contexts_academic_year_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "academic_years"
-      },
-      "scale": null,
-      "size": null,
-      "source": "academic_year_id",
+      "source": "term_id",
       "type": "uuid"
     }
   ],
@@ -165,39 +134,8 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "C930D93E347FD6831929CDD20EBE15B551BD068B020F8018ABECEFAB10AB11E3",
-  "identities": [
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "teaching_contexts_unique_context_index",
-      "keys": [
-        {
-          "type": "atom",
-          "value": "personal_workspace_id"
-        },
-        {
-          "type": "atom",
-          "value": "academic_year_id"
-        },
-        {
-          "type": "atom",
-          "value": "subject"
-        },
-        {
-          "type": "atom",
-          "value": "level"
-        },
-        {
-          "type": "atom",
-          "value": "serie"
-        }
-      ],
-      "name": "unique_context",
-      "nils_distinct?": true,
-      "where": null
-    }
-  ],
+  "hash": "017ECC7FB2424A5124A9AA082733A31B890FDD1E3ED97F4AD495E936E867BAF1",
+  "identities": [],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -205,5 +143,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "teaching_contexts"
+  "table": "sequences"
 }

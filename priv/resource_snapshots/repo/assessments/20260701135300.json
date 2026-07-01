@@ -21,23 +21,11 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "module",
+      "source": "label",
       "type": "text"
     },
     {
       "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "lesson_title",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
       "default": "\"1\"",
       "generated?": false,
       "precision": null,
@@ -45,23 +33,23 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "planned_hours",
+      "source": "weight",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"20\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "max_score",
       "type": "decimal"
     },
     {
       "allow_nil?": true,
-      "default": "\"lesson\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "entry_type",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -69,56 +57,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "week_no",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "position",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "famille_de_situations",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "categories_action",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "competence_visee",
-      "type": "text"
+      "source": "given_on",
+      "type": "date"
     },
     {
       "allow_nil?": false,
@@ -163,20 +103,20 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_entries_progression_plan_id_fkey",
+        "name": "assessments_teaching_context_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "progression_plans"
+        "table": "teaching_contexts"
       },
       "scale": null,
       "size": null,
-      "source": "progression_plan_id",
+      "source": "teaching_context_id",
       "type": "uuid"
     },
     {
-      "allow_nil?": true,
+      "allow_nil?": false,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -194,7 +134,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_entries_sequence_id_fkey",
+        "name": "assessments_sequence_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
@@ -213,7 +153,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "983C325E846562BCB92D0E17300CD9D77385902968111E77FD35FC03F7A4E725",
+  "hash": "5F471A5A7EC1C4354531409037BE5BAF3DAE2D1D47D313B3F22DE990B71A1726",
   "identities": [],
   "multitenancy": {
     "attribute": null,
@@ -222,5 +162,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "progression_entries"
+  "table": "assessments"
 }

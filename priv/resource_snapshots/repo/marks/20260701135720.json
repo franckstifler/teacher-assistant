@@ -13,64 +13,16 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "number",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "position_in_term",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "start_date",
-      "type": "date"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "end_date",
-      "type": "date"
-    },
-    {
       "allow_nil?": true,
-      "default": "false",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "integration_week",
-      "type": "boolean"
+      "source": "score",
+      "type": "decimal"
     },
     {
       "allow_nil?": false,
@@ -115,16 +67,47 @@
           "global": null,
           "strategy": null
         },
-        "name": "sequences_term_id_fkey",
+        "name": "marks_assessment_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "terms"
+        "table": "assessments"
       },
       "scale": null,
       "size": null,
-      "source": "term_id",
+      "source": "assessment_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "marks_student_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "students"
+      },
+      "scale": null,
+      "size": null,
+      "source": "student_id",
       "type": "uuid"
     }
   ],
@@ -134,8 +117,27 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "2672238C4C61317FF4D59F8A571E554CF7A651E7CCD85403453DE9A4DCB88506",
-  "identities": [],
+  "hash": "B3AE55014E81F5AD4614DF77AA61A5F8CBFC5C01E52098E1D390E0EC7A682D90",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "marks_unique_mark_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "assessment_id"
+        },
+        {
+          "type": "atom",
+          "value": "student_id"
+        }
+      ],
+      "name": "unique_mark",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -143,5 +145,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "sequences"
+  "table": "marks"
 }

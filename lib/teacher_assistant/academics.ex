@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.Student
+  alias TeacherAssistant.Academics.Assessment
+  alias TeacherAssistant.Academics.Mark
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
@@ -19,6 +23,10 @@ defmodule TeacherAssistant.Academics do
     resource Term
     resource Sequence
     resource TeachingContext
+    resource ClassGroup
+    resource Student
+    resource Assessment
+    resource Mark
     resource ProgressionPlan
     resource ProgressionEntry
     resource TeachingLogEntry
@@ -201,6 +209,170 @@ defmodule TeacherAssistant.Academics do
       {:ok, nil} -> {:error, :not_found}
       result -> result
     end
+  end
+
+  def create_class_group(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:personal_workspace_id, ws.id)
+      |> Map.put(:academic_year_id, year.id)
+      |> Map.put_new(:subsystem, :francophone)
+
+    ClassGroup |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_class_groups(%PersonalWorkspace{id: ws_id}, %AcademicYear{id: year_id}) do
+    ClassGroup
+    |> Ash.Query.filter(personal_workspace_id == ^ws_id and academic_year_id == ^year_id)
+    |> Ash.Query.sort(label: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def fetch_owned_class_group(id, %PersonalWorkspace{id: ws_id}) do
+    ClassGroup
+    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  def add_student(%ClassGroup{id: cg_id}, attrs) do
+    attrs = Map.put(attrs, :class_group_id, cg_id)
+    Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_students(%ClassGroup{id: cg_id}) do
+    Student
+    |> Ash.Query.filter(class_group_id == ^cg_id)
+    |> Ash.Query.sort(full_name: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def update_student(%Student{} = s, attrs),
+    do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+
+  def delete_student(%Student{} = s), do: Ash.destroy(s, authorize?: false)
+
+  def fetch_owned_student(id, %PersonalWorkspace{} = ws) do
+    case Ash.get(Student, id, authorize?: false) do
+      {:ok, student} ->
+        case fetch_owned_class_group(student.class_group_id, ws) do
+          {:ok, _} -> {:ok, student}
+          _ -> {:error, :not_found}
+        end
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
+  def link_class_group(%TeachingContext{} = ctx, %ClassGroup{id: cg_id}) do
+    ctx
+    |> Ash.Changeset.for_update(:update, %{class_group_id: cg_id})
+    |> Ash.update(authorize?: false)
+  end
+
+  def create_assessment(%TeachingContext{} = ctx, %Sequence{id: seq_id}, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:teaching_context_id, ctx.id)
+      |> Map.put(:sequence_id, seq_id)
+
+    Assessment |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_assessments(%TeachingContext{id: ctx_id}, %Sequence{id: seq_id}) do
+    Assessment
+    |> Ash.Query.filter(teaching_context_id == ^ctx_id and sequence_id == ^seq_id)
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def fetch_owned_assessment(id, %PersonalWorkspace{} = ws) do
+    case Ash.get(Assessment, id, authorize?: false) do
+      {:ok, assessment} ->
+        case fetch_owned_teaching_context(assessment.teaching_context_id, ws) do
+          {:ok, _} -> {:ok, assessment}
+          _ -> {:error, :not_found}
+        end
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Creates or updates a `Mark` per `(assessment, student)` in a single transaction.
+  A `nil` score is valid (records the student absent).
+
+  Notifications are deferred until after the transaction commits so that
+  rolled-back rows never produce phantom PubSub events and no
+  `:missed_notifications` advisory is emitted.
+  """
+  def upsert_marks(%Assessment{id: assessment_id}, entries) do
+    result =
+      Repo.transaction(fn ->
+        existing =
+          Mark
+          |> Ash.Query.filter(assessment_id == ^assessment_id)
+          |> Ash.read!(authorize?: false)
+          |> Map.new(fn m -> {m.student_id, m} end)
+
+        Enum.flat_map(entries, fn %{student_id: student_id} = entry ->
+          score = Map.get(entry, :score)
+
+          case Map.get(existing, student_id) do
+            nil ->
+              case Mark
+                   |> Ash.Changeset.for_create(:create, %{
+                     assessment_id: assessment_id,
+                     student_id: student_id,
+                     score: score
+                   })
+                   |> Ash.create(authorize?: false, return_notifications?: true) do
+                {:ok, _mark, notifs} -> notifs
+                {:error, reason} -> Repo.rollback(reason)
+              end
+
+            %Mark{} = mark ->
+              case mark
+                   |> Ash.Changeset.for_update(:update, %{score: score})
+                   |> Ash.update(authorize?: false, return_notifications?: true) do
+                {:ok, _mark, notifs} -> notifs
+                {:error, reason} -> Repo.rollback(reason)
+              end
+          end
+        end)
+      end)
+
+    case result do
+      {:ok, notifications} ->
+        Ash.Notifier.notify(notifications)
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def list_marks(%Assessment{id: assessment_id}) do
+    Mark
+    |> Ash.Query.filter(assessment_id == ^assessment_id)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def list_marks_for_context_sequence(%TeachingContext{id: ctx_id}, %Sequence{id: seq_id}) do
+    assessment_ids =
+      Assessment
+      |> Ash.Query.filter(teaching_context_id == ^ctx_id and sequence_id == ^seq_id)
+      |> Ash.read!(authorize?: false)
+      |> Enum.map(& &1.id)
+
+    Mark
+    |> Ash.Query.filter(assessment_id in ^assessment_ids)
+    |> Ash.read!(authorize?: false)
   end
 
   @doc """

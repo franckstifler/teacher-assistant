@@ -21,32 +21,56 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "title",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "\"draft\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "status",
+      "source": "subject",
       "type": "text"
     },
     {
       "allow_nil?": false,
-      "default": "false",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "template",
-      "type": "boolean"
+      "source": "level",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "serie",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "subsystem",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "4",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "weekly_hours",
+      "type": "bigint"
     },
     {
       "allow_nil?": false,
@@ -91,16 +115,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_plans_teaching_context_id_fkey",
+        "name": "teaching_contexts_personal_workspace_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "teaching_contexts"
+        "table": "personal_workspaces"
       },
       "scale": null,
       "size": null,
-      "source": "teaching_context_id",
+      "source": "personal_workspace_id",
       "type": "uuid"
     },
     {
@@ -122,7 +146,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_plans_academic_year_id_fkey",
+        "name": "teaching_contexts_academic_year_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
@@ -135,7 +159,7 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -153,16 +177,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "progression_plans_personal_workspace_id_fkey",
+        "name": "teaching_contexts_class_group_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "personal_workspaces"
+        "table": "class_groups"
       },
       "scale": null,
       "size": null,
-      "source": "personal_workspace_id",
+      "source": "class_group_id",
       "type": "uuid"
     }
   ],
@@ -172,8 +196,39 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "5B983ED8971B18DAF7086BEC811DBD7D56D9FD418F78698BBBB281C447F83BB8",
-  "identities": [],
+  "hash": "C58D487A46906337F2AA31D8EE4A72140469CEF2FE9996753421633B384101F1",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "teaching_contexts_unique_context_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "personal_workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "academic_year_id"
+        },
+        {
+          "type": "atom",
+          "value": "subject"
+        },
+        {
+          "type": "atom",
+          "value": "level"
+        },
+        {
+          "type": "atom",
+          "value": "serie"
+        }
+      ],
+      "name": "unique_context",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -181,5 +236,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "progression_plans"
+  "table": "teaching_contexts"
 }

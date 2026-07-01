@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Academics.TeachingContext do
+defmodule TeacherAssistant.Academics.ClassGroup do
   use Ash.Resource,
     otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
@@ -6,7 +6,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
-    table "teaching_contexts"
+    table "class_groups"
     repo TeacherAssistant.Repo
   end
 
@@ -14,16 +14,8 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     defaults [
       :read,
       :destroy,
-      create: [
-        :subject,
-        :level,
-        :serie,
-        :subsystem,
-        :weekly_hours,
-        :personal_workspace_id,
-        :academic_year_id
-      ],
-      update: [:subject, :level, :serie, :subsystem, :weekly_hours, :class_group_id]
+      create: [:label, :level, :serie, :subsystem, :personal_workspace_id, :academic_year_id],
+      update: [:label, :level, :serie, :subsystem]
     ]
   end
 
@@ -35,16 +27,15 @@ defmodule TeacherAssistant.Academics.TeachingContext do
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :subject, :string, allow_nil?: false, public?: true
+    attribute :label, :string, allow_nil?: false, public?: true
     attribute :level, :string, allow_nil?: false, public?: true
     attribute :serie, :string, allow_nil?: true, public?: true
 
-    attribute :subsystem, :atom,
-      constraints: [one_of: [:francophone, :anglophone]],
+    attribute :subsystem, TeacherAssistant.Academics.Subsystem,
       allow_nil?: false,
+      default: :francophone,
       public?: true
 
-    attribute :weekly_hours, :integer, default: 4, public?: true
     timestamps()
   end
 
@@ -61,20 +52,10 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       public? true
     end
 
-    belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
-      source_attribute :class_group_id
-      allow_nil? true
-      public? true
-    end
+    has_many :students, TeacherAssistant.Academics.Student
   end
 
   identities do
-    identity :unique_context, [
-      :personal_workspace_id,
-      :academic_year_id,
-      :subject,
-      :level,
-      :serie
-    ]
+    identity :unique_class_group, [:personal_workspace_id, :academic_year_id, :label]
   end
 end
