@@ -37,6 +37,12 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
           title={gettext("Import a fiche de progression")}
         />
 
+        <ul id="import-stepper" class="steps w-full text-xs">
+          <li class="step step-primary">{gettext("Upload")}</li>
+          <li class={["step", @stage == :review && "step-primary"]}>{gettext("Review")}</li>
+          <li class="step">{gettext("Save")}</li>
+        </ul>
+
         <div :if={@contexts == []} id="import-context-gate" class="ta-leaf space-y-3 text-sm">
           <p class="text-base-content/70">
             {gettext("Add a subject and class first, then you can import a fiche for it.")}
@@ -102,10 +108,15 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
             <p class="text-base-content/70">
               {gettext("Add rows manually below. The extracted text is shown for reference.")}
             </p>
-            <pre
-              id="import-raw-text"
-              class="ta-num max-h-48 overflow-auto whitespace-pre-wrap text-xs text-base-content/60"
-            >{@raw_text}</pre>
+            <details id="import-raw-details">
+              <summary class="cursor-pointer text-sm font-semibold">
+                {gettext("Show extracted text")}
+              </summary>
+              <pre
+                id="import-raw-text"
+                class="ta-num max-h-48 overflow-auto whitespace-pre-wrap text-xs text-base-content/60"
+              >{@raw_text}</pre>
+            </details>
           </div>
 
           <p :if={@confidence == :high} class="ta-eyebrow">
@@ -115,73 +126,40 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
           <.form for={%{}} id="import-review-form" phx-submit="save" class="space-y-3">
             <input type="hidden" name="title" value={@title} />
 
+            <div
+              id="import-rows-header"
+              class="hidden gap-2 px-3 md:grid md:grid-cols-[1fr_1.5fr_5rem_8rem_4rem_7rem_2.5rem]"
+            >
+              <span class="ta-eyebrow">{gettext("Module")}</span>
+              <span class="ta-eyebrow">{gettext("Lesson")}</span>
+              <span class="ta-eyebrow">{gettext("Hours")}</span>
+              <span class="ta-eyebrow">{gettext("Type")}</span>
+              <span class="ta-eyebrow">{gettext("Week")}</span>
+              <span class="ta-eyebrow">{gettext("Sequence")}</span>
+              <span></span>
+            </div>
+
             <ul id="import-rows" class="space-y-2">
-              <li
-                :for={{row, i} <- Enum.with_index(@rows)}
-                id={"import-row-#{i}"}
-                class="ta-leaf space-y-2"
-              >
-                <div class="grid gap-2 sm:grid-cols-2">
-                  <input
-                    name={"rows[#{i}][module]"}
-                    value={row.module}
-                    placeholder={gettext("Module")}
-                    class="w-full input input-sm"
-                  />
-                  <input
-                    name={"rows[#{i}][lesson_title]"}
-                    value={row.lesson_title}
-                    placeholder={gettext("Lesson")}
-                    class="w-full input input-sm"
-                  />
-                </div>
-                <div class="grid gap-2 sm:grid-cols-4">
-                  <input
-                    name={"rows[#{i}][planned_hours]"}
-                    value={row.planned_hours}
-                    type="number"
-                    step="0.5"
-                    placeholder={gettext("Hours")}
-                    class="w-full input input-sm"
-                  />
-                  <select name={"rows[#{i}][entry_type]"} class="w-full select select-sm">
-                    <option
-                      :for={t <- entry_type_options()}
-                      value={t.key}
-                      selected={to_string(t.key) == to_string(row.entry_type)}
-                    >
-                      {t.fr}
-                    </option>
-                  </select>
-                  <input
-                    name={"rows[#{i}][week_no]"}
-                    value={row.week_no}
-                    type="number"
-                    placeholder={gettext("Week")}
-                    class="w-full input input-sm"
-                  />
-                  <select name={"rows[#{i}][sequence_id]"} class="w-full select select-sm">
-                    <option value="">{gettext("Sequence…")}</option>
-                    <option
-                      :for={s <- @sequences}
-                      value={s.id}
-                      selected={s.number == row.sequence_no}
-                    >
-                      {gettext("Seq")} {s.number}
-                    </option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  phx-click="delete-row"
-                  phx-value-index={i}
-                  class="btn btn-ghost btn-xs text-error"
-                >
-                  <.icon name="hero-trash" class="size-4" />
-                  <span class="sr-only">{gettext("Delete row")}</span>
-                </button>
-              </li>
+              <.import_row
+                :for={{row, i} <- Enum.with_index(@rows) |> Enum.take(100)}
+                row={row}
+                i={i}
+                sequences={@sequences}
+              />
             </ul>
+            <details :if={length(@rows) > 100} id="import-rows-overflow">
+              <summary class="cursor-pointer text-sm font-semibold">
+                {gettext("Show remaining %{count} rows", count: length(@rows) - 100)}
+              </summary>
+              <ul class="mt-2 space-y-2">
+                <.import_row
+                  :for={{row, i} <- Enum.with_index(@rows) |> Enum.drop(100)}
+                  row={row}
+                  i={i}
+                  sequences={@sequences}
+                />
+              </ul>
+            </details>
 
             <button
               type="button"
@@ -199,6 +177,70 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
         </div>
       </section>
     </Layouts.app>
+    """
+  end
+
+  attr :row, :map, required: true
+  attr :i, :integer, required: true
+  attr :sequences, :list, required: true
+
+  defp import_row(assigns) do
+    ~H"""
+    <li id={"import-row-#{@i}"} class="ta-leaf space-y-2">
+      <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-[1fr_1.5fr_5rem_8rem_4rem_7rem_2.5rem] md:items-center">
+        <input
+          name={"rows[#{@i}][module]"}
+          value={@row.module}
+          placeholder={gettext("Module")}
+          class="w-full input input-sm"
+        />
+        <input
+          name={"rows[#{@i}][lesson_title]"}
+          value={@row.lesson_title}
+          placeholder={gettext("Lesson")}
+          class="w-full input input-sm"
+        />
+        <input
+          name={"rows[#{@i}][planned_hours]"}
+          value={@row.planned_hours}
+          type="number"
+          step="0.5"
+          placeholder={gettext("Hours")}
+          class="w-full input input-sm"
+        />
+        <select name={"rows[#{@i}][entry_type]"} class="w-full select select-sm">
+          <option
+            :for={t <- entry_type_options()}
+            value={t.key}
+            selected={to_string(t.key) == to_string(@row.entry_type)}
+          >
+            {t.fr}
+          </option>
+        </select>
+        <input
+          name={"rows[#{@i}][week_no]"}
+          value={@row.week_no}
+          type="number"
+          placeholder={gettext("Week")}
+          class="w-full input input-sm"
+        />
+        <select name={"rows[#{@i}][sequence_id]"} class="w-full select select-sm">
+          <option value="">{gettext("Sequence…")}</option>
+          <option :for={s <- @sequences} value={s.id} selected={s.number == @row.sequence_no}>
+            {gettext("Seq")} {s.number}
+          </option>
+        </select>
+        <button
+          type="button"
+          phx-click="delete-row"
+          phx-value-index={@i}
+          class="btn btn-ghost btn-xs text-error"
+        >
+          <.icon name="hero-trash" class="size-4" />
+          <span class="sr-only">{gettext("Delete row")}</span>
+        </button>
+      </div>
+    </li>
     """
   end
 

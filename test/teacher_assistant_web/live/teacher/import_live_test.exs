@@ -39,6 +39,18 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     refute has_element?(view, "#import-upload-form")
   end
 
+  test "shows the three-step stepper on the upload stage", %{conn: conn, workspace: ws} do
+    seed_year_and_context(ws)
+    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+
+    assert has_element?(view, "#import-stepper")
+    html = render(element(view, "#import-stepper"))
+    assert html =~ "Upload"
+    assert html =~ "Review"
+    # third step label is localized ("Save" / "Enregistrer") — assert the step exists
+    assert length(String.split(html, "<li")) == 4
+  end
+
   test "extracts and renders a review table from the uploaded PDF", %{conn: conn, workspace: ws} do
     seed_year_and_context(ws)
     Application.put_env(:teacher_assistant, :fiche_extractor, TeacherAssistant.FicheExtractorStub)
