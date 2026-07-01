@@ -67,7 +67,7 @@ defmodule TeacherAssistant.Academics.Marks do
       |> Enum.reject(&is_nil(&1.score))
       |> Enum.map(fn m ->
         a = Map.fetch!(weights, m.assessment_id)
-        normalized = Decimal.mult(Decimal.div(m.score, a.max_score), @scale)
+        normalized = Decimal.div(Decimal.mult(m.score, @scale), a.max_score)
         {Decimal.mult(normalized, a.weight), a.weight}
       end)
 
@@ -78,6 +78,8 @@ defmodule TeacherAssistant.Academics.Marks do
       list ->
         total = Enum.reduce(list, Decimal.new(0), fn {c, _w}, acc -> Decimal.add(acc, c) end)
         weight = Enum.reduce(list, Decimal.new(0), fn {_c, w}, acc -> Decimal.add(acc, w) end)
+        # Defensive only: assessments always carry positive weight, so this
+        # guards against a degenerate all-zero-weight assessment set.
         if Decimal.equal?(weight, Decimal.new(0)), do: nil, else: Decimal.div(total, weight)
     end
   end

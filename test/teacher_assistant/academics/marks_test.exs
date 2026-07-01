@@ -91,5 +91,21 @@ defmodule TeacherAssistant.Academics.MarksTest do
       assert r.per_student["s1"].rank == 1
       assert r.per_student["s2"].rank == 1
     end
+
+    test "competition ranking: tie consumes ranks, next student skips to 3" do
+      students = [%{id: "s1", sex: :f}, %{id: "s2", sex: :m}, %{id: "s3", sex: :m}]
+      assessments = [%{id: "a1", weight: d("1"), max_score: d("20")}]
+
+      marks = [
+        %{assessment_id: "a1", student_id: "s1", score: d("14")},
+        %{assessment_id: "a1", student_id: "s2", score: d("14")},
+        %{assessment_id: "a1", student_id: "s3", score: d("10")}
+      ]
+
+      r = Marks.summarize(students, assessments, marks)
+      assert r.per_student["s1"].rank == 1
+      assert r.per_student["s2"].rank == 1
+      assert r.per_student["s3"].rank == 3
+    end
   end
 end
