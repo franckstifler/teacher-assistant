@@ -11,13 +11,42 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
         ws = scope.current_workspace
         plans = Academics.list_progression_plans(ws)
         kpis = Enum.map(plans, fn p -> %{plan: p, coverage: Academics.coverage_for_plan(p)} end)
-        assign(socket, year: year, kpis: kpis)
+        contexts_count = length(Academics.list_teaching_contexts(ws, year))
+        current_seq = Academics.current_sequence(year, Date.utc_today())
+
+        assign(socket,
+          year: year,
+          kpis: kpis,
+          contexts_count: contexts_count,
+          current_seq: current_seq,
+          overall_rate: overall_rate(kpis),
+          elapsed: elapsed_fraction(year)
+        )
       else
         assign(socket, year: nil, kpis: [])
       end
 
     {:ok, socket}
   end
+
+  defp overall_rate([]), do: nil
+
+  defp overall_rate(kpis) do
+    planned = Enum.reduce(kpis, Decimal.new(0), &Decimal.add(&1.coverage.planned_hours, &2))
+    covered = Enum.reduce(kpis, Decimal.new(0), &Decimal.add(&1.coverage.covered_hours, &2))
+
+    if Decimal.equal?(planned, Decimal.new(0)),
+      do: nil,
+      else: Decimal.to_float(Decimal.div(covered, planned))
+  end
+
+  defp elapsed_fraction(year) do
+    total = max(Date.diff(year.end_date, year.start_date), 1)
+    (Date.diff(Date.utc_today(), year.start_date) / total) |> min(1.0) |> max(0.0)
+  end
+
+  # behind when coverage trails the elapsed school year by >10 points
+  defp behind?(rate, elapsed), do: rate + 0.10 < elapsed
 
   def render(assigns) do
     ~H"""
@@ -31,6 +60,20 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
               </span>
             </:actions>
           </.page_header>
+
+          <div id="dashboard-stats" class="grid grid-cols-3 gap-2">
+            <.stat label={gettext("Classes")} value={"#{@contexts_count}"} />
+            <.stat
+              label={gettext("Overall coverage")}
+              value={(@overall_rate && "#{round(@overall_rate * 100)}") || "—"}
+              suffix={@overall_rate && "%"}
+              tone={if @overall_rate && behind?(@overall_rate, @elapsed), do: :behind, else: :primary}
+            />
+            <.stat
+              label={gettext("Séquence in progress")}
+              value={(@current_seq && "S#{@current_seq.number}") || "—"}
+            />
+          </div>
 
           <div class="flex flex-wrap gap-2">
             <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm gap-2">
@@ -51,7 +94,10 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
                 </div>
                 <span class="ta-eyebrow shrink-0">{gettext("covered")}</span>
               </div>
-              <.coverage_ribbon rate={kpi.coverage.rate * 100} />
+              <.coverage_ribbon
+                rate={kpi.coverage.rate * 100}
+                behind?={behind?(kpi.coverage.rate, @elapsed)}
+              />
               <div class="flex flex-wrap items-center gap-2">
                 <.link
                   navigate={~p"/teacher/plans/#{kpi.plan.id}"}
@@ -72,6 +118,20 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
                   class="btn btn-ghost btn-xs"
                 >
                   {gettext("Results")}
+                </.link>
+                <.link
+                  id={"kpi-roster-#{kpi.plan.id}"}
+                  navigate={~p"/teacher/contexts/#{kpi.plan.teaching_context_id}/roster"}
+                  class="btn btn-ghost btn-xs"
+                >
+                  {gettext("Roster")}
+                </.link>
+                <.link
+                  id={"kpi-coverage-#{kpi.plan.id}"}
+                  navigate={~p"/teacher/plans/#{kpi.plan.id}/coverage"}
+                  class="btn btn-ghost btn-xs"
+                >
+                  {gettext("Coverage")}
                 </.link>
               </div>
             </div>

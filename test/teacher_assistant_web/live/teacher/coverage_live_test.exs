@@ -84,4 +84,20 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
     assert render(view) =~ "50%"
     assert has_element?(view, "#uncovered-entries")
   end
+
+  test "shows per-séquence breakdown with hours", %{conn: conn, plan: plan} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}/coverage")
+
+    assert has_element?(view, "#coverage-by-sequence")
+    # entries in this setup carry no séquence -> the "Sans séquence" row with hours
+    breakdown = render(element(view, "#coverage-by-sequence"))
+    assert breakdown =~ "Sans séquence"
+    assert breakdown =~ "2h / 4h"
+  end
+
+  test "uncovered rows show covered/planned hours", %{conn: conn, plan: plan} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}/coverage")
+
+    assert render(element(view, "#uncovered-entries")) =~ "0h / 2h"
+  end
 end

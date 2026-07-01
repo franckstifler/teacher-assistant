@@ -72,4 +72,22 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     assert render(view) =~ "Les nombres"
     assert length(Academics.list_progression_entries(plan)) == 1
   end
+
+  test "shows a running planned-hours total with weeks estimate", %{conn: conn, plan: plan} do
+    {:ok, _e} =
+      Academics.add_progression_entry(plan, %{
+        module: "M1",
+        lesson_title: "L1",
+        planned_hours: Decimal.new("6"),
+        entry_type: :lesson
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    assert has_element?(view, "#fiche-hours-total")
+    total = render(element(view, "#fiche-hours-total"))
+    assert total =~ "6"
+    # 6h at 4 h/week (setup ctx) => ≈ 2 weeks
+    assert total =~ "2"
+  end
 end
