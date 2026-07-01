@@ -32,12 +32,10 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="fiche-import" class="mx-auto max-w-2xl space-y-6">
-        <header>
-          <p class="ta-eyebrow">{gettext("Import a fiche")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">
-            {gettext("Import a fiche de progression")}
-          </h1>
-        </header>
+        <.page_header
+          eyebrow={gettext("Import a fiche")}
+          title={gettext("Import a fiche de progression")}
+        />
 
         <div :if={@contexts == []} id="import-context-gate" class="ta-leaf space-y-3 text-sm">
           <p class="text-base-content/70">

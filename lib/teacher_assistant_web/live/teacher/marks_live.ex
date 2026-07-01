@@ -120,10 +120,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="teacher-marks" class="mx-auto max-w-md space-y-4">
-        <header>
-          <p class="ta-eyebrow">{gettext("Marks")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@ctx.subject} · {@ctx.level}</h1>
-        </header>
+        <.page_header eyebrow={gettext("Marks")} title={"#{@ctx.subject} · #{@ctx.level}"} />
 
         <form id="seq-select" phx-change="select_seq">
           <.input
@@ -171,6 +168,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 step="0.25"
                 min="0"
                 max="20"
+                inputmode="decimal"
+                aria-label={s.full_name}
                 name={"scores[#{s.id}]"}
                 value={Map.get(@scores, s.id, "")}
                 class="input input-bordered w-24"

@@ -622,4 +622,5 @@ defmodule TeacherAssistantWeb.CoreComponents do
   defp mention_label(:assez_bien), do: gettext("Assez bien")
   defp mention_label(:passable), do: gettext("Passable")
   defp mention_label(nil), do: gettext("Insuffisant")
+  defp mention_label(_), do: gettext("Insuffisant")
 end

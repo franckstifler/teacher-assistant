@@ -67,16 +67,18 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="fiche-builder" class="space-y-6">
-        <header class="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p class="ta-eyebrow">{gettext("Fiche de progression")}</p>
-            <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@plan.title}</h1>
-          </div>
-          <.button id="duplicate-plan" phx-click="duplicate-plan" class="btn btn-ghost btn-sm gap-2">
-            <.icon name="hero-document-duplicate" class="size-4" />
-            {gettext("Duplicate")}
-          </.button>
-        </header>
+        <.page_header eyebrow={gettext("Fiche de progression")} title={@plan.title}>
+          <:actions>
+            <.button
+              id="duplicate-plan"
+              phx-click="duplicate-plan"
+              class="btn btn-ghost btn-sm gap-2"
+            >
+              <.icon name="hero-document-duplicate" class="size-4" />
+              {gettext("Duplicate")}
+            </.button>
+          </:actions>
+        </.page_header>
 
         <ul id="fiche-entries" class="space-y-2">
           <li
