@@ -218,3 +218,68 @@ existing LiveView test selectors — no test churn beyond added coverage.
 
 Ship P0 as a small foundational PR (component kit + nav), then one PR per v1.2 page (P1), then the P2
 polish. Each PR keeps `mix precommit` green and adds LiveView assertions for new DOM.
+
+## 6. Definition of done (per phase)
+
+- **P0 done when:** the four kit components exist in `core_components.ex` with tests; every
+  authenticated page renders its header/empty/gate through them (no hand-rolled duplicates remain);
+  the class-context switcher persists a selection across navigation and every per-class page is
+  reachable from the shell without URL-typing; mark inputs carry `aria-label`s; craie + chalkboard
+  both pass contrast on muted labels.
+- **P1 done when:** roster, mark-entry, and summary render as tables at `md:` and cards below, all
+  numeric columns use `ta-num`, mentions show word+icon+color (never color alone), and existing DOM
+  IDs are preserved so the current LiveView tests still pass unchanged.
+- **P2 done when:** each existing page adopts the kit and its listed change, with the log hours-field
+  and setup error-reason fixes verified.
+
+## Appendix A — shared component API (P0)
+
+Concrete HEEx signatures so P0 is unambiguous (final names may adjust in P0 brainstorm):
+
+```elixir
+# section header used by every page
+attr :eyebrow, :string, required: true      # ta-eyebrow text, e.g. gettext("Séquence 2 · résultats")
+attr :title, :string, required: true        # h1
+slot :actions                                # right-aligned controls (year chip, Duplicate, switcher)
+def page_header(assigns)
+
+# one KPI/stat cell (tabular-nums)
+attr :label, :string, required: true         # ta-eyebrow micro-label
+attr :value, :string, required: true         # pre-formatted; renders in ta-num
+attr :suffix, :string, default: nil          # e.g. "/20", "%"
+attr :tone, :atom, default: :neutral          # :neutral | :primary | :behind (color accent only, never sole meaning)
+def stat(assigns)
+
+# empty state with one primary action
+attr :icon, :string, required: true          # hero-* name
+attr :title, :string, required: true
+attr :message, :string, default: nil
+slot :action                                  # the single primary CTA
+def empty_state(assigns)
+
+# strong setup gate (promotes the dashboard's gate to a component)
+attr :icon, :string, required: true
+attr :eyebrow, :string, required: true
+attr :title, :string, required: true
+attr :message, :string, required: true
+slot :action, required: true
+def setup_gate(assigns)
+```
+
+## Appendix B — mention labels (FR/EN) and pass display
+
+Bands from [`docs/domain/04`](../../domain/04-grading-and-report-cards.md) §7 — pin the copy so
+`Academics.Marks.mention/1` atoms map to consistent strings:
+
+| atom (from `Marks.mention/1`) | FR label | EN label | tone |
+|---|---|---|---|
+| `:excellent` (≥18) | Excellent | Excellent | primary |
+| `:tres_bien` (16–17.99) | Très bien | Very good | primary |
+| `:bien` (14–15.99) | Bien | Good | primary |
+| `:assez_bien` (12–13.99) | Assez bien | Fairly good | primary |
+| `:passable` (10–11.99) | Passable | Pass | secondary (chalk-yellow) |
+| `nil` (< 10) | Non admis | Not passing | accent (coral) |
+
+Display rules: pass ≥ 10/20 is hard-coded; every mention shows **word + icon** (`hero-check-circle`
+for ≥10, `hero-x-circle` for <10) so color is never the sole signal `[color-not-only]`. Ungraded
+(no marks entered) renders "—", not a mention. These labels flow through `gettext`.
