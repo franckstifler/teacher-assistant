@@ -39,10 +39,17 @@ task nav:
 - Highlight the active destination `[nav-state-active]`; keep placement identical across pages
   `[navigation-consistency]`.
 
-This is the one structural change; everything else is styling/component work. If a full class
-switcher is too big for this pass, the **minimum** is: add **Roster** and **Coverage** entry points
-to the dashboard per-context card (next to the existing Marks/Results) so every per-class page is
-reachable without URL-typing.
+This is the one structural change; everything else is styling/component work.
+
+**Decision (locked): full class-context switcher.** We build the switcher, not a stopgap. Because
+it introduces app state (a "currently selected class"), treat it as its own design step:
+
+- The switcher lists the teacher's `TeachingContext`s for the active academic year; selecting one
+  sets a `current_context` in the session/scope and the shell surfaces that class's per-class actions.
+- Persist the selection across navigation (scope assign), default to the most recently used class,
+  and fall back to the setup gate when the teacher has no class yet.
+- As a transitional courtesy while the switcher lands, the dashboard per-context cards also gain
+  **Roster** + **Coverage** links (they're cheap and useful regardless).
 
 ### 1.2 Extract a shared component kit (DRY the repeated markup) `[consistency, visual-hierarchy]`
 The same structures are hand-rolled on every page. Promote them to `core_components.ex` so pages get
@@ -60,9 +67,10 @@ consistent spacing, headings, and a11y for free:
   strong screen instead of a bare flash.
 
 ### 1.3 Responsive density: cards on mobile, tables on desktop `[data-table, visual-hierarchy]`
-DESIGN.md mandates "prefer tables for lists users scan/compare/act on; stacked cards on mobile."
-Today roster, mark-entry, and summary are **card/list-only at every width**. Keep the mobile stack,
-but at `md:` collapse them into real tables:
+**Decision (locked): adopt cards → tables at desktop.** DESIGN.md mandates "prefer tables for lists
+users scan/compare/act on; stacked cards on mobile." Today roster, mark-entry, and summary are
+**card/list-only at every width**. Keep the mobile stack, but at `md:` collapse them into real
+tables:
 
 - **Mark entry:** `Student | Devoir 1 | Devoir 2 | Compo | … ` grid so a teacher grading a full class
   on a laptop sees everyone at once (mobile stays one-assessment-at-a-time).
@@ -186,11 +194,16 @@ Each: **Current → Changes → Rules.** "Keep" means it already meets the bar.
     hide them.
 - **Rules:** color-not-only, number-tabular, empty-data-state, chart-type.
 
-## 3. Prioritization
+## 3. Prioritization (confirmed sequencing: P0 → P1 → P2)
 
-- **P0 (structure & consistency — unlocks the rest):** §1.1 navigation, §1.2 component kit
-  (`page_header`, `stat`, `empty_state`, `setup_gate`), §1.4 a11y fixes.
-- **P1 (the v1.2 pages — newest, least polished):** 2.9 mark entry, 2.10 summary, 2.8 roster.
+Ship in order; each phase builds on the previous. **P0 and P1 are both in-scope now** (foundation
+first, then immediately the v1.2 pages that sit on it); P2 follows.
+
+- **P0 (structure & consistency — unlocks the rest):** §1.1 **full class-context switcher**, §1.2
+  component kit (`page_header`, `stat`, `empty_state`, `setup_gate`), §1.4 a11y fixes. Because the
+  switcher adds `current_context` app state, it earns its own brainstorm before implementation.
+- **P1 (the v1.2 pages — newest, least polished; built on P0):** 2.9 mark entry, 2.10 summary,
+  2.8 roster — with the locked cards→tables treatment.
 - **P2 (polish existing):** 2.2 dashboard strip, 2.5 coverage per-séquence, 2.4 fiche table, 2.7
   import stepper, 2.6 log fixes, 2.3 setup helper text.
 
