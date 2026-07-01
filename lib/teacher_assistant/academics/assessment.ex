@@ -46,5 +46,7 @@ defmodule TeacherAssistant.Academics.Assessment do
       allow_nil? false
       public? true
     end
+
+    has_many :marks, TeacherAssistant.Academics.Mark
   end
 end

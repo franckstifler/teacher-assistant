@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Student
   alias TeacherAssistant.Academics.Assessment
+  alias TeacherAssistant.Academics.Mark
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
@@ -25,6 +26,7 @@ defmodule TeacherAssistant.Academics do
     resource ClassGroup
     resource Student
     resource Assessment
+    resource Mark
     resource ProgressionPlan
     resource ProgressionEntry
     resource TeachingLogEntry
@@ -299,6 +301,78 @@ defmodule TeacherAssistant.Academics do
       _ ->
         {:error, :not_found}
     end
+  end
+
+  @doc """
+  Creates or updates a `Mark` per `(assessment, student)` in a single transaction.
+  A `nil` score is valid (records the student absent).
+
+  Notifications are deferred until after the transaction commits so that
+  rolled-back rows never produce phantom PubSub events and no
+  `:missed_notifications` advisory is emitted.
+  """
+  def upsert_marks(%Assessment{id: assessment_id}, entries) do
+    result =
+      Repo.transaction(fn ->
+        existing =
+          Mark
+          |> Ash.Query.filter(assessment_id == ^assessment_id)
+          |> Ash.read!(authorize?: false)
+          |> Map.new(fn m -> {m.student_id, m} end)
+
+        Enum.flat_map(entries, fn %{student_id: student_id} = entry ->
+          score = Map.get(entry, :score)
+
+          case Map.get(existing, student_id) do
+            nil ->
+              case Mark
+                   |> Ash.Changeset.for_create(:create, %{
+                     assessment_id: assessment_id,
+                     student_id: student_id,
+                     score: score
+                   })
+                   |> Ash.create(authorize?: false, return_notifications?: true) do
+                {:ok, _mark, notifs} -> notifs
+                {:error, reason} -> Repo.rollback(reason)
+              end
+
+            %Mark{} = mark ->
+              case mark
+                   |> Ash.Changeset.for_update(:update, %{score: score})
+                   |> Ash.update(authorize?: false, return_notifications?: true) do
+                {:ok, _mark, notifs} -> notifs
+                {:error, reason} -> Repo.rollback(reason)
+              end
+          end
+        end)
+      end)
+
+    case result do
+      {:ok, notifications} ->
+        Ash.Notifier.notify(notifications)
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def list_marks(%Assessment{id: assessment_id}) do
+    Mark
+    |> Ash.Query.filter(assessment_id == ^assessment_id)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def list_marks_for_context_sequence(%TeachingContext{id: ctx_id}, %Sequence{id: seq_id}) do
+    assessment_ids =
+      Assessment
+      |> Ash.Query.filter(teaching_context_id == ^ctx_id and sequence_id == ^seq_id)
+      |> Ash.read!(authorize?: false)
+      |> Enum.map(& &1.id)
+
+    Mark
+    |> Ash.Query.filter(assessment_id in ^assessment_ids)
+    |> Ash.read!(authorize?: false)
   end
 
   @doc """
