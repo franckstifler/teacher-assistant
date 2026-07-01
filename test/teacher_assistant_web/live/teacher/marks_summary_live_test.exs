@@ -73,6 +73,53 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert render(element(view, "#summary-row-#{s2.id}")) =~ "Insuffisant"
   end
 
+  test "shows mention distribution, sex bars and missing-marks line", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    cg: cg
+  } do
+    {:ok, _ungraded} = Academics.add_student(cg, %{full_name: "Chantal", sex: :f})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+
+    # Awa 14 => Bien; Beba 8 => Insuffisant
+    assert render(element(view, "#summary-mentions")) =~ "Bien"
+    assert render(element(view, "#summary-mentions")) =~ "Insuffisant"
+    assert has_element?(view, "#summary-sex-bars", "Filles")
+    assert has_element?(view, "#summary-sex-bars", "Garçons")
+    # 1 of 3 students has no marks
+    assert has_element?(view, "#summary-missing", "1")
+  end
+
+  test "séquence switcher patches to the chosen séquence", %{conn: conn, ctx: ctx, ws: ws} do
+    year = Academics.current_academic_year(ws)
+    seq2 = Academics.list_sequences(year) |> Enum.at(1)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary")
+
+    view
+    |> element("#summary-seq-select")
+    |> render_change(%{"seq" => seq2.id})
+
+    assert_patch(view, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq2.id}")
+    # séquence 2 has no assessments -> guided empty state, not stats
+    refute has_element?(view, "#summary-class-average")
+    assert render(view) =~ "No marks in this séquence yet"
+  end
+
+  test "renders a table with rank and mention columns", %{conn: conn, ctx: ctx, seq: seq, s1: s1} do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+
+    assert has_element?(view, "#summary-table")
+    row = render(element(view, "#summary-row-#{s1.id}"))
+    assert row =~ "Awa"
+    assert row =~ "14"
+    assert row =~ "Bien"
+  end
+
   test "context without class group redirects to roster", %{conn: conn, ws: ws} do
     {:ok, year} = {:ok, Academics.current_academic_year(ws)}
 
