@@ -10,6 +10,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Student
+  alias TeacherAssistant.Academics.Assessment
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
@@ -23,6 +24,7 @@ defmodule TeacherAssistant.Academics do
     resource TeachingContext
     resource ClassGroup
     resource Student
+    resource Assessment
     resource ProgressionPlan
     resource ProgressionEntry
     resource TeachingLogEntry
@@ -256,6 +258,41 @@ defmodule TeacherAssistant.Academics do
       {:ok, student} ->
         case fetch_owned_class_group(student.class_group_id, ws) do
           {:ok, _} -> {:ok, student}
+          _ -> {:error, :not_found}
+        end
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
+  def link_class_group(%TeachingContext{} = ctx, %ClassGroup{id: cg_id}) do
+    ctx
+    |> Ash.Changeset.for_update(:update, %{class_group_id: cg_id})
+    |> Ash.update(authorize?: false)
+  end
+
+  def create_assessment(%TeachingContext{} = ctx, %Sequence{id: seq_id}, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:teaching_context_id, ctx.id)
+      |> Map.put(:sequence_id, seq_id)
+
+    Assessment |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_assessments(%TeachingContext{id: ctx_id}, %Sequence{id: seq_id}) do
+    Assessment
+    |> Ash.Query.filter(teaching_context_id == ^ctx_id and sequence_id == ^seq_id)
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def fetch_owned_assessment(id, %PersonalWorkspace{} = ws) do
+    case Ash.get(Assessment, id, authorize?: false) do
+      {:ok, assessment} ->
+        case fetch_owned_teaching_context(assessment.teaching_context_id, ws) do
+          {:ok, _} -> {:ok, assessment}
           _ -> {:error, :not_found}
         end
 

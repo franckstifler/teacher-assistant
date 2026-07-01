@@ -23,7 +23,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :personal_workspace_id,
         :academic_year_id
       ],
-      update: [:subject, :level, :serie, :subsystem, :weekly_hours]
+      update: [:subject, :level, :serie, :subsystem, :weekly_hours, :class_group_id]
     ]
   end
 
@@ -58,6 +58,12 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear do
       source_attribute :academic_year_id
       allow_nil? false
+      public? true
+    end
+
+    belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
+      source_attribute :class_group_id
+      allow_nil? true
       public? true
     end
   end
