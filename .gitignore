@@ -35,3 +35,6 @@ teacher_assistant-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# Superpowers SDD scratch (task briefs, review packages, progress ledger)
+.superpowers/
