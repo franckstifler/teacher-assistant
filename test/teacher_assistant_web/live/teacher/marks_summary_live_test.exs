@@ -106,7 +106,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert_patch(view, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq2.id}")
     # séquence 2 has no assessments -> guided empty state, not stats
     refute has_element?(view, "#summary-class-average")
-    assert render(view) =~ "No marks in this séquence yet"
+    assert render(view) =~ "Pas encore de notes dans cette séquence"
   end
 
   test "renders a table with rank and mention columns", %{conn: conn, ctx: ctx, seq: seq, s1: s1} do

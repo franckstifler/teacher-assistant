@@ -87,6 +87,6 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       |> form("#log-form", log: %{hours: "abc"})
       |> render_change()
 
-    assert html =~ "Enter hours like 1 or 1.5"
+    assert html =~ "Saisissez les heures comme 1 ou 1,5"
   end
 end

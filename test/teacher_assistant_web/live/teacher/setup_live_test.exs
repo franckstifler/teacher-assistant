@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
       |> render_submit()
 
     # the actual reason surfaces (not the generic message)
-    assert html =~ "Weekly hours must be a whole number"
+    assert html =~ "Les heures hebdomadaires doivent être un nombre entier"
     # entered name is preserved in the re-rendered form
     assert html =~ "My Year"
   end

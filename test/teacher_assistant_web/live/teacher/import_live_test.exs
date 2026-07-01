@@ -45,8 +45,8 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
 
     assert has_element?(view, "#import-stepper")
     html = render(element(view, "#import-stepper"))
-    assert html =~ "Upload"
-    assert html =~ "Review"
+    assert html =~ "Téléversement"
+    assert html =~ "Vérification"
     # third step label is localized ("Save" / "Enregistrer") — assert the step exists
     assert length(String.split(html, "<li")) == 4
   end
