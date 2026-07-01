@@ -53,11 +53,33 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   end
 
   defp assign_entries(socket, plan) do
+    ctx =
+      case Academics.get_teaching_context(plan.teaching_context_id) do
+        {:ok, ctx} -> ctx
+        _ -> nil
+      end
+
     socket
     |> assign(:plan, plan)
+    |> assign(:ctx, ctx)
     |> assign(:entries, Academics.list_progression_entries(plan))
     |> assign(:entry_form, to_form(%{}, as: :entry))
   end
+
+  defp hours_total(entries) do
+    Enum.reduce(entries, Decimal.new(0), fn e, acc -> Decimal.add(acc, e.planned_hours) end)
+  end
+
+  defp weeks_estimate(_total, nil), do: nil
+
+  defp weeks_estimate(total, weekly_hours) when weekly_hours > 0 do
+    total
+    |> Decimal.div(Decimal.new(weekly_hours))
+    |> Decimal.round(0, :ceiling)
+    |> Decimal.to_string()
+  end
+
+  defp weeks_estimate(_total, _), do: nil
 
   defp blank_to(nil, d), do: d
   defp blank_to("", d), do: d
@@ -80,35 +102,86 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
           </:actions>
         </.page_header>
 
-        <ul id="fiche-entries" class="space-y-2">
-          <li
-            :for={e <- @entries}
-            id={"entry-#{e.id}"}
-            class="ta-leaf flex flex-row items-center justify-between gap-3"
+        <div id="fiche-hours-total" class="flex items-center gap-3">
+          <.stat
+            label={gettext("Planned hours")}
+            value={Decimal.to_string(hours_total(@entries))}
+            suffix="h"
+          />
+          <p
+            :if={@ctx && weeks_estimate(hours_total(@entries), @ctx.weekly_hours)}
+            class="text-sm text-base-content/60"
           >
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-display font-semibold">{e.lesson_title}</span>
+            {gettext("≈ %{weeks} weeks at %{hours} h/week",
+              weeks: weeks_estimate(hours_total(@entries), @ctx.weekly_hours),
+              hours: @ctx.weekly_hours
+            )}
+          </p>
+        </div>
+
+        <table
+          :if={@entries != []}
+          id="fiche-entries"
+          class="w-full border-separate border-spacing-y-1"
+        >
+          <caption class="sr-only">{gettext("Progression entries")}</caption>
+          <thead class="hidden md:table-header-group">
+            <tr class="text-left">
+              <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Module")}</th>
+              <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Leçon")}</th>
+              <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Type")}</th>
+              <th scope="col" class="ta-eyebrow px-3 pb-1 text-right">{gettext("Heures")}</th>
+              <th scope="col" class="px-3 pb-1"><span class="sr-only">{gettext("Actions")}</span></th>
+            </tr>
+          </thead>
+          <tbody class="block space-y-2 md:table-row-group">
+            <tr :for={e <- @entries} id={"entry-#{e.id}"} class="ta-leaf block md:table-row">
+              <td class="hidden text-sm text-base-content/65 md:table-cell md:px-3 md:py-2">
+                {e.module}
+              </td>
+              <td class="flex items-center justify-between gap-2 md:table-cell md:px-3 md:py-2">
+                <span>
+                  <span class="font-display font-semibold">{e.lesson_title}</span>
+                  <span class="mt-0.5 block text-sm text-base-content/65 md:hidden">
+                    {e.module} <span class="text-base-content/40">·</span>
+                    <span class="ta-num">{e.planned_hours}h</span>
+                    <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
+                  </span>
+                </span>
+                <.button
+                  phx-click="delete-entry"
+                  phx-value-id={e.id}
+                  class="btn btn-ghost btn-xs text-error md:hidden"
+                >
+                  <.icon name="hero-trash" class="size-4" />
+                  <span class="sr-only">{gettext("Delete")}</span>
+                </.button>
+              </td>
+              <td class="hidden md:table-cell md:px-3 md:py-2">
                 <span class="badge badge-soft badge-sm">{e.entry_type}</span>
-              </div>
-              <div class="mt-0.5 text-sm text-base-content/65">
-                {e.module} <span class="text-base-content/40">·</span>
-                <span class="ta-num">{e.planned_hours}h</span>
-              </div>
-            </div>
-            <.button
-              phx-click="delete-entry"
-              phx-value-id={e.id}
-              class="btn btn-ghost btn-xs text-error"
-            >
-              <.icon name="hero-trash" class="size-4" />
-              <span class="sr-only">{gettext("Delete")}</span>
-            </.button>
-          </li>
-          <li :if={@entries == []} class="ta-leaf text-sm text-base-content/60">
-            {gettext("No entries yet — add your first lesson below.")}
-          </li>
-        </ul>
+              </td>
+              <td class="ta-num hidden text-right md:table-cell md:px-3 md:py-2">
+                {e.planned_hours}h
+              </td>
+              <td class="hidden text-right md:table-cell md:px-3 md:py-2">
+                <.button
+                  id={"entry-delete-#{e.id}"}
+                  phx-click="delete-entry"
+                  phx-value-id={e.id}
+                  class="btn btn-ghost btn-xs text-error"
+                >
+                  <.icon name="hero-trash" class="size-4" />
+                  <span class="sr-only">{gettext("Delete")}</span>
+                </.button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <.empty_state
+          :if={@entries == []}
+          icon="hero-document-text"
+          title={gettext("No entries yet — add your first lesson below.")}
+        />
 
         <.form
           for={@entry_form}
