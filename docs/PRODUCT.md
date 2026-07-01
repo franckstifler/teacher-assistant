@@ -62,8 +62,14 @@ The build is sequenced so each phase ships a usable product. Detailed specs are 
   Import an existing **text-based fiche PDF** → editable draft rows → a new draft plan,
   **deterministically (no AI)** via `pdftotext`. Scanned/photo and Excel import, and AI structuring,
   are deferred to a later increment.
-- ⏳ **v1.2 (next)** — **marks & report cards** for the independent teacher (/20, sequences, averages).
-- ⏳ **v1.3** — **lesson-plan (fiche de préparation)** editor scaffolded from a progression entry.
+- ✅ **v1.2 — Marks & mark register (shipped).** *(spec:
+  [`2026-07-01-teacher-marks-register-v1_2-design.md`](superpowers/specs/2026-07-01-teacher-marks-register-v1_2-design.md))*.
+  Per-subject **mark register** for the independent teacher: a shared class **roster**, free-form
+  **assessments** per séquence, **/20 marks**, and deterministic per-séquence statistics (moyenne
+  séquentielle, class average, *taux de réussite*, rank, garçons/filles split, mentions). The
+  official multi-subject **bulletin de notes** (cross-subject *moyenne générale*, ranking, conduct,
+  decisions) is deferred to the **school layer (Phase 2)** — a solo teacher owns only their subject.
+- ⏳ **v1.3 (next)** — **lesson-plan (fiche de préparation)** editor scaffolded from a progression entry.
 
 ### Phase 2 — The school layer
 - School workspaces; staff **roles & councils**; teacher **invitations** (teacher↔school many-to-many).

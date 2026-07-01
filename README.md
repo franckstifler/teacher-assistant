@@ -27,7 +27,13 @@ for the phased roadmap.
   into an editable draft progression plan, **deterministically (no AI)**. Requires `pdftotext`
   (see [System dependencies](#system-dependencies)). *(See the
   [design spec](docs/superpowers/specs/2026-06-27-fiche-import-v1_1-design.md).)*
-- Next: **v1.2** marks & report cards → **v1.3** CBA lesson-plan editor.
+- ✅ **v1.2 — Marks & mark register (shipped).** Per-subject mark register for the independent
+  teacher: a shared class **roster**, free-form **assessments** per séquence, **/20 marks**, and
+  deterministic **séquence statistics** (moyenne séquentielle, class average, *taux de réussite*,
+  rank, garçons/filles split, mentions) — **deterministically (no AI)**. The official multi-subject
+  *bulletin de notes* is deferred to the school layer (Phase 2). *(See the
+  [design spec](docs/superpowers/specs/2026-07-01-teacher-marks-register-v1_2-design.md).)*
+- Next: **v1.3** CBA lesson-plan (*fiche de préparation*) editor.
 
 The app also ships a distinct visual identity — the **"Tableau" chalkboard theme** (dark default +
 light *craie*), Fraunces + IBM Plex Mono, branded sign-in/registration, and a marketing landing
