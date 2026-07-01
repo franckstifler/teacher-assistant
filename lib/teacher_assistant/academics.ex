@@ -159,6 +159,19 @@ defmodule TeacherAssistant.Academics do
 
   def get_teaching_context(id), do: Ash.get(TeachingContext, id, authorize?: false)
 
+  @doc """
+  Resolves the active TeachingContext for the shell's class switcher.
+  Owner + active-year scoped: only the workspace's own contexts are searched, so a
+  foreign/invalid/stale id simply falls back to the first (alphabetical) context.
+  Returns nil when there is no active year or no contexts.
+  """
+  def resolve_current_context(_ws, nil, _context_id), do: nil
+
+  def resolve_current_context(%PersonalWorkspace{} = ws, %AcademicYear{} = year, context_id) do
+    contexts = list_teaching_contexts(ws, year)
+    Enum.find(contexts, fn c -> c.id == context_id end) || List.first(contexts)
+  end
+
   def create_progression_plan(%TeachingContext{} = ctx, attrs) do
     attrs =
       attrs
