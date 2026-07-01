@@ -3,21 +3,26 @@ defmodule TeacherAssistant.Accounts.Workspaces do
 
   def ensure_personal_workspace!(user), do: Academics.ensure_personal_workspace!(user)
 
-  def scope_for(user, nil) do
+  def scope_for(user, workspace_id, context_id \\ nil)
+
+  def scope_for(user, nil, context_id) do
     ws = ensure_personal_workspace!(user)
-    scope_for(user, ws.id)
+    scope_for(user, ws.id, context_id)
   end
 
-  def scope_for(user, workspace_id) do
+  def scope_for(user, workspace_id, context_id) do
     with {:ok, ws} <- Academics.get_personal_workspace(workspace_id),
          true <- ws.owner_user_id == user.id do
+      year = Academics.current_academic_year(ws)
+
       {:ok,
        %Scope{
          current_user: user,
          current_workspace: ws,
          current_workspace_type: :personal_teacher,
          current_role: :teacher,
-         current_academic_year: Academics.current_academic_year(ws)
+         current_academic_year: year,
+         current_context: Academics.resolve_current_context(ws, year, context_id)
        }}
     else
       _ -> {:error, :workspace_not_found}

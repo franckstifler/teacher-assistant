@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     %{
       "workspace_id" => Plug.Conn.get_session(conn, :workspace_id),
       "user_id" => Plug.Conn.get_session(conn, :user_id),
+      "context_id" => Plug.Conn.get_session(conn, :context_id),
       "locale" => Plug.Conn.get_session(conn, :locale)
     }
   end
@@ -21,6 +22,13 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     socket = assign_scope(socket, session)
 
     if socket.assigns.current_user do
+      socket =
+        Phoenix.LiveView.attach_hook(socket, :current_path, :handle_params, fn _params,
+                                                                               uri,
+                                                                               socket ->
+          {:cont, Phoenix.Component.assign(socket, :current_path, URI.parse(uri).path)}
+        end)
+
       {:cont, socket}
     else
       {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
@@ -45,12 +53,17 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     user = socket.assigns[:current_user] || load_user(session["user_id"])
     locale = session["locale"] || "fr"
     Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
-    scope = %{resolve_scope(user, session["workspace_id"]) | locale: locale}
+
+    scope = %{
+      resolve_scope(user, session["workspace_id"], session["context_id"])
+      | locale: locale
+    }
 
     socket
     |> assign(:current_user, user)
     |> assign(:current_scope, scope)
     |> assign(:scope, scope)
+    |> assign_new(:current_path, fn -> nil end)
   end
 
   defp load_user(nil), do: nil
@@ -62,10 +75,10 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     end
   end
 
-  defp resolve_scope(nil, _workspace_id), do: %Scope{}
+  defp resolve_scope(nil, _workspace_id, _context_id), do: %Scope{}
 
-  defp resolve_scope(user, workspace_id) do
-    case Workspaces.scope_for(user, workspace_id) do
+  defp resolve_scope(user, workspace_id, context_id) do
+    case Workspaces.scope_for(user, workspace_id, context_id) do
       {:ok, scope} -> scope
       {:error, _} -> %Scope{current_user: user}
     end

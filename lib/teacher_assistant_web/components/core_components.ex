@@ -521,4 +521,106 @@ defmodule TeacherAssistantWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  attr :eyebrow, :string, required: true
+  attr :title, :string, required: true
+  slot :actions
+
+  def page_header(assigns) do
+    ~H"""
+    <header class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="ta-eyebrow">{@eyebrow}</p>
+        <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@title}</h1>
+      </div>
+      <div :if={@actions != []} class="flex items-center gap-2">{render_slot(@actions)}</div>
+    </header>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :suffix, :string, default: nil
+  attr :tone, :atom, default: :neutral
+
+  def stat(assigns) do
+    ~H"""
+    <div class="ta-leaf">
+      <p class="ta-eyebrow">{@label}</p>
+      <p class={[
+        "ta-num mt-1 text-2xl font-semibold leading-none",
+        @tone == :primary && "text-primary",
+        @tone == :behind && "text-warning"
+      ]}>
+        {@value}<span :if={@suffix} class="text-base font-normal text-base-content/55">{@suffix}</span>
+      </p>
+    </div>
+    """
+  end
+
+  attr :icon, :string, required: true
+  attr :title, :string, required: true
+  attr :message, :string, default: nil
+  slot :action
+
+  def empty_state(assigns) do
+    ~H"""
+    <div class="ta-leaf flex flex-col items-start gap-3 text-sm">
+      <span class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+        <.icon name={@icon} class="size-5" />
+      </span>
+      <div>
+        <p class="font-semibold">{@title}</p>
+        <p :if={@message} class="text-base-content/70">{@message}</p>
+      </div>
+      <div :if={@action != []}>{render_slot(@action)}</div>
+    </div>
+    """
+  end
+
+  attr :icon, :string, required: true
+  attr :eyebrow, :string, required: true
+  attr :title, :string, required: true
+  attr :message, :string, required: true
+  slot :action, required: true
+
+  def setup_gate(assigns) do
+    ~H"""
+    <section class="mx-auto flex max-w-md flex-col items-center gap-4 py-10 text-center">
+      <span class="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <.icon name={@icon} class="size-7" />
+      </span>
+      <p class="ta-eyebrow">{@eyebrow}</p>
+      <h1 class="text-2xl font-bold sm:text-3xl">{@title}</h1>
+      <p class="text-base-content/70">{@message}</p>
+      <div>{render_slot(@action)}</div>
+    </section>
+    """
+  end
+
+  attr :mention, :atom, default: nil
+
+  def mention_badge(assigns) do
+    assigns = assign(assigns, :label, mention_label(assigns.mention))
+
+    ~H"""
+    <span class={[
+      "inline-flex items-center gap-1 text-sm font-semibold",
+      @mention == nil && "text-accent",
+      @mention == :passable && "text-warning",
+      @mention not in [nil, :passable] && "text-primary"
+    ]}>
+      <.icon name={if @mention, do: "hero-check-circle", else: "hero-x-circle"} class="size-4" />
+      {@label}
+    </span>
+    """
+  end
+
+  defp mention_label(:excellent), do: gettext("Excellent")
+  defp mention_label(:tres_bien), do: gettext("Très bien")
+  defp mention_label(:bien), do: gettext("Bien")
+  defp mention_label(:assez_bien), do: gettext("Assez bien")
+  defp mention_label(:passable), do: gettext("Passable")
+  defp mention_label(nil), do: gettext("Insuffisant")
+  defp mention_label(_), do: gettext("Insuffisant")
 end

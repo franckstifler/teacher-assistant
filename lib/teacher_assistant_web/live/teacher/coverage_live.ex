@@ -31,10 +31,7 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="teacher-coverage" class="space-y-6">
-        <header>
-          <p class="ta-eyebrow">{gettext("Coverage")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@plan.title}</h1>
-        </header>
+        <.page_header eyebrow={gettext("Coverage")} title={@plan.title} />
 
         <div id="coverage-summary" class="ta-leaf flex flex-col gap-4">
           <div class="flex items-end justify-between gap-4">

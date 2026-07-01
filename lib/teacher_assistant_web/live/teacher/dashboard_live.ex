@@ -24,17 +24,13 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <%= if @year do %>
         <section id="teacher-dashboard" class="space-y-6">
-          <header class="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p class="ta-eyebrow">{gettext("Programme coverage")}</p>
-              <h1 class="mt-1 text-2xl font-bold sm:text-3xl">
-                {gettext("Teacher dashboard")}
-              </h1>
-            </div>
-            <span class="ta-num rounded-full border border-base-300 bg-base-100 px-3 py-1 text-xs font-semibold text-base-content/70">
-              {@year.name}
-            </span>
-          </header>
+          <.page_header eyebrow={gettext("Programme coverage")} title={gettext("Teacher dashboard")}>
+            <:actions>
+              <span class="ta-num rounded-full border border-base-300 bg-base-100 px-3 py-1 text-xs font-semibold text-base-content/70">
+                {@year.name}
+              </span>
+            </:actions>
+          </.page_header>
 
           <div class="flex flex-wrap gap-2">
             <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm gap-2">
@@ -80,35 +76,35 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
               </div>
             </div>
 
-            <div
-              :if={@kpis == []}
-              class="ta-leaf col-span-full flex flex-col items-start gap-3 text-sm"
-            >
-              <p class="text-base-content/70">{gettext("No progression plan yet.")}</p>
-              <.link navigate={~p"/teacher/setup"} class="btn btn-primary btn-sm">
-                {gettext("Set one up")}
-              </.link>
-              <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm">
-                {gettext("Import a fiche (PDF)")}
-              </.link>
+            <div :if={@kpis == []} class="col-span-full">
+              <.empty_state icon="hero-document-text" title={gettext("No progression plan yet.")}>
+                <:action>
+                  <.link navigate={~p"/teacher/setup"} class="btn btn-primary btn-sm">
+                    {gettext("Set one up")}
+                  </.link>
+                  <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm">
+                    {gettext("Import a fiche (PDF)")}
+                  </.link>
+                </:action>
+              </.empty_state>
             </div>
           </div>
         </section>
       <% else %>
-        <section
-          id="academic-year-setup-gate"
-          class="mx-auto flex max-w-md flex-col items-center gap-4 py-10 text-center"
-        >
-          <span class="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-            <.icon name="hero-academic-cap" class="size-7" />
-          </span>
-          <p class="ta-eyebrow">{gettext("Get started")}</p>
-          <h1 class="text-2xl font-bold sm:text-3xl">{gettext("Welcome")}</h1>
-          <p class="text-base-content/70">{gettext("Set up your academic year to get started.")}</p>
-          <.link navigate={~p"/teacher/setup"} class="btn btn-primary">
-            {gettext("Start setup")}
-          </.link>
-        </section>
+        <div id="academic-year-setup-gate">
+          <.setup_gate
+            icon="hero-academic-cap"
+            eyebrow={gettext("Get started")}
+            title={gettext("Welcome")}
+            message={gettext("Set up your academic year to get started.")}
+          >
+            <:action>
+              <.link navigate={~p"/teacher/setup"} class="btn btn-primary">
+                {gettext("Start setup")}
+              </.link>
+            </:action>
+          </.setup_gate>
+        </div>
       <% end %>
     </Layouts.app>
     """

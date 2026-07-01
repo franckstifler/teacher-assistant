@@ -87,12 +87,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="teacher-roster" class="mx-auto max-w-md space-y-5">
-        <header>
-          <p class="ta-eyebrow">{gettext("Roster")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">
-            {@ctx.subject} · {@ctx.level}
-          </h1>
-        </header>
+        <.page_header eyebrow={gettext("Roster")} title={"#{@ctx.subject} · #{@ctx.level}"} />
 
         <%= if @class_group do %>
           <.form

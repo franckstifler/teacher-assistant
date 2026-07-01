@@ -43,10 +43,10 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="teacher-log" class="mx-auto max-w-md space-y-5">
-        <header>
-          <p class="ta-eyebrow">{gettext("Cahier de textes")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{gettext("Log what you taught")}</h1>
-        </header>
+        <.page_header
+          eyebrow={gettext("Cahier de textes")}
+          title={gettext("Log what you taught")}
+        />
         <.form for={@form} id="log-form" phx-submit="save" class="ta-leaf space-y-2">
           <.input
             type="select"

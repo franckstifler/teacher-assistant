@@ -64,4 +64,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert {:error, {:live_redirect, %{to: "/teacher/setup"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/marks")
   end
+
+  test "each score input has the student name as its accessible label", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#mark-input-#{s1.id}[aria-label='#{s1.full_name}']")
+  end
 end

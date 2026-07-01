@@ -63,10 +63,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="teacher-marks-summary" class="mx-auto max-w-md space-y-4">
-        <header>
-          <p class="ta-eyebrow">{gettext("Séquence results")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@ctx.subject} · {@ctx.level}</h1>
-        </header>
+        <.page_header
+          eyebrow={gettext("Séquence results")}
+          title={"#{@ctx.subject} · #{@ctx.level}"}
+        />
 
         <%= if @summary do %>
           <div class="grid grid-cols-2 gap-2">
@@ -99,11 +99,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
               class="ta-leaf flex items-center justify-between"
             >
               <span>{s.full_name}</span>
-              <span class="font-mono">
-                {fmt(@summary.per_student[s.id].average)}
-                <span :if={@summary.per_student[s.id].rank} class="opacity-60">
-                  ({@summary.per_student[s.id].rank})
+              <span class="flex items-center gap-2">
+                <span class="ta-num font-mono">
+                  {fmt(@summary.per_student[s.id].average)}
+                  <span :if={@summary.per_student[s.id].rank} class="opacity-60">
+                    ({@summary.per_student[s.id].rank})
+                  </span>
                 </span>
+                <.mention_badge
+                  :if={@summary.per_student[s.id].average}
+                  mention={@summary.per_student[s.id].mention}
+                />
               </span>
             </li>
           </ul>

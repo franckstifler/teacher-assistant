@@ -43,10 +43,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="teacher-setup" class="mx-auto max-w-md space-y-5">
-        <header>
-          <p class="ta-eyebrow">{gettext("First, the basics")}</p>
-          <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{gettext("Set up your year")}</h1>
-        </header>
+        <.page_header eyebrow={gettext("First, the basics")} title={gettext("Set up your year")} />
         <.form
           for={@form}
           id="setup-form"
