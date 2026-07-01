@@ -39,7 +39,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
        |> assign(:students, students)
        |> assign(:summary, summary)}
     else
-      _ -> {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+      # true => context owned but has no class group (go set up the roster); anything else => not found / not owned
+      true ->
+        {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx_id}/roster")}
+
+      _ ->
+        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
     end
   end
 

@@ -36,7 +36,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
         %{student_id: s2.id, score: Decimal.new("8")}
       ])
 
-    %{ctx: ctx, seq: seq, s1: s1, s2: s2}
+    %{ws: ws, ctx: ctx, seq: seq, s1: s1, s2: s2}
   end
 
   test "shows class average and pass rate", %{conn: conn, ctx: ctx, seq: seq, s1: s1} do
@@ -50,6 +50,23 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert has_element?(view, "#summary-pass-rate", "50")
     assert has_element?(view, "#summary-row-#{s1.id}", "Awa")
     assert has_element?(view, "#summary-row-#{s1.id}", "14")
+  end
+
+  test "context without class group redirects to roster", %{conn: conn, ws: ws} do
+    {:ok, year} = {:ok, Academics.current_academic_year(ws)}
+
+    {:ok, ctx_no_roster} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "PCT",
+        level: "3ème",
+        subsystem: :francophone,
+        weekly_hours: 4
+      })
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             live(conn, ~p"/teacher/contexts/#{ctx_no_roster.id}/marks/summary")
+
+    assert to =~ "/roster"
   end
 
   test "unknown teaching context redirects to setup", %{conn: conn} do
