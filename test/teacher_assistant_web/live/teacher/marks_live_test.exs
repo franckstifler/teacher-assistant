@@ -28,7 +28,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, ctx} = Academics.link_class_group(ctx, cg)
     {:ok, s1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
-    %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1}
+    %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1, cg: cg}
   end
 
   test "enters a mark for a student", %{conn: conn, ctx: ctx, seq: seq, a: a, s1: s1} do
@@ -76,5 +76,59 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
     assert has_element?(view, "#mark-input-#{s1.id}[aria-label='#{s1.full_name}']")
+  end
+
+  test "shows entry progress and live average preview", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    cg: cg
+  } do
+    {:ok, s2} = Academics.add_student(cg, %{full_name: "Beba", sex: :m})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#marks-progress")
+
+    html =
+      view
+      |> element("#marks-form")
+      |> render_change(%{"scores" => %{s1.id => "14", s2.id => "10"}})
+
+    assert html =~ "2"
+    # average preview: (14 + 10) / 2 = 12
+    assert view |> element("#marks-average-preview") |> render() =~ "12"
+  end
+
+  test "toolbar wraps séquence and assessment controls", %{conn: conn, ctx: ctx, seq: seq, a: a} do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#marks-toolbar #seq-select")
+    assert has_element?(view, "#marks-toolbar #assessment-select")
+  end
+
+  test "md sheet shows sibling assessment scores read-only", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1
+  } do
+    {:ok, other} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
+
+    :ok =
+      Academics.upsert_marks(other, [
+        %{student_id: s1.id, score: Decimal.new("17")}
+      ])
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#marks-sheet-header", "Devoir 2")
+    assert render(element(view, "#mark-row-#{s1.id}")) =~ "17"
   end
 end
