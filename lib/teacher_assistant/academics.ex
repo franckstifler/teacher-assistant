@@ -9,6 +9,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.Student
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
@@ -21,6 +22,7 @@ defmodule TeacherAssistant.Academics do
     resource Sequence
     resource TeachingContext
     resource ClassGroup
+    resource Student
     resource ProgressionPlan
     resource ProgressionEntry
     resource TeachingLogEntry
@@ -229,6 +231,36 @@ defmodule TeacherAssistant.Academics do
     |> case do
       {:ok, nil} -> {:error, :not_found}
       result -> result
+    end
+  end
+
+  def add_student(%ClassGroup{id: cg_id}, attrs) do
+    attrs = Map.put(attrs, :class_group_id, cg_id)
+    Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def list_students(%ClassGroup{id: cg_id}) do
+    Student
+    |> Ash.Query.filter(class_group_id == ^cg_id)
+    |> Ash.Query.sort(full_name: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def update_student(%Student{} = s, attrs),
+    do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+
+  def delete_student(%Student{} = s), do: Ash.destroy(s, authorize?: false)
+
+  def fetch_owned_student(id, %PersonalWorkspace{} = ws) do
+    case Ash.get(Student, id, authorize?: false) do
+      {:ok, student} ->
+        case fetch_owned_class_group(student.class_group_id, ws) do
+          {:ok, _} -> {:ok, student}
+          _ -> {:error, :not_found}
+        end
+
+      _ ->
+        {:error, :not_found}
     end
   end
 

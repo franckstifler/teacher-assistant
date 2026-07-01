@@ -51,6 +51,8 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       allow_nil? false
       public? true
     end
+
+    has_many :students, TeacherAssistant.Academics.Student
   end
 
   identities do
