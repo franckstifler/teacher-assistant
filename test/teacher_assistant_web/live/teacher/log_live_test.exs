@@ -51,4 +51,42 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
 
     assert length(Academics.list_logs_for_plan(plan)) == 1
   end
+
+  test "hours field shows its default value", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+    assert view |> element("#log-form input[name='log[hours]']") |> render() =~ ~s(value="1")
+  end
+
+  test "saving stays on the page and shows the entry in the recent list", %{
+    conn: conn,
+    entry: entry
+  } do
+    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+
+    view
+    |> form("#log-form",
+      log: %{
+        progression_entry_id: entry.id,
+        date: "2026-07-01",
+        hours: "2",
+        content_taught: "Fractions",
+        status: "done"
+      }
+    )
+    |> render_submit()
+
+    # no navigation; ledger shows the new entry
+    assert has_element?(view, "#log-recent", "Fractions")
+  end
+
+  test "invalid hours shows an inline error on change", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+
+    html =
+      view
+      |> form("#log-form", log: %{hours: "abc"})
+      |> render_change()
+
+    assert html =~ "Enter hours like 1 or 1.5"
+  end
 end
