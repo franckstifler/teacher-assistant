@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     defaults [
       :read,
       :destroy,
-      create: [:name, :start_date, :end_date, :active, :personal_workspace_id],
+      create: [:name, :start_date, :end_date, :active, :workspace_id],
       update: [:name, :start_date, :end_date, :active]
     ]
   end
@@ -35,8 +35,8 @@ defmodule TeacherAssistant.Academics.AcademicYear do
   end
 
   relationships do
-    belongs_to :personal_workspace, TeacherAssistant.Academics.PersonalWorkspace do
-      source_attribute :personal_workspace_id
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end
@@ -45,6 +45,6 @@ defmodule TeacherAssistant.Academics.AcademicYear do
   end
 
   identities do
-    identity :unique_workspace_year, [:personal_workspace_id, :name]
+    identity :unique_workspace_year, [:workspace_id, :name]
   end
 end

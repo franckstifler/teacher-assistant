@@ -7,6 +7,8 @@ defmodule TeacherAssistant.Accounts do
   resources do
     resource TeacherAssistant.Accounts.Token
     resource User
+    resource TeacherAssistant.Accounts.SchoolMembership
+    resource TeacherAssistant.Accounts.SchoolInvitation
   end
 
   def create_user(attrs) do

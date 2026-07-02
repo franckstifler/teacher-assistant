@@ -23,7 +23,7 @@ defmodule TeacherAssistant.Academics.ClassGroupTest do
 
     assert cg.label == "3e M2"
     assert cg.subsystem == :francophone
-    assert cg.personal_workspace_id == ws.id
+    assert cg.workspace_id == ws.id
     assert cg.academic_year_id == year.id
   end
 

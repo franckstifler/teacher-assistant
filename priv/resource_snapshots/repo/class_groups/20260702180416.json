@@ -21,7 +21,43 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "name",
+      "source": "label",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "level",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "serie",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"francophone\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "subsystem",
       "type": "text"
     },
     {
@@ -67,16 +103,47 @@
           "global": null,
           "strategy": null
         },
-        "name": "personal_workspaces_owner_user_id_fkey",
+        "name": "class_groups_workspace_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "users"
+        "table": "workspaces"
       },
       "scale": null,
       "size": null,
-      "source": "owner_user_id",
+      "source": "workspace_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "class_groups_academic_year_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "academic_years"
+      },
+      "scale": null,
+      "size": null,
+      "source": "academic_year_id",
       "type": "uuid"
     }
   ],
@@ -85,21 +152,28 @@
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
-  "drop_table_opted_out": true,
   "has_create_action": true,
-  "hash": "253E0919BDF9890D37C60745D59EB1533467382630906E9635E02CD45FCACB55",
+  "hash": "3CCFC200F8EF575180ECED80537A4E368ED1A7631965D119141DAF87BEA6190E",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "personal_workspaces_unique_owner_user_index",
+      "index_name": "class_groups_unique_class_group_index",
       "keys": [
         {
           "type": "atom",
-          "value": "owner_user_id"
+          "value": "workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "academic_year_id"
+        },
+        {
+          "type": "atom",
+          "value": "label"
         }
       ],
-      "name": "unique_owner_user",
+      "name": "unique_class_group",
       "nils_distinct?": true,
       "where": null
     }
@@ -111,5 +185,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "personal_workspaces"
+  "table": "class_groups"
 }

@@ -46,6 +46,11 @@ defmodule TeacherAssistantWeb.Layouts do
           []
       end
 
+    workspaces =
+      if current_user,
+        do: TeacherAssistant.Accounts.Schools.list_workspaces_for(current_user),
+        else: []
+
     assigns =
       assigns
       |> assign(:current_user, current_user)
@@ -53,6 +58,12 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
       |> assign(:contexts, contexts)
+      |> assign(:workspaces, workspaces)
+      |> assign(:in_school?, current_scope && current_scope.current_workspace_type == :school)
+      |> assign(
+        :is_head?,
+        current_scope && TeacherAssistant.Accounts.Permissions.head?(current_scope)
+      )
       |> assign(:current_context, current_scope && current_scope.current_context)
       |> assign(:current_path, assigns[:current_path] || "/teacher")
 
@@ -73,6 +84,54 @@ defmodule TeacherAssistantWeb.Layouts do
           </a>
 
           <div class="ml-auto flex items-center gap-2">
+            <div :if={@current_user} id="workspace-switcher" class="dropdown">
+              <div
+                tabindex="0"
+                role="button"
+                class="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-sm font-semibold"
+              >
+                <.icon name="hero-building-office-2" class="size-4 text-primary" />
+                <span class="hidden sm:inline">{@workspace_name}</span>
+                <.icon name="hero-chevron-down" class="size-3.5 text-base-content/50" />
+              </div>
+              <div
+                tabindex="0"
+                class="dropdown-content menu z-50 mt-1 w-64 rounded-box border border-base-300 bg-base-100 p-1 shadow"
+              >
+                <ul>
+                  <li :for={ws <- @workspaces} id={"workspace-switcher-item-#{ws.id}"}>
+                    <.link
+                      href={~p"/workspaces/select/#{ws.id}"}
+                      class="flex items-center justify-between gap-2"
+                    >
+                      <span>{ws.name}</span>
+                      <span :if={ws.kind == :school} class="badge badge-sm badge-primary">
+                        {gettext("École")}
+                      </span>
+                    </.link>
+                  </li>
+                </ul>
+                <div class="mt-1 border-t border-base-300 p-2">
+                  <.form
+                    for={%{}}
+                    as={:school}
+                    action={~p"/workspaces"}
+                    method="post"
+                    class="flex items-center gap-1"
+                  >
+                    <input
+                      type="text"
+                      name="school[name]"
+                      placeholder={gettext("School name")}
+                      class="input input-bordered input-xs w-full"
+                    />
+                    <button id="create-school" type="submit" class="btn btn-primary btn-xs shrink-0">
+                      {gettext("Create a school")}
+                    </button>
+                  </.form>
+                </div>
+              </div>
+            </div>
             <Layouts.theme_toggle />
             <%= if @current_user do %>
               <div class="hidden text-right sm:block">
@@ -95,7 +154,46 @@ defmodule TeacherAssistantWeb.Layouts do
         </div>
 
         <nav
-          :if={@current_user}
+          :if={@current_user && @in_school?}
+          id="school-nav"
+          class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-3 pb-2 sm:px-5"
+          aria-label={gettext("School navigation")}
+        >
+          <.tab_link
+            id="nav-school-dashboard"
+            href={~p"/school"}
+            icon="hero-squares-2x2"
+            current_path={@current_path}
+          >
+            {gettext("Dashboard")}
+          </.tab_link>
+          <.tab_link
+            id="nav-school-members"
+            href={~p"/school/members"}
+            icon="hero-user-group"
+            current_path={@current_path}
+          >
+            {gettext("Members")}
+          </.tab_link>
+          <.tab_link
+            :if={@is_head?}
+            id="nav-school-settings"
+            href={~p"/school/settings"}
+            icon="hero-cog-6-tooth"
+            current_path={@current_path}
+          >
+            {gettext("Settings")}
+          </.tab_link>
+
+          <div id="locale-switch" class="ml-auto flex items-center gap-1">
+            <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs ta-num">FR</.link>
+            <span class="text-base-content/30">·</span>
+            <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs ta-num">EN</.link>
+          </div>
+        </nav>
+
+        <nav
+          :if={@current_user && !@in_school?}
           id="main-nav"
           class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-3 pb-2 sm:px-5"
           aria-label={gettext("Main navigation")}

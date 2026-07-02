@@ -21,8 +21,35 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "name",
+      "source": "roles",
+      "type": [
+        "array",
+        "text"
+      ]
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "status",
       "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "true",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "active",
+      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -67,7 +94,38 @@
           "global": null,
           "strategy": null
         },
-        "name": "personal_workspaces_owner_user_id_fkey",
+        "name": "school_memberships_workspace_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "workspaces"
+      },
+      "scale": null,
+      "size": null,
+      "source": "workspace_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "school_memberships_user_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
@@ -76,7 +134,7 @@
       },
       "scale": null,
       "size": null,
-      "source": "owner_user_id",
+      "source": "user_id",
       "type": "uuid"
     }
   ],
@@ -85,21 +143,24 @@
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
-  "drop_table_opted_out": true,
   "has_create_action": true,
-  "hash": "253E0919BDF9890D37C60745D59EB1533467382630906E9635E02CD45FCACB55",
+  "hash": "02259CB63056586DD310679D05D136B0256C995D8A21BD1062CA39F6BEBA88A3",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "personal_workspaces_unique_owner_user_index",
+      "index_name": "school_memberships_unique_member_index",
       "keys": [
         {
           "type": "atom",
-          "value": "owner_user_id"
+          "value": "workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "user_id"
         }
       ],
-      "name": "unique_owner_user",
+      "name": "unique_member",
       "nils_distinct?": true,
       "where": null
     }
@@ -111,5 +172,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "personal_workspaces"
+  "table": "school_memberships"
 }

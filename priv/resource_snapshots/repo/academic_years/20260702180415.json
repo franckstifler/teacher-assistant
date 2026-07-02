@@ -26,6 +26,42 @@
     },
     {
       "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "start_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "end_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": true,
+      "default": "true",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "active",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
       "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
       "precision": null,
@@ -67,16 +103,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "personal_workspaces_owner_user_id_fkey",
+        "name": "academic_years_workspace_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "users"
+        "table": "workspaces"
       },
       "scale": null,
       "size": null,
-      "source": "owner_user_id",
+      "source": "workspace_id",
       "type": "uuid"
     }
   ],
@@ -85,21 +121,24 @@
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
-  "drop_table_opted_out": true,
   "has_create_action": true,
-  "hash": "253E0919BDF9890D37C60745D59EB1533467382630906E9635E02CD45FCACB55",
+  "hash": "A33D7A98A7ED4A93C0009CD520E18F02344BA506A664B3128D124A869DC0EA62",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "personal_workspaces_unique_owner_user_index",
+      "index_name": "academic_years_unique_workspace_year_index",
       "keys": [
         {
           "type": "atom",
-          "value": "owner_user_id"
+          "value": "workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "name"
         }
       ],
-      "name": "unique_owner_user",
+      "name": "unique_workspace_year",
       "nils_distinct?": true,
       "where": null
     }
@@ -111,5 +150,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "personal_workspaces"
+  "table": "academic_years"
 }
