@@ -581,6 +581,68 @@ defmodule TeacherAssistant.Academics do
   def update_lesson_plan(%LessonPlan{} = lp, attrs),
     do: lp |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
+  def list_lesson_steps(%LessonPlan{id: lp_id}) do
+    LessonStep
+    |> Ash.Query.filter(lesson_plan_id == ^lp_id)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def add_lesson_step(%LessonPlan{} = lp, attrs \\ %{}) do
+    next =
+      lp
+      |> list_lesson_steps()
+      |> Enum.map(& &1.position)
+      |> Enum.max(fn -> 0 end)
+      |> Kernel.+(1)
+
+    attrs =
+      attrs
+      |> Map.put(:lesson_plan_id, lp.id)
+      |> Map.put_new(:position, next)
+
+    LessonStep |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def update_lesson_step(%LessonStep{} = s, attrs),
+    do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+
+  def delete_lesson_step(%LessonStep{} = s), do: Ash.destroy(s, authorize?: false)
+
+  def move_lesson_step(%LessonStep{} = step, direction) when direction in [:up, :down] do
+    steps =
+      LessonStep
+      |> Ash.Query.filter(lesson_plan_id == ^step.lesson_plan_id)
+      |> Ash.Query.sort(position: :asc)
+      |> Ash.read!(authorize?: false)
+
+    idx = Enum.find_index(steps, &(&1.id == step.id))
+    swap_idx = if direction == :up, do: idx && idx - 1, else: idx && idx + 1
+
+    cond do
+      is_nil(idx) ->
+        {:ok, step}
+
+      swap_idx < 0 or swap_idx >= length(steps) ->
+        {:ok, step}
+
+      true ->
+        other = Enum.at(steps, swap_idx)
+        {:ok, _} = update_lesson_step(other, %{position: step.position})
+        update_lesson_step(step, %{position: other.position})
+    end
+  end
+
+  def fetch_owned_lesson_step(id, %LessonPlan{id: lp_id}) do
+    LessonStep
+    |> Ash.Query.filter(id == ^id and lesson_plan_id == ^lp_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
   def log_teaching(%PersonalWorkspace{id: ws_id}, attrs) do
     attrs = Map.put(attrs, :personal_workspace_id, ws_id)
     TeachingLogEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
