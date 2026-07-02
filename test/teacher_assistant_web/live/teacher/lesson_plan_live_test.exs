@@ -65,4 +65,46 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     assert {:error, {:live_redirect, %{to: "/teacher"}}} =
              live(conn, ~p"/teacher/entries/#{Ecto.UUID.generate()}/fiche")
   end
+
+  test "adds, edits, reorders and deletes steps", %{conn: conn, entry: entry} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+
+    # empty state first
+    assert render(view) =~ "Aucune étape"
+
+    view |> element("#step-add") |> render_click()
+    view |> element("#step-add") |> render_click()
+
+    lp = Academics.get_lesson_plan_for_entry(entry.id)
+    [s1, s2] = Academics.list_lesson_steps(lp)
+
+    # edit step 1's étape via blur
+    view
+    |> element("#step-row-#{s1.id} form")
+    |> render_blur(%{"_target" => ["step", "etape"], "step" => %{"etape" => "Découverte"}})
+
+    assert Academics.list_lesson_steps(lp) |> List.first() |> Map.get(:etape) == "Découverte"
+
+    # move step 1 down
+    view |> element("#step-down-#{s1.id}") |> render_click()
+    assert Academics.list_lesson_steps(lp) |> Enum.map(& &1.id) == [s2.id, s1.id]
+
+    # delete step 2 (now first)
+    view |> element("#step-delete-#{s2.id}") |> render_click()
+    assert Academics.list_lesson_steps(lp) |> Enum.map(& &1.id) == [s1.id]
+  end
+
+  test "shows the running-duration check", %{conn: conn, entry: entry} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    view |> element("#step-add") |> render_click()
+
+    lp = Academics.get_lesson_plan_for_entry(entry.id)
+    [s1] = Academics.list_lesson_steps(lp)
+
+    view
+    |> element("#step-row-#{s1.id} form")
+    |> render_blur(%{"_target" => ["step", "duration_minutes"], "step" => %{"duration_minutes" => "20"}})
+
+    assert render(element(view, "#fiche-duration-check")) =~ "20"
+  end
 end
