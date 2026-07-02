@@ -218,6 +218,34 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
+  def fetch_owned_entry_with_context(entry_id, %PersonalWorkspace{} = ws) do
+    with {:ok, entry} <- fetch_owned_entry(entry_id, ws),
+         {:ok, plan} <- fetch_owned_plan(entry.progression_plan_id, ws),
+         {:ok, ctx} <- fetch_owned_teaching_context(plan.teaching_context_id, ws) do
+      class_group = load_owned_class_group(ctx.class_group_id, ws)
+      effectif = if class_group, do: length(list_students(class_group)), else: 0
+
+      {:ok,
+       %{
+         entry: entry,
+         plan: plan,
+         ctx: ctx,
+         class_group: class_group,
+         year: current_academic_year(ws),
+         effectif: effectif
+       }}
+    end
+  end
+
+  defp load_owned_class_group(nil, _ws), do: nil
+
+  defp load_owned_class_group(id, ws) do
+    case fetch_owned_class_group(id, ws) do
+      {:ok, cg} -> cg
+      _ -> nil
+    end
+  end
+
   def fetch_owned_teaching_context(id, %PersonalWorkspace{id: ws_id}) do
     TeachingContext
     |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
@@ -519,6 +547,39 @@ defmodule TeacherAssistant.Academics do
   defp list_entries_query(plan_id) do
     ProgressionEntry |> Ash.Query.filter(progression_plan_id == ^plan_id)
   end
+
+  def get_lesson_plan_for_entry(entry_id) do
+    LessonPlan
+    |> Ash.Query.filter(progression_entry_id == ^entry_id)
+    |> Ash.read_one!(authorize?: false)
+  end
+
+  def ensure_lesson_plan(%ProgressionEntry{} = entry, %TeachingContext{} = _ctx) do
+    case get_lesson_plan_for_entry(entry.id) do
+      nil -> create_lesson_plan_from_entry(entry)
+      %LessonPlan{} = lp -> {:ok, lp}
+    end
+  end
+
+  defp create_lesson_plan_from_entry(%ProgressionEntry{} = entry) do
+    duration =
+      entry.planned_hours
+      |> Decimal.mult(60)
+      |> Decimal.round(0)
+      |> Decimal.to_integer()
+
+    attrs = %{
+      progression_entry_id: entry.id,
+      titre: entry.lesson_title,
+      competence_attendue: entry.competence_visee,
+      duration_minutes: duration
+    }
+
+    LessonPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def update_lesson_plan(%LessonPlan{} = lp, attrs),
+    do: lp |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
   def log_teaching(%PersonalWorkspace{id: ws_id}, attrs) do
     attrs = Map.put(attrs, :personal_workspace_id, ws_id)
