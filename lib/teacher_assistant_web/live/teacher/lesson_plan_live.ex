@@ -92,6 +92,11 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
     Enum.reduce(steps, 0, fn s, acc -> acc + (s.duration_minutes || 0) end)
   end
 
+  defp over_budget?(steps, %{duration_minutes: dm}) when is_integer(dm),
+    do: steps_total(steps) > dm
+
+  defp over_budget?(_steps, _lesson_plan), do: false
+
   defp step_form(step) do
     to_form(
       %{
@@ -155,9 +160,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
           id="fiche-header-form"
           phx-change="save_header"
           phx-debounce="blur"
-          class="ta-leaf space-y-3"
+          class="ta-leaf space-y-4"
         >
-          <div class="grid gap-3 sm:grid-cols-2">
+          <div class="grid gap-3 sm:grid-cols-[1fr_7rem_10rem]">
             <.input field={@header_form[:titre]} label={gettext("Titre de la leçon")} />
             <.input
               type="number"
@@ -165,27 +170,49 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
               label={gettext("Durée (min)")}
               inputmode="numeric"
             />
+            <.input type="date" field={@header_form[:lesson_date]} label={gettext("Date")} />
           </div>
-          <.input type="date" field={@header_form[:lesson_date]} label={gettext("Date")} />
-          <.input
-            type="textarea"
-            field={@header_form[:competence_attendue]}
-            label={gettext("Compétence attendue")}
-          />
-          <.input
-            type="textarea"
-            field={@header_form[:situation_probleme]}
-            label={gettext("Situation problème")}
-          />
-          <.input type="textarea" field={@header_form[:objectifs]} label={gettext("Objectifs")} />
-          <.input type="textarea" field={@header_form[:supports]} label={gettext("Supports")} />
-          <.input type="textarea" field={@header_form[:prerequis]} label={gettext("Prérequis")} />
+
+          <fieldset class="space-y-3 border-t border-base-300 pt-3">
+            <legend class="ta-eyebrow">{gettext("Cadre pédagogique")}</legend>
+            <.input
+              type="textarea"
+              field={@header_form[:competence_attendue]}
+              label={gettext("Compétence attendue")}
+            />
+            <.input
+              type="textarea"
+              field={@header_form[:situation_probleme]}
+              label={gettext("Situation problème")}
+            />
+            <.input type="textarea" field={@header_form[:objectifs]} label={gettext("Objectifs")} />
+          </fieldset>
+
+          <fieldset class="space-y-3 border-t border-base-300 pt-3">
+            <legend class="ta-eyebrow">{gettext("Ressources")}</legend>
+            <.input type="textarea" field={@header_form[:supports]} label={gettext("Supports")} />
+            <.input type="textarea" field={@header_form[:prerequis]} label={gettext("Prérequis")} />
+          </fieldset>
         </.form>
 
         <div class="space-y-3">
           <div class="flex items-center justify-between gap-2">
             <h2 class="ta-eyebrow">{gettext("Déroulement")}</h2>
-            <p id="fiche-duration-check" class="ta-num text-xs text-base-content/60">
+            <p
+              id="fiche-duration-check"
+              class={[
+                "ta-num inline-flex items-center gap-1 text-xs",
+                if(over_budget?(@steps, @lesson_plan),
+                  do: "font-semibold text-warning",
+                  else: "text-base-content/60"
+                )
+              ]}
+            >
+              <.icon
+                :if={over_budget?(@steps, @lesson_plan)}
+                name="hero-exclamation-triangle"
+                class="size-3.5"
+              />
               {steps_total(@steps)} / {fmt_min(@lesson_plan.duration_minutes)} {gettext("min")}
             </p>
           </div>

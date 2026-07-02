@@ -128,4 +128,29 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
 
     assert render(element(view, "#fiche-duration-check")) =~ "20"
   end
+
+  test "duration check flags when steps exceed the planned lesson duration", %{
+    conn: conn,
+    entry: entry
+  } do
+    # entry planned_hours = 1 => lesson plan duration_minutes = 60
+    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    view |> element("#step-add") |> render_click()
+
+    lp = Academics.get_lesson_plan_for_entry(entry.id)
+    [s1] = Academics.list_lesson_steps(lp)
+
+    # under budget: no warning tone
+    refute render(element(view, "#fiche-duration-check")) =~ "text-warning"
+
+    # push the step over the 60-min budget
+    view
+    |> element("#step-row-#{s1.id} form")
+    |> render_change(%{
+      "_target" => ["step", "duration_minutes"],
+      "step" => %{"duration_minutes" => "90"}
+    })
+
+    assert render(element(view, "#fiche-duration-check")) =~ "text-warning"
+  end
 end

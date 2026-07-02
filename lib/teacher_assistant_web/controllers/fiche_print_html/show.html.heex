@@ -53,6 +53,12 @@
         <td>{@lesson_plan.lesson_date}</td>
       </tr>
       <tr>
+        <td class="k">{gettext("Année scolaire")}</td>
+        <td>{@bundle.year && @bundle.year.name}</td>
+        <td class="k">{gettext("Enseignant")}</td>
+        <td>{@enseignant}</td>
+      </tr>
+      <tr>
         <td class="k">{gettext("Titre de la leçon")}</td>
         <td colspan="3">{@lesson_plan.titre || @bundle.entry.lesson_title}</td>
       </tr>

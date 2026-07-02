@@ -42,6 +42,9 @@ defmodule TeacherAssistantWeb.FichePrintControllerTest do
     assert html =~ "Les entiers"
     assert html =~ "Découverte"
     assert html =~ "les nombres"
+    # cartouche carries année scolaire + enseignant
+    assert html =~ "2025-2026"
+    assert html =~ "@example.com"
     # print layout: no app nav
     refute html =~ ~s(id="main-nav")
   end

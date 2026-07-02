@@ -17,7 +17,12 @@ defmodule TeacherAssistantWeb.FichePrintController do
       conn
       |> put_layout(false)
       |> put_root_layout(false)
-      |> render(:show, bundle: bundle, lesson_plan: lesson_plan, steps: steps)
+      |> render(:show,
+        bundle: bundle,
+        lesson_plan: lesson_plan,
+        steps: steps,
+        enseignant: to_string(user.email)
+      )
     else
       _ -> redirect(conn, to: ~p"/teacher")
     end
