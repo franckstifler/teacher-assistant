@@ -70,6 +70,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/teacher/contexts/:id/roster", Teacher.RosterLive, :index
       live "/teacher/contexts/:id/marks", Teacher.MarksLive, :index
       live "/teacher/contexts/:id/marks/summary", Teacher.MarksSummaryLive, :index
+      live "/teacher/entries/:entry_id/fiche", Teacher.LessonPlanLive, :edit
     end
   end
 

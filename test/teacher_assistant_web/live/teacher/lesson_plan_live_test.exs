@@ -1,0 +1,68 @@
+defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
+  use TeacherAssistantWeb.ConnCase, async: true
+  import Phoenix.LiveViewTest
+  alias TeacherAssistant.Academics
+  setup :register_and_log_in_user
+
+  setup %{workspace: ws} do
+    {:ok, year} =
+      Academics.create_academic_year(ws, %{
+        name: "2025-2026",
+        start_date: ~D[2025-09-08],
+        end_date: ~D[2026-07-31],
+        active: true
+      })
+
+    {:ok, ctx} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "Maths",
+        level: "6ème",
+        subsystem: :francophone,
+        weekly_hours: 4
+      })
+
+    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, ctx} = Academics.link_class_group(ctx, cg)
+    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+
+    {:ok, entry} =
+      Academics.add_progression_entry(plan, %{
+        module: "M1",
+        lesson_title: "Les entiers",
+        planned_hours: Decimal.new("1"),
+        entry_type: :lesson,
+        competence_visee: "Résoudre un problème"
+      })
+
+    %{ws: ws, entry: entry}
+  end
+
+  test "renders the cartouche and prefilled header", %{conn: conn, entry: entry} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+
+    assert has_element?(view, "#lesson-plan")
+    # derived cartouche
+    assert render(view) =~ "Maths"
+    assert render(view) =~ "6e A" or render(view) =~ "6ème"
+    # prefilled header field
+    assert has_element?(view, "#fiche-header-form input[name='lesson_plan[titre]'][value='Les entiers']")
+  end
+
+  test "autosaves a header field on blur", %{conn: conn, entry: entry} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+
+    view
+    |> element("#fiche-header-form")
+    |> render_blur(%{"_target" => ["lesson_plan", "situation_probleme"], "lesson_plan" => %{"situation_probleme" => "Au marché"}})
+
+    lp = Academics.get_lesson_plan_for_entry(entry.id)
+    assert lp.situation_probleme == "Au marché"
+    assert has_element?(view, "#fiche-saved-indicator")
+  end
+
+  test "unknown entry redirects to /teacher", %{conn: conn} do
+    assert {:error, {:live_redirect, %{to: "/teacher"}}} =
+             live(conn, ~p"/teacher/entries/#{Ecto.UUID.generate()}/fiche")
+  end
+end
