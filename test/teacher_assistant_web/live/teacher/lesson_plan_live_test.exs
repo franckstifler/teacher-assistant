@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
 
     view
     |> element("#fiche-header-form")
-    |> render_blur(%{
+    |> render_change(%{
       "_target" => ["lesson_plan", "situation_probleme"],
       "lesson_plan" => %{"situation_probleme" => "Au marché"}
     })
@@ -65,6 +65,18 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     lp = Academics.get_lesson_plan_for_entry(entry.id)
     assert lp.situation_probleme == "Au marché"
     assert has_element?(view, "#fiche-saved-indicator")
+  end
+
+  test "autosave forms debounce on blur (no per-keystroke writes)", %{conn: conn, entry: entry} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    view |> element("#step-add") |> render_click()
+
+    html = render(view)
+    # header form and step forms carry phx-debounce="blur"; no stray phx-blur binding remains
+    assert html =~ ~s(phx-debounce="blur")
+    assert has_element?(view, "#fiche-header-form[phx-debounce='blur']")
+    refute html =~ ~s(phx-blur="save_header")
+    refute html =~ ~s(phx-blur="save_step")
   end
 
   test "unknown entry redirects to /teacher", %{conn: conn} do
@@ -84,10 +96,10 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     lp = Academics.get_lesson_plan_for_entry(entry.id)
     [s1, s2] = Academics.list_lesson_steps(lp)
 
-    # edit step 1's étape via blur
+    # edit step 1's étape (autosave fires on the change/blur event)
     view
     |> element("#step-row-#{s1.id} form")
-    |> render_blur(%{"_target" => ["step", "etape"], "step" => %{"etape" => "Découverte"}})
+    |> render_change(%{"_target" => ["step", "etape"], "step" => %{"etape" => "Découverte"}})
 
     assert Academics.list_lesson_steps(lp) |> List.first() |> Map.get(:etape) == "Découverte"
 
@@ -109,7 +121,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
 
     view
     |> element("#step-row-#{s1.id} form")
-    |> render_blur(%{
+    |> render_change(%{
       "_target" => ["step", "duration_minutes"],
       "step" => %{"duration_minutes" => "20"}
     })
