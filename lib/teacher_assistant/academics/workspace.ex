@@ -43,6 +43,10 @@ defmodule TeacherAssistant.Academics.Workspace do
       allow_nil? true
       public? true
     end
+
+    has_many :school_memberships, TeacherAssistant.Accounts.SchoolMembership do
+      destination_attribute :workspace_id
+    end
   end
 
   identities do
