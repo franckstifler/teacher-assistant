@@ -28,6 +28,7 @@ defmodule TeacherAssistantWeb.Router do
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
     sign_out_route AuthController
     get "/workspaces/select/:id", WorkspaceController, :select
+    post "/workspaces", WorkspaceController, :create
     get "/teacher/select-context/:id", TeacherContextController, :select
     get "/teacher/entries/:entry_id/fiche/print", FichePrintController, :show
     get "/locale/:locale", LocaleController, :set
