@@ -29,6 +29,7 @@ defmodule TeacherAssistantWeb.Router do
     sign_out_route AuthController
     get "/workspaces/select/:id", WorkspaceController, :select
     get "/teacher/select-context/:id", TeacherContextController, :select
+    get "/teacher/entries/:entry_id/fiche/print", FichePrintController, :show
     get "/locale/:locale", LocaleController, :set
 
     sign_in_route register_path: "/register",
@@ -70,6 +71,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/teacher/contexts/:id/roster", Teacher.RosterLive, :index
       live "/teacher/contexts/:id/marks", Teacher.MarksLive, :index
       live "/teacher/contexts/:id/marks/summary", Teacher.MarksSummaryLive, :index
+      live "/teacher/entries/:entry_id/fiche", Teacher.LessonPlanLive, :edit
     end
   end
 

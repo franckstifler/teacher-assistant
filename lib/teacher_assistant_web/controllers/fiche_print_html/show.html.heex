@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      {gettext("Fiche de préparation")} — {@lesson_plan.titre || @bundle.entry.lesson_title}
+    </title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111; background: #fff; margin: 0; padding: 24px;
+        font-size: 12pt; line-height: 1.4;
+      }
+      h1 { font-size: 16pt; margin: 0 0 4px; }
+      .cartouche { width: 100%; border-collapse: collapse; margin: 12px 0 16px; }
+      .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
+      .cartouche .k { font-variant: small-caps; color: #444; width: 22%; }
+      .block { margin: 8px 0; }
+      .block .k { font-variant: small-caps; color: #444; display: block; font-size: 10pt; }
+      table.body { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      table.body th, table.body td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
+      table.body th { background: #f0f0f0; font-variant: small-caps; }
+      @page { size: A4; margin: 15mm; }
+      @media print {
+        body { padding: 0; }
+        thead { display: table-header-group; }
+        tr { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>{gettext("Fiche de préparation")}</h1>
+
+    <table class="cartouche">
+      <tr>
+        <td class="k">{gettext("Discipline")}</td>
+        <td>{@bundle.ctx.subject}</td>
+        <td class="k">{gettext("Classe")}</td>
+        <td>{@bundle.ctx.level}</td>
+      </tr>
+      <tr>
+        <td class="k">{gettext("Effectif")}</td>
+        <td>{@bundle.effectif}</td>
+        <td class="k">{gettext("Durée (min)")}</td>
+        <td>{@lesson_plan.duration_minutes}</td>
+      </tr>
+      <tr>
+        <td class="k">{gettext("Module")}</td>
+        <td>{@bundle.entry.module}</td>
+        <td class="k">{gettext("Date")}</td>
+        <td>{@lesson_plan.lesson_date}</td>
+      </tr>
+      <tr>
+        <td class="k">{gettext("Titre de la leçon")}</td>
+        <td colspan="3">{@lesson_plan.titre || @bundle.entry.lesson_title}</td>
+      </tr>
+    </table>
+
+    <div :if={@lesson_plan.competence_attendue} class="block">
+      <span class="k">{gettext("Compétence attendue")}</span>
+      {@lesson_plan.competence_attendue}
+    </div>
+    <div :if={@lesson_plan.situation_probleme} class="block">
+      <span class="k">{gettext("Situation problème")}</span>
+      {@lesson_plan.situation_probleme}
+    </div>
+    <div :if={@lesson_plan.objectifs} class="block">
+      <span class="k">{gettext("Objectifs")}</span>
+      {@lesson_plan.objectifs}
+    </div>
+    <div :if={@lesson_plan.prerequis} class="block">
+      <span class="k">{gettext("Prérequis")}</span>
+      {@lesson_plan.prerequis}
+    </div>
+    <div :if={@lesson_plan.supports} class="block">
+      <span class="k">{gettext("Supports")}</span>
+      {@lesson_plan.supports}
+    </div>
+
+    <table class="body">
+      <thead>
+        <tr>
+          <th>{gettext("Étape")}</th>
+          <th>{gettext("Durée")}</th>
+          <th>{gettext("Contenus")}</th>
+          <th>{gettext("Supports")}</th>
+          <th>{gettext("Activités")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={s <- @steps}>
+          <td>{s.etape}</td>
+          <td>{s.duration_minutes}</td>
+          <td>{s.contenus}</td>
+          <td>{s.supports}</td>
+          <td>{s.activites}</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>
