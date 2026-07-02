@@ -1194,253 +1194,253 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/members_live.ex:62
 #, elixir-autogen, elixir-format
 msgid "Actif"
-msgstr ""
+msgstr "Active"
 
 #: lib/teacher_assistant/accounts/school_roles.ex:23
 #, elixir-autogen, elixir-format
 msgid "Animateur pédagogique"
-msgstr ""
+msgstr "Pedagogical coordinator"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:83
 #, elixir-autogen, elixir-format
 msgid "Aucun membre actif pour le moment"
-msgstr ""
+msgstr "No active members yet"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:113
 #, elixir-autogen, elixir-format
 msgid "Aucune invitation en attente"
-msgstr ""
+msgstr "No pending invitations"
 
 #: lib/teacher_assistant/accounts/school_roles.ex:20
 #, elixir-autogen, elixir-format
 msgid "Censeur"
-msgstr ""
+msgstr "Vice-principal (Censeur)"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_controller.ex:45
 #, elixir-autogen, elixir-format
 msgid "Cette invitation a expiré."
-msgstr ""
+msgstr "This invitation has expired."
 
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Cette invitation a été envoyée à une autre adresse email que celle de votre compte connecté."
-msgstr ""
+msgstr "This invitation was sent to a different email address than your signed-in account."
 
 #: lib/teacher_assistant_web/controllers/school_invitation_controller.ex:46
 #, elixir-autogen, elixir-format
 msgid "Cette invitation a été envoyée à une autre adresse email."
-msgstr ""
+msgstr "This invitation was sent to a different email address."
 
 #: lib/teacher_assistant_web/controllers/school_invitation_controller.ex:22
 #, elixir-autogen, elixir-format
 msgid "Cette invitation est introuvable ou a expiré."
-msgstr ""
+msgstr "This invitation could not be found or has expired."
 
 #: lib/teacher_assistant_web/controllers/school_invitation_controller.ex:44
 #, elixir-autogen, elixir-format
 msgid "Cette invitation est invalide."
-msgstr ""
+msgstr "This invitation is invalid."
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:157
 #, elixir-autogen, elixir-format
 msgid "Cette personne est déjà membre de l'école."
-msgstr ""
+msgstr "This person is already a member of the school."
 
 #: lib/teacher_assistant/accounts/school_roles.ex:19
 #, elixir-autogen, elixir-format
 msgid "Chef d'établissement"
-msgstr ""
+msgstr "Head teacher"
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:29
 #, elixir-autogen, elixir-format
 msgid "Classes & enrollment coming next"
-msgstr ""
+msgstr "Classes & enrollment coming next"
 
 #: lib/teacher_assistant/accounts/school_roles.ex:26
 #, elixir-autogen, elixir-format
 msgid "Conseiller d'orientation"
-msgstr ""
+msgstr "Guidance counselor"
 
 #: lib/teacher_assistant_web/components/layouts.ex:118
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Create a school"
-msgstr ""
+msgstr "Create a school"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:34
 #, elixir-autogen, elixir-format
 msgid "Créer un compte"
-msgstr ""
+msgstr "Create an account"
 
 #: lib/teacher_assistant/accounts/school_roles.ex:27
 #, elixir-autogen, elixir-format
 msgid "Documentaliste"
-msgstr ""
+msgstr "Librarian (Documentaliste)"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:72
 #, elixir-autogen, elixir-format
 msgid "Désactiver"
-msgstr ""
+msgstr "Deactivate"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:70
 #, elixir-autogen, elixir-format
 msgid "Désactiver ce membre ?"
-msgstr ""
+msgstr "Deactivate this member?"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:90
 #, elixir-autogen, elixir-format
 msgid "Email"
-msgstr ""
+msgstr "Email"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:27
 #, elixir-autogen, elixir-format
 msgid "Enregistrer"
-msgstr ""
+msgstr "Save"
 
 #: lib/teacher_assistant_web/controllers/workspace_controller.ex:34
 #, elixir-autogen, elixir-format
 msgid "Enter a school name"
-msgstr ""
+msgstr "Enter a school name"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_controller.ex:47
 #, elixir-autogen, elixir-format
 msgid "Impossible d'accepter cette invitation."
-msgstr ""
+msgstr "Could not accept this invitation."
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:196
 #, elixir-autogen, elixir-format
 msgid "Impossible de désactiver le dernier chef d'établissement."
-msgstr ""
+msgstr "Could not deactivate the last head teacher."
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:49
 #, elixir-autogen, elixir-format
 msgid "Impossible de renommer l'école."
-msgstr ""
+msgstr "Could not rename the school."
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:224
 #, elixir-autogen, elixir-format
 msgid "Impossible de retirer le rôle de chef d'établissement du dernier chef."
-msgstr ""
+msgstr "Could not remove the head-teacher role from the last head teacher."
 
 #: lib/teacher_assistant/accounts/school_roles.ex:22
 #, elixir-autogen, elixir-format
 msgid "Intendant"
-msgstr ""
+msgstr "Bursar (Intendant)"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:3
 #, elixir-autogen, elixir-format
 msgid "Invitation"
-msgstr ""
+msgstr "Invitation"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:109
 #, elixir-autogen, elixir-format
 msgid "Invitations en attente"
-msgstr ""
+msgstr "Pending invitations"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:103
 #, elixir-autogen, elixir-format
 msgid "Inviter"
-msgstr ""
+msgstr "Invite"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:87
 #, elixir-autogen, elixir-format
 msgid "Inviter un membre"
-msgstr ""
+msgstr "Invite a member"
 
 #: lib/teacher_assistant_web/components/layouts.ex:165
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:23
 #, elixir-autogen, elixir-format
 msgid "Members"
-msgstr ""
+msgstr "Members"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:25
 #, elixir-autogen, elixir-format
 msgid "Membres"
-msgstr ""
+msgstr "Members"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:31
 #, elixir-autogen, elixir-format
 msgid "Nom"
-msgstr ""
+msgstr "Name"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:26
 #, elixir-autogen, elixir-format
 msgid "Nom de l'école"
-msgstr ""
+msgstr "School name"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:23
 #, elixir-autogen, elixir-format
 msgid "Paramètres"
-msgstr ""
+msgstr "Settings"
 
 #: lib/teacher_assistant/accounts/school_roles.ex:24
 #, elixir-autogen, elixir-format
 msgid "Professeur principal"
-msgstr ""
+msgstr "Head teacher (class)"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:25
 #, elixir-autogen, elixir-format
 msgid "Rejoindre l'école"
-msgstr ""
+msgstr "Join the school"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:134
 #, elixir-autogen, elixir-format
 msgid "Révoquer"
-msgstr ""
+msgstr "Revoke"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:132
 #, elixir-autogen, elixir-format
 msgid "Révoquer cette invitation ?"
-msgstr ""
+msgstr "Revoke this invitation?"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:32
 #, elixir-autogen, elixir-format
 msgid "Rôles"
-msgstr ""
+msgstr "Roles"
 
 #: lib/teacher_assistant_web/components/layouts.ex:114
 #, elixir-autogen, elixir-format, fuzzy
 msgid "School name"
-msgstr ""
+msgstr "School name"
 
 #: lib/teacher_assistant_web/components/layouts.ex:149
 #, elixir-autogen, elixir-format, fuzzy
 msgid "School navigation"
-msgstr ""
+msgstr "School navigation"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:31
 #, elixir-autogen, elixir-format
 msgid "Se connecter pour accepter"
-msgstr ""
+msgstr "Sign in to accept"
 
 #: lib/teacher_assistant_web/components/layouts.ex:174
 #, elixir-autogen, elixir-format
 msgid "Settings"
-msgstr ""
+msgstr "Settings"
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:33
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Statut"
-msgstr ""
+msgstr "Status"
 
 #: lib/teacher_assistant/accounts/school_roles.ex:21
 #, elixir-autogen, elixir-format
 msgid "Surveillant général"
-msgstr ""
+msgstr "Head of discipline (Surveillant général)"
 
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:7
 #, elixir-autogen, elixir-format
 msgid "Vous avez été invité(e) à rejoindre"
-msgstr ""
+msgstr "You have been invited to join"
 
 #: lib/teacher_assistant_web/controllers/workspace_controller.ex:21
 #, elixir-autogen, elixir-format
 msgid "Workspace not found or access denied"
-msgstr ""
+msgstr "Workspace not found or access denied"
 
 #: lib/teacher_assistant_web/controllers/workspace_controller.ex:15
 #, elixir-autogen, elixir-format
 msgid "Workspace selected"
-msgstr ""
+msgstr "Workspace selected"
 
 #: lib/teacher_assistant_web/components/layouts.ex:104
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:20
@@ -1448,9 +1448,9 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/settings_live.ex:23
 #, elixir-autogen, elixir-format
 msgid "École"
-msgstr ""
+msgstr "School"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:46
 #, elixir-autogen, elixir-format
 msgid "École renommée avec succès."
-msgstr ""
+msgstr "School renamed successfully."
