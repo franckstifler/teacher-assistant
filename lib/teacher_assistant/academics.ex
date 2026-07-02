@@ -556,8 +556,23 @@ defmodule TeacherAssistant.Academics do
 
   def ensure_lesson_plan(%ProgressionEntry{} = entry, %TeachingContext{} = _ctx) do
     case get_lesson_plan_for_entry(entry.id) do
-      nil -> create_lesson_plan_from_entry(entry)
-      %LessonPlan{} = lp -> {:ok, lp}
+      %LessonPlan{} = lp ->
+        {:ok, lp}
+
+      nil ->
+        case create_lesson_plan_from_entry(entry) do
+          {:ok, lp} ->
+            {:ok, lp}
+
+          {:error, error} ->
+            # Lost a concurrent first-open race: the unique_entry identity rejected
+            # this insert because another process already created the fiche. Return
+            # the winner rather than clobbering it or crashing the caller.
+            case get_lesson_plan_for_entry(entry.id) do
+              %LessonPlan{} = lp -> {:ok, lp}
+              nil -> {:error, error}
+            end
+        end
     end
   end
 

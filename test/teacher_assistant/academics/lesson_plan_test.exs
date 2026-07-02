@@ -77,4 +77,29 @@ defmodule TeacherAssistant.Academics.LessonPlanTest do
     {:ok, lp} = Academics.update_lesson_plan(lp, %{situation_probleme: "Au marché…"})
     assert lp.situation_probleme == "Au marché…"
   end
+
+  test "ensure_lesson_plan is safe under concurrent first-open", %{entry: entry, ctx: ctx} do
+    # allow spawned tasks to use this test's sandboxed connection
+    parent = self()
+
+    results =
+      1..8
+      |> Enum.map(fn _ ->
+        Task.async(fn ->
+          Ecto.Adapters.SQL.Sandbox.allow(TeacherAssistant.Repo, parent, self())
+          Academics.ensure_lesson_plan(entry, ctx)
+        end)
+      end)
+      |> Enum.map(&Task.await/1)
+
+    # every caller gets {:ok, plan} — no {:error, _}, no crash
+    assert Enum.all?(results, fn
+             {:ok, %TeacherAssistant.Academics.LessonPlan{}} -> true
+             _ -> false
+           end)
+
+    # exactly one distinct fiche id across all callers
+    ids = results |> Enum.map(fn {:ok, lp} -> lp.id end) |> Enum.uniq()
+    assert length(ids) == 1
+  end
 end
