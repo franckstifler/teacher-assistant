@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics do
 
   require Ash.Query
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.Academics.PersonalWorkspace
+  alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
@@ -20,7 +20,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Repo
 
   resources do
-    resource PersonalWorkspace
+    resource Workspace
     resource AcademicYear
     resource Term
     resource Sequence
@@ -43,9 +43,10 @@ defmodule TeacherAssistant.Academics do
 
       {:error, :not_found} ->
         {:ok, ws} =
-          PersonalWorkspace
+          Workspace
           |> Ash.Changeset.for_create(:create, %{
             name: "Personal workspace",
+            kind: :personal,
             owner_user_id: user.id
           })
           |> Ash.create(authorize?: false)
@@ -55,7 +56,7 @@ defmodule TeacherAssistant.Academics do
   end
 
   def personal_workspace_for_user(%User{id: user_id}) do
-    PersonalWorkspace
+    Workspace
     |> Ash.Query.filter(owner_user_id == ^user_id)
     |> Ash.read_one(authorize?: false)
     |> case do
@@ -64,10 +65,10 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def get_personal_workspace(id), do: Ash.get(PersonalWorkspace, id, authorize?: false)
+  def get_personal_workspace(id), do: Ash.get(Workspace, id, authorize?: false)
 
-  def create_academic_year(%PersonalWorkspace{} = ws, attrs) do
-    attrs = attrs |> Map.put(:personal_workspace_id, ws.id) |> Map.put_new(:active, true)
+  def create_academic_year(%Workspace{} = ws, attrs) do
+    attrs = attrs |> Map.put(:workspace_id, ws.id) |> Map.put_new(:active, true)
 
     with {:ok, year} <-
            AcademicYear
@@ -78,16 +79,16 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def list_academic_years(%PersonalWorkspace{id: id}) do
+  def list_academic_years(%Workspace{id: id}) do
     AcademicYear
-    |> Ash.Query.filter(personal_workspace_id == ^id)
+    |> Ash.Query.filter(workspace_id == ^id)
     |> Ash.Query.sort(start_date: :desc)
     |> Ash.read!(authorize?: false)
   end
 
-  def current_academic_year(%PersonalWorkspace{id: id}) do
+  def current_academic_year(%Workspace{id: id}) do
     AcademicYear
-    |> Ash.Query.filter(personal_workspace_id == ^id and active == true)
+    |> Ash.Query.filter(workspace_id == ^id and active == true)
     |> Ash.Query.sort(start_date: :desc)
     |> Ash.read!(authorize?: false)
     |> List.first()
@@ -95,9 +96,9 @@ defmodule TeacherAssistant.Academics do
 
   def get_academic_year(id), do: Ash.get(AcademicYear, id, authorize?: false)
 
-  defp deactivate_other_years(%PersonalWorkspace{id: ws_id}, keep_id) do
+  defp deactivate_other_years(%Workspace{id: ws_id}, keep_id) do
     AcademicYear
-    |> Ash.Query.filter(personal_workspace_id == ^ws_id and id != ^keep_id and active == true)
+    |> Ash.Query.filter(workspace_id == ^ws_id and id != ^keep_id and active == true)
     |> Ash.read!(authorize?: false)
     |> Enum.each(fn y ->
       y |> Ash.Changeset.for_update(:update, %{active: false}) |> Ash.update!(authorize?: false)
@@ -149,14 +150,14 @@ defmodule TeacherAssistant.Academics do
     end)
   end
 
-  def create_teaching_context(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
-    attrs = attrs |> Map.put(:personal_workspace_id, ws.id) |> Map.put(:academic_year_id, year.id)
+  def create_teaching_context(%Workspace{} = ws, %AcademicYear{} = year, attrs) do
+    attrs = attrs |> Map.put(:workspace_id, ws.id) |> Map.put(:academic_year_id, year.id)
     TeachingContext |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
-  def list_teaching_contexts(%PersonalWorkspace{id: ws_id}, %AcademicYear{id: year_id}) do
+  def list_teaching_contexts(%Workspace{id: ws_id}, %AcademicYear{id: year_id}) do
     TeachingContext
-    |> Ash.Query.filter(personal_workspace_id == ^ws_id and academic_year_id == ^year_id)
+    |> Ash.Query.filter(workspace_id == ^ws_id and academic_year_id == ^year_id)
     |> Ash.Query.sort(subject: :asc)
     |> Ash.read!(authorize?: false)
   end
@@ -171,7 +172,7 @@ defmodule TeacherAssistant.Academics do
   """
   def resolve_current_context(_ws, nil, _context_id), do: nil
 
-  def resolve_current_context(%PersonalWorkspace{} = ws, %AcademicYear{} = year, context_id) do
+  def resolve_current_context(%Workspace{} = ws, %AcademicYear{} = year, context_id) do
     contexts = list_teaching_contexts(ws, year)
     Enum.find(contexts, fn c -> c.id == context_id end) || List.first(contexts)
   end
@@ -181,23 +182,23 @@ defmodule TeacherAssistant.Academics do
       attrs
       |> Map.put(:teaching_context_id, ctx.id)
       |> Map.put(:academic_year_id, ctx.academic_year_id)
-      |> Map.put(:personal_workspace_id, ctx.personal_workspace_id)
+      |> Map.put(:workspace_id, ctx.workspace_id)
 
     ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
-  def list_progression_plans(%PersonalWorkspace{id: ws_id}) do
+  def list_progression_plans(%Workspace{id: ws_id}) do
     ProgressionPlan
-    |> Ash.Query.filter(personal_workspace_id == ^ws_id)
+    |> Ash.Query.filter(workspace_id == ^ws_id)
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.read!(authorize?: false)
   end
 
   def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
 
-  def fetch_owned_plan(id, %PersonalWorkspace{id: ws_id}) do
+  def fetch_owned_plan(id, %Workspace{id: ws_id}) do
     ProgressionPlan
-    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
     |> Ash.read_one(authorize?: false)
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -205,7 +206,7 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def fetch_owned_entry(id, %PersonalWorkspace{} = ws) do
+  def fetch_owned_entry(id, %Workspace{} = ws) do
     case Ash.get(ProgressionEntry, id, authorize?: false) do
       {:ok, entry} ->
         case fetch_owned_plan(entry.progression_plan_id, ws) do
@@ -218,7 +219,7 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def fetch_owned_entry_with_context(entry_id, %PersonalWorkspace{} = ws) do
+  def fetch_owned_entry_with_context(entry_id, %Workspace{} = ws) do
     with {:ok, entry} <- fetch_owned_entry(entry_id, ws),
          {:ok, plan} <- fetch_owned_plan(entry.progression_plan_id, ws),
          {:ok, ctx} <- fetch_owned_teaching_context(plan.teaching_context_id, ws) do
@@ -246,9 +247,9 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def fetch_owned_teaching_context(id, %PersonalWorkspace{id: ws_id}) do
+  def fetch_owned_teaching_context(id, %Workspace{id: ws_id}) do
     TeachingContext
-    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
     |> Ash.read_one(authorize?: false)
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -256,26 +257,26 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def create_class_group(%PersonalWorkspace{} = ws, %AcademicYear{} = year, attrs) do
+  def create_class_group(%Workspace{} = ws, %AcademicYear{} = year, attrs) do
     attrs =
       attrs
-      |> Map.put(:personal_workspace_id, ws.id)
+      |> Map.put(:workspace_id, ws.id)
       |> Map.put(:academic_year_id, year.id)
       |> Map.put_new(:subsystem, :francophone)
 
     ClassGroup |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
-  def list_class_groups(%PersonalWorkspace{id: ws_id}, %AcademicYear{id: year_id}) do
+  def list_class_groups(%Workspace{id: ws_id}, %AcademicYear{id: year_id}) do
     ClassGroup
-    |> Ash.Query.filter(personal_workspace_id == ^ws_id and academic_year_id == ^year_id)
+    |> Ash.Query.filter(workspace_id == ^ws_id and academic_year_id == ^year_id)
     |> Ash.Query.sort(label: :asc)
     |> Ash.read!(authorize?: false)
   end
 
-  def fetch_owned_class_group(id, %PersonalWorkspace{id: ws_id}) do
+  def fetch_owned_class_group(id, %Workspace{id: ws_id}) do
     ClassGroup
-    |> Ash.Query.filter(id == ^id and personal_workspace_id == ^ws_id)
+    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
     |> Ash.read_one(authorize?: false)
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -300,7 +301,7 @@ defmodule TeacherAssistant.Academics do
 
   def delete_student(%Student{} = s), do: Ash.destroy(s, authorize?: false)
 
-  def fetch_owned_student(id, %PersonalWorkspace{} = ws) do
+  def fetch_owned_student(id, %Workspace{} = ws) do
     case Ash.get(Student, id, authorize?: false) do
       {:ok, student} ->
         case fetch_owned_class_group(student.class_group_id, ws) do
@@ -335,7 +336,7 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
-  def fetch_owned_assessment(id, %PersonalWorkspace{} = ws) do
+  def fetch_owned_assessment(id, %Workspace{} = ws) do
     case Ash.get(Assessment, id, authorize?: false) do
       {:ok, assessment} ->
         case fetch_owned_teaching_context(assessment.teaching_context_id, ws) do
@@ -430,7 +431,7 @@ defmodule TeacherAssistant.Academics do
   `:missed_notifications` advisory is emitted.
   """
   def import_progression_plan(
-        %PersonalWorkspace{} = ws,
+        %Workspace{} = ws,
         %{teaching_context_id: ctx_id} = attrs,
         rows
       ) do
@@ -442,7 +443,7 @@ defmodule TeacherAssistant.Academics do
             status: :draft,
             teaching_context_id: ctx.id,
             academic_year_id: ctx.academic_year_id,
-            personal_workspace_id: ctx.personal_workspace_id
+            workspace_id: ctx.workspace_id
           }
 
           {plan, plan_notifs} =
@@ -499,7 +500,7 @@ defmodule TeacherAssistant.Academics do
       template: Map.get(overrides, :template, false),
       teaching_context_id: plan.teaching_context_id,
       academic_year_id: plan.academic_year_id,
-      personal_workspace_id: plan.personal_workspace_id
+      workspace_id: plan.workspace_id
     }
 
     with {:ok, copy} <-
@@ -658,8 +659,8 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def log_teaching(%PersonalWorkspace{id: ws_id}, attrs) do
-    attrs = Map.put(attrs, :personal_workspace_id, ws_id)
+  def log_teaching(%Workspace{id: ws_id}, attrs) do
+    attrs = Map.put(attrs, :workspace_id, ws_id)
     TeachingLogEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
@@ -672,9 +673,9 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
-  def list_recent_logs(%PersonalWorkspace{id: ws_id}, limit \\ 10) do
+  def list_recent_logs(%Workspace{id: ws_id}, limit \\ 10) do
     TeachingLogEntry
-    |> Ash.Query.filter(personal_workspace_id == ^ws_id)
+    |> Ash.Query.filter(workspace_id == ^ws_id)
     |> Ash.Query.sort(date: :desc)
     |> Ash.Query.limit(limit)
     |> Ash.read!(authorize?: false)

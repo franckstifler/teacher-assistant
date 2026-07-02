@@ -20,7 +20,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :serie,
         :subsystem,
         :weekly_hours,
-        :personal_workspace_id,
+        :workspace_id,
         :academic_year_id
       ],
       update: [:subject, :level, :serie, :subsystem, :weekly_hours, :class_group_id]
@@ -49,8 +49,8 @@ defmodule TeacherAssistant.Academics.TeachingContext do
   end
 
   relationships do
-    belongs_to :personal_workspace, TeacherAssistant.Academics.PersonalWorkspace do
-      source_attribute :personal_workspace_id
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end
@@ -70,7 +70,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
 
   identities do
     identity :unique_context, [
-      :personal_workspace_id,
+      :workspace_id,
       :academic_year_id,
       :subject,
       :level,

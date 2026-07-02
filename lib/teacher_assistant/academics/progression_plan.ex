@@ -20,7 +20,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
         :template,
         :teaching_context_id,
         :academic_year_id,
-        :personal_workspace_id
+        :workspace_id
       ],
       update: [:title, :status, :template]
     ]
@@ -58,8 +58,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       public? true
     end
 
-    belongs_to :personal_workspace, TeacherAssistant.Academics.PersonalWorkspace do
-      source_attribute :personal_workspace_id
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

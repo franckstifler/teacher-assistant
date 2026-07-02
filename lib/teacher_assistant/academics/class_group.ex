@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     defaults [
       :read,
       :destroy,
-      create: [:label, :level, :serie, :subsystem, :personal_workspace_id, :academic_year_id],
+      create: [:label, :level, :serie, :subsystem, :workspace_id, :academic_year_id],
       update: [:label, :level, :serie, :subsystem]
     ]
   end
@@ -40,8 +40,8 @@ defmodule TeacherAssistant.Academics.ClassGroup do
   end
 
   relationships do
-    belongs_to :personal_workspace, TeacherAssistant.Academics.PersonalWorkspace do
-      source_attribute :personal_workspace_id
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end
@@ -56,6 +56,6 @@ defmodule TeacherAssistant.Academics.ClassGroup do
   end
 
   identities do
-    identity :unique_class_group, [:personal_workspace_id, :academic_year_id, :label]
+    identity :unique_class_group, [:workspace_id, :academic_year_id, :label]
   end
 end
