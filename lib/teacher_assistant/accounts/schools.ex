@@ -37,6 +37,10 @@ defmodule TeacherAssistant.Accounts.Schools do
     [personal | schools]
   end
 
+  def rename_school(%Workspace{} = school, name) do
+    school |> Ash.Changeset.for_update(:update, %{name: name}) |> Ash.update(authorize?: false)
+  end
+
   def fetch_school_membership(%Workspace{id: ws_id}, %User{id: user_id}) do
     SchoolMembership
     |> Ash.Query.filter(workspace_id == ^ws_id and user_id == ^user_id and active == true)
