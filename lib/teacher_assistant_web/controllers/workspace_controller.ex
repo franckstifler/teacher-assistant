@@ -7,15 +7,18 @@ defmodule TeacherAssistantWeb.WorkspaceController do
     user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
 
     case Workspaces.scope_for(user, workspace_id) do
-      {:ok, _scope} ->
+      {:ok, scope} ->
+        to = if scope.current_workspace_type == :school, do: ~p"/school", else: ~p"/teacher"
+
         conn
         |> put_session(:workspace_id, workspace_id)
-        |> put_flash(:info, "Workspace selected")
-        |> redirect(to: ~p"/teacher")
+        |> put_flash(:info, gettext("Workspace selected"))
+        |> redirect(to: to)
 
       {:error, _} ->
         conn
-        |> put_flash(:error, "Workspace not found or access denied")
+        |> delete_session(:workspace_id)
+        |> put_flash(:error, gettext("Workspace not found or access denied"))
         |> redirect(to: ~p"/teacher")
     end
   end

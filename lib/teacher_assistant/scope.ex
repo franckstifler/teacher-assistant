@@ -8,6 +8,8 @@ defmodule TeacherAssistant.Scope do
     :current_workspace,
     :current_workspace_type,
     :current_role,
+    :current_roles,
+    :current_membership,
     :current_academic_year,
     :current_context,
     :locale

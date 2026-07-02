@@ -41,4 +41,17 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
     {:ok, scope} = Workspaces.scope_for(user, ws.id)
     assert scope.current_workspace.id == ws.id
   end
+
+  test "scope_for resolves a school workspace via active membership", %{user: user} do
+    {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(user, %{name: "École Scope"})
+    assert {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
+    assert scope.current_workspace_type == :school
+    assert :head in scope.current_roles
+  end
+
+  test "scope_for rejects a school the user is not a member of", %{user: user} do
+    head = TeacherAssistant.TeacherFixtures.user_fixture()
+    {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(head, %{name: "École X"})
+    assert {:error, :not_a_member} = TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
+  end
 end
