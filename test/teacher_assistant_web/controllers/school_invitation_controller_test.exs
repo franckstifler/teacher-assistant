@@ -6,7 +6,9 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
   test "accepting a matching invitation joins the school", %{conn: conn, actor: user} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, school} = Schools.create_school(head, %{name: "École Accept"})
-    {:ok, inv} = Schools.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
 
     conn = post(conn, ~p"/schools/invitations/#{inv.token}/accept")
     assert redirected_to(conn) == "/school"
@@ -16,7 +18,9 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
   test "a mismatched invitation is rejected", %{conn: conn} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, school} = Schools.create_school(head, %{name: "École Mismatch"})
-    {:ok, inv} = Schools.invite_member(school, head, %{email: "someone@example.com", roles: [:teacher]})
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: "someone@example.com", roles: [:teacher]})
 
     conn = post(conn, ~p"/schools/invitations/#{inv.token}/accept")
     assert redirected_to(conn) == "/teacher"

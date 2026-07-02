@@ -7,7 +7,9 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
     case Schools.fetch_invitation_by_token(token) do
       {:ok, invitation} ->
         current_user = conn.assigns[:current_user]
-        email_match? = current_user && to_string(current_user.email) == to_string(invitation.email)
+
+        email_match? =
+          current_user && to_string(current_user.email) == to_string(invitation.email)
 
         conn
         |> render(:show,
@@ -43,7 +45,10 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
 
   defp error_message(:invalid), do: gettext("Cette invitation est invalide.")
   defp error_message(:expired), do: gettext("Cette invitation a expiré.")
-  defp error_message(:email_mismatch), do: gettext("Cette invitation a été envoyée à une autre adresse email.")
+
+  defp error_message(:email_mismatch),
+    do: gettext("Cette invitation a été envoyée à une autre adresse email.")
+
   defp error_message(_), do: gettext("Impossible d'accepter cette invitation.")
 
   defp load_user(nil), do: nil

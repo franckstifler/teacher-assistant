@@ -12,7 +12,9 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert has_element?(view, "#school-settings")
     view |> form("#school-settings", %{"school" => %{"name" => "Nouveau Nom"}}) |> render_submit()
 
-    assert TeacherAssistant.Academics.get_personal_workspace(school.id) |> elem(1) |> Map.get(:name) ==
+    assert TeacherAssistant.Academics.get_personal_workspace(school.id)
+           |> elem(1)
+           |> Map.get(:name) ==
              "Nouveau Nom"
   end
 end

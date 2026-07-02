@@ -32,15 +32,26 @@ defmodule TeacherAssistant.Accounts.SchoolResourcesTest do
 
   test "membership is unique per (school, user)", %{user: user, school: school} do
     attrs = %{workspace_id: school.id, user_id: user.id, roles: [:teacher]}
-    {:ok, _} = SchoolMembership |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+
+    {:ok, _} =
+      SchoolMembership
+      |> Ash.Changeset.for_create(:create, attrs)
+      |> Ash.create(authorize?: false)
 
     assert {:error, _} =
-             SchoolMembership |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+             SchoolMembership
+             |> Ash.Changeset.for_create(:create, attrs)
+             |> Ash.create(authorize?: false)
   end
 
   test "an invitation defaults to pending and enforces a unique token", %{school: school} do
     attrs = %{workspace_id: school.id, email: "t@example.com", roles: [:teacher], token: "tok-1"}
-    {:ok, inv} = SchoolInvitation |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+
+    {:ok, inv} =
+      SchoolInvitation
+      |> Ash.Changeset.for_create(:create, attrs)
+      |> Ash.create(authorize?: false)
+
     assert inv.status == :pending
 
     assert {:error, _} =
@@ -49,5 +60,5 @@ defmodule TeacherAssistant.Accounts.SchoolResourcesTest do
              |> Ash.create(authorize?: false)
   end
 
-  test "role labels are bilingual-ready", do: assert SchoolRoles.label(:head) =~ "Chef"
+  test "role labels are bilingual-ready", do: assert(SchoolRoles.label(:head) =~ "Chef")
 end

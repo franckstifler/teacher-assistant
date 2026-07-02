@@ -154,7 +154,8 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, reload_members(socket)}
 
         {:error, :already_member} ->
-          {:noreply, put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
+          {:noreply,
+           put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
       end
     else
       {:noreply, socket}
@@ -193,7 +194,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
             {:error, :last_head} ->
               {:noreply,
-               put_flash(socket, :error, gettext("Impossible de désactiver le dernier chef d'établissement."))}
+               put_flash(
+                 socket,
+                 :error,
+                 gettext("Impossible de désactiver le dernier chef d'établissement.")
+               )}
           end
       end
     else

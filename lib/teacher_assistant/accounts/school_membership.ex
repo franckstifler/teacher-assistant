@@ -27,7 +27,11 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :roles, {:array, TeacherAssistant.Accounts.SchoolRole}, allow_nil?: false, public?: true
+
+    attribute :roles, {:array, TeacherAssistant.Accounts.SchoolRole},
+      allow_nil?: false,
+      public?: true
+
     attribute :status, TeacherAssistant.Accounts.MembershipStatus, allow_nil?: true, public?: true
     attribute :active, :boolean, allow_nil?: false, default: true, public?: true
     timestamps()

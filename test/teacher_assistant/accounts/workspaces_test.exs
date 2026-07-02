@@ -52,6 +52,8 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
   test "scope_for rejects a school the user is not a member of", %{user: user} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(head, %{name: "École X"})
-    assert {:error, :not_a_member} = TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
+
+    assert {:error, :not_a_member} =
+             TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
   end
 end

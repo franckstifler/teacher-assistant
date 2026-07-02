@@ -47,7 +47,9 @@ defmodule TeacherAssistantWeb.Layouts do
       end
 
     workspaces =
-      if current_user, do: TeacherAssistant.Accounts.Schools.list_workspaces_for(current_user), else: []
+      if current_user,
+        do: TeacherAssistant.Accounts.Schools.list_workspaces_for(current_user),
+        else: []
 
     assigns =
       assigns
@@ -98,7 +100,10 @@ defmodule TeacherAssistantWeb.Layouts do
               >
                 <ul>
                   <li :for={ws <- @workspaces} id={"workspace-switcher-item-#{ws.id}"}>
-                    <.link href={~p"/workspaces/select/#{ws.id}"} class="flex items-center justify-between gap-2">
+                    <.link
+                      href={~p"/workspaces/select/#{ws.id}"}
+                      class="flex items-center justify-between gap-2"
+                    >
                       <span>{ws.name}</span>
                       <span :if={ws.kind == :school} class="badge badge-sm badge-primary">
                         {gettext("École")}
@@ -107,7 +112,13 @@ defmodule TeacherAssistantWeb.Layouts do
                   </li>
                 </ul>
                 <div class="mt-1 border-t border-base-300 p-2">
-                  <.form for={%{}} as={:school} action={~p"/workspaces"} method="post" class="flex items-center gap-1">
+                  <.form
+                    for={%{}}
+                    as={:school}
+                    action={~p"/workspaces"}
+                    method="post"
+                    class="flex items-center gap-1"
+                  >
                     <input
                       type="text"
                       name="school[name]"

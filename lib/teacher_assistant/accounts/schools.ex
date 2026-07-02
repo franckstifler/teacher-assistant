@@ -10,7 +10,10 @@ defmodule TeacherAssistant.Accounts.Schools do
   def create_school(%User{} = user, %{} = attrs) do
     with {:ok, school} <-
            Workspace
-           |> Ash.Changeset.for_create(:create, %{name: attrs[:name] || attrs["name"], kind: :school})
+           |> Ash.Changeset.for_create(:create, %{
+             name: attrs[:name] || attrs["name"],
+             kind: :school
+           })
            |> Ash.create(authorize?: false),
          {:ok, _membership} <-
            SchoolMembership
@@ -160,7 +163,11 @@ defmodule TeacherAssistant.Accounts.Schools do
             })
             |> Ash.create(authorize?: false)
 
-          {:ok, _} = inv |> Ash.Changeset.for_update(:update, %{status: :accepted}) |> Ash.update(authorize?: false)
+          {:ok, _} =
+            inv
+            |> Ash.Changeset.for_update(:update, %{status: :accepted})
+            |> Ash.update(authorize?: false)
+
           {:ok, inv.workspace}
       end
     else
@@ -171,8 +178,11 @@ defmodule TeacherAssistant.Accounts.Schools do
 
   defp check_acceptable(%SchoolInvitation{status: :pending} = inv) do
     cond do
-      inv.expires_at && DateTime.compare(DateTime.utc_now(), inv.expires_at) == :gt -> {:error, :expired}
-      true -> :ok
+      inv.expires_at && DateTime.compare(DateTime.utc_now(), inv.expires_at) == :gt ->
+        {:error, :expired}
+
+      true ->
+        :ok
     end
   end
 

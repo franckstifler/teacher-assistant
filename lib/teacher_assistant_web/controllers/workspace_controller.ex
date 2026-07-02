@@ -26,7 +26,8 @@ defmodule TeacherAssistantWeb.WorkspaceController do
   def create(conn, %{"school" => %{"name" => name}}) do
     user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
 
-    case name && String.trim(name) != "" && TeacherAssistant.Accounts.Schools.create_school(user, %{name: name}) do
+    case name && String.trim(name) != "" &&
+           TeacherAssistant.Accounts.Schools.create_school(user, %{name: name}) do
       {:ok, school} ->
         conn |> put_session(:workspace_id, school.id) |> redirect(to: ~p"/school")
 
