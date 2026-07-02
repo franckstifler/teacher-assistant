@@ -18,14 +18,15 @@ msgid "Academic year"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/core_components.ex:342
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:134
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:142
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:197
 #: lib/teacher_assistant_web/live/teacher/roster_live.ex:182
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:192
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:211
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:226
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:245
 #, elixir-autogen, elixir-format
 msgid "Add entry"
 msgstr ""
@@ -90,13 +91,16 @@ msgstr ""
 msgid "Dashboard"
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:50
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:164
 #: lib/teacher_assistant_web/live/teacher/log_live.ex:79
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:157
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:174
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:177
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:207
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:252
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr ""
@@ -106,7 +110,7 @@ msgstr ""
 msgid "Done"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:100
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:108
 #, elixir-autogen, elixir-format
 msgid "Duplicate"
 msgstr ""
@@ -131,7 +135,7 @@ msgstr ""
 msgid "Homework (optional)"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:199
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:233
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:135
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:208
 #: lib/teacher_assistant_web/live/teacher/log_live.ex:80
@@ -139,7 +143,7 @@ msgstr ""
 msgid "Hours"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:194
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:228
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:134
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:200
 #: lib/teacher_assistant_web/live/teacher/log_live.ex:75
@@ -168,10 +172,12 @@ msgstr ""
 msgid "Main navigation"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:130
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:193
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:48
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:138
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:227
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:133
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:194
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:133
 #, elixir-autogen, elixir-format
 msgid "Module"
 msgstr ""
@@ -308,8 +314,8 @@ msgstr ""
 msgid "Teacher dashboard"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:132
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:205
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:140
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:239
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:136
 #, elixir-autogen, elixir-format
 msgid "Type"
@@ -401,7 +407,7 @@ msgstr ""
 msgid "Fiche PDF"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:92
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:100
 #, elixir-autogen, elixir-format
 msgid "Fiche de progression"
 msgstr ""
@@ -442,7 +448,7 @@ msgstr ""
 msgid "Imported fiche"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:183
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:217
 #, elixir-autogen, elixir-format
 msgid "No entries yet — add your first lesson below."
 msgstr ""
@@ -786,6 +792,8 @@ msgstr ""
 msgid "Class roster"
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:38
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:129
 #: lib/teacher_assistant_web/live/teacher/setup_live.ex:93
 #, elixir-autogen, elixir-format
 msgid "Classe"
@@ -843,7 +851,7 @@ msgstr ""
 msgid "Garçons"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:133
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:141
 #, elixir-autogen, elixir-format
 msgid "Heures"
 msgstr ""
@@ -858,7 +866,7 @@ msgstr ""
 msgid "Hours per week on your timetable for this subject and class."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:131
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:139
 #, elixir-autogen, elixir-format
 msgid "Leçon"
 msgstr ""
@@ -908,12 +916,12 @@ msgstr ""
 msgid "Per-student results"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:107
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "Planned hours"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:127
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:135
 #, elixir-autogen, elixir-format
 msgid "Progression entries"
 msgstr ""
@@ -997,7 +1005,165 @@ msgstr ""
 msgid "Élève"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:115
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:123
 #, elixir-autogen, elixir-format
 msgid "≈ %{weeks} weeks at %{hours} h/week"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:87
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:196
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:219
+#, elixir-autogen, elixir-format
+msgid "Activités"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:269
+#, elixir-autogen, elixir-format
+msgid "Add step"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:264
+#, elixir-autogen, elixir-format
+msgid "Aucune étape — ajoutez la première phase."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:145
+#, elixir-autogen, elixir-format
+msgid "Autosaves as you type"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:60
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:168
+#, elixir-autogen, elixir-format
+msgid "Compétence attendue"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:85
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:194
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:217
+#, elixir-autogen, elixir-format
+msgid "Contenus"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:248
+#, elixir-autogen, elixir-format
+msgid "Delete this step?"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:36
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:128
+#, elixir-autogen, elixir-format
+msgid "Discipline"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:84
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:193
+#, elixir-autogen, elixir-format
+msgid "Durée"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:44
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:160
+#, elixir-autogen, elixir-format
+msgid "Durée (min)"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:182
+#, elixir-autogen, elixir-format
+msgid "Déroulement"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:42
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:131
+#, elixir-autogen, elixir-format
+msgid "Effectif"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:135
+#, elixir-autogen, elixir-format
+msgid "Famille de situations"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:6
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:32
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:111
+#, elixir-autogen, elixir-format
+msgid "Fiche de préparation"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:189
+#, elixir-autogen, elixir-format
+msgid "Lesson steps"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:241
+#, elixir-autogen, elixir-format
+msgid "Move down"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:230
+#, elixir-autogen, elixir-format
+msgid "Move up"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:68
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:175
+#, elixir-autogen, elixir-format
+msgid "Objectifs"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:122
+#, elixir-autogen, elixir-format
+msgid "Print / Save as PDF"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:166
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:195
+#, elixir-autogen, elixir-format
+msgid "Préparer"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:72
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:177
+#, elixir-autogen, elixir-format
+msgid "Prérequis"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:143
+#, elixir-autogen, elixir-format
+msgid "Saved"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:64
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:173
+#, elixir-autogen, elixir-format
+msgid "Situation problème"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:76
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:86
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:176
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:195
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:218
+#, elixir-autogen, elixir-format
+msgid "Supports"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:54
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:156
+#, elixir-autogen, elixir-format
+msgid "Titre de la leçon"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:184
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:214
+#, elixir-autogen, elixir-format
+msgid "min"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:83
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:192
+#: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:210
+#, elixir-autogen, elixir-format
+msgid "Étape"
 msgstr ""

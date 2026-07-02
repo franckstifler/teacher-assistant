@@ -91,7 +91,10 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     assert total =~ "2"
   end
 
-  test "each entry links to its lesson plan and shows a prepared indicator", %{conn: conn, plan: plan} do
+  test "each entry links to its lesson plan and shows a prepared indicator", %{
+    conn: conn,
+    plan: plan
+  } do
     {:ok, entry} =
       TeacherAssistant.Academics.add_progression_entry(plan, %{
         module: "M1",

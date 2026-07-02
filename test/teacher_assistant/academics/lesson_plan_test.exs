@@ -54,7 +54,10 @@ defmodule TeacherAssistant.Academics.LessonPlanTest do
     assert {:error, _} = Academics.fetch_owned_entry_with_context(entry.id, other)
   end
 
-  test "ensure_lesson_plan seeds header from the entry and is idempotent", %{entry: entry, ctx: ctx} do
+  test "ensure_lesson_plan seeds header from the entry and is idempotent", %{
+    entry: entry,
+    ctx: ctx
+  } do
     assert {:ok, lp} = Academics.ensure_lesson_plan(entry, ctx)
     assert lp.titre == "Les entiers"
     assert lp.competence_attendue == "Résoudre un problème additif"

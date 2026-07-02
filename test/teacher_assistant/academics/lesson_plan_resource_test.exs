@@ -67,7 +67,11 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
 
     {:ok, step} =
       LessonStep
-      |> Ash.Changeset.for_create(:create, %{lesson_plan_id: lp.id, position: 1, etape: "Découverte"})
+      |> Ash.Changeset.for_create(:create, %{
+        lesson_plan_id: lp.id,
+        position: 1,
+        etape: "Découverte"
+      })
       |> Ash.create(authorize?: false)
 
     assert step.position == 1

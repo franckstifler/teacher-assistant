@@ -46,7 +46,10 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     assert render(view) =~ "Maths"
     assert render(view) =~ "6e A" or render(view) =~ "6ème"
     # prefilled header field
-    assert has_element?(view, "#fiche-header-form input[name='lesson_plan[titre]'][value='Les entiers']")
+    assert has_element?(
+             view,
+             "#fiche-header-form input[name='lesson_plan[titre]'][value='Les entiers']"
+           )
   end
 
   test "autosaves a header field on blur", %{conn: conn, entry: entry} do
@@ -54,7 +57,10 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
 
     view
     |> element("#fiche-header-form")
-    |> render_blur(%{"_target" => ["lesson_plan", "situation_probleme"], "lesson_plan" => %{"situation_probleme" => "Au marché"}})
+    |> render_blur(%{
+      "_target" => ["lesson_plan", "situation_probleme"],
+      "lesson_plan" => %{"situation_probleme" => "Au marché"}
+    })
 
     lp = Academics.get_lesson_plan_for_entry(entry.id)
     assert lp.situation_probleme == "Au marché"
@@ -103,7 +109,10 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
 
     view
     |> element("#step-row-#{s1.id} form")
-    |> render_blur(%{"_target" => ["step", "duration_minutes"], "step" => %{"duration_minutes" => "20"}})
+    |> render_blur(%{
+      "_target" => ["step", "duration_minutes"],
+      "step" => %{"duration_minutes" => "20"}
+    })
 
     assert render(element(view, "#fiche-duration-check")) =~ "20"
   end

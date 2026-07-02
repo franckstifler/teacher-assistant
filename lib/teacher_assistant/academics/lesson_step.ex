@@ -14,7 +14,15 @@ defmodule TeacherAssistant.Academics.LessonStep do
     defaults [
       :read,
       :destroy,
-      create: [:lesson_plan_id, :position, :etape, :duration_minutes, :contenus, :supports, :activites],
+      create: [
+        :lesson_plan_id,
+        :position,
+        :etape,
+        :duration_minutes,
+        :contenus,
+        :supports,
+        :activites
+      ],
       update: [:position, :etape, :duration_minutes, :contenus, :supports, :activites]
     ]
   end

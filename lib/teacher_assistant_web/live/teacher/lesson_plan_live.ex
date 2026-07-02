@@ -23,16 +23,19 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   end
 
   defp header_form(lesson_plan) do
-    to_form(%{
-      "titre" => lesson_plan.titre,
-      "duration_minutes" => lesson_plan.duration_minutes,
-      "lesson_date" => lesson_plan.lesson_date,
-      "competence_attendue" => lesson_plan.competence_attendue,
-      "situation_probleme" => lesson_plan.situation_probleme,
-      "objectifs" => lesson_plan.objectifs,
-      "supports" => lesson_plan.supports,
-      "prerequis" => lesson_plan.prerequis
-    }, as: :lesson_plan)
+    to_form(
+      %{
+        "titre" => lesson_plan.titre,
+        "duration_minutes" => lesson_plan.duration_minutes,
+        "lesson_date" => lesson_plan.lesson_date,
+        "competence_attendue" => lesson_plan.competence_attendue,
+        "situation_probleme" => lesson_plan.situation_probleme,
+        "objectifs" => lesson_plan.objectifs,
+        "supports" => lesson_plan.supports,
+        "prerequis" => lesson_plan.prerequis
+      },
+      as: :lesson_plan
+    )
   end
 
   def handle_event("save_header", %{"lesson_plan" => params}, socket) do
@@ -125,7 +128,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
         </.page_header>
 
         <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-base-content/70">
-          <span><span class="ta-eyebrow">{gettext("Discipline")}</span> {@ctx_bundle.ctx.subject}</span>
+          <span>
+            <span class="ta-eyebrow">{gettext("Discipline")}</span> {@ctx_bundle.ctx.subject}
+          </span>
           <span><span class="ta-eyebrow">{gettext("Classe")}</span> {@ctx_bundle.ctx.level}</span>
           <span class="ta-num">
             <span class="ta-eyebrow">{gettext("Effectif")}</span> {@ctx_bundle.effectif}
@@ -185,7 +190,11 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
             </p>
           </div>
 
-          <table :if={@steps != []} id="lesson-steps" class="w-full border-separate border-spacing-y-1">
+          <table
+            :if={@steps != []}
+            id="lesson-steps"
+            class="w-full border-separate border-spacing-y-1"
+          >
             <caption class="sr-only">{gettext("Lesson steps")}</caption>
             <thead class="hidden md:table-header-group">
               <tr class="text-left">
@@ -194,11 +203,17 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
                 <th scope="col" class="ta-eyebrow px-2 pb-1">{gettext("Contenus")}</th>
                 <th scope="col" class="ta-eyebrow px-2 pb-1">{gettext("Supports")}</th>
                 <th scope="col" class="ta-eyebrow px-2 pb-1">{gettext("Activités")}</th>
-                <th scope="col" class="px-2 pb-1"><span class="sr-only">{gettext("Actions")}</span></th>
+                <th scope="col" class="px-2 pb-1">
+                  <span class="sr-only">{gettext("Actions")}</span>
+                </th>
               </tr>
             </thead>
             <tbody class="block space-y-2 md:table-row-group">
-              <tr :for={s <- @steps} id={"step-row-#{s.id}"} class="ta-leaf block md:table-row align-top">
+              <tr
+                :for={s <- @steps}
+                id={"step-row-#{s.id}"}
+                class="ta-leaf block md:table-row align-top"
+              >
                 <td class="block md:table-cell md:px-2 md:py-1" colspan="6">
                   <.form
                     for={step_form(s)}
@@ -214,9 +229,21 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
                       placeholder={gettext("min")}
                       inputmode="numeric"
                     />
-                    <.input type="textarea" field={step_form(s)[:contenus]} placeholder={gettext("Contenus")} />
-                    <.input type="textarea" field={step_form(s)[:supports]} placeholder={gettext("Supports")} />
-                    <.input type="textarea" field={step_form(s)[:activites]} placeholder={gettext("Activités")} />
+                    <.input
+                      type="textarea"
+                      field={step_form(s)[:contenus]}
+                      placeholder={gettext("Contenus")}
+                    />
+                    <.input
+                      type="textarea"
+                      field={step_form(s)[:supports]}
+                      placeholder={gettext("Supports")}
+                    />
+                    <.input
+                      type="textarea"
+                      field={step_form(s)[:activites]}
+                      placeholder={gettext("Activités")}
+                    />
                     <div class="flex items-center gap-1">
                       <button
                         type="button"
@@ -264,7 +291,12 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
             title={gettext("Aucune étape — ajoutez la première phase.")}
           />
 
-          <button id="step-add" type="button" phx-click="add_step" class="btn btn-outline btn-sm gap-2">
+          <button
+            id="step-add"
+            type="button"
+            phx-click="add_step"
+            class="btn btn-outline btn-sm gap-2"
+          >
             <.icon name="hero-plus" class="size-4" />
             {gettext("Add step")}
           </button>
