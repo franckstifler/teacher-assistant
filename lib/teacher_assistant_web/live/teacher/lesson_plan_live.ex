@@ -153,8 +153,8 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
         <.form
           for={@header_form}
           id="fiche-header-form"
-          phx-blur="save_header"
           phx-change="save_header"
+          phx-debounce="blur"
           class="ta-leaf space-y-3"
         >
           <div class="grid gap-3 sm:grid-cols-2">
@@ -217,9 +217,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
                 <td class="block md:table-cell md:px-2 md:py-1" colspan="6">
                   <.form
                     for={step_form(s)}
-                    phx-blur="save_step"
                     phx-change="save_step"
                     phx-value-id={s.id}
+                    phx-debounce="blur"
                     class="grid gap-2 md:grid-cols-[8rem_5rem_1fr_1fr_1fr_auto] md:items-start"
                   >
                     <.input field={step_form(s)[:etape]} placeholder={gettext("Étape")} />
