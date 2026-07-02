@@ -59,10 +59,18 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         _ -> nil
       end
 
+    entries = Academics.list_progression_entries(plan)
+
+    prepared =
+      entries
+      |> Enum.filter(fn e -> Academics.get_lesson_plan_for_entry(e.id) end)
+      |> MapSet.new(& &1.id)
+
     socket
     |> assign(:plan, plan)
     |> assign(:ctx, ctx)
-    |> assign(:entries, Academics.list_progression_entries(plan))
+    |> assign(:entries, entries)
+    |> assign(:prepared, prepared)
     |> assign(:entry_form, to_form(%{}, as: :entry))
   end
 
@@ -148,14 +156,27 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                     <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
                   </span>
                 </span>
-                <.button
-                  phx-click="delete-entry"
-                  phx-value-id={e.id}
-                  class="btn btn-ghost btn-xs text-error md:hidden"
-                >
-                  <.icon name="hero-trash" class="size-4" />
-                  <span class="sr-only">{gettext("Delete")}</span>
-                </.button>
+                <div class="flex items-center gap-1 md:hidden">
+                  <.link
+                    id={"entry-prepare-mobile-#{e.id}"}
+                    navigate={~p"/teacher/entries/#{e.id}/fiche"}
+                    class="btn btn-ghost btn-xs gap-1"
+                  >
+                    <.icon name="hero-document-text" class="size-3.5" />
+                    {gettext("Préparer")}
+                    <span :if={MapSet.member?(@prepared, e.id)} id={"entry-prepared-mobile-#{e.id}"}>
+                      <.icon name="hero-check-circle" class="size-3.5 text-success" />
+                    </span>
+                  </.link>
+                  <.button
+                    phx-click="delete-entry"
+                    phx-value-id={e.id}
+                    class="btn btn-ghost btn-xs text-error"
+                  >
+                    <.icon name="hero-trash" class="size-4" />
+                    <span class="sr-only">{gettext("Delete")}</span>
+                  </.button>
+                </div>
               </td>
               <td class="hidden md:table-cell md:px-3 md:py-2">
                 <span class="badge badge-soft badge-sm">{e.entry_type}</span>
@@ -164,15 +185,28 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 {e.planned_hours}h
               </td>
               <td class="hidden text-right md:table-cell md:px-3 md:py-2">
-                <.button
-                  id={"entry-delete-#{e.id}"}
-                  phx-click="delete-entry"
-                  phx-value-id={e.id}
-                  class="btn btn-ghost btn-xs text-error"
-                >
-                  <.icon name="hero-trash" class="size-4" />
-                  <span class="sr-only">{gettext("Delete")}</span>
-                </.button>
+                <div class="flex items-center justify-end gap-1">
+                  <.link
+                    id={"entry-prepare-#{e.id}"}
+                    navigate={~p"/teacher/entries/#{e.id}/fiche"}
+                    class="btn btn-ghost btn-xs gap-1"
+                  >
+                    <.icon name="hero-document-text" class="size-3.5" />
+                    {gettext("Préparer")}
+                    <span :if={MapSet.member?(@prepared, e.id)} id={"entry-prepared-#{e.id}"}>
+                      <.icon name="hero-check-circle" class="size-3.5 text-success" />
+                    </span>
+                  </.link>
+                  <.button
+                    id={"entry-delete-#{e.id}"}
+                    phx-click="delete-entry"
+                    phx-value-id={e.id}
+                    class="btn btn-ghost btn-xs text-error"
+                  >
+                    <.icon name="hero-trash" class="size-4" />
+                    <span class="sr-only">{gettext("Delete")}</span>
+                  </.button>
+                </div>
               </td>
             </tr>
           </tbody>

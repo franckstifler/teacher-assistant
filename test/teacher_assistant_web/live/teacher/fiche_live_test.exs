@@ -90,4 +90,27 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     # 6h at 4 h/week (setup ctx) => ≈ 2 weeks
     assert total =~ "2"
   end
+
+  test "each entry links to its lesson plan and shows a prepared indicator", %{conn: conn, plan: plan} do
+    {:ok, entry} =
+      TeacherAssistant.Academics.add_progression_entry(plan, %{
+        module: "M1",
+        lesson_title: "Les entiers",
+        planned_hours: Decimal.new("1"),
+        entry_type: :lesson
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    # prepare link present, not-yet-prepared (no indicator)
+    assert has_element?(view, "#entry-prepare-#{entry.id}")
+    refute has_element?(view, "#entry-prepared-#{entry.id}")
+
+    # once a fiche exists, the indicator shows on reload
+    {:ok, ctx} = TeacherAssistant.Academics.get_teaching_context(plan.teaching_context_id)
+    {:ok, _lp} = TeacherAssistant.Academics.ensure_lesson_plan(entry, ctx)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    assert has_element?(view, "#entry-prepared-#{entry.id}")
+  end
 end
