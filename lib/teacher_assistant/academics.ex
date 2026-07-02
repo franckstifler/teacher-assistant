@@ -15,6 +15,8 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
+  alias TeacherAssistant.Academics.LessonPlan
+  alias TeacherAssistant.Academics.LessonStep
   alias TeacherAssistant.Repo
 
   resources do
@@ -30,6 +32,8 @@ defmodule TeacherAssistant.Academics do
     resource ProgressionPlan
     resource ProgressionEntry
     resource TeachingLogEntry
+    resource LessonPlan
+    resource LessonStep
   end
 
   def ensure_personal_workspace!(%User{} = user) do
