@@ -1,0 +1,17 @@
+defmodule TeacherAssistantWeb.School.SettingsLive do
+  use TeacherAssistantWeb, :live_view
+
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, :scope, socket.assigns.current_scope)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <section id="school-settings" class="space-y-4">
+        <.page_header eyebrow={gettext("École")} title={gettext("Paramètres")} />
+      </section>
+    </Layouts.app>
+    """
+  end
+end
