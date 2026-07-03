@@ -8,6 +8,21 @@ defmodule TeacherAssistant.Academics.TeachingContext do
   postgres do
     table "teaching_contexts"
     repo TeacherAssistant.Repo
+
+    custom_indexes do
+      index [:workspace_id, :academic_year_id, :subject, :level, :serie],
+        unique: true,
+        nulls_distinct: false,
+        where: "teacher_user_id IS NULL",
+        name: "teaching_contexts_unique_personal_context",
+        message: "a context for this subject and level already exists"
+
+      index [:workspace_id, :academic_year_id, :class_group_id, :subject],
+        unique: true,
+        where: "teacher_user_id IS NOT NULL",
+        name: "teaching_contexts_unique_school_assignment",
+        message: "this class already has a teacher for this subject"
+    end
   end
 
   actions do
@@ -21,9 +36,19 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :subsystem,
         :weekly_hours,
         :workspace_id,
-        :academic_year_id
+        :academic_year_id,
+        :teacher_user_id,
+        :class_group_id
       ],
-      update: [:subject, :level, :serie, :subsystem, :weekly_hours, :class_group_id]
+      update: [
+        :subject,
+        :level,
+        :serie,
+        :subsystem,
+        :weekly_hours,
+        :class_group_id,
+        :teacher_user_id
+      ]
     ]
   end
 
@@ -39,9 +64,9 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     attribute :level, :string, allow_nil?: false, public?: true
     attribute :serie, :string, allow_nil?: true, public?: true
 
-    attribute :subsystem, :atom,
-      constraints: [one_of: [:francophone, :anglophone]],
+    attribute :subsystem, TeacherAssistant.Academics.Subsystem,
       allow_nil?: false,
+      default: :francophone,
       public?: true
 
     attribute :weekly_hours, :integer, default: 4, public?: true
@@ -66,15 +91,11 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       allow_nil? true
       public? true
     end
-  end
 
-  identities do
-    identity :unique_context, [
-      :workspace_id,
-      :academic_year_id,
-      :subject,
-      :level,
-      :serie
-    ]
+    belongs_to :teacher, TeacherAssistant.Accounts.User do
+      source_attribute :teacher_user_id
+      allow_nil? true
+      public? true
+    end
   end
 end
