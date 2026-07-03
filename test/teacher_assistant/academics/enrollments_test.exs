@@ -44,6 +44,31 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     assert {:error, :already_enrolled} = Enrollments.enroll_existing(cg, s)
   end
 
+  test "enroll_new rolls back the Student when the Enrollment insert fails", %{ws: ws, cg: cg} do
+    stale_cg = %{cg | academic_year_id: Ash.UUID.generate()}
+
+    assert {:error, reason} =
+             Enrollments.enroll_new(stale_cg, %{
+               full_name: "Orphan Candidate",
+               sex: :f,
+               matricule: "M-ORPHAN"
+             })
+
+    refute reason == :duplicate_matricule
+
+    assert Enrollments.search_students(ws, "Orphan Candidate") == []
+    assert Enrollments.search_students(ws, "M-ORPHAN") == []
+  end
+
+  test "enroll_existing does not mislabel a stale class_group FK violation as already_enrolled",
+       %{cg: cg} do
+    {:ok, %{student: s}} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    stale_cg = %{cg | academic_year_id: Ash.UUID.generate()}
+
+    assert {:error, reason} = Enrollments.enroll_existing(stale_cg, s)
+    refute reason == :already_enrolled
+  end
+
   test "search_students finds by matricule and by name fragment", %{ws: ws, cg: cg} do
     {:ok, _} =
       Enrollments.enroll_new(cg, %{full_name: "Ngo Bassa Marie", sex: :f, matricule: "M-9"})

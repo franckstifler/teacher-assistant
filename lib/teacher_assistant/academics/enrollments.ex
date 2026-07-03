@@ -13,22 +13,37 @@ defmodule TeacherAssistant.Academics.Enrollments do
     {status, attrs} = Map.pop(attrs, :status, :inscription)
     attrs = Map.put(attrs, :workspace_id, cg.workspace_id)
 
-    with {:ok, student} <-
-           Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false),
-         {:ok, enrollment} <-
-           Enrollment
-           |> Ash.Changeset.for_create(:create, %{
-             student_id: student.id,
-             class_group_id: cg.id,
-             academic_year_id: cg.academic_year_id,
-             workspace_id: cg.workspace_id,
-             repeater: repeater,
-             status: status
-           })
-           |> Ash.create(authorize?: false) do
-      {:ok, %{student: student, enrollment: enrollment}}
-    else
+    result =
+      TeacherAssistant.Repo.transaction(fn ->
+        with {:ok, student, student_notifications} <-
+               Student
+               |> Ash.Changeset.for_create(:create, attrs)
+               |> Ash.create(authorize?: false, return_notifications?: true),
+             {:ok, enrollment, enrollment_notifications} <-
+               Enrollment
+               |> Ash.Changeset.for_create(:create, %{
+                 student_id: student.id,
+                 class_group_id: cg.id,
+                 academic_year_id: cg.academic_year_id,
+                 workspace_id: cg.workspace_id,
+                 repeater: repeater,
+                 status: status
+               })
+               |> Ash.create(authorize?: false, return_notifications?: true) do
+          Ash.Notifier.notify(student_notifications ++ enrollment_notifications)
+          %{student: student, enrollment: enrollment}
+        else
+          {:error, error} -> TeacherAssistant.Repo.rollback(error)
+        end
+      end)
+
+    case result do
+      {:ok, %{student: _, enrollment: _} = ok} ->
+        {:ok, ok}
+
       {:error, error} ->
+        error = Ash.Error.to_error_class(error)
+
         if duplicate_matricule?(error), do: {:error, :duplicate_matricule}, else: {:error, error}
     end
   end
@@ -47,8 +62,11 @@ defmodule TeacherAssistant.Academics.Enrollments do
     )
     |> Ash.create(authorize?: false)
     |> case do
-      {:ok, e} -> {:ok, e}
-      {:error, _} -> {:error, :already_enrolled}
+      {:ok, e} ->
+        {:ok, e}
+
+      {:error, error} ->
+        if already_enrolled?(error), do: {:error, :already_enrolled}, else: {:error, error}
     end
   end
 
@@ -147,4 +165,15 @@ defmodule TeacherAssistant.Academics.Enrollments do
   rescue
     _ -> false
   end
+
+  defp already_enrolled?(%Ash.Error.Invalid{errors: errors}) do
+    Enum.any?(errors, &already_enrolled?/1)
+  end
+
+  defp already_enrolled?(%Ash.Error.Changes.InvalidAttribute{private_vars: private_vars}) do
+    constraint = private_vars[:constraint]
+    is_binary(constraint) and String.contains?(constraint, "unique_enrollment_per_year")
+  end
+
+  defp already_enrolled?(_error), do: false
 end
