@@ -18,12 +18,11 @@ defmodule TeacherAssistant.Academics.StudentTest do
     %{ws: ws, cg: cg}
   end
 
-  test "adds a student with required sex", %{cg: cg} do
+  test "adds a student with required sex", %{cg: cg, ws: ws} do
     {:ok, s} = Academics.add_student(cg, %{full_name: "Awa Bello", sex: :f})
     assert s.full_name == "Awa Bello"
     assert s.sex == :f
-    assert s.repeater == false
-    assert s.class_group_id == cg.id
+    assert s.workspace_id == ws.id
   end
 
   test "lists students alphabetically", %{cg: cg} do

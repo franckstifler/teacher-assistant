@@ -10,6 +10,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Student
+  alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Assessment
   alias TeacherAssistant.Academics.Mark
   alias TeacherAssistant.Academics.ProgressionPlan
@@ -27,6 +28,7 @@ defmodule TeacherAssistant.Academics do
     resource TeachingContext
     resource ClassGroup
     resource Student
+    resource Enrollment
     resource Assessment
     resource Mark
     resource ProgressionPlan
@@ -284,33 +286,62 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def add_student(%ClassGroup{id: cg_id}, attrs) do
-    attrs = Map.put(attrs, :class_group_id, cg_id)
-    Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  def add_student(%ClassGroup{} = cg, attrs) do
+    {repeater, attrs} = Map.pop(attrs, :repeater, false)
+    {status, attrs} = Map.pop(attrs, :status, :inscription)
+    attrs = Map.put(attrs, :workspace_id, cg.workspace_id)
+
+    with {:ok, student} <-
+           Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false),
+         {:ok, _enr} <-
+           Enrollment
+           |> Ash.Changeset.for_create(:create, %{
+             student_id: student.id,
+             class_group_id: cg.id,
+             academic_year_id: cg.academic_year_id,
+             workspace_id: cg.workspace_id,
+             repeater: repeater,
+             status: status
+           })
+           |> Ash.create(authorize?: false) do
+      {:ok, student}
+    end
   end
 
   def list_students(%ClassGroup{id: cg_id}) do
-    Student
+    Enrollment
     |> Ash.Query.filter(class_group_id == ^cg_id)
-    |> Ash.Query.sort(full_name: :asc)
+    |> Ash.Query.load(:student)
     |> Ash.read!(authorize?: false)
+    |> Enum.map(& &1.student)
+    |> Enum.sort_by(&String.downcase(&1.full_name))
   end
+
+  def list_roster(%ClassGroup{id: cg_id}) do
+    Enrollment
+    |> Ash.Query.filter(class_group_id == ^cg_id)
+    |> Ash.Query.load(:student)
+    |> Ash.read!(authorize?: false)
+    |> Enum.map(&%{student: &1.student, enrollment: &1})
+    |> Enum.sort_by(&String.downcase(&1.student.full_name))
+  end
+
+  def update_enrollment(%Enrollment{} = e, attrs),
+    do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
   def update_student(%Student{} = s, attrs),
     do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
   def delete_student(%Student{} = s), do: Ash.destroy(s, authorize?: false)
 
-  def fetch_owned_student(id, %Workspace{} = ws) do
-    case Ash.get(Student, id, authorize?: false) do
-      {:ok, student} ->
-        case fetch_owned_class_group(student.class_group_id, ws) do
-          {:ok, _} -> {:ok, student}
-          _ -> {:error, :not_found}
-        end
-
-      _ ->
-        {:error, :not_found}
+  def fetch_owned_student(id, %Workspace{id: ws_id}) do
+    Student
+    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      {:ok, s} -> {:ok, s}
+      _ -> {:error, :not_found}
     end
   end
 

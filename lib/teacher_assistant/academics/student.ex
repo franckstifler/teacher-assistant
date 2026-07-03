@@ -8,14 +8,22 @@ defmodule TeacherAssistant.Academics.Student do
   postgres do
     table "students"
     repo TeacherAssistant.Repo
+
+    custom_indexes do
+      index [:workspace_id, :matricule],
+        unique: true,
+        where: "matricule IS NOT NULL",
+        name: "students_unique_matricule_index",
+        message: "matricule already used in this workspace"
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:full_name, :sex, :matricule, :repeater, :class_group_id],
-      update: [:full_name, :sex, :matricule, :repeater]
+      create: [:full_name, :sex, :matricule, :workspace_id],
+      update: [:full_name, :sex, :matricule]
     ]
   end
 
@@ -30,15 +38,16 @@ defmodule TeacherAssistant.Academics.Student do
     attribute :full_name, :string, allow_nil?: false, public?: true
     attribute :sex, TeacherAssistant.Academics.Sex, allow_nil?: false, public?: true
     attribute :matricule, :string, allow_nil?: true, public?: true
-    attribute :repeater, :boolean, allow_nil?: false, default: false, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
-      source_attribute :class_group_id
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end
+
+    has_many :enrollments, TeacherAssistant.Academics.Enrollment
   end
 end
