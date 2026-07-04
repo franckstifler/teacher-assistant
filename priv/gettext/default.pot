@@ -1509,12 +1509,12 @@ msgstr ""
 msgid "Affecter"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:164
+#: lib/teacher_assistant_web/live/school/settings_live.ex:165
 #, elixir-autogen, elixir-format
 msgid "Année scolaire activée."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:144
+#: lib/teacher_assistant_web/live/school/settings_live.ex:145
 #, elixir-autogen, elixir-format
 msgid "Année scolaire créée."
 msgstr ""
@@ -1658,7 +1658,7 @@ msgstr ""
 msgid "Import students — %{class}"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:148
+#: lib/teacher_assistant_web/live/school/settings_live.ex:149
 #, elixir-autogen, elixir-format
 msgid "Impossible de créer l'année scolaire."
 msgstr ""

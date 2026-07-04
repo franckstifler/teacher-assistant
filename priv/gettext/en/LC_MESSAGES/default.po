@@ -1482,428 +1482,428 @@ msgstr "School renamed successfully."
 #: lib/teacher_assistant_web/live/teacher/roster_live.ex:251
 #, elixir-autogen, elixir-format
 msgid "No class linked to this assignment yet."
-msgstr ""
+msgstr "No class linked to this assignment yet."
 
 #: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:62
 #, elixir-autogen, elixir-format
 msgid "Établissement"
-msgstr ""
+msgstr "School"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:94
 #, elixir-autogen, elixir-format
 msgid "%{created} created, %{reenrolled} réinscription(s)."
-msgstr ""
+msgstr "%{created} created, %{reenrolled} re-enrollment(s)."
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:64
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Active"
 msgstr "Active"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:76
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Activer"
-msgstr "Deactivate"
+msgstr "Activate"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:251
 #, elixir-autogen, elixir-format
 msgid "Affecter"
-msgstr ""
+msgstr "Assign"
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:164
-#, elixir-autogen, elixir-format, fuzzy
+#: lib/teacher_assistant_web/live/school/settings_live.ex:165
+#, elixir-autogen, elixir-format
 msgid "Année scolaire activée."
-msgstr ""
+msgstr "Academic year activated."
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:144
-#, elixir-autogen, elixir-format, fuzzy
+#: lib/teacher_assistant_web/live/school/settings_live.ex:145
+#, elixir-autogen, elixir-format
 msgid "Année scolaire créée."
-msgstr ""
+msgstr "Academic year created."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:383
 #, elixir-autogen, elixir-format
 msgid "Assignment removed."
-msgstr ""
+msgstr "Assignment removed."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:228
 #, elixir-autogen, elixir-format
 msgid "Aucun enseignant affecté"
-msgstr ""
+msgstr "No teacher assigned"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:104
 #, elixir-autogen, elixir-format
 msgid "Aucun élève inscrit"
-msgstr ""
+msgstr "No student enrolled"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:79
 #, elixir-autogen, elixir-format
 msgid "Back"
-msgstr ""
+msgstr "Back"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "Back to class"
-msgstr ""
+msgstr "Back to class"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:126
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Class created."
-msgstr ""
+msgstr "Class created."
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:140
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Class deleted."
-msgstr ""
+msgstr "Class deleted."
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:87
 #, elixir-autogen, elixir-format
 msgid "Confirm import"
-msgstr ""
+msgstr "Confirm import"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:101
 #, elixir-autogen, elixir-format
 msgid "Conflicts (skipped)"
-msgstr ""
+msgstr "Conflicts (skipped)"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:130
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Could not create the class."
-msgstr ""
+msgstr "Could not create the class."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:294
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Could not enroll the student."
-msgstr ""
+msgstr "Could not enroll the student."
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:105
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:175
 #: lib/teacher_assistant_web/live/school/settings_live.ex:98
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Create"
-msgstr ""
+msgstr "Create"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:92
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Create a class"
-msgstr ""
+msgstr "Create a class"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:91
 #, elixir-autogen, elixir-format
 msgid "Create an academic year"
-msgstr ""
+msgstr "Create an academic year"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:129
 #, elixir-autogen, elixir-format
 msgid "Create an academic year first."
-msgstr ""
+msgstr "Create an academic year first."
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:42
 #, elixir-autogen, elixir-format
 msgid "Create your first class to start enrolling students."
-msgstr ""
+msgstr "Create your first class to start enrolling students."
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:75
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Delete this class?"
-msgstr ""
+msgstr "Delete this class?"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:52
 #, elixir-autogen, elixir-format
 msgid "Début"
-msgstr ""
+msgstr "Start date"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:346
 #, elixir-autogen, elixir-format
 msgid "Enrollment removed."
-msgstr ""
+msgstr "Enrollment removed."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:178
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Enseignements"
-msgstr ""
+msgstr "Teaching assignments"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:53
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Fin"
-msgstr ""
+msgstr "End date"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:118
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Féminin"
-msgstr ""
+msgstr "Female"
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:46
 #, elixir-autogen, elixir-format
 msgid "Go to classes"
-msgstr ""
+msgstr "Go to classes"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:40
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:33
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Go to settings"
-msgstr ""
+msgstr "Go to settings"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:186
 #: lib/teacher_assistant_web/live/school/class_live.ex:248
 #, elixir-autogen, elixir-format
 msgid "H/semaine"
-msgstr ""
+msgstr "Hrs/week"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:38
 #, elixir-autogen, elixir-format
 msgid "Import students"
-msgstr ""
+msgstr "Import students"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:34
 #, elixir-autogen, elixir-format
 msgid "Import students — %{class}"
-msgstr ""
+msgstr "Import students — %{class}"
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:148
-#, elixir-autogen, elixir-format, fuzzy
+#: lib/teacher_assistant_web/live/school/settings_live.ex:149
+#, elixir-autogen, elixir-format
 msgid "Impossible de créer l'année scolaire."
-msgstr "Could not rename the school."
+msgstr "Could not create the academic year."
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:65
 #, elixir-autogen, elixir-format
 msgid "Inactive"
-msgstr ""
+msgstr "Inactive"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:63
 #, elixir-autogen, elixir-format
 msgid "Inscription"
-msgstr ""
+msgstr "Enrollment"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:137
 #, elixir-autogen, elixir-format
 msgid "Inscrire"
-msgstr ""
+msgstr "Enroll"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:108
 #, elixir-autogen, elixir-format
 msgid "Inscrire un nouvel élève"
-msgstr ""
+msgstr "Enroll a new student"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:49
 #: lib/teacher_assistant_web/live/school/classes_live.ex:95
 #, elixir-autogen, elixir-format
 msgid "Label"
-msgstr ""
+msgstr "Label"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:119
 #, elixir-autogen, elixir-format
 msgid "Masculin"
-msgstr ""
+msgstr "Male"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:184
 #: lib/teacher_assistant_web/live/school/class_live.ex:239
 #, elixir-autogen, elixir-format
 msgid "Matière"
-msgstr ""
+msgstr "Subject"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:124
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Matricule (optionnel)"
-msgstr ""
+msgstr "Matricule (optional)"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:94
 #, elixir-autogen, elixir-format
 msgid "Name"
-msgstr ""
+msgstr "Name"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:87
 #, elixir-autogen, elixir-format
 msgid "No academic years yet"
-msgstr ""
+msgstr "No academic years yet"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:35
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:28
 #, elixir-autogen, elixir-format
 msgid "No active academic year"
-msgstr ""
+msgstr "No active academic year"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:88
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:41
 #, elixir-autogen, elixir-format
 msgid "No classes yet"
-msgstr ""
+msgstr "No classes yet"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:114
 #, elixir-autogen, elixir-format
 msgid "Nom complet"
-msgstr ""
+msgstr "Full name"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:149
 #, elixir-autogen, elixir-format
 msgid "Nom ou matricule"
-msgstr ""
+msgstr "Name or matricule"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:38
 #, elixir-autogen, elixir-format
 msgid "Paste"
-msgstr ""
+msgstr "Paste"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:47
 #, elixir-autogen, elixir-format
 msgid "Paste one student per line: name;sex (m/f);matricule (optional)."
-msgstr ""
+msgstr "Paste one student per line: name;sex (m/f);matricule (optional)."
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:40
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:58
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Preview"
-msgstr ""
+msgstr "Preview"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:141
 #, elixir-autogen, elixir-format
 msgid "Rechercher un élève existant"
-msgstr ""
+msgstr "Search for an existing student"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:50
 #: lib/teacher_assistant_web/live/school/class_live.ex:68
 #: lib/teacher_assistant_web/live/school/class_live.ex:134
 #, elixir-autogen, elixir-format
 msgid "Redoublant"
-msgstr ""
+msgstr "Repeater"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:92
 #: lib/teacher_assistant_web/live/school/class_live.ex:216
 #, elixir-autogen, elixir-format
 msgid "Retirer"
-msgstr ""
+msgstr "Remove"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:90
 #, elixir-autogen, elixir-format
 msgid "Retirer cet élève de la classe ?"
-msgstr ""
+msgstr "Remove this student from the class?"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:214
 #, elixir-autogen, elixir-format
 msgid "Retirer cette affectation ?"
-msgstr ""
+msgstr "Remove this assignment?"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:204
 #, elixir-autogen, elixir-format
 msgid "Réassigner à…"
-msgstr ""
+msgstr "Reassign to…"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:62
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:176
 #, elixir-autogen, elixir-format
 msgid "Réinscription"
-msgstr ""
+msgstr "Re-enrollment"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:170
 #, elixir-autogen, elixir-format
 msgid "Réinscrire"
-msgstr ""
+msgstr "Re-enroll"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:36
 #, elixir-autogen, elixir-format
 msgid "Set up an academic year before creating classes."
-msgstr ""
+msgstr "Set up an academic year before creating classes."
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:29
 #, elixir-autogen, elixir-format
 msgid "Set up an academic year before managing your school."
-msgstr ""
+msgstr "Set up an academic year before managing your school."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:283
 #, elixir-autogen, elixir-format
 msgid "Student enrolled."
-msgstr ""
+msgstr "Student enrolled."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:317
 #, elixir-autogen, elixir-format
 msgid "Student re-enrolled."
-msgstr ""
+msgstr "Student re-enrolled."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:336
 #, elixir-autogen, elixir-format
 msgid "Student transferred."
-msgstr ""
+msgstr "Student transferred."
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:53
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Students"
-msgstr ""
+msgstr "Students"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:51
 #, elixir-autogen, elixir-format
 msgid "Série"
-msgstr ""
+msgstr "Series"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:97
 #, elixir-autogen, elixir-format
 msgid "Série (optional)"
-msgstr ""
+msgstr "Series (optional)"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:360
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Teacher assigned."
-msgstr ""
+msgstr "Teacher assigned."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:403
 #, elixir-autogen, elixir-format
 msgid "Teacher reassigned."
-msgstr ""
+msgstr "Teacher reassigned."
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:54
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Teachers"
-msgstr ""
+msgstr "Teachers"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:390
 #, elixir-autogen, elixir-format
 msgid "This assignment has marks or progressions — it cannot be removed."
-msgstr ""
+msgstr "This assignment has marks or progressions — it cannot be removed."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:367
 #, elixir-autogen, elixir-format
 msgid "This class already has a teacher for this subject."
-msgstr ""
+msgstr "This class already has a teacher for this subject."
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:147
 #, elixir-autogen, elixir-format
 msgid "This class has students or teachers — remove them first."
-msgstr ""
+msgstr "This class has students or teachers — remove them first."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:290
 #, elixir-autogen, elixir-format
 msgid "This matricule already belongs to another student."
-msgstr ""
+msgstr "This matricule already belongs to another student."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:371
 #, elixir-autogen, elixir-format
 msgid "This member cannot be assigned."
-msgstr ""
+msgstr "This member cannot be assigned."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:323
 #, elixir-autogen, elixir-format
 msgid "This student is already enrolled this year."
-msgstr ""
+msgstr "This student is already enrolled this year."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:80
 #, elixir-autogen, elixir-format
 msgid "Transférer vers…"
-msgstr ""
+msgstr "Transfer to…"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:179
 #, elixir-autogen, elixir-format
 msgid "already enrolled this year"
-msgstr ""
+msgstr "already enrolled this year"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:104
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:177
 #, elixir-autogen, elixir-format
 msgid "conflict"
-msgstr ""
+msgstr "conflict"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:181
 #, elixir-autogen, elixir-format
 msgid "could not be enrolled"
-msgstr ""
+msgstr "could not be enrolled"
 
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:180
 #, elixir-autogen, elixir-format
 msgid "duplicate matricule"
-msgstr ""
+msgstr "duplicate matricule"
