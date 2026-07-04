@@ -167,6 +167,25 @@ defmodule TeacherAssistant.Academics do
   def get_teaching_context(id), do: Ash.get(TeachingContext, id, authorize?: false)
 
   @doc """
+  Scope-aware context listing for the class switcher: under personal scope,
+  the workspace's own teaching contexts; under school scope, only the
+  contexts assigned to the current user (via Assignments.list_for_user/3).
+  Returns `[]` when there is no current academic year.
+  """
+  def list_contexts_for_scope(%TeacherAssistant.Scope{
+        current_workspace: ws,
+        current_academic_year: year,
+        current_workspace_type: type,
+        current_user: user
+      }) do
+    cond do
+      is_nil(ws) or is_nil(year) -> []
+      type == :school -> TeacherAssistant.Academics.Assignments.list_for_user(ws, year, user)
+      true -> list_teaching_contexts(ws, year)
+    end
+  end
+
+  @doc """
   Resolves the active TeachingContext for the shell's class switcher.
   Owner + active-year scoped: only the workspace's own contexts are searched, so a
   foreign/invalid/stale id simply falls back to the first (alphabetical) context.

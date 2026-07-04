@@ -39,8 +39,8 @@ defmodule TeacherAssistantWeb.Layouts do
 
     contexts =
       case current_scope do
-        %{current_workspace: %{} = ws, current_academic_year: %{} = year} ->
-          TeacherAssistant.Academics.list_teaching_contexts(ws, year)
+        %{current_workspace: %{}} ->
+          TeacherAssistant.Academics.list_contexts_for_scope(current_scope)
 
         _ ->
           []
@@ -159,6 +159,30 @@ defmodule TeacherAssistantWeb.Layouts do
           class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-3 pb-2 sm:px-5"
           aria-label={gettext("School navigation")}
         >
+          <div :if={@contexts != []} id="class-switcher" class="dropdown">
+            <div
+              tabindex="0"
+              role="button"
+              class="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-sm font-semibold"
+            >
+              <.icon name="hero-users" class="size-4 text-primary" />
+              <span>{context_label(@current_context)}</span>
+              <.icon name="hero-chevron-down" class="size-3.5 text-base-content/50" />
+            </div>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow"
+            >
+              <li :for={c <- @contexts} id={"class-switcher-item-#{c.id}"}>
+                <.link href={~p"/teacher/select-context/#{c.id}?return_to=#{@current_path}"}>
+                  {c.subject} — {(c.class_group && c.class_group.label) || c.level}
+                </.link>
+              </li>
+            </ul>
+          </div>
+
+          <span :if={@contexts != []} class="mx-1 hidden h-5 w-px bg-base-300 sm:block"></span>
+
           <.tab_link
             id="nav-school-dashboard"
             href={~p"/school"}
@@ -370,6 +394,9 @@ defmodule TeacherAssistantWeb.Layouts do
     </.link>
     """
   end
+
+  defp context_label(%{subject: subject, class_group: %{label: label}}) when is_binary(label),
+    do: "#{subject} — #{label}"
 
   defp context_label(%{level: level, subject: subject}), do: "#{level} · #{subject}"
   defp context_label(_), do: Gettext.gettext(TeacherAssistantWeb.Gettext, "Select a class")

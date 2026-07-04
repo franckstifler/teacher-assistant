@@ -82,6 +82,7 @@ defmodule TeacherAssistant.Academics.Assignments do
     |> Ash.Query.filter(
       workspace_id == ^ws_id and academic_year_id == ^year_id and teacher_user_id == ^user_id
     )
+    |> Ash.Query.load(:class_group)
     |> Ash.Query.sort(subject: :asc)
     |> Ash.read!(authorize?: false)
   end

@@ -30,7 +30,8 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
   test "an assigned teacher reaches /teacher under school scope", ctx do
     %{conn: conn, cg: cg, user: user} = ctx
     {:ok, _tc} = Assignments.assign(cg, user, %{subject: "Maths"})
-    assert {:ok, _view, _html} = live(conn, ~p"/teacher")
+    assert {:ok, _view, html} = live(conn, ~p"/teacher")
+    assert html =~ "Maths"
   end
 
   test "personal scope still reaches /teacher", %{conn: conn, workspace: personal} do

@@ -21,12 +21,18 @@ defmodule TeacherAssistantWeb.FichePrintController do
         bundle: bundle,
         lesson_plan: lesson_plan,
         steps: steps,
-        enseignant: to_string(user.email)
+        enseignant: to_string(user.email),
+        etablissement: etablissement(scope)
       )
     else
       _ -> redirect(conn, to: ~p"/teacher")
     end
   end
+
+  defp etablissement(%{current_workspace_type: :school, current_workspace: %{name: name}}),
+    do: name
+
+  defp etablissement(_scope), do: nil
 
   defp load_user(nil), do: nil
 
