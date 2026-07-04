@@ -192,6 +192,14 @@ defmodule TeacherAssistantWeb.Layouts do
             {gettext("Dashboard")}
           </.tab_link>
           <.tab_link
+            id="nav-school-classes"
+            href={~p"/school/classes"}
+            icon="hero-rectangle-group"
+            current_path={@current_path}
+          >
+            {gettext("Classes")}
+          </.tab_link>
+          <.tab_link
             id="nav-school-members"
             href={~p"/school/members"}
             icon="hero-user-group"

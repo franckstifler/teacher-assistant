@@ -305,6 +305,26 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
+  def update_class_group(%ClassGroup{} = cg, attrs),
+    do: cg |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+
+  def delete_class_group(%ClassGroup{id: id} = cg) do
+    has_enrollments =
+      Enrollment |> Ash.Query.filter(class_group_id == ^id) |> Ash.read!(authorize?: false) != []
+
+    has_assignments =
+      TeachingContext
+      |> Ash.Query.filter(class_group_id == ^id and not is_nil(teacher_user_id))
+      |> Ash.read!(authorize?: false) != []
+
+    if has_enrollments or has_assignments do
+      {:error, :has_data}
+    else
+      Ash.destroy!(cg, authorize?: false)
+      :ok
+    end
+  end
+
   def add_student(%ClassGroup{} = cg, attrs) do
     {repeater, attrs} = Map.pop(attrs, :repeater, false)
     {status, attrs} = Map.pop(attrs, :status, :inscription)
