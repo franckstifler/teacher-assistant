@@ -56,4 +56,60 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
     assert {:error, :not_a_member} =
              TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
   end
+
+  describe "school teaching scope (P2.2)" do
+    setup %{user: user} do
+      {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(user, %{name: "Lycée S"})
+
+      {:ok, year} =
+        Academics.create_academic_year(school, %{
+          name: "2025-2026",
+          start_date: ~D[2025-09-08],
+          end_date: ~D[2026-07-31],
+          active: true
+        })
+
+      {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+      %{school: school, year: year, cg: cg}
+    end
+
+    test "school scope resolves year and assigned context", ctx do
+      %{user: user, school: school, year: year, cg: cg} = ctx
+
+      {:ok, tc} =
+        TeacherAssistant.Academics.Assignments.assign(cg, user, %{subject: "Maths"})
+
+      {:ok, scope} = Workspaces.scope_for(user, school.id)
+      assert scope.current_academic_year.id == year.id
+      assert scope.current_context.id == tc.id
+    end
+
+    test "school scope without assignments has nil context but a year", ctx do
+      %{user: user, school: school, year: year} = ctx
+      {:ok, scope} = Workspaces.scope_for(user, school.id)
+      assert scope.current_academic_year.id == year.id
+      assert scope.current_context == nil
+    end
+
+    test "context_id from another teacher falls back to own first assignment", ctx do
+      %{user: user, school: school, cg: cg} = ctx
+      other = TeacherFixtures.user_fixture()
+
+      {:ok, inv} =
+        TeacherAssistant.Accounts.Schools.invite_member(school, user, %{
+          email: to_string(other.email),
+          roles: [:teacher]
+        })
+
+      {:ok, _} = TeacherAssistant.Accounts.Schools.accept_invitation(inv.token, other)
+
+      {:ok, mine} = TeacherAssistant.Academics.Assignments.assign(cg, user, %{subject: "Maths"})
+
+      {:ok, theirs} =
+        TeacherAssistant.Academics.Assignments.assign(cg, other, %{subject: "Anglais"})
+
+      {:ok, scope} = Workspaces.scope_for(user, school.id, theirs.id)
+      assert scope.current_context.id == mine.id
+    end
+  end
 end

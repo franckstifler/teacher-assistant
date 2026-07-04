@@ -13,7 +13,8 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     assert has_element?(view, "#school-nav")
   end
 
-  test "teacher pages redirect to /school while in a school scope", %{conn: conn, actor: user} do
+  test "teacher pages redirect to /school while in a school scope without a teaching assignment",
+       %{conn: conn, actor: user} do
     {:ok, school} = Schools.create_school(user, %{name: "École Guard"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/teacher/setup")
