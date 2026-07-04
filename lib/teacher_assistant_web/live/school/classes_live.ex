@@ -56,7 +56,11 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
               </thead>
               <tbody>
                 <tr :for={row <- @classes} id={"class-row-#{row.cg.id}"}>
-                  <td>{row.cg.label}</td>
+                  <td>
+                    <.link navigate={~p"/school/classes/#{row.cg.id}"} class="link link-hover">
+                      {row.cg.label}
+                    </.link>
+                  </td>
                   <td>{row.cg.level}</td>
                   <td>{row.cg.serie}</td>
                   <td>{row.cg.subsystem}</td>
