@@ -145,7 +145,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
     |> String.split(["\r\n", "\n"], trim: true)
     |> Enum.map(&String.split(&1, ";"))
     |> Enum.map(fn fields ->
-      fields = fields ++ List.duplicate("", 3 - length(fields))
+      fields = fields ++ List.duplicate("", max(3 - length(fields), 0))
       [full_name, sex, matricule] = Enum.take(fields, 3)
 
       %{

@@ -86,4 +86,16 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
 
     assert {:error, {:live_redirect, %{to: _}}} = live(conn, ~p"/school/classes/#{cg.id}/import")
   end
+
+  test "extra fields beyond the third are ignored", %{conn: conn, cg: cg} do
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/import")
+
+    view
+    |> form("#import-form", %{"import" => %{"raw" => "Awa;f;M-1;extra\nBi;m;"}})
+    |> render_submit()
+
+    assert render(view) =~ "Awa"
+    view |> element("#import-confirm") |> render_click()
+    assert length(Academics.list_roster(cg)) == 2
+  end
 end
