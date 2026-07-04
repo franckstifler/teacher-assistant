@@ -28,6 +28,17 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           title={"#{@cg.label} — #{@cg.level}#{if @cg.serie, do: " · #{@cg.serie}", else: ""}"}
         />
 
+        <div :if={@admin?} class="flex justify-end">
+          <.link
+            navigate={~p"/school/classes/#{@cg.id}/import"}
+            id="go-to-import"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-arrow-up-tray" class="size-4" />
+            {gettext("Import students")}
+          </.link>
+        </div>
+
         <div class="overflow-x-auto">
           <table id="class-roster" class="table table-zebra">
             <thead>

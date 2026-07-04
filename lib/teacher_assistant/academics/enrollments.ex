@@ -108,11 +108,20 @@ defmodule TeacherAssistant.Academics.Enrollments do
     :ok
   end
 
-  def import_rows(%ClassGroup{} = cg, rows) do
+  @doc """
+  Classifies each row against current data without writing anything.
+  Returns `[{row, :create | :reenroll | {:conflict, reason}}]` in input order.
+  """
+  def preview_rows(%ClassGroup{} = cg, rows) do
     ws = %Workspace{id: cg.workspace_id}
+    Enum.map(rows, fn row -> {row, classify_row(ws, cg, row)} end)
+  end
 
-    Enum.reduce(rows, %{created: 0, reenrolled: 0, conflicts: []}, fn row, acc ->
-      case classify_row(ws, cg, row) do
+  def import_rows(%ClassGroup{} = cg, rows) do
+    cg
+    |> preview_rows(rows)
+    |> Enum.reduce(%{created: 0, reenrolled: 0, conflicts: []}, fn {row, action}, acc ->
+      case action do
         :create ->
           case enroll_new(cg, Map.take(row, [:full_name, :sex, :matricule, :repeater])) do
             {:ok, _} -> %{acc | created: acc.created + 1}
