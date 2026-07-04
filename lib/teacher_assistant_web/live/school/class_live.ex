@@ -2,8 +2,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Enrollments
-  alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Academics.{Assignments, Enrollments}
+  alias TeacherAssistant.Accounts.{Permissions, Schools}
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -165,6 +165,81 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
         <div class="ta-leaf space-y-3">
           <h2 class="text-sm font-semibold">{gettext("Enseignements")}</h2>
+
+          <div class="overflow-x-auto">
+            <table id="assignments" class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>{gettext("Matière")}</th>
+                  <th>{gettext("Enseignant")}</th>
+                  <th>{gettext("H/semaine")}</th>
+                  <th :if={@admin?}><span class="sr-only">{gettext("Actions")}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={tc <- @assignments} id={"assignment-row-#{tc.id}"}>
+                  <td>{tc.subject}</td>
+                  <td>{tc.teacher.email}</td>
+                  <td>{tc.weekly_hours}</td>
+                  <td :if={@admin?}>
+                    <div class="flex items-center gap-2">
+                      <form
+                        id={"reassign-#{tc.id}"}
+                        phx-change="reassign"
+                        class="inline"
+                      >
+                        <input type="hidden" name="context-id" value={tc.id} />
+                        <select name="user_id" class="select select-bordered select-xs">
+                          <option value="">{gettext("Réassigner à…")}</option>
+                          <option :for={m <- @members} value={m.user_id}>{m.user.email}</option>
+                        </select>
+                      </form>
+                      <button
+                        id={"unassign-#{tc.id}"}
+                        type="button"
+                        class="btn btn-ghost btn-xs"
+                        phx-click="unassign"
+                        phx-value-context-id={tc.id}
+                        data-confirm={gettext("Retirer cette affectation ?")}
+                      >
+                        {gettext("Retirer")}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <.empty_state
+            :if={@assignments == []}
+            icon="hero-academic-cap"
+            title={gettext("Aucun enseignant affecté")}
+          />
+
+          <form :if={@admin?} id="assign-form" phx-submit="assign" class="space-y-2">
+            <div class="grid gap-2 sm:grid-cols-4">
+              <select name="assignment[user_id]" class="select select-bordered select-sm">
+                <option :for={m <- @members} value={m.user_id}>{m.user.email}</option>
+              </select>
+              <input
+                type="text"
+                name="assignment[subject]"
+                placeholder={gettext("Matière")}
+                class="input input-bordered input-sm"
+              />
+              <input
+                type="number"
+                name="assignment[weekly_hours]"
+                value="4"
+                min="1"
+                max="40"
+                placeholder={gettext("H/semaine")}
+                class="input input-bordered input-sm"
+              />
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Affecter")}</button>
+            </div>
+          </form>
         </div>
       </section>
     </Layouts.app>
@@ -179,7 +254,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       roster: Academics.list_roster(cg),
       other_classes:
         Academics.list_class_groups(scope.current_workspace, scope.current_academic_year)
-        |> Enum.reject(&(&1.id == cg.id))
+        |> Enum.reject(&(&1.id == cg.id)),
+      assignments: Assignments.list_for_class(cg),
+      members: Schools.list_members(scope.current_workspace)
     )
   end
 
@@ -258,6 +335,70 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:noreply, socket |> put_flash(:info, gettext("Enrollment removed.")) |> load_roster()}
     else
       _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("assign", %{"assignment" => params}, socket) do
+    with true <- socket.assigns.admin?,
+         %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == params["user_id"])) do
+      case Assignments.assign(socket.assigns.cg, member.user, %{
+             subject: params["subject"],
+             weekly_hours: parse_hours(params["weekly_hours"])
+           }) do
+        {:ok, _} ->
+          {:noreply, socket |> put_flash(:info, gettext("Teacher assigned.")) |> load_roster()}
+
+        {:error, :already_assigned} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("This class already has a teacher for this subject.")
+           )}
+
+        {:error, :not_assignable} ->
+          {:noreply, put_flash(socket, :error, gettext("This member cannot be assigned."))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("unassign", %{"context-id" => cid}, socket) do
+    with true <- socket.assigns.admin?,
+         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
+      case Assignments.remove(tc) do
+        :ok ->
+          {:noreply, socket |> put_flash(:info, gettext("Assignment removed.")) |> load_roster()}
+
+        {:error, :has_data} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("This assignment has marks or progressions — it cannot be removed.")
+           )}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("reassign", %{"context-id" => cid, "user_id" => uid}, socket) do
+    with true <- socket.assigns.admin?,
+         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+         %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == uid)),
+         {:ok, _} <- Assignments.reassign(tc, member.user) do
+      {:noreply, socket |> put_flash(:info, gettext("Teacher reassigned.")) |> load_roster()}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp parse_hours(v) do
+    case Integer.parse(to_string(v)) do
+      {n, _} when n > 0 and n <= 40 -> n
+      _ -> 4
     end
   end
 

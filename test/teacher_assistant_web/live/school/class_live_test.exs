@@ -132,4 +132,49 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     render_hook(view, "enroll_new", %{"student" => %{"full_name" => "X", "sex" => "m"}})
     assert [] = Academics.list_roster(cg)
   end
+
+  describe "assignments panel" do
+    test "assigns a teacher to a subject", %{conn: conn, cg: cg, user: head} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view
+      |> form("#assign-form", %{
+        "assignment" => %{"user_id" => head.id, "subject" => "Maths", "weekly_hours" => "5"}
+      })
+      |> render_submit()
+
+      assert [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert tc.subject == "Maths" and tc.teacher_user_id == head.id
+    end
+
+    test "duplicate subject on the class is rejected with a message", ctx do
+      %{conn: conn, cg: cg, user: head} = ctx
+      {:ok, _} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view
+      |> form("#assign-form", %{
+        "assignment" => %{"user_id" => head.id, "subject" => "Maths", "weekly_hours" => "4"}
+      })
+      |> render_submit()
+
+      assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
+      assert render(view) =~ "Maths"
+    end
+
+    test "unassign removes a data-free assignment; blocked with data", ctx do
+      %{conn: conn, cg: cg, user: head} = ctx
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, _} = TeacherAssistant.Academics.create_progression_plan(tc, %{title: "P"})
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view |> element("#unassign-#{tc.id}") |> render_click()
+      assert [_] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+
+      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Anglais"})
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      view |> element("#unassign-#{tc2.id}") |> render_click()
+      assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
+    end
+  end
 end
