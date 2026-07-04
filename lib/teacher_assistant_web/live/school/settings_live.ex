@@ -134,7 +134,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       attrs = %{
         name: params["name"],
         start_date: parse_date(params["start_date"]),
-        end_date: parse_date(params["end_date"])
+        end_date: parse_date(params["end_date"]),
+        active: socket.assigns.years == []
       }
 
       case Academics.create_academic_year(scope.current_workspace, attrs) do

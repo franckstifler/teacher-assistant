@@ -89,4 +89,38 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
     assert Academics.list_academic_years(school) == []
   end
+
+  test "additional academic years created via form are inactive; only first is active", %{
+    conn: conn,
+    school: school
+  } do
+    alias TeacherAssistant.Academics
+
+    # Create first year directly with active: true
+    {:ok, _y1} =
+      Academics.create_academic_year(school, %{
+        name: "2024-2025",
+        start_date: ~D[2024-09-09],
+        end_date: ~D[2025-07-31],
+        active: true
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+
+    # Submit form to create second year
+    view
+    |> form("#year-form", %{
+      "year" => %{"name" => "2025-2026", "start_date" => "2025-09-08", "end_date" => "2026-07-31"}
+    })
+    |> render_submit()
+
+    # First year must still be active
+    assert Academics.current_academic_year(school).name == "2024-2025"
+
+    # Second year must exist and be inactive
+    years = Academics.list_academic_years(school)
+    y2 = Enum.find(years, &(&1.name == "2025-2026"))
+    assert y2 != nil
+    assert y2.active == false
+  end
 end
