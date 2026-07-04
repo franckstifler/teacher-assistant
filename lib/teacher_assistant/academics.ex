@@ -98,6 +98,14 @@ defmodule TeacherAssistant.Academics do
 
   def get_academic_year(id), do: Ash.get(AcademicYear, id, authorize?: false)
 
+  def activate_academic_year(%AcademicYear{} = year) do
+    deactivate_other_years(%Workspace{id: year.workspace_id}, year.id)
+
+    year
+    |> Ash.Changeset.for_update(:update, %{active: true})
+    |> Ash.update(authorize?: false)
+  end
+
   defp deactivate_other_years(%Workspace{id: ws_id}, keep_id) do
     AcademicYear
     |> Ash.Query.filter(workspace_id == ^ws_id and id != ^keep_id and active == true)
