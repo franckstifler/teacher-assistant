@@ -31,6 +31,12 @@ defmodule TeacherAssistantWeb.Router do
     post "/workspaces", WorkspaceController, :create
     get "/teacher/select-context/:id", TeacherContextController, :select
     get "/teacher/entries/:entry_id/fiche/print", FichePrintController, :show
+
+    get "/school/classes/:id/students/:enrollment_id/bulletin/print",
+        BulletinPrintController,
+        :show
+
+    get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
     get "/locale/:locale", LocaleController, :set
     get "/schools/invitations/:token", SchoolInvitationController, :show
     post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
