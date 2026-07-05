@@ -176,5 +176,60 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       view |> element("#unassign-#{tc2.id}") |> render_click()
       assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
     end
+
+    test "assign sets a coefficient", %{conn: conn, cg: cg, user: head} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view
+      |> form("#assign-form", %{
+        "assignment" => %{
+          "user_id" => head.id,
+          "subject" => "Maths",
+          "weekly_hours" => "4",
+          "coefficient" => "5"
+        }
+      })
+      |> render_submit()
+
+      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert Decimal.equal?(tc.coefficient, Decimal.new(5))
+    end
+
+    test "editing a coefficient inline persists it", %{conn: conn, cg: cg, user: head} do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view
+      |> element("#coefficient-#{tc.id}")
+      |> render_change(%{"coefficient" => "3"})
+
+      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert Decimal.equal?(tc.coefficient, Decimal.new(3))
+    end
+
+    test "a non-admin cannot change a coefficient (forged event)", ctx do
+      %{school: school, cg: cg, user: head} = ctx
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      other = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      {:ok, inv} =
+        TeacherAssistant.Accounts.Schools.invite_member(school, head, %{
+          email: to_string(other.email),
+          roles: [:teacher]
+        })
+
+      {:ok, _} = TeacherAssistant.Accounts.Schools.accept_invitation(inv.token, other)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:user_id, other.id)
+        |> Plug.Conn.put_session(:workspace_id, school.id)
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
+      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert Decimal.equal?(tc.coefficient, Decimal.new(1))
+    end
   end
 end
