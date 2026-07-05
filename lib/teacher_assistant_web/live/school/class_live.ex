@@ -28,7 +28,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           title={"#{@cg.label} — #{@cg.level}#{if @cg.serie, do: " · #{@cg.serie}", else: ""}"}
         />
 
-        <div :if={@admin?} class="flex justify-end">
+        <div :if={@admin?} class="flex justify-end gap-2">
+          <.link
+            navigate={~p"/school/classes/#{@cg.id}/results"}
+            id="go-to-results"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-chart-bar" class="size-4" />
+            {gettext("Résultats & bulletins")}
+          </.link>
           <.link
             navigate={~p"/school/classes/#{@cg.id}/import"}
             id="go-to-import"
