@@ -70,6 +70,34 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
     assert [%{subject: "Maths"}] = Assignments.list_for_user(school, year, head)
   end
 
+  describe "coefficient (P2.3)" do
+    test "assign accepts a coefficient; defaults to 1", ctx do
+      %{head: head, cg: cg} = ctx
+      {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+      assert Decimal.equal?(tc.coefficient, Decimal.new(4))
+
+      other = TeacherFixtures.user_fixture()
+      {:ok, _} = add_active_member(ctx.school, head, other)
+      {:ok, tc2} = Assignments.assign(cg, other, %{subject: "Anglais"})
+      assert Decimal.equal?(tc2.coefficient, Decimal.new(1))
+    end
+
+    test "set_coefficient updates a valid positive value", ctx do
+      %{head: head, cg: cg} = ctx
+      {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc} = Assignments.set_coefficient(tc, "3")
+      assert Decimal.equal?(tc.coefficient, Decimal.new(3))
+    end
+
+    test "set_coefficient rejects zero, negative and non-numeric", ctx do
+      %{head: head, cg: cg} = ctx
+      {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+      assert {:error, :invalid_coefficient} = Assignments.set_coefficient(tc, "0")
+      assert {:error, :invalid_coefficient} = Assignments.set_coefficient(tc, "-2")
+      assert {:error, :invalid_coefficient} = Assignments.set_coefficient(tc, "abc")
+    end
+  end
+
   # Creates an active membership for `user` in `school` via the invitation flow.
   defp add_active_member(school, head, user) do
     {:ok, inv} =

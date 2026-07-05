@@ -35,6 +35,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :serie,
         :subsystem,
         :weekly_hours,
+        :coefficient,
         :workspace_id,
         :academic_year_id,
         :teacher_user_id,
@@ -46,6 +47,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :serie,
         :subsystem,
         :weekly_hours,
+        :coefficient,
         :class_group_id,
         :teacher_user_id
       ]
@@ -70,6 +72,12 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       public?: true
 
     attribute :weekly_hours, :integer, default: 4, public?: true
+
+    attribute :coefficient, :decimal,
+      allow_nil?: false,
+      default: Decimal.new(1),
+      public?: true
+
     timestamps()
   end
 

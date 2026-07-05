@@ -28,7 +28,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           title={"#{@cg.label} — #{@cg.level}#{if @cg.serie, do: " · #{@cg.serie}", else: ""}"}
         />
 
-        <div :if={@admin?} class="flex justify-end">
+        <div :if={@admin?} class="flex justify-end gap-2">
+          <.link
+            navigate={~p"/school/classes/#{@cg.id}/results"}
+            id="go-to-results"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-chart-bar" class="size-4" />
+            {gettext("Résultats & bulletins")}
+          </.link>
           <.link
             navigate={~p"/school/classes/#{@cg.id}/import"}
             id="go-to-import"
@@ -184,6 +192,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                   <th>{gettext("Matière")}</th>
                   <th>{gettext("Enseignant")}</th>
                   <th>{gettext("H/semaine")}</th>
+                  <th>{gettext("Coefficient")}</th>
                   <th :if={@admin?}><span class="sr-only">{gettext("Actions")}</span></th>
                 </tr>
               </thead>
@@ -192,6 +201,20 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                   <td>{tc.subject}</td>
                   <td>{tc.teacher.email}</td>
                   <td>{tc.weekly_hours}</td>
+                  <td>
+                    <form id={"coefficient-#{tc.id}"} phx-change="set_coefficient">
+                      <input type="hidden" name="context-id" value={tc.id} />
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        name="coefficient"
+                        value={Decimal.to_string(tc.coefficient)}
+                        class="input input-bordered input-xs w-20"
+                        disabled={!@admin?}
+                      />
+                    </form>
+                  </td>
                   <td :if={@admin?}>
                     <div class="flex items-center gap-2">
                       <form
@@ -229,7 +252,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           />
 
           <form :if={@admin?} id="assign-form" phx-submit="assign" class="space-y-2">
-            <div class="grid gap-2 sm:grid-cols-4">
+            <div class="grid gap-2 sm:grid-cols-5">
               <select name="assignment[user_id]" class="select select-bordered select-sm">
                 <option :for={m <- @members} value={m.user_id}>{m.user.email}</option>
               </select>
@@ -246,6 +269,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 min="1"
                 max="40"
                 placeholder={gettext("H/semaine")}
+                class="input input-bordered input-sm"
+              />
+              <input
+                type="number"
+                name="assignment[coefficient]"
+                value="1"
+                min="0"
+                step="0.5"
+                placeholder={gettext("Coefficient")}
                 class="input input-bordered input-sm"
               />
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Affecter")}</button>
@@ -354,7 +386,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == params["user_id"])) do
       case Assignments.assign(socket.assigns.cg, member.user, %{
              subject: params["subject"],
-             weekly_hours: parse_hours(params["weekly_hours"])
+             weekly_hours: parse_hours(params["weekly_hours"]),
+             coefficient: parse_coef(params["coefficient"])
            }) do
         {:ok, _} ->
           {:noreply, socket |> put_flash(:info, gettext("Teacher assigned.")) |> load_roster()}
@@ -395,6 +428,20 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     end
   end
 
+  def handle_event("set_coefficient", %{"context-id" => cid, "coefficient" => value}, socket) do
+    with true <- socket.assigns.admin?,
+         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+         {:ok, _} <- Assignments.set_coefficient(tc, value) do
+      {:noreply, socket |> put_flash(:info, gettext("Coefficient updated.")) |> load_roster()}
+    else
+      {:error, :invalid_coefficient} ->
+        {:noreply, put_flash(socket, :error, gettext("Enter a positive coefficient."))}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("reassign", %{"context-id" => cid, "user_id" => uid}, socket) do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
@@ -410,6 +457,13 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     case Integer.parse(to_string(v)) do
       {n, _} when n > 0 and n <= 40 -> n
       _ -> 4
+    end
+  end
+
+  defp parse_coef(value) do
+    case Decimal.parse(String.trim(to_string(value))) do
+      {dec, ""} -> if Decimal.positive?(dec), do: dec, else: Decimal.new(1)
+      _ -> Decimal.new(1)
     end
   end
 

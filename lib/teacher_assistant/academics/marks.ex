@@ -37,7 +37,7 @@ defmodule TeacherAssistant.Academics.Marks do
 
     per_student =
       Map.new(students, fn s ->
-        avg = student_average(Map.get(marks_by_student, s.id, []), weights)
+        avg = subject_average(Map.get(marks_by_student, s.id, []), weights)
         {s.id, %{average: avg, mention: mention(avg), rank: nil}}
       end)
 
@@ -61,7 +61,15 @@ defmodule TeacherAssistant.Academics.Marks do
 
   # --- per-student weighted average, normalized to /20 over non-nil marks ---
 
-  defp student_average(marks, weights) do
+  @doc """
+  Weighted /20 average for one student in one subject/séquence.
+
+  `marks` = `[%{assessment_id, score}]` (score may be nil); `weights` =
+  `%{assessment_id => %{weight, max_score}}`. Returns a `%Decimal{}` on the /20
+  scale, or nil when nothing is graded. Shared with `Academics.Bulletins` so the
+  per-subject figure is computed identically in both places.
+  """
+  def subject_average(marks, weights) do
     contributions =
       marks
       |> Enum.reject(&is_nil(&1.score))

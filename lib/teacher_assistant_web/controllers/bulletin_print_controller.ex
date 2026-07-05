@@ -1,0 +1,77 @@
+defmodule TeacherAssistantWeb.BulletinPrintController do
+  use TeacherAssistantWeb, :controller
+
+  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Accounts.{Permissions, Workspaces}
+
+  def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
+    with_class(conn, id, params, fn scope, cg, seq, results ->
+      roster = Academics.list_roster(cg)
+
+      case Enum.find(roster, &(&1.enrollment.id == eid)) do
+        %{} = entry -> render_bulletins(conn, scope, cg, seq, results, [entry])
+        nil -> redirect(conn, to: ~p"/school/classes/#{id}/results")
+      end
+    end)
+  end
+
+  def class(conn, %{"id" => id} = params) do
+    with_class(conn, id, params, fn scope, cg, seq, results ->
+      entries =
+        cg
+        |> Academics.list_roster()
+        |> Enum.sort_by(&String.downcase(&1.student.full_name))
+
+      render_bulletins(conn, scope, cg, seq, results, entries)
+    end)
+  end
+
+  # Resolves scope + admin + class + séquence, then hands off to `fun`.
+  defp with_class(conn, id, params, fun) do
+    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
+
+    with %{} = user <- user,
+         {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
+         true <- scope.current_workspace_type == :school and Permissions.admin?(scope),
+         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         year when not is_nil(year) <- scope.current_academic_year,
+         seq when not is_nil(seq) <-
+           Enum.find(Academics.list_sequences(year), &(&1.id == params["seq"])) do
+      fun.(scope, cg, seq, Academics.class_results(cg, seq))
+    else
+      _ -> redirect(conn, to: ~p"/school")
+    end
+  end
+
+  defp render_bulletins(conn, scope, cg, seq, results, entries) do
+    bundles =
+      Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
+        %{
+          student: student,
+          enrollment: enrollment,
+          data: results && results.per_student[student.id]
+        }
+      end)
+
+    conn
+    |> put_layout(false)
+    |> put_root_layout(false)
+    |> render(:show,
+      etablissement: scope.current_workspace.name,
+      annee: scope.current_academic_year && scope.current_academic_year.name,
+      cg: cg,
+      seq: seq,
+      effectif: (results && results.effectif) || 0,
+      bundles: bundles
+    )
+  end
+
+  defp load_user(nil), do: nil
+
+  defp load_user(user_id) do
+    case Ash.get(TeacherAssistant.Accounts.User, user_id, authorize?: false) do
+      {:ok, user} -> user
+      _ -> nil
+    end
+  end
+end

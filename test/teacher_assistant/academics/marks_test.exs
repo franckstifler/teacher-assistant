@@ -16,6 +16,25 @@ defmodule TeacherAssistant.Academics.MarksTest do
     end
   end
 
+  describe "subject_average/2" do
+    test "weights marks and normalizes to /20" do
+      assessments = %{
+        "a" => %{weight: d(1), max_score: d(20)},
+        "b" => %{weight: d(3), max_score: d(10)}
+      }
+
+      # a: 10/20 → 10 (w1); b: 8/10 → 16/20 (w3) ⇒ (10*1 + 16*3)/4 = 58/4 = 14.5
+      marks = [%{assessment_id: "a", score: d(10)}, %{assessment_id: "b", score: d(8)}]
+      assert Decimal.equal?(Marks.subject_average(marks, assessments), d("14.5"))
+    end
+
+    test "ignores nil scores and returns nil when nothing graded" do
+      assessments = %{"a" => %{weight: d(1), max_score: d(20)}}
+      assert Marks.subject_average([%{assessment_id: "a", score: nil}], assessments) == nil
+      assert Marks.subject_average([], assessments) == nil
+    end
+  end
+
   describe "annual_average/1" do
     test "unweighted mean of non-nil sequence averages" do
       assert Decimal.equal?(Marks.annual_average([d("10"), d("14"), nil]), d("12"))

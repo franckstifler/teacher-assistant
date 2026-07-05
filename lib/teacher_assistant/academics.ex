@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Assessment
   alias TeacherAssistant.Academics.Mark
+  alias TeacherAssistant.Academics.Bulletins
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.TeachingLogEntry
@@ -510,6 +511,48 @@ defmodule TeacherAssistant.Academics do
     Mark
     |> Ash.Query.filter(assessment_id in ^assessment_ids)
     |> Ash.read!(authorize?: false)
+  end
+
+  @doc """
+  Bulletin input for a class + séquence: one entry per school teaching context of
+  the class (subject × class, assigned teacher), shaped for `Bulletins.compile/2`.
+  """
+  def class_subjects(%ClassGroup{id: cg_id}, %Sequence{} = seq) do
+    TeachingContext
+    |> Ash.Query.filter(class_group_id == ^cg_id and not is_nil(teacher_user_id))
+    |> Ash.Query.sort(subject: :asc)
+    |> Ash.read!(authorize?: false)
+    |> Enum.map(fn tc ->
+      assessments = list_assessments(tc, seq)
+
+      %{
+        context_id: tc.id,
+        label: tc.subject,
+        coefficient: tc.coefficient,
+        assessments_by_id:
+          Map.new(assessments, fn a -> {a.id, %{weight: a.weight, max_score: a.max_score}} end),
+        marks:
+          tc
+          |> list_marks_for_context_sequence(seq)
+          |> Enum.map(fn m ->
+            %{student_id: m.student_id, assessment_id: m.assessment_id, score: m.score}
+          end)
+      }
+    end)
+  end
+
+  @doc """
+  Compiled class bulletins for a séquence, or nil when the class has no subjects.
+  """
+  def class_results(%ClassGroup{} = cg, %Sequence{} = seq) do
+    case class_subjects(cg, seq) do
+      [] ->
+        nil
+
+      subjects ->
+        students = cg |> list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+        Bulletins.compile(students, subjects)
+    end
   end
 
   @doc """
