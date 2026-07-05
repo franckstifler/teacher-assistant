@@ -59,6 +59,10 @@
         <td>{@enseignant}</td>
       </tr>
       <tr>
+        <td class="k">{gettext("Établissement")}</td>
+        <td colspan="3">{@etablissement || "—"}</td>
+      </tr>
+      <tr>
         <td class="k">{gettext("Titre de la leçon")}</td>
         <td colspan="3">{@lesson_plan.titre || @bundle.entry.lesson_title}</td>
       </tr>

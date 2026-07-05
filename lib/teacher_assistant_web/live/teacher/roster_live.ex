@@ -4,10 +4,11 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
   def mount(%{"id" => ctx_id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
+    read_only? = socket.assigns.current_scope.current_workspace_type == :school
 
     with true <- not is_nil(ws),
          {:ok, ctx} <- Academics.fetch_owned_teaching_context(ctx_id, ws) do
-      {:ok, load(socket, ws, ctx)}
+      {:ok, load(socket, ws, ctx) |> assign(:read_only?, read_only?)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
     end
@@ -36,6 +37,11 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     |> assign(:undo_student, nil)
     |> assign(:class_form, to_form(%{}, as: :class_group))
     |> assign(:student_form, to_form(%{}, as: :student))
+  end
+
+  def handle_event(event, _params, %{assigns: %{read_only?: true}} = socket)
+      when event in ~w(create_class add_student delete_student undo_delete) do
+    {:noreply, socket}
   end
 
   def handle_event("create_class", %{"class_group" => p}, socket) do
@@ -129,7 +135,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           </div>
 
           <div
-            :if={@undo_student}
+            :if={!@read_only? && @undo_student}
             id="student-undo-bar"
             class="ta-leaf flex items-center justify-between gap-2 text-sm"
           >
@@ -140,6 +146,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           </div>
 
           <.form
+            :if={!@read_only?}
             for={@student_form}
             id="student-form"
             phx-submit="add_student"
@@ -188,6 +195,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
                 <td class="flex items-center justify-between gap-2 md:table-cell md:px-3 md:py-2">
                   <span class="font-semibold md:font-normal">{s.full_name}</span>
                   <button
+                    :if={!@read_only?}
                     id={"student-delete-#{s.id}"}
                     phx-click="delete_student"
                     phx-value-id={s.id}
@@ -205,6 +213,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
                 </td>
                 <td class="hidden text-right md:table-cell md:px-3 md:py-2">
                   <button
+                    :if={!@read_only?}
                     id={"student-delete-md-#{s.id}"}
                     phx-click="delete_student"
                     phx-value-id={s.id}
@@ -225,6 +234,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           />
         <% else %>
           <.form
+            :if={!@read_only?}
             for={@class_form}
             id="roster-create-class-form"
             phx-submit="create_class"
@@ -235,6 +245,11 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
             <.input field={@class_form[:level]} label={gettext("Level")} value={@ctx.level} />
             <.button type="submit" class="btn btn-primary w-full">{gettext("Create class")}</.button>
           </.form>
+          <.empty_state
+            :if={@read_only?}
+            icon="hero-user-group"
+            title={gettext("No class linked to this assignment yet.")}
+          />
         <% end %>
       </section>
     </Layouts.app>

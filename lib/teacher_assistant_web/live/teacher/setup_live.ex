@@ -4,21 +4,25 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
   alias TeacherAssistant.Academics.Reference
 
   def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:subsystem, :francophone)
-     |> assign(
-       :form,
-       to_form(
-         %{
-           "name" => "2025-2026",
-           "start_date" => "2025-09-08",
-           "end_date" => "2026-07-31",
-           "weekly_hours" => "4"
-         },
-         as: :setup
-       )
-     )}
+    if socket.assigns.current_scope.current_workspace_type == :school do
+      {:ok, push_navigate(socket, to: ~p"/school")}
+    else
+      {:ok,
+       socket
+       |> assign(:subsystem, :francophone)
+       |> assign(
+         :form,
+         to_form(
+           %{
+             "name" => "2025-2026",
+             "start_date" => "2025-09-08",
+             "end_date" => "2026-07-31",
+             "weekly_hours" => "4"
+           },
+           as: :setup
+         )
+       )}
+    end
   end
 
   def handle_event("subsystem-changed", %{"setup" => %{"subsystem" => sub} = p}, socket) do

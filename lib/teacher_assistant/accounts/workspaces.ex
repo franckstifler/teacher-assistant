@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   def scope_for(user, workspace_id, context_id) do
     case Academics.get_personal_workspace(workspace_id) do
       {:ok, %{kind: :personal} = ws} -> personal_scope(user, ws, context_id)
-      {:ok, %{kind: :school} = ws} -> school_scope(user, ws)
+      {:ok, %{kind: :school} = ws} -> school_scope(user, ws, context_id)
       _ -> {:error, :workspace_not_found}
     end
   end
@@ -39,9 +39,11 @@ defmodule TeacherAssistant.Accounts.Workspaces do
     end
   end
 
-  defp school_scope(user, ws) do
+  defp school_scope(user, ws, context_id) do
     case Schools.fetch_school_membership(ws, user) do
       {:ok, membership} ->
+        year = Academics.current_academic_year(ws)
+
         {:ok,
          %Scope{
            current_user: user,
@@ -50,12 +52,19 @@ defmodule TeacherAssistant.Accounts.Workspaces do
            current_role: List.first(membership.roles),
            current_roles: membership.roles,
            current_membership: membership,
-           current_academic_year: nil,
-           current_context: nil
+           current_academic_year: year,
+           current_context: resolve_assigned_context(ws, year, user, context_id)
          }}
 
       {:error, :not_a_member} ->
         {:error, :not_a_member}
     end
+  end
+
+  defp resolve_assigned_context(_ws, nil, _user, _context_id), do: nil
+
+  defp resolve_assigned_context(ws, year, user, context_id) do
+    contexts = TeacherAssistant.Academics.Assignments.list_for_user(ws, year, user)
+    Enum.find(contexts, &(&1.id == context_id)) || List.first(contexts)
   end
 end

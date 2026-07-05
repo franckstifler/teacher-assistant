@@ -10,6 +10,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Student
+  alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Assessment
   alias TeacherAssistant.Academics.Mark
   alias TeacherAssistant.Academics.ProgressionPlan
@@ -27,6 +28,7 @@ defmodule TeacherAssistant.Academics do
     resource TeachingContext
     resource ClassGroup
     resource Student
+    resource Enrollment
     resource Assessment
     resource Mark
     resource ProgressionPlan
@@ -96,6 +98,14 @@ defmodule TeacherAssistant.Academics do
 
   def get_academic_year(id), do: Ash.get(AcademicYear, id, authorize?: false)
 
+  def activate_academic_year(%AcademicYear{} = year) do
+    deactivate_other_years(%Workspace{id: year.workspace_id}, year.id)
+
+    year
+    |> Ash.Changeset.for_update(:update, %{active: true})
+    |> Ash.update(authorize?: false)
+  end
+
   defp deactivate_other_years(%Workspace{id: ws_id}, keep_id) do
     AcademicYear
     |> Ash.Query.filter(workspace_id == ^ws_id and id != ^keep_id and active == true)
@@ -163,6 +173,25 @@ defmodule TeacherAssistant.Academics do
   end
 
   def get_teaching_context(id), do: Ash.get(TeachingContext, id, authorize?: false)
+
+  @doc """
+  Scope-aware context listing for the class switcher: under personal scope,
+  the workspace's own teaching contexts; under school scope, only the
+  contexts assigned to the current user (via Assignments.list_for_user/3).
+  Returns `[]` when there is no current academic year.
+  """
+  def list_contexts_for_scope(%TeacherAssistant.Scope{
+        current_workspace: ws,
+        current_academic_year: year,
+        current_workspace_type: type,
+        current_user: user
+      }) do
+    cond do
+      is_nil(ws) or is_nil(year) -> []
+      type == :school -> TeacherAssistant.Academics.Assignments.list_for_user(ws, year, user)
+      true -> list_teaching_contexts(ws, year)
+    end
+  end
 
   @doc """
   Resolves the active TeachingContext for the shell's class switcher.
@@ -284,33 +313,95 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
-  def add_student(%ClassGroup{id: cg_id}, attrs) do
-    attrs = Map.put(attrs, :class_group_id, cg_id)
-    Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  def update_class_group(%ClassGroup{} = cg, attrs),
+    do: cg |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+
+  def delete_class_group(%ClassGroup{id: id} = cg) do
+    has_enrollments =
+      Enrollment |> Ash.Query.filter(class_group_id == ^id) |> Ash.read!(authorize?: false) != []
+
+    has_assignments =
+      TeachingContext
+      |> Ash.Query.filter(class_group_id == ^id and not is_nil(teacher_user_id))
+      |> Ash.read!(authorize?: false) != []
+
+    if has_enrollments or has_assignments do
+      {:error, :has_data}
+    else
+      Ash.destroy!(cg, authorize?: false)
+      :ok
+    end
+  end
+
+  def add_student(%ClassGroup{} = cg, attrs) do
+    {repeater, attrs} = Map.pop(attrs, :repeater, false)
+    {status, attrs} = Map.pop(attrs, :status, :inscription)
+    attrs = Map.put(attrs, :workspace_id, cg.workspace_id)
+
+    result =
+      Repo.transaction(fn ->
+        with {:ok, student, student_notifications} <-
+               Student
+               |> Ash.Changeset.for_create(:create, attrs)
+               |> Ash.create(authorize?: false, return_notifications?: true),
+             {:ok, _enr, enrollment_notifications} <-
+               Enrollment
+               |> Ash.Changeset.for_create(:create, %{
+                 student_id: student.id,
+                 class_group_id: cg.id,
+                 academic_year_id: cg.academic_year_id,
+                 workspace_id: cg.workspace_id,
+                 repeater: repeater,
+                 status: status
+               })
+               |> Ash.create(authorize?: false, return_notifications?: true) do
+          Ash.Notifier.notify(student_notifications ++ enrollment_notifications)
+          student
+        else
+          {:error, error} -> Repo.rollback(error)
+        end
+      end)
+
+    case result do
+      {:ok, %Student{}} = ok -> ok
+      {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+    end
   end
 
   def list_students(%ClassGroup{id: cg_id}) do
-    Student
+    Enrollment
     |> Ash.Query.filter(class_group_id == ^cg_id)
-    |> Ash.Query.sort(full_name: :asc)
+    |> Ash.Query.load(:student)
     |> Ash.read!(authorize?: false)
+    |> Enum.map(& &1.student)
+    |> Enum.sort_by(&String.downcase(&1.full_name))
   end
+
+  def list_roster(%ClassGroup{id: cg_id}) do
+    Enrollment
+    |> Ash.Query.filter(class_group_id == ^cg_id)
+    |> Ash.Query.load(:student)
+    |> Ash.read!(authorize?: false)
+    |> Enum.map(&%{student: &1.student, enrollment: &1})
+    |> Enum.sort_by(&String.downcase(&1.student.full_name))
+  end
+
+  def update_enrollment(%Enrollment{} = e, attrs),
+    do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
   def update_student(%Student{} = s, attrs),
     do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
   def delete_student(%Student{} = s), do: Ash.destroy(s, authorize?: false)
 
-  def fetch_owned_student(id, %Workspace{} = ws) do
-    case Ash.get(Student, id, authorize?: false) do
-      {:ok, student} ->
-        case fetch_owned_class_group(student.class_group_id, ws) do
-          {:ok, _} -> {:ok, student}
-          _ -> {:error, :not_found}
-        end
-
-      _ ->
-        {:error, :not_found}
+  def fetch_owned_student(id, %Workspace{id: ws_id}) do
+    Student
+    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      {:ok, s} -> {:ok, s}
+      _ -> {:error, :not_found}
     end
   end
 

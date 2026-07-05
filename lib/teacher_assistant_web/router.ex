@@ -66,7 +66,7 @@ defmodule TeacherAssistantWeb.Router do
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
-        {TeacherAssistantWeb.LiveUserAuth, :require_personal_scope}
+        {TeacherAssistantWeb.LiveUserAuth, :require_teaching_scope}
       ] do
       live "/teacher", Teacher.DashboardLive, :index
       live "/teacher/setup", Teacher.SetupLive, :index
@@ -84,6 +84,9 @@ defmodule TeacherAssistantWeb.Router do
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
       live "/school", School.DashboardLive, :index
+      live "/school/classes", School.ClassesLive, :index
+      live "/school/classes/:id", School.ClassLive, :show
+      live "/school/classes/:id/import", School.EnrollImportLive, :new
       live "/school/members", School.MembersLive, :index
       live "/school/settings", School.SettingsLive, :index
     end

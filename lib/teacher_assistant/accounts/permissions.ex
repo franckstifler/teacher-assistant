@@ -21,4 +21,11 @@ defmodule TeacherAssistant.Accounts.Permissions do
     do: :bursar in (roles || [])
 
   def bursar?(_), do: false
+
+  def admin?(%Scope{current_workspace_type: :school, current_roles: roles}) do
+    r = roles || []
+    :head in r or :vice_principal in r
+  end
+
+  def admin?(_), do: false
 end

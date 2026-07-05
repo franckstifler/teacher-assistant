@@ -52,7 +52,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       public? true
     end
 
-    has_many :students, TeacherAssistant.Academics.Student
+    has_many :enrollments, TeacherAssistant.Academics.Enrollment
   end
 
   identities do

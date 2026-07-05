@@ -4,7 +4,8 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    user = TeacherFixtures.user_fixture()
+    ws = Academics.ensure_personal_workspace!(user)
 
     {:ok, year} =
       Academics.create_academic_year(ws, %{
@@ -14,20 +15,53 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
         active: true
       })
 
-    %{ws: ws, year: year}
+    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    %{user: user, ws: ws, year: year, cg: cg}
   end
 
-  test "create and list a teaching context", %{ws: ws, year: year} do
-    assert {:ok, ctx} =
-             Academics.create_teaching_context(ws, year, %{
-               subject: "Mathematics",
-               level: "Form 1",
-               subsystem: :anglophone,
-               weekly_hours: 4
-             })
+  test "two personal contexts with same subject/level collide", %{ws: ws, year: year} do
+    attrs = %{subject: "Maths", level: "6ème", subsystem: :francophone}
+    {:ok, _} = Academics.create_teaching_context(ws, year, attrs)
+    assert {:error, _} = Academics.create_teaching_context(ws, year, attrs)
+  end
 
-    assert ctx.subject == "Mathematics"
-    assert [listed] = Academics.list_teaching_contexts(ws, year)
-    assert listed.id == ctx.id
+  test "two teachers can hold the same subject/level on different classes", ctx do
+    %{ws: ws, year: year, cg: cg, user: u1} = ctx
+    u2 = TeacherFixtures.user_fixture()
+    {:ok, cg2} = Academics.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
+
+    base = %{subject: "Maths", level: "6ème", subsystem: :francophone}
+
+    {:ok, _} =
+      Academics.create_teaching_context(
+        ws,
+        year,
+        base |> Map.put(:teacher_user_id, u1.id) |> Map.put(:class_group_id, cg.id)
+      )
+
+    {:ok, _} =
+      Academics.create_teaching_context(
+        ws,
+        year,
+        base |> Map.put(:teacher_user_id, u2.id) |> Map.put(:class_group_id, cg2.id)
+      )
+  end
+
+  test "one teacher per subject per class", ctx do
+    %{ws: ws, year: year, cg: cg, user: u1} = ctx
+    u2 = TeacherFixtures.user_fixture()
+
+    base = %{
+      subject: "Maths",
+      level: "6ème",
+      subsystem: :francophone,
+      class_group_id: cg.id
+    }
+
+    {:ok, _} =
+      Academics.create_teaching_context(ws, year, Map.put(base, :teacher_user_id, u1.id))
+
+    assert {:error, _} =
+             Academics.create_teaching_context(ws, year, Map.put(base, :teacher_user_id, u2.id))
   end
 end
