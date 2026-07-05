@@ -64,6 +64,10 @@ defmodule TeacherAssistantWeb.Layouts do
         :is_head?,
         current_scope && TeacherAssistant.Accounts.Permissions.head?(current_scope)
       )
+      |> assign(
+        :is_admin?,
+        current_scope && TeacherAssistant.Accounts.Permissions.admin?(current_scope)
+      )
       |> assign(:current_context, current_scope && current_scope.current_context)
       |> assign(:current_path, assigns[:current_path] || "/teacher")
 
@@ -208,7 +212,7 @@ defmodule TeacherAssistantWeb.Layouts do
             {gettext("Members")}
           </.tab_link>
           <.tab_link
-            :if={@is_head?}
+            :if={@is_admin?}
             id="nav-school-settings"
             href={~p"/school/settings"}
             icon="hero-cog-6-tooth"

@@ -90,6 +90,45 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert Academics.list_academic_years(school) == []
   end
 
+  test "a vice_principal member sees the Settings nav link and can manage years", %{
+    conn: _conn,
+    school: school,
+    actor: head
+  } do
+    alias TeacherAssistant.Academics
+
+    vp = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{
+        email: to_string(vp.email),
+        roles: [:vice_principal]
+      })
+
+    {:ok, _} = Schools.accept_invitation(inv.token, vp)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, vp.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    {:ok, view, html} = live(conn, ~p"/school")
+    assert html =~ "nav-school-settings"
+    assert has_element?(view, "#nav-school-settings")
+
+    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    assert has_element?(view, "#year-form")
+
+    view
+    |> form("#year-form", %{
+      "year" => %{"name" => "2025-2026", "start_date" => "2025-09-08", "end_date" => "2026-07-31"}
+    })
+    |> render_submit()
+
+    assert Academics.list_academic_years(school) |> Enum.any?(&(&1.name == "2025-2026"))
+  end
+
   test "additional academic years created via form are inactive; only first is active", %{
     conn: conn,
     school: school

@@ -46,7 +46,31 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     {:ok, school} = Schools.create_school(user, %{name: "École SansAnnée"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
-    {:ok, _view, html} = live(conn, ~p"/school")
+    {:ok, view, html} = live(conn, ~p"/school")
     assert html =~ "année" or html =~ "year"
+    assert has_element?(view, ~s(#school-dashboard a[href="/school/settings"]))
+  end
+
+  test "a plain teacher member sees the no-year gate without a settings link", %{
+    conn: _conn,
+    actor: head
+  } do
+    {:ok, school} = Schools.create_school(head, %{name: "École SansAnnéeVP"})
+    other = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+
+    {:ok, _} = Schools.accept_invitation(inv.token, other)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, other.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    {:ok, view, html} = live(conn, ~p"/school")
+    assert html =~ "année" or html =~ "year"
+    refute has_element?(view, ~s(#school-dashboard a[href="/school/settings"]))
   end
 end

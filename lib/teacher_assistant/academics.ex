@@ -338,20 +338,33 @@ defmodule TeacherAssistant.Academics do
     {status, attrs} = Map.pop(attrs, :status, :inscription)
     attrs = Map.put(attrs, :workspace_id, cg.workspace_id)
 
-    with {:ok, student} <-
-           Student |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false),
-         {:ok, _enr} <-
-           Enrollment
-           |> Ash.Changeset.for_create(:create, %{
-             student_id: student.id,
-             class_group_id: cg.id,
-             academic_year_id: cg.academic_year_id,
-             workspace_id: cg.workspace_id,
-             repeater: repeater,
-             status: status
-           })
-           |> Ash.create(authorize?: false) do
-      {:ok, student}
+    result =
+      Repo.transaction(fn ->
+        with {:ok, student, student_notifications} <-
+               Student
+               |> Ash.Changeset.for_create(:create, attrs)
+               |> Ash.create(authorize?: false, return_notifications?: true),
+             {:ok, _enr, enrollment_notifications} <-
+               Enrollment
+               |> Ash.Changeset.for_create(:create, %{
+                 student_id: student.id,
+                 class_group_id: cg.id,
+                 academic_year_id: cg.academic_year_id,
+                 workspace_id: cg.workspace_id,
+                 repeater: repeater,
+                 status: status
+               })
+               |> Ash.create(authorize?: false, return_notifications?: true) do
+          Ash.Notifier.notify(student_notifications ++ enrollment_notifications)
+          student
+        else
+          {:error, error} -> Repo.rollback(error)
+        end
+      end)
+
+    case result do
+      {:ok, %Student{}} = ok -> ok
+      {:error, error} -> {:error, Ash.Error.to_error_class(error)}
     end
   end
 

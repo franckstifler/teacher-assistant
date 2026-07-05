@@ -3,12 +3,17 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Accounts.Permissions
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace_type == :school do
-      {:ok, socket |> assign(:scope, scope) |> load_stats()}
+      {:ok,
+       socket
+       |> assign(:scope, scope)
+       |> assign(:admin?, Permissions.admin?(scope))
+       |> load_stats()}
     else
       {:ok, push_navigate(socket, to: ~p"/teacher")}
     end
@@ -26,10 +31,14 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
               icon="hero-calendar"
               eyebrow={gettext("Get started")}
               title={gettext("No active academic year")}
-              message={gettext("Set up an academic year before managing your school.")}
+              message={
+                if @admin?,
+                  do: gettext("Set up an academic year before managing your school."),
+                  else: gettext("L'année scolaire n'a pas encore été créée.")
+              }
             >
               <:action>
-                <.link navigate={~p"/school/settings"} class="btn btn-primary">
+                <.link :if={@admin?} navigate={~p"/school/settings"} class="btn btn-primary">
                   {gettext("Go to settings")}
                 </.link>
               </:action>

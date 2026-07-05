@@ -33,10 +33,14 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             icon="hero-rectangle-group"
             eyebrow={gettext("Get started")}
             title={gettext("No active academic year")}
-            message={gettext("Set up an academic year before creating classes.")}
+            message={
+              if @admin?,
+                do: gettext("Set up an academic year before creating classes."),
+                else: gettext("L'année scolaire n'a pas encore été créée.")
+            }
           >
             <:action>
-              <.link navigate={~p"/school/settings"} class="btn btn-primary">
+              <.link :if={@admin?} navigate={~p"/school/settings"} class="btn btn-primary">
                 {gettext("Go to settings")}
               </.link>
             </:action>

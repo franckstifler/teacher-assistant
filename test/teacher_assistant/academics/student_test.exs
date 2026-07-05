@@ -42,4 +42,19 @@ defmodule TeacherAssistant.Academics.StudentTest do
     assert {:ok, %{id: id}} = Academics.fetch_owned_student(s.id, ws)
     assert id == s.id
   end
+
+  test "does not leave an orphaned student when enrollment fails", %{cg: cg, ws: ws} do
+    bogus_cg = %{cg | id: Ecto.UUID.generate()}
+
+    assert {:error, _} = Academics.add_student(bogus_cg, %{full_name: "Orphan", sex: :f})
+
+    require Ash.Query
+
+    students =
+      TeacherAssistant.Academics.Student
+      |> Ash.Query.filter(workspace_id == ^ws.id and full_name == "Orphan")
+      |> Ash.read!(authorize?: false)
+
+    assert students == []
+  end
 end
