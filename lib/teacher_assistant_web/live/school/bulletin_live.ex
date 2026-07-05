@@ -90,7 +90,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
           :if={is_nil(@data)}
           icon="hero-document-text"
           title={gettext("Aucune donnée")}
-          subtitle={gettext("No marks for this séquence yet.")}
+          message={gettext("No marks for this séquence yet.")}
         />
 
         <div :if={@data} class="space-y-4">

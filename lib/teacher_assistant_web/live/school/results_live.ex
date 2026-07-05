@@ -87,14 +87,14 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           :if={@seq == nil}
           icon="hero-calendar-days"
           title={gettext("Aucune séquence")}
-          subtitle={gettext("Create an academic year and its calendar first.")}
+          message={gettext("Create an academic year and its calendar first.")}
         />
 
         <.empty_state
           :if={@seq != nil and @results == nil}
           icon="hero-academic-cap"
           title={gettext("Aucun enseignant affecté")}
-          subtitle={gettext("Assign subjects to this class to compute bulletins.")}
+          message={gettext("Assign subjects to this class to compute bulletins.")}
         />
 
         <div :if={@results} class="space-y-6">
