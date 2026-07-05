@@ -1481,11 +1481,6 @@ msgstr "Aucune classe liée à cette affectation pour le moment."
 msgid "Établissement"
 msgstr "Établissement"
 
-#: lib/teacher_assistant_web/live/school/enroll_import_live.ex:94
-#, elixir-autogen, elixir-format
-msgid "%{created} created, %{reenrolled} réinscription(s)."
-msgstr "%{created} created, %{reenrolled} réinscription(s)."
-
 #: lib/teacher_assistant_web/live/school/settings_live.ex:64
 #, elixir-autogen, elixir-format
 msgid "Active"
@@ -1824,11 +1819,6 @@ msgstr "Élèves"
 msgid "Série"
 msgstr "Série"
 
-#: lib/teacher_assistant_web/live/school/classes_live.ex:97
-#, elixir-autogen, elixir-format
-msgid "Série (optional)"
-msgstr "Série (optional)"
-
 #: lib/teacher_assistant_web/live/school/class_live.ex:360
 #, elixir-autogen, elixir-format
 msgid "Teacher assigned."
@@ -1899,3 +1889,13 @@ msgstr "n'a pas pu être inscrit"
 #, elixir-autogen, elixir-format
 msgid "duplicate matricule"
 msgstr "matricule en double"
+
+#: lib/teacher_assistant_web/live/school/enroll_import_live.ex:94
+#, elixir-autogen, elixir-format
+msgid "%{created} inscription(s), %{reenrolled} réinscription(s)."
+msgstr "%{created} inscription(s), %{reenrolled} réinscription(s)."
+
+#: lib/teacher_assistant_web/live/school/classes_live.ex:97
+#, elixir-autogen, elixir-format
+msgid "Série (optionnel)"
+msgstr "Série (optionnel)"

@@ -91,7 +91,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
 
         <div :if={@stage == :done} class="ta-leaf space-y-3">
           <p class="text-sm">
-            {gettext("%{created} created, %{reenrolled} réinscription(s).",
+            {gettext("%{created} inscription(s), %{reenrolled} réinscription(s).",
               created: @result.created,
               reenrolled: @result.reenrolled
             )}

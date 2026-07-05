@@ -94,7 +94,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
               <div class="grid gap-2 sm:grid-cols-4">
                 <.input field={@class_form[:label]} label={gettext("Label")} />
                 <.input field={@class_form[:level]} label={gettext("Level")} />
-                <.input field={@class_form[:serie]} label={gettext("Série (optional)")} />
+                <.input field={@class_form[:serie]} label={gettext("Série (optionnel)")} />
                 <.input
                   type="select"
                   field={@class_form[:subsystem]}
