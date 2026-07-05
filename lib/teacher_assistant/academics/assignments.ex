@@ -23,6 +23,7 @@ defmodule TeacherAssistant.Academics.Assignments do
       |> Ash.Changeset.for_create(:create, %{
         subject: Map.fetch!(attrs, :subject),
         weekly_hours: Map.get(attrs, :weekly_hours, 4),
+        coefficient: Map.get(attrs, :coefficient, Decimal.new(1)),
         level: cg.level,
         serie: cg.serie,
         subsystem: cg.subsystem,
@@ -49,6 +50,29 @@ defmodule TeacherAssistant.Academics.Assignments do
       |> Ash.update(authorize?: false)
     end
   end
+
+  def set_coefficient(%TeachingContext{} = tc, value) do
+    case parse_coefficient(value) do
+      {:ok, dec} ->
+        tc
+        |> Ash.Changeset.for_update(:update, %{coefficient: dec})
+        |> Ash.update(authorize?: false)
+
+      :error ->
+        {:error, :invalid_coefficient}
+    end
+  end
+
+  defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
+
+  defp parse_coefficient(value) when is_binary(value) do
+    case Decimal.parse(String.trim(value)) do
+      {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
+      _ -> :error
+    end
+  end
+
+  defp parse_coefficient(_), do: :error
 
   def remove(%TeachingContext{id: id} = tc) do
     has_plans =
