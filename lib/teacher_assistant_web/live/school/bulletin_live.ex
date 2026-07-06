@@ -14,11 +14,16 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
            Enum.find(roster, &(&1.enrollment.id == eid)) do
       year = scope.current_academic_year
       sequences = if year, do: Academics.list_sequences(year), else: []
+      terms = if year, do: Academics.list_terms(year), else: []
 
-      seq =
-        Enum.find(sequences, &(&1.id == params["seq"])) || List.first(sequences)
+      period =
+        (year && Academics.resolve_period(year, params["period"])) ||
+          case sequences do
+            [seq | _] -> {:sequence, seq}
+            [] -> nil
+          end
 
-      results = if seq, do: Academics.class_results(cg, seq)
+      results = period && Academics.class_results_for_period(cg, period)
       data = results && results.per_student[student.id]
 
       {:ok,
@@ -26,7 +31,12 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          cg: cg,
          student: student,
          enrollment: enrollment,
-         seq: seq,
+         year: year,
+         sequences: sequences,
+         terms: terms,
+         period: period,
+         period_param: period && Academics.period_param(period),
+         period_kind: period && Academics.period_kind(period),
          effectif: (results && results.effectif) || 0,
          data: data
        )}
@@ -36,6 +46,49 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
+
+  def handle_event("select_period", %{"period" => param}, socket) do
+    {:noreply,
+     push_patch(socket,
+       to:
+         ~p"/school/classes/#{socket.assigns.cg.id}/students/#{socket.assigns.enrollment.id}/bulletin?period=#{param}"
+     )}
+  end
+
+  def handle_params(%{"period" => _} = params, _uri, socket) do
+    year = socket.assigns.year
+
+    period =
+      (year && Academics.resolve_period(year, params["period"])) || socket.assigns.period
+
+    results = period && Academics.class_results_for_period(socket.assigns.cg, period)
+
+    {:noreply,
+     assign(socket,
+       period: period,
+       period_param: period && Academics.period_param(period),
+       period_kind: period && Academics.period_kind(period),
+       effectif: (results && results.effectif) || 0,
+       data: results && results.per_student[socket.assigns.student.id]
+     )}
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
+  defp component_at(row, key, idx) do
+    case row.components do
+      %{^key => list} -> Enum.at(list, idx, %{})[:average]
+      _ -> nil
+    end
+  end
+
+  defp period_heading(%{period: {:sequence, seq}}), do: "#{gettext("Séquence")} #{seq.number}"
+
+  defp period_heading(%{period: {:trimester, term}}),
+    do: "#{gettext("Trimestre")} #{term.position}"
+
+  defp period_heading(%{period: {:annual, _}}), do: gettext("Année scolaire")
+  defp period_heading(_), do: "—"
 
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
@@ -49,11 +102,31 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       <section id="bulletin" class="mx-auto max-w-3xl space-y-6">
         <.page_header eyebrow={gettext("Bulletin de notes")} title={@student.full_name}>
           <:actions>
+            <form
+              :if={@sequences != []}
+              id="bulletin-period-form"
+              phx-change="select_period"
+              class="inline"
+            >
+              <.input
+                type="select"
+                id="bulletin-period-select"
+                name="period"
+                value={@period_param}
+                options={[
+                  {gettext("Séquences"),
+                   for(s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", "seq:#{s.id}"})},
+                  {gettext("Trimestres"),
+                   for(t <- @terms, do: {gettext("Trimestre") <> " #{t.position}", "trim:#{t.id}"})},
+                  {gettext("Année"), [{gettext("Année scolaire"), "annee"}]}
+                ]}
+              />
+            </form>
             <a
-              :if={@seq}
+              :if={match?({:sequence, _}, @period)}
               id="bulletin-print"
               href={
-                ~p"/school/classes/#{@cg.id}/students/#{@enrollment.id}/bulletin/print?seq=#{@seq.id}"
+                ~p"/school/classes/#{@cg.id}/students/#{@enrollment.id}/bulletin/print?seq=#{elem(@period, 1).id}"
               }
               target="_blank"
               class="btn btn-primary btn-sm gap-2"
@@ -74,8 +147,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             <dd>{@cg.label} — {@cg.level}</dd>
           </div>
           <div>
-            <dt class="ta-eyebrow">{gettext("Séquence")}</dt>
-            <dd>{@seq && "#{gettext("Séquence")} #{@seq.number}"}</dd>
+            <dt class="ta-eyebrow">{gettext("Période")}</dt>
+            <dd>{period_heading(assigns)}</dd>
           </div>
           <div>
             <dt class="ta-eyebrow">{gettext("Sexe")}</dt>
@@ -101,7 +174,19 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                 <tr>
                   <th>{gettext("Matière")}</th>
                   <th>{gettext("Coefficient")}</th>
-                  <th>{gettext("Note")}/20</th>
+                  <%= case @period_kind do %>
+                    <% :trimester -> %>
+                      <th>{gettext("Séq 1")}</th>
+                      <th>{gettext("Séq 2")}</th>
+                      <th>{gettext("Moy. trim.")}</th>
+                    <% :annual -> %>
+                      <th>{gettext("Trim 1")}</th>
+                      <th>{gettext("Trim 2")}</th>
+                      <th>{gettext("Trim 3")}</th>
+                      <th>{gettext("Moy. ann.")}</th>
+                    <% _ -> %>
+                      <th>{gettext("Note")}/20</th>
+                  <% end %>
                   <th>{gettext("Note×Coef")}</th>
                   <th>{gettext("Cote classe")}</th>
                 </tr>
@@ -110,7 +195,19 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                 <tr :for={row <- @data.subjects} id={"bulletin-subject-#{row.context_id}"}>
                   <td>{row.label}</td>
                   <td class="ta-num">{fmt(row.coefficient)}</td>
-                  <td class="ta-num">{fmt(row.average)}</td>
+                  <%= case @period_kind do %>
+                    <% :trimester -> %>
+                      <td class="ta-num">{fmt(component_at(row, :sequences, 0))}</td>
+                      <td class="ta-num">{fmt(component_at(row, :sequences, 1))}</td>
+                      <td class="ta-num">{fmt(row.average)}</td>
+                    <% :annual -> %>
+                      <td class="ta-num">{fmt(component_at(row, :trimesters, 0))}</td>
+                      <td class="ta-num">{fmt(component_at(row, :trimesters, 1))}</td>
+                      <td class="ta-num">{fmt(component_at(row, :trimesters, 2))}</td>
+                      <td class="ta-num">{fmt(row.average)}</td>
+                    <% _ -> %>
+                      <td class="ta-num">{fmt(row.average)}</td>
+                  <% end %>
                   <td class="ta-num">{fmt(row.note_x_coef)}</td>
                   <td class="ta-num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
                 </tr>
