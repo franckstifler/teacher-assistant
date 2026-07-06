@@ -315,6 +315,31 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert TeacherAssistant.Academics.Assignments.list_for_class(cg) == []
     end
 
+    test "form master cannot change a coefficient (forged event)", %{
+      fm_conn: conn,
+      cg: cg,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
+      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert Decimal.equal?(tc.coefficient, Decimal.new(1))
+    end
+
+    test "form master cannot set the form master (forged event)", %{
+      fm_conn: conn,
+      cg: cg,
+      fm: fm,
+      user: head,
+      school: school
+    } do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "set_form_master", %{"user_id" => head.id})
+      {:ok, reloaded} = TeacherAssistant.Academics.fetch_owned_class_group(cg.id, school)
+      assert reloaded.form_master_user_id == fm.id
+    end
+
     test "a form master of another class is redirected", ctx do
       %{school: school, cg2: cg2, fm_conn: conn} = ctx
       # fm is form master of cg, not cg2
