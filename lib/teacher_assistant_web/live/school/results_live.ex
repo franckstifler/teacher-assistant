@@ -7,11 +7,15 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.admin?(scope),
-         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace) do
+    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Academics.list_sequences(year), else: []
-      {:ok, socket |> assign(cg: cg, sequences: sequences) |> select_seq(nil)}
+
+      {:ok,
+       socket
+       |> assign(cg: cg, form_master: Academics.form_master(cg), sequences: sequences)
+       |> select_seq(nil)}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
@@ -82,6 +86,10 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
             </form>
           </:actions>
         </.page_header>
+
+        <p :if={@form_master} class="text-sm text-base-content/70">
+          {gettext("Professeur principal")}: {@form_master.email}
+        </p>
 
         <.empty_state
           :if={@seq == nil}

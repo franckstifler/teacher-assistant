@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Accounts.Permissions do
   protects (bulletins → P2.3, fees → P2.4).
   """
   alias TeacherAssistant.Scope
+  alias TeacherAssistant.Academics.ClassGroup
 
   def member?(%Scope{current_workspace_type: :school}), do: true
   def member?(_), do: false
@@ -28,4 +29,15 @@ defmodule TeacherAssistant.Accounts.Permissions do
   end
 
   def admin?(_), do: false
+
+  def form_master?(
+        %Scope{current_workspace_type: :school, current_user: %{id: uid}},
+        %ClassGroup{form_master_user_id: fm_id}
+      ),
+      do: not is_nil(fm_id) and fm_id == uid
+
+  def form_master?(_, _), do: false
+
+  def admin_or_form_master?(scope, %ClassGroup{} = cg),
+    do: admin?(scope) or form_master?(scope, cg)
 end

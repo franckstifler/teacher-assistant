@@ -7,8 +7,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.admin?(scope),
-         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         true <- Permissions.admin_or_form_master?(scope, cg),
          roster = Academics.list_roster(cg),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
@@ -32,7 +32,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
        )}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
-      _ -> {:ok, push_navigate(socket, to: ~p"/school/classes/#{id}/results")}
+      nil -> {:ok, push_navigate(socket, to: ~p"/school/classes/#{id}/results")}
+      _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
 

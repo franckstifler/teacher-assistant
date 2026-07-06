@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Academics.ClassGroup do
   postgres do
     table "class_groups"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :form_master, on_delete: :nilify
+    end
   end
 
   actions do
@@ -15,7 +19,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       :read,
       :destroy,
       create: [:label, :level, :serie, :subsystem, :workspace_id, :academic_year_id],
-      update: [:label, :level, :serie, :subsystem]
+      update: [:label, :level, :serie, :subsystem, :form_master_user_id]
     ]
   end
 
@@ -36,6 +40,8 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       default: :francophone,
       public?: true
 
+    attribute :form_master_user_id, :uuid, allow_nil?: true, public?: true
+
     timestamps()
   end
 
@@ -49,6 +55,13 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear do
       source_attribute :academic_year_id
       allow_nil? false
+      public? true
+    end
+
+    belongs_to :form_master, TeacherAssistant.Accounts.User do
+      source_attribute :form_master_user_id
+      define_attribute? false
+      allow_nil? true
       public? true
     end
 

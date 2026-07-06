@@ -820,4 +820,28 @@ defmodule TeacherAssistant.Academics do
     logs = list_logs_for_plan(plan)
     TeacherAssistant.Academics.Coverage.summarize(entries, logs)
   end
+
+  def set_form_master(%ClassGroup{} = cg, user_id) do
+    cg
+    |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id})
+    |> Ash.update(authorize?: false)
+  end
+
+  def form_master(%ClassGroup{form_master_user_id: nil}), do: nil
+
+  def form_master(%ClassGroup{form_master_user_id: uid}) do
+    case Ash.get(TeacherAssistant.Accounts.User, uid, authorize?: false) do
+      {:ok, user} -> user
+      _ -> nil
+    end
+  end
+
+  def list_form_master_classes(%Workspace{id: ws_id}, %{id: uid}, %AcademicYear{id: year_id}) do
+    ClassGroup
+    |> Ash.Query.filter(
+      workspace_id == ^ws_id and academic_year_id == ^year_id and form_master_user_id == ^uid
+    )
+    |> Ash.Query.sort(label: :asc)
+    |> Ash.read!(authorize?: false)
+  end
 end
