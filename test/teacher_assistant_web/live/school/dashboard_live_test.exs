@@ -73,4 +73,36 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     assert html =~ "année" or html =~ "year"
     refute has_element?(view, ~s(#school-dashboard a[href="/school/settings"]))
   end
+
+  describe "Mes classes section" do
+    alias TeacherAssistant.Academics
+
+    setup %{conn: conn, actor: head} do
+      {:ok, school} = Schools.create_school(head, %{name: "Lycée Dash"})
+
+      {:ok, year} =
+        Academics.create_academic_year(school, %{
+          name: "2025-2026",
+          start_date: ~D[2025-09-08],
+          end_date: ~D[2026-07-31],
+          active: true
+        })
+
+      {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+      conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
+      %{conn: conn, school: school, year: year, cg: cg, head: head}
+    end
+
+    test "shows Mes classes when the user is a form master", %{conn: conn, cg: cg, head: head} do
+      {:ok, _} = Academics.set_form_master(cg, head.id)
+      {:ok, _view, html} = live(conn, ~p"/school")
+      assert html =~ "Mes classes"
+      assert html =~ "6e A"
+    end
+
+    test "no Mes classes section when the user is not a form master", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/school")
+      refute html =~ "Mes classes"
+    end
+  end
 end

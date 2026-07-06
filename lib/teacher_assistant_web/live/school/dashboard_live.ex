@@ -63,6 +63,17 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
               <.stat label={gettext("Teachers")} value={Integer.to_string(@teachers_count)} />
             </div>
         <% end %>
+
+        <div :if={@my_classes != []} id="my-classes" class="ta-leaf space-y-2">
+          <h2 class="text-sm font-semibold">{gettext("Mes classes")}</h2>
+          <ul class="space-y-1">
+            <li :for={c <- @my_classes}>
+              <.link navigate={~p"/school/classes/#{c.id}"} class="link">
+                {c.label} — {c.level}
+              </.link>
+            </li>
+          </ul>
+        </div>
       </section>
     </Layouts.app>
     """
@@ -87,11 +98,17 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
       |> Enum.uniq()
       |> length()
 
+    my_classes =
+      if year,
+        do: Academics.list_form_master_classes(scope.current_workspace, scope.current_user, year),
+        else: []
+
     socket
     |> assign(:year, year)
     |> assign(:classes, classes)
     |> assign(:classes_count, length(classes))
     |> assign(:students_count, students_count)
     |> assign(:teachers_count, teachers_count)
+    |> assign(:my_classes, my_classes)
   end
 end
