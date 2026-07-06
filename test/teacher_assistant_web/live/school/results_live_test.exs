@@ -99,9 +99,17 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     assert html =~ "Awa"
   end
 
-  test "results header shows the form master when set", %{conn: conn, cg: cg, head: head} do
-    {:ok, _} = Academics.set_form_master(cg, head.id)
+  test "results header shows the form master when set", %{conn: conn, cg: cg, head: head, school: school} do
+    fm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+
+    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Academics.set_form_master(cg, fm.id)
+
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
-    assert html =~ to_string(head.email)
+    assert html =~ to_string(fm.email)
+    assert html =~ "Professeur principal"
   end
 end
