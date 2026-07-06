@@ -185,6 +185,20 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         <div class="ta-leaf space-y-3">
           <h2 class="text-sm font-semibold">{gettext("Enseignements")}</h2>
 
+          <form :if={@admin?} id="form-master-form" phx-change="set_form_master" class="text-sm">
+            <label class="ta-eyebrow block mb-1">{gettext("Professeur principal")}</label>
+            <select name="user_id" class="select select-bordered select-sm w-full sm:w-80">
+              <option value="">{gettext("Aucun")}</option>
+              <option
+                :for={m <- @members}
+                value={m.user_id}
+                selected={m.user_id == @cg.form_master_user_id}
+              >
+                {m.user.email}
+              </option>
+            </select>
+          </form>
+
           <div class="overflow-x-auto">
             <table id="assignments" class="table table-zebra">
               <thead>
@@ -448,6 +462,27 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == uid)),
          {:ok, _} <- Assignments.reassign(tc, member.user) do
       {:noreply, socket |> put_flash(:info, gettext("Teacher reassigned.")) |> load_roster()}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("set_form_master", %{"user_id" => uid}, socket) do
+    with true <- socket.assigns.admin? do
+      target = if uid == "", do: :clear, else: Enum.find(socket.assigns.members, &(&1.user_id == uid))
+
+      case target do
+        :clear ->
+          {:ok, cg} = Academics.set_form_master(socket.assigns.cg, nil)
+          {:noreply, socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master cleared."))}
+
+        %{user_id: user_id} ->
+          {:ok, cg} = Academics.set_form_master(socket.assigns.cg, user_id)
+          {:noreply, socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master assigned."))}
+
+        _ ->
+          {:noreply, socket}
+      end
     else
       _ -> {:noreply, socket}
     end

@@ -232,4 +232,48 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert Decimal.equal?(tc.coefficient, Decimal.new(1))
     end
   end
+
+  describe "form master" do
+    test "admin assigns then clears the form master", %{conn: conn, cg: cg, school: school, user: head} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view
+      |> element("#form-master-form")
+      |> render_change(%{"user_id" => head.id})
+
+      assert TeacherAssistant.Academics.fetch_owned_class_group(cg.id, school)
+             |> elem(1)
+             |> Map.get(:form_master_user_id) == head.id
+
+      view |> element("#form-master-form") |> render_change(%{"user_id" => ""})
+
+      assert TeacherAssistant.Academics.fetch_owned_class_group(cg.id, school)
+             |> elem(1)
+             |> Map.get(:form_master_user_id) == nil
+    end
+
+    test "a non-admin cannot set the form master (forged event)", ctx do
+      %{school: school, cg: cg, user: head} = ctx
+      other = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      {:ok, inv} =
+        Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+
+      {:ok, _} = Schools.accept_invitation(inv.token, other)
+      {:ok, _} = TeacherAssistant.Academics.set_form_master(cg, other.id)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:user_id, other.id)
+        |> Plug.Conn.put_session(:workspace_id, school.id)
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "set_form_master", %{"user_id" => head.id})
+
+      assert TeacherAssistant.Academics.fetch_owned_class_group(cg.id, school)
+             |> elem(1)
+             |> Map.get(:form_master_user_id) == other.id
+    end
+  end
 end
