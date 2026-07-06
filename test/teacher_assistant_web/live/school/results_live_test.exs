@@ -98,4 +98,10 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
     assert html =~ "Awa"
   end
+
+  test "results header shows the form master when set", %{conn: conn, cg: cg, head: head} do
+    {:ok, _} = Academics.set_form_master(cg, head.id)
+    {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
+    assert html =~ to_string(head.email)
+  end
 end

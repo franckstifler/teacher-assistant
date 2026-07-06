@@ -97,4 +97,10 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
     assert html_response(conn, 200) =~ "Awa Ngo"
   end
+
+  test "the bulletin names the form master when set", %{conn: conn, cg: cg, seq: seq, head: head} do
+    {:ok, _} = Academics.set_form_master(cg, head.id)
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
+    assert html_response(conn, 200) =~ to_string(head.email)
+  end
 end

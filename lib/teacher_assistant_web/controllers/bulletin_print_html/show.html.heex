@@ -30,6 +30,7 @@
       .visa .slot { flex: 1; }
       .visa .line { border-top: 1px solid #999; margin-top: 32px; padding-top: 2px;
                     font-variant: small-caps; font-size: 9pt; color: #444; }
+      .visa .pp-name { font-size: 11px; margin-bottom: 2px; }
       .appreciation { margin-top: 12px; }
       .appreciation .k { font-variant: small-caps; font-size: 9pt; color: #444; }
       .appreciation .rule { border-bottom: 1px solid #bbb; height: 20px; }
@@ -125,6 +126,7 @@
           <div class="line">{gettext("Décision")}</div>
         </div>
         <div class="slot">
+          <div :if={@professeur_principal} class="pp-name">{@professeur_principal}</div>
           <div class="line">{gettext("Visa Professeur Principal")}</div>
         </div>
         <div class="slot">

@@ -54,12 +54,15 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
         }
       end)
 
+    fm = Academics.form_master(cg)
+
     conn
     |> put_layout(false)
     |> put_root_layout(false)
     |> render(:show,
       etablissement: scope.current_workspace.name,
       annee: scope.current_academic_year && scope.current_academic_year.name,
+      professeur_principal: fm && fm.email,
       cg: cg,
       seq: seq,
       effectif: (results && results.effectif) || 0,
