@@ -120,7 +120,9 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       |> render_change(%{"period" => "trim:#{term1.id}"})
 
     assert html =~ "Awa"
-    assert render(view) =~ "period=trim%3A#{term1.id}" or render(view) =~ "period=trim:#{term1.id}"
+
+    assert render(view) =~ "period=trim%3A#{term1.id}" or
+             render(view) =~ "period=trim:#{term1.id}"
   end
 
   test "results header shows the form master when set", %{

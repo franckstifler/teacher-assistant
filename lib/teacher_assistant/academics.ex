@@ -624,10 +624,13 @@ defmodule TeacherAssistant.Academics do
             psa =
               Map.new(students, fn s ->
                 sm = Enum.filter(subj.marks, &(&1.student_id == s.id))
-                {s.id, TeacherAssistant.Academics.Marks.subject_average(sm, subj.assessments_by_id)}
+
+                {s.id,
+                 TeacherAssistant.Academics.Marks.subject_average(sm, subj.assessments_by_id)}
               end)
 
-            {subj.context_id, %{label: subj.label, coefficient: subj.coefficient, per_student_avg: psa}}
+            {subj.context_id,
+             %{label: subj.label, coefficient: subj.coefficient, per_student_avg: psa}}
           end)
 
         {seq, subjects}

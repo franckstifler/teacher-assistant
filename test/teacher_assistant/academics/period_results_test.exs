@@ -85,7 +85,8 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
   end
 
   test "class_results_for_period is nil when the class has no subjects", %{year: year} do
-    {:ok, school2} = Schools.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{name: "Lycée Q"})
+    {:ok, school2} =
+      Schools.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{name: "Lycée Q"})
 
     {:ok, y2} =
       Academics.create_academic_year(school2, %{

@@ -47,7 +47,13 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     roster: roster
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
-    conn = get(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}")
+
+    conn =
+      get(
+        conn,
+        ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}"
+      )
+
     body = html_response(conn, 200)
     assert body =~ "Lycée Print"
     assert body =~ "Awa Ngo"
@@ -131,7 +137,10 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       })
 
     for %{student: s} <- TeacherAssistant.Academics.list_roster(cg),
-        do: TeacherAssistant.Academics.upsert_marks(a2, [%{student_id: s.id, score: Decimal.new(15)}])
+        do:
+          TeacherAssistant.Academics.upsert_marks(a2, [
+            %{student_id: s.id, score: Decimal.new(15)}
+          ])
 
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term1.id}")
     body = html_response(conn, 200)

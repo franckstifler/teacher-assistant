@@ -115,8 +115,18 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
           coefficient: Decimal.new(4),
           per_student_avg: %{"s1" => Decimal.new(15), "s2" => Decimal.new(9)},
           components: %{
-            "s1" => %{sequences: [%{number: 1, average: Decimal.new(14)}, %{number: 2, average: Decimal.new(16)}]},
-            "s2" => %{sequences: [%{number: 1, average: Decimal.new(8)}, %{number: 2, average: Decimal.new(10)}]}
+            "s1" => %{
+              sequences: [
+                %{number: 1, average: Decimal.new(14)},
+                %{number: 2, average: Decimal.new(16)}
+              ]
+            },
+            "s2" => %{
+              sequences: [
+                %{number: 1, average: Decimal.new(8)},
+                %{number: 2, average: Decimal.new(10)}
+              ]
+            }
           }
         },
         %{
