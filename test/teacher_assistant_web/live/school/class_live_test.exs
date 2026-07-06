@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
              live(conn, ~p"/school/classes/#{ocg.id}")
   end
 
-  test "non-admin member: no mutation controls, forged events rejected", ctx do
+  test "non-admin non-form-master member is redirected", ctx do
     %{school: school, cg: cg, user: head} = ctx
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -126,11 +126,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> Plug.Conn.put_session(:user_id, other.id)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
-    refute has_element?(view, "#enroll-form")
-
-    render_hook(view, "enroll_new", %{"student" => %{"full_name" => "X", "sex" => "m"}})
-    assert [] = Academics.list_roster(cg)
+    assert {:error, {:live_redirect, %{to: "/school"}}} =
+             live(conn, ~p"/school/classes/#{cg.id}")
   end
 
   describe "assignments panel" do
@@ -207,9 +204,9 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert Decimal.equal?(tc.coefficient, Decimal.new(3))
     end
 
-    test "a non-admin cannot change a coefficient (forged event)", ctx do
+    test "a non-admin non-form-master cannot reach the class to change a coefficient", ctx do
       %{school: school, cg: cg, user: head} = ctx
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, _tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
@@ -226,10 +223,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
         |> Plug.Conn.put_session(:user_id, other.id)
         |> Plug.Conn.put_session(:workspace_id, school.id)
 
-      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
-      render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
-      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
-      assert Decimal.equal?(tc.coefficient, Decimal.new(1))
+      assert {:error, {:live_redirect, %{to: "/school"}}} =
+               live(conn, ~p"/school/classes/#{cg.id}")
     end
   end
 
@@ -274,6 +269,57 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert TeacherAssistant.Academics.fetch_owned_class_group(cg.id, school)
              |> elem(1)
              |> Map.get(:form_master_user_id) == other.id
+    end
+  end
+
+  describe "form master access" do
+    setup ctx do
+      %{school: school, cg: cg, user: head} = ctx
+      fm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      {:ok, inv} =
+        Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+
+      {:ok, _} = Schools.accept_invitation(inv.token, fm)
+      {:ok, _} = TeacherAssistant.Academics.set_form_master(cg, fm.id)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:user_id, fm.id)
+        |> Plug.Conn.put_session(:workspace_id, school.id)
+
+      %{fm_conn: conn, fm: fm}
+    end
+
+    test "form master reaches the class and can enroll", %{fm_conn: conn, cg: cg} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert has_element?(view, "#enroll-form")
+
+      view
+      |> form("#enroll-form", %{"student" => %{"full_name" => "Zoe", "sex" => "f"}})
+      |> render_submit()
+
+      assert Enum.any?(Academics.list_roster(cg), &(&1.student.full_name == "Zoe"))
+    end
+
+    test "form master sees no assignments/form-master controls", %{fm_conn: conn, cg: cg} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      refute has_element?(view, "#assign-form")
+      refute has_element?(view, "#form-master-form")
+    end
+
+    test "form master cannot assign a teacher (forged event)", %{fm_conn: conn, cg: cg, fm: fm} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "assign", %{"assignment" => %{"user_id" => fm.id, "subject" => "X"}})
+      assert TeacherAssistant.Academics.Assignments.list_for_class(cg) == []
+    end
+
+    test "a form master of another class is redirected", ctx do
+      %{school: school, cg2: cg2, fm_conn: conn} = ctx
+      # fm is form master of cg, not cg2
+      assert {:error, {:live_redirect, %{to: "/school"}}} =
+               live(conn, ~p"/school/classes/#{cg2.id}")
     end
   end
 end

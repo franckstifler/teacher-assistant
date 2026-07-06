@@ -9,12 +9,20 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     scope = socket.assigns.current_scope
 
     with :school <- scope.current_workspace_type,
-         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace) do
+         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         true <- Permissions.admin_or_form_master?(scope, cg) do
       {:ok,
        socket
-       |> assign(cg: cg, admin?: Permissions.admin?(scope), search_results: [], q: "")
+       |> assign(
+         cg: cg,
+         admin?: Permissions.admin?(scope),
+         manage?: true,
+         search_results: [],
+         q: ""
+       )
        |> load_roster()}
     else
+      false -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
@@ -28,7 +36,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           title={"#{@cg.label} — #{@cg.level}#{if @cg.serie, do: " · #{@cg.serie}", else: ""}"}
         />
 
-        <div :if={@admin?} class="flex justify-end gap-2">
+        <div :if={@manage?} class="flex justify-end gap-2">
           <.link
             navigate={~p"/school/classes/#{@cg.id}/results"}
             id="go-to-results"
@@ -56,7 +64,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 <th>{gettext("Matricule")}</th>
                 <th>{gettext("Statut")}</th>
                 <th>{gettext("Redoublant")}</th>
-                <th :if={@admin?}><span class="sr-only">{gettext("Actions")}</span></th>
+                <th :if={@manage?}><span class="sr-only">{gettext("Actions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -76,7 +84,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                     {gettext("Redoublant")}
                   </span>
                 </td>
-                <td :if={@admin?}>
+                <td :if={@manage?}>
                   <div class="flex items-center gap-2">
                     <form
                       id={"transfer-#{row.enrollment.id}"}
@@ -112,7 +120,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           title={gettext("Aucun élève inscrit")}
         />
 
-        <div :if={@admin?} class="ta-leaf space-y-3">
+        <div :if={@manage?} class="ta-leaf space-y-3">
           <h2 class="text-sm font-semibold">{gettext("Inscrire un nouvel élève")}</h2>
           <form id="enroll-form" phx-submit="enroll_new" class="space-y-2">
             <div class="grid gap-2 sm:grid-cols-4">
@@ -318,7 +326,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("enroll_new", %{"student" => params}, socket) do
-    with true <- socket.assigns.admin? do
+    with true <- socket.assigns.manage? do
       case Enrollments.enroll_new(socket.assigns.cg, %{
              full_name: params["full_name"],
              sex: parse_sex(params["sex"]),
@@ -346,7 +354,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
   def handle_event("search", %{"q" => q}, socket) do
     results =
-      if socket.assigns.admin?,
+      if socket.assigns.manage?,
         do: Enrollments.search_students(socket.assigns.current_scope.current_workspace, q),
         else: []
 
@@ -354,7 +362,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("enroll_existing", %{"student-id" => sid}, socket) do
-    with true <- socket.assigns.admin?,
+    with true <- socket.assigns.manage?,
          %{} = student <- Enum.find(socket.assigns.search_results, &(&1.id == sid)) do
       case Enrollments.enroll_existing(socket.assigns.cg, student) do
         {:ok, _} ->
@@ -374,7 +382,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("transfer", %{"enrollment-id" => eid, "class_group_id" => cgid}, socket) do
-    with true <- socket.assigns.admin?,
+    with true <- socket.assigns.manage?,
          true <- cgid != "",
          %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)),
          %{} = target <- Enum.find(socket.assigns.other_classes, &(&1.id == cgid)),
@@ -386,7 +394,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("withdraw", %{"enrollment-id" => eid}, socket) do
-    with true <- socket.assigns.admin?,
+    with true <- socket.assigns.manage?,
          %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)) do
       :ok = Enrollments.withdraw(e)
       {:noreply, socket |> put_flash(:info, gettext("Enrollment removed.")) |> load_roster()}
