@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Academics.ClassGroup do
   postgres do
     table "class_groups"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :form_master, on_delete: :nilify
+    end
   end
 
   actions do
