@@ -32,8 +32,9 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         true <- scope.current_workspace_type == :school and Permissions.admin?(scope),
+         :school <- scope.current_workspace_type,
          {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         true <- Permissions.admin_or_form_master?(scope, cg),
          year when not is_nil(year) <- scope.current_academic_year,
          seq when not is_nil(seq) <-
            Enum.find(Academics.list_sequences(year), &(&1.id == params["seq"])) do

@@ -79,4 +79,23 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/school/classes/#{cg.id}/results")
   end
+
+  test "the form master can view results for their class", %{conn: conn, cg: cg, head: head, school: school} do
+    fm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+
+    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Academics.set_form_master(cg, fm.id)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, fm.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
+    assert html =~ "Awa"
+  end
 end

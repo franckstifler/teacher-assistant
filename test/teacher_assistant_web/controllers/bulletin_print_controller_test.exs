@@ -78,4 +78,23 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
     assert redirected_to(conn) == "/school"
   end
+
+  test "the form master can print their class", %{conn: conn, cg: cg, seq: seq, head: head, school: school} do
+    fm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+
+    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Academics.set_form_master(cg, fm.id)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, fm.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
+    assert html_response(conn, 200) =~ "Awa Ngo"
+  end
 end
