@@ -123,10 +123,10 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
               />
             </form>
             <a
-              :if={match?({:sequence, _}, @period)}
+              :if={@period}
               id="bulletin-print"
               href={
-                ~p"/school/classes/#{@cg.id}/students/#{@enrollment.id}/bulletin/print?seq=#{elem(@period, 1).id}"
+                ~p"/school/classes/#{@cg.id}/students/#{@enrollment.id}/bulletin/print?period=#{@period_param}"
               }
               target="_blank"
               class="btn btn-primary btn-sm gap-2"

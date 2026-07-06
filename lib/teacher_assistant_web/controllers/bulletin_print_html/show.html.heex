@@ -66,8 +66,8 @@
         <tr>
           <td class="k">{gettext("Classe")}</td>
           <td>{@cg.label} — {@cg.level}</td>
-          <td class="k">{gettext("Séquence")}</td>
-          <td>{@seq && "#{gettext("Séquence")} #{@seq.number}"}</td>
+          <td class="k">{gettext("Période")}</td>
+          <td>{@period_heading}</td>
         </tr>
         <tr>
           <td class="k">{gettext("Sexe")}</td>
@@ -83,7 +83,19 @@
             <tr>
               <th>{gettext("Matière")}</th>
               <th class="num">{gettext("Coefficient")}</th>
-              <th class="num">{gettext("Note")}/20</th>
+              <%= case @period_kind do %>
+                <% :trimester -> %>
+                  <th class="num">{gettext("Séq 1")}</th>
+                  <th class="num">{gettext("Séq 2")}</th>
+                  <th class="num">{gettext("Moy. trim.")}</th>
+                <% :annual -> %>
+                  <th class="num">{gettext("Trim 1")}</th>
+                  <th class="num">{gettext("Trim 2")}</th>
+                  <th class="num">{gettext("Trim 3")}</th>
+                  <th class="num">{gettext("Moy. ann.")}</th>
+                <% _ -> %>
+                  <th class="num">{gettext("Note")}/20</th>
+              <% end %>
               <th class="num">{gettext("Note×Coef")}</th>
               <th class="num">{gettext("Cote classe")}</th>
             </tr>
@@ -92,7 +104,19 @@
             <tr :for={row <- b.data.subjects}>
               <td>{row.label}</td>
               <td class="num">{fmt(row.coefficient)}</td>
-              <td class="num">{fmt(row.average)}</td>
+              <%= case @period_kind do %>
+                <% :trimester -> %>
+                  <td class="num">{fmt(comp(row, :sequences, 0))}</td>
+                  <td class="num">{fmt(comp(row, :sequences, 1))}</td>
+                  <td class="num">{fmt(row.average)}</td>
+                <% :annual -> %>
+                  <td class="num">{fmt(comp(row, :trimesters, 0))}</td>
+                  <td class="num">{fmt(comp(row, :trimesters, 1))}</td>
+                  <td class="num">{fmt(comp(row, :trimesters, 2))}</td>
+                  <td class="num">{fmt(row.average)}</td>
+                <% _ -> %>
+                  <td class="num">{fmt(row.average)}</td>
+              <% end %>
               <td class="num">{fmt(row.note_x_coef)}</td>
               <td class="num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
             </tr>
