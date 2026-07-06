@@ -96,6 +96,10 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   defp sex_label(:f), do: gettext("Féminin")
   defp sex_label(_), do: gettext("Masculin")
 
+  defp no_data_message(:trimester), do: gettext("No marks for this term yet.")
+  defp no_data_message(:annual), do: gettext("No marks for this year yet.")
+  defp no_data_message(_), do: gettext("No marks for this séquence yet.")
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
@@ -164,7 +168,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
           :if={is_nil(@data)}
           icon="hero-document-text"
           title={gettext("Aucune donnée")}
-          message={gettext("No marks for this séquence yet.")}
+          message={no_data_message(@period_kind)}
         />
 
         <div :if={@data} class="space-y-4">

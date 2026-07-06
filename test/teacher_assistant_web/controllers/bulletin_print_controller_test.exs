@@ -148,4 +148,15 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "Séq 1"
     assert body =~ "Awa Ngo"
   end
+
+  test "the whole-class print renders the annual period with trimester columns", %{
+    conn: conn,
+    cg: cg
+  } do
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=annee")
+    body = html_response(conn, 200)
+    assert body =~ "Trim 1"
+    assert body =~ "Moy. ann."
+    assert body =~ "Awa Ngo"
+  end
 end

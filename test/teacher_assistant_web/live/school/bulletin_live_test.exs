@@ -39,7 +39,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
   test "renders the student's bulletin", %{conn: conn, cg: cg, enr: enr, seq: seq} do
     {:ok, _view, html} =
-      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?seq=#{seq.id}")
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
 
     assert html =~ "Awa Ngo"
     assert html =~ "M-1"
@@ -103,7 +103,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert {:error, {:live_redirect, %{}}} =
              live(
                conn,
-               ~p"/school/classes/#{cg.id}/students/#{other_enr.id}/bulletin?seq=#{seq.id}"
+               ~p"/school/classes/#{cg.id}/students/#{other_enr.id}/bulletin?period=seq:#{seq.id}"
              )
   end
 end
