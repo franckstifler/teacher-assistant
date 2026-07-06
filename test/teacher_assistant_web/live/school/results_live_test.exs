@@ -104,6 +104,25 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     assert html =~ "Awa"
   end
 
+  test "the period selector switches to a trimester and recomputes", %{
+    conn: conn,
+    cg: cg,
+    school: school
+  } do
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results")
+    # séquence 1 is the default; switch to Trimestre 1
+    year = TeacherAssistant.Academics.current_academic_year(school)
+    [term1 | _] = TeacherAssistant.Academics.list_terms(year)
+
+    html =
+      view
+      |> element("#results-period-form")
+      |> render_change(%{"period" => "trim:#{term1.id}"})
+
+    assert html =~ "Awa"
+    assert render(view) =~ "period=trim%3A#{term1.id}" or render(view) =~ "period=trim:#{term1.id}"
+  end
+
   test "results header shows the form master when set", %{
     conn: conn,
     cg: cg,
