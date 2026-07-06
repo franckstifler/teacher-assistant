@@ -80,7 +80,12 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
              live(conn, ~p"/school/classes/#{cg.id}/results")
   end
 
-  test "the form master can view results for their class", %{conn: conn, cg: cg, head: head, school: school} do
+  test "the form master can view results for their class", %{
+    conn: conn,
+    cg: cg,
+    head: head,
+    school: school
+  } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
@@ -99,7 +104,12 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     assert html =~ "Awa"
   end
 
-  test "results header shows the form master when set", %{conn: conn, cg: cg, head: head, school: school} do
+  test "results header shows the form master when set", %{
+    conn: conn,
+    cg: cg,
+    head: head,
+    school: school
+  } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =

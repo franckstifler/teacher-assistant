@@ -11,6 +11,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
          true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Academics.list_sequences(year), else: []
+
       {:ok,
        socket
        |> assign(cg: cg, form_master: Academics.form_master(cg), sequences: sequences)

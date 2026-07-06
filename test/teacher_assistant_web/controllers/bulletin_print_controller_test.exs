@@ -79,7 +79,13 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert redirected_to(conn) == "/school"
   end
 
-  test "the form master can print their class", %{conn: conn, cg: cg, seq: seq, head: head, school: school} do
+  test "the form master can print their class", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    head: head,
+    school: school
+  } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =

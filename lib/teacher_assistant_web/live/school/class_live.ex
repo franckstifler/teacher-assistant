@@ -477,16 +477,21 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
   def handle_event("set_form_master", %{"user_id" => uid}, socket) do
     with true <- socket.assigns.admin? do
-      target = if uid == "", do: :clear, else: Enum.find(socket.assigns.members, &(&1.user_id == uid))
+      target =
+        if uid == "", do: :clear, else: Enum.find(socket.assigns.members, &(&1.user_id == uid))
 
       case target do
         :clear ->
           {:ok, cg} = Academics.set_form_master(socket.assigns.cg, nil)
-          {:noreply, socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master cleared."))}
+
+          {:noreply,
+           socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master cleared."))}
 
         %{user_id: user_id} ->
           {:ok, cg} = Academics.set_form_master(socket.assigns.cg, user_id)
-          {:noreply, socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master assigned."))}
+
+          {:noreply,
+           socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master assigned."))}
 
         _ ->
           {:noreply, socket}

@@ -229,7 +229,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   end
 
   describe "form master" do
-    test "admin assigns then clears the form master", %{conn: conn, cg: cg, school: school, user: head} do
+    test "admin assigns then clears the form master", %{
+      conn: conn,
+      cg: cg,
+      school: school,
+      user: head
+    } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
