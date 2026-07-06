@@ -103,4 +103,44 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     refute "fail" in r.distinctions.tableau_honneur
     refute "fail" in r.distinctions.encouragements
   end
+
+  describe "aggregate/2" do
+    test "ranks and weights pre-computed subject averages, carrying components" do
+      students = [%{id: "s1", sex: :m}, %{id: "s2", sex: :f}]
+
+      inputs = [
+        %{
+          context_id: "maths",
+          label: "Maths",
+          coefficient: Decimal.new(4),
+          per_student_avg: %{"s1" => Decimal.new(15), "s2" => Decimal.new(9)},
+          components: %{
+            "s1" => %{sequences: [%{number: 1, average: Decimal.new(14)}, %{number: 2, average: Decimal.new(16)}]},
+            "s2" => %{sequences: [%{number: 1, average: Decimal.new(8)}, %{number: 2, average: Decimal.new(10)}]}
+          }
+        },
+        %{
+          context_id: "eps",
+          label: "EPS",
+          coefficient: Decimal.new(1),
+          per_student_avg: %{"s1" => Decimal.new(10), "s2" => Decimal.new(12)},
+          components: nil
+        }
+      ]
+
+      r = Bulletins.aggregate(students, inputs)
+      # s1: (15*4 + 10*1)/5 = 14 ; s2: (9*4 + 12*1)/5 = 9.6
+      assert Decimal.equal?(r.per_student["s1"].moyenne_generale, Decimal.new(14))
+      assert Decimal.equal?(r.per_student["s2"].moyenne_generale, Decimal.new("9.6"))
+      assert r.per_student["s1"].rank == 1
+      assert r.per_student["s2"].rank == 2
+      # component passthrough on the maths row
+      maths = Enum.find(r.per_student["s1"].subjects, &(&1.context_id == "maths"))
+      assert [%{number: 1, average: a1}, %{number: 2, average: a2}] = maths.components.sequences
+      assert Decimal.equal?(a1, Decimal.new(14)) and Decimal.equal?(a2, Decimal.new(16))
+      # nil components on the eps row
+      eps = Enum.find(r.per_student["s1"].subjects, &(&1.context_id == "eps"))
+      assert eps.components == nil
+    end
+  end
 end

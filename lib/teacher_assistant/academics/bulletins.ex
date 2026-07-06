@@ -12,8 +12,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
   @tableau Decimal.new(12)
 
   def compile(students, subjects) do
-    # 1) per (student, subject) average, then per-subject class min/max + rank
-    subject_views =
+    inputs =
       Enum.map(subjects, fn subj ->
         per_student_avg =
           Map.new(students, fn s ->
@@ -21,20 +20,41 @@ defmodule TeacherAssistant.Academics.Bulletins do
             {s.id, Marks.subject_average(student_marks, subj.assessments_by_id)}
           end)
 
-        graded = per_student_avg |> Map.values() |> Enum.reject(&is_nil/1)
-
         %{
           context_id: subj.context_id,
           label: subj.label,
           coefficient: subj.coefficient,
           per_student_avg: per_student_avg,
-          class_min: min_of(graded),
-          class_max: max_of(graded),
-          ranks: rank_map(per_student_avg)
+          components: nil
         }
       end)
 
-    # 2) per-student subject rows + totals + moyenne générale
+    aggregate(students, inputs)
+  end
+
+  @doc """
+  Ranking/stats/distinctions over pre-computed per-subject averages. Shared by the
+  séquentiel path (`compile/2`) and the periodic path (trimester/annual), so the
+  arithmetic never drifts. `subject_inputs` carry `per_student_avg` (%{id => Decimal | nil})
+  and optional per-student `components` for the bulletin breakdown.
+  """
+  def aggregate(students, subject_inputs) do
+    subject_views =
+      Enum.map(subject_inputs, fn subj ->
+        graded = subj.per_student_avg |> Map.values() |> Enum.reject(&is_nil/1)
+
+        %{
+          context_id: subj.context_id,
+          label: subj.label,
+          coefficient: subj.coefficient,
+          per_student_avg: subj.per_student_avg,
+          components: subj.components,
+          class_min: min_of(graded),
+          class_max: max_of(graded),
+          ranks: rank_map(subj.per_student_avg)
+        }
+      end)
+
     per_student_core =
       Map.new(students, fn s ->
         rows =
@@ -49,7 +69,8 @@ defmodule TeacherAssistant.Academics.Bulletins do
               note_x_coef: avg && Decimal.mult(avg, sv.coefficient),
               subject_rank: sv.ranks[s.id],
               class_min: sv.class_min,
-              class_max: sv.class_max
+              class_max: sv.class_max,
+              components: sv.components && sv.components[s.id]
             }
           end)
 
@@ -73,7 +94,6 @@ defmodule TeacherAssistant.Academics.Bulletins do
          }}
       end)
 
-    # 3) class ranking on moyenne générale
     moy_map = Map.new(per_student_core, fn {id, d} -> {id, d.moyenne_generale} end)
     class_ranks = rank_map(moy_map)
     per_student = Map.new(per_student_core, fn {id, d} -> {id, %{d | rank: class_ranks[id]}} end)
