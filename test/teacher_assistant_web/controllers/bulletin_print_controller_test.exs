@@ -47,7 +47,13 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     roster: roster
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
-    conn = get(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?seq=#{seq.id}")
+
+    conn =
+      get(
+        conn,
+        ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}"
+      )
+
     body = html_response(conn, 200)
     assert body =~ "Lycée Print"
     assert body =~ "Awa Ngo"
@@ -55,7 +61,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   end
 
   test "whole-class print includes every enrolled student", %{conn: conn, cg: cg, seq: seq} do
-    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
     body = html_response(conn, 200)
     assert body =~ "Awa Ngo"
     assert body =~ "Bob Eyong"
@@ -75,7 +81,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       |> Plug.Conn.put_session(:user_id, other.id)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
     assert redirected_to(conn) == "/school"
   end
 
@@ -100,13 +106,57 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       |> Plug.Conn.put_session(:user_id, fm.id)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
     assert html_response(conn, 200) =~ "Awa Ngo"
   end
 
   test "the bulletin names the form master when set", %{conn: conn, cg: cg, seq: seq, head: head} do
     {:ok, _} = Academics.set_form_master(cg, head.id)
-    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?seq=#{seq.id}")
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
     assert html_response(conn, 200) =~ to_string(head.email)
+  end
+
+  test "the whole-class print renders a trimester with séquence columns", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    school: school
+  } do
+    year = TeacherAssistant.Academics.current_academic_year(school)
+    [_s1, s2 | _] = TeacherAssistant.Academics.list_sequences(year)
+    [term1 | _] = TeacherAssistant.Academics.list_terms(year)
+    _ = seq
+
+    [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+
+    {:ok, a2} =
+      TeacherAssistant.Academics.create_assessment(tc, s2, %{
+        label: "D2",
+        weight: Decimal.new(1),
+        max_score: Decimal.new(20)
+      })
+
+    for %{student: s} <- TeacherAssistant.Academics.list_roster(cg),
+        do:
+          TeacherAssistant.Academics.upsert_marks(a2, [
+            %{student_id: s.id, score: Decimal.new(15)}
+          ])
+
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term1.id}")
+    body = html_response(conn, 200)
+    assert body =~ "Trimestre 1"
+    assert body =~ "Séq 1"
+    assert body =~ "Awa Ngo"
+  end
+
+  test "the whole-class print renders the annual period with trimester columns", %{
+    conn: conn,
+    cg: cg
+  } do
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=annee")
+    body = html_response(conn, 200)
+    assert body =~ "Trim 1"
+    assert body =~ "Moy. ann."
+    assert body =~ "Awa Ngo"
   end
 end

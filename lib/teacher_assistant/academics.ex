@@ -153,6 +153,40 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
+  def list_terms(%AcademicYear{id: year_id}) do
+    Term
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.Query.load(:sequences)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  def period_kind({:sequence, _}), do: :sequence
+  def period_kind({:trimester, _}), do: :trimester
+  def period_kind({:annual, _}), do: :annual
+
+  def period_param({:sequence, %Sequence{id: id}}), do: "seq:" <> id
+  def period_param({:trimester, %Term{id: id}}), do: "trim:" <> id
+  def period_param({:annual, _}), do: "annee"
+
+  def resolve_period(%AcademicYear{} = year, "annee"), do: {:annual, year}
+
+  def resolve_period(%AcademicYear{} = year, "seq:" <> id) do
+    case Enum.find(list_sequences(year), &(&1.id == id)) do
+      nil -> nil
+      seq -> {:sequence, seq}
+    end
+  end
+
+  def resolve_period(%AcademicYear{} = year, "trim:" <> id) do
+    case Enum.find(list_terms(year), &(&1.id == id)) do
+      nil -> nil
+      term -> {:trimester, term}
+    end
+  end
+
+  def resolve_period(_year, _param), do: nil
+
   def current_sequence(%AcademicYear{} = year, %Date{} = date) do
     year
     |> list_sequences()
@@ -553,6 +587,131 @@ defmodule TeacherAssistant.Academics do
         students = cg |> list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
         Bulletins.compile(students, subjects)
     end
+  end
+
+  @doc """
+  Compiled class bulletins for a period (`{:sequence, seq}` / `{:trimester, term}` /
+  `{:annual, year}`), or nil when the class has no subjects. Trimester/annual
+  averages are the mean of the constituent séquence subject-averages that exist.
+  """
+  def class_results_for_period(%ClassGroup{} = cg, {:sequence, %Sequence{} = seq}) do
+    class_results(cg, seq)
+  end
+
+  def class_results_for_period(%ClassGroup{} = cg, {:trimester, %Term{} = term}) do
+    seqs = Enum.sort_by(term.sequences, & &1.position_in_term)
+    period_result(cg, seqs, :sequences)
+  end
+
+  def class_results_for_period(%ClassGroup{} = cg, {:annual, %AcademicYear{} = year}) do
+    seqs = list_sequences(year)
+    period_result(cg, seqs, :trimesters)
+  end
+
+  # Builds a Bulletins result over a set of séquences. `component_kind` selects the
+  # breakdown carried on each subject row: :sequences (per séquence, for trimester)
+  # or :trimesters (per term, for annual).
+  defp period_result(cg, seqs, component_kind) do
+    students = cg |> list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+
+    # per séquence: %{context_id => %{label, coefficient, per_student_avg}}
+    per_seq =
+      Enum.map(seqs, fn seq ->
+        subjects =
+          cg
+          |> class_subjects(seq)
+          |> Map.new(fn subj ->
+            psa =
+              Map.new(students, fn s ->
+                sm = Enum.filter(subj.marks, &(&1.student_id == s.id))
+
+                {s.id,
+                 TeacherAssistant.Academics.Marks.subject_average(sm, subj.assessments_by_id)}
+              end)
+
+            {subj.context_id,
+             %{label: subj.label, coefficient: subj.coefficient, per_student_avg: psa}}
+          end)
+
+        {seq, subjects}
+      end)
+
+    contexts =
+      per_seq |> Enum.flat_map(fn {_seq, m} -> Map.keys(m) end) |> Enum.uniq()
+
+    if contexts == [] or students == [] do
+      nil
+    else
+      subject_inputs =
+        Enum.map(contexts, fn cid ->
+          {label, coef} = context_label_coef(per_seq, cid)
+
+          per_student_avg =
+            Map.new(students, fn s ->
+              {s.id, mean_present(sequence_values(per_seq, cid, s.id))}
+            end)
+
+          components =
+            Map.new(students, fn s ->
+              {s.id, build_components(component_kind, per_seq, cid, s.id)}
+            end)
+
+          %{
+            context_id: cid,
+            label: label,
+            coefficient: coef,
+            per_student_avg: per_student_avg,
+            components: components
+          }
+        end)
+
+      Bulletins.aggregate(students, subject_inputs)
+    end
+  end
+
+  defp context_label_coef(per_seq, cid) do
+    {_seq, m} = Enum.find(per_seq, fn {_seq, m} -> Map.has_key?(m, cid) end)
+    sub = m[cid]
+    {sub.label, sub.coefficient}
+  end
+
+  # this subject's per-séquence average for one student, in séquence order (nils dropped)
+  defp sequence_values(per_seq, cid, sid) do
+    per_seq
+    |> Enum.map(fn {_seq, m} -> m[cid] && m[cid].per_student_avg[sid] end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp build_components(:sequences, per_seq, cid, sid) do
+    seqs =
+      Enum.map(per_seq, fn {seq, m} ->
+        %{number: seq.number, average: m[cid] && m[cid].per_student_avg[sid]}
+      end)
+
+    %{sequences: seqs}
+  end
+
+  defp build_components(:trimesters, per_seq, cid, sid) do
+    trimesters =
+      per_seq
+      |> Enum.group_by(fn {seq, _m} -> seq.term.position end)
+      |> Enum.sort_by(fn {position, _} -> position end)
+      |> Enum.map(fn {position, term_seqs} ->
+        vals =
+          term_seqs
+          |> Enum.map(fn {_seq, m} -> m[cid] && m[cid].per_student_avg[sid] end)
+          |> Enum.reject(&is_nil/1)
+
+        %{position: position, average: mean_present(vals)}
+      end)
+
+    %{trimesters: trimesters}
+  end
+
+  defp mean_present([]), do: nil
+
+  defp mean_present(vals) do
+    Decimal.div(Enum.reduce(vals, Decimal.new(0), &Decimal.add/2), Decimal.new(length(vals)))
   end
 
   @doc """

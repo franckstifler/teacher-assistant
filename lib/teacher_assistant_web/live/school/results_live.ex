@@ -11,33 +11,53 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
          true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Academics.list_sequences(year), else: []
+      terms = if year, do: Academics.list_terms(year), else: []
 
       {:ok,
        socket
-       |> assign(cg: cg, form_master: Academics.form_master(cg), sequences: sequences)
-       |> select_seq(nil)}
+       |> assign(
+         cg: cg,
+         form_master: Academics.form_master(cg),
+         year: year,
+         sequences: sequences,
+         terms: terms
+       )
+       |> select_period(nil)}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
 
-  def handle_params(params, _uri, socket), do: {:noreply, select_seq(socket, params["seq"])}
+  def handle_params(params, _uri, socket),
+    do: {:noreply, select_period(socket, params["period"])}
 
-  def handle_event("select_seq", %{"seq" => seq_id}, socket) do
+  def handle_event("select_period", %{"period" => param}, socket) do
     {:noreply,
-     push_patch(socket, to: ~p"/school/classes/#{socket.assigns.cg.id}/results?seq=#{seq_id}")}
+     push_patch(socket, to: ~p"/school/classes/#{socket.assigns.cg.id}/results?period=#{param}")}
   end
 
-  defp select_seq(socket, seq_id) do
-    seq =
-      Enum.find(socket.assigns.sequences, &(&1.id == seq_id)) ||
-        List.first(socket.assigns.sequences)
+  defp select_period(socket, param) do
+    year = socket.assigns.year
 
-    results = if seq, do: Academics.class_results(socket.assigns.cg, seq)
+    period =
+      (year && param && Academics.resolve_period(year, param)) ||
+        default_period(socket.assigns.sequences)
+
+    results = period && Academics.class_results_for_period(socket.assigns.cg, period)
     roster = Academics.list_roster(socket.assigns.cg)
-    assign(socket, seq: seq, results: results, roster: roster, rows: ranked_rows(results, roster))
+
+    assign(socket,
+      period: period,
+      period_param: period && Academics.period_param(period),
+      results: results,
+      roster: roster,
+      rows: ranked_rows(results, roster)
+    )
   end
+
+  defp default_period([]), do: nil
+  defp default_period([seq | _]), do: {:sequence, seq}
 
   # Build the display rows sorted by rank (unranked/ungraded last, by name).
   defp ranked_rows(nil, _roster), do: []
@@ -75,13 +95,19 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           title={"#{@cg.label} — #{gettext("Résultats & bulletins")}"}
         >
           <:actions>
-            <form :if={@sequences != []} id="results-seq-form" phx-change="select_seq">
+            <form :if={@sequences != []} id="results-period-form" phx-change="select_period">
               <.input
                 type="select"
-                id="results-seq-select"
-                name="seq"
-                value={@seq && @seq.id}
-                options={for s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", s.id}}
+                id="results-period-select"
+                name="period"
+                value={@period_param}
+                options={[
+                  {gettext("Séquences"),
+                   for(s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", "seq:#{s.id}"})},
+                  {gettext("Trimestres"),
+                   for(t <- @terms, do: {gettext("Trimestre") <> " #{t.position}", "trim:#{t.id}"})},
+                  {gettext("Année"), [{gettext("Année scolaire"), "annee"}]}
+                ]}
               />
             </form>
           </:actions>
@@ -92,14 +118,14 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
         </p>
 
         <.empty_state
-          :if={@seq == nil}
+          :if={@period == nil}
           icon="hero-calendar-days"
           title={gettext("Aucune séquence")}
           message={gettext("Create an academic year and its calendar first.")}
         />
 
         <.empty_state
-          :if={@seq != nil and @results == nil}
+          :if={@period != nil and @results == nil}
           icon="hero-academic-cap"
           title={gettext("Aucun enseignant affecté")}
           message={gettext("Assign subjects to this class to compute bulletins.")}
@@ -168,7 +194,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
                   <td>
                     <.link
                       navigate={
-                        ~p"/school/classes/#{@cg.id}/students/#{row.enrollment.id}/bulletin?seq=#{@seq.id}"
+                        ~p"/school/classes/#{@cg.id}/students/#{row.enrollment.id}/bulletin?period=#{@period_param}"
                       }
                       class="link"
                     >
@@ -185,7 +211,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           <div class="flex justify-end">
             <a
               id="print-whole-class"
-              href={~p"/school/classes/#{@cg.id}/bulletin/print?seq=#{@seq.id}"}
+              href={~p"/school/classes/#{@cg.id}/bulletin/print?period=#{@period_param}"}
               target="_blank"
               class="btn btn-primary btn-sm gap-2"
             >

@@ -39,12 +39,50 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
   test "renders the student's bulletin", %{conn: conn, cg: cg, enr: enr, seq: seq} do
     {:ok, _view, html} =
-      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?seq=#{seq.id}")
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
 
     assert html =~ "Awa Ngo"
     assert html =~ "M-1"
     assert html =~ "Maths"
     assert html =~ "15"
+  end
+
+  test "the bulletin shows séquence breakdown columns for a trimester", %{
+    conn: conn,
+    cg: cg,
+    enr: enr,
+    seq: seq,
+    school: school
+  } do
+    # grade a second séquence in the same term so the trimester has two components
+    year = TeacherAssistant.Academics.current_academic_year(school)
+    [s1, s2 | _] = TeacherAssistant.Academics.list_sequences(year)
+    [term1 | _] = TeacherAssistant.Academics.list_terms(year)
+    _ = seq
+
+    [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+
+    {:ok, a2} =
+      TeacherAssistant.Academics.create_assessment(tc, s2, %{
+        label: "D2",
+        weight: Decimal.new(1),
+        max_score: Decimal.new(20)
+      })
+
+    [%{student: student}] = TeacherAssistant.Academics.list_roster(cg)
+
+    :ok =
+      TeacherAssistant.Academics.upsert_marks(a2, [
+        %{student_id: student.id, score: Decimal.new(17)}
+      ])
+
+    {:ok, _view, html} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=trim:#{term1.id}")
+
+    assert html =~ "Séq 1"
+    assert html =~ "Séq 2"
+    assert html =~ "Moy. trim."
+    _ = s1
   end
 
   test "an enrollment from another class is rejected", %{
@@ -65,7 +103,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert {:error, {:live_redirect, %{}}} =
              live(
                conn,
-               ~p"/school/classes/#{cg.id}/students/#{other_enr.id}/bulletin?seq=#{seq.id}"
+               ~p"/school/classes/#{cg.id}/students/#{other_enr.id}/bulletin?period=seq:#{seq.id}"
              )
   end
 end
