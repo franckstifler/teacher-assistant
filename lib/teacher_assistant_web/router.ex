@@ -93,6 +93,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/classes", School.ClassesLive, :index
       live "/school/classes/:id", School.ClassLive, :show
       live "/school/classes/:id/results", School.ResultsLive, :index
+      live "/school/classes/:id/timetable", School.TimetableLive, :show
 
       live "/school/classes/:id/students/:enrollment_id/bulletin",
            School.BulletinLive,
