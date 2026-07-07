@@ -204,6 +204,14 @@ defmodule TeacherAssistantWeb.Layouts do
             {gettext("Classes")}
           </.tab_link>
           <.tab_link
+            id="nav-school-timetable-me"
+            href={~p"/school/timetable/me"}
+            icon="hero-calendar-days"
+            current_path={@current_path}
+          >
+            {gettext("Mon emploi du temps")}
+          </.tab_link>
+          <.tab_link
             id="nav-school-members"
             href={~p"/school/members"}
             icon="hero-user-group"

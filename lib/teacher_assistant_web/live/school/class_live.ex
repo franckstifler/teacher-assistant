@@ -53,6 +53,14 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             <.icon name="hero-arrow-up-tray" class="size-4" />
             {gettext("Import students")}
           </.link>
+          <.link
+            navigate={~p"/school/classes/#{@cg.id}/timetable"}
+            id="go-to-timetable"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-calendar-days" class="size-4" />
+            {gettext("Emploi du temps")}
+          </.link>
         </div>
 
         <div class="overflow-x-auto">

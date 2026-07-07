@@ -37,6 +37,8 @@ defmodule TeacherAssistantWeb.Router do
         :show
 
     get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
+    get "/school/classes/:id/timetable/print", TimetablePrintController, :class
+    get "/school/timetable/me/print", TimetablePrintController, :me
     get "/locale/:locale", LocaleController, :set
     get "/schools/invitations/:token", SchoolInvitationController, :show
     post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
@@ -93,6 +95,8 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/classes", School.ClassesLive, :index
       live "/school/classes/:id", School.ClassLive, :show
       live "/school/classes/:id/results", School.ResultsLive, :index
+      live "/school/classes/:id/timetable", School.TimetableLive, :show
+      live "/school/timetable/me", School.MyTimetableLive, :index
 
       live "/school/classes/:id/students/:enrollment_id/bulletin",
            School.BulletinLive,
@@ -101,6 +105,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/classes/:id/import", School.EnrollImportLive, :new
       live "/school/members", School.MembersLive, :index
       live "/school/settings", School.SettingsLive, :index
+      live "/school/periods", School.PeriodsLive, :index
     end
   end
 
