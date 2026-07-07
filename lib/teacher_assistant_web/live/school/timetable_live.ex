@@ -138,7 +138,10 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                       <form phx-change="place">
                         <input type="hidden" name="day" value={day} />
                         <input type="hidden" name="period_id" value={period.id} />
-                        <select name="teaching_context_id" class="select select-bordered select-xs w-full">
+                        <select
+                          name="teaching_context_id"
+                          class="select select-bordered select-xs w-full"
+                        >
                           <option value="">{gettext("—")}</option>
                           <option
                             :for={a <- @assignments}

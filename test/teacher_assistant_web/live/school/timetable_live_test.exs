@@ -112,7 +112,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
       |> form("#cell-monday-#{period.id} form", %{"teaching_context_id" => tc.id})
       |> render_change()
 
-    assert html =~ "already has a class"
+    assert html =~ "a déjà cours dans"
 
     timetable = Timetables.class_timetable(cg)
     refute Map.has_key?(timetable.slots, {:monday, period.id})

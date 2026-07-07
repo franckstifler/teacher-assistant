@@ -52,7 +52,11 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
                     class="grid items-end gap-2 sm:grid-cols-6"
                   >
                     <input type="hidden" name="period_id" value={period.id} />
-                    <.input name="period[position]" value={period.position} label={gettext("Position")} />
+                    <.input
+                      name="period[position]"
+                      value={period.position}
+                      label={gettext("Position")}
+                    />
                     <.input name="period[label]" value={period.label} label={gettext("Libellé")} />
                     <.input
                       name="period[start_time]"
@@ -98,11 +102,11 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
         <.empty_state
           :if={@periods == []}
           icon="hero-clock"
-          title={gettext("No periods yet")}
+          title={gettext("Aucune période définie")}
         >
           <:action>
             <button id="seed-periods" type="button" class="btn btn-primary btn-sm" phx-click="seed">
-              {gettext("Seed default schedule")}
+              {gettext("Générer l'horaire par défaut")}
             </button>
           </:action>
         </.empty_state>
@@ -139,7 +143,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
                |> load_periods()}
 
             {:error, _error} ->
-              {:noreply, put_flash(socket, :error, gettext("Impossible de mettre à jour la période."))}
+              {:noreply,
+               put_flash(socket, :error, gettext("Impossible de mettre à jour la période."))}
           end
       end
     else
@@ -165,7 +170,9 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
                put_flash(
                  socket,
                  :error,
-                 gettext("This period has timetable entries and cannot be deleted.")
+                 gettext(
+                   "Cette période a des cours à l'emploi du temps et ne peut pas être supprimée."
+                 )
                )}
           end
       end

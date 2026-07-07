@@ -154,9 +154,7 @@ defmodule TeacherAssistant.Academics.Timetables do
   """
   def teacher_timetable(%Workspace{id: ws_id}, %User{id: user_id}) do
     TimetableSlot
-    |> Ash.Query.filter(
-      workspace_id == ^ws_id and teaching_context.teacher_user_id == ^user_id
-    )
+    |> Ash.Query.filter(workspace_id == ^ws_id and teaching_context.teacher_user_id == ^user_id)
     |> Ash.Query.load(class_group: [], teaching_context: :teacher)
     |> Ash.read!(authorize?: false)
     |> Map.new(fn slot ->
@@ -199,7 +197,12 @@ defmodule TeacherAssistant.Academics.Timetables do
     end
   end
 
-  defp upsert_slot(%ClassGroup{id: cg_id, workspace_id: ws_id}, day, period_id, teaching_context_id) do
+  defp upsert_slot(
+         %ClassGroup{id: cg_id, workspace_id: ws_id},
+         day,
+         period_id,
+         teaching_context_id
+       ) do
     TimetableSlot
     |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
     |> Ash.read_one!(authorize?: false)
