@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Emploi du temps")} — {@title}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111; background: #fff; margin: 0; padding: 24px;
+        font-size: 11pt; line-height: 1.4;
+      }
+      .national { text-align: center; margin-bottom: 8px; }
+      .national .fr { font-variant: small-caps; font-weight: bold; }
+      .national .en { font-size: 9pt; color: #444; }
+      h1 { font-size: 15pt; margin: 8px 0 4px; text-align: center; }
+      .cartouche { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+      .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
+      .cartouche .k { font-variant: small-caps; color: #444; width: 18%; }
+      table.grid { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      table.grid th, table.grid td { border: 1px solid #999; padding: 4px 6px; text-align: left; vertical-align: top; }
+      table.grid th { background: #f0f0f0; font-variant: small-caps; }
+      table.grid td.period-col { font-weight: bold; white-space: nowrap; }
+      table.grid td.bell { font-size: 8pt; color: #444; display: block; }
+      table.grid td.break-row { text-align: center; font-style: italic; color: #666; background: #f7f7f7; }
+      table.grid td .subject { font-weight: bold; }
+      table.grid td .teacher { font-size: 9pt; color: #444; display: block; }
+      @page { size: A4; margin: 15mm; }
+      @media print {
+        body { padding: 0; }
+        tr { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="national">
+      <div class="fr">République du Cameroun — Paix – Travail – Patrie</div>
+      <div class="en">Republic of Cameroon — Peace – Work – Fatherland</div>
+    </div>
+
+    <h1>{gettext("Emploi du temps")}</h1>
+
+    <table class="cartouche">
+      <tr>
+        <td class="k">{gettext("Établissement")}</td>
+        <td>{@etablissement}</td>
+        <td class="k">{gettext("Année scolaire")}</td>
+        <td>{@annee || "—"}</td>
+      </tr>
+      <tr>
+        <td class="k"><%= if @mode == :class do %>{gettext("Classe")}<% else %>{gettext("Enseignant")}<% end %></td>
+        <td>{@title}</td>
+        <td class="k"></td>
+        <td></td>
+      </tr>
+    </table>
+
+    <table class="grid">
+      <thead>
+        <tr>
+          <th>{gettext("Période")}</th>
+          <th :for={day <- @days}>{day_label(day)}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={period <- @periods}>
+          <%= if period.kind == :break do %>
+            <td colspan={length(@days) + 1} class="break-row">{period.label}</td>
+          <% else %>
+            <td class="period-col">
+              {period.label}
+              <span class="bell">{fmt_time(period.start_time)}–{fmt_time(period.end_time)}</span>
+            </td>
+            <td :for={day <- @days}>
+              <% slot = @grid[{day, period.id}] %>
+              <%= if slot do %>
+                <span class="subject">{slot.subject}</span>
+                <span :if={@mode == :class} class="teacher">{slot.teacher_email}</span>
+                <span :if={@mode == :me} class="teacher">{slot.class_label}</span>
+              <% end %>
+            </td>
+          <% end %>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -36,6 +36,18 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
       <section id="my-timetable" class="space-y-6">
         <.page_header eyebrow={gettext("École")} title={gettext("Mon emploi du temps")} />
 
+        <div class="flex justify-end">
+          <a
+            id="print-my-timetable"
+            href={~p"/school/timetable/me/print"}
+            target="_blank"
+            class="btn btn-primary btn-sm gap-2"
+          >
+            <.icon name="hero-printer" class="size-4" />
+            {gettext("Imprimer")}
+          </a>
+        </div>
+
         <%= if @grid == %{} do %>
           <.empty_state
             icon="hero-calendar-days"

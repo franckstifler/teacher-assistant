@@ -37,6 +37,8 @@ defmodule TeacherAssistantWeb.Router do
         :show
 
     get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
+    get "/school/classes/:id/timetable/print", TimetablePrintController, :class
+    get "/school/timetable/me/print", TimetablePrintController, :me
     get "/locale/:locale", LocaleController, :set
     get "/schools/invitations/:token", SchoolInvitationController, :show
     post "/schools/invitations/:token/accept", SchoolInvitationController, :accept

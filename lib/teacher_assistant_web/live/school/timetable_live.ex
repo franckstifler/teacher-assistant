@@ -104,6 +104,18 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
           title={"#{@cg.label} — #{gettext("Emploi du temps")}"}
         />
 
+        <div class="flex justify-end">
+          <a
+            id="print-class-timetable"
+            href={~p"/school/classes/#{@cg.id}/timetable/print"}
+            target="_blank"
+            class="btn btn-primary btn-sm gap-2"
+          >
+            <.icon name="hero-printer" class="size-4" />
+            {gettext("Imprimer")}
+          </a>
+        </div>
+
         <div class="overflow-x-auto">
           <table id="timetable-grid" class="table table-zebra">
             <thead>
