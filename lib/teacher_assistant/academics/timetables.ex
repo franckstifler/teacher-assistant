@@ -19,6 +19,31 @@ defmodule TeacherAssistant.Academics.Timetables do
     |> Ash.read!(authorize?: false)
   end
 
+  def update_period(%Period{} = period, attrs) do
+    period
+    |> Ash.Changeset.for_update(:update, attrs)
+    |> Ash.update(authorize?: false)
+  end
+
+  @doc """
+  Deletes a period, unless a `TimetableSlot` still references it — in that
+  case returns `{:error, :has_slots}` without deleting (mirrors the
+  `Assignments.remove/1` "has data" guard).
+  """
+  def delete_period(%Period{id: id} = period) do
+    has_slots =
+      TimetableSlot
+      |> Ash.Query.filter(period_id == ^id)
+      |> Ash.read!(authorize?: false) != []
+
+    if has_slots do
+      {:error, :has_slots}
+    else
+      Ash.destroy!(period, authorize?: false)
+      :ok
+    end
+  end
+
   def build_default_periods(%Workspace{} = ws) do
     case list_periods(ws) do
       [] ->

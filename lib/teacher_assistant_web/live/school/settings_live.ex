@@ -41,6 +41,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
         </.form>
 
+        <div :if={@admin?}>
+          <.link navigate={~p"/school/periods"} class="link link-primary text-sm">
+            {gettext("Emploi du temps — périodes")}
+          </.link>
+        </div>
+
         <div :if={@admin?} class="space-y-4">
           <h2 class="text-lg font-semibold">{gettext("Année scolaire")}</h2>
 
