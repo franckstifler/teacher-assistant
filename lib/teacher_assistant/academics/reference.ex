@@ -107,4 +107,80 @@ defmodule TeacherAssistant.Academics.Reference do
       ]
     }
   end
+
+  @doc "Standard Cameroonian bell schedule: 8 lessons + mid-morning/lunch breaks (docs/domain)."
+  def default_periods_preset do
+    [
+      %{
+        position: 1,
+        label: "Cours 1",
+        start_time: ~T[07:30:00],
+        end_time: ~T[08:25:00],
+        kind: :lesson
+      },
+      %{
+        position: 2,
+        label: "Cours 2",
+        start_time: ~T[08:25:00],
+        end_time: ~T[09:20:00],
+        kind: :lesson
+      },
+      %{
+        position: 3,
+        label: "Récréation",
+        start_time: ~T[09:20:00],
+        end_time: ~T[09:40:00],
+        kind: :break
+      },
+      %{
+        position: 4,
+        label: "Cours 3",
+        start_time: ~T[09:40:00],
+        end_time: ~T[10:35:00],
+        kind: :lesson
+      },
+      %{
+        position: 5,
+        label: "Cours 4",
+        start_time: ~T[10:35:00],
+        end_time: ~T[11:30:00],
+        kind: :lesson
+      },
+      %{
+        position: 6,
+        label: "Cours 5",
+        start_time: ~T[11:30:00],
+        end_time: ~T[12:25:00],
+        kind: :lesson
+      },
+      %{
+        position: 7,
+        label: "Pause déjeuner",
+        start_time: ~T[12:25:00],
+        end_time: ~T[13:25:00],
+        kind: :break
+      },
+      %{
+        position: 8,
+        label: "Cours 6",
+        start_time: ~T[13:25:00],
+        end_time: ~T[14:20:00],
+        kind: :lesson
+      },
+      %{
+        position: 9,
+        label: "Cours 7",
+        start_time: ~T[14:20:00],
+        end_time: ~T[15:15:00],
+        kind: :lesson
+      },
+      %{
+        position: 10,
+        label: "Cours 8",
+        start_time: ~T[15:15:00],
+        end_time: ~T[16:10:00],
+        kind: :lesson
+      }
+    ]
+  end
 end
