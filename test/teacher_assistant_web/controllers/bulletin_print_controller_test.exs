@@ -2,6 +2,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Schools
 
   setup :register_and_log_in_user
@@ -58,6 +60,48 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "Lycée Print"
     assert body =~ "Awa Ngo"
     assert body =~ "Maths"
+  end
+
+  test "single bulletin print shows the conduct figures", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    roster: roster,
+    school: school
+  } do
+    %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
+
+    :ok = Timetables.build_default_periods(school)
+    [tc] = Assignments.list_for_class(cg)
+    [period1, period2 | _] = Timetables.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+
+    {:ok, slot} =
+      Timetables.place_slot(cg, %{
+        day: :monday,
+        period_id: period1.id,
+        teaching_context_id: tc.id
+      })
+
+    _ = slot
+    date = seq.start_date
+
+    {:ok, _} =
+      Attendance.record_period(cg, period1, tc, date, [{enr.id, :absent}], cg.workspace_id)
+
+    {:ok, _} = Attendance.justify_day(enr.id, date, "Certificat médical")
+    {:ok, _} = Attendance.record_period(cg, period2, tc, date, [{enr.id, :late}], cg.workspace_id)
+
+    conn =
+      get(
+        conn,
+        ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}"
+      )
+
+    body = html_response(conn, 200)
+    assert body =~ "Conduite"
+    assert body =~ "Absences justifiées"
+    assert body =~ "Absences non justifiées"
+    assert body =~ "Retards"
   end
 
   test "whole-class print includes every enrolled student", %{conn: conn, cg: cg, seq: seq} do

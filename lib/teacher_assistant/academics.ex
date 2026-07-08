@@ -21,6 +21,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.LessonStep
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.TimetableSlot
+  alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Repo
 
   resources do
@@ -41,6 +42,7 @@ defmodule TeacherAssistant.Academics do
     resource LessonStep
     resource Period
     resource TimetableSlot
+    resource AttendanceEntry
   end
 
   def ensure_personal_workspace!(%User{} = user) do
@@ -190,6 +192,26 @@ defmodule TeacherAssistant.Academics do
   end
 
   def resolve_period(_year, _param), do: nil
+
+  def period_date_range({:sequence, %Sequence{start_date: start_date, end_date: end_date}}) do
+    {start_date, end_date}
+  end
+
+  def period_date_range({:trimester, %Term{sequences: sequences}}) do
+    sequence_date_range(sequences)
+  end
+
+  def period_date_range({:annual, %AcademicYear{} = year}) do
+    sequence_date_range(list_sequences(year))
+  end
+
+  defp sequence_date_range([]), do: nil
+
+  defp sequence_date_range(sequences) do
+    first = sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
+    last = sequences |> Enum.map(& &1.end_date) |> Enum.max(Date)
+    {first, last}
+  end
 
   def current_sequence(%AcademicYear{} = year, %Date{} = date) do
     year

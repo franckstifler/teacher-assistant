@@ -17,6 +17,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          cg: cg,
          admin?: Permissions.admin?(scope),
          manage?: true,
+         register_link?:
+           Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          search_results: [],
          q: ""
        )
@@ -60,6 +62,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           >
             <.icon name="hero-calendar-days" class="size-4" />
             {gettext("Emploi du temps")}
+          </.link>
+          <.link
+            :if={@register_link?}
+            navigate={~p"/school/classes/#{@cg.id}/register"}
+            id="go-to-register"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-clipboard-document-check" class="size-4" />
+            {gettext("Cahier d'appel")}
           </.link>
         </div>
 

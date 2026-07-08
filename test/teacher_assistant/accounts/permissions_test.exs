@@ -73,4 +73,28 @@ defmodule TeacherAssistant.Accounts.PermissionsTest do
 
     refute Permissions.admin?(nil)
   end
+
+  test "discipline_master?/1 is true only for a school scope with the discipline_master role" do
+    dm = scope("u1", [:discipline_master])
+    plain = scope("u2", [:teacher])
+    personal = %Scope{current_workspace_type: :personal_teacher, current_roles: [:teacher]}
+
+    assert Permissions.discipline_master?(dm)
+    refute Permissions.discipline_master?(plain)
+    refute Permissions.discipline_master?(personal)
+  end
+
+  test "conduct_manager?/1 is true for head, vice_principal, and discipline_master" do
+    head = scope("u1", [:head])
+    vp = scope("u2", [:vice_principal])
+    dm = scope("u3", [:discipline_master])
+    plain = scope("u4", [:teacher])
+    personal = %Scope{current_workspace_type: :personal_teacher, current_roles: [:teacher]}
+
+    assert Permissions.conduct_manager?(head)
+    assert Permissions.conduct_manager?(vp)
+    assert Permissions.conduct_manager?(dm)
+    refute Permissions.conduct_manager?(plain)
+    refute Permissions.conduct_manager?(personal)
+  end
 end

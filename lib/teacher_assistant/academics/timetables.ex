@@ -172,7 +172,8 @@ defmodule TeacherAssistant.Academics.Timetables do
       subject: slot.teaching_context.subject,
       teacher_email: to_string(slot.teaching_context.teacher.email),
       day: slot.day,
-      period_id: slot.period_id
+      period_id: slot.period_id,
+      class_group_id: slot.class_group_id
     }
 
     if class_label, do: Map.put(base, :class_label, class_label), else: base

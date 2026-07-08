@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Accounts.Permissions
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
@@ -25,6 +26,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
       results = period && Academics.class_results_for_period(cg, period)
       data = results && results.per_student[student.id]
+      conduct = period && Attendance.student_conduct(enrollment, period)
 
       {:ok,
        assign(socket,
@@ -38,7 +40,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          period_param: period && Academics.period_param(period),
          period_kind: period && Academics.period_kind(period),
          effectif: (results && results.effectif) || 0,
-         data: data
+         data: data,
+         conduct: conduct
        )}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -62,6 +65,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       (year && Academics.resolve_period(year, params["period"])) || socket.assigns.period
 
     results = period && Academics.class_results_for_period(socket.assigns.cg, period)
+    conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
 
     {:noreply,
      assign(socket,
@@ -69,7 +73,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
        period_param: period && Academics.period_param(period),
        period_kind: period && Academics.period_kind(period),
        effectif: (results && results.effectif) || 0,
-       data: results && results.per_student[socket.assigns.student.id]
+       data: results && results.per_student[socket.assigns.student.id],
+       conduct: conduct
      )}
   end
 
@@ -239,6 +244,23 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             <div class="ta-leaf flex items-center">
               <.mention_badge :if={@data.mention} mention={@data.mention} />
             </div>
+          </div>
+        </div>
+
+        <div :if={@conduct} id="bulletin-conduct" class="space-y-2">
+          <h2 class="ta-eyebrow">{gettext("Conduite")}</h2>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <.stat
+              label={gettext("Absences justifiées")}
+              value={fmt(@conduct.justified_hours)}
+              suffix={gettext("h")}
+            />
+            <.stat
+              label={gettext("Absences non justifiées")}
+              value={fmt(@conduct.unjustified_hours)}
+              suffix={gettext("h")}
+            />
+            <.stat label={gettext("Retards")} value={to_string(@conduct.retards)} />
           </div>
         </div>
       </section>
