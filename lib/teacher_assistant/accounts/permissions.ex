@@ -30,6 +30,13 @@ defmodule TeacherAssistant.Accounts.Permissions do
 
   def admin?(_), do: false
 
+  def discipline_master?(%Scope{current_workspace_type: :school, current_roles: roles}),
+    do: :discipline_master in (roles || [])
+
+  def discipline_master?(_), do: false
+
+  def conduct_manager?(scope), do: admin?(scope) or discipline_master?(scope)
+
   def form_master?(
         %Scope{current_workspace_type: :school, current_user: %{id: uid}},
         %ClassGroup{form_master_user_id: fm_id}
