@@ -72,7 +72,17 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                   <% else %>
                     <td class="font-semibold">{period.label}</td>
                     <td :for={day <- @days} id={"cell-#{day}-#{period.id}"}>
-                      {cell_text(@grid[{day, period.id}])}
+                      <% slot = @grid[{day, period.id}] %>
+                      {cell_text(slot)}
+                      <.link
+                        :if={slot}
+                        navigate={
+                          ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.utc_today()}"
+                        }
+                        class="link link-primary block text-xs"
+                      >
+                        {gettext("Faire l'appel")}
+                      </.link>
                     </td>
                   <% end %>
                 </tr>
