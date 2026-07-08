@@ -140,6 +140,15 @@
         <p>{gettext("No marks for this séquence yet.")}</p>
       <% end %>
 
+      <p :if={b.conduct} class="totals">
+        <strong>{gettext("Conduite")}</strong>
+        &nbsp;·&nbsp; {gettext("Absences justifiées")} : {fmt(b.conduct.justified_hours)} {gettext(
+          "h"
+        )} &nbsp;·&nbsp; {gettext("Absences non justifiées")} : {fmt(b.conduct.unjustified_hours)} {gettext(
+          "h"
+        )} &nbsp;·&nbsp; {gettext("Retards")} : {b.conduct.retards}
+      </p>
+
       <div class="appreciation">
         <span class="k">{gettext("Appréciation du conseil de classe")}</span>
         <div class="rule"></div>

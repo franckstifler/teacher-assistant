@@ -3,6 +3,8 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Schools
 
   setup :register_and_log_in_user
@@ -83,6 +85,98 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert html =~ "Séq 2"
     assert html =~ "Moy. trim."
     _ = s1
+  end
+
+  test "the bulletin shows the conduct section without changing the moyenne générale", %{
+    conn: conn,
+    cg: cg,
+    enr: enr,
+    seq: seq,
+    school: school
+  } do
+    # Baseline: no attendance recorded yet.
+    {:ok, _view, baseline_html} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+    assert baseline_html =~ "Moyenne générale"
+    [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
+
+    :ok = Timetables.build_default_periods(school)
+    [tc] = Assignments.list_for_class(cg)
+    periods = Timetables.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+    [period1, period2 | _] = periods
+
+    # 2025-09-15 is a Monday within séquence 1's date range.
+    {:ok, slot} =
+      Timetables.place_slot(cg, %{
+        day: :monday,
+        period_id: period1.id,
+        teaching_context_id: tc.id
+      })
+
+    date = seq.start_date
+
+    {:ok, _} =
+      Attendance.record_period(
+        cg,
+        period1,
+        tc,
+        date,
+        [{enr.id, :absent}],
+        cg.workspace_id
+      )
+
+    {:ok, _} = Attendance.justify_day(enr.id, date, "Certificat médical")
+
+    {:ok, _} =
+      Attendance.record_period(
+        cg,
+        period2,
+        tc,
+        date,
+        [{enr.id, :late}],
+        cg.workspace_id
+      )
+
+    _ = slot
+
+    # Second unjustified absence in a different lesson period, same day.
+    [period3 | _] = periods -- [period1, period2]
+
+    {:ok, _} =
+      Attendance.record_period(
+        cg,
+        period3,
+        tc,
+        date,
+        [{enr.id, :absent}],
+        cg.workspace_id
+      )
+
+    expected_justified_hours =
+      Attendance.student_conduct(enr.id, {:sequence, seq}).justified_hours
+      |> Decimal.round(2)
+      |> Decimal.to_string()
+
+    expected_unjustified_hours =
+      Attendance.student_conduct(enr.id, {:sequence, seq}).unjustified_hours
+      |> Decimal.round(2)
+      |> Decimal.to_string()
+
+    {:ok, _view, html} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+    assert html =~ "Conduite"
+    assert html =~ "Absences justifiées"
+    assert html =~ "Absences non justifiées"
+    assert html =~ "Retards"
+    assert html =~ expected_justified_hours
+    assert html =~ expected_unjustified_hours
+    # 1 retard recorded
+    assert html =~ ">1<" or html =~ "1</"
+
+    [_, moyenne_after] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, html)
+    assert moyenne_after == baseline_moyenne
   end
 
   test "an enrollment from another class is rejected", %{
