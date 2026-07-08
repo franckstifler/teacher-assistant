@@ -6,8 +6,10 @@ defmodule TeacherAssistant.Academics.Attendance do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
 
   @valid_statuses [:present, :absent, :late]
@@ -114,6 +116,91 @@ defmodule TeacherAssistant.Academics.Attendance do
       end
     end
   end
+
+  @doc """
+  Builds the class register for `class_group` on `date`: every lesson period
+  (breaks excluded) and every roster student with a `cells` map keyed by
+  period_id, reflecting that day's attendance marks (`nil` where unmarked).
+  """
+  def class_register(%ClassGroup{workspace_id: ws_id} = class_group, %Date{} = date) do
+    workspace = Ash.get!(TeacherAssistant.Academics.Workspace, ws_id, authorize?: false)
+
+    periods =
+      workspace
+      |> Timetables.list_periods()
+      |> Enum.filter(&(&1.kind == :lesson))
+
+    period_ids = Enum.map(periods, & &1.id)
+
+    cells_by_enrollment =
+      AttendanceEntry
+      |> Ash.Query.filter(
+        date == ^date and period_id in ^period_ids and
+          enrollment.class_group_id == ^class_group.id
+      )
+      |> Ash.read!(authorize?: false)
+      |> Enum.group_by(& &1.enrollment_id, &{&1.period_id, &1.status})
+      |> Map.new(fn {enrollment_id, pairs} -> {enrollment_id, Map.new(pairs)} end)
+
+    students =
+      class_group
+      |> Academics.list_roster()
+      |> Enum.map(fn %{student: student, enrollment: enrollment} ->
+        marks = Map.get(cells_by_enrollment, enrollment.id, %{})
+        cells = Map.new(period_ids, &{&1, Map.get(marks, &1)})
+
+        %{
+          enrollment_id: enrollment.id,
+          student_name: student.full_name,
+          cells: cells
+        }
+      end)
+
+    %{periods: periods, students: students}
+  end
+
+  @doc """
+  Sets `justified: true` and `justification_note: note` on every `:absent`
+  `AttendanceEntry` for `enrollment` (struct or bare id) on `date`. Entries
+  with another status, or on another date, are left untouched. Returns
+  `{:ok, count}`.
+  """
+  def justify_day(enrollment, %Date{} = date, note) do
+    set_justification(enrollment, date, true, note)
+  end
+
+  @doc """
+  Sets `justified: false` and clears `justification_note` on every `:absent`
+  `AttendanceEntry` for `enrollment` (struct or bare id) on `date`. Returns
+  `{:ok, count}`.
+  """
+  def unjustify_day(enrollment, %Date{} = date) do
+    set_justification(enrollment, date, false, nil)
+  end
+
+  defp set_justification(enrollment, %Date{} = date, justified, note) do
+    enrollment_id = enrollment_id(enrollment)
+
+    entries =
+      AttendanceEntry
+      |> Ash.Query.filter(enrollment_id == ^enrollment_id and date == ^date and status == :absent)
+      |> Ash.read!(authorize?: false)
+
+    results =
+      Enum.map(entries, fn entry ->
+        entry
+        |> Ash.Changeset.for_update(:update, %{justified: justified, justification_note: note})
+        |> Ash.update(authorize?: false)
+      end)
+
+    case Enum.find(results, &match?({:error, _}, &1)) do
+      nil -> {:ok, length(results)}
+      {:error, _error} -> {:error, :justify_failed}
+    end
+  end
+
+  defp enrollment_id(%Enrollment{id: id}), do: id
+  defp enrollment_id(id) when is_binary(id), do: id
 
   defp validate_marks(marks, valid_enrollment_ids) do
     Enum.reduce_while(marks, :ok, fn {enrollment_id, status}, :ok ->

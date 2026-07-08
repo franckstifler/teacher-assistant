@@ -42,7 +42,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     :ok = Timetables.build_default_periods(ws)
     period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
-    other_period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
+
+    other_period =
+      Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
 
     # 2025-09-15 is a Monday
     {:ok, slot} =
@@ -104,7 +106,14 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       marks = [{ctx.enrollment1.id, :present}, {ctx.enrollment2.id, :absent}]
 
       assert {:ok, 2} =
-               Attendance.record_period(ctx.cg, ctx.period, ctx.tc, ~D[2025-09-15], marks, ctx.head.id)
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
 
       roll = Attendance.period_roll(ctx.cg, ctx.period, ~D[2025-09-15])
       statuses = Map.new(roll.students, &{&1.enrollment_id, &1.status})
@@ -118,10 +127,24 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       marks2 = [{ctx.enrollment1.id, :late}]
 
       assert {:ok, 1} =
-               Attendance.record_period(ctx.cg, ctx.period, ctx.tc, ~D[2025-09-15], marks1, ctx.head.id)
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks1,
+                 ctx.head.id
+               )
 
       assert {:ok, 1} =
-               Attendance.record_period(ctx.cg, ctx.period, ctx.tc, ~D[2025-09-15], marks2, ctx.head.id)
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks2,
+                 ctx.head.id
+               )
 
       roll = Attendance.period_roll(ctx.cg, ctx.period, ~D[2025-09-15])
       statuses = Map.new(roll.students, &{&1.enrollment_id, &1.status})
@@ -137,17 +160,32 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       marks = [{ctx.other_enrollment.id, :present}]
 
       assert {:error, _} =
-               Attendance.record_period(ctx.cg, ctx.period, ctx.tc, ~D[2025-09-15], marks, ctx.head.id)
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
     end
 
     test "record_period rejects an invalid status atom", ctx do
       marks = [{ctx.enrollment1.id, :tardy}]
 
       assert {:error, _} =
-               Attendance.record_period(ctx.cg, ctx.period, ctx.tc, ~D[2025-09-15], marks, ctx.head.id)
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
     end
 
-    test "record_period returns a clean tagged atom (not a raw Ash error) when the write fails", ctx do
+    test "record_period returns a clean tagged atom (not a raw Ash error) when the write fails",
+         ctx do
       # validate_marks/2 only checks enrollment membership and status, not
       # teaching_context — so a teaching_context with a non-existent id
       # passes validation but trips the DB foreign-key constraint on write.
@@ -155,7 +193,174 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       marks = [{ctx.enrollment1.id, :present}]
 
       assert {:error, :record_failed} =
-               Attendance.record_period(ctx.cg, ctx.period, bogus_tc, ~D[2025-09-15], marks, ctx.head.id)
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 bogus_tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
+    end
+  end
+
+  describe "class_register/2" do
+    test "returns only lesson periods and every roster student with a cells map", ctx do
+      marks = [{ctx.enrollment1.id, :present}, {ctx.enrollment2.id, :absent}]
+
+      assert {:ok, 2} =
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
+
+      register = Attendance.class_register(ctx.cg, ~D[2025-09-15])
+
+      assert Enum.all?(register.periods, &(&1.kind == :lesson))
+      refute Enum.any?(register.periods, &(&1.kind == :break))
+
+      assert length(register.students) == 2
+
+      names = Enum.map(register.students, & &1.student_name)
+      assert "Awa" in names
+      assert "Bilal" in names
+
+      student1 = Enum.find(register.students, &(&1.enrollment_id == ctx.enrollment1.id))
+      student2 = Enum.find(register.students, &(&1.enrollment_id == ctx.enrollment2.id))
+
+      assert student1.cells[ctx.period.id] == :present
+      assert student2.cells[ctx.period.id] == :absent
+
+      # other_period has no slot/marks for this day -> nil cell
+      assert student1.cells[ctx.other_period.id] == nil
+    end
+  end
+
+  describe "justify_day/3 and unjustify_day/2" do
+    test "justify_day flips only that day's absent entries, leaving others untouched", ctx do
+      marks = [{ctx.enrollment1.id, :absent}, {ctx.enrollment2.id, :present}]
+
+      assert {:ok, 2} =
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
+
+      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Sick note")
+
+      entry1 =
+        AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
+        |> Ash.read_one!(authorize?: false)
+
+      entry2 =
+        AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment2.id and date == ^~D[2025-09-15])
+        |> Ash.read_one!(authorize?: false)
+
+      assert entry1.justified == true
+      assert entry1.justification_note == "Sick note"
+
+      # non-absent entry untouched
+      assert entry2.justified == false
+      assert entry2.justification_note == nil
+    end
+
+    test "justify_day accepts a bare enrollment_id", ctx do
+      marks = [{ctx.enrollment1.id, :absent}]
+
+      assert {:ok, 1} =
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
+
+      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1.id, ~D[2025-09-15], "Note")
+
+      entry1 =
+        AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
+        |> Ash.read_one!(authorize?: false)
+
+      assert entry1.justified == true
+      assert entry1.justification_note == "Note"
+    end
+
+    test "justify_day does not touch absent entries on other dates", ctx do
+      # place a second slot on the other period, same day, to get two absences
+      # but we only need a distinct date entry: seed via record_period on a
+      # different period id, same enrollment. AttendanceEntry identity is
+      # {enrollment_id, date, period_id}, so a different period on the same
+      # date is a different row — use it to prove date-scoping still narrows
+      # correctly against a *different date* below.
+      marks = [{ctx.enrollment1.id, :absent}]
+
+      assert {:ok, 1} =
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
+
+      # 2025-09-22 is also a Monday; seed an absence there directly via :record
+      {:ok, other_day_entry} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: ~D[2025-09-22],
+          status: :absent,
+          enrollment_id: ctx.enrollment1.id,
+          period_id: ctx.period.id,
+          teaching_context_id: ctx.tc.id,
+          recorded_by_user_id: ctx.head.id,
+          workspace_id: ctx.ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Note")
+
+      other_day_entry = Ash.get!(AttendanceEntry, other_day_entry.id, authorize?: false)
+      assert other_day_entry.justified == false
+      assert other_day_entry.justification_note == nil
+    end
+
+    test "unjustify_day reverses justify_day", ctx do
+      marks = [{ctx.enrollment1.id, :absent}]
+
+      assert {:ok, 1} =
+               Attendance.record_period(
+                 ctx.cg,
+                 ctx.period,
+                 ctx.tc,
+                 ~D[2025-09-15],
+                 marks,
+                 ctx.head.id
+               )
+
+      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Sick note")
+      assert {:ok, 1} = Attendance.unjustify_day(ctx.enrollment1, ~D[2025-09-15])
+
+      entry1 =
+        AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
+        |> Ash.read_one!(authorize?: false)
+
+      assert entry1.justified == false
+      assert entry1.justification_note == nil
     end
   end
 end
