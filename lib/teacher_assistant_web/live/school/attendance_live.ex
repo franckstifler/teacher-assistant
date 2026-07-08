@@ -26,8 +26,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
        )
        |> load_roll()}
     else
-      false -> {:ok, socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
-      _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
+      false ->
+        {:ok,
+         socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
+
+      _ ->
+        {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
 

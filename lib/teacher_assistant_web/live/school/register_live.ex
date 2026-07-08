@@ -20,8 +20,12 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
        )
        |> load_register()}
     else
-      false -> {:ok, socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
-      _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
+      false ->
+        {:ok,
+         socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
+
+      _ ->
+        {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
 
@@ -112,7 +116,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   defp presence(""), do: nil
   defp presence(v), do: v
 
-  defp status_label(nil), do: "—"
+  defp status_label(nil), do: gettext("—")
   defp status_label(:present), do: gettext("P")
   defp status_label(:absent), do: gettext("A")
   defp status_label(:late), do: gettext("R")

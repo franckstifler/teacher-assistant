@@ -95,7 +95,16 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     |> form("#justify-form-#{enrollment.id}", %{"note" => "Certificat médical"})
     |> render_submit()
 
-    conduct = Attendance.student_conduct(enrollment, {:sequence, Academics.current_sequence(TeacherAssistant.Academics.current_academic_year(school), date)})
+    conduct =
+      Attendance.student_conduct(
+        enrollment,
+        {:sequence,
+         Academics.current_sequence(
+           TeacherAssistant.Academics.current_academic_year(school),
+           date
+         )}
+      )
+
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :gt
     assert Decimal.compare(conduct.unjustified_hours, Decimal.new(0)) == :eq
   end
@@ -110,7 +119,9 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, _student2} = Academics.add_student(cg, %{full_name: "Zinedine Bello", sex: :m})
     _ = head
 
-    {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
+    {:ok, view, html} =
+      live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
+
     assert html =~ Date.to_string(date)
 
     html =

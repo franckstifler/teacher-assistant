@@ -69,7 +69,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     enrollment: enrollment
   } do
     {:ok, view, html} =
-      live(conn, ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
+      live(
+        conn,
+        ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+      )
 
     assert html =~ "Awa Nkolo"
 
@@ -98,7 +101,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     conn = conn_for(school, other)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
-             live(conn, ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
+             live(
+               conn,
+               ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+             )
   end
 
   test "a conduct manager (discipline master) can mark any period", %{
@@ -122,7 +128,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     conn = conn_for(school, dm)
 
     {:ok, view, html} =
-      live(conn, ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
+      live(
+        conn,
+        ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+      )
 
     assert html =~ "Awa Nkolo"
 
@@ -142,7 +151,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     enrollment: enrollment
   } do
     {:ok, view, _html} =
-      live(conn, ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
+      live(
+        conn,
+        ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+      )
 
     view
     |> element("#mark-#{enrollment.id}")
@@ -156,7 +168,13 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == nil
   end
 
-  test "a non-member is redirected to /school", %{school: school, cg: cg, period: period, date: date, head: head} do
+  test "a non-member is redirected to /school", %{
+    school: school,
+    cg: cg,
+    period: period,
+    date: date,
+    head: head
+  } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
@@ -167,10 +185,17 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     conn = conn_for(school, other)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
-             live(conn, ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
+             live(
+               conn,
+               ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+             )
   end
 
-  test "cross-school class id redirects to /school/classes", %{conn: conn, period: period, date: date} do
+  test "cross-school class id redirects to /school/classes", %{
+    conn: conn,
+    period: period,
+    date: date
+  } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Schools.create_school(other, %{name: "Autre"})
 
@@ -185,6 +210,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
-             live(conn, ~p"/school/classes/#{ocg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
+             live(
+               conn,
+               ~p"/school/classes/#{ocg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+             )
   end
 end

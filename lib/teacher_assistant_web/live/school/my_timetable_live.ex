@@ -77,7 +77,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                       <.link
                         :if={slot}
                         navigate={
-                          ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.utc_today()}"
+                          ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.to_iso8601(Date.utc_today())}"
                         }
                         class="link link-primary block text-xs"
                       >
