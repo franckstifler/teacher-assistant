@@ -85,8 +85,9 @@ New module `TeacherAssistant.Academics.Attendance` (all Ash calls `authorize?: f
 tagged tuples, workspace-scoped; never leak raw Ash errors):
 
 - `period_roll(class_group, period, date)` → the class's students with their current
-  status for that period on that date (shape for the roll-call grid; students with no
-  entry default to unmarked / present per the UI).
+  status for that period on that date (shape for the roll-call grid; a student with no
+  entry yet is **unmarked** — the roll-call starts blank and the teacher sets a status
+  per student).
 - `record_period(class_group, period, teaching_context, date, marks, recorded_by)` →
   upserts the period's marks, where `marks` is a list of `{enrollment_id, status}`;
   returns `{:ok, count}` or a tagged error. Used by both the teacher roll-call and the
@@ -185,5 +186,11 @@ never `String.to_atom` on raw input.
   range rather than re-deriving séquence dates independently.
 - Conduct stays **off** the moyenne générale (KB unsettled); the bulletin arithmetic
   from P2.3 / P2.6 is not touched. Sanctions and note de conduite are deferred to P2.9.
-- The roll-call defaults unmarked students to present so a teacher marks only the
-  exceptions (absent / late); the register makes the full state explicit for the SG.
+- The roll-call **starts blank**: every student is unmarked until the teacher sets a
+  status. Only marked students produce entries, so an unmarked student contributes
+  nothing to the totals (treated as present). The SG register makes the full state
+  explicit day-wide.
+- Whether conduct enters the moyenne générale is left **open**. This increment keeps
+  it off (the KB flags it as unsettled), which is the reversible default — section G
+  is a display-only add-on, so turning it on later is additive and needs no rework of
+  the P2.3 / P2.6 arithmetic.
