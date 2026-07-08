@@ -72,6 +72,15 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
                )
     end
 
+    test "translates an Ash write failure (nil date) to a tagged error, not a raw struct", ctx do
+      assert {:error, :sanction_failed} =
+               Discipline.add_sanction(
+                 ctx.enrollment1,
+                 %{type: :avertissement, date: nil},
+                 ctx.head.id
+               )
+    end
+
     test "keeps duration_days for exclusion_temporaire", ctx do
       assert {:ok, %SanctionEntry{} = sanction} =
                Discipline.add_sanction(
@@ -187,6 +196,35 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       results = Discipline.list_sanctions(ctx.enrollment1, {:sequence, ctx.seq1})
 
       assert Enum.map(results, & &1.id) == [mine.id]
+    end
+
+    test "class + période boundaries: includes start_date and end_date, excludes day after end_date",
+         ctx do
+      {:ok, on_start} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :avertissement, date: ctx.seq1.start_date},
+          ctx.head.id
+        )
+
+      {:ok, on_end} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :blame, date: ctx.seq1.end_date},
+          ctx.head.id
+        )
+
+      {:ok, _after_end} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :consigne, date: Date.add(ctx.seq1.end_date, 1)},
+          ctx.head.id
+        )
+
+      results = Discipline.list_sanctions(ctx.cg, {:sequence, ctx.seq1})
+      result_ids = MapSet.new(results, & &1.id)
+
+      assert result_ids == MapSet.new([on_start.id, on_end.id])
     end
 
     test "returns [] when the period range is nil", ctx do
