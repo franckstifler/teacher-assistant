@@ -363,4 +363,256 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       assert entry1.justification_note == nil
     end
   end
+
+  describe "student_conduct/2 and class_conduct/2" do
+    setup ctx do
+      :ok = Academics.build_default_calendar(ctx.year)
+
+      [seq1, seq2 | _] = Academics.list_sequences(ctx.year)
+      [term1 | _] = Academics.list_terms(ctx.year)
+
+      %{seq1: seq1, seq2: seq2, term1: term1}
+    end
+
+    test "sums justified/unjustified hours and retards within a séquence, excluding entries outside it",
+         ctx do
+      %{seq1: seq1, period: period, tc: tc, enrollment1: enrollment1, ws: ws, head: head} = ctx
+
+      in_range_date = seq1.start_date
+      outside_date = Date.add(seq1.end_date, 30)
+
+      # Inside the séquence: one justified absence, one late.
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: in_range_date,
+          status: :absent,
+          justified: true,
+          enrollment_id: enrollment1.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: in_range_date,
+          status: :late,
+          enrollment_id: enrollment1.id,
+          period_id: ctx.other_period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      # Outside the séquence: must be excluded entirely.
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: outside_date,
+          status: :absent,
+          justified: false,
+          enrollment_id: enrollment1.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      totals = Attendance.student_conduct(enrollment1, {:sequence, seq1})
+
+      expected_hours =
+        Decimal.div(
+          Decimal.new(Time.diff(period.end_time, period.start_time, :minute)),
+          Decimal.new(60)
+        )
+
+      assert Decimal.equal?(totals.justified_hours, expected_hours)
+      assert Decimal.equal?(totals.unjustified_hours, Decimal.new(0))
+      assert totals.retards == 1
+    end
+
+    test "student_conduct accepts a bare enrollment_id", ctx do
+      %{seq1: seq1, period: period, tc: tc, enrollment1: enrollment1, ws: ws, head: head} = ctx
+
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: seq1.start_date,
+          status: :absent,
+          justified: false,
+          enrollment_id: enrollment1.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      totals = Attendance.student_conduct(enrollment1.id, {:sequence, seq1})
+
+      expected_hours =
+        Decimal.div(
+          Decimal.new(Time.diff(period.end_time, period.start_time, :minute)),
+          Decimal.new(60)
+        )
+
+      assert Decimal.equal?(totals.unjustified_hours, expected_hours)
+    end
+
+    test "trimester total covers both of its séquences", ctx do
+      %{term1: term1, period: period, tc: tc, enrollment1: enrollment1, ws: ws, head: head} = ctx
+
+      [seq1, seq2 | _] = term1.sequences
+
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: seq1.start_date,
+          status: :absent,
+          justified: true,
+          enrollment_id: enrollment1.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: seq2.start_date,
+          status: :absent,
+          justified: false,
+          enrollment_id: enrollment1.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      totals = Attendance.student_conduct(enrollment1, {:trimester, term1})
+
+      expected_hours =
+        Decimal.div(
+          Decimal.new(Time.diff(period.end_time, period.start_time, :minute)),
+          Decimal.new(60)
+        )
+
+      assert Decimal.equal?(totals.justified_hours, expected_hours)
+      assert Decimal.equal?(totals.unjustified_hours, expected_hours)
+    end
+
+    test "returns zeros when the period date range is nil", ctx do
+      empty_year_head = TeacherFixtures.user_fixture()
+      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty"})
+
+      {:ok, empty_year} =
+        Academics.create_academic_year(empty_ws, %{
+          name: "2099-2100",
+          start_date: ~D[2099-09-08],
+          end_date: ~D[2100-07-31],
+          active: false
+        })
+
+      # no sequences built for this year -> {:annual, empty_year} resolves to nil range
+      totals = Attendance.student_conduct(ctx.enrollment1, {:annual, empty_year})
+
+      assert Decimal.equal?(totals.justified_hours, Decimal.new(0))
+      assert Decimal.equal?(totals.unjustified_hours, Decimal.new(0))
+      assert totals.retards == 0
+    end
+
+    test "class_conduct returns per-student totals keyed by enrollment_id for the whole roster",
+         ctx do
+      %{
+        seq1: seq1,
+        period: period,
+        tc: tc,
+        enrollment1: enrollment1,
+        enrollment2: enrollment2,
+        ws: ws,
+        head: head,
+        cg: cg
+      } = ctx
+
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: seq1.start_date,
+          status: :absent,
+          justified: true,
+          enrollment_id: enrollment1.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      {:ok, _} =
+        AttendanceEntry
+        |> Ash.Changeset.for_create(:record, %{
+          date: seq1.start_date,
+          status: :late,
+          enrollment_id: enrollment2.id,
+          period_id: period.id,
+          teaching_context_id: tc.id,
+          recorded_by_user_id: head.id,
+          workspace_id: ws.id
+        })
+        |> Ash.create(authorize?: false)
+
+      results = Attendance.class_conduct(cg, {:sequence, seq1})
+
+      expected_hours =
+        Decimal.div(
+          Decimal.new(Time.diff(period.end_time, period.start_time, :minute)),
+          Decimal.new(60)
+        )
+
+      assert Decimal.equal?(results[enrollment1.id].justified_hours, expected_hours)
+      assert results[enrollment2.id].retards == 1
+      # enrollment2 has no absence entries -> zero hours
+      assert Decimal.equal?(results[enrollment2.id].justified_hours, Decimal.new(0))
+      assert Decimal.equal?(results[enrollment2.id].unjustified_hours, Decimal.new(0))
+    end
+
+    test "class_conduct includes roster enrollments with no entries as zero totals", ctx do
+      %{seq1: seq1, cg: cg, enrollment1: enrollment1, enrollment2: enrollment2} = ctx
+
+      results = Attendance.class_conduct(cg, {:sequence, seq1})
+
+      assert map_size(results) == 2
+      assert Decimal.equal?(results[enrollment1.id].justified_hours, Decimal.new(0))
+      assert Decimal.equal?(results[enrollment2.id].unjustified_hours, Decimal.new(0))
+      assert results[enrollment1.id].retards == 0
+    end
+
+    test "class_conduct returns zeros for every roster enrollment when the range is nil", ctx do
+      empty_year_head = TeacherFixtures.user_fixture()
+      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty2"})
+
+      {:ok, empty_year} =
+        Academics.create_academic_year(empty_ws, %{
+          name: "2099-2100",
+          start_date: ~D[2099-09-08],
+          end_date: ~D[2100-07-31],
+          active: false
+        })
+
+      results = Attendance.class_conduct(ctx.cg, {:annual, empty_year})
+
+      assert map_size(results) == 2
+      assert Decimal.equal?(results[ctx.enrollment1.id].justified_hours, Decimal.new(0))
+      assert Decimal.equal?(results[ctx.enrollment2.id].unjustified_hours, Decimal.new(0))
+    end
+  end
 end

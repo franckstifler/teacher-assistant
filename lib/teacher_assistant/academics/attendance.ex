@@ -6,6 +6,7 @@ defmodule TeacherAssistant.Academics.Attendance do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.Conduct
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.TeachingContext
@@ -196,6 +197,74 @@ defmodule TeacherAssistant.Academics.Attendance do
     case Enum.find(results, &match?({:error, _}, &1)) do
       nil -> {:ok, length(results)}
       {:error, _error} -> {:error, :justify_failed}
+    end
+  end
+
+  @zero_totals %{
+    justified_hours: Decimal.new(0),
+    unjustified_hours: Decimal.new(0),
+    retards: 0
+  }
+
+  @doc """
+  Aggregates justified/unjustified absence hours and retards for `enrollment`
+  (struct or bare id) within `period_tuple`'s date range (see
+  `Academics.period_date_range/1`). Returns zero totals when the range is
+  `nil`.
+  """
+  def student_conduct(enrollment, period_tuple) do
+    enrollment_id = enrollment_id(enrollment)
+
+    case Academics.period_date_range(period_tuple) do
+      nil ->
+        @zero_totals
+
+      {first, last} ->
+        AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^enrollment_id and date >= ^first and date <= ^last)
+        |> Ash.Query.load(:period)
+        |> Ash.read!(authorize?: false)
+        |> Enum.map(&%{status: &1.status, justified: &1.justified, period: &1.period})
+        |> Conduct.totals()
+    end
+  end
+
+  @doc """
+  Aggregates justified/unjustified absence hours and retards for every
+  roster enrollment of `class_group` within `period_tuple`'s date range, in
+  one scoped read. Enrollments with no entries in range get zero totals.
+  """
+  def class_conduct(%ClassGroup{} = class_group, period_tuple) do
+    roster_enrollment_ids =
+      class_group
+      |> Academics.list_roster()
+      |> Enum.map(& &1.enrollment.id)
+
+    zero_map = Map.new(roster_enrollment_ids, &{&1, @zero_totals})
+
+    case Academics.period_date_range(period_tuple) do
+      nil ->
+        zero_map
+
+      {first, last} ->
+        totals_by_enrollment =
+          AttendanceEntry
+          |> Ash.Query.filter(
+            enrollment.class_group_id == ^class_group.id and date >= ^first and date <= ^last
+          )
+          |> Ash.Query.load(:period)
+          |> Ash.read!(authorize?: false)
+          |> Enum.group_by(& &1.enrollment_id)
+          |> Map.new(fn {enrollment_id, entries} ->
+            totals =
+              entries
+              |> Enum.map(&%{status: &1.status, justified: &1.justified, period: &1.period})
+              |> Conduct.totals()
+
+            {enrollment_id, totals}
+          end)
+
+        Map.merge(zero_map, totals_by_enrollment)
     end
   end
 
