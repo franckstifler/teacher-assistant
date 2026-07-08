@@ -146,5 +146,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       assert {:error, _} =
                Attendance.record_period(ctx.cg, ctx.period, ctx.tc, ~D[2025-09-15], marks, ctx.head.id)
     end
+
+    test "record_period returns a clean tagged atom (not a raw Ash error) when the write fails", ctx do
+      # validate_marks/2 only checks enrollment membership and status, not
+      # teaching_context — so a teaching_context with a non-existent id
+      # passes validation but trips the DB foreign-key constraint on write.
+      bogus_tc = %TeacherAssistant.Academics.TeachingContext{id: Ecto.UUID.generate()}
+      marks = [{ctx.enrollment1.id, :present}]
+
+      assert {:error, :record_failed} =
+               Attendance.record_period(ctx.cg, ctx.period, bogus_tc, ~D[2025-09-15], marks, ctx.head.id)
+    end
   end
 end

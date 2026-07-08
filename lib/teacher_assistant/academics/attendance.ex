@@ -110,7 +110,7 @@ defmodule TeacherAssistant.Academics.Attendance do
 
       case Enum.find(results, &match?({:error, _}, &1)) do
         nil -> {:ok, length(results)}
-        {:error, error} -> {:error, error}
+        {:error, _error} -> {:error, :record_failed}
       end
     end
   end
