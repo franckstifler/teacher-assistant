@@ -23,6 +23,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.SanctionEntry
+  alias TeacherAssistant.Academics.ConductMark
   alias TeacherAssistant.Repo
 
   resources do
@@ -45,6 +46,7 @@ defmodule TeacherAssistant.Academics do
     resource TimetableSlot
     resource AttendanceEntry
     resource SanctionEntry
+    resource ConductMark
   end
 
   def ensure_personal_workspace!(%User{} = user) do
