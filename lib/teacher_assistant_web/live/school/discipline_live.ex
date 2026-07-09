@@ -99,7 +99,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          %{} = sanction <- Enum.find(socket.assigns.sanctions, &(&1.id == sanction_id)) do
       case Discipline.delete_sanction(sanction) do
         :ok ->
-          {:noreply, socket |> put_flash(:info, gettext("Sanction removed.")) |> select_period(nil)}
+          {:noreply,
+           socket |> put_flash(:info, gettext("Sanction removed.")) |> select_period(nil)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not remove the sanction."))}
@@ -118,7 +119,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
       case Discipline.set_conduct_mark(row.enrollment, sequence, value, scope.current_user.id) do
         {:ok, _mark} ->
           {:noreply,
-           socket |> put_flash(:info, gettext("Note de conduite enregistrée.")) |> select_period(nil)}
+           socket
+           |> put_flash(:info, gettext("Note de conduite enregistrée."))
+           |> select_period(nil)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Enter a value between 0 and 20."))}
@@ -228,7 +231,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 <td>{sanction.enrollment.student.full_name}</td>
                 <td>{SanctionLabels.type_label(sanction.type)}</td>
                 <td>{Date.to_string(sanction.date)}</td>
-                <td>{if sanction.type == :exclusion_temporaire, do: sanction.duration_days, else: "—"}</td>
+                <td>
+                  {if sanction.type == :exclusion_temporaire, do: sanction.duration_days, else: "—"}
+                </td>
                 <td>{sanction.reason || "—"}</td>
                 <td>{sanction.issued_by_user_id || "—"}</td>
                 <td :if={@can_edit?}>
@@ -320,7 +325,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                       value={summary && fmt(summary.note_de_conduite)}
                       class="input input-bordered input-xs w-20"
                     />
-                    <button type="submit" class="btn btn-ghost btn-xs">{gettext("Enregistrer")}</button>
+                    <button type="submit" class="btn btn-ghost btn-xs">
+                      {gettext("Enregistrer")}
+                    </button>
                   </form>
                   <span :if={!(@can_edit? and sequence_period?(@period))}>
                     {summary && fmt(summary.note_de_conduite)}
@@ -334,5 +341,4 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     </Layouts.app>
     """
   end
-
 end

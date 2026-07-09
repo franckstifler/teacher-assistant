@@ -268,9 +268,17 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             />
             <.stat label={gettext("Retards")} value={to_string(@conduct.retards)} />
           </div>
-          <div :if={@discipline} id="bulletin-discipline" class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div
+            :if={@discipline}
+            id="bulletin-discipline"
+            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          >
             <.stat label={gettext("Consignes")} value={to_string(@discipline.consignes_count)} />
-            <.stat label={gettext("Note de conduite")} value={fmt(@discipline.note_de_conduite)} suffix="/20" />
+            <.stat
+              label={gettext("Note de conduite")}
+              value={fmt(@discipline.note_de_conduite)}
+              suffix="/20"
+            />
             <div class="ta-leaf">
               <dt class="ta-eyebrow">{gettext("Sanctions")}</dt>
               <dd id="bulletin-sanctions">{SanctionLabels.sanctions_line(@discipline.sanctions)}</dd>

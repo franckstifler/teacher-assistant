@@ -79,9 +79,15 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     })
     |> render_submit()
 
-    sanctions = Discipline.list_sanctions(cg, {:sequence, Academics.current_sequence(
-      TeacherAssistant.Academics.current_academic_year(school), ~D[2025-09-10]
-    )})
+    sanctions =
+      Discipline.list_sanctions(
+        cg,
+        {:sequence,
+         Academics.current_sequence(
+           TeacherAssistant.Academics.current_academic_year(school),
+           ~D[2025-09-10]
+         )}
+      )
 
     assert [sanction] = sanctions
     assert sanction.type == :avertissement
@@ -91,9 +97,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     |> element("#delete-sanction-#{sanction.id}")
     |> render_click()
 
-    assert Discipline.list_sanctions(cg, {:sequence, Academics.current_sequence(
-      TeacherAssistant.Academics.current_academic_year(school), ~D[2025-09-10]
-    )}) == []
+    assert Discipline.list_sanctions(
+             cg,
+             {:sequence,
+              Academics.current_sequence(
+                TeacherAssistant.Academics.current_academic_year(school),
+                ~D[2025-09-10]
+              )}
+           ) == []
   end
 
   test "an exclusion temporaire sanction stores its duration", %{
@@ -179,7 +190,6 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     head: head,
     enrollment: enrollment
   } do
-
     {:ok, _sanction} =
       Discipline.add_sanction(
         enrollment,
