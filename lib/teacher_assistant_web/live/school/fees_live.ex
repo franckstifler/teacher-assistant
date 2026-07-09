@@ -22,7 +22,8 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          editing_id: nil,
          roster: Academics.list_roster(cg),
          payment_methods: @payment_methods,
-         viewing_history_id: nil
+         viewing_history_id: nil,
+         history_payments: []
        )
        |> load_tranches()
        |> load_balances()}
@@ -49,6 +50,21 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   defp load_balances(socket) do
     balances = Fees.class_balances(socket.assigns.cg, Date.utc_today())
     assign(socket, balances: balances)
+  end
+
+  defp load_history(socket, enrollment_id) do
+    case Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
+      %{} = row -> assign(socket, history_payments: Fees.list_payments(row.enrollment))
+      nil -> assign(socket, history_payments: [])
+    end
+  end
+
+  defp refresh_history_if_open(socket, enrollment_id) do
+    if socket.assigns.viewing_history_id == enrollment_id do
+      load_history(socket, enrollment_id)
+    else
+      socket
+    end
   end
 
   def handle_event("add_tranche", params, socket) do
@@ -136,10 +152,14 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("toggle_history", %{"enrollment_id" => enrollment_id}, socket) do
     current = socket.assigns.viewing_history_id
 
-    {:noreply,
-     assign(socket,
-       viewing_history_id: if(current == enrollment_id, do: nil, else: enrollment_id)
-     )}
+    if current == enrollment_id do
+      {:noreply, assign(socket, viewing_history_id: nil, history_payments: [])}
+    else
+      {:noreply,
+       socket
+       |> assign(viewing_history_id: enrollment_id)
+       |> load_history(enrollment_id)}
+    end
   end
 
   def handle_event("record_payment", params, socket) do
@@ -161,7 +181,11 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
       case Fees.record_payment(row.enrollment, attrs, scope.current_user.id) do
         {:ok, _payment} ->
-          {:noreply, socket |> put_flash(:info, gettext("Payment recorded.")) |> load_balances()}
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Payment recorded."))
+           |> load_balances()
+           |> refresh_history_if_open(row.enrollment.id)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not record the payment."))}
@@ -185,7 +209,11 @@ defmodule TeacherAssistantWeb.School.FeesLive do
            Enum.find(Fees.list_payments(row.enrollment), &(&1.id == payment_id)) do
       case Fees.delete_payment(payment) do
         :ok ->
-          {:noreply, socket |> put_flash(:info, gettext("Payment removed.")) |> load_balances()}
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Payment removed."))
+           |> load_balances()
+           |> refresh_history_if_open(enrollment_id)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not remove the payment."))}
@@ -553,7 +581,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                   </thead>
                   <tbody>
                     <tr
-                      :for={payment <- Fees.list_payments(row.enrollment)}
+                      :for={payment <- @history_payments}
                       id={"payment-row-#{payment.id}"}
                     >
                       <td>{Date.to_string(payment.paid_on)}</td>

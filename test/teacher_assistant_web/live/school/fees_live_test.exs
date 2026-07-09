@@ -314,11 +314,14 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     assert has_element?(view, "#delete-payment-#{payment.id}")
 
-    view
-    |> element("#delete-payment-#{payment.id}")
-    |> render_click()
+    html =
+      view
+      |> element("#delete-payment-#{payment.id}")
+      |> render_click()
 
     assert Fees.list_payments(enrollment) == []
+    refute html =~ "delete-payment-#{payment.id}"
+    refute has_element?(view, "#delete-payment-#{payment.id}")
   end
 
   test "status chip shows Soldé when fully paid", %{school: school, cg: cg, head: head} do
