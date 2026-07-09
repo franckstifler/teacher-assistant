@@ -128,6 +128,29 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
       assert {:error, :invalid_amount} = Fees.update_tranche(tranche, %{amount: -5})
     end
+
+    test "ignores a position key in attrs, leaving the append-managed position untouched",
+         ctx do
+      {:ok, _first} =
+        Fees.add_tranche(ctx.cg, %{
+          label: "1ère tranche",
+          amount: 25_000,
+          due_date: ~D[2025-10-15]
+        })
+
+      {:ok, second} =
+        Fees.add_tranche(ctx.cg, %{
+          label: "2ème tranche",
+          amount: 15_000,
+          due_date: ~D[2025-12-15]
+        })
+
+      assert second.position == 1
+
+      assert {:ok, updated} = Fees.update_tranche(second, %{position: 99, amount: 5_000})
+      assert updated.amount == 5_000
+      assert updated.position == 1
+    end
   end
 
   describe "delete_tranche/1" do

@@ -54,8 +54,11 @@ defmodule TeacherAssistant.Academics.Fees do
     amount = attrs[:amount] || attrs["amount"]
 
     with :ok <- validate_amount(amount) do
+      update_attrs =
+        Map.take(attrs, [:label, "label", :amount, "amount", :due_date, "due_date"])
+
       tranche
-      |> Ash.Changeset.for_update(:update, attrs)
+      |> Ash.Changeset.for_update(:update, update_attrs)
       |> Ash.update(authorize?: false)
       |> case do
         {:ok, tranche} -> {:ok, tranche}
