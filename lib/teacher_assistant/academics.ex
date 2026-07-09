@@ -26,6 +26,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.ConductMark
   alias TeacherAssistant.Academics.FeeTranche
   alias TeacherAssistant.Academics.Payment
+  alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Repo
 
   resources do
@@ -51,6 +52,7 @@ defmodule TeacherAssistant.Academics do
     resource ConductMark
     resource FeeTranche
     resource Payment
+    resource FeeAdjustment
   end
 
   def ensure_personal_workspace!(%User{} = user) do
