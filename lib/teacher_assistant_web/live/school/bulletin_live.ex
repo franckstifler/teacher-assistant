@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.Permissions
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
@@ -27,6 +28,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       results = period && Academics.class_results_for_period(cg, period)
       data = results && results.per_student[student.id]
       conduct = period && Attendance.student_conduct(enrollment, period)
+      discipline = period && Discipline.discipline_summary(enrollment, period)
 
       {:ok,
        assign(socket,
@@ -41,7 +43,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          period_kind: period && Academics.period_kind(period),
          effectif: (results && results.effectif) || 0,
          data: data,
-         conduct: conduct
+         conduct: conduct,
+         discipline: discipline
        )}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -66,6 +69,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
     results = period && Academics.class_results_for_period(socket.assigns.cg, period)
     conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
+    discipline = period && Discipline.discipline_summary(socket.assigns.enrollment, period)
 
     {:noreply,
      assign(socket,
@@ -74,7 +78,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
        period_kind: period && Academics.period_kind(period),
        effectif: (results && results.effectif) || 0,
        data: results && results.per_student[socket.assigns.student.id],
-       conduct: conduct
+       conduct: conduct,
+       discipline: discipline
      )}
   end
 
@@ -104,6 +109,20 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   defp no_data_message(:trimester), do: gettext("No marks for this term yet.")
   defp no_data_message(:annual), do: gettext("No marks for this year yet.")
   defp no_data_message(_), do: gettext("No marks for this séquence yet.")
+
+  defp sanction_type_label(:avertissement), do: gettext("Avertissement")
+  defp sanction_type_label(:blame), do: gettext("Blâme")
+  defp sanction_type_label(:exclusion_temporaire), do: gettext("Exclusion temporaire")
+  defp sanction_type_label(:exclusion_definitive), do: gettext("Exclusion définitive")
+
+  defp sanction_label(%{type: :exclusion_temporaire, duration_days: days}) when is_integer(days) do
+    "#{sanction_type_label(:exclusion_temporaire)} (#{days} #{gettext("j")})"
+  end
+
+  defp sanction_label(%{type: type}), do: sanction_type_label(type)
+
+  defp sanctions_line([]), do: gettext("Aucune sanction")
+  defp sanctions_line(sanctions), do: sanctions |> Enum.map(&sanction_label/1) |> Enum.join(" · ")
 
   def render(assigns) do
     ~H"""
@@ -261,6 +280,14 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
               suffix={gettext("h")}
             />
             <.stat label={gettext("Retards")} value={to_string(@conduct.retards)} />
+          </div>
+          <div :if={@discipline} id="bulletin-discipline" class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <.stat label={gettext("Consignes")} value={to_string(@discipline.consignes_count)} />
+            <.stat label={gettext("Note de conduite")} value={fmt(@discipline.note_de_conduite)} suffix="/20" />
+            <div class="ta-leaf">
+              <dt class="ta-eyebrow">{gettext("Sanctions")}</dt>
+              <dd id="bulletin-sanctions">{sanctions_line(@discipline.sanctions)}</dd>
+            </div>
           </div>
         </div>
       </section>

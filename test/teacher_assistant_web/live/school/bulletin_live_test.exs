@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Schools
 
@@ -174,6 +175,50 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert html =~ expected_unjustified_hours
     # 1 retard recorded
     assert html =~ ">1<" or html =~ "1</"
+
+    [_, moyenne_after] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, html)
+    assert moyenne_after == baseline_moyenne
+  end
+
+  test "the bulletin shows sanctions, consignes and note de conduite without changing the moyenne générale",
+       %{conn: conn, cg: cg, enr: enr, seq: seq, head: head} do
+    # Baseline: no discipline recorded yet.
+    {:ok, _view, baseline_html} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+    [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
+
+    date = seq.start_date
+
+    {:ok, _} =
+      Discipline.add_sanction(enr, %{type: :consigne, date: date, reason: "Bavardage"}, head.id)
+
+    {:ok, _} =
+      Discipline.add_sanction(
+        enr,
+        %{type: :avertissement, date: date, reason: "Retards répétés"},
+        head.id
+      )
+
+    {:ok, _} =
+      Discipline.add_sanction(
+        enr,
+        %{type: :exclusion_temporaire, date: date, duration_days: 3, reason: "Bagarre"},
+        head.id
+      )
+
+    {:ok, _} = Discipline.set_conduct_mark(enr, seq, 14, head.id)
+
+    {:ok, _view, html} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+    assert html =~ "Consignes"
+    assert html =~ "1"
+    assert html =~ "Avertissement"
+    assert html =~ "Exclusion temporaire"
+    assert html =~ "3 j"
+    assert html =~ "Note de conduite"
+    assert html =~ "14"
 
     [_, moyenne_after] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, html)
     assert moyenne_after == baseline_moyenne

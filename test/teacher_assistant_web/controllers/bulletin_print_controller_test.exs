@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Schools
 
@@ -102,6 +103,50 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "Absences justifiées"
     assert body =~ "Absences non justifiées"
     assert body =~ "Retards"
+  end
+
+  test "single bulletin print shows the sanctions, consignes and note de conduite figures", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    roster: roster,
+    head: head
+  } do
+    %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
+    date = seq.start_date
+
+    {:ok, _} =
+      Discipline.add_sanction(enr, %{type: :consigne, date: date, reason: "Bavardage"}, head.id)
+
+    {:ok, _} =
+      Discipline.add_sanction(
+        enr,
+        %{type: :avertissement, date: date, reason: "Retards répétés"},
+        head.id
+      )
+
+    {:ok, _} =
+      Discipline.add_sanction(
+        enr,
+        %{type: :exclusion_temporaire, date: date, duration_days: 3, reason: "Bagarre"},
+        head.id
+      )
+
+    {:ok, _} = Discipline.set_conduct_mark(enr, seq, 14, head.id)
+
+    conn =
+      get(
+        conn,
+        ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}"
+      )
+
+    body = html_response(conn, 200)
+    assert body =~ "Consignes"
+    assert body =~ "Avertissement"
+    assert body =~ "Exclusion temporaire"
+    assert body =~ "3 j"
+    assert body =~ "Note de conduite"
+    assert body =~ "14"
   end
 
   test "whole-class print includes every enrolled student", %{conn: conn, cg: cg, seq: seq} do

@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.{Permissions, Workspaces}
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
@@ -46,6 +47,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   defp render_bulletins(conn, scope, cg, period, results, entries) do
     conduct_by_enrollment = Attendance.class_conduct(cg, period)
+    discipline_by_enrollment = Discipline.class_discipline(cg, period)
 
     bundles =
       Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
@@ -53,7 +55,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           student: student,
           enrollment: enrollment,
           data: results && results.per_student[student.id],
-          conduct: conduct_by_enrollment[enrollment.id]
+          conduct: conduct_by_enrollment[enrollment.id],
+          discipline: discipline_by_enrollment[enrollment.id]
         }
       end)
 

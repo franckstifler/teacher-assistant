@@ -149,6 +149,13 @@
         )} &nbsp;·&nbsp; {gettext("Retards")} : {b.conduct.retards}
       </p>
 
+      <p :if={b.discipline} class="totals">
+        <strong>{gettext("Discipline")}</strong>
+        &nbsp;·&nbsp; {gettext("Consignes")} : {b.discipline.consignes_count}
+        &nbsp;·&nbsp; {gettext("Note de conduite")} : {fmt(b.discipline.note_de_conduite)}/20
+        &nbsp;·&nbsp; {gettext("Sanctions")} : {sanctions_line(b.discipline.sanctions)}
+      </p>
+
       <div class="appreciation">
         <span class="k">{gettext("Appréciation du conseil de classe")}</span>
         <div class="rule"></div>
