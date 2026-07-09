@@ -5,6 +5,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistantWeb.SanctionLabels
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -109,20 +110,6 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   defp no_data_message(:trimester), do: gettext("No marks for this term yet.")
   defp no_data_message(:annual), do: gettext("No marks for this year yet.")
   defp no_data_message(_), do: gettext("No marks for this séquence yet.")
-
-  defp sanction_type_label(:avertissement), do: gettext("Avertissement")
-  defp sanction_type_label(:blame), do: gettext("Blâme")
-  defp sanction_type_label(:exclusion_temporaire), do: gettext("Exclusion temporaire")
-  defp sanction_type_label(:exclusion_definitive), do: gettext("Exclusion définitive")
-
-  defp sanction_label(%{type: :exclusion_temporaire, duration_days: days}) when is_integer(days) do
-    "#{sanction_type_label(:exclusion_temporaire)} (#{days} #{gettext("j")})"
-  end
-
-  defp sanction_label(%{type: type}), do: sanction_type_label(type)
-
-  defp sanctions_line([]), do: gettext("Aucune sanction")
-  defp sanctions_line(sanctions), do: sanctions |> Enum.map(&sanction_label/1) |> Enum.join(" · ")
 
   def render(assigns) do
     ~H"""
@@ -286,7 +273,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             <.stat label={gettext("Note de conduite")} value={fmt(@discipline.note_de_conduite)} suffix="/20" />
             <div class="ta-leaf">
               <dt class="ta-eyebrow">{gettext("Sanctions")}</dt>
-              <dd id="bulletin-sanctions">{sanctions_line(@discipline.sanctions)}</dd>
+              <dd id="bulletin-sanctions">{SanctionLabels.sanctions_line(@discipline.sanctions)}</dd>
             </div>
           </div>
         </div>

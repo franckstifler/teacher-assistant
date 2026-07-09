@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistantWeb.SanctionLabels
 
   @sanction_types [
     :avertissement,
@@ -173,12 +174,6 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   defp default_period([]), do: nil
   defp default_period([seq | _]), do: {:sequence, seq}
 
-  defp type_label(:avertissement), do: gettext("Avertissement")
-  defp type_label(:blame), do: gettext("Blâme")
-  defp type_label(:exclusion_temporaire), do: gettext("Exclusion temporaire")
-  defp type_label(:exclusion_definitive), do: gettext("Exclusion définitive")
-  defp type_label(:consigne), do: gettext("Consigne")
-
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
 
@@ -231,7 +226,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
             <tbody>
               <tr :for={sanction <- @sanctions} id={"sanction-row-#{sanction.id}"}>
                 <td>{sanction.enrollment.student.full_name}</td>
-                <td>{type_label(sanction.type)}</td>
+                <td>{SanctionLabels.type_label(sanction.type)}</td>
                 <td>{Date.to_string(sanction.date)}</td>
                 <td>{if sanction.type == :exclusion_temporaire, do: sanction.duration_days, else: "—"}</td>
                 <td>{sanction.reason || "—"}</td>
@@ -269,7 +264,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 </option>
               </select>
               <select id="discipline-type-select" name="type" class="select select-bordered select-sm">
-                <option :for={t <- @sanction_types} value={t}>{type_label(t)}</option>
+                <option :for={t <- @sanction_types} value={t}>{SanctionLabels.type_label(t)}</option>
               </select>
               <input
                 type="date"
