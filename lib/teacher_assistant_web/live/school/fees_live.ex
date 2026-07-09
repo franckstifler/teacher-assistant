@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          true <- authorized?(scope, cg) do
       {:ok,
        socket
-       |> assign(cg: cg, can_edit?: Permissions.fees_manager?(scope))
+       |> assign(cg: cg, can_edit?: Permissions.fees_manager?(scope), editing_id: nil)
        |> load_tranches()}
     else
       false ->
@@ -60,6 +60,18 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     end
   end
 
+  def handle_event("edit_tranche", %{"tranche_id" => tranche_id}, socket) do
+    if socket.assigns.can_edit? do
+      {:noreply, assign(socket, editing_id: tranche_id)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel_edit_tranche", _params, socket) do
+    {:noreply, assign(socket, editing_id: nil)}
+  end
+
   def handle_event("update_tranche", %{"tranche_id" => tranche_id} = params, socket) do
     scope = socket.assigns.current_scope
 
@@ -76,7 +88,10 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       case Fees.update_tranche(tranche, attrs) do
         {:ok, _tranche} ->
           {:noreply,
-           socket |> put_flash(:info, gettext("Tranche updated.")) |> load_tranches()}
+           socket
+           |> put_flash(:info, gettext("Tranche updated."))
+           |> assign(editing_id: nil)
+           |> load_tranches()}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not update the tranche."))}
@@ -134,11 +149,20 @@ defmodule TeacherAssistantWeb.School.FeesLive do
               </tr>
             </thead>
             <tbody>
-              <tr :for={tranche <- @tranches} id={"tranche-row-#{tranche.id}"}>
+              <tr :for={tranche <- @tranches} :if={@editing_id != tranche.id} id={"tranche-row-#{tranche.id}"}>
                 <td>{tranche.label}</td>
                 <td>{Money.format_fcfa(tranche.amount)}</td>
                 <td>{Date.to_string(tranche.due_date)}</td>
-                <td :if={@can_edit?}>
+                <td :if={@can_edit?} class="flex gap-2">
+                  <button
+                    id={"edit-tranche-#{tranche.id}"}
+                    type="button"
+                    class="btn btn-ghost btn-xs"
+                    phx-click="edit_tranche"
+                    phx-value-tranche_id={tranche.id}
+                  >
+                    {gettext("Éditer")}
+                  </button>
                   <button
                     id={"delete-tranche-#{tranche.id}"}
                     type="button"
@@ -149,6 +173,50 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                   >
                     {gettext("Supprimer")}
                   </button>
+                </td>
+              </tr>
+              <tr :for={tranche <- @tranches} :if={@can_edit? and @editing_id == tranche.id} id={"tranche-row-#{tranche.id}"}>
+                <td colspan="4">
+                  <form
+                    id={"tranche-edit-form-#{tranche.id}"}
+                    phx-submit="update_tranche"
+                    class="grid gap-2 sm:grid-cols-4 items-center"
+                  >
+                    <input type="hidden" name="tranche_id" value={tranche.id} />
+                    <input
+                      type="text"
+                      name="label"
+                      value={tranche.label}
+                      placeholder={gettext("Libellé")}
+                      class="input input-bordered input-sm"
+                    />
+                    <input
+                      type="number"
+                      name="amount"
+                      min="0"
+                      value={tranche.amount}
+                      placeholder={gettext("Montant (FCFA)")}
+                      class="input input-bordered input-sm"
+                    />
+                    <input
+                      type="date"
+                      name="due_date"
+                      value={Date.to_string(tranche.due_date)}
+                      class="input input-bordered input-sm"
+                    />
+                    <div class="flex gap-2">
+                      <button type="submit" class="btn btn-primary btn-xs">
+                        {gettext("Enregistrer")}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-xs"
+                        phx-click="cancel_edit_tranche"
+                      >
+                        {gettext("Annuler")}
+                      </button>
+                    </div>
+                  </form>
                 </td>
               </tr>
             </tbody>

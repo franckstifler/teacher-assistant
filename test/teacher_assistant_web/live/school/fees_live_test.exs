@@ -96,6 +96,68 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     assert Fees.list_tranches(cg) == []
   end
 
+  test "a fees manager edits a tranche's label and amount", %{
+    school: school,
+    cg: cg,
+    head: head
+  } do
+    {:ok, tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    assert has_element?(view, "#edit-tranche-#{tranche.id}")
+
+    view
+    |> element("#edit-tranche-#{tranche.id}")
+    |> render_click()
+
+    assert has_element?(view, "#tranche-edit-form-#{tranche.id}")
+
+    view
+    |> form("#tranche-edit-form-#{tranche.id}", %{
+      "tranche_id" => tranche.id,
+      "label" => "Tranche 1 modifiée",
+      "amount" => "15000",
+      "due_date" => "2025-11-01"
+    })
+    |> render_submit()
+
+    assert [updated] = Fees.list_tranches(cg)
+    assert updated.label == "Tranche 1 modifiée"
+    assert updated.amount == 15_000
+    assert updated.due_date == ~D[2025-11-01]
+  end
+
+  test "an invalid amount on edit is rejected without persisting", %{
+    school: school,
+    cg: cg,
+    head: head
+  } do
+    {:ok, tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    view
+    |> element("#edit-tranche-#{tranche.id}")
+    |> render_click()
+
+    view
+    |> form("#tranche-edit-form-#{tranche.id}", %{
+      "tranche_id" => tranche.id,
+      "label" => "Tranche 1",
+      "amount" => "-500",
+      "due_date" => "2025-10-01"
+    })
+    |> render_submit()
+
+    assert [unchanged] = Fees.list_tranches(cg)
+    assert unchanged.amount == 10_000
+  end
+
   test "a form master sees read-only rows and forged events are rejected", %{
     school: school,
     cg: cg,
@@ -121,6 +183,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     [tranche] = Fees.list_tranches(cg)
     refute has_element?(view, "#delete-tranche-#{tranche.id}")
+    refute has_element?(view, "#edit-tranche-#{tranche.id}")
 
     view
     |> render_hook("add_tranche", %{
@@ -131,6 +194,14 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     view
     |> render_hook("delete_tranche", %{"tranche_id" => tranche.id})
+
+    view
+    |> render_hook("update_tranche", %{
+      "tranche_id" => tranche.id,
+      "label" => "forged edit",
+      "amount" => "1",
+      "due_date" => "2025-10-01"
+    })
 
     assert Fees.list_tranches(cg) == [tranche]
   end
