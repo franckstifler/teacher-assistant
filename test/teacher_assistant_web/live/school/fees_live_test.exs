@@ -71,7 +71,11 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     assert Fees.list_tranches(cg) == []
   end
 
-  test "a negative or non-numeric amount is rejected without persisting", %{cg: cg, school: school, head: head} do
+  test "a negative or non-numeric amount is rejected without persisting", %{
+    cg: cg,
+    school: school,
+    head: head
+  } do
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
 
@@ -222,6 +226,192 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/school/classes/#{cg.id}/fees")
+  end
+
+  test "a fees manager records a payment and the balance + status chip update", %{
+    school: school,
+    cg: cg,
+    head: head
+  } do
+    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
+    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+
+    {:ok, _tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    assert has_element?(view, "#record-payment-form-#{enrollment.id}")
+
+    view
+    |> form("#record-payment-form-#{enrollment.id}", %{
+      "amount" => "4000",
+      "paid_on" => "2025-10-05",
+      "method" => "cash",
+      "reference" => "R-1",
+      "note" => "part payment"
+    })
+    |> render_submit()
+
+    assert [payment] = Fees.list_payments(enrollment)
+    assert payment.amount == 4000
+    assert payment.method == :cash
+
+    balance = Fees.student_balance(enrollment)
+    assert balance.total_paid == 4000
+    assert balance.status == :behind
+
+    html = render(view)
+    assert html =~ "En retard"
+  end
+
+  test "a fees manager sets an adjustment and the due drops", %{
+    school: school,
+    cg: cg,
+    head: head
+  } do
+    {:ok, _student} = Academics.add_student(cg, %{full_name: "Bella Fon", sex: :f})
+    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+
+    {:ok, _tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    view
+    |> form("#adjustment-form-#{enrollment.id}", %{
+      "amount" => "2000",
+      "reason" => "scholarship"
+    })
+    |> render_submit()
+
+    balance = Fees.student_balance(enrollment)
+    assert balance.total_due == 8000
+  end
+
+  test "a fees manager deletes a payment", %{school: school, cg: cg, head: head} do
+    {:ok, _student} = Academics.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
+    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+
+    {:ok, _tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    {:ok, payment} =
+      Fees.record_payment(
+        enrollment,
+        %{amount: 5000, paid_on: ~D[2025-10-05], method: :cash},
+        head.id
+      )
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    view
+    |> element("#toggle-history-#{enrollment.id}")
+    |> render_click()
+
+    assert has_element?(view, "#delete-payment-#{payment.id}")
+
+    view
+    |> element("#delete-payment-#{payment.id}")
+    |> render_click()
+
+    assert Fees.list_payments(enrollment) == []
+  end
+
+  test "status chip shows Soldé when fully paid", %{school: school, cg: cg, head: head} do
+    {:ok, _student} = Academics.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
+    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+
+    {:ok, _tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    {:ok, _payment} =
+      Fees.record_payment(
+        enrollment,
+        %{amount: 10_000, paid_on: ~D[2025-10-05], method: :cash},
+        head.id
+      )
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    html = render(view)
+    assert html =~ "Soldé"
+    refute html =~ "En retard"
+  end
+
+  test "a form master sees balances read-only and forged payment/adjustment events are rejected",
+       %{school: school, cg: cg, head: head} do
+    {:ok, _student} = Academics.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
+    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+
+    {:ok, _tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    fm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+
+    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Academics.set_form_master(cg, fm.id)
+
+    conn = conn_for(school, fm)
+
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    refute has_element?(view, "#record-payment-form-#{enrollment.id}")
+    refute has_element?(view, "#adjustment-form-#{enrollment.id}")
+
+    view
+    |> render_hook("record_payment", %{
+      "enrollment_id" => enrollment.id,
+      "amount" => "5000",
+      "paid_on" => "2025-10-05",
+      "method" => "cash"
+    })
+
+    view
+    |> render_hook("set_adjustment", %{
+      "enrollment_id" => enrollment.id,
+      "amount" => "2000",
+      "reason" => "forged"
+    })
+
+    assert Fees.list_payments(enrollment) == []
+    assert Fees.student_balance(enrollment).total_due == 10_000
+  end
+
+  test "a zero or non-numeric payment amount is rejected", %{school: school, cg: cg, head: head} do
+    {:ok, _student} = Academics.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
+    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+
+    {:ok, _tranche} =
+      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+
+    conn = conn_for(school, head)
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+
+    view
+    |> form("#record-payment-form-#{enrollment.id}", %{
+      "amount" => "0",
+      "paid_on" => "2025-10-05",
+      "method" => "cash"
+    })
+    |> render_submit()
+
+    view
+    |> form("#record-payment-form-#{enrollment.id}", %{
+      "amount" => "not-a-number",
+      "paid_on" => "2025-10-05",
+      "method" => "cash"
+    })
+    |> render_submit()
+
+    assert Fees.list_payments(enrollment) == []
   end
 
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
