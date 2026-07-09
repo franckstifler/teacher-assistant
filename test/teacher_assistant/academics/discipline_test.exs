@@ -428,5 +428,40 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       s2 = result[ctx.enrollment2.id]
       assert s2 == %{sanctions: [], consignes_count: 0, note_de_conduite: nil}
     end
+
+    test "trimester période: batched per-student means match note_de_conduite/2, entry-less enrollment gets zeros",
+         ctx do
+      term1 = Enum.find(Academics.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
+      assert ctx.seq2.term_id == term1.id
+
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 10, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq2, 20, ctx.head.id)
+
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment2, ctx.seq1, 8, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment2, ctx.seq2, 12, ctx.head.id)
+
+      expected1 = Discipline.note_de_conduite(ctx.enrollment1, {:trimester, term1})
+      expected2 = Discipline.note_de_conduite(ctx.enrollment2, {:trimester, term1})
+
+      result = Discipline.class_discipline(ctx.cg, {:trimester, term1})
+
+      assert Decimal.equal?(result[ctx.enrollment1.id].note_de_conduite, expected1)
+      assert Decimal.equal?(result[ctx.enrollment1.id].note_de_conduite, Decimal.new(15))
+
+      assert Decimal.equal?(result[ctx.enrollment2.id].note_de_conduite, expected2)
+      assert Decimal.equal?(result[ctx.enrollment2.id].note_de_conduite, Decimal.new(10))
+    end
+
+    test "trimester période: enrollment with no marks in either séquence gets nil note_de_conduite",
+         ctx do
+      term1 = Enum.find(Academics.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
+
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 14, ctx.head.id)
+
+      result = Discipline.class_discipline(ctx.cg, {:trimester, term1})
+
+      assert result[ctx.enrollment2.id] ==
+               %{sanctions: [], consignes_count: 0, note_de_conduite: nil}
+    end
   end
 end

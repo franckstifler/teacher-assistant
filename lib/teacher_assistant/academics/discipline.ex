@@ -149,8 +149,12 @@ defmodule TeacherAssistant.Academics.Discipline do
     |> Ash.read(authorize?: false)
     |> case do
       {:ok, marks} ->
-        Enum.each(marks, &Ash.destroy!(&1, authorize?: false))
-        {:ok, length(marks)}
+        try do
+          Enum.each(marks, &Ash.destroy!(&1, authorize?: false))
+          {:ok, length(marks)}
+        rescue
+          _ -> {:error, :conduct_mark_failed}
+        end
 
       {:error, _error} ->
         {:error, :conduct_mark_failed}
@@ -170,7 +174,7 @@ defmodule TeacherAssistant.Academics.Discipline do
     |> Ash.Query.filter(enrollment_id == ^id and sequence_id == ^sequence.id)
     |> Ash.read!(authorize?: false)
     |> case do
-      [mark] -> mark.value
+      [mark | _] -> mark.value
       [] -> nil
     end
   end
@@ -204,16 +208,43 @@ defmodule TeacherAssistant.Academics.Discipline do
       |> Ash.read!(authorize?: false)
       |> Enum.map(& &1.value)
 
-    case values do
-      [] ->
-        nil
+    mean_of_values(values)
+  end
 
-      _ ->
-        Decimal.div(
-          Enum.reduce(values, Decimal.new(0), &Decimal.add/2),
-          Decimal.new(length(values))
-        )
-    end
+  # Shared averaging rule: mean of present values only, never a raw sum.
+  # `nil` when the list is empty. Used by both the single-student
+  # `note_de_conduite/2` path and the batched `class_discipline/2` path so
+  # the two never drift.
+  defp mean_of_values([]), do: nil
+
+  defp mean_of_values(values) do
+    Decimal.div(
+      Enum.reduce(values, Decimal.new(0), &Decimal.add/2),
+      Decimal.new(length(values))
+    )
+  end
+
+  # Séquence ids covered by `period_tuple`, computed once for the whole
+  # roster (avoids a per-student `list_terms`/`list_sequences` re-fetch).
+  defp period_sequence_ids({:sequence, %Sequence{id: id}}), do: [id]
+
+  defp period_sequence_ids({:trimester, %Term{} = term}) do
+    sequences =
+      case term.sequences do
+        %Ash.NotLoaded{} ->
+          Academics.list_terms(%AcademicYear{id: term.academic_year_id})
+          |> Enum.find(&(&1.id == term.id))
+          |> then(fn t -> if t, do: t.sequences, else: [] end)
+
+        sequences ->
+          sequences
+      end
+
+    Enum.map(sequences, & &1.id)
+  end
+
+  defp period_sequence_ids({:annual, %AcademicYear{} = year}) do
+    year |> Academics.list_sequences() |> Enum.map(& &1.id)
   end
 
   @doc """
@@ -239,24 +270,44 @@ defmodule TeacherAssistant.Academics.Discipline do
   """
   def class_discipline(%ClassGroup{} = class_group, period_tuple) do
     roster = Academics.list_roster(class_group)
+    enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     entries_by_enrollment =
       class_group
       |> list_sanctions(period_tuple)
       |> Enum.group_by(& &1.enrollment_id)
 
+    conduct_values_by_enrollment =
+      period_tuple
+      |> period_sequence_ids()
+      |> batch_conduct_values(enrollment_ids)
+
     Map.new(roster, fn %{enrollment: enrollment} ->
       entries = Map.get(entries_by_enrollment, enrollment.id, [])
       {consignes, sanctions} = Enum.split_with(entries, &(&1.type == :consigne))
 
+      values = Map.get(conduct_values_by_enrollment, enrollment.id, [])
+
       summary = %{
         sanctions: sanctions,
         consignes_count: length(consignes),
-        note_de_conduite: note_de_conduite(enrollment, period_tuple)
+        note_de_conduite: mean_of_values(values)
       }
 
       {enrollment.id, summary}
     end)
+  end
+
+  # Single batched read of ConductMark for the whole roster, scoped to the
+  # période's séquence ids. Returns %{enrollment_id => [value, ...]}.
+  defp batch_conduct_values([], _enrollment_ids), do: %{}
+  defp batch_conduct_values(_sequence_ids, []), do: %{}
+
+  defp batch_conduct_values(sequence_ids, enrollment_ids) do
+    ConductMark
+    |> Ash.Query.filter(enrollment_id in ^enrollment_ids and sequence_id in ^sequence_ids)
+    |> Ash.read!(authorize?: false)
+    |> Enum.group_by(& &1.enrollment_id, & &1.value)
   end
 
   defp enrollment_id(%Enrollment{id: id}), do: id
