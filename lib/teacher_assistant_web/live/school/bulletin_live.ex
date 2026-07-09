@@ -3,7 +3,9 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistantWeb.SanctionLabels
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -27,6 +29,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       results = period && Academics.class_results_for_period(cg, period)
       data = results && results.per_student[student.id]
       conduct = period && Attendance.student_conduct(enrollment, period)
+      discipline = period && Discipline.discipline_summary(enrollment, period)
 
       {:ok,
        assign(socket,
@@ -41,7 +44,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          period_kind: period && Academics.period_kind(period),
          effectif: (results && results.effectif) || 0,
          data: data,
-         conduct: conduct
+         conduct: conduct,
+         discipline: discipline
        )}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -66,6 +70,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
     results = period && Academics.class_results_for_period(socket.assigns.cg, period)
     conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
+    discipline = period && Discipline.discipline_summary(socket.assigns.enrollment, period)
 
     {:noreply,
      assign(socket,
@@ -74,7 +79,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
        period_kind: period && Academics.period_kind(period),
        effectif: (results && results.effectif) || 0,
        data: results && results.per_student[socket.assigns.student.id],
-       conduct: conduct
+       conduct: conduct,
+       discipline: discipline
      )}
   end
 
@@ -261,6 +267,22 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
               suffix={gettext("h")}
             />
             <.stat label={gettext("Retards")} value={to_string(@conduct.retards)} />
+          </div>
+          <div
+            :if={@discipline}
+            id="bulletin-discipline"
+            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          >
+            <.stat label={gettext("Consignes")} value={to_string(@discipline.consignes_count)} />
+            <.stat
+              label={gettext("Note de conduite")}
+              value={fmt(@discipline.note_de_conduite)}
+              suffix="/20"
+            />
+            <div class="ta-leaf">
+              <dt class="ta-eyebrow">{gettext("Sanctions")}</dt>
+              <dd id="bulletin-sanctions">{SanctionLabels.sanctions_line(@discipline.sanctions)}</dd>
+            </div>
           </div>
         </div>
       </section>

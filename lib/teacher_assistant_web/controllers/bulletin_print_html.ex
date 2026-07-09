@@ -1,6 +1,8 @@
 defmodule TeacherAssistantWeb.BulletinPrintHTML do
   use TeacherAssistantWeb, :html
 
+  alias TeacherAssistantWeb.SanctionLabels
+
   embed_templates "bulletin_print_html/*"
 
   defp fmt(nil), do: "—"
@@ -15,4 +17,6 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
 
   defp sex_label(:f), do: gettext("Féminin")
   defp sex_label(_), do: gettext("Masculin")
+
+  defp sanctions_line(sanctions), do: SanctionLabels.sanctions_line(sanctions)
 end
