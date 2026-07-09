@@ -21,6 +21,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
            Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          discipline_link?:
            Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
+         fees_link?:
+           Permissions.fees_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          search_results: [],
          q: ""
        )
@@ -82,6 +84,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           >
             <.icon name="hero-shield-exclamation" class="size-4" />
             {gettext("Discipline")}
+          </.link>
+          <.link
+            :if={@fees_link?}
+            navigate={~p"/school/classes/#{@cg.id}/fees"}
+            id="go-to-fees"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-banknotes" class="size-4" />
+            {gettext("Frais")}
           </.link>
         </div>
 

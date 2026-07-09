@@ -37,6 +37,8 @@ defmodule TeacherAssistant.Accounts.Permissions do
 
   def conduct_manager?(scope), do: admin?(scope) or discipline_master?(scope)
 
+  def fees_manager?(scope), do: admin?(scope) or bursar?(scope)
+
   def form_master?(
         %Scope{current_workspace_type: :school, current_user: %{id: uid}},
         %ClassGroup{form_master_user_id: fm_id}

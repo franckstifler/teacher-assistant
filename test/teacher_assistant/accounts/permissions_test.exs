@@ -97,4 +97,18 @@ defmodule TeacherAssistant.Accounts.PermissionsTest do
     refute Permissions.conduct_manager?(plain)
     refute Permissions.conduct_manager?(personal)
   end
+
+  test "fees_manager?/1 is true for head, vice_principal, and bursar" do
+    head = scope("u1", [:head])
+    vp = scope("u2", [:vice_principal])
+    bursar = scope("u3", [:bursar])
+    plain = scope("u4", [:teacher])
+    personal = %Scope{current_workspace_type: :personal_teacher, current_roles: [:teacher]}
+
+    assert Permissions.fees_manager?(head)
+    assert Permissions.fees_manager?(vp)
+    assert Permissions.fees_manager?(bursar)
+    refute Permissions.fees_manager?(plain)
+    refute Permissions.fees_manager?(personal)
+  end
 end
