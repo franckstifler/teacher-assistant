@@ -19,6 +19,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          manage?: true,
          register_link?:
            Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
+         discipline_link?:
+           Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          search_results: [],
          q: ""
        )
@@ -71,6 +73,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           >
             <.icon name="hero-clipboard-document-check" class="size-4" />
             {gettext("Cahier d'appel")}
+          </.link>
+          <.link
+            :if={@discipline_link?}
+            navigate={~p"/school/classes/#{@cg.id}/discipline"}
+            id="go-to-discipline"
+            class="btn btn-ghost btn-sm gap-2"
+          >
+            <.icon name="hero-shield-exclamation" class="size-4" />
+            {gettext("Discipline")}
           </.link>
         </div>
 
