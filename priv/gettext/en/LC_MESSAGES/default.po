@@ -2564,12 +2564,12 @@ msgid "Consignes"
 msgstr "Detentions"
 
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:88
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Could not record the sanction."
-msgstr "Could not enroll the student."
+msgstr "Could not record the sanction."
 
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:105
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Could not remove the sanction."
 msgstr "Could not remove the sanction."
 
@@ -2629,9 +2629,9 @@ msgid "Sanctions"
 msgstr "Sanctions"
 
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:241
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Supprimer cette sanction ?"
-msgstr "Delete this period?"
+msgstr "Delete this sanction?"
 
 #: lib/teacher_assistant_web/sanction_labels.ex:16
 #, elixir-autogen, elixir-format
