@@ -73,6 +73,18 @@ defmodule TeacherAssistant.Academics.FeeBalanceTest do
       assert result.due_to_date == 0
     end
 
+    test "due_to_date includes a tranche due exactly on on_date, excludes one due the day after" do
+      tranches = [
+        %FeeTranche{amount: 10_000, due_date: ~D[2025-10-01]},
+        %FeeTranche{amount: 20_000, due_date: ~D[2025-10-02]}
+      ]
+
+      result = FeeBalance.compute(tranches, [], 0, ~D[2025-10-01])
+
+      assert result.total_due == 30_000
+      assert result.due_to_date == 10_000
+    end
+
     test "empty tranches and payments yield an all-zero map and :paid_up" do
       result = FeeBalance.compute([], [], 0, ~D[2025-10-01])
 
