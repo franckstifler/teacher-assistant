@@ -1,7 +1,10 @@
 defmodule TeacherAssistant.Academics.DisciplineTest do
   use TeacherAssistant.DataCase, async: true
 
+  require Ash.Query
+
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.ConductMark
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.SanctionEntry
   alias TeacherAssistant.Accounts.Schools
@@ -255,6 +258,175 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       assert :ok = Discipline.delete_sanction(sanction)
 
       assert Discipline.list_sanctions(ctx.enrollment1, {:sequence, ctx.seq1}) == []
+    end
+  end
+
+  describe "set_conduct_mark/4" do
+    test "creates a mark with the enrollment's workspace_id", ctx do
+      assert {:ok, %ConductMark{} = mark} =
+               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 15, ctx.head.id)
+
+      assert mark.value == Decimal.new(15)
+      assert mark.workspace_id == ctx.ws.id
+      assert mark.enrollment_id == ctx.enrollment1.id
+      assert mark.sequence_id == ctx.seq1.id
+    end
+
+    test "re-setting the same (enrollment, sequence) upserts: one row, latest value", ctx do
+      assert {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 12, ctx.head.id)
+
+      assert {:ok, updated} =
+               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 18, ctx.head.id)
+
+      assert Decimal.equal?(updated.value, Decimal.new(18))
+
+      all =
+        ConductMark
+        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and sequence_id == ^ctx.seq1.id)
+        |> Ash.read!(authorize?: false)
+
+      assert length(all) == 1
+      assert Decimal.equal?(hd(all).value, Decimal.new(18))
+    end
+
+    test "rejects a value above 20", ctx do
+      assert {:error, :invalid_value} =
+               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 21, ctx.head.id)
+    end
+
+    test "rejects a value below 0", ctx do
+      assert {:error, :invalid_value} =
+               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, -1, ctx.head.id)
+    end
+  end
+
+  describe "clear_conduct_mark/2" do
+    test "deletes the mark for (enrollment, sequence)", ctx do
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 14, ctx.head.id)
+
+      assert {:ok, 1} = Discipline.clear_conduct_mark(ctx.enrollment1, ctx.seq1)
+
+      assert Discipline.note_de_conduite(ctx.enrollment1, {:sequence, ctx.seq1}) == nil
+    end
+
+    test "returns {:ok, 0} when no mark exists", ctx do
+      assert {:ok, 0} = Discipline.clear_conduct_mark(ctx.enrollment1, ctx.seq1)
+    end
+  end
+
+  describe "note_de_conduite/2" do
+    test "sequence period returns that séquence's mark value", ctx do
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 16, ctx.head.id)
+
+      assert Decimal.equal?(
+               Discipline.note_de_conduite(ctx.enrollment1, {:sequence, ctx.seq1}),
+               Decimal.new(16)
+             )
+    end
+
+    test "trimester period returns the MEAN (not sum) of that term's present séquence marks",
+         ctx do
+      term1 = Enum.find(Academics.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
+      assert ctx.seq2.term_id == term1.id
+
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 10, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq2, 20, ctx.head.id)
+
+      result = Discipline.note_de_conduite(ctx.enrollment1, {:trimester, term1})
+
+      assert Decimal.equal?(result, Decimal.new(15))
+      refute Decimal.equal?(result, Decimal.new(30))
+    end
+
+    test "annual period returns the mean of present séquence marks across the year", ctx do
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 10, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq2, 20, ctx.head.id)
+
+      result = Discipline.note_de_conduite(ctx.enrollment1, {:annual, ctx.year})
+
+      assert Decimal.equal?(result, Decimal.new(15))
+    end
+
+    test "returns nil when no marks are present", ctx do
+      assert Discipline.note_de_conduite(ctx.enrollment1, {:sequence, ctx.seq1}) == nil
+      assert Discipline.note_de_conduite(ctx.enrollment1, {:annual, ctx.year}) == nil
+    end
+  end
+
+  describe "discipline_summary/2" do
+    test "splits the sanction ladder from consignes and reports note_de_conduite", ctx do
+      {:ok, consigne} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :consigne, date: ctx.seq1.start_date},
+          ctx.head.id
+        )
+
+      {:ok, avertissement} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :avertissement, date: Date.add(ctx.seq1.start_date, 1)},
+          ctx.head.id
+        )
+
+      {:ok, exclusion} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{
+            type: :exclusion_temporaire,
+            date: Date.add(ctx.seq1.start_date, 2),
+            duration_days: 2
+          },
+          ctx.head.id
+        )
+
+      {:ok, _out_of_range} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :consigne, date: ctx.seq2.start_date},
+          ctx.head.id
+        )
+
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 17, ctx.head.id)
+
+      summary = Discipline.discipline_summary(ctx.enrollment1, {:sequence, ctx.seq1})
+
+      assert Enum.map(summary.sanctions, & &1.id) == [exclusion.id, avertissement.id]
+      refute Enum.any?(summary.sanctions, &(&1.id == consigne.id))
+      assert summary.consignes_count == 1
+      assert Decimal.equal?(summary.note_de_conduite, Decimal.new(17))
+    end
+
+    test "consignes_count and note_de_conduite are zero/nil with no entries", ctx do
+      summary = Discipline.discipline_summary(ctx.enrollment2, {:sequence, ctx.seq1})
+
+      assert summary.sanctions == []
+      assert summary.consignes_count == 0
+      assert summary.note_de_conduite == nil
+    end
+  end
+
+  describe "class_discipline/2" do
+    test "includes every roster enrollment, entry-less ones get zeros", ctx do
+      {:ok, _} =
+        Discipline.add_sanction(
+          ctx.enrollment1,
+          %{type: :blame, date: ctx.seq1.start_date},
+          ctx.head.id
+        )
+
+      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 13, ctx.head.id)
+
+      result = Discipline.class_discipline(ctx.cg, {:sequence, ctx.seq1})
+
+      assert map_size(result) == 2
+
+      s1 = result[ctx.enrollment1.id]
+      assert length(s1.sanctions) == 1
+      assert Decimal.equal?(s1.note_de_conduite, Decimal.new(13))
+
+      s2 = result[ctx.enrollment2.id]
+      assert s2 == %{sanctions: [], consignes_count: 0, note_de_conduite: nil}
     end
   end
 end
