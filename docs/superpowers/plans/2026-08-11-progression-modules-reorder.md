@@ -564,6 +564,70 @@ git commit -m "feat(academics): module CRUD, module-targeted entry add, default 
 
 ---
 
+### Task 3b: Migrate peripheral tests to the module-targeted API
+
+**Why:** Task 2 drops the `module` string column and Task 3 changes `add_progression_entry/2` from plan-targeted to module-targeted. Beyond the three test files the other tasks own (`import_progression_plan_test`, `fiche_live_test`, `fiche_print_controller_test`), ~11 existing test files call the old API with `module:` strings and would fail to compile/run. This mechanical sweep restores them.
+
+**Files (each: replace old entry-creation calls):**
+- `test/teacher_assistant/academics/progression_plan_test.exs`
+- `test/teacher_assistant/academics/progression_entry_test.exs`
+- `test/teacher_assistant/academics/lesson_plan_resource_test.exs`
+- `test/teacher_assistant/academics/lesson_step_test.exs`
+- `test/teacher_assistant/academics/teaching_log_entry_test.exs`
+- `test/teacher_assistant/academics/lesson_plan_test.exs`
+- `test/teacher_assistant_web/live/teacher/log_live_test.exs`
+- `test/teacher_assistant_web/live/teacher/lesson_plan_live_test.exs`
+- `test/teacher_assistant_web/live/teacher/coverage_live_test.exs`
+- `test/teacher_assistant_web/live/teacher/school_scope_ux_test.exs`
+
+**Interfaces:**
+- Consumes: `create_module/2`, `add_progression_entry/2` (module-targeted), `list_progression_entries/1` (still exists, flat list). No production code changes.
+
+- [ ] **Step 1: Find every call site**
+
+Run: `grep -rn "add_progression_entry\|module:" test --include="*.exs" | grep -vE "import_progression_plan_test|fiche_live_test|fiche_print_controller_test|module_grouping"`
+
+- [ ] **Step 2: Apply the uniform transform** — for each call `Academics.add_progression_entry(plan, %{module: M, lesson_title: L, ...rest})`, replace with a module create + module-targeted add. Drop any explicit `position:` (it is now assigned per-module). Reuse one module per distinct `M` within a test. Example (`progression_plan_test.exs`):
+
+```elixir
+    # before
+    {:ok, e1} = Academics.add_progression_entry(plan, %{module: "M1", lesson_title: "Lesson 1", position: 1})
+    {:ok, e2} = Academics.add_progression_entry(plan, %{module: "M2", lesson_title: "Lesson 2", position: 2})
+
+    # after
+    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
+    {:ok, e1} = Academics.add_progression_entry(m1, %{lesson_title: "Lesson 1"})
+    {:ok, e2} = Academics.add_progression_entry(m2, %{lesson_title: "Lesson 2"})
+```
+
+For entries that carried a blank/absent module, use `{:ok, m} = Academics.ensure_default_module(plan)` and add into `m`. If a test asserted on `entry.module` (the string), switch it to `entry.progression_module_id` or load `:progression_module` and assert on `.title`. Preserve each test's original intent — only the entry-creation plumbing changes.
+
+- [ ] **Step 3: Run the swept files — expect pass**
+
+```bash
+mix test test/teacher_assistant/academics/progression_plan_test.exs \
+  test/teacher_assistant/academics/progression_entry_test.exs \
+  test/teacher_assistant/academics/lesson_plan_resource_test.exs \
+  test/teacher_assistant/academics/lesson_step_test.exs \
+  test/teacher_assistant/academics/teaching_log_entry_test.exs \
+  test/teacher_assistant/academics/lesson_plan_test.exs \
+  test/teacher_assistant_web/live/teacher/log_live_test.exs \
+  test/teacher_assistant_web/live/teacher/lesson_plan_live_test.exs \
+  test/teacher_assistant_web/live/teacher/coverage_live_test.exs \
+  test/teacher_assistant_web/live/teacher/school_scope_ux_test.exs
+```
+Expected: PASS. (The full suite still has `import_progression_plan_test`, `fiche_live_test`, and `fiche_print_controller_test` red — those are fixed in Tasks 5 and 6.)
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add test
+git commit -m "test: migrate peripheral tests to module-targeted progression API"
+```
+
+---
+
 ### Task 4: `apply_layout/2` — transactional reorder endpoint
 
 **Files:**
