@@ -838,32 +838,139 @@ defmodule TeacherAssistant.Academics do
            ProgressionPlan
            |> Ash.Changeset.for_create(:create, attrs)
            |> Ash.create(authorize?: false) do
-      for e <- list_progression_entries(plan) do
-        ProgressionEntry
-        |> Ash.Changeset.for_create(:create, %{
-          module: e.module,
-          lesson_title: e.lesson_title,
-          planned_hours: e.planned_hours,
-          entry_type: e.entry_type,
-          week_no: e.week_no,
-          position: e.position,
-          famille_de_situations: e.famille_de_situations,
-          categories_action: e.categories_action,
-          competence_visee: e.competence_visee,
-          progression_plan_id: copy.id,
-          sequence_id: e.sequence_id
-        })
-        |> Ash.create!(authorize?: false)
+      for m <- list_progression_modules(plan) do
+        {:ok, new_m} =
+          ProgressionModule
+          |> Ash.Changeset.for_create(
+            if(m.default?, do: :create_default_bucket, else: :create),
+            %{title: m.title, position: m.position, progression_plan_id: copy.id}
+          )
+          |> Ash.create(authorize?: false)
+
+        for e <- m.entries do
+          ProgressionEntry
+          |> Ash.Changeset.for_create(:create, %{
+            lesson_title: e.lesson_title,
+            planned_hours: e.planned_hours,
+            entry_type: e.entry_type,
+            week_no: e.week_no,
+            position: e.position,
+            famille_de_situations: e.famille_de_situations,
+            categories_action: e.categories_action,
+            competence_visee: e.competence_visee,
+            progression_plan_id: copy.id,
+            progression_module_id: new_m.id,
+            sequence_id: e.sequence_id
+          })
+          |> Ash.create!(authorize?: false)
+        end
       end
 
       {:ok, copy}
     end
   end
 
-  def add_progression_entry(%ProgressionPlan{id: plan_id}, attrs) do
-    next = (list_entries_query(plan_id) |> Ash.read!(authorize?: false) |> length()) + 1
-    attrs = attrs |> Map.put(:progression_plan_id, plan_id) |> Map.put_new(:position, next)
+  def ensure_default_module(%ProgressionPlan{id: plan_id}) do
+    ProgressionModule
+    |> Ash.Query.filter(progression_plan_id == ^plan_id and default? == true)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, %ProgressionModule{} = m} ->
+        {:ok, m}
+
+      {:ok, nil} ->
+        pos = module_count(plan_id) + 1
+
+        ProgressionModule
+        |> Ash.Changeset.for_create(:create_default_bucket, %{
+          title: "Général",
+          position: pos,
+          progression_plan_id: plan_id
+        })
+        |> Ash.create(authorize?: false)
+    end
+  end
+
+  def list_progression_modules(%ProgressionPlan{id: plan_id}) do
+    ProgressionModule
+    |> Ash.Query.filter(progression_plan_id == ^plan_id)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.Query.load(entries: Ash.Query.sort(ProgressionEntry, position: :asc))
+    |> Ash.read!(authorize?: false)
+  end
+
+  def create_module(%ProgressionPlan{id: plan_id}, attrs) do
+    pos = module_count(plan_id) + 1
+
+    ProgressionModule
+    |> Ash.Changeset.for_create(
+      :create,
+      Map.merge(attrs, %{position: pos, progression_plan_id: plan_id})
+    )
+    |> Ash.create(authorize?: false)
+  end
+
+  def rename_module(%ProgressionModule{} = m, title),
+    do: m |> Ash.Changeset.for_update(:update, %{title: title}) |> Ash.update(authorize?: false)
+
+  def delete_module(%ProgressionModule{default?: true}), do: {:error, :default_bucket}
+
+  def delete_module(%ProgressionModule{} = m) do
+    {:ok, plan} = Ash.get(ProgressionPlan, m.progression_plan_id, authorize?: false)
+    {:ok, bucket} = ensure_default_module(plan)
+    base = entry_count(bucket.id)
+
+    entries_in_module(m.id)
+    |> Enum.with_index(base + 1)
+    |> Enum.each(fn {e, pos} ->
+      update_progression_entry(e, %{progression_module_id: bucket.id, position: pos})
+    end)
+
+    Ash.destroy(m, authorize?: false)
+  end
+
+  def add_progression_entry(
+        %ProgressionModule{id: module_id, progression_plan_id: plan_id},
+        attrs
+      ) do
+    pos = entry_count(module_id) + 1
+
+    attrs =
+      attrs
+      |> Map.put(:progression_plan_id, plan_id)
+      |> Map.put(:progression_module_id, module_id)
+      |> Map.put(:position, pos)
+
     ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def fetch_owned_module(id, %Workspace{id: ws_id}) do
+    ProgressionModule
+    |> Ash.Query.filter(id == ^id and progression_plan.workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  defp module_count(plan_id) do
+    ProgressionModule
+    |> Ash.Query.filter(progression_plan_id == ^plan_id)
+    |> Ash.count!(authorize?: false)
+  end
+
+  defp entry_count(module_id) do
+    ProgressionEntry
+    |> Ash.Query.filter(progression_module_id == ^module_id)
+    |> Ash.count!(authorize?: false)
+  end
+
+  defp entries_in_module(module_id) do
+    ProgressionEntry
+    |> Ash.Query.filter(progression_module_id == ^module_id)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.read!(authorize?: false)
   end
 
   def list_progression_entries(%ProgressionPlan{id: plan_id}) do

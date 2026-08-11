@@ -41,4 +41,35 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     assert m.position == 1
     assert m.default? == false
   end
+
+  test "add entries into a module get per-module positions", %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, e1} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, e2} = Academics.add_progression_entry(m, %{lesson_title: "L2", entry_type: :lesson})
+    assert e1.position == 1 and e2.position == 2
+    assert e1.progression_module_id == m.id
+  end
+
+  test "delete_module reassigns entries to the default bucket and refuses on the bucket",
+       %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, _e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, bucket} = Academics.ensure_default_module(plan)
+
+    assert :ok = Academics.delete_module(m)
+    [reloaded] = Academics.list_progression_modules(plan) |> Enum.filter(& &1.default?)
+    assert reloaded.id == bucket.id
+    assert length(reloaded.entries) == 1
+    assert {:error, :default_bucket} = Academics.delete_module(bucket)
+  end
+
+  test "list_progression_modules returns modules ordered with ordered entries", %{plan: plan} do
+    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
+    {:ok, _} = Academics.add_progression_entry(m1, %{lesson_title: "L1", entry_type: :lesson})
+    mods = Academics.list_progression_modules(plan)
+    assert Enum.map(mods, & &1.title) == ["M1", "M2"]
+    assert [%{lesson_title: "L1"}] = hd(mods).entries
+    assert m2.id in Enum.map(mods, & &1.id)
+  end
 end
