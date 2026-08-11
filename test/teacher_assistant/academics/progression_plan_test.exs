@@ -42,11 +42,14 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   test "duplicate copies progression entries onto the new plan", %{ctx: ctx} do
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Original"})
 
+    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
+
     {:ok, e1} =
-      Academics.add_progression_entry(plan, %{module: "M1", lesson_title: "Lesson 1", position: 1})
+      Academics.add_progression_entry(m1, %{lesson_title: "Lesson 1"})
 
     {:ok, e2} =
-      Academics.add_progression_entry(plan, %{module: "M2", lesson_title: "Lesson 2", position: 2})
+      Academics.add_progression_entry(m2, %{lesson_title: "Lesson 2"})
 
     {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
 
@@ -61,11 +64,11 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
       refute MapSet.member?(original_ids, ce.id)
     end
 
-    [c1, c2] = copied_entries
-    assert c1.module == e1.module
+    [c1, c2] = copied_entries |> Ash.load!(:progression_module, authorize?: false)
+    assert c1.progression_module.title == "M1"
     assert c1.lesson_title == e1.lesson_title
     assert c1.position == e1.position
-    assert c2.module == e2.module
+    assert c2.progression_module.title == "M2"
     assert c2.lesson_title == e2.lesson_title
     assert c2.position == e2.position
   end

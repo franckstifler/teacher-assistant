@@ -25,9 +25,10 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
 
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
 
+    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+
     {:ok, entry} =
-      Academics.add_progression_entry(plan, %{
-        module: "M1",
+      Academics.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
@@ -85,9 +86,10 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
 
     {:ok, plan2} = Academics.create_progression_plan(ctx2, %{title: "P2"})
 
+    {:ok, m} = Academics.create_module(plan2, %{title: "M"})
+
     {:ok, entry2} =
-      Academics.add_progression_entry(plan2, %{
-        module: "M",
+      Academics.add_progression_entry(m, %{
         lesson_title: "L",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson

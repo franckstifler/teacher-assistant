@@ -24,17 +24,17 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
 
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
 
+    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+
     {:ok, e1} =
-      Academics.add_progression_entry(plan, %{
-        module: "M1",
+      Academics.add_progression_entry(m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
       })
 
     {:ok, _e2} =
-      Academics.add_progression_entry(plan, %{
-        module: "M1",
+      Academics.add_progression_entry(m1, %{
         lesson_title: "L2",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
