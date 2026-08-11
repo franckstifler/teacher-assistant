@@ -39,3 +39,6 @@ npm-debug.log
 # Superpowers SDD scratch (task briefs, review packages, progress ledger)
 .superpowers/
 .DS_Store
+
+# Claude Code local worktrees/settings
+.claude/
