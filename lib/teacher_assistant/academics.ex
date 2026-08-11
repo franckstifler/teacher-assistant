@@ -785,29 +785,34 @@ defmodule TeacherAssistant.Academics do
               {:error, reason} -> Repo.rollback(reason)
             end
 
-          entry_notifs =
-            rows
-            |> Enum.with_index(1)
-            |> Enum.flat_map(fn {row, position} ->
-              entry_attrs =
-                row
-                |> Map.take([
-                  :module,
-                  :lesson_title,
-                  :planned_hours,
-                  :entry_type,
-                  :week_no,
-                  :sequence_id
-                ])
-                |> Map.put(:progression_plan_id, plan.id)
-                |> Map.put(:position, position)
+          groups = TeacherAssistant.Academics.ModuleGrouping.group(index_rows(rows))
+          rows_by_index = rows |> Enum.with_index() |> Map.new(fn {r, i} -> {i, r} end)
 
-              case ProgressionEntry
-                   |> Ash.Changeset.for_create(:create, entry_attrs)
-                   |> Ash.create(authorize?: false, return_notifications?: true) do
-                {:ok, _entry, notifs} -> notifs
-                {:error, reason} -> Repo.rollback(reason)
-              end
+          entry_notifs =
+            groups
+            |> Enum.with_index(1)
+            |> Enum.flat_map(fn {%{key: key, entry_ids: row_indexes}, mod_pos} ->
+              {:ok, module} = create_import_module(plan, key, mod_pos)
+
+              row_indexes
+              |> Enum.with_index(1)
+              |> Enum.flat_map(fn {row_index, entry_pos} ->
+                row = Map.fetch!(rows_by_index, row_index)
+
+                entry_attrs =
+                  row
+                  |> Map.take([:lesson_title, :planned_hours, :entry_type, :week_no, :sequence_id])
+                  |> Map.put(:progression_plan_id, plan.id)
+                  |> Map.put(:progression_module_id, module.id)
+                  |> Map.put(:position, entry_pos)
+
+                case ProgressionEntry
+                     |> Ash.Changeset.for_create(:create, entry_attrs)
+                     |> Ash.create(authorize?: false, return_notifications?: true) do
+                  {:ok, _entry, notifs} -> notifs
+                  {:error, reason} -> Repo.rollback(reason)
+                end
+              end)
             end)
 
           {plan, plan_notifs ++ entry_notifs}
@@ -822,6 +827,30 @@ defmodule TeacherAssistant.Academics do
           {:error, reason}
       end
     end
+  end
+
+  # ModuleGrouping.group/1 keys entries by :id; feed it the row *index* as the id so we
+  # can map groups back to rows.
+  defp index_rows(rows) do
+    rows
+    |> Enum.with_index()
+    |> Enum.map(fn {r, i} -> %{id: i, module: Map.get(r, :module), position: i} end)
+  end
+
+  defp create_import_module(plan, :default, pos) do
+    ProgressionModule
+    |> Ash.Changeset.for_create(:create_default_bucket, %{
+      title: "Général",
+      position: pos,
+      progression_plan_id: plan.id
+    })
+    |> Ash.create(authorize?: false)
+  end
+
+  defp create_import_module(plan, title, pos) when is_binary(title) do
+    ProgressionModule
+    |> Ash.Changeset.for_create(:create, %{title: title, position: pos, progression_plan_id: plan.id})
+    |> Ash.create(authorize?: false)
   end
 
   def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
