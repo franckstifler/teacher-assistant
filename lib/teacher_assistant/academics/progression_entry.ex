@@ -15,7 +15,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
       :read,
       :destroy,
       create: [
-        :module,
+        :progression_module_id,
         :lesson_title,
         :planned_hours,
         :entry_type,
@@ -28,7 +28,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
         :sequence_id
       ],
       update: [
-        :module,
+        :progression_module_id,
         :lesson_title,
         :planned_hours,
         :entry_type,
@@ -50,7 +50,6 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :module, :string, allow_nil?: false, public?: true
     attribute :lesson_title, :string, allow_nil?: false, public?: true
     attribute :planned_hours, :decimal, default: Decimal.new("1"), public?: true
 
@@ -93,7 +92,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
 
     belongs_to :progression_module, TeacherAssistant.Academics.ProgressionModule do
       source_attribute :progression_module_id
-      allow_nil? true
+      allow_nil? false
       public? true
     end
   end
