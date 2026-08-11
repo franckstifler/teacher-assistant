@@ -987,6 +987,55 @@ defmodule TeacherAssistant.Academics do
     ProgressionEntry |> Ash.Query.filter(progression_plan_id == ^plan_id)
   end
 
+  def apply_layout(%ProgressionPlan{id: plan_id}, layout) when is_list(layout) do
+    current_modules =
+      ProgressionModule
+      |> Ash.Query.filter(progression_plan_id == ^plan_id)
+      |> Ash.read!(authorize?: false)
+
+    current_entries = list_entries_query(plan_id) |> Ash.read!(authorize?: false)
+
+    layout_module_ids = Enum.map(layout, & &1["module_id"])
+    layout_entry_ids = Enum.flat_map(layout, & &1["entry_ids"])
+
+    cond do
+      not id_set_matches?(layout_module_ids, Enum.map(current_modules, & &1.id)) ->
+        {:error, :invalid_layout}
+
+      not id_set_matches?(layout_entry_ids, Enum.map(current_entries, & &1.id)) ->
+        {:error, :invalid_layout}
+
+      true ->
+        module_by_id = Map.new(current_modules, &{&1.id, &1})
+        entry_by_id = Map.new(current_entries, &{&1.id, &1})
+
+        Repo.transaction(fn ->
+          layout
+          |> Enum.with_index(1)
+          |> Enum.each(fn {%{"module_id" => mid, "entry_ids" => eids}, mpos} ->
+            {:ok, _} = update_module_position(module_by_id[mid], mpos)
+
+            eids
+            |> Enum.with_index(1)
+            |> Enum.each(fn {eid, epos} ->
+              {:ok, _} =
+                update_progression_entry(entry_by_id[eid], %{
+                  progression_module_id: mid,
+                  position: epos
+                })
+            end)
+          end)
+        end)
+
+        {:ok, :applied}
+    end
+  end
+
+  defp update_module_position(%ProgressionModule{} = m, pos),
+    do: m |> Ash.Changeset.for_update(:update, %{position: pos}) |> Ash.update(authorize?: false)
+
+  defp id_set_matches?(a, b), do: MapSet.new(a) == MapSet.new(b) and length(a) == length(b)
+
   def get_lesson_plan_for_entry(entry_id) do
     LessonPlan
     |> Ash.Query.filter(progression_entry_id == ^entry_id)
