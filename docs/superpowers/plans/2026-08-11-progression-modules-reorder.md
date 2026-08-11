@@ -860,10 +860,12 @@ git commit -m "feat(academics): import builds ProgressionModules from row order"
 ### Task 6: `FicheLive` grouped rendering + module CRUD UI + fiche-print fix
 
 **Files:**
-- Modify: `lib/teacher_assistant_web/live/teacher/fiche_live.ex`
-- Modify: `lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:51`
-- Modify: `lib/teacher_assistant_web/controllers/fiche_print_controller.ex` (preload the module)
-- Test: `test/teacher_assistant_web/live/teacher/fiche_live_test.exs` (update + add)
+- Modify: `lib/teacher_assistant_web/live/teacher/fiche_live.ex` (grouped render + module CRUD)
+- Modify: `lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:51` + `fiche_print_controller.ex` (preload)
+- Modify: `lib/teacher_assistant_web/live/teacher/log_live.ex:76` (+ preload `:progression_module`)
+- Modify: `lib/teacher_assistant_web/live/teacher/coverage_live.ex:115` (+ preload `:progression_module`)
+- Modify: `lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:143` (+ preload `:progression_module`)
+- Test: `test/teacher_assistant_web/live/teacher/fiche_live_test.exs` (update + add). The log/coverage/lesson_plan/school_scope test-sides are already migrated (Task 3b) and go green once the `lib/` readers above are fixed.
 
 **Interfaces:**
 - Consumes: `list_progression_modules/1`, `create_module/2`, `rename_module/2`, `delete_module/1`, `add_progression_entry/2` (module-targeted), `fetch_owned_module/2`.
@@ -1069,7 +1071,13 @@ Update `mount/3` to call `assign_modules` and `hours_total/1` to take `all_entri
 
 > Wrap this in the existing `<Layouts.app flash={@flash} current_scope={@current_scope}>...</Layouts.app>`. Keep the `weeks_estimate` line if you want; it is unaffected.
 
-- [ ] **Step 6: Fix the fiche-print reader** — in `fiche_print_html/show.html.heex:51` change `{@bundle.entry.module}` → `{@bundle.entry.progression_module.title}`, and in `fiche_print_controller.ex` load the association on the entry it fetches (add `Ash.Query.load(:progression_module)` or `Ash.load(entry, :progression_module)` where the bundle entry is read).
+- [ ] **Step 6: Fix ALL production readers of `entry.module`** — the removed string is read in more places than just fiche-print. Grep first: `grep -rn "\.module\b" lib/teacher_assistant_web lib/teacher_assistant | grep -i "entry\|bundle"` and fix every hit that reads a `ProgressionEntry`'s module (NOT `import_live.ex` — its `@row.module`/`r.module` are parser rows, which still carry a `:module` string and must stay). Each reader needs its entry-fetch to load the `:progression_module` association, then render `.progression_module.title`:
+  - `fiche_print_html/show.html.heex:51` `{@bundle.entry.module}` → `{@bundle.entry.progression_module.title}`; load `:progression_module` in `fiche_print_controller.ex` where the bundle entry is read.
+  - `log_live.ex:76` `{"#{e.module} · #{e.lesson_title}", e.id}` → use `e.progression_module.title`; ensure the entries list loads `:progression_module`.
+  - `coverage_live.ex:115` `{e.module}` → `{e.progression_module.title}`; ensure the entries load `:progression_module`.
+  - `lesson_plan_live.ex:143` `{@ctx_bundle.entry.module}` → `{@ctx_bundle.entry.progression_module.title}`; ensure the ctx bundle's entry loads `:progression_module`.
+  - (`fiche_live.ex` render is already handled by Step 5's grouped rewrite — entries come grouped under their module, so `e.module` is gone there.)
+  These four LiveviewViews/controllers already had their TEST-side migrated in Task 3b; fixing the `lib/` readers here is what turns those 4 test files green.
 
 - [ ] **Step 7: Run the LiveView + print tests — expect pass**
 
