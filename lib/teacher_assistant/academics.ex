@@ -16,6 +16,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Bulletins
   alias TeacherAssistant.Academics.ProgressionPlan
   alias TeacherAssistant.Academics.ProgressionEntry
+  alias TeacherAssistant.Academics.ProgressionModule
   alias TeacherAssistant.Academics.TeachingLogEntry
   alias TeacherAssistant.Academics.LessonPlan
   alias TeacherAssistant.Academics.LessonStep
@@ -42,6 +43,7 @@ defmodule TeacherAssistant.Academics do
     resource Mark
     resource ProgressionPlan
     resource ProgressionEntry
+    resource ProgressionModule
     resource TeachingLogEntry
     resource LessonPlan
     resource LessonStep

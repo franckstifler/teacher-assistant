@@ -90,5 +90,11 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
       allow_nil? true
       public? true
     end
+
+    belongs_to :progression_module, TeacherAssistant.Academics.ProgressionModule do
+      source_attribute :progression_module_id
+      allow_nil? true
+      public? true
+    end
   end
 end
