@@ -11,7 +11,14 @@ defmodule TeacherAssistant.Academics.Coverage do
       Enum.map(entries, fn e ->
         planned = to_decimal(e.planned_hours)
         logged = Map.get(logs_by_entry, e.id, Decimal.new(0))
-        covered = if Decimal.compare(logged, planned) == :gt, do: planned, else: logged
+        completed = Map.get(e, :completed?, false)
+
+        covered =
+          cond do
+            completed -> planned
+            Decimal.compare(logged, planned) == :gt -> planned
+            true -> logged
+          end
 
         %{
           entry_id: e.id,
