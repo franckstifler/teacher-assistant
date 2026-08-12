@@ -325,6 +325,7 @@ defmodule TeacherAssistant.Academics do
     with {:ok, entry} <- fetch_owned_entry(entry_id, ws),
          {:ok, plan} <- fetch_owned_plan(entry.progression_plan_id, ws),
          {:ok, ctx} <- fetch_owned_teaching_context(plan.teaching_context_id, ws) do
+      entry = Ash.load!(entry, :progression_module, authorize?: false)
       class_group = load_owned_class_group(ctx.class_group_id, ws)
       effectif = if class_group, do: length(list_students(class_group)), else: 0
 
@@ -1003,7 +1004,10 @@ defmodule TeacherAssistant.Academics do
   end
 
   def list_progression_entries(%ProgressionPlan{id: plan_id}) do
-    list_entries_query(plan_id) |> Ash.Query.sort(position: :asc) |> Ash.read!(authorize?: false)
+    list_entries_query(plan_id)
+    |> Ash.Query.sort(position: :asc)
+    |> Ash.Query.load(:progression_module)
+    |> Ash.read!(authorize?: false)
   end
 
   def update_progression_entry(%ProgressionEntry{} = e, attrs),

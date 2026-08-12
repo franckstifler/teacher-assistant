@@ -140,7 +140,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
           <span class="ta-num">
             <span class="ta-eyebrow">{gettext("Effectif")}</span> {@ctx_bundle.effectif}
           </span>
-          <span><span class="ta-eyebrow">{gettext("Module")}</span> {@ctx_bundle.entry.module}</span>
+          <span>
+            <span class="ta-eyebrow">{gettext("Module")}</span> {@ctx_bundle.entry.progression_module.title}
+          </span>
           <span :if={@ctx_bundle.entry.famille_de_situations}>
             <span class="ta-eyebrow">{gettext("Famille de situations")}</span>
             {@ctx_bundle.entry.famille_de_situations}

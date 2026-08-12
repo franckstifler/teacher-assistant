@@ -112,7 +112,7 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLive do
               id={"uncovered-#{e.id}"}
               class="ta-leaf flex items-baseline gap-2 text-sm"
             >
-              <span class="font-semibold">{e.module}</span>
+              <span class="font-semibold">{e.progression_module.title}</span>
               <span class="text-base-content/45">·</span>
               <span class="flex-1 text-base-content/75">{e.lesson_title}</span>
               <span :if={@per_entry[e.id]} class="ta-num shrink-0 text-base-content/60">
