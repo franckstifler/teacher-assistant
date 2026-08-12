@@ -11,8 +11,8 @@
 msgid ""
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:108
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:109
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:131
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:132
 #, elixir-autogen, elixir-format
 msgid "Academic year"
 msgstr ""
@@ -51,7 +51,7 @@ msgstr ""
 msgid "Cameroon teacher workspace"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:137
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "Class"
 msgstr ""
@@ -61,8 +61,8 @@ msgstr ""
 msgid "Could not add entry"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:84
 #: lib/teacher_assistant_web/live/teacher/setup_live.ex:87
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:90
 #, elixir-autogen, elixir-format
 msgid "Could not complete setup"
 msgstr ""
@@ -125,7 +125,7 @@ msgid "Duplicate"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:102
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:112
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:135
 #, elixir-autogen, elixir-format
 msgid "End date"
 msgstr ""
@@ -135,7 +135,7 @@ msgstr ""
 msgid "Everything is covered."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:148
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:187
 #, elixir-autogen, elixir-format
 msgid "Finish"
 msgstr ""
@@ -263,12 +263,12 @@ msgstr ""
 msgid "Set up your academic year to get started."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:93
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Set up your year"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:55
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:58
 #, elixir-autogen, elixir-format
 msgid "Setup complete"
 msgstr ""
@@ -289,7 +289,7 @@ msgid "Something went wrong!"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:101
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:111
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:134
 #, elixir-autogen, elixir-format
 msgid "Start date"
 msgstr ""
@@ -304,14 +304,14 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:131
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:154
 #, elixir-autogen, elixir-format
 msgid "Subject"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:56
 #: lib/teacher_assistant_web/live/school/classes_live.ex:105
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:121
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:144
 #, elixir-autogen, elixir-format
 msgid "Subsystem"
 msgstr ""
@@ -340,7 +340,7 @@ msgstr ""
 msgid "We can't find the internet"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:141
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:164
 #, elixir-autogen, elixir-format
 msgid "Weekly hours"
 msgstr ""
@@ -426,7 +426,7 @@ msgstr ""
 msgid "Fiche de progression"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:93
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "First, the basics"
 msgstr ""
@@ -546,7 +546,7 @@ msgstr ""
 msgid "Week"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:117
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:140
 #, elixir-autogen, elixir-format
 msgid "What you teach"
 msgstr ""
@@ -800,7 +800,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:136
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:203
 #: lib/teacher_assistant_web/live/school/results_live.ex:109
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:96
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:119
 #, elixir-autogen, elixir-format
 msgid "Année"
 msgstr ""
@@ -825,7 +825,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:54
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:161
 #: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:139
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:97
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:120
 #, elixir-autogen, elixir-format
 msgid "Classe"
 msgstr ""
@@ -870,7 +870,7 @@ msgstr ""
 msgid "Filles"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:125
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:148
 #, elixir-autogen, elixir-format
 msgid "Francophone or Anglophone track — this sets the class levels you can pick."
 msgstr ""
@@ -892,7 +892,7 @@ msgstr ""
 msgid "Highest"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:143
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:166
 #, elixir-autogen, elixir-format
 msgid "Hours per week on your timetable for this subject and class."
 msgstr ""
@@ -1018,8 +1018,8 @@ msgstr ""
 msgid "Upload"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/setup_live.ex:66
 #: lib/teacher_assistant_web/live/teacher/setup_live.ex:69
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:72
 #, elixir-autogen, elixir-format
 msgid "Weekly hours must be a whole number, e.g. 4"
 msgstr ""
@@ -2924,11 +2924,13 @@ msgid "Rename module"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/teacher/fiche_live.ex:356
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:182
 #, elixir-autogen, elixir-format
 msgid "Cible leçons"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/teacher/fiche_live.ex:350
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:177
 #, elixir-autogen, elixir-format
 msgid "Cible modules"
 msgstr ""
@@ -2954,6 +2956,7 @@ msgid "Heures"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/teacher/fiche_live.ex:343
+#: lib/teacher_assistant_web/live/teacher/setup_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Horaire annuel"
 msgstr ""

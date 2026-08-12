@@ -49,7 +49,10 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
              subject: p["subject"],
              level: p["level"],
              subsystem: String.to_existing_atom(p["subsystem"]),
-             weekly_hours: wh
+             weekly_hours: wh,
+             annual_hours: parse_decimal(p["annual_hours"]),
+             target_module_count: parse_int(p["target_module_count"]),
+             target_lesson_count: parse_int(p["target_lesson_count"])
            }) do
       {:noreply,
        socket |> put_flash(:info, gettext("Setup complete")) |> push_navigate(to: ~p"/teacher")}
@@ -85,6 +88,26 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
   end
 
   defp setup_error(_), do: gettext("Could not complete setup")
+
+  defp parse_decimal(nil), do: nil
+  defp parse_decimal(""), do: nil
+
+  defp parse_decimal(s) when is_binary(s) do
+    case Decimal.parse(String.trim(s)) do
+      {d, ""} -> d
+      _ -> nil
+    end
+  end
+
+  defp parse_int(nil), do: nil
+  defp parse_int(""), do: nil
+
+  defp parse_int(s) when is_binary(s) do
+    case Integer.parse(String.trim(s)) do
+      {n, ""} -> n
+      _ -> nil
+    end
+  end
 
   def render(assigns) do
     ~H"""
@@ -142,6 +165,22 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
             <p id="setup-help-hours" class="text-xs text-base-content/55">
               {gettext("Hours per week on your timetable for this subject and class.")}
             </p>
+            <.input
+              type="number"
+              field={@form[:annual_hours]}
+              label={gettext("Horaire annuel")}
+              step="0.5"
+            />
+            <.input
+              type="number"
+              field={@form[:target_module_count]}
+              label={gettext("Cible modules")}
+            />
+            <.input
+              type="number"
+              field={@form[:target_lesson_count]}
+              label={gettext("Cible leçons")}
+            />
           </fieldset>
 
           <.button id="setup-submit" type="submit" class="btn btn-primary w-full gap-2">

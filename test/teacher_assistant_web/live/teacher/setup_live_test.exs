@@ -30,6 +30,33 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
     assert [_ctx] = Academics.list_teaching_contexts(ws, year)
   end
 
+  test "setup persists annual hours and count targets", %{conn: conn, workspace: ws} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/setup")
+
+    view
+    |> form("#setup-form",
+      setup: %{
+        name: "2025-2026",
+        start_date: "2025-09-08",
+        end_date: "2026-07-31",
+        subsystem: "francophone",
+        subject: "Mathématiques",
+        level: "6ème",
+        weekly_hours: "4",
+        annual_hours: "100",
+        target_module_count: "4",
+        target_lesson_count: "21"
+      }
+    )
+    |> render_submit()
+
+    year = Academics.current_academic_year(ws)
+    assert [ctx] = Academics.list_teaching_contexts(ws, year)
+    assert Decimal.equal?(ctx.annual_hours, Decimal.new("100"))
+    assert ctx.target_module_count == 4
+    assert ctx.target_lesson_count == 21
+  end
+
   test "shows stepper and helper text", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/teacher/setup")
 
