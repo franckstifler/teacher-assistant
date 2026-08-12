@@ -72,4 +72,26 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     assert c2.lesson_title == e2.lesson_title
     assert c2.position == e2.position
   end
+
+  test "duplicate copies module sequence_id and entry completed? flag", %{ctx: ctx} do
+    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Original"})
+
+    {:ok, ay} =
+      Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
+
+    :ok = Academics.build_default_calendar(ay)
+    [seq | _] = Academics.list_sequences(ay)
+
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m} = Academics.assign_module_sequence(m, seq.id)
+    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "Lesson 1", entry_type: :lesson})
+    {:ok, _e} = Academics.set_entry_completed(e, true)
+
+    {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
+
+    [copied_module] = Academics.list_progression_modules(copy) |> Enum.filter(&(!&1.default?))
+    assert copied_module.sequence_id == seq.id
+    assert [copied_entry] = copied_module.entries
+    assert copied_entry.completed? == true
+  end
 end

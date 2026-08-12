@@ -24,7 +24,14 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
       })
 
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
-    %{plan: plan}
+    %{ws: ws, plan: plan}
+  end
+
+  defp seed_sequence(plan) do
+    {:ok, ay} = Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
+    :ok = Academics.build_default_calendar(ay)
+    [seq | _] = Academics.list_sequences(ay)
+    seq
   end
 
   test "creates a module belonging to a plan", %{plan: plan} do
@@ -94,5 +101,31 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, m} = Academics.create_module(plan, %{title: "M1"})
     # sequence_id acceptance is exercised more fully in Task 3; here just assert the attribute exists & is nil by default
     assert m.sequence_id == nil
+  end
+
+  test "assign_module_sequence sets the module and propagates to its entries", %{plan: plan} do
+    seq = seed_sequence(plan)
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, e1} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, m} = Academics.assign_module_sequence(m, seq.id)
+    assert m.sequence_id == seq.id
+    {:ok, e1} = Academics.get_progression_entry(e1.id)
+    assert e1.sequence_id == seq.id
+  end
+
+  test "a lesson added after assignment inherits the module sequence", %{plan: plan, ws: ws} do
+    seq = seed_sequence(plan)
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m} = Academics.assign_module_sequence(m, seq.id)
+    {:ok, m} = Academics.fetch_owned_module(m.id, ws)
+    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L2", entry_type: :lesson})
+    assert e.sequence_id == seq.id
+  end
+
+  test "set_entry_completed toggles the flag", %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, e} = Academics.set_entry_completed(e, true)
+    assert e.completed? == true
   end
 end

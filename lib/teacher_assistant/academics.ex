@@ -896,6 +896,16 @@ defmodule TeacherAssistant.Academics do
           )
           |> Ash.create(authorize?: false)
 
+        new_m =
+          if m.sequence_id do
+            {:ok, nm} =
+              new_m |> Ash.Changeset.for_update(:update, %{sequence_id: m.sequence_id}) |> Ash.update(authorize?: false)
+
+            nm
+          else
+            new_m
+          end
+
         for e <- m.entries do
           ProgressionEntry
           |> Ash.Changeset.for_create(:create, %{
@@ -907,6 +917,7 @@ defmodule TeacherAssistant.Academics do
             famille_de_situations: e.famille_de_situations,
             categories_action: e.categories_action,
             competence_visee: e.competence_visee,
+            completed?: e.completed?,
             progression_plan_id: copy.id,
             progression_module_id: new_m.id,
             sequence_id: e.sequence_id
@@ -962,6 +973,19 @@ defmodule TeacherAssistant.Academics do
   def rename_module(%ProgressionModule{} = m, title),
     do: m |> Ash.Changeset.for_update(:update, %{title: title}) |> Ash.update(authorize?: false)
 
+  def set_entry_completed(%ProgressionEntry{} = e, completed?) when is_boolean(completed?),
+    do: e |> Ash.Changeset.for_update(:update, %{completed?: completed?}) |> Ash.update(authorize?: false)
+
+  def assign_module_sequence(%ProgressionModule{} = m, sequence_id) do
+    with {:ok, m} <-
+           m |> Ash.Changeset.for_update(:update, %{sequence_id: sequence_id}) |> Ash.update(authorize?: false) do
+      entries_in_module(m.id)
+      |> Enum.each(fn e -> update_progression_entry(e, %{sequence_id: sequence_id}) end)
+
+      {:ok, m}
+    end
+  end
+
   def update_module_credit(%ProgressionModule{} = m, credit),
     do: m |> Ash.Changeset.for_update(:update, %{credit_hours: credit}) |> Ash.update(authorize?: false)
 
@@ -982,7 +1006,7 @@ defmodule TeacherAssistant.Academics do
   end
 
   def add_progression_entry(
-        %ProgressionModule{id: module_id, progression_plan_id: plan_id},
+        %ProgressionModule{id: module_id, progression_plan_id: plan_id, sequence_id: module_seq},
         attrs
       ) do
     pos = entry_count(module_id) + 1
@@ -992,6 +1016,7 @@ defmodule TeacherAssistant.Academics do
       |> Map.put(:progression_plan_id, plan_id)
       |> Map.put(:progression_module_id, module_id)
       |> Map.put(:position, pos)
+      |> Map.put_new(:sequence_id, module_seq)
 
     ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
