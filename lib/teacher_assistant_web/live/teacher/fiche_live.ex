@@ -129,6 +129,29 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
+  def handle_event("toggle-complete", %{"id" => id}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+
+    with {:ok, e} <- ws && Academics.fetch_owned_entry(id, ws),
+         {:ok, _} <- Academics.set_entry_completed(e, not e.completed?) do
+      {:noreply, assign_modules(socket, socket.assigns.plan)}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not update lesson"))}
+    end
+  end
+
+  def handle_event("assign-module-sequence", %{"module_id" => id, "sequence_id" => raw}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+    sequence_id = if raw in [nil, ""], do: nil, else: raw
+
+    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+         {:ok, _} <- Academics.assign_module_sequence(m, sequence_id) do
+      {:noreply, assign_modules(socket, socket.assigns.plan)}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not assign sequence"))}
+    end
+  end
+
   defp assign_modules(socket, plan) do
     ctx =
       case Academics.get_teaching_context(plan.teaching_context_id) do
@@ -144,11 +167,16 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       |> Enum.filter(fn e -> Academics.get_lesson_plan_for_entry(e.id) end)
       |> MapSet.new(& &1.id)
 
+    ws = socket.assigns.current_scope.current_workspace
+    year = ws && Academics.current_academic_year(ws)
+    sequences = (year && Academics.list_sequences(year)) || []
+
     socket
     |> assign(:plan, plan)
     |> assign(:ctx, ctx)
     |> assign(:modules, modules)
     |> assign(:prepared, prepared)
+    |> assign(:sequences, sequences)
     |> assign(:module_form, to_form(%{}, as: :module))
     |> assign(:quota, Quota.summarize(ctx, modules))
     |> assign(:targets_form, to_form(%{}, as: :targets))
@@ -426,6 +454,26 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                   />
                   <.button type="submit" class="btn btn-ghost btn-xs">{gettext("Save")}</.button>
                 </.form>
+                <.form
+                  for={to_form(%{}, as: :seq)}
+                  id={"seq-form-#{m.id}"}
+                  phx-change="assign-module-sequence"
+                  class="flex items-center gap-1"
+                >
+                  <input type="hidden" name="module_id" value={m.id} />
+                  <select
+                    name="sequence_id"
+                    class="select select-sm select-ghost"
+                    aria-label={gettext("Assign sequence")}
+                  >
+                    <option value="" selected={is_nil(m.sequence_id)}>
+                      {gettext("Sans séquence")}
+                    </option>
+                    <option :for={s <- @sequences} value={s.id} selected={m.sequence_id == s.id}>
+                      {gettext("Séq %{n}", n: s.number)}
+                    </option>
+                  </select>
+                </.form>
               </div>
               <.button
                 :if={not m.default?}
@@ -455,8 +503,22 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                   >
                     <.icon name="hero-bars-2" class="size-3.5" />
                   </button>
+                  <input
+                    id={"entry-complete-#{e.id}"}
+                    type="checkbox"
+                    class="checkbox checkbox-sm"
+                    checked={e.completed?}
+                    phx-click="toggle-complete"
+                    phx-value-id={e.id}
+                    aria-label={gettext("Mark lesson done")}
+                  />
                   <span>
-                    <span class="font-display font-semibold">{e.lesson_title}</span>
+                    <span class={[
+                      "font-display font-semibold",
+                      e.completed? && "line-through text-base-content/50"
+                    ]}>
+                      {e.lesson_title}
+                    </span>
                     <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
                     <span class="ta-num ml-1 text-sm text-base-content/60">{e.planned_hours}h</span>
                   </span>

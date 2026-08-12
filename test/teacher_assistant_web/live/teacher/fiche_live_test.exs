@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
       })
 
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
-    %{plan: plan, ctx: ctx}
+    %{plan: plan, ctx: ctx, year: year}
   end
 
   test "redirects to /teacher when accessing another user's plan (IDOR)", %{conn: conn} do
@@ -226,5 +226,32 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
 
     refute has_element?(view, "#module-credit-form-#{bucket.id}")
+  end
+
+  test "toggle-complete marks a lesson done", %{conn: conn, plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    view |> element("#entry-complete-#{e.id}") |> render_click()
+    {:ok, e} = Academics.get_progression_entry(e.id)
+    assert e.completed? == true
+  end
+
+  test "assign-module-sequence propagates the sequence to the module's entries", %{
+    conn: conn,
+    plan: plan,
+    year: year
+  } do
+    [seq | _] = Academics.list_sequences(year)
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    view
+    |> form("#seq-form-#{m.id}", %{module_id: m.id, sequence_id: seq.id})
+    |> render_change()
+
+    {:ok, e} = Academics.get_progression_entry(e.id)
+    assert e.sequence_id == seq.id
   end
 end
