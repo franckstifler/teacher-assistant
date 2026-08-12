@@ -81,4 +81,41 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
     assert ctx.target_module_count == 4
     assert ctx.target_lesson_count == 21
   end
+
+  test "update_teaching_context persists targets for an owned context", %{ws: ws, year: year} do
+    {:ok, ctx} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "Maths",
+        level: "6ème",
+        subsystem: :francophone,
+        weekly_hours: 4
+      })
+
+    {:ok, ctx} =
+      Academics.update_teaching_context(ctx.id, ws, %{
+        annual_hours: Decimal.new("75"),
+        target_lesson_count: 18
+      })
+
+    assert Decimal.equal?(ctx.annual_hours, Decimal.new("75"))
+    assert ctx.target_lesson_count == 18
+  end
+
+  test "update_teaching_context rejects a context from another workspace", %{
+    ws: ws,
+    year: year
+  } do
+    {:ok, ctx} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "Maths",
+        level: "6ème",
+        subsystem: :francophone,
+        weekly_hours: 4
+      })
+
+    other = TeacherFixtures.workspace_fixture()
+
+    assert {:error, :not_found} =
+             Academics.update_teaching_context(ctx.id, other, %{annual_hours: Decimal.new("50")})
+  end
 end

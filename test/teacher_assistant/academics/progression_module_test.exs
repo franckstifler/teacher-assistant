@@ -83,4 +83,10 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
 
     assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
   end
+
+  test "update_module_credit sets the credit", %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m} = Academics.update_module_credit(m, Decimal.new("11"))
+    assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
+  end
 end

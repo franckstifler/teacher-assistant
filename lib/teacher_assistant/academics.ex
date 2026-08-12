@@ -238,6 +238,12 @@ defmodule TeacherAssistant.Academics do
     TeachingContext |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
+  def update_teaching_context(id, %Workspace{} = ws, attrs) do
+    with {:ok, ctx} <- fetch_owned_teaching_context(id, ws) do
+      ctx |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+    end
+  end
+
   def list_teaching_contexts(%Workspace{id: ws_id}, %AcademicYear{id: year_id}) do
     TeachingContext
     |> Ash.Query.filter(workspace_id == ^ws_id and academic_year_id == ^year_id)
@@ -955,6 +961,9 @@ defmodule TeacherAssistant.Academics do
 
   def rename_module(%ProgressionModule{} = m, title),
     do: m |> Ash.Changeset.for_update(:update, %{title: title}) |> Ash.update(authorize?: false)
+
+  def update_module_credit(%ProgressionModule{} = m, credit),
+    do: m |> Ash.Changeset.for_update(:update, %{credit_hours: credit}) |> Ash.update(authorize?: false)
 
   def delete_module(%ProgressionModule{default?: true}), do: {:error, :default_bucket}
 
