@@ -802,7 +802,13 @@ defmodule TeacherAssistant.Academics do
 
                 entry_attrs =
                   row
-                  |> Map.take([:lesson_title, :planned_hours, :entry_type, :week_no, :sequence_id])
+                  |> Map.take([
+                    :lesson_title,
+                    :planned_hours,
+                    :entry_type,
+                    :week_no,
+                    :sequence_id
+                  ])
                   |> Map.put(:progression_plan_id, plan.id)
                   |> Map.put(:progression_module_id, module.id)
                   |> Map.put(:position, entry_pos)
@@ -850,7 +856,11 @@ defmodule TeacherAssistant.Academics do
 
   defp create_import_module(plan, title, pos) when is_binary(title) do
     ProgressionModule
-    |> Ash.Changeset.for_create(:create, %{title: title, position: pos, progression_plan_id: plan.id})
+    |> Ash.Changeset.for_create(:create, %{
+      title: title,
+      position: pos,
+      progression_plan_id: plan.id
+    })
     |> Ash.create(authorize?: false)
   end
 

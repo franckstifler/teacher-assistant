@@ -91,16 +91,27 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     rows = [
       %{module: "M1", lesson_title: "L1", planned_hours: Decimal.new("2"), entry_type: :lesson},
       %{module: "M1", lesson_title: "L2", planned_hours: Decimal.new("2"), entry_type: :lesson},
-      %{module: "", lesson_title: "Prise de contact", planned_hours: Decimal.new("1"), entry_type: :lesson},
+      %{
+        module: "",
+        lesson_title: "Prise de contact",
+        planned_hours: Decimal.new("1"),
+        entry_type: :lesson
+      },
       %{module: "M2", lesson_title: "L3", planned_hours: Decimal.new("2"), entry_type: :lesson}
     ]
 
-    {:ok, plan} = Academics.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
+    {:ok, plan} =
+      Academics.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
 
     mods = Academics.list_progression_modules(plan)
     assert Enum.map(mods, & &1.title) == ["M1", "Général", "M2"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["L1", "L2"]
-    assert Enum.any?(mods, &(&1.default? and Enum.map(&1.entries, fn e -> e.lesson_title end) == ["Prise de contact"]))
+
+    assert Enum.any?(
+             mods,
+             &(&1.default? and
+                 Enum.map(&1.entries, fn e -> e.lesson_title end) == ["Prise de contact"])
+           )
   end
 
   test "rejects a teaching context owned by another workspace", %{ws: ws} do

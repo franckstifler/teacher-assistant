@@ -73,7 +73,10 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
 
   test "delete a module reassigns its lessons to the default bucket", %{conn: conn, plan: plan} do
     {:ok, m} = Academics.create_module(plan, %{title: "M1"})
-    {:ok, _} = Academics.add_progression_entry(m, %{lesson_title: "Orpheline", entry_type: :lesson})
+
+    {:ok, _} =
+      Academics.add_progression_entry(m, %{lesson_title: "Orpheline", entry_type: :lesson})
+
     {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
 
     view |> element("#module-delete-#{m.id}") |> render_click()
@@ -126,5 +129,25 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
     assert has_element?(view, "#entry-prepared-#{entry.id}")
+  end
+
+  test "apply-layout event reorders modules and moves a lesson", %{conn: conn, plan: plan} do
+    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
+    {:ok, a} = Academics.add_progression_entry(m1, %{lesson_title: "A", entry_type: :lesson})
+    {:ok, c} = Academics.add_progression_entry(m2, %{lesson_title: "C", entry_type: :lesson})
+
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    render_hook(view, "apply-layout", %{
+      "layout" => [
+        %{"module_id" => m2.id, "entry_ids" => [c.id, a.id]},
+        %{"module_id" => m1.id, "entry_ids" => []}
+      ]
+    })
+
+    mods = Academics.list_progression_modules(plan)
+    assert Enum.map(mods, & &1.title) == ["M2", "M1"]
+    assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["C", "A"]
   end
 end

@@ -5,8 +5,23 @@ defmodule TeacherAssistant.Academics.ApplyLayoutTest do
 
   setup do
     ws = TeacherFixtures.workspace_fixture()
-    {:ok, year} = Academics.create_academic_year(ws, %{name: "Y", start_date: ~D[2025-09-08], end_date: ~D[2026-07-31], active: true})
-    {:ok, ctx} = Academics.create_teaching_context(ws, year, %{subject: "Maths", level: "6ème", subsystem: :francophone, weekly_hours: 4})
+
+    {:ok, year} =
+      Academics.create_academic_year(ws, %{
+        name: "Y",
+        start_date: ~D[2025-09-08],
+        end_date: ~D[2026-07-31],
+        active: true
+      })
+
+    {:ok, ctx} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "Maths",
+        level: "6ème",
+        subsystem: :francophone,
+        weekly_hours: 4
+      })
+
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "P"})
     {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
     {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
@@ -16,7 +31,14 @@ defmodule TeacherAssistant.Academics.ApplyLayoutTest do
     %{plan: plan, m1: m1, m2: m2, a: a, b: b, c: c}
   end
 
-  test "reorders modules and moves a lesson across modules", %{plan: plan, m1: m1, m2: m2, a: a, b: b, c: c} do
+  test "reorders modules and moves a lesson across modules", %{
+    plan: plan,
+    m1: m1,
+    m2: m2,
+    a: a,
+    b: b,
+    c: c
+  } do
     layout = [
       %{"module_id" => m2.id, "entry_ids" => [c.id, b.id]},
       %{"module_id" => m1.id, "entry_ids" => [a.id]}

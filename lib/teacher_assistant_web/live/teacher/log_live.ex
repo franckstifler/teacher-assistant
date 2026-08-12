@@ -73,7 +73,9 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
             type="select"
             field={@form[:progression_entry_id]}
             label={gettext("Lesson")}
-            options={for e <- @entries, do: {"#{e.progression_module.title} · #{e.lesson_title}", e.id}}
+            options={
+              for e <- @entries, do: {"#{e.progression_module.title} · #{e.lesson_title}", e.id}
+            }
           />
           <div class="grid gap-2 sm:grid-cols-2">
             <.input type="date" field={@form[:date]} label={gettext("Date")} />

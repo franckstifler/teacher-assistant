@@ -86,6 +86,13 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
+  def handle_event("apply-layout", %{"layout" => layout}, socket) do
+    case Academics.apply_layout(socket.assigns.plan, layout) do
+      {:ok, :applied} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
+      {:error, _} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
+    end
+  end
+
   def handle_event("duplicate-plan", _params, socket) do
     case Academics.duplicate_progression_plan(socket.assigns.plan, %{}) do
       {:ok, copy} -> {:noreply, push_navigate(socket, to: ~p"/teacher/plans/#{copy.id}")}
@@ -140,10 +147,9 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   defp blank_to("", d), do: d
   defp blank_to(v, _), do: v
 
-  def render(assigns) do
-    entry_form = to_form(%{}, as: :entry)
-    assigns = assign(assigns, :entry_form, entry_form)
+  defp entry_form_for(m), do: to_form(%{}, as: :entry, id: "entry-form-#{m.id}")
 
+  def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="fiche-builder" class="space-y-6">
@@ -183,10 +189,24 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
           title={gettext("No entries yet — add your first lesson below.")}
         />
 
-        <div id="fiche-modules" class="space-y-4">
-          <article :for={m <- @modules} id={"module-#{m.id}"} class="card bg-base-100 p-4 space-y-2">
+        <div id="fiche-modules" phx-hook="ModuleLayout" class="space-y-4">
+          <span data-sr-live aria-live="polite" class="sr-only"></span>
+          <article
+            :for={m <- @modules}
+            id={"module-#{m.id}"}
+            data-module-id={m.id}
+            class="card bg-base-100 p-4 space-y-2"
+          >
             <header class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  data-module-handle
+                  class="btn btn-ghost btn-xs cursor-grab"
+                  aria-label={gettext("Reorder module")}
+                >
+                  <.icon name="hero-bars-3" class="size-4" />
+                </button>
                 <span class="ta-eyebrow">{m.title}</span>
                 <span class="ta-num text-sm text-base-content/60">
                   {Decimal.to_string(module_hours(m))}h
@@ -204,17 +224,28 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
               </.button>
             </header>
 
-            <ul class="space-y-1">
+            <ul data-entries class="space-y-1">
               <li
                 :for={e <- m.entries}
                 id={"entry-#{e.id}"}
+                data-entry-id={e.id}
                 class="ta-leaf flex items-center justify-between gap-2 px-2 py-1.5"
               >
-                <span>
-                  <span class="font-display font-semibold">{e.lesson_title}</span>
-                  <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
-                  <span class="ta-num ml-1 text-sm text-base-content/60">{e.planned_hours}h</span>
-                </span>
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    data-entry-handle
+                    class="btn btn-ghost btn-xs cursor-grab"
+                    aria-label={gettext("Reorder lesson")}
+                  >
+                    <.icon name="hero-bars-2" class="size-3.5" />
+                  </button>
+                  <span>
+                    <span class="font-display font-semibold">{e.lesson_title}</span>
+                    <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
+                    <span class="ta-num ml-1 text-sm text-base-content/60">{e.planned_hours}h</span>
+                  </span>
+                </div>
                 <div class="flex items-center gap-1">
                   <.link
                     id={"entry-prepare-#{e.id}"}
@@ -241,17 +272,18 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
             </ul>
 
             <.form
-              for={@entry_form}
+              :let={f}
+              for={entry_form_for(m)}
               id={"add-entry-form-#{m.id}"}
               phx-submit="add-entry"
               class="flex flex-wrap items-end gap-2"
             >
               <input type="hidden" name="module_id" value={m.id} />
-              <.input field={@entry_form[:lesson_title]} label={gettext("Lesson")} />
-              <.input type="number" field={@entry_form[:planned_hours]} label={gettext("Hours")} value="1" />
+              <.input field={f[:lesson_title]} label={gettext("Lesson")} />
+              <.input type="number" field={f[:planned_hours]} label={gettext("Hours")} value="1" />
               <.input
                 type="select"
-                field={@entry_form[:entry_type]}
+                field={f[:entry_type]}
                 label={gettext("Type")}
                 options={for t <- Reference.entry_types(), do: {t.fr, t.key}}
               />
