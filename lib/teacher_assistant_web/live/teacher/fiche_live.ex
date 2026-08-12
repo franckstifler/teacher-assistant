@@ -406,10 +406,11 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 <span class="ta-num text-sm text-base-content/60">
                   {Decimal.to_string(module_hours(m))}h
                 </span>
-                <span :if={m.credit_hours} class="ta-num text-sm text-base-content/60">
+                <span :if={not m.default? and m.credit_hours} class="ta-num text-sm text-base-content/60">
                   / {Decimal.to_string(m.credit_hours)}h
                 </span>
                 <.form
+                  :if={not m.default?}
                   for={to_form(%{}, as: :credit)}
                   id={"module-credit-form-#{m.id}"}
                   phx-submit="save-module-credit"

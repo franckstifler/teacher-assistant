@@ -220,4 +220,11 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     m = Academics.fetch_owned_module(m.id, ws) |> elem(1)
     assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
   end
+
+  test "default module bucket has no credit editor form", %{conn: conn, plan: plan} do
+    {:ok, bucket} = Academics.ensure_default_module(plan)
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    refute has_element?(view, "#module-credit-form-#{bucket.id}")
+  end
 end
