@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
     case ws && Academics.fetch_owned_plan(id, ws) do
       {:ok, plan} ->
-        {:ok, assign_entries(socket, plan)}
+        {:ok, assign_modules(socket, plan)}
 
       _ ->
         {:ok,
@@ -18,15 +18,56 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
-  def handle_event("add-entry", %{"entry" => p}, socket) do
-    case Academics.add_progression_entry(socket.assigns.plan, %{
-           module: p["module"],
-           lesson_title: p["lesson_title"],
-           planned_hours: Decimal.new(blank_to(p["planned_hours"], "1")),
-           entry_type: String.to_existing_atom(p["entry_type"])
-         }) do
-      {:ok, _} -> {:noreply, assign_entries(socket, socket.assigns.plan)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not add entry"))}
+  def handle_event("add-module", %{"module" => %{"title" => title}}, socket) do
+    case title && String.trim(title) do
+      t when t in [nil, ""] ->
+        {:noreply, socket}
+
+      t ->
+        {:ok, _} = Academics.create_module(socket.assigns.plan, %{title: t})
+        {:noreply, assign_modules(socket, socket.assigns.plan)}
+    end
+  end
+
+  def handle_event("rename-module", %{"id" => id, "title" => title}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+
+    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+         {:ok, _} <- Academics.rename_module(m, title) do
+      {:noreply, assign_modules(socket, socket.assigns.plan)}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not rename module"))}
+    end
+  end
+
+  def handle_event("delete-module", %{"id" => id}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+
+    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+         :ok <- Academics.delete_module(m) do
+      {:noreply, assign_modules(socket, socket.assigns.plan)}
+    else
+      {:error, :default_bucket} ->
+        {:noreply, put_flash(socket, :error, gettext("The default section cannot be deleted"))}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Could not delete module"))}
+    end
+  end
+
+  def handle_event("add-entry", %{"module_id" => module_id, "entry" => p}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+
+    with {:ok, module} <- ws && Academics.fetch_owned_module(module_id, ws),
+         {:ok, _} <-
+           Academics.add_progression_entry(module, %{
+             lesson_title: p["lesson_title"],
+             planned_hours: Decimal.new(blank_to(p["planned_hours"], "1")),
+             entry_type: String.to_existing_atom(p["entry_type"])
+           }) do
+      {:noreply, assign_modules(socket, socket.assigns.plan)}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not add entry"))}
     end
   end
 
@@ -36,7 +77,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     case ws && Academics.fetch_owned_entry(id, ws) do
       {:ok, entry} ->
         case Academics.delete_progression_entry(entry) do
-          :ok -> {:noreply, assign_entries(socket, socket.assigns.plan)}
+          :ok -> {:noreply, assign_modules(socket, socket.assigns.plan)}
           {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
         end
 
@@ -52,27 +93,33 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
-  defp assign_entries(socket, plan) do
+  defp assign_modules(socket, plan) do
     ctx =
       case Academics.get_teaching_context(plan.teaching_context_id) do
         {:ok, ctx} -> ctx
         _ -> nil
       end
 
-    entries = Academics.list_progression_entries(plan)
+    modules = Academics.list_progression_modules(plan)
 
     prepared =
-      entries
+      modules
+      |> Enum.flat_map(& &1.entries)
       |> Enum.filter(fn e -> Academics.get_lesson_plan_for_entry(e.id) end)
       |> MapSet.new(& &1.id)
 
     socket
     |> assign(:plan, plan)
     |> assign(:ctx, ctx)
-    |> assign(:entries, entries)
+    |> assign(:modules, modules)
     |> assign(:prepared, prepared)
-    |> assign(:entry_form, to_form(%{}, as: :entry))
+    |> assign(:module_form, to_form(%{}, as: :module))
   end
+
+  defp module_hours(%{entries: entries}),
+    do: Enum.reduce(entries, Decimal.new(0), fn e, acc -> Decimal.add(acc, e.planned_hours) end)
+
+  defp all_entries(modules), do: Enum.flat_map(modules, & &1.entries)
 
   defp hours_total(entries) do
     Enum.reduce(entries, Decimal.new(0), fn e, acc -> Decimal.add(acc, e.planned_hours) end)
@@ -94,6 +141,9 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   defp blank_to(v, _), do: v
 
   def render(assigns) do
+    entry_form = to_form(%{}, as: :entry)
+    assigns = assign(assigns, :entry_form, entry_form)
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="fiche-builder" class="space-y-6">
@@ -113,79 +163,59 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         <div id="fiche-hours-total" class="flex items-center gap-3">
           <.stat
             label={gettext("Planned hours")}
-            value={Decimal.to_string(hours_total(@entries))}
+            value={Decimal.to_string(hours_total(all_entries(@modules)))}
             suffix="h"
           />
           <p
-            :if={@ctx && weeks_estimate(hours_total(@entries), @ctx.weekly_hours)}
+            :if={@ctx && weeks_estimate(hours_total(all_entries(@modules)), @ctx.weekly_hours)}
             class="text-sm text-base-content/60"
           >
             {gettext("≈ %{weeks} weeks at %{hours} h/week",
-              weeks: weeks_estimate(hours_total(@entries), @ctx.weekly_hours),
+              weeks: weeks_estimate(hours_total(all_entries(@modules)), @ctx.weekly_hours),
               hours: @ctx.weekly_hours
             )}
           </p>
         </div>
 
-        <table
-          :if={@entries != []}
-          id="fiche-entries"
-          class="w-full border-separate border-spacing-y-1"
-        >
-          <caption class="sr-only">{gettext("Progression entries")}</caption>
-          <thead class="hidden md:table-header-group">
-            <tr class="text-left">
-              <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Module")}</th>
-              <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Leçon")}</th>
-              <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Type")}</th>
-              <th scope="col" class="ta-eyebrow px-3 pb-1 text-right">{gettext("Heures")}</th>
-              <th scope="col" class="px-3 pb-1"><span class="sr-only">{gettext("Actions")}</span></th>
-            </tr>
-          </thead>
-          <tbody class="block space-y-2 md:table-row-group">
-            <tr :for={e <- @entries} id={"entry-#{e.id}"} class="ta-leaf block md:table-row">
-              <td class="hidden text-sm text-base-content/65 md:table-cell md:px-3 md:py-2">
-                {e.module}
-              </td>
-              <td class="flex items-center justify-between gap-2 md:table-cell md:px-3 md:py-2">
+        <.empty_state
+          :if={all_entries(@modules) == []}
+          icon="hero-document-text"
+          title={gettext("No entries yet — add your first lesson below.")}
+        />
+
+        <div id="fiche-modules" class="space-y-4">
+          <article :for={m <- @modules} id={"module-#{m.id}"} class="card bg-base-100 p-4 space-y-2">
+            <header class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="ta-eyebrow">{m.title}</span>
+                <span class="ta-num text-sm text-base-content/60">
+                  {Decimal.to_string(module_hours(m))}h
+                </span>
+              </div>
+              <.button
+                :if={not m.default?}
+                id={"module-delete-#{m.id}"}
+                phx-click="delete-module"
+                phx-value-id={m.id}
+                class="btn btn-ghost btn-xs text-error"
+              >
+                <.icon name="hero-trash" class="size-4" />
+                <span class="sr-only">{gettext("Delete module")}</span>
+              </.button>
+            </header>
+
+            <ul class="space-y-1">
+              <li
+                :for={e <- m.entries}
+                id={"entry-#{e.id}"}
+                class="ta-leaf flex items-center justify-between gap-2 px-2 py-1.5"
+              >
                 <span>
                   <span class="font-display font-semibold">{e.lesson_title}</span>
-                  <span class="mt-0.5 block text-sm text-base-content/65 md:hidden">
-                    {e.module} <span class="text-base-content/40">·</span>
-                    <span class="ta-num">{e.planned_hours}h</span>
-                    <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
-                  </span>
+                  <span class="badge badge-soft badge-sm ml-1">{e.entry_type}</span>
+                  <span class="ta-num ml-1 text-sm text-base-content/60">{e.planned_hours}h</span>
                 </span>
-                <div class="flex items-center gap-1 md:hidden">
-                  <.link
-                    id={"entry-prepare-mobile-#{e.id}"}
-                    navigate={~p"/teacher/entries/#{e.id}/fiche"}
-                    class="btn btn-ghost btn-xs gap-1"
-                  >
-                    <.icon name="hero-document-text" class="size-3.5" />
-                    {gettext("Préparer")}
-                    <span :if={MapSet.member?(@prepared, e.id)} id={"entry-prepared-mobile-#{e.id}"}>
-                      <.icon name="hero-check-circle" class="size-3.5 text-success" />
-                    </span>
-                  </.link>
-                  <.button
-                    phx-click="delete-entry"
-                    phx-value-id={e.id}
-                    class="btn btn-ghost btn-xs text-error"
-                  >
-                    <.icon name="hero-trash" class="size-4" />
-                    <span class="sr-only">{gettext("Delete")}</span>
-                  </.button>
-                </div>
-              </td>
-              <td class="hidden md:table-cell md:px-3 md:py-2">
-                <span class="badge badge-soft badge-sm">{e.entry_type}</span>
-              </td>
-              <td class="ta-num hidden text-right md:table-cell md:px-3 md:py-2">
-                {e.planned_hours}h
-              </td>
-              <td class="hidden text-right md:table-cell md:px-3 md:py-2">
-                <div class="flex items-center justify-end gap-1">
+                <div class="flex items-center gap-1">
                   <.link
                     id={"entry-prepare-#{e.id}"}
                     navigate={~p"/teacher/entries/#{e.id}/fiche"}
@@ -207,42 +237,42 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                     <span class="sr-only">{gettext("Delete")}</span>
                   </.button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <.empty_state
-          :if={@entries == []}
-          icon="hero-document-text"
-          title={gettext("No entries yet — add your first lesson below.")}
-        />
+              </li>
+            </ul>
+
+            <.form
+              for={@entry_form}
+              id={"add-entry-form-#{m.id}"}
+              phx-submit="add-entry"
+              class="flex flex-wrap items-end gap-2"
+            >
+              <input type="hidden" name="module_id" value={m.id} />
+              <.input field={@entry_form[:lesson_title]} label={gettext("Lesson")} />
+              <.input type="number" field={@entry_form[:planned_hours]} label={gettext("Hours")} value="1" />
+              <.input
+                type="select"
+                field={@entry_form[:entry_type]}
+                label={gettext("Type")}
+                options={for t <- Reference.entry_types(), do: {t.fr, t.key}}
+              />
+              <.button type="submit" class="btn btn-primary btn-sm gap-1">
+                <.icon name="hero-plus" class="size-4" />
+                {gettext("Add")}
+              </.button>
+            </.form>
+          </article>
+        </div>
 
         <.form
-          for={@entry_form}
-          id="add-entry-form"
-          phx-submit="add-entry"
-          class="card bg-base-100 p-4 space-y-2"
+          for={@module_form}
+          id="add-module-form"
+          phx-submit="add-module"
+          class="card bg-base-100 p-4 flex flex-wrap items-end gap-2"
         >
-          <p class="ta-eyebrow">{gettext("Add entry")}</p>
-          <.input field={@entry_form[:module]} label={gettext("Module")} />
-          <.input field={@entry_form[:lesson_title]} label={gettext("Lesson")} />
-          <div class="grid gap-2 sm:grid-cols-2">
-            <.input
-              type="number"
-              field={@entry_form[:planned_hours]}
-              label={gettext("Hours")}
-              value="1"
-            />
-            <.input
-              type="select"
-              field={@entry_form[:entry_type]}
-              label={gettext("Type")}
-              options={for t <- Reference.entry_types(), do: {t.fr, t.key}}
-            />
-          </div>
-          <.button id="add-entry-submit" type="submit" class="btn btn-primary w-full gap-2">
+          <.input field={@module_form[:title]} label={gettext("New module")} />
+          <.button type="submit" class="btn btn-primary btn-sm gap-1">
             <.icon name="hero-plus" class="size-4" />
-            {gettext("Add entry")}
+            {gettext("Add module")}
           </.button>
         </.form>
       </section>

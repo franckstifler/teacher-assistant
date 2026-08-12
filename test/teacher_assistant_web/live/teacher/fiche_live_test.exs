@@ -54,29 +54,39 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
              live(conn, ~p"/teacher/plans/#{other_plan.id}")
   end
 
-  test "add an entry to the plan", %{conn: conn, plan: plan} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+  test "add a module then a lesson into it", %{conn: conn, plan: plan} do
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    view |> form("#add-module-form", %{module: %{title: "Algorithmique"}}) |> render_submit()
+    assert render(view) =~ "Algorithmique"
+
+    module = Academics.list_progression_modules(plan) |> Enum.find(&(&1.title == "Algorithmique"))
 
     view
-    |> form("#add-entry-form",
-      entry: %{
-        module: "Module 1",
-        lesson_title: "Les nombres",
-        planned_hours: "2",
-        entry_type: "lesson"
-      }
+    |> form("#add-entry-form-#{module.id}",
+      entry: %{lesson_title: "Les boucles", planned_hours: "2", entry_type: "lesson"}
     )
     |> render_submit()
 
-    assert has_element?(view, "#fiche-entries")
-    assert render(view) =~ "Les nombres"
-    assert length(Academics.list_progression_entries(plan)) == 1
+    assert render(view) =~ "Les boucles"
+  end
+
+  test "delete a module reassigns its lessons to the default bucket", %{conn: conn, plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, _} = Academics.add_progression_entry(m, %{lesson_title: "Orpheline", entry_type: :lesson})
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    view |> element("#module-delete-#{m.id}") |> render_click()
+
+    assert render(view) =~ "Orpheline"
+    refute Academics.list_progression_modules(plan) |> Enum.any?(&(&1.id == m.id))
   end
 
   test "shows a running planned-hours total with weeks estimate", %{conn: conn, plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+
     {:ok, _e} =
-      Academics.add_progression_entry(plan, %{
-        module: "M1",
+      Academics.add_progression_entry(m, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("6"),
         entry_type: :lesson
@@ -95,9 +105,10 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     conn: conn,
     plan: plan
   } do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+
     {:ok, entry} =
-      TeacherAssistant.Academics.add_progression_entry(plan, %{
-        module: "M1",
+      Academics.add_progression_entry(m, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
