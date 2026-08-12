@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.FicheLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.Quota
   alias TeacherAssistant.Academics.Reference
 
   def mount(%{"id" => id}, _session, socket) do
@@ -101,6 +102,33 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
+  def handle_event("save-targets", %{"targets" => p}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+    ctx = socket.assigns.ctx
+
+    attrs = %{
+      annual_hours: parse_decimal(p["annual_hours"]),
+      target_module_count: parse_int(p["target_module_count"]),
+      target_lesson_count: parse_int(p["target_lesson_count"])
+    }
+
+    case ws && ctx && Academics.update_teaching_context(ctx.id, ws, attrs) do
+      {:ok, _} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not save targets"))}
+    end
+  end
+
+  def handle_event("save-module-credit", %{"module_id" => id, "credit_hours" => raw}, socket) do
+    ws = socket.assigns.current_scope.current_workspace
+
+    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+         {:ok, _} <- Academics.update_module_credit(m, parse_decimal(raw)) do
+      {:noreply, assign_modules(socket, socket.assigns.plan)}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not save credit"))}
+    end
+  end
+
   defp assign_modules(socket, plan) do
     ctx =
       case Academics.get_teaching_context(plan.teaching_context_id) do
@@ -122,6 +150,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     |> assign(:modules, modules)
     |> assign(:prepared, prepared)
     |> assign(:module_form, to_form(%{}, as: :module))
+    |> assign(:quota, Quota.summarize(ctx, modules))
+    |> assign(:targets_form, to_form(%{}, as: :targets))
   end
 
   defp module_hours(%{entries: entries}),
@@ -147,6 +177,65 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   defp blank_to(nil, d), do: d
   defp blank_to("", d), do: d
   defp blank_to(v, _), do: v
+
+  defp parse_decimal(nil), do: nil
+  defp parse_decimal(""), do: nil
+
+  defp parse_decimal(s) when is_binary(s) do
+    case Decimal.parse(String.trim(s)) do
+      {d, ""} -> d
+      _ -> nil
+    end
+  end
+
+  defp parse_int(nil), do: nil
+  defp parse_int(""), do: nil
+
+  defp parse_int(s) when is_binary(s) do
+    case Integer.parse(String.trim(s)) do
+      {n, ""} -> n
+      _ -> nil
+    end
+  end
+
+  # ratio helpers for the quota header — nil-safe, advisory only.
+  defp ratio_pct(nil), do: nil
+  defp ratio_pct(r) when is_number(r), do: round(r * 100)
+
+  defp count_ratio(_n, nil), do: nil
+  defp count_ratio(_n, 0), do: nil
+  defp count_ratio(n, t) when is_integer(t) and t > 0, do: n / t
+
+  defp ratio_accent(nil), do: nil
+  defp ratio_accent(r) when r > 1.0, do: "text-warning"
+  defp ratio_accent(r) when r < 0.5, do: "text-base-content/60"
+  defp ratio_accent(_r), do: "text-success"
+
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :target, :string, default: nil
+  attr :suffix, :string, default: nil
+  attr :ratio, :any, default: nil
+
+  defp quota_stat(assigns) do
+    ~H"""
+    <div class="ta-leaf">
+      <p class="ta-eyebrow">{@label}</p>
+      <p class={["ta-num mt-1 text-2xl font-semibold leading-none", ratio_accent(@ratio)]}>
+        {@value}<span :if={@target} class="text-base font-normal text-base-content/55">
+          / {@target}{@suffix}
+        </span><span :if={!@target && @suffix} class="text-base font-normal text-base-content/55">{@suffix}</span>
+      </p>
+      <progress
+        :if={@target}
+        class={["progress w-full mt-1", if(ratio_accent(@ratio) == "text-warning", do: "progress-warning", else: "progress-primary")]}
+        value={ratio_pct(@ratio) || 0}
+        max="100"
+      >
+      </progress>
+    </div>
+    """
+  end
 
   # Validates/parses the raw "add-entry" form params before they ever reach
   # Ash. Decimal.new/1 and String.to_existing_atom/1 both raise on malformed
@@ -219,6 +308,56 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
           </p>
         </div>
 
+        <div id="quota-header" class="grid gap-3 sm:grid-cols-3">
+          <.quota_stat
+            label={gettext("Heures")}
+            value={Decimal.to_string(@quota.planned_hours)}
+            target={@quota.annual_hours && Decimal.to_string(@quota.annual_hours)}
+            suffix="h"
+            ratio={@quota.hours_ratio}
+          />
+          <.quota_stat
+            label={gettext("Modules")}
+            value={Integer.to_string(@quota.module_count)}
+            target={@quota.target_module_count && Integer.to_string(@quota.target_module_count)}
+            ratio={count_ratio(@quota.module_count, @quota.target_module_count)}
+          />
+          <.quota_stat
+            label={gettext("Leçons")}
+            value={Integer.to_string(@quota.lesson_count)}
+            target={@quota.target_lesson_count && Integer.to_string(@quota.target_lesson_count)}
+            ratio={count_ratio(@quota.lesson_count, @quota.target_lesson_count)}
+          />
+        </div>
+
+        <.form
+          for={@targets_form}
+          id="targets-form"
+          phx-submit="save-targets"
+          class="flex flex-wrap items-end gap-2"
+        >
+          <.input
+            type="number"
+            name="targets[annual_hours]"
+            value={@quota.annual_hours && Decimal.to_string(@quota.annual_hours)}
+            label={gettext("Horaire annuel")}
+            step="0.5"
+          />
+          <.input
+            type="number"
+            name="targets[target_module_count]"
+            value={@quota.target_module_count}
+            label={gettext("Cible modules")}
+          />
+          <.input
+            type="number"
+            name="targets[target_lesson_count]"
+            value={@quota.target_lesson_count}
+            label={gettext("Cible leçons")}
+          />
+          <.button type="submit" class="btn btn-ghost btn-sm">{gettext("Save targets")}</.button>
+        </.form>
+
         <.empty_state
           :if={all_entries(@modules) == []}
           icon="hero-document-text"
@@ -267,6 +406,25 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 <span class="ta-num text-sm text-base-content/60">
                   {Decimal.to_string(module_hours(m))}h
                 </span>
+                <span :if={m.credit_hours} class="ta-num text-sm text-base-content/60">
+                  / {Decimal.to_string(m.credit_hours)}h
+                </span>
+                <.form
+                  for={to_form(%{}, as: :credit)}
+                  id={"module-credit-form-#{m.id}"}
+                  phx-submit="save-module-credit"
+                  class="flex items-end gap-1"
+                >
+                  <input type="hidden" name="module_id" value={m.id} />
+                  <.input
+                    type="number"
+                    name="credit_hours"
+                    value={m.credit_hours && Decimal.to_string(m.credit_hours)}
+                    step="0.5"
+                    label={gettext("Crédit h")}
+                  />
+                  <.button type="submit" class="btn btn-ghost btn-xs">{gettext("Save")}</.button>
+                </.form>
               </div>
               <.button
                 :if={not m.default?}

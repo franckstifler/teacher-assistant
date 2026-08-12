@@ -56,7 +56,7 @@ msgstr ""
 msgid "Class"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:71
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:72
 #, elixir-autogen, elixir-format
 msgid "Could not add entry"
 msgstr ""
@@ -67,13 +67,13 @@ msgstr ""
 msgid "Could not complete setup"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:82
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:86
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:83
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:87
 #, elixir-autogen, elixir-format
 msgid "Could not delete entry"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:100
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:101
 #, elixir-autogen, elixir-format
 msgid "Could not duplicate plan"
 msgstr ""
@@ -107,7 +107,7 @@ msgid "Date"
 msgstr "Date"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:81
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:324
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:482
 #: lib/teacher_assistant_web/live/teacher/lesson_plan_live.ex:308
 #, elixir-autogen, elixir-format
 msgid "Delete"
@@ -119,7 +119,7 @@ msgstr ""
 msgid "Done"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:200
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:289
 #, elixir-autogen, elixir-format
 msgid "Duplicate"
 msgstr ""
@@ -145,7 +145,7 @@ msgstr ""
 msgid "Homework (optional)"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:339
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:497
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:135
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:208
 #: lib/teacher_assistant_web/live/teacher/log_live.ex:82
@@ -153,7 +153,7 @@ msgstr ""
 msgid "Hours"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:338
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:496
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:134
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:200
 #: lib/teacher_assistant_web/live/teacher/log_live.ex:75
@@ -231,7 +231,7 @@ msgid "Personal workspace"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/teacher/coverage_live.ex:36
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:16
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:17
 #, elixir-autogen, elixir-format
 msgid "Plan not found"
 msgstr ""
@@ -241,11 +241,12 @@ msgstr ""
 msgid "Principal Teacher"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:426
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:43
 #: lib/teacher_assistant_web/live/teacher/log_live.ex:95
 #, elixir-autogen, elixir-format
 msgid "Save"
-msgstr ""
+msgstr "Save"
 
 #: lib/teacher_assistant_web/components/layouts.ex:437
 #, elixir-autogen, elixir-format
@@ -328,7 +329,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:221
 #: lib/teacher_assistant_web/live/school/periods_live.ex:41
 #: lib/teacher_assistant_web/live/school/periods_live.ex:78
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:343
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:501
 #: lib/teacher_assistant_web/live/teacher/import_live.ex:136
 #, elixir-autogen, elixir-format
 msgid "Type"
@@ -420,7 +421,7 @@ msgstr ""
 msgid "Fiche PDF"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:192
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:281
 #, elixir-autogen, elixir-format
 msgid "Fiche de progression"
 msgstr ""
@@ -464,7 +465,7 @@ msgstr ""
 msgid "Imported fiche"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:225
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:364
 #, elixir-autogen, elixir-format
 msgid "No entries yet — add your first lesson below."
 msgstr ""
@@ -555,7 +556,7 @@ msgstr ""
 msgid "e.g. Maths 6ème 2025-2026"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:348
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:506
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:204
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Add"
@@ -945,7 +946,7 @@ msgstr ""
 msgid "Per-student results"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:207
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:296
 #, elixir-autogen, elixir-format
 msgid "Planned hours"
 msgstr ""
@@ -1040,7 +1041,7 @@ msgstr ""
 msgid "Élève"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:215
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:304
 #, elixir-autogen, elixir-format
 msgid "≈ %{weeks} weeks at %{hours} h/week"
 msgstr ""
@@ -1159,7 +1160,7 @@ msgstr ""
 msgid "Print / Save as PDF"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:312
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:470
 #, elixir-autogen, elixir-format
 msgid "Préparer"
 msgstr ""
@@ -2867,57 +2868,107 @@ msgstr "Due date"
 msgid "Éditer"
 msgstr "Edit"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:363
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:521
 #, elixir-autogen, elixir-format
 msgid "Add module"
 msgstr "Add module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:59
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:60
 #, elixir-autogen, elixir-format
 msgid "Could not delete module"
 msgstr "Could not delete module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:44
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:45
 #, elixir-autogen, elixir-format
 msgid "Could not rename module"
 msgstr "Could not rename module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:279
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:437
 #, elixir-autogen, elixir-format
 msgid "Delete module"
 msgstr "Delete module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:360
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:518
 #, elixir-autogen, elixir-format
 msgid "New module"
 msgstr "New module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:56
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:57
 #, elixir-autogen, elixir-format
 msgid "The default section cannot be deleted"
 msgstr "The default section cannot be deleted"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:295
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:453
 #, elixir-autogen, elixir-format
 msgid "Reorder lesson"
 msgstr "Reorder lesson"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:242
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:381
 #, elixir-autogen, elixir-format
 msgid "Reorder module"
 msgstr "Reorder module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:32
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:33
 #, elixir-autogen, elixir-format
 msgid "Could not add module"
 msgstr "Could not add module"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:257
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:396
 #, elixir-autogen, elixir-format
 msgid "Module title"
 msgstr "Module title"
 
-#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:262
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:401
 #, elixir-autogen, elixir-format
 msgid "Rename module"
 msgstr "Rename module"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:356
+#, elixir-autogen, elixir-format
+msgid "Cible leçons"
+msgstr "Lesson target"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:350
+#, elixir-autogen, elixir-format
+msgid "Cible modules"
+msgstr "Module target"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:128
+#, elixir-autogen, elixir-format
+msgid "Could not save credit"
+msgstr "Could not save credit"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:117
+#, elixir-autogen, elixir-format
+msgid "Could not save targets"
+msgstr "Could not save targets"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:424
+#, elixir-autogen, elixir-format
+msgid "Crédit h"
+msgstr "Credit h"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:313
+#, elixir-autogen, elixir-format
+msgid "Heures"
+msgstr "Hours"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:343
+#, elixir-autogen, elixir-format
+msgid "Horaire annuel"
+msgstr "Annual hours"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:326
+#, elixir-autogen, elixir-format
+msgid "Leçons"
+msgstr "Lessons"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:320
+#, elixir-autogen, elixir-format
+msgid "Modules"
+msgstr "Modules"
+
+#: lib/teacher_assistant_web/live/teacher/fiche_live.ex:358
+#, elixir-autogen, elixir-format
+msgid "Save targets"
+msgstr "Save targets"

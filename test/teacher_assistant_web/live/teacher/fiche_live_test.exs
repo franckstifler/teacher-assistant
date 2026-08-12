@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
       })
 
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
-    %{plan: plan}
+    %{plan: plan, ctx: ctx}
   end
 
   test "redirects to /teacher when accessing another user's plan (IDOR)", %{conn: conn} do
@@ -166,5 +166,58 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     mods = Academics.list_progression_modules(plan)
     assert Enum.map(mods, & &1.title) == ["M2", "M1"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["C", "A"]
+  end
+
+  test "quota header renders planned-vs-annual and count read-outs", %{
+    conn: conn,
+    plan: plan,
+    ctx: ctx,
+    workspace: ws
+  } do
+    {:ok, _} =
+      Academics.update_teaching_context(ctx.id, ws, %{
+        annual_hours: Decimal.new("50"),
+        target_lesson_count: 3
+      })
+
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+
+    {:ok, _} =
+      Academics.add_progression_entry(m, %{
+        lesson_title: "L1",
+        planned_hours: Decimal.new("2"),
+        entry_type: :lesson
+      })
+
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    html = render(view)
+    assert html =~ "50"
+    assert html =~ "quota-header"
+  end
+
+  test "save-targets persists context targets", %{conn: conn, plan: plan} do
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    view
+    |> form("#targets-form", %{
+      targets: %{annual_hours: "75", target_module_count: "4", target_lesson_count: "21"}
+    })
+    |> render_submit()
+
+    ctx = Academics.get_teaching_context(plan.teaching_context_id) |> elem(1)
+    assert Decimal.equal?(ctx.annual_hours, Decimal.new("75"))
+    assert ctx.target_lesson_count == 21
+  end
+
+  test "save-module-credit persists a module credit", %{conn: conn, plan: plan, workspace: ws} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    view
+    |> form("#module-credit-form-#{m.id}", %{credit_hours: "11", module_id: m.id})
+    |> render_submit()
+
+    m = Academics.fetch_owned_module(m.id, ws) |> elem(1)
+    assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
   end
 end
