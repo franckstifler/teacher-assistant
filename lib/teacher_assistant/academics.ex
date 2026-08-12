@@ -793,33 +793,36 @@ defmodule TeacherAssistant.Academics do
             groups
             |> Enum.with_index(1)
             |> Enum.flat_map(fn {%{key: key, entry_ids: row_indexes}, mod_pos} ->
-              {:ok, module} = create_import_module(plan, key, mod_pos)
+              {:ok, module, module_notifs} = create_import_module(plan, key, mod_pos)
 
-              row_indexes
-              |> Enum.with_index(1)
-              |> Enum.flat_map(fn {row_index, entry_pos} ->
-                row = Map.fetch!(rows_by_index, row_index)
+              row_notifs =
+                row_indexes
+                |> Enum.with_index(1)
+                |> Enum.flat_map(fn {row_index, entry_pos} ->
+                  row = Map.fetch!(rows_by_index, row_index)
 
-                entry_attrs =
-                  row
-                  |> Map.take([
-                    :lesson_title,
-                    :planned_hours,
-                    :entry_type,
-                    :week_no,
-                    :sequence_id
-                  ])
-                  |> Map.put(:progression_plan_id, plan.id)
-                  |> Map.put(:progression_module_id, module.id)
-                  |> Map.put(:position, entry_pos)
+                  entry_attrs =
+                    row
+                    |> Map.take([
+                      :lesson_title,
+                      :planned_hours,
+                      :entry_type,
+                      :week_no,
+                      :sequence_id
+                    ])
+                    |> Map.put(:progression_plan_id, plan.id)
+                    |> Map.put(:progression_module_id, module.id)
+                    |> Map.put(:position, entry_pos)
 
-                case ProgressionEntry
-                     |> Ash.Changeset.for_create(:create, entry_attrs)
-                     |> Ash.create(authorize?: false, return_notifications?: true) do
-                  {:ok, _entry, notifs} -> notifs
-                  {:error, reason} -> Repo.rollback(reason)
-                end
-              end)
+                  case ProgressionEntry
+                       |> Ash.Changeset.for_create(:create, entry_attrs)
+                       |> Ash.create(authorize?: false, return_notifications?: true) do
+                    {:ok, _entry, notifs} -> notifs
+                    {:error, reason} -> Repo.rollback(reason)
+                  end
+                end)
+
+              module_notifs ++ row_notifs
             end)
 
           {plan, plan_notifs ++ entry_notifs}
@@ -851,7 +854,7 @@ defmodule TeacherAssistant.Academics do
       position: pos,
       progression_plan_id: plan.id
     })
-    |> Ash.create(authorize?: false)
+    |> Ash.create(authorize?: false, return_notifications?: true)
   end
 
   defp create_import_module(plan, title, pos) when is_binary(title) do
@@ -861,7 +864,7 @@ defmodule TeacherAssistant.Academics do
       position: pos,
       progression_plan_id: plan.id
     })
-    |> Ash.create(authorize?: false)
+    |> Ash.create(authorize?: false, return_notifications?: true)
   end
 
   def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
@@ -1052,30 +1055,48 @@ defmodule TeacherAssistant.Academics do
         module_by_id = Map.new(current_modules, &{&1.id, &1})
         entry_by_id = Map.new(current_entries, &{&1.id, &1})
 
-        Repo.transaction(fn ->
-          layout
-          |> Enum.with_index(1)
-          |> Enum.each(fn {%{"module_id" => mid, "entry_ids" => eids}, mpos} ->
-            {:ok, _} = update_module_position(module_by_id[mid], mpos)
-
-            eids
+        result =
+          Repo.transaction(fn ->
+            layout
             |> Enum.with_index(1)
-            |> Enum.each(fn {eid, epos} ->
-              {:ok, _} =
-                update_progression_entry(entry_by_id[eid], %{
-                  progression_module_id: mid,
-                  position: epos
-                })
+            |> Enum.flat_map(fn {%{"module_id" => mid, "entry_ids" => eids}, mpos} ->
+              module_notifs =
+                case module_by_id[mid]
+                     |> Ash.Changeset.for_update(:update, %{position: mpos})
+                     |> Ash.update(authorize?: false, return_notifications?: true) do
+                  {:ok, _module, notifs} -> notifs
+                  {:error, reason} -> Repo.rollback(reason)
+                end
+
+              entry_notifs =
+                eids
+                |> Enum.with_index(1)
+                |> Enum.flat_map(fn {eid, epos} ->
+                  case entry_by_id[eid]
+                       |> Ash.Changeset.for_update(:update, %{
+                         progression_module_id: mid,
+                         position: epos
+                       })
+                       |> Ash.update(authorize?: false, return_notifications?: true) do
+                    {:ok, _entry, notifs} -> notifs
+                    {:error, reason} -> Repo.rollback(reason)
+                  end
+                end)
+
+              module_notifs ++ entry_notifs
             end)
           end)
-        end)
 
-        {:ok, :applied}
+        case result do
+          {:ok, notifications} ->
+            Ash.Notifier.notify(notifications)
+            {:ok, :applied}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
     end
   end
-
-  defp update_module_position(%ProgressionModule{} = m, pos),
-    do: m |> Ash.Changeset.for_update(:update, %{position: pos}) |> Ash.update(authorize?: false)
 
   defp id_set_matches?(a, b), do: MapSet.new(a) == MapSet.new(b) and length(a) == length(b)
 

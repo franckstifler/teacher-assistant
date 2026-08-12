@@ -24,12 +24,17 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         {:noreply, socket}
 
       t ->
-        {:ok, _} = Academics.create_module(socket.assigns.plan, %{title: t})
-        {:noreply, assign_modules(socket, socket.assigns.plan)}
+        case Academics.create_module(socket.assigns.plan, %{title: t}) do
+          {:ok, _} ->
+            {:noreply, assign_modules(socket, socket.assigns.plan)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not add module"))}
+        end
     end
   end
 
-  def handle_event("rename-module", %{"id" => id, "title" => title}, socket) do
+  def handle_event("rename-module", %{"module_id" => id, "title" => title}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
@@ -58,13 +63,9 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("add-entry", %{"module_id" => module_id, "entry" => p}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, module} <- ws && Academics.fetch_owned_module(module_id, ws),
-         {:ok, _} <-
-           Academics.add_progression_entry(module, %{
-             lesson_title: p["lesson_title"],
-             planned_hours: Decimal.new(blank_to(p["planned_hours"], "1")),
-             entry_type: String.to_existing_atom(p["entry_type"])
-           }) do
+    with {:ok, entry_attrs} <- entry_attrs_from_params(p),
+         {:ok, module} <- ws && Academics.fetch_owned_module(module_id, ws),
+         {:ok, _} <- Academics.add_progression_entry(module, entry_attrs) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not add entry"))}
@@ -147,6 +148,41 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   defp blank_to("", d), do: d
   defp blank_to(v, _), do: v
 
+  # Validates/parses the raw "add-entry" form params before they ever reach
+  # Ash. Decimal.new/1 and String.to_existing_atom/1 both raise on malformed
+  # input, which is not caught by a `with`/`else` clause — so we guard here
+  # and return {:error, _} instead of crashing the LiveView.
+  defp entry_attrs_from_params(p) do
+    with {:ok, entry_type} <- parse_entry_type(p["entry_type"]),
+         {:ok, planned_hours} <- parse_planned_hours(p["planned_hours"]) do
+      {:ok,
+       %{
+         lesson_title: p["lesson_title"],
+         planned_hours: planned_hours,
+         entry_type: entry_type
+       }}
+    end
+  end
+
+  defp parse_entry_type(key) when is_binary(key) do
+    valid_keys = Enum.map(Reference.entry_type_keys(), &Atom.to_string/1)
+
+    if key in valid_keys do
+      {:ok, String.to_existing_atom(key)}
+    else
+      {:error, :invalid_entry_type}
+    end
+  end
+
+  defp parse_entry_type(_), do: {:error, :invalid_entry_type}
+
+  defp parse_planned_hours(raw) do
+    case Decimal.parse(blank_to(raw, "1")) do
+      {decimal, ""} -> {:ok, decimal}
+      _ -> {:error, :invalid_planned_hours}
+    end
+  end
+
   defp entry_form_for(m), do: to_form(%{}, as: :entry, id: "entry-form-#{m.id}")
 
   def render(assigns) do
@@ -207,7 +243,27 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 >
                   <.icon name="hero-bars-3" class="size-4" />
                 </button>
-                <span class="ta-eyebrow">{m.title}</span>
+                <form
+                  id={"rename-module-form-#{m.id}"}
+                  phx-submit="rename-module"
+                  class="flex items-center gap-1"
+                >
+                  <input type="hidden" name="module_id" value={m.id} />
+                  <input
+                    type="text"
+                    name="title"
+                    value={m.title}
+                    class="input input-xs input-ghost ta-eyebrow w-40"
+                    aria-label={gettext("Module title")}
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-ghost btn-xs"
+                    aria-label={gettext("Rename module")}
+                  >
+                    <.icon name="hero-check" class="size-3.5" />
+                  </button>
+                </form>
                 <span class="ta-num text-sm text-base-content/60">
                   {Decimal.to_string(module_hours(m))}h
                 </span>

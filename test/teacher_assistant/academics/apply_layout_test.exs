@@ -66,4 +66,46 @@ defmodule TeacherAssistant.Academics.ApplyLayoutTest do
     layout = [%{"module_id" => Ecto.UUID.generate(), "entry_ids" => [a.id, b.id, c.id]}]
     assert {:error, :invalid_layout} = Academics.apply_layout(plan, layout)
   end
+
+  test "rejects a layout that duplicates one entry id and drops another", %{
+    plan: plan,
+    m1: m1,
+    m2: m2,
+    a: a,
+    c: c
+  } do
+    layout = [
+      %{"module_id" => m1.id, "entry_ids" => [a.id, a.id]},
+      %{"module_id" => m2.id, "entry_ids" => [c.id]}
+    ]
+
+    assert {:error, :invalid_layout} = Academics.apply_layout(plan, layout)
+
+    mods = Academics.list_progression_modules(plan)
+    assert Enum.map(mods, & &1.title) == ["M1", "M2"]
+    [first, _second] = mods
+    assert Enum.map(first.entries, & &1.lesson_title) == ["A", "B"]
+  end
+
+  test "rejects a layout with an extra duplicate entry id", %{
+    plan: plan,
+    m1: m1,
+    m2: m2,
+    a: a,
+    b: b,
+    c: c
+  } do
+    layout = [
+      %{"module_id" => m1.id, "entry_ids" => [a.id, b.id]},
+      %{"module_id" => m2.id, "entry_ids" => [c.id, c.id]}
+    ]
+
+    assert {:error, :invalid_layout} = Academics.apply_layout(plan, layout)
+
+    mods = Academics.list_progression_modules(plan)
+    assert Enum.map(mods, & &1.title) == ["M1", "M2"]
+    [first, second] = mods
+    assert Enum.map(first.entries, & &1.lesson_title) == ["A", "B"]
+    assert Enum.map(second.entries, & &1.lesson_title) == ["C"]
+  end
 end

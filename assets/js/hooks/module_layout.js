@@ -13,29 +13,47 @@ function readLayout(root) {
 const ModuleLayout = {
   mounted() {
     const root = this.el
-    const push = () => this.pushEvent("apply-layout", { layout: readLayout(root) })
+    this.push = () => this.pushEvent("apply-layout", { layout: readLayout(root) })
 
-    // Level 1: modules sortable by their header handle.
+    // Level 1: modules sortable by their header handle. Bound once to the
+    // persistent root element, which survives LiveView re-renders.
     this.moduleSortable = new Sortable(root, {
       handle: "[data-module-handle]",
       animation: 150,
-      onEnd: push,
+      onEnd: this.push,
     })
 
     // Level 2: lessons sortable within each module, shared group => cross-module drag.
+    this.bindEntrySortables()
+
+    // Keyboard fallback: focusable handles; Enter/Space grabs, Arrow moves, Enter/Space drops.
+    this.grabbed = null
+    this.onKeydown = (ev) => this.onKey(ev, root, this.push)
+    root.addEventListener("keydown", this.onKeydown)
+  },
+
+  updated() {
+    // The server may have re-rendered with new/removed modules or lessons
+    // (add/delete/rename). New [data-entries] lists aren't drag-enabled yet
+    // and morphdom may have replaced list nodes entirely, so tear down the
+    // stale entry-level Sortable instances and rebuild them over the current
+    // DOM. The module-level Sortable stays bound to the persistent root and
+    // needs no rebinding.
+    this.bindEntrySortables()
+  },
+
+  bindEntrySortables() {
+    const root = this.el
+    ;(this.entrySortables || []).forEach((s) => s.destroy())
+
     this.entrySortables = Array.from(root.querySelectorAll("[data-entries]")).map((listEl) =>
       new Sortable(listEl, {
         group: "lessons",
         handle: "[data-entry-handle]",
         animation: 150,
-        onEnd: push,
+        onEnd: this.push,
       })
     )
-
-    // Keyboard fallback: focusable handles; Enter/Space grabs, Arrow moves, Enter/Space drops.
-    this.grabbed = null
-    this.onKeydown = (ev) => this.onKey(ev, root, push)
-    root.addEventListener("keydown", this.onKeydown)
   },
 
   onKey(ev, root, push) {

@@ -131,6 +131,23 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     assert has_element?(view, "#entry-prepared-#{entry.id}")
   end
 
+  test "rename module inline updates the title", %{conn: conn, plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "Ancien titre"})
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+
+    view
+    |> form("#rename-module-form-#{m.id}", %{"module_id" => m.id, "title" => "Nouveau titre"})
+    |> render_submit()
+
+    assert render(view) =~ "Nouveau titre"
+    refute render(view) =~ "Ancien titre"
+
+    assert Academics.list_progression_modules(plan)
+           |> Enum.find(&(&1.id == m.id))
+           |> Map.fetch!(:title) == "Nouveau titre"
+  end
+
   test "apply-layout event reorders modules and moves a lesson", %{conn: conn, plan: plan} do
     {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
     {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
