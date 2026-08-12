@@ -47,4 +47,12 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
     assert e2.position == 2
     assert length(Academics.list_progression_entries(plan)) == 2
   end
+
+  test "entry defaults completed? to false and accepts it on update", %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    assert e.completed? == false
+    {:ok, e} = e |> Ash.Changeset.for_update(:update, %{completed?: true}) |> Ash.update(authorize?: false)
+    assert e.completed? == true
+  end
 end

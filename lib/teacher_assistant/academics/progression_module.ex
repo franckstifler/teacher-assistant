@@ -14,8 +14,8 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     defaults [
       :read,
       :destroy,
-      create: [:title, :position, :progression_plan_id, :credit_hours],
-      update: [:title, :position, :credit_hours]
+      create: [:title, :position, :progression_plan_id, :credit_hours, :sequence_id],
+      update: [:title, :position, :credit_hours, :sequence_id]
     ]
 
     # System-only: creates the undeletable default bucket. `default?` is never
@@ -49,5 +49,11 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     end
 
     has_many :entries, TeacherAssistant.Academics.ProgressionEntry
+
+    belongs_to :sequence, TeacherAssistant.Academics.Sequence do
+      source_attribute :sequence_id
+      allow_nil? true
+      public? true
+    end
   end
 end

@@ -89,4 +89,10 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, m} = Academics.update_module_credit(m, Decimal.new("11"))
     assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
   end
+
+  test "module accepts a sequence_id", %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+    # sequence_id acceptance is exercised more fully in Task 3; here just assert the attribute exists & is nil by default
+    assert m.sequence_id == nil
+  end
 end

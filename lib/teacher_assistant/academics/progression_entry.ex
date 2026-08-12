@@ -25,7 +25,8 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
         :categories_action,
         :competence_visee,
         :progression_plan_id,
-        :sequence_id
+        :sequence_id,
+        :completed?
       ],
       update: [
         :progression_module_id,
@@ -37,7 +38,8 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
         :famille_de_situations,
         :categories_action,
         :competence_visee,
-        :sequence_id
+        :sequence_id,
+        :completed?
       ]
     ]
   end
@@ -70,6 +72,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
       public?: true
 
     attribute :week_no, :integer, allow_nil?: true, public?: true
+    attribute :completed?, :boolean, allow_nil?: false, default: false, public?: true
     attribute :position, :integer, allow_nil?: false, public?: true
     attribute :famille_de_situations, :string, allow_nil?: true, public?: true
     attribute :categories_action, :string, allow_nil?: true, public?: true
