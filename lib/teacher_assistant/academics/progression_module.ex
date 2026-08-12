@@ -14,8 +14,8 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     defaults [
       :read,
       :destroy,
-      create: [:title, :position, :progression_plan_id],
-      update: [:title, :position]
+      create: [:title, :position, :progression_plan_id, :credit_hours],
+      update: [:title, :position, :credit_hours]
     ]
 
     # System-only: creates the undeletable default bucket. `default?` is never
@@ -37,6 +37,7 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     attribute :title, :string, allow_nil?: false, public?: true
     attribute :position, :integer, allow_nil?: false, public?: true
     attribute :default?, :boolean, allow_nil?: false, default: false, public?: true
+    attribute :credit_hours, :decimal, allow_nil?: true, public?: true
     timestamps()
   end
 

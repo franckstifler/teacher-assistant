@@ -72,4 +72,15 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     assert [%{lesson_title: "L1"}] = hd(mods).entries
     assert m2.id in Enum.map(mods, & &1.id)
   end
+
+  test "module accepts credit_hours via update", %{plan: plan} do
+    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+
+    {:ok, m} =
+      m
+      |> Ash.Changeset.for_update(:update, %{credit_hours: Decimal.new("11")})
+      |> Ash.update(authorize?: false)
+
+    assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
+  end
 end

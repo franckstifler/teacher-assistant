@@ -36,6 +36,9 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :subsystem,
         :weekly_hours,
         :coefficient,
+        :annual_hours,
+        :target_module_count,
+        :target_lesson_count,
         :workspace_id,
         :academic_year_id,
         :teacher_user_id,
@@ -48,6 +51,9 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :subsystem,
         :weekly_hours,
         :coefficient,
+        :annual_hours,
+        :target_module_count,
+        :target_lesson_count,
         :class_group_id,
         :teacher_user_id
       ]
@@ -77,6 +83,10 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       allow_nil?: false,
       default: Decimal.new(1),
       public?: true
+
+    attribute :annual_hours, :decimal, allow_nil?: true, public?: true
+    attribute :target_module_count, :integer, allow_nil?: true, public?: true
+    attribute :target_lesson_count, :integer, allow_nil?: true, public?: true
 
     timestamps()
   end

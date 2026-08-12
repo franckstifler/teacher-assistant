@@ -64,4 +64,21 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
     assert {:error, _} =
              Academics.create_teaching_context(ws, year, Map.put(base, :teacher_user_id, u2.id))
   end
+
+  test "create accepts annual_hours and count targets", %{ws: ws, year: year} do
+    {:ok, ctx} =
+      Academics.create_teaching_context(ws, year, %{
+        subject: "Physique",
+        level: "5ème",
+        subsystem: :francophone,
+        weekly_hours: 4,
+        annual_hours: Decimal.new("100"),
+        target_module_count: 4,
+        target_lesson_count: 21
+      })
+
+    assert Decimal.equal?(ctx.annual_hours, Decimal.new("100"))
+    assert ctx.target_module_count == 4
+    assert ctx.target_lesson_count == 21
+  end
 end
