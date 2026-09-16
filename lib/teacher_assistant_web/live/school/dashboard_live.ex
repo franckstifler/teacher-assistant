@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Accounts.Schools
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -24,6 +25,49 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <section id="school-dashboard" class="space-y-4">
         <.page_header eyebrow={gettext("École")} title={@current_scope.current_workspace.name} />
+
+        <div
+          :if={@current_scope.school_verification_status != :verified}
+          id="pending-verification"
+          class="ta-leaf space-y-1 border-l-4 border-warning"
+        >
+          <p class="text-sm">
+            {gettext(
+              "Votre établissement est configuré mais pas encore vérifié. Vous pouvez préparer classes et personnel ; la saisie des notes, de l'appel et des bulletins sera débloquée après vérification."
+            )}
+          </p>
+        </div>
+
+        <ul id="setup-checklist" class="ta-leaf space-y-2 text-sm">
+          <li id="setup-checklist-profile" class="flex items-center gap-2">
+            <.icon
+              name={if @profile_complete?, do: "hero-check-circle", else: "hero-x-circle"}
+              class={"size-4 " <> if(@profile_complete?, do: "text-primary", else: "text-base-content/40")}
+            />
+            {gettext("Profil de l'établissement")}
+          </li>
+          <li id="setup-checklist-year" class="flex items-center gap-2">
+            <.icon
+              name={if @year != nil, do: "hero-check-circle", else: "hero-x-circle"}
+              class={"size-4 " <> if(@year != nil, do: "text-primary", else: "text-base-content/40")}
+            />
+            {gettext("Année scolaire")}
+          </li>
+          <li id="setup-checklist-classes" class="flex items-center gap-2">
+            <.icon
+              name={if @classes != [], do: "hero-check-circle", else: "hero-x-circle"}
+              class={"size-4 " <> if(@classes != [], do: "text-primary", else: "text-base-content/40")}
+            />
+            {gettext("Classes")}
+          </li>
+          <li id="setup-checklist-staff" class="flex items-center gap-2">
+            <.icon
+              name={if @staff_count > 1, do: "hero-check-circle", else: "hero-x-circle"}
+              class={"size-4 " <> if(@staff_count > 1, do: "text-primary", else: "text-base-content/40")}
+            />
+            {gettext("Personnel")}
+          </li>
+        </ul>
 
         <%= cond do %>
           <% @year == nil -> %>
@@ -103,6 +147,14 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         do: Academics.list_form_master_classes(scope.current_workspace, scope.current_user, year),
         else: []
 
+    profile_complete? =
+      case Schools.fetch_school_profile(scope.current_workspace) do
+        {:ok, profile} -> profile.head_name not in [nil, ""]
+        _ -> false
+      end
+
+    staff_count = scope.current_workspace |> Schools.list_members() |> length()
+
     socket
     |> assign(:year, year)
     |> assign(:classes, classes)
@@ -110,5 +162,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     |> assign(:students_count, students_count)
     |> assign(:teachers_count, teachers_count)
     |> assign(:my_classes, my_classes)
+    |> assign(:profile_complete?, profile_complete?)
+    |> assign(:staff_count, staff_count)
   end
 end
