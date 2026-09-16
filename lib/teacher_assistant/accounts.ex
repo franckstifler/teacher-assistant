@@ -9,6 +9,7 @@ defmodule TeacherAssistant.Accounts do
     resource User
     resource TeacherAssistant.Accounts.SchoolMembership
     resource TeacherAssistant.Accounts.SchoolInvitation
+    resource TeacherAssistant.Accounts.SchoolProfile
   end
 
   def create_user(attrs) do
