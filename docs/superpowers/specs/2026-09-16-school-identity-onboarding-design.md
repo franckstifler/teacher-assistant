@@ -143,8 +143,8 @@ it in the plan as a safety step).
 ## Verification & the operate-gate
 
 - **States:** `:unverified` (on create) → `:verified` or `:rejected` (operator). A rejected school
-  can be edited and re-submitted (returns to `:unverified` on next profile save, or the operator
-  re-verifies directly — plan decides the exact transition; keep minimal).
+  returns to `:unverified` **automatically when its profile is next edited** (re-entering the
+  operator's queue); there is no separate "resubmit" action.
 - **Scope flag:** `Workspaces.school_scope/3` loads the profile and puts `school_verified?` (and
   `school_verification_status`) on the `Scope`, so gates are a cheap field read (no per-action
   query).
@@ -232,10 +232,9 @@ shaped so they can be added there without schema change.
 policies (Inc 3) attach to `SchoolProfile` and the operating gate; settings (Inc 4) edit its
 fields + add config; dashboard/nav (Inc 5) surface its state (verification, checklist) and identity.
 
-## Open questions for spec review
+## Resolved (spec review, 2026-09-16)
 
-1. Exact **rejected → re-submit** transition (auto-return to `:unverified` on next profile save,
-   vs. an explicit "resubmit" action). Recommend: editing a rejected school's profile returns it to
-   `:unverified`.
-2. Whether the **operator route** should be `/admin/...` vs `/operator/...` (naming only).
-3. Whether to capture **head_name** at creation or only in settings (currently: settings).
+1. **Rejected → re-submit:** editing a rejected school's profile automatically returns it to
+   `:unverified` (re-enters the operator queue); no separate resubmit action.
+2. **Operator route:** `/admin/schools`.
+3. **head_name:** collected in Settings, not at creation (creation form stays to the six essentials).
