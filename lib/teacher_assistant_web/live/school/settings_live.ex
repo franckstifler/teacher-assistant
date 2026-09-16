@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Accounts.{Permissions, Schools}
+  alias TeacherAssistant.Accounts.{SchoolTypes, SchoolSubsystems, SchoolSectors, CameroonRegions}
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -10,17 +11,20 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     if scope.current_workspace_type != :school do
       {:ok, push_navigate(socket, to: ~p"/school")}
     else
+      admin? = Permissions.admin?(scope)
+
       {:ok,
        socket
        |> assign(:scope, scope)
        |> assign(:head?, Permissions.head?(scope))
-       |> assign(:admin?, Permissions.admin?(scope))
+       |> assign(:admin?, admin?)
        |> assign(:name_form, to_form(%{"name" => scope.current_workspace.name}, as: :school))
        |> assign(
          :year_form,
          to_form(%{"name" => "", "start_date" => "", "end_date" => ""}, as: :year)
        )
-       |> load_years()}
+       |> load_years()
+       |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)}
     end
   end
 
@@ -45,6 +49,64 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           <.link navigate={~p"/school/periods"} class="link link-primary text-sm">
             {gettext("Emploi du temps — périodes")}
           </.link>
+        </div>
+
+        <div :if={@admin?} class="ta-leaf space-y-3">
+          <h2 class="text-lg font-semibold">{gettext("Profil de l'école")}</h2>
+
+          <.form
+            for={@profile_form}
+            id="school-profile-form"
+            phx-submit="save_profile"
+            class="space-y-3"
+          >
+            <div class="grid gap-2 sm:grid-cols-2">
+              <.input field={@profile_form[:short_name]} label={gettext("Nom court")} />
+              <.input
+                type="select"
+                field={@profile_form[:school_type]}
+                label={gettext("Type d'établissement")}
+                options={for t <- SchoolTypes.all(), do: {SchoolTypes.label(t), t}}
+                prompt={gettext("Sélectionner un type")}
+              />
+              <.input
+                type="select"
+                field={@profile_form[:subsystem]}
+                label={gettext("Sous-système")}
+                options={for s <- SchoolSubsystems.all(), do: {SchoolSubsystems.label(s), s}}
+                prompt={gettext("Sélectionner un sous-système")}
+              />
+              <.input
+                type="select"
+                field={@profile_form[:sector]}
+                label={gettext("Secteur")}
+                options={for s <- SchoolSectors.all(), do: {SchoolSectors.label(s), s}}
+                prompt={gettext("Sélectionner un secteur")}
+              />
+              <.input
+                type="select"
+                field={@profile_form[:region]}
+                label={gettext("Région")}
+                options={for r <- CameroonRegions.all(), do: {CameroonRegions.label(r), r}}
+                prompt={gettext("Sélectionner une région")}
+              />
+              <.input field={@profile_form[:department]} label={gettext("Département")} />
+              <.input field={@profile_form[:town]} label={gettext("Ville")} />
+              <.input field={@profile_form[:phone]} label={gettext("Téléphone")} />
+              <.input field={@profile_form[:email]} label={gettext("Email")} />
+              <.input field={@profile_form[:address]} label={gettext("Adresse")} />
+              <.input
+                field={@profile_form[:head_name]}
+                label={gettext("Nom du chef d'établissement")}
+              />
+              <.input field={@profile_form[:motto]} label={gettext("Devise")} />
+              <.input
+                field={@profile_form[:registration_number]}
+                label={gettext("Numéro d'autorisation")}
+              />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+          </.form>
         </div>
 
         <div :if={@admin?} class="space-y-4">
@@ -175,9 +237,60 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
+  def handle_event("save_profile", %{"profile" => attrs}, socket) do
+    scope = socket.assigns.scope
+
+    if Permissions.admin?(scope) do
+      case Schools.update_school_profile(socket.assigns.profile, attrs) do
+        {:ok, _profile} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Profil de l'école mis à jour."))
+           |> load_profile()}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Impossible de mettre à jour le profil."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   defp load_years(socket) do
     scope = socket.assigns.scope
     assign(socket, :years, Academics.list_academic_years(scope.current_workspace))
+  end
+
+  defp load_profile(socket) do
+    scope = socket.assigns.scope
+
+    case Schools.fetch_school_profile(scope.current_workspace) do
+      {:ok, profile} ->
+        socket
+        |> assign(:profile, profile)
+        |> assign(:profile_form, to_form(profile_params(profile), as: :profile))
+
+      {:error, _} ->
+        socket
+    end
+  end
+
+  defp profile_params(profile) do
+    %{
+      "short_name" => profile.short_name,
+      "school_type" => profile.school_type,
+      "subsystem" => profile.subsystem,
+      "sector" => profile.sector,
+      "region" => profile.region,
+      "department" => profile.department,
+      "town" => profile.town,
+      "phone" => profile.phone,
+      "email" => profile.email,
+      "address" => profile.address,
+      "head_name" => profile.head_name,
+      "motto" => profile.motto,
+      "registration_number" => profile.registration_number
+    }
   end
 
   defp parse_date(nil), do: nil
