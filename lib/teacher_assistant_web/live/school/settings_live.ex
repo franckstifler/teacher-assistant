@@ -51,7 +51,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </.link>
         </div>
 
-        <div :if={@admin?} class="ta-leaf space-y-3">
+        <div :if={@admin? and @profile_form} class="ta-leaf space-y-3">
           <h2 class="text-lg font-semibold">{gettext("Profil de l'école")}</h2>
 
           <.form
@@ -240,7 +240,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("save_profile", %{"profile" => attrs}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
+    if Permissions.admin?(scope) and socket.assigns.profile do
       case Schools.update_school_profile(socket.assigns.profile, attrs) do
         {:ok, _profile} ->
           {:noreply,
@@ -272,6 +272,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
       {:error, _} ->
         socket
+        |> assign(:profile, nil)
+        |> assign(:profile_form, nil)
     end
   end
 
