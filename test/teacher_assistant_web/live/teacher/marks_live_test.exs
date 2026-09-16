@@ -43,6 +43,88 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert Decimal.equal?(m.score, Decimal.new("15"))
   end
 
+  test "rejects an out-of-range mark with an error and saves nothing", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    html =
+      view
+      |> form("#marks-form", %{"scores" => %{s1.id => "25"}})
+      |> render_submit()
+
+    assert html =~ "0 and 20"
+    assert Academics.list_marks(a) == []
+  end
+
+  test "accepts a French decimal comma", %{conn: conn, ctx: ctx, seq: seq, a: a, s1: s1} do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    view |> form("#marks-form", %{"scores" => %{s1.id => "13,5"}}) |> render_submit()
+
+    assert [m] = Academics.list_marks(a)
+    assert Decimal.equal?(m.score, Decimal.new("13.5"))
+  end
+
+  test "rejects a non-numeric mark with an error and saves nothing", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    html = view |> form("#marks-form", %{"scores" => %{s1.id => "abc"}}) |> render_submit()
+
+    assert html =~ "valid"
+    assert Academics.list_marks(a) == []
+  end
+
+  test "keeps unsaved marks when switching assessment and back", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1
+  } do
+    {:ok, other} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    # type a mark (unsaved) for assessment a
+    view |> element("#marks-form") |> render_change(%{"scores" => %{s1.id => "14"}})
+
+    # switch to another assessment, then back to a — without ever saving
+    view |> element("#assessment-select") |> render_change(%{"assessment" => other.id})
+    view |> element("#assessment-select") |> render_change(%{"assessment" => a.id})
+
+    # the unsaved 14 is still in the input, not lost
+    assert has_element?(view, "#mark-input-#{s1.id}[value='14']")
+    assert Academics.list_marks(a) == []
+  end
+
+  test "mark inputs are debounced to avoid a round-trip per keystroke", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#mark-input-#{s1.id}[phx-debounce]")
+  end
+
   test "context without class group redirects to roster", %{conn: conn, ws: ws} do
     {:ok, year} = {:ok, Academics.current_academic_year(ws)}
 

@@ -3,11 +3,12 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
   alias TeacherAssistant.Academics
 
   def mount(%{"id" => ctx_id}, _session, socket) do
-    ws = socket.assigns.current_scope.current_workspace
-    read_only? = socket.assigns.current_scope.current_workspace_type == :school
+    scope = socket.assigns.current_scope
+    ws = scope.current_workspace
+    read_only? = scope.current_workspace_type == :school
 
     with true <- not is_nil(ws),
-         {:ok, ctx} <- Academics.fetch_owned_teaching_context(ctx_id, ws) do
+         {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope) do
       {:ok, load(socket, ws, ctx) |> assign(:read_only?, read_only?)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/teacher/setup")}

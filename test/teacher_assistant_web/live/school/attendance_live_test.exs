@@ -61,24 +61,106 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     |> Plug.Conn.put_session(:workspace_id, school.id)
   end
 
-  test "the slot-owning teacher sees the roster and can mark a student", %{
+  defp att_path(cg, period, date),
+    do: "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
+
+  test "every student defaults to present, and recording writes present for all", %{
     conn: conn,
     cg: cg,
     period: period,
     date: date,
     enrollment: enrollment
   } do
-    {:ok, view, html} =
-      live(
-        conn,
-        ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
-      )
+    {:ok, other} = Academics.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
+    other_enr = Enum.find(Academics.list_roster(cg), &(&1.student.id == other.id)).enrollment
 
-    assert html =~ "Awa Nkolo"
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
-    view
-    |> element("#mark-#{enrollment.id}")
-    |> render_change(%{"enrollment_id" => enrollment.id, "status" => "present"})
+    # present is the default selection for a fresh roll
+    assert has_element?(view, "#att-#{enrollment.id}-present[aria-pressed='true']")
+
+    # record without touching anyone
+    view |> element("#record-roll") |> render_click()
+
+    roll = Attendance.period_roll(cg, period, date)
+    assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :present
+    assert Enum.find(roll.students, &(&1.enrollment_id == other_enr.id)).status == :present
+  end
+
+  test "marking one student absent records absent for them and present for the rest", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date,
+    enrollment: enrollment
+  } do
+    {:ok, other} = Academics.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
+    other_enr = Enum.find(Academics.list_roster(cg), &(&1.student.id == other.id)).enrollment
+
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+
+    view |> element("#att-#{enrollment.id}-absent") |> render_click()
+    view |> element("#record-roll") |> render_click()
+
+    roll = Attendance.period_roll(cg, period, date)
+    assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :absent
+    assert Enum.find(roll.students, &(&1.enrollment_id == other_enr.id)).status == :present
+  end
+
+  test "a conduct manager (discipline master) can record the roll", %{
+    school: school,
+    cg: cg,
+    period: period,
+    date: date,
+    head: head,
+    enrollment: enrollment
+  } do
+    dm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{
+        email: to_string(dm.email),
+        roles: [:discipline_master]
+      })
+
+    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+
+    {:ok, view, _html} = live(conn_for(school, dm), att_path(cg, period, date))
+
+    view |> element("#att-#{enrollment.id}-absent") |> render_click()
+    view |> element("#record-roll") |> render_click()
+
+    roll = Attendance.period_roll(cg, period, date)
+    assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :absent
+  end
+
+  test "the roll shows as recorded once entries exist", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date,
+    tc: tc,
+    head: head,
+    enrollment: enrollment
+  } do
+    {:ok, _} =
+      Attendance.record_period(cg, period, tc, date, [{enrollment.id, :present}], head.id)
+
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+    assert has_element?(view, "#roll-status", "enregistré")
+  end
+
+  test "an invalid status from a forged set event is ignored", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date,
+    enrollment: enrollment
+  } do
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+
+    render_hook(view, "set", %{"enrollment_id" => enrollment.id, "status" => "on_fire"})
+    view |> element("#record-roll") |> render_click()
 
     roll = Attendance.period_roll(cg, period, date)
     assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :present
@@ -98,97 +180,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
 
     {:ok, _} = Schools.accept_invitation(inv.token, other)
 
-    conn = conn_for(school, other)
-
     assert {:error, {:live_redirect, %{to: "/school"}}} =
-             live(
-               conn,
-               ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
-             )
-  end
-
-  test "a conduct manager (discipline master) can mark any period", %{
-    school: school,
-    cg: cg,
-    period: period,
-    date: date,
-    head: head,
-    enrollment: enrollment
-  } do
-    dm = TeacherAssistant.TeacherFixtures.user_fixture()
-
-    {:ok, inv} =
-      Schools.invite_member(school, head, %{
-        email: to_string(dm.email),
-        roles: [:discipline_master]
-      })
-
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
-
-    conn = conn_for(school, dm)
-
-    {:ok, view, html} =
-      live(
-        conn,
-        ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
-      )
-
-    assert html =~ "Awa Nkolo"
-
-    view
-    |> element("#mark-#{enrollment.id}")
-    |> render_change(%{"enrollment_id" => enrollment.id, "status" => "absent"})
-
-    roll = Attendance.period_roll(cg, period, date)
-    assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :absent
-  end
-
-  test "a forged enrollment_id or out-of-range status is rejected without persisting", %{
-    conn: conn,
-    cg: cg,
-    period: period,
-    date: date,
-    enrollment: enrollment
-  } do
-    {:ok, view, _html} =
-      live(
-        conn,
-        ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
-      )
-
-    view
-    |> element("#mark-#{enrollment.id}")
-    |> render_change(%{"enrollment_id" => Ecto.UUID.generate(), "status" => "present"})
-
-    view
-    |> element("#mark-#{enrollment.id}")
-    |> render_change(%{"enrollment_id" => enrollment.id, "status" => "on_fire"})
-
-    roll = Attendance.period_roll(cg, period, date)
-    assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == nil
-  end
-
-  test "a non-member is redirected to /school", %{
-    school: school,
-    cg: cg,
-    period: period,
-    date: date,
-    head: head
-  } do
-    other = TeacherAssistant.TeacherFixtures.user_fixture()
-
-    {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
-
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
-
-    conn = conn_for(school, other)
-
-    assert {:error, {:live_redirect, %{to: "/school"}}} =
-             live(
-               conn,
-               ~p"/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
-             )
+             live(conn_for(school, other), att_path(cg, period, date))
   end
 
   test "cross-school class id redirects to /school/classes", %{
@@ -210,9 +203,6 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
-             live(
-               conn,
-               ~p"/school/classes/#{ocg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
-             )
+             live(conn, att_path(ocg, period, date))
   end
 end

@@ -121,6 +121,18 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   defp status_label(:absent), do: gettext("A")
   defp status_label(:late), do: gettext("R")
 
+  # Absence hours come from non-60-minute periods (e.g. 55 min → 0.9166…), so
+  # round to 2 decimals and drop trailing zeros for a clean register: 0.92, 1, 0.
+  defp fmt_hours(%Decimal{} = d) do
+    s = d |> Decimal.round(2) |> Decimal.to_string(:normal)
+
+    if String.contains?(s, ".") do
+      s |> String.trim_trailing("0") |> String.trim_trailing(".")
+    else
+      s
+    end
+  end
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
@@ -164,8 +176,8 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
                   {status_label(Map.get(student.cells, period.id))}
                 </td>
                 <% conduct = Map.get(@conduct_by_enrollment, student.enrollment_id) %>
-                <td>{Decimal.to_string(conduct.justified_hours)}</td>
-                <td>{Decimal.to_string(conduct.unjustified_hours)}</td>
+                <td>{fmt_hours(conduct.justified_hours)}</td>
+                <td>{fmt_hours(conduct.unjustified_hours)}</td>
                 <td>{conduct.retards}</td>
                 <td :if={@can_edit?}>
                   <form

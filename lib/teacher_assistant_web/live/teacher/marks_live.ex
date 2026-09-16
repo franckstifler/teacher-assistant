@@ -3,9 +3,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Academics
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
-    ws = socket.assigns.current_scope.current_workspace
+    scope = socket.assigns.current_scope
+    ws = scope.current_workspace
 
-    with {:ok, ctx} <- owned_context(ws, ctx_id),
+    with {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope),
          false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Academics.current_academic_year(ws)
@@ -25,6 +26,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:assessment, assessment)
        |> assign(:students, students)
        |> assign(:scores, existing_scores(assessment))
+       |> assign(:unsaved, %{})
        |> assign(:sibling_scores, sibling_scores(ctx, seq))
        |> assign(:new_assessment_form, to_form(%{}, as: :assessment))}
     else
@@ -36,9 +38,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
     end
   end
-
-  defp owned_context(nil, _ctx_id), do: :error
-  defp owned_context(ws, ctx_id), do: Academics.fetch_owned_teaching_context(ctx_id, ws)
 
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
@@ -70,7 +69,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         %{
           assessment_id: assessment.id,
           student_id: s.id,
-          score: parse_score(Map.get(scores, s.id))
+          score: score_or_nil(Map.get(scores, s.id))
         }
       end)
 
@@ -117,24 +116,57 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   def handle_event("save", %{"scores" => scores}, socket) do
-    entries =
+    parsed =
       Enum.map(socket.assigns.students, fn s ->
-        %{student_id: s.id, score: parse_score(Map.get(scores, s.id))}
+        {s.id, parse_score(Map.get(scores, s.id))}
       end)
+
+    if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+       )}
+    else
+      save_marks(socket, parsed)
+    end
+  end
+
+  defp save_marks(socket, parsed) do
+    entries = Enum.map(parsed, fn {id, {:ok, score}} -> %{student_id: id, score: score} end)
 
     case Academics.upsert_marks(socket.assigns.assessment, entries) do
       :ok ->
         {:noreply,
          socket
          |> put_flash(:info, gettext("Marks saved"))
+         |> assign(:unsaved, Map.delete(socket.assigns.unsaved, socket.assigns.assessment.id))
          |> assign(:scores, existing_scores(socket.assigns.assessment))}
+
+      {:error, :out_of_range} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Marks must be between 0 and %{max}.",
+             max: max_label(socket.assigns.assessment)
+           )
+         )}
 
       _ ->
         {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}
     end
   end
 
+  defp max_label(%{max_score: %Decimal{} = m}), do: Decimal.to_string(m, :normal)
+
   def handle_params(params, _uri, socket) do
+    # Preserve unsaved edits across a séquence/assessment switch: stash the
+    # outgoing column, restore any previously stashed edits for the incoming one,
+    # so an accidental tap on a selector never discards typed marks.
+    unsaved = stash_current(socket)
+
     seq = pick(socket.assigns.sequences, params["seq"])
     assessments = if seq, do: Academics.list_assessments(socket.assigns.ctx, seq), else: []
     assessment = pick(assessments, params["assessment"])
@@ -144,16 +176,47 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      |> assign(:seq, seq)
      |> assign(:assessments, assessments)
      |> assign(:assessment, assessment)
-     |> assign(:scores, existing_scores(assessment))
+     |> assign(:unsaved, unsaved)
+     |> assign(:scores, restore_scores(assessment, unsaved))
      |> assign(:sibling_scores, sibling_scores(socket.assigns.ctx, seq))}
   end
 
-  defp parse_score(nil), do: nil
-  defp parse_score(""), do: nil
+  defp stash_current(socket) do
+    unsaved = socket.assigns[:unsaved] || %{}
+
+    case socket.assigns[:assessment] do
+      %{id: id} -> Map.put(unsaved, id, socket.assigns[:scores] || %{})
+      _ -> unsaved
+    end
+  end
+
+  defp restore_scores(nil, _unsaved), do: %{}
+
+  defp restore_scores(%{id: id} = assessment, unsaved),
+    do: Map.merge(existing_scores(assessment), Map.get(unsaved, id, %{}))
+
+  # Parses a raw score field into {:ok, Decimal.t() | nil} — nil meaning absent —
+  # or :error. Accepts a French decimal comma; rejects any non-empty value that is
+  # not a clean number (e.g. "abc", "15x"), so a typo is never silently stored as
+  # an absence.
+  defp parse_score(nil), do: {:ok, nil}
 
   defp parse_score(v) do
-    case Decimal.parse(v) do
-      {d, _} -> d
+    case v |> String.trim() |> String.replace(",", ".") do
+      "" ->
+        {:ok, nil}
+
+      normalized ->
+        case Decimal.parse(normalized) do
+          {d, ""} -> {:ok, d}
+          _ -> :error
+        end
+    end
+  end
+
+  defp score_or_nil(raw) do
+    case parse_score(raw) do
+      {:ok, d} -> d
       :error -> nil
     end
   end
@@ -267,6 +330,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 placeholder={gettext("Abs")}
                 name={"scores[#{s.id}]"}
                 value={Map.get(@scores, s.id, "")}
+                phx-debounce="300"
                 class="ta-num input input-bordered h-11 w-24 text-right"
               />
             </div>

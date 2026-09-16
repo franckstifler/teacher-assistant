@@ -60,6 +60,36 @@ defmodule TeacherAssistant.Academics.MarkTest do
     assert m.score == nil
   end
 
+  test "upsert rejects a score above the assessment maximum and writes nothing", %{a: a, s1: s1} do
+    assert {:error, :out_of_range} =
+             Academics.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("25")}])
+
+    assert Academics.list_marks(a) == []
+  end
+
+  test "upsert rejects a negative score and writes nothing", %{a: a, s1: s1} do
+    assert {:error, :out_of_range} =
+             Academics.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("-3")}])
+
+    assert Academics.list_marks(a) == []
+  end
+
+  test "upsert accepts a score exactly at the maximum", %{a: a, s1: s1} do
+    :ok = Academics.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("20")}])
+    assert [m] = Academics.list_marks(a)
+    assert Decimal.equal?(m.score, Decimal.new("20"))
+  end
+
+  test "a single out-of-range entry rejects the whole batch", %{a: a, s1: s1, s2: s2} do
+    assert {:error, :out_of_range} =
+             Academics.upsert_marks(a, [
+               %{student_id: s1.id, score: Decimal.new("12")},
+               %{student_id: s2.id, score: Decimal.new("99")}
+             ])
+
+    assert Academics.list_marks(a) == []
+  end
+
   test "list_marks_for_context_sequence spans assessments", %{ctx: ctx, seq: seq, a: a, s1: s1} do
     {:ok, a2} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
     :ok = Academics.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("15")}])

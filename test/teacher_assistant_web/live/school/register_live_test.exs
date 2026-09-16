@@ -109,6 +109,19 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     assert Decimal.compare(conduct.unjustified_hours, Decimal.new(0)) == :eq
   end
 
+  test "absence hours render rounded, not as a long repeating decimal", %{
+    conn: conn,
+    cg: cg,
+    date: date
+  } do
+    {:ok, _view, html} =
+      live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
+
+    # 55-minute period absence = 55/60 h; must display as 0.92, never 0.91666…
+    refute html =~ "0.9166"
+    assert html =~ "0.92"
+  end
+
   test "the date picker reloads a different day's grid", %{
     conn: conn,
     cg: cg,
