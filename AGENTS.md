@@ -257,3 +257,4 @@ custom classes must fully style the input
       document = LazyHTML.from_fragment(html)
       matches = LazyHTML.filter(document, "your-complex-selector")
       IO.inspect(matches, label: "Matches")
+- Never write migrations manually: always use `mix ash.codegen --dev`

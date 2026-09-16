@@ -393,6 +393,58 @@ defmodule TeacherAssistantWeb.CoreComponents do
   end
 
   @doc """
+  Renders the signature coverage ribbon: the *taux de couverture* drawn as the
+  year-line, a ruled track split into the 6 administrative sequences and filled
+  in chalk-green to the covered percentage.
+
+  ## Examples
+
+      <.coverage_ribbon rate={62} />
+      <.coverage_ribbon rate={Decimal.new("50")} behind?={true} />
+  """
+  attr :rate, :any, required: true, doc: "percentage covered (number or Decimal, 0–100)"
+  attr :behind?, :boolean, default: false, doc: "render the fill in ochre to flag falling behind"
+  attr :class, :string, default: nil
+  attr :rest, :global
+
+  def coverage_ribbon(assigns) do
+    pct =
+      assigns.rate
+      |> to_pct()
+      |> max(0)
+      |> min(100)
+
+    assigns = assign(assigns, :pct, pct)
+
+    ~H"""
+    <div
+      class={["ta-ribbon", @class]}
+      role="img"
+      aria-label={gettext("%{pct}% covered", pct: @pct)}
+      {@rest}
+    >
+      <div class="ta-ribbon__track">
+        <span class="ta-ribbon__fill" data-behind={to_string(@behind?)} style={"width:#{@pct}%"} />
+      </div>
+      <span class="ta-ribbon__pct ta-num">{@pct}%</span>
+    </div>
+    """
+  end
+
+  defp to_pct(%Decimal{} = d), do: d |> Decimal.round(0) |> Decimal.to_integer()
+  defp to_pct(n) when is_float(n), do: round(n)
+  defp to_pct(n) when is_integer(n), do: n
+
+  defp to_pct(n) when is_binary(n) do
+    case Float.parse(n) do
+      {f, _} -> round(f)
+      :error -> 0
+    end
+  end
+
+  defp to_pct(_), do: 0
+
+  @doc """
   Renders a [Heroicon](https://heroicons.com).
 
   Heroicons come in three styles – outline, solid, and mini.
@@ -469,4 +521,106 @@ defmodule TeacherAssistantWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  attr :eyebrow, :string, required: true
+  attr :title, :string, required: true
+  slot :actions
+
+  def page_header(assigns) do
+    ~H"""
+    <header class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="ta-eyebrow">{@eyebrow}</p>
+        <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@title}</h1>
+      </div>
+      <div :if={@actions != []} class="flex items-center gap-2">{render_slot(@actions)}</div>
+    </header>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :suffix, :string, default: nil
+  attr :tone, :atom, default: :neutral
+
+  def stat(assigns) do
+    ~H"""
+    <div class="ta-leaf">
+      <p class="ta-eyebrow">{@label}</p>
+      <p class={[
+        "ta-num mt-1 text-2xl font-semibold leading-none",
+        @tone == :primary && "text-primary",
+        @tone == :behind && "text-warning"
+      ]}>
+        {@value}<span :if={@suffix} class="text-base font-normal text-base-content/55">{@suffix}</span>
+      </p>
+    </div>
+    """
+  end
+
+  attr :icon, :string, required: true
+  attr :title, :string, required: true
+  attr :message, :string, default: nil
+  slot :action
+
+  def empty_state(assigns) do
+    ~H"""
+    <div class="ta-leaf flex flex-col items-start gap-3 text-sm">
+      <span class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+        <.icon name={@icon} class="size-5" />
+      </span>
+      <div>
+        <p class="font-semibold">{@title}</p>
+        <p :if={@message} class="text-base-content/70">{@message}</p>
+      </div>
+      <div :if={@action != []}>{render_slot(@action)}</div>
+    </div>
+    """
+  end
+
+  attr :icon, :string, required: true
+  attr :eyebrow, :string, required: true
+  attr :title, :string, required: true
+  attr :message, :string, required: true
+  slot :action, required: true
+
+  def setup_gate(assigns) do
+    ~H"""
+    <section class="mx-auto flex max-w-md flex-col items-center gap-4 py-10 text-center">
+      <span class="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <.icon name={@icon} class="size-7" />
+      </span>
+      <p class="ta-eyebrow">{@eyebrow}</p>
+      <h1 class="text-2xl font-bold sm:text-3xl">{@title}</h1>
+      <p class="text-base-content/70">{@message}</p>
+      <div>{render_slot(@action)}</div>
+    </section>
+    """
+  end
+
+  attr :mention, :atom, default: nil
+
+  def mention_badge(assigns) do
+    assigns = assign(assigns, :label, mention_label(assigns.mention))
+
+    ~H"""
+    <span class={[
+      "inline-flex items-center gap-1 text-sm font-semibold",
+      @mention == nil && "text-accent",
+      @mention == :passable && "text-warning",
+      @mention not in [nil, :passable] && "text-primary"
+    ]}>
+      <.icon name={if @mention, do: "hero-check-circle", else: "hero-x-circle"} class="size-4" />
+      {@label}
+    </span>
+    """
+  end
+
+  defp mention_label(:excellent), do: gettext("Excellent")
+  defp mention_label(:tres_bien), do: gettext("Très bien")
+  defp mention_label(:bien), do: gettext("Bien")
+  defp mention_label(:assez_bien), do: gettext("Assez bien")
+  defp mention_label(:passable), do: gettext("Passable")
+  defp mention_label(nil), do: gettext("Insuffisant")
+  defp mention_label(_), do: gettext("Insuffisant")
 end

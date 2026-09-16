@@ -19,19 +19,14 @@ defmodule TeacherAssistant.DataCase do
   using do
     quote do
       alias TeacherAssistant.Repo
-      import ExUnitProperties
 
       import TeacherAssistant.DataCase
-      import TeacherAssistant.AcademicFixtures
     end
   end
 
   setup tags do
     TeacherAssistant.DataCase.setup_sandbox(tags)
-
-    school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
-
-    {:ok, %{tenant: school}}
+    :ok
   end
 
   @doc """
@@ -68,6 +63,9 @@ defmodule TeacherAssistant.DataCase do
       default
     end
   end
+
+  def normalized_text(nil), do: nil
+  def normalized_text(value), do: value |> to_string() |> String.trim()
 
   def assert_field_error(errors, field, opts \\ []) when is_list(errors) do
     error_class = opts[:error_class]

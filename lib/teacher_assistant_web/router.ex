@@ -1,9 +1,7 @@
 defmodule TeacherAssistantWeb.Router do
   use TeacherAssistantWeb, :router
 
-  import Oban.Web.Router
   use AshAuthentication.Phoenix.Router
-
   import AshAuthentication.Plug.Helpers
 
   pipeline :browser do
@@ -14,6 +12,7 @@ defmodule TeacherAssistantWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :load_from_session
+    plug TeacherAssistantWeb.Plug.Locale
   end
 
   pipeline :api do
@@ -25,28 +24,25 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    ash_authentication_live_session :authenticated_routes do
-      # in each liveview, add one of the following at the top of the module:
-      #
-      # If an authenticated user must be present:
-      # on_mount {TeacherAssistantWeb.LiveUserAuth, :live_user_required}
-      #
-      # If an authenticated user *may* be present:
-      # on_mount {TeacherAssistantWeb.LiveUserAuth, :live_user_optional}
-      #
-      # If an authenticated user must *not* be present:
-      # on_mount {TeacherAssistantWeb.LiveUserAuth, :live_no_user}
-    end
-  end
-
-  scope "/", TeacherAssistantWeb do
-    pipe_through :browser
-
     get "/", PageController, :home
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
     sign_out_route AuthController
+    get "/workspaces/select/:id", WorkspaceController, :select
+    post "/workspaces", WorkspaceController, :create
+    get "/teacher/select-context/:id", TeacherContextController, :select
+    get "/teacher/entries/:entry_id/fiche/print", FichePrintController, :show
 
-    # Remove these if you'd like to use your own authentication views
+    get "/school/classes/:id/students/:enrollment_id/bulletin/print",
+        BulletinPrintController,
+        :show
+
+    get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
+    get "/school/classes/:id/timetable/print", TimetablePrintController, :class
+    get "/school/timetable/me/print", TimetablePrintController, :me
+    get "/locale/:locale", LocaleController, :set
+    get "/schools/invitations/:token", SchoolInvitationController, :show
+    post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
+
     sign_in_route register_path: "/register",
                   reset_path: "/reset",
                   auth_routes_prefix: "/auth",
@@ -56,22 +52,12 @@ defmodule TeacherAssistantWeb.Router do
                     Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
                   ]
 
-    # Remove this if you do not want to use the reset password feature
     reset_route auth_routes_prefix: "/auth",
                 overrides: [
                   TeacherAssistantWeb.AuthOverrides,
                   Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
                 ]
 
-    # Remove this if you do not use the confirmation strategy
-    confirm_route TeacherAssistant.Accounts.User, :confirm_new_user,
-      auth_routes_prefix: "/auth",
-      overrides: [
-        TeacherAssistantWeb.AuthOverrides,
-        Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
-      ]
-
-    # Remove this if you do not use the magic link strategy.
     magic_sign_in_route(TeacherAssistant.Accounts.User, :magic_link,
       auth_routes_prefix: "/auth",
       overrides: [
@@ -84,69 +70,50 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    live_session :configurations,
-      on_mount: {TeacherAssistantWeb.LiveUserAuth, :live_user_optional} do
-      scope "/configurations" do
-        live "/academic_years", Configurations.AcademicYearLive.Index, :index
-        live "/academic_years/new", Configurations.AcademicYearLive.Form, :new
-        live "/academic_years/:id", Configurations.AcademicYearLive.Show, :show
-        live "/academic_years/:id/edit", Configurations.AcademicYearLive.Form, :edit
+    ash_authentication_live_session :teacher_workspace,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_teaching_scope}
+      ] do
+      live "/teacher", Teacher.DashboardLive, :index
+      live "/teacher/setup", Teacher.SetupLive, :index
+      live "/teacher/import", Teacher.ImportLive, :new
+      live "/teacher/log", Teacher.LogLive, :index
+      live "/teacher/plans/:id", Teacher.FicheLive, :show
+      live "/teacher/plans/:id/coverage", Teacher.CoverageLive, :show
+      live "/teacher/contexts/:id/roster", Teacher.RosterLive, :index
+      live "/teacher/contexts/:id/marks", Teacher.MarksLive, :index
+      live "/teacher/contexts/:id/marks/summary", Teacher.MarksSummaryLive, :index
+      live "/teacher/entries/:entry_id/fiche", Teacher.LessonPlanLive, :edit
+    end
 
-        live "/classrooms/:id/teachers_and_subjects",
-             Configurations.AcademicYearLive.TeacherSubjectForm,
-             :teachers_and_subjects
+    ash_authentication_live_session :school_workspace,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
+      live "/school", School.DashboardLive, :index
+      live "/school/classes", School.ClassesLive, :index
+      live "/school/classes/:id", School.ClassLive, :show
+      live "/school/classes/:id/results", School.ResultsLive, :index
+      live "/school/classes/:id/timetable", School.TimetableLive, :show
+      live "/school/classes/:id/attendance/:period_id", School.AttendanceLive, :show
+      live "/school/classes/:id/register", School.RegisterLive, :show
+      live "/school/classes/:id/discipline", School.DisciplineLive, :show
+      live "/school/classes/:id/fees", School.FeesLive, :show
+      live "/school/timetable/me", School.MyTimetableLive, :index
 
-        live "/academic_years/:id/manage_classrooms",
-             Configurations.AcademicYearLive.ClassRoomForm,
-             :edit_classrooms
+      live "/school/classes/:id/students/:enrollment_id/bulletin",
+           School.BulletinLive,
+           :show
 
-        scope "/academic_years/:id" do
-          live "/terms/:term_id", Configurations.TermLive.Show, :show
-          live "/terms/:term_id/edit", Configurations.TermLive.Form, :edit
-        end
-
-        live "/levels", Configurations.LevelLive.Index, :index
-        live "/levels/new", Configurations.LevelLive.Form, :new
-        live "/levels/:id", Configurations.LevelLive.Show, :show
-        live "/levels/:id/edit", Configurations.LevelLive.Form, :edit
-
-        live "/options", Configurations.OptionLive.Index, :index
-        live "/options/new", Configurations.OptionLive.Form, :new
-        live "/options/:id", Configurations.OptionLive.Show, :show
-        live "/options/:id/edit", Configurations.OptionLive.Form, :edit
-
-        live "/levels_options", Configurations.LevelOptionLive.Index, :index
-        live "/levels_options/:id", Configurations.LevelOptionLive.Show, :show
-
-        live "/levels_options/:id/manage_subjects",
-             Configurations.LevelOptionLive.ManageSubjectForm,
-             :edit_subjects
-
-        live "/subjects", Configurations.SubjectLive.Index, :index
-        live "/subjects/new", Configurations.SubjectLive.Form, :new
-        live "/subjects/:id", Configurations.SubjectLive.Show, :show
-        live "/subjects/:id/edit", Configurations.SubjectLive.Form, :edit
-
-        live "/students", Configurations.StudentLive.Index, :index
-        live "/students/new", Configurations.StudentLive.Form, :new
-        live "/students/:id", Configurations.StudentLive.Show, :show
-        live "/students/:id/edit", Configurations.StudentLive.Form, :edit
-      end
+      live "/school/classes/:id/import", School.EnrollImportLive, :new
+      live "/school/members", School.MembersLive, :index
+      live "/school/settings", School.SettingsLive, :index
+      live "/school/periods", School.PeriodsLive, :index
     end
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", TeacherAssistantWeb do
-  #   pipe_through :api
-  # end
-
-  # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:teacher_assistant, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
@@ -154,12 +121,6 @@ defmodule TeacherAssistantWeb.Router do
 
       live_dashboard "/dashboard", metrics: TeacherAssistantWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
-    end
-
-    scope "/" do
-      pipe_through :browser
-
-      oban_dashboard("/oban")
     end
   end
 end

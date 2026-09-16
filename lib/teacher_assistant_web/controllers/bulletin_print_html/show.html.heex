@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Bulletin de notes")} — {@cg.label}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111; background: #fff; margin: 0; padding: 24px;
+        font-size: 12pt; line-height: 1.4;
+      }
+      .bulletin-page { page-break-after: always; }
+      .bulletin-page:last-child { page-break-after: auto; }
+      .national { text-align: center; margin-bottom: 8px; }
+      .national .fr { font-variant: small-caps; font-weight: bold; }
+      .national .en { font-size: 9pt; color: #444; }
+      h1 { font-size: 15pt; margin: 8px 0 4px; text-align: center; }
+      .cartouche { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+      .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
+      .cartouche .k { font-variant: small-caps; color: #444; width: 18%; }
+      table.body { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      table.body th, table.body td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+      table.body th { background: #f0f0f0; font-variant: small-caps; }
+      table.body td.num, table.body th.num { text-align: right; }
+      .totals { margin-top: 8px; font-size: 12pt; }
+      .totals strong { font-size: 13pt; }
+      .visa { margin-top: 24px; display: flex; justify-content: space-between; gap: 16px; }
+      .visa .slot { flex: 1; }
+      .visa .line { border-top: 1px solid #999; margin-top: 32px; padding-top: 2px;
+                    font-variant: small-caps; font-size: 9pt; color: #444; }
+      .visa .pp-name { font-size: 11px; margin-bottom: 2px; }
+      .appreciation { margin-top: 12px; }
+      .appreciation .k { font-variant: small-caps; font-size: 9pt; color: #444; }
+      .appreciation .rule { border-bottom: 1px solid #bbb; height: 20px; }
+      @page { size: A4; margin: 15mm; }
+      @media print {
+        body { padding: 0; }
+        tr { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <section :for={b <- @bundles} class="bulletin-page">
+      <div class="national">
+        <div class="fr">République du Cameroun — Paix – Travail – Patrie</div>
+        <div class="en">Republic of Cameroon — Peace – Work – Fatherland</div>
+      </div>
+
+      <h1>{gettext("Bulletin de notes")}</h1>
+
+      <table class="cartouche">
+        <tr>
+          <td class="k">{gettext("Établissement")}</td>
+          <td>{@etablissement}</td>
+          <td class="k">{gettext("Année scolaire")}</td>
+          <td>{@annee || "—"}</td>
+        </tr>
+        <tr>
+          <td class="k">{gettext("Nom et prénoms")}</td>
+          <td>{b.student.full_name}</td>
+          <td class="k">{gettext("Matricule")}</td>
+          <td>{b.student.matricule || "—"}</td>
+        </tr>
+        <tr>
+          <td class="k">{gettext("Classe")}</td>
+          <td>{@cg.label} — {@cg.level}</td>
+          <td class="k">{gettext("Période")}</td>
+          <td>{@period_heading}</td>
+        </tr>
+        <tr>
+          <td class="k">{gettext("Sexe")}</td>
+          <td>{sex_label(b.student.sex)}</td>
+          <td class="k">{gettext("Effectif")}</td>
+          <td>{@effectif}</td>
+        </tr>
+      </table>
+
+      <%= if b.data do %>
+        <table class="body">
+          <thead>
+            <tr>
+              <th>{gettext("Matière")}</th>
+              <th class="num">{gettext("Coefficient")}</th>
+              <%= case @period_kind do %>
+                <% :trimester -> %>
+                  <th class="num">{gettext("Séq 1")}</th>
+                  <th class="num">{gettext("Séq 2")}</th>
+                  <th class="num">{gettext("Moy. trim.")}</th>
+                <% :annual -> %>
+                  <th class="num">{gettext("Trim 1")}</th>
+                  <th class="num">{gettext("Trim 2")}</th>
+                  <th class="num">{gettext("Trim 3")}</th>
+                  <th class="num">{gettext("Moy. ann.")}</th>
+                <% _ -> %>
+                  <th class="num">{gettext("Note")}/20</th>
+              <% end %>
+              <th class="num">{gettext("Note×Coef")}</th>
+              <th class="num">{gettext("Cote classe")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={row <- b.data.subjects}>
+              <td>{row.label}</td>
+              <td class="num">{fmt(row.coefficient)}</td>
+              <%= case @period_kind do %>
+                <% :trimester -> %>
+                  <td class="num">{fmt(comp(row, :sequences, 0))}</td>
+                  <td class="num">{fmt(comp(row, :sequences, 1))}</td>
+                  <td class="num">{fmt(row.average)}</td>
+                <% :annual -> %>
+                  <td class="num">{fmt(comp(row, :trimesters, 0))}</td>
+                  <td class="num">{fmt(comp(row, :trimesters, 1))}</td>
+                  <td class="num">{fmt(comp(row, :trimesters, 2))}</td>
+                  <td class="num">{fmt(row.average)}</td>
+                <% _ -> %>
+                  <td class="num">{fmt(row.average)}</td>
+              <% end %>
+              <td class="num">{fmt(row.note_x_coef)}</td>
+              <td class="num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>{gettext("Total des coefficients")} / {gettext("Total des points")}</th>
+              <th class="num">{fmt(b.data.total_coef)}</th>
+              <th></th>
+              <th class="num">{fmt(b.data.total_points)}</th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+
+        <p class="totals">
+          <strong>{gettext("Moyenne générale")} : {fmt(b.data.moyenne_generale)}/20</strong>
+          &nbsp;·&nbsp; {gettext("Rang")} : {b.data.rank || "—"} / {@effectif}
+        </p>
+      <% else %>
+        <p>{gettext("No marks for this séquence yet.")}</p>
+      <% end %>
+
+      <p :if={b.conduct} class="totals">
+        <strong>{gettext("Conduite")}</strong>
+        &nbsp;·&nbsp; {gettext("Absences justifiées")} : {fmt(b.conduct.justified_hours)} {gettext(
+          "h"
+        )} &nbsp;·&nbsp; {gettext("Absences non justifiées")} : {fmt(b.conduct.unjustified_hours)} {gettext(
+          "h"
+        )} &nbsp;·&nbsp; {gettext("Retards")} : {b.conduct.retards}
+      </p>
+
+      <p :if={b.discipline} class="totals">
+        <strong>{gettext("Discipline")}</strong>
+        &nbsp;·&nbsp; {gettext("Consignes")} : {b.discipline.consignes_count} &nbsp;·&nbsp; {gettext(
+          "Note de conduite"
+        )} : {fmt(b.discipline.note_de_conduite)}/20
+        &nbsp;·&nbsp; {gettext("Sanctions")} : {sanctions_line(b.discipline.sanctions)}
+      </p>
+
+      <div class="appreciation">
+        <span class="k">{gettext("Appréciation du conseil de classe")}</span>
+        <div class="rule"></div>
+      </div>
+
+      <div class="visa">
+        <div class="slot">
+          <div class="line">{gettext("Décision")}</div>
+        </div>
+        <div class="slot">
+          <div :if={@professeur_principal} class="pp-name">{@professeur_principal}</div>
+          <div class="line">{gettext("Visa Professeur Principal")}</div>
+        </div>
+        <div class="slot">
+          <div class="line">{gettext("Visa Chef d'établissement")}</div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

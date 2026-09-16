@@ -28,9 +28,6 @@ defmodule TeacherAssistantWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import TeacherAssistantWeb.ConnCase
-
-      # Import fixtures
-      import TeacherAssistant.AcademicFixtures
     end
   end
 
@@ -39,19 +36,23 @@ defmodule TeacherAssistantWeb.ConnCase do
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 
-  def register_and_log_in_user(%{conn: conn}) do
-    school = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.school())
-    user = Ash.Generator.generate(TeacherAssistant.AcademicFixtures.admin_user(tenant: school))
-
-    %{conn: log_in_user(conn, school, user), tenant: school, actor: user}
-  end
-
-  def log_in_user(conn, school, _user) do
+  def log_in_user(conn, user) do
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:tenant, school.id)
+    |> Plug.Conn.put_session(:user_id, user.id)
+  end
 
-    # |> Plug.Conn.put_session(:user_token, token)
+  def register_and_log_in_user(%{conn: conn}) do
+    user = TeacherAssistant.TeacherFixtures.user_fixture()
+    workspace = TeacherAssistant.Academics.ensure_personal_workspace!(user)
+
+    conn =
+      conn
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, user.id)
+      |> Plug.Conn.put_session(:workspace_id, workspace.id)
+
+    {:ok, conn: conn, workspace: workspace, actor: user}
   end
 
   def update_nested_form(view, form_selector, trigger_element, position \\ "end") do

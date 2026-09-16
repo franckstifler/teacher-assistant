@@ -1,80 +1,50 @@
 defmodule TeacherAssistant.Academics.AcademicYear do
   use Ash.Resource,
-    data_layer: AshPostgres.DataLayer,
+    otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource]
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
-    repo TeacherAssistant.Repo
     table "academic_years"
+    repo TeacherAssistant.Repo
   end
 
   actions do
-    default_accept [:name, :description, :start_date, :end_date, :active]
-    defaults [:read, :destroy]
-
-    create :create do
-      primary? true
-      argument :terms, {:array, :map}, allow_nil?: false, constraints: [min: 1]
-
-      change manage_relationship(:terms, :terms, type: :direct_control, order_is_key: :position)
-    end
-
-    update :update do
-      primary? true
-      require_atomic? false
-      argument :terms, {:array, :map}, allow_nil?: false, constraints: [min: 1]
-
-      change manage_relationship(:terms, :terms, type: :direct_control, order_is_key: :position)
-    end
-
-    update :manage_classrooms do
-      require_atomic? false
-      accept []
-      argument :levels_options, {:array, :uuid_v7}, default: []
-
-      change manage_relationship(:levels_options, :levels_options, type: :append_and_remove)
-    end
-
-    read :get_active_year do
-      get? true
-      filter expr(active == true)
-    end
+    defaults [
+      :read,
+      :destroy,
+      create: [:name, :start_date, :end_date, :active, :workspace_id],
+      update: [:name, :start_date, :end_date, :active]
+    ]
   end
 
-  multitenancy do
-    strategy :attribute
-    attribute :school_id
+  policies do
+    policy always() do
+      authorize_if always()
+    end
   end
 
   attributes do
     uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true
-    attribute :description, :string, public?: true
     attribute :start_date, :date, allow_nil?: false, public?: true
     attribute :end_date, :date, allow_nil?: false, public?: true
-    attribute :active, :boolean, default: false, public?: true
-
+    attribute :active, :boolean, default: true, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :school, TeacherAssistant.Academics.School
-
-    has_many :terms, TeacherAssistant.Academics.Term do
-      sort position: :asc
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
+      public? true
     end
 
-    many_to_many :levels_options, TeacherAssistant.Academics.LevelOption do
-      through TeacherAssistant.Academics.Classroom
-      source_attribute_on_join_resource :academic_year_id
-      destination_attribute_on_join_resource :level_option_id
-    end
-
-    has_many :classrooms, TeacherAssistant.Academics.Classroom
+    has_many :terms, TeacherAssistant.Academics.Term
   end
 
   identities do
-    identity :unique_name, [:school_id, :name]
+    identity :unique_workspace_year, [:workspace_id, :name]
   end
 end

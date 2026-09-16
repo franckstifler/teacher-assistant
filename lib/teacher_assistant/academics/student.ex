@@ -1,45 +1,53 @@
 defmodule TeacherAssistant.Academics.Student do
   use Ash.Resource,
-    data_layer: AshPostgres.DataLayer,
+    otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource]
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "students"
     repo TeacherAssistant.Repo
+
+    custom_indexes do
+      index [:workspace_id, :matricule],
+        unique: true,
+        where: "matricule IS NOT NULL",
+        name: "students_unique_matricule_index",
+        message: "matricule already used in this workspace"
+    end
   end
 
   actions do
-    default_accept [:first_name, :last_name, :matricule, :place_of_birth, :date_of_birth, :gender]
-    defaults [:create, :update, :read, :destroy]
+    defaults [
+      :read,
+      :destroy,
+      create: [:full_name, :sex, :matricule, :workspace_id],
+      update: [:full_name, :sex, :matricule]
+    ]
   end
 
-  multitenancy do
-    strategy :attribute
-    attribute :school_id
+  policies do
+    policy always() do
+      authorize_if always()
+    end
   end
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :first_name, :ci_string, public?: true, allow_nil?: false
-    attribute :last_name, :ci_string, public?: true, allow_nil?: false
-    attribute :matricule, :string, public?: true
-    attribute :place_of_birth, :string, public?: true
-    attribute :date_of_birth, :date, public?: true
-
-    attribute :gender, TeacherAssistant.Academics.Enums.Gender,
-      public?: true,
-      allow_nil?: false,
-      default: :male
-
+    attribute :full_name, :string, allow_nil?: false, public?: true
+    attribute :sex, TeacherAssistant.Academics.Sex, allow_nil?: false, public?: true
+    attribute :matricule, :string, allow_nil?: true, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :school, TeacherAssistant.Academics.School
-  end
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
+      public? true
+    end
 
-  identities do
-    identity :unique_name_and_date_of_birth, [:first_name, :last_name, :date_of_birth]
+    has_many :enrollments, TeacherAssistant.Academics.Enrollment
   end
 end

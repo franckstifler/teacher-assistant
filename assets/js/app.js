@@ -24,12 +24,30 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/teacher_assistant"
 import topbar from "../vendor/topbar"
+import ModuleLayout from "./hooks/module_layout.js"
+
+const setTheme = (theme) => {
+  if (theme === "system") {
+    localStorage.removeItem("phx:theme")
+    document.documentElement.removeAttribute("data-theme")
+  } else {
+    localStorage.setItem("phx:theme", theme)
+    document.documentElement.setAttribute("data-theme", theme)
+  }
+}
+
+if (!document.documentElement.hasAttribute("data-theme")) {
+  setTheme(localStorage.getItem("phx:theme") || "system")
+}
+
+window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"))
+window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme))
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, ModuleLayout},
 })
 
 // Show progress bar on live navigation and form submits
@@ -80,4 +98,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-

@@ -1,0 +1,39 @@
+<Layouts.app flash={@flash} current_scope={assigns[:current_scope]}>
+  <section id="school-invitation" class="mx-auto max-w-xl space-y-4 px-4 py-10">
+    <.page_header eyebrow={gettext("Invitation")} title={@school_name} />
+
+    <div class="ta-leaf space-y-3 text-sm">
+      <p>
+        {gettext("Vous avez été invité(e) à rejoindre")} <strong>{@school_name}</strong>.
+      </p>
+
+      <p :if={@current_user && !@email_match?} class="text-error">
+        {gettext(
+          "Cette invitation a été envoyée à une autre adresse email que celle de votre compte connecté."
+        )}
+      </p>
+
+      <.form
+        :if={@current_user && @email_match?}
+        for={%{}}
+        as={:accept}
+        id="accept-invitation-form"
+        method="post"
+        action={~p"/schools/invitations/#{@invitation.token}/accept"}
+      >
+        <button type="submit" class="btn btn-primary btn-sm">
+          {gettext("Rejoindre l'école")}
+        </button>
+      </.form>
+
+      <div :if={!@current_user} class="flex flex-wrap gap-2">
+        <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
+          {gettext("Se connecter pour accepter")}
+        </.link>
+        <.link navigate={~p"/register"} class="btn btn-outline btn-sm">
+          {gettext("Créer un compte")}
+        </.link>
+      </div>
+    </div>
+  </section>
+</Layouts.app>

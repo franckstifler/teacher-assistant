@@ -1,36 +1,45 @@
 defmodule TeacherAssistant.Academics.Sequence do
   use Ash.Resource,
-    data_layer: AshPostgres.DataLayer,
+    otp_app: :teacher_assistant,
     domain: TeacherAssistant.Academics,
-    extensions: [AshArchival.Resource]
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
-    repo TeacherAssistant.Repo
     table "sequences"
+    repo TeacherAssistant.Repo
   end
 
   actions do
-    default_accept [:name, :start_date, :end_date, :term_id]
-    defaults [:create, :update, :read, :destroy]
+    defaults [
+      :read,
+      :destroy,
+      create: [:number, :position_in_term, :start_date, :end_date, :integration_week, :term_id],
+      update: [:number, :position_in_term, :start_date, :end_date, :integration_week]
+    ]
   end
 
-  multitenancy do
-    strategy :attribute
-    attribute :school_id
+  policies do
+    policy always() do
+      authorize_if always()
+    end
   end
 
   attributes do
     uuid_v7_primary_key :id
-    attribute :name, :string, public?: true, allow_nil?: false
-    attribute :start_date, :date, public?: true
-    attribute :end_date, :date, public?: true
-    attribute :position, :integer, public?: true
-
+    attribute :number, :integer, allow_nil?: false, public?: true
+    attribute :position_in_term, :integer, allow_nil?: false, public?: true
+    attribute :start_date, :date, allow_nil?: false, public?: true
+    attribute :end_date, :date, allow_nil?: false, public?: true
+    attribute :integration_week, :boolean, default: false, public?: true
     timestamps()
   end
 
   relationships do
-    belongs_to :school, TeacherAssistant.Academics.School
-    belongs_to :term, TeacherAssistant.Academics.Term, allow_nil?: false
+    belongs_to :term, TeacherAssistant.Academics.Term do
+      source_attribute :term_id
+      allow_nil? false
+      public? true
+    end
   end
 end

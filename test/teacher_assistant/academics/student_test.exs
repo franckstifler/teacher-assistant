@@ -1,160 +1,60 @@
-defmodule TeacherAssistant.Resources.StudentTest do
-  use TeacherAssistant.DataCase
+defmodule TeacherAssistant.Academics.StudentTest do
+  use TeacherAssistant.DataCase, async: true
+  alias TeacherAssistant.Academics
+  alias TeacherAssistant.TeacherFixtures
 
-  alias TeacherAssistant.Academics.Student
+  setup do
+    ws = TeacherFixtures.workspace_fixture()
 
-  require Ash.Query
+    {:ok, year} =
+      Academics.create_academic_year(ws, %{
+        name: "2025-2026",
+        start_date: ~D[2025-09-08],
+        end_date: ~D[2026-07-31],
+        active: true
+      })
 
-  setup %{tenant: tenant} do
-    user = generate(admin_user(tenant: tenant))
-    %{user: user}
+    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    %{ws: ws, cg: cg}
   end
 
-  describe "TeacherAssistant.Academics.read_students" do
-    test "list students", %{tenant: tenant, user: user} do
-      student = generate(student(actor: user, tenant: tenant))
-
-      assert [result] = TeacherAssistant.Academics.read_students!(tenant: tenant, actor: user)
-
-      assert result.id == student.id
-      assert result.first_name == student.first_name
-      assert result.last_name == student.last_name
-      assert result.matricule == student.matricule
-      assert result.place_of_birth == student.place_of_birth
-      assert result.date_of_birth == student.date_of_birth
-      assert result.gender == student.gender
-    end
+  test "adds a student with required sex", %{cg: cg, ws: ws} do
+    {:ok, s} = Academics.add_student(cg, %{full_name: "Awa Bello", sex: :f})
+    assert s.full_name == "Awa Bello"
+    assert s.sex == :f
+    assert s.workspace_id == ws.id
   end
 
-  describe "TeacherAssistant.Academics.create_student" do
-    test "with valid data creates a student", %{tenant: tenant, user: user} do
-      check all(input <- Ash.Generator.action_input(Student, :create)) do
-        student =
-          TeacherAssistant.Academics.create_student!(input,
-            tenant: tenant,
-            actor: user,
-            authorize?: false
-          )
-
-        assert student.first_name == input[:first_name]
-        assert student.last_name == input[:last_name]
-        assert student.matricule == value_or_nil(input, :matricule)
-        assert student.place_of_birth == value_or_nil(input, :place_of_birth)
-        assert student.date_of_birth == value_or_nil(input, :date_of_birth)
-        assert student.gender == value_or_nil(input, :gender, :male)
-      end
-    end
-
-    test "with invalid data returns error changeset", %{tenant: tenant, user: user} do
-      assert {:error, %Ash.Error.Invalid{errors: errors}} =
-               TeacherAssistant.Academics.create_student(
-                 %{first_name: nil, last_name: nil, date_of_birth: nil, gender: nil},
-                 tenant: tenant,
-                 actor: user,
-                 authorize?: false
-               )
-
-      assert_field_error(errors, :first_name, error_class: Ash.Error.Changes.Required)
-      assert_field_error(errors, :last_name, error_class: Ash.Error.Changes.Required)
-      assert_field_error(errors, :gender, error_class: Ash.Error.Changes.Required)
-    end
+  test "lists students alphabetically", %{cg: cg} do
+    {:ok, _} = Academics.add_student(cg, %{full_name: "Zoa", sex: :m})
+    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    assert ["Awa", "Zoa"] = Academics.list_students(cg) |> Enum.map(& &1.full_name)
   end
 
-  describe "TeacherAssistant.Academics.update_student" do
-    test "updates a student", %{tenant: tenant, user: user} do
-      check all(input <- Ash.Generator.action_input(Student, :update)) do
-        student = generate(student(tenant: tenant, actor: user))
-
-        updated_student =
-          TeacherAssistant.Academics.update_student!(student, input,
-            tenant: tenant,
-            actor: user,
-            authorize?: false
-          )
-
-        assert updated_student.first_name == input[:first_name]
-        assert updated_student.last_name == input[:last_name]
-
-        assert updated_student.matricule ==
-                 value_or_nil(input, :matricule, student.matricule)
-
-        assert updated_student.place_of_birth ==
-                 value_or_nil(input, :place_of_birth, student.place_of_birth)
-
-        assert updated_student.date_of_birth ==
-                 value_or_nil(input, :date_of_birth, student.date_of_birth)
-
-        assert updated_student.gender ==
-                 value_or_nil(input, :gender, student.gender)
-      end
-    end
-
-    test "with invalid data returns error changeset", %{tenant: tenant, user: user} do
-      student = generate(student(tenant: tenant, actor: user))
-
-      assert {:error, %Ash.Error.Invalid{errors: errors}} =
-               TeacherAssistant.Academics.update_student(
-                 student,
-                 %{first_name: nil, last_name: nil, gender: nil},
-                 tenant: tenant,
-                 actor: user,
-                 authorize?: false
-               )
-
-      assert_field_error(errors, :first_name, error_class: Ash.Error.Changes.Required)
-      assert_field_error(errors, :last_name, error_class: Ash.Error.Changes.Required)
-      assert_field_error(errors, :gender, error_class: Ash.Error.Changes.Required)
-    end
+  test "sex is required", %{cg: cg} do
+    assert {:error, _} = Academics.add_student(cg, %{full_name: "No Sex"})
   end
 
-  describe "TeacherAssistant.Academics.destroy_student" do
-    test "destroys a student", %{tenant: tenant, user: user} do
-      student = generate(student(tenant: tenant, actor: user))
-
-      TeacherAssistant.Academics.destroy_student!(student,
-        tenant: tenant,
-        actor: user,
-        authorize?: false
-      )
-
-      assert Ash.count!(Student, tenant: tenant, actor: user, authorize?: false) == 0
-    end
+  test "fetch_owned_student refuses another workspace", %{ws: ws, cg: cg} do
+    {:ok, s} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    other = TeacherFixtures.workspace_fixture()
+    assert {:error, :not_found} = Academics.fetch_owned_student(s.id, other)
+    assert {:ok, %{id: id}} = Academics.fetch_owned_student(s.id, ws)
+    assert id == s.id
   end
 
-  describe "policies test" do
-    test "read students", %{tenant: tenant} do
-      admin = generate(admin_user(tenant: tenant))
-      user = generate(user(tenant: tenant))
-      student = generate(student(tenant: tenant))
+  test "does not leave an orphaned student when enrollment fails", %{cg: cg, ws: ws} do
+    bogus_cg = %{cg | id: Ecto.UUID.generate()}
 
-      assert TeacherAssistant.Academics.can_read_students?(admin, tenant: tenant, data: student)
-      assert TeacherAssistant.Academics.can_read_students?(user, tenant: tenant, data: student)
-    end
+    assert {:error, _} = Academics.add_student(bogus_cg, %{full_name: "Orphan", sex: :f})
 
-    test "create student", %{tenant: tenant} do
-      admin = generate(admin_user(tenant: tenant))
-      user = generate(user(tenant: tenant))
+    require Ash.Query
 
-      assert TeacherAssistant.Academics.can_create_student?(admin, tenant: tenant)
-      assert TeacherAssistant.Academics.can_create_student?(user, tenant: tenant)
-    end
+    students =
+      TeacherAssistant.Academics.Student
+      |> Ash.Query.filter(workspace_id == ^ws.id and full_name == "Orphan")
+      |> Ash.read!(authorize?: false)
 
-    test "update student", %{tenant: tenant} do
-      admin = generate(admin_user(tenant: tenant))
-      user = generate(user(tenant: tenant))
-      student = generate(student(tenant: tenant, actor: admin))
-
-      assert TeacherAssistant.Academics.can_update_student?(admin, student, tenant: tenant)
-      assert TeacherAssistant.Academics.can_update_student?(user, student, tenant: tenant)
-    end
-
-    test "destroy student", %{tenant: tenant} do
-      admin = generate(admin_user(tenant: tenant))
-      user = generate(user(tenant: tenant))
-      student = generate(student(tenant: tenant, actor: admin))
-
-      assert TeacherAssistant.Academics.can_destroy_student?(admin, student, tenant: tenant)
-      assert TeacherAssistant.Academics.can_destroy_student?(user, student, tenant: tenant)
-    end
+    assert students == []
   end
 end
