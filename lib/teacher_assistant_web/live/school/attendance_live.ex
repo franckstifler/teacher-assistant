@@ -93,30 +93,40 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   def handle_event("record", _params, socket) do
     scope = socket.assigns.current_scope
 
-    if authorized?(scope, socket.assigns.slot) do
-      teaching_context = socket.assigns.slot && socket.assigns.slot.teaching_context
+    cond do
+      not Permissions.operating_allowed?(scope) ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("École en attente de vérification — enregistrement indisponible.")
+         )}
 
-      marks =
-        Enum.map(socket.assigns.students, fn s ->
-          {s.enrollment_id, Map.fetch!(socket.assigns.roll, s.enrollment_id)}
-        end)
+      authorized?(scope, socket.assigns.slot) ->
+        teaching_context = socket.assigns.slot && socket.assigns.slot.teaching_context
 
-      case Attendance.record_period(
-             socket.assigns.cg,
-             socket.assigns.period,
-             teaching_context,
-             socket.assigns.date,
-             marks,
-             scope.current_user.id
-           ) do
-        {:ok, _count} ->
-          {:noreply, socket |> put_flash(:info, gettext("Appel enregistré")) |> load_roll()}
+        marks =
+          Enum.map(socket.assigns.students, fn s ->
+            {s.enrollment_id, Map.fetch!(socket.assigns.roll, s.enrollment_id)}
+          end)
 
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Impossible d'enregistrer l'appel"))}
-      end
-    else
-      {:noreply, socket}
+        case Attendance.record_period(
+               socket.assigns.cg,
+               socket.assigns.period,
+               teaching_context,
+               socket.assigns.date,
+               marks,
+               scope.current_user.id
+             ) do
+          {:ok, _count} ->
+            {:noreply, socket |> put_flash(:info, gettext("Appel enregistré")) |> load_roll()}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, gettext("Impossible d'enregistrer l'appel"))}
+        end
+
+      true ->
+        {:noreply, socket}
     end
   end
 

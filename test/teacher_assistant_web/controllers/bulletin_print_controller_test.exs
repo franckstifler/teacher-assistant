@@ -39,6 +39,9 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     for %{student: s} <- roster,
         do: Academics.upsert_marks(a, [%{student_id: s.id, score: Decimal.new(14)}])
 
+    {:ok, profile} = Schools.fetch_school_profile(school)
+    {:ok, _} = Schools.verify_school(profile, head.id)
+
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, roster: roster, head: head}
   end
@@ -247,5 +250,32 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "Trim 1"
     assert body =~ "Moy. ann."
     assert body =~ "Awa Ngo"
+  end
+
+  test "an unverified school cannot print bulletins", %{conn: conn} do
+    head = TeacherAssistant.TeacherFixtures.user_fixture()
+    {:ok, school} = Schools.create_school(head, %{name: "Lycée Non Vérifié"})
+
+    {:ok, year} =
+      Academics.create_academic_year(school, %{
+        name: "2025-2026",
+        start_date: ~D[2025-09-08],
+        end_date: ~D[2026-07-31],
+        active: true
+      })
+
+    :ok = Academics.build_default_calendar(year)
+    [seq | _] = Academics.list_sequences(year)
+    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f})
+
+    conn =
+      conn
+      |> Plug.Conn.put_session(:user_id, head.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
+    assert redirected_to(conn) == "/school"
+    assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "vérification"
   end
 end

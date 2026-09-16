@@ -39,6 +39,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
     [%{enrollment: enrollment}] = Academics.list_roster(cg)
 
+    {:ok, profile} = Schools.fetch_school_profile(school)
+    {:ok, _} = Schools.verify_school(profile, head.id)
+
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
     %{

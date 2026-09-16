@@ -37,11 +37,21 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
          :school <- scope.current_workspace_type,
          {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg),
+         {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
          period when not is_nil(period) <- Academics.resolve_period(year, params["period"]) do
       fun.(scope, cg, period, Academics.class_results_for_period(cg, period))
     else
-      _ -> redirect(conn, to: ~p"/school")
+      {:operating, false} ->
+        conn
+        |> put_flash(
+          :error,
+          gettext("École en attente de vérification — impression indisponible.")
+        )
+        |> redirect(to: ~p"/school")
+
+      _ ->
+        redirect(conn, to: ~p"/school")
     end
   end
 

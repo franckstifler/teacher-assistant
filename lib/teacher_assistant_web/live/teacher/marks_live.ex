@@ -116,20 +116,29 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   def handle_event("save", %{"scores" => scores}, socket) do
-    parsed =
-      Enum.map(socket.assigns.students, fn s ->
-        {s.id, parse_score(Map.get(scores, s.id))}
-      end)
-
-    if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
+    if not TeacherAssistant.Accounts.Permissions.operating_allowed?(socket.assigns.current_scope) do
       {:noreply,
        put_flash(
          socket,
          :error,
-         gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+         gettext("École en attente de vérification — enregistrement indisponible.")
        )}
     else
-      save_marks(socket, parsed)
+      parsed =
+        Enum.map(socket.assigns.students, fn s ->
+          {s.id, parse_score(Map.get(scores, s.id))}
+        end)
+
+      if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+         )}
+      else
+        save_marks(socket, parsed)
+      end
     end
   end
 
