@@ -28,7 +28,9 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
   end
 
   defp seed_sequence(plan) do
-    {:ok, ay} = Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
+    {:ok, ay} =
+      Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
+
     :ok = Academics.build_default_calendar(ay)
     [seq | _] = Academics.list_sequences(ay)
     seq
@@ -99,6 +101,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
 
   test "module accepts a sequence_id", %{plan: plan} do
     {:ok, m} = Academics.create_module(plan, %{title: "M1"})
+
     # sequence_id acceptance is exercised more fully in Task 3; here just assert the attribute exists & is nil by default
     assert m.sequence_id == nil
   end
