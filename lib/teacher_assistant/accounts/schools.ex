@@ -4,27 +4,110 @@ defmodule TeacherAssistant.Accounts.Schools do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Workspace
-  alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership, User}
+  alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership, SchoolProfile, User}
   alias TeacherAssistant.Accounts.User.Senders.SendSchoolInvitationEmail
+  alias TeacherAssistant.Repo
+
+  @profile_keys [
+    :short_name,
+    :school_type,
+    :subsystem,
+    :sector,
+    :region,
+    :department,
+    :town,
+    :phone,
+    :email,
+    :address,
+    :head_name,
+    :motto,
+    :registration_number
+  ]
 
   def create_school(%User{} = user, %{} = attrs) do
-    with {:ok, school} <-
-           Workspace
-           |> Ash.Changeset.for_create(:create, %{
-             name: attrs[:name] || attrs["name"],
-             kind: :school
-           })
-           |> Ash.create(authorize?: false),
-         {:ok, _membership} <-
-           SchoolMembership
-           |> Ash.Changeset.for_create(:create, %{
-             workspace_id: school.id,
-             user_id: user.id,
-             roles: [:head]
-           })
-           |> Ash.create(authorize?: false) do
-      {:ok, school}
+    name = attrs[:name] || attrs["name"]
+
+    profile_defaults = %{
+      school_type: :lycee,
+      subsystem: :francophone,
+      sector: :public,
+      region: :centre,
+      town: "—"
+    }
+
+    profile_attrs = Map.merge(profile_defaults, Map.take(attrs, @profile_keys))
+
+    result =
+      Repo.transaction(fn ->
+        with {:ok, school} <-
+               Workspace
+               |> Ash.Changeset.for_create(:create, %{name: name, kind: :school})
+               |> Ash.create(authorize?: false),
+             {:ok, _profile} <-
+               SchoolProfile
+               |> Ash.Changeset.for_create(
+                 :create,
+                 Map.merge(profile_attrs, %{
+                   workspace_id: school.id,
+                   owner_user_id: user.id
+                 })
+               )
+               |> Ash.create(authorize?: false),
+             {:ok, _membership} <-
+               SchoolMembership
+               |> Ash.Changeset.for_create(:create, %{
+                 workspace_id: school.id,
+                 user_id: user.id,
+                 roles: [:head]
+               })
+               |> Ash.create(authorize?: false) do
+          school
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+
+    case result do
+      {:ok, school} -> {:ok, school}
+      {:error, reason} -> {:error, reason}
     end
+  end
+
+  def fetch_school_profile(%Workspace{id: ws_id}) do
+    SchoolProfile
+    |> Ash.Query.filter(workspace_id == ^ws_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  def update_school_profile(%SchoolProfile{} = profile, attrs) do
+    profile |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
+  end
+
+  def verify_school(%SchoolProfile{} = profile, operator_user_id) do
+    profile
+    |> Ash.Changeset.for_update(:verify, %{verified_by_user_id: operator_user_id})
+    |> Ash.update(authorize?: false)
+  end
+
+  def reject_school(%SchoolProfile{} = profile, operator_user_id, reason) do
+    profile
+    |> Ash.Changeset.for_update(:reject, %{
+      verified_by_user_id: operator_user_id,
+      rejection_reason: reason
+    })
+    |> Ash.update(authorize?: false)
+  end
+
+  def list_unverified_schools do
+    SchoolProfile
+    |> Ash.Query.filter(verification_status == :unverified)
+    |> Ash.Query.load([:workspace, :owner_user])
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.read!(authorize?: false)
   end
 
   def list_workspaces_for(%User{} = user) do
