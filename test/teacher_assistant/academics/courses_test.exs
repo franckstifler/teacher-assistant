@@ -124,6 +124,53 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     assert solo_ctx.id == tc_french.id
   end
 
+  test "list_unit_plans hides stale member-context plans after combining", ctx do
+    %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, ws: ws} = ctx
+
+    {:ok, _stale_maco_plan} =
+      Academics.create_progression_plan(tc_maco, %{title: "Maco (stale)"})
+
+    {:ok, _stale_menu_plan} =
+      Academics.create_progression_plan(tc_menu, %{title: "Menu (stale)"})
+
+    {:ok, french_plan} = Academics.create_progression_plan(tc_french, %{title: "Français"})
+
+    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+
+    unit_plans = Academics.list_unit_plans(ws)
+
+    assert length(unit_plans) == 2
+    assert Enum.count(unit_plans, &(&1.combined_course_id == course.id)) == 1
+    assert Enum.any?(unit_plans, &(&1.id == french_plan.id))
+    refute Enum.any?(unit_plans, &(&1.teaching_context_id in [tc_maco.id, tc_menu.id]))
+  end
+
+  test "plan_for_context resolves the course's shared plan for a combined member", ctx do
+    %{tc_maco: tc_maco, tc_menu: tc_menu, ws: ws} = ctx
+
+    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+
+    [course_plan] =
+      Academics.list_progression_plans(ws)
+      |> Enum.filter(&(&1.combined_course_id == course.id))
+
+    {:ok, tc_maco} = Academics.get_teaching_context(tc_maco.id)
+    {:ok, tc_menu} = Academics.get_teaching_context(tc_menu.id)
+
+    assert {:ok, plan_for_maco} = Academics.plan_for_context(tc_maco, ws)
+    assert {:ok, plan_for_menu} = Academics.plan_for_context(tc_menu, ws)
+    assert plan_for_maco.id == course_plan.id
+    assert plan_for_menu.id == course_plan.id
+  end
+
+  test "plan_for_context resolves a solo context's own plan", ctx do
+    %{tc_french: tc_french, ws: ws} = ctx
+    {:ok, plan} = Academics.create_progression_plan(tc_french, %{title: "Français"})
+
+    assert {:ok, resolved} = Academics.plan_for_context(tc_french, ws)
+    assert resolved.id == plan.id
+  end
+
   # Creates an active membership for `user` in `school` via the invitation flow.
   defp add_active_member(school, head, user) do
     {:ok, inv} =
