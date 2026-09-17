@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Subject
   alias TeacherAssistant.Academics.Student
@@ -38,6 +39,7 @@ defmodule TeacherAssistant.Academics do
     resource Term
     resource Sequence
     resource TeachingContext
+    resource CombinedCourse
     resource ClassGroup
     resource Subject
     resource Student
