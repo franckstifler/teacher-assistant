@@ -317,6 +317,17 @@ defmodule TeacherAssistant.Academics do
     ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
+  def get_course(id), do: Ash.get(CombinedCourse, id, authorize?: false)
+
+  @doc """
+  Lists the `TeachingContext`s currently linked to a `CombinedCourse`.
+  """
+  def contexts_of_course(%CombinedCourse{id: id}) do
+    TeachingContext
+    |> Ash.Query.filter(combined_course_id == ^id)
+    |> Ash.read!(authorize?: false)
+  end
+
   def list_progression_plans(%Workspace{id: ws_id}) do
     ProgressionPlan
     |> Ash.Query.filter(workspace_id == ^ws_id)
