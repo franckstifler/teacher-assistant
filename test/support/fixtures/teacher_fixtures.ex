@@ -15,4 +15,10 @@ defmodule TeacherAssistant.TeacherFixtures do
   end
 
   def workspace_fixture(user \\ user_fixture()), do: Academics.ensure_personal_workspace!(user)
+
+  def admin_user_fixture(attrs \\ %{}) do
+    user = user_fixture(attrs)
+    {:ok, admin} = Accounts.promote_to_admin(user)
+    admin
+  end
 end

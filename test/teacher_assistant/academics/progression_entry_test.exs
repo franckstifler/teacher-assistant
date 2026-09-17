@@ -52,7 +52,10 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
     {:ok, m} = Academics.create_module(plan, %{title: "M1"})
     {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
     assert e.completed? == false
-    {:ok, e} = e |> Ash.Changeset.for_update(:update, %{completed?: true}) |> Ash.update(authorize?: false)
+
+    {:ok, e} =
+      e |> Ash.Changeset.for_update(:update, %{completed?: true}) |> Ash.update(authorize?: false)
+
     assert e.completed? == true
   end
 end

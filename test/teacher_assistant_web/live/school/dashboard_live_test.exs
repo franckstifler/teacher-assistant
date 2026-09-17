@@ -105,4 +105,25 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       refute html =~ "Mes classes"
     end
   end
+
+  describe "verification banner" do
+    setup %{conn: conn, actor: head} do
+      {:ok, school} = Schools.create_school(head, %{name: "Lycée Vérif"})
+      conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
+      %{conn: conn, school: school, head: head}
+    end
+
+    test "shows a pending-verification banner while unverified", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/school")
+      assert has_element?(view, "#pending-verification")
+      assert has_element?(view, "#setup-checklist")
+    end
+
+    test "hides the banner once verified", %{conn: conn, school: school, head: head} do
+      {:ok, p} = Schools.fetch_school_profile(school)
+      {:ok, _} = Schools.verify_school(p, head.id)
+      {:ok, view, _html} = live(conn, ~p"/school")
+      refute has_element?(view, "#pending-verification")
+    end
+  end
 end

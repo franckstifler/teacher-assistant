@@ -116,27 +116,12 @@ defmodule TeacherAssistantWeb.Layouts do
                   </li>
                 </ul>
                 <div class="mt-1 border-t border-base-300 p-2">
-                  <.form
-                    for={%{}}
-                    as={:school}
-                    action={~p"/workspaces"}
-                    method="post"
-                    class="flex items-center gap-1"
-                  >
-                    <input
-                      type="text"
-                      name="school[name]"
-                      placeholder={gettext("School name")}
-                      class="input input-bordered input-xs w-full"
-                    />
-                    <button id="create-school" type="submit" class="btn btn-primary btn-xs shrink-0">
-                      {gettext("Create a school")}
-                    </button>
-                  </.form>
+                  <.link navigate={~p"/schools/new"} class="btn btn-primary btn-xs w-full">
+                    {gettext("Créer un établissement")}
+                  </.link>
                 </div>
               </div>
             </div>
-            <Layouts.theme_toggle />
             <%= if @current_user do %>
               <div class="hidden text-right sm:block">
                 <div class="text-xs font-semibold">{@current_user.email}</div>

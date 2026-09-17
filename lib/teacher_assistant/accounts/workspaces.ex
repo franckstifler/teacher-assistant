@@ -44,6 +44,12 @@ defmodule TeacherAssistant.Accounts.Workspaces do
       {:ok, membership} ->
         year = Academics.current_academic_year(ws)
 
+        status =
+          case Schools.fetch_school_profile(ws) do
+            {:ok, p} -> p.verification_status
+            _ -> :unverified
+          end
+
         {:ok,
          %Scope{
            current_user: user,
@@ -53,7 +59,8 @@ defmodule TeacherAssistant.Accounts.Workspaces do
            current_roles: membership.roles,
            current_membership: membership,
            current_academic_year: year,
-           current_context: resolve_assigned_context(ws, year, user, context_id)
+           current_context: resolve_assigned_context(ws, year, user, context_id),
+           school_verification_status: status
          }}
 
       {:error, :not_a_member} ->

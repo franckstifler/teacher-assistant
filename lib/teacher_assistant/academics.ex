@@ -29,6 +29,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Payment
   alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Repo
+  alias TeacherAssistant.Scope
 
   resources do
     resource Workspace
@@ -366,6 +367,34 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
+  @doc """
+  Fetches a teaching context the current user may open in the teacher workspace.
+
+  In a **personal** workspace, ownership of the (owner-only) workspace is the
+  guarantee — every context in it belongs to the sole teacher. In a **school**
+  workspace the workspace is shared by all staff, so the user must be the
+  *assigned* teacher of the context (`teacher_user_id`); otherwise a colleague
+  could open another teacher's roster and marks by id.
+  """
+  def fetch_assigned_teaching_context(id, %Scope{
+        current_workspace_type: :school,
+        current_workspace: %Workspace{id: ws_id},
+        current_user: %User{id: user_id}
+      }) do
+    TeachingContext
+    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id and teacher_user_id == ^user_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  def fetch_assigned_teaching_context(id, %Scope{current_workspace: %Workspace{} = ws}),
+    do: fetch_owned_teaching_context(id, ws)
+
+  def fetch_assigned_teaching_context(_id, %Scope{}), do: {:error, :not_found}
+
   def create_class_group(%Workspace{} = ws, %AcademicYear{} = year, attrs) do
     attrs =
       attrs
@@ -528,7 +557,30 @@ defmodule TeacherAssistant.Academics do
   rolled-back rows never produce phantom PubSub events and no
   `:missed_notifications` advisory is emitted.
   """
-  def upsert_marks(%Assessment{id: assessment_id}, entries) do
+  def upsert_marks(%Assessment{id: assessment_id, max_score: max_score}, entries) do
+    if Enum.all?(entries, &score_in_range?(&1, max_score)) do
+      persist_marks(assessment_id, entries)
+    else
+      {:error, :out_of_range}
+    end
+  end
+
+  # A mark is valid when absent (nil) or within 0..max_score inclusive. Callers
+  # pass a `%Decimal{}` or nil; anything else is left to the resource layer.
+  defp score_in_range?(entry, max_score) do
+    case Map.get(entry, :score) do
+      nil ->
+        true
+
+      %Decimal{} = s ->
+        Decimal.compare(s, 0) != :lt and Decimal.compare(s, max_score) != :gt
+
+      _ ->
+        true
+    end
+  end
+
+  defp persist_marks(assessment_id, entries) do
     result =
       Repo.transaction(fn ->
         existing =
@@ -899,7 +951,9 @@ defmodule TeacherAssistant.Academics do
         new_m =
           if m.sequence_id do
             {:ok, nm} =
-              new_m |> Ash.Changeset.for_update(:update, %{sequence_id: m.sequence_id}) |> Ash.update(authorize?: false)
+              new_m
+              |> Ash.Changeset.for_update(:update, %{sequence_id: m.sequence_id})
+              |> Ash.update(authorize?: false)
 
             nm
           else
@@ -974,11 +1028,16 @@ defmodule TeacherAssistant.Academics do
     do: m |> Ash.Changeset.for_update(:update, %{title: title}) |> Ash.update(authorize?: false)
 
   def set_entry_completed(%ProgressionEntry{} = e, completed?) when is_boolean(completed?),
-    do: e |> Ash.Changeset.for_update(:update, %{completed?: completed?}) |> Ash.update(authorize?: false)
+    do:
+      e
+      |> Ash.Changeset.for_update(:update, %{completed?: completed?})
+      |> Ash.update(authorize?: false)
 
   def assign_module_sequence(%ProgressionModule{} = m, sequence_id) do
     with {:ok, m} <-
-           m |> Ash.Changeset.for_update(:update, %{sequence_id: sequence_id}) |> Ash.update(authorize?: false) do
+           m
+           |> Ash.Changeset.for_update(:update, %{sequence_id: sequence_id})
+           |> Ash.update(authorize?: false) do
       entries_in_module(m.id)
       |> Enum.each(fn e -> update_progression_entry(e, %{sequence_id: sequence_id}) end)
 
@@ -987,7 +1046,10 @@ defmodule TeacherAssistant.Academics do
   end
 
   def update_module_credit(%ProgressionModule{} = m, credit),
-    do: m |> Ash.Changeset.for_update(:update, %{credit_hours: credit}) |> Ash.update(authorize?: false)
+    do:
+      m
+      |> Ash.Changeset.for_update(:update, %{credit_hours: credit})
+      |> Ash.update(authorize?: false)
 
   def delete_module(%ProgressionModule{default?: true}), do: {:error, :default_bucket}
 

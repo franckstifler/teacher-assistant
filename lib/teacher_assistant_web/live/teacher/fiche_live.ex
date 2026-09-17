@@ -252,11 +252,19 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       <p class={["ta-num mt-1 text-2xl font-semibold leading-none", ratio_accent(@ratio)]}>
         {@value}<span :if={@target} class="text-base font-normal text-base-content/55">
           / {@target}{@suffix}
-        </span><span :if={!@target && @suffix} class="text-base font-normal text-base-content/55">{@suffix}</span>
+        </span><span
+          :if={!@target && @suffix}
+          class="text-base font-normal text-base-content/55"
+        >
+          {@suffix}
+        </span>
       </p>
       <progress
         :if={@target}
-        class={["progress w-full mt-1", if(ratio_accent(@ratio) == "text-warning", do: "progress-warning", else: "progress-primary")]}
+        class={[
+          "progress w-full mt-1",
+          if(ratio_accent(@ratio) == "text-warning", do: "progress-warning", else: "progress-primary")
+        ]}
         value={ratio_pct(@ratio) || 0}
         max="100"
       >
@@ -434,7 +442,10 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 <span class="ta-num text-sm text-base-content/60">
                   {Decimal.to_string(module_hours(m))}h
                 </span>
-                <span :if={not m.default? and m.credit_hours} class="ta-num text-sm text-base-content/60">
+                <span
+                  :if={not m.default? and m.credit_hours}
+                  class="ta-num text-sm text-base-content/60"
+                >
                   / {Decimal.to_string(m.credit_hours)}h
                 </span>
                 <.form

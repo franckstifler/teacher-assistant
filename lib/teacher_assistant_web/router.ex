@@ -25,6 +25,7 @@ defmodule TeacherAssistantWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/schools/start", PageController, :start_school
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
     sign_out_route AuthController
     get "/workspaces/select/:id", WorkspaceController, :select
@@ -39,6 +40,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
     get "/school/classes/:id/timetable/print", TimetablePrintController, :class
     get "/school/timetable/me/print", TimetablePrintController, :me
+    get "/school/logo", SchoolLogoController, :show
     get "/locale/:locale", LocaleController, :set
     get "/schools/invitations/:token", SchoolInvitationController, :show
     post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
@@ -46,6 +48,7 @@ defmodule TeacherAssistantWeb.Router do
     sign_in_route register_path: "/register",
                   reset_path: "/reset",
                   auth_routes_prefix: "/auth",
+                  layout: {TeacherAssistantWeb.Layouts, :auth},
                   on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_no_user}],
                   overrides: [
                     TeacherAssistantWeb.AuthOverrides,
@@ -53,6 +56,7 @@ defmodule TeacherAssistantWeb.Router do
                   ]
 
     reset_route auth_routes_prefix: "/auth",
+                layout: {TeacherAssistantWeb.Layouts, :auth},
                 overrides: [
                   TeacherAssistantWeb.AuthOverrides,
                   Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
@@ -60,6 +64,7 @@ defmodule TeacherAssistantWeb.Router do
 
     magic_sign_in_route(TeacherAssistant.Accounts.User, :magic_link,
       auth_routes_prefix: "/auth",
+      layout: {TeacherAssistantWeb.Layouts, :auth},
       overrides: [
         TeacherAssistantWeb.AuthOverrides,
         Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
@@ -110,6 +115,19 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/members", School.MembersLive, :index
       live "/school/settings", School.SettingsLive, :index
       live "/school/periods", School.PeriodsLive, :index
+    end
+
+    ash_authentication_live_session :onboarding,
+      on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
+      live "/schools/new", Onboarding.CreateSchoolLive
+    end
+
+    ash_authentication_live_session :operator,
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_operator}
+      ] do
+      live "/admin/schools", Admin.SchoolsLive
     end
   end
 

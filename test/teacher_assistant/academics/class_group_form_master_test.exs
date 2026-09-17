@@ -54,11 +54,17 @@ defmodule TeacherAssistant.Academics.ClassGroupFormMasterTest do
     # TeacherAssistant.Accounts.User has no Ash `:destroy` action defined, so we
     # delete the underlying Ecto row directly via Repo to exercise the DB-level
     # `ON DELETE SET NULL` FK constraint added by the `references` block.
-    # The user also owns a school_membership row (created by the setup's
-    # create_school call) with a plain FK, so that must be cleared first to
-    # isolate the class_groups.form_master_user_id nilify behavior under test.
+    # The user also owns a school_membership row and a school_profiles row
+    # (both created by the setup's create_school call) with plain FKs, so
+    # those must be cleared first to isolate the class_groups.form_master_user_id
+    # nilify behavior under test.
     TeacherAssistant.Accounts.SchoolMembership
     |> Ash.Query.filter_input(user_id: user.id)
+    |> Ash.read!(authorize?: false)
+    |> Enum.each(&Ash.destroy!(&1, authorize?: false))
+
+    TeacherAssistant.Accounts.SchoolProfile
+    |> Ash.Query.filter_input(owner_user_id: user.id)
     |> Ash.read!(authorize?: false)
     |> Enum.each(&Ash.destroy!(&1, authorize?: false))
 

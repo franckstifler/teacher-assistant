@@ -106,6 +106,11 @@ defmodule TeacherAssistant.Accounts.User do
       argument :email, :ci_string, allow_nil?: false
       run AshAuthentication.Strategy.MagicLink.Request
     end
+
+    update :promote_to_admin do
+      accept []
+      change set_attribute(:role, :admin)
+    end
   end
 
   policies do

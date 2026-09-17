@@ -12,11 +12,15 @@ defmodule TeacherAssistant.Scope do
     :current_membership,
     :current_academic_year,
     :current_context,
-    :locale
+    :locale,
+    :school_verification_status
   ]
 
   def personal_context?(%__MODULE__{current_workspace_type: :personal_teacher}), do: true
   def personal_context?(_scope), do: false
+
+  def school_verified?(%__MODULE__{school_verification_status: :verified}), do: true
+  def school_verified?(_scope), do: false
 
   def academic_year_ready?(%__MODULE__{
         current_academic_year: %TeacherAssistant.Academics.AcademicYear{}

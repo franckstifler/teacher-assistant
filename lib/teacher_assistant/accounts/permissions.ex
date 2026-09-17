@@ -49,4 +49,14 @@ defmodule TeacherAssistant.Accounts.Permissions do
 
   def admin_or_form_master?(scope, %ClassGroup{} = cg),
     do: admin?(scope) or form_master?(scope, cg)
+
+  @doc """
+  Whether operating actions (recording marks, recording attendance, printing
+  bulletins) are allowed for this scope. Personal workspaces are always
+  allowed; a school workspace is only allowed once its `SchoolProfile` has
+  been verified (P2.10 — operate-gate).
+  """
+  def operating_allowed?(scope) do
+    scope.current_workspace_type != :school or TeacherAssistant.Scope.school_verified?(scope)
+  end
 end

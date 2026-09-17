@@ -18,6 +18,7 @@ config :teacher_assistant, Oban,
   plugins: [{Oban.Plugins.Cron, []}]
 
 config :ash,
+  default_string_length_count: :codepoints,
   allow_forbidden_field_for_relationships_by_default?: true,
   include_embedded_source_by_default?: false,
   show_keysets_for_all_actions?: false,
@@ -60,7 +61,8 @@ config :spark,
 config :teacher_assistant,
   ecto_repos: [TeacherAssistant.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [TeacherAssistant.Accounts, TeacherAssistant.Academics]
+  ash_domains: [TeacherAssistant.Accounts, TeacherAssistant.Academics],
+  uploads_dir: "priv/uploads"
 
 # Configures the endpoint
 config :teacher_assistant, TeacherAssistantWeb.Endpoint,

@@ -84,7 +84,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
 
     {:ok, m} = Academics.create_module(plan, %{title: "M1"})
     {:ok, m} = Academics.assign_module_sequence(m, seq.id)
-    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "Lesson 1", entry_type: :lesson})
+
+    {:ok, e} =
+      Academics.add_progression_entry(m, %{lesson_title: "Lesson 1", entry_type: :lesson})
+
     {:ok, _e} = Academics.set_entry_completed(e, true)
 
     {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})

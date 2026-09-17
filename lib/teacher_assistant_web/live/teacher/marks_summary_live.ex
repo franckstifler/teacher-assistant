@@ -6,9 +6,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   @mention_order [:excellent, :tres_bien, :bien, :assez_bien, :passable, nil]
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
-    ws = socket.assigns.current_scope.current_workspace
+    scope = socket.assigns.current_scope
+    ws = scope.current_workspace
 
-    with {:ok, ctx} <- owned_context(ws, ctx_id),
+    with {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope),
          false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Academics.current_academic_year(ws)
@@ -70,9 +71,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
     assign(socket, :summary, summary)
   end
-
-  defp owned_context(nil, _ctx_id), do: :error
-  defp owned_context(ws, ctx_id), do: Academics.fetch_owned_teaching_context(ctx_id, ws)
 
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
