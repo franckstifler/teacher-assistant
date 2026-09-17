@@ -129,6 +129,19 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert Academics.list_academic_years(school) |> Enum.any?(&(&1.name == "2025-2026"))
   end
 
+  test "head can add and remove a subject", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> render_submit()
+
+    assert render(view) =~ "Allemand"
+
+    view |> element("[phx-click=\"delete_subject\"]", "Allemand") |> render_click()
+    refute render(view) =~ "Allemand"
+  end
+
   test "additional academic years created via form are inactive; only first is active", %{
     conn: conn,
     school: school
