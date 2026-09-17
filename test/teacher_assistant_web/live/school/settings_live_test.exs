@@ -142,6 +142,111 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     refute render(view) =~ "Allemand"
   end
 
+  test "admin edits a subject's coefficient", %{conn: conn, school: school} do
+    alias TeacherAssistant.Academics.Subjects
+
+    {:ok, view, _html} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> render_submit()
+
+    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    assert subject
+
+    view
+    |> form("#subject-edit-form-#{subject.id}",
+      subject_edit: %{name: "Allemand", default_coefficient: "2.5", category: "language"}
+    )
+    |> render_submit()
+
+    updated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    assert Decimal.equal?(updated.default_coefficient, Decimal.new("2.5"))
+  end
+
+  test "admin deactivates and reactivates a subject", %{conn: conn, school: school} do
+    alias TeacherAssistant.Academics.Subjects
+
+    {:ok, view, _html} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> render_submit()
+
+    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    assert subject
+
+    view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
+    deactivated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    assert deactivated.active? == false
+    assert render(view) =~ "Réactiver"
+
+    view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
+    reactivated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    assert reactivated.active? == true
+  end
+
+  test "a plain teacher member cannot manage the subject catalog (forged events)", %{
+    conn: conn,
+    school: school,
+    actor: head
+  } do
+    alias TeacherAssistant.Academics.Subjects
+
+    {:ok, view, _html} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> render_submit()
+
+    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    assert subject
+    catalog_size_before = length(Subjects.list(school))
+
+    other = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+
+    {:ok, _} = Schools.accept_invitation(inv.token, other)
+
+    teacher_conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, other.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    {:ok, tview, html} = live(teacher_conn, ~p"/school/settings")
+    refute html =~ "id=\"matieres\""
+    refute has_element?(tview, "#matieres")
+    refute has_element?(tview, "#subject-form")
+
+    render_hook(tview, "create_subject", %{
+      "subject" => %{"name" => "Forged", "category" => "general"}
+    })
+
+    render_hook(tview, "update_subject", %{
+      "subject_id" => subject.id,
+      "subject_edit" => %{
+        "name" => "Hacked",
+        "default_coefficient" => "9",
+        "category" => "general"
+      }
+    })
+
+    render_hook(tview, "toggle_subject_active", %{"id" => subject.id})
+    render_hook(tview, "delete_subject", %{"id" => subject.id})
+
+    subjects = Subjects.list(school)
+    assert length(subjects) == catalog_size_before
+    refute Enum.any?(subjects, &(&1.name == "Forged"))
+
+    reloaded = Enum.find(subjects, &(&1.id == subject.id))
+    assert reloaded.name == "Allemand"
+    assert reloaded.active? == true
+    assert Decimal.equal?(reloaded.default_coefficient, Decimal.new(1))
+  end
+
   test "additional academic years created via form are inactive; only first is active", %{
     conn: conn,
     school: school

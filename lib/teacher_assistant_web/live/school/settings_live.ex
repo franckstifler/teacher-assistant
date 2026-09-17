@@ -200,46 +200,112 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </div>
         </section>
 
-        <section id="matieres" class="space-y-3">
+        <section :if={@admin?} id="matieres" class="space-y-4">
           <h2 class="text-lg font-semibold">{gettext("Matières")}</h2>
 
-          <ul class="divide-y divide-base-300 rounded-box border border-base-300">
-            <li :for={s <- @subjects} class="flex items-center justify-between gap-3 px-3 py-2">
-              <span>
-                {s.name}
-                <span :if={s.code} class="ta-num text-xs text-base-content/50">· {s.code}</span>
-              </span>
-              <button
-                type="button"
-                phx-click="delete_subject"
-                phx-value-id={s.id}
-                class="btn btn-ghost btn-xs text-error"
-              >
-                <span class="sr-only">{s.name}</span>
-                {gettext("Supprimer")}
-              </button>
-            </li>
-          </ul>
+          <div class="overflow-x-auto">
+            <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>{gettext("Nom")}</th>
+                  <th>{gettext("Coefficient")}</th>
+                  <th>{gettext("Catégorie")}</th>
+                  <th>{gettext("Statut")}</th>
+                  <th><span class="sr-only">{gettext("Actions")}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={s <- @subjects} id={"subject-row-#{s.id}"}>
+                  <td colspan="5">
+                    <.form
+                      for={to_form(subject_form_params(s), as: :subject_edit)}
+                      id={"subject-edit-form-#{s.id}"}
+                      phx-submit="update_subject"
+                      class="grid items-end gap-2 sm:grid-cols-6"
+                    >
+                      <input type="hidden" name="subject_id" value={s.id} />
+                      <.input name="subject_edit[name]" value={s.name} label={gettext("Nom")} />
+                      <.input
+                        name="subject_edit[default_coefficient]"
+                        value={s.default_coefficient}
+                        label={gettext("Coefficient")}
+                      />
+                      <.input
+                        name="subject_edit[category]"
+                        type="select"
+                        value={to_string(s.category)}
+                        options={[
+                          {gettext("Générale"), "general"},
+                          {gettext("Langue"), "language"},
+                          {gettext("Technique"), "technical"}
+                        ]}
+                        label={gettext("Catégorie")}
+                      />
+                      <div>
+                        <span :if={s.active?} class="badge badge-primary">{gettext("Active")}</span>
+                        <span :if={!s.active?} class="badge badge-ghost">
+                          {gettext("Inactive")}
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                          {gettext("Enregistrer")}
+                        </button>
+                        <button
+                          type="button"
+                          id={"subject-toggle-active-#{s.id}"}
+                          class="btn btn-ghost btn-sm"
+                          phx-click="toggle_subject_active"
+                          phx-value-id={s.id}
+                        >
+                          {if s.active?, do: gettext("Désactiver"), else: gettext("Réactiver")}
+                        </button>
+                        <button
+                          type="button"
+                          id={"subject-delete-#{s.id}"}
+                          phx-click="delete_subject"
+                          phx-value-id={s.id}
+                          class="btn btn-ghost btn-sm text-error"
+                        >
+                          <span class="sr-only">{s.name}</span>
+                          {gettext("Supprimer")}
+                        </button>
+                      </div>
+                    </.form>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <.form
-            for={@subject_form}
-            id="subject-form"
-            phx-submit="create_subject"
-            class="flex flex-wrap items-end gap-2"
-          >
-            <.input field={@subject_form[:name]} label={gettext("Nom de la matière")} />
-            <.input
-              field={@subject_form[:category]}
-              type="select"
-              label={gettext("Catégorie")}
-              options={[
-                {gettext("Générale"), "general"},
-                {gettext("Langue"), "language"},
-                {gettext("Technique"), "technical"}
-              ]}
-            />
-            <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>
-          </.form>
+          <.empty_state
+            :if={@subjects == []}
+            icon="hero-book-open"
+            title={gettext("Aucune matière pour l'instant")}
+          />
+
+          <div class="ta-leaf space-y-3">
+            <h3 class="text-sm font-semibold">{gettext("Ajouter une matière")}</h3>
+            <.form
+              for={@subject_form}
+              id="subject-form"
+              phx-submit="create_subject"
+              class="flex flex-wrap items-end gap-2"
+            >
+              <.input field={@subject_form[:name]} label={gettext("Nom de la matière")} />
+              <.input
+                field={@subject_form[:category]}
+                type="select"
+                label={gettext("Catégorie")}
+                options={[
+                  {gettext("Générale"), "general"},
+                  {gettext("Langue"), "language"},
+                  {gettext("Technique"), "technical"}
+                ]}
+              />
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>
+            </.form>
+          </div>
         </section>
 
         <section :if={@admin?} id="emploi">
@@ -320,31 +386,99 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   end
 
   def handle_event("create_subject", %{"subject" => params}, socket) do
-    ws = socket.assigns.scope.current_workspace
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
 
-    case Subjects.create(ws, %{
-           name: String.trim(params["name"] || ""),
-           category: String.to_existing_atom(params["category"] || "general")
-         }) do
-      {:ok, _} ->
-        {:noreply,
-         socket
-         |> assign(:subjects, Subjects.list(ws))
-         |> assign(:subject_form, to_form(%{"name" => "", "category" => "general"}, as: :subject))}
+    if Permissions.admin?(scope) do
+      case Subjects.create(ws, %{
+             name: String.trim(params["name"] || ""),
+             category: params["category"] || "general"
+           }) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> assign(:subjects, Subjects.list(ws))
+           |> assign(
+             :subject_form,
+             to_form(%{"name" => "", "category" => "general"}, as: :subject)
+           )}
 
-      {:error, :duplicate_name} ->
-        {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
+        {:error, :duplicate_name} ->
+          {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Nom de matière invalide."))}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Nom de matière invalide."))}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
   def handle_event("delete_subject", %{"id" => id}, socket) do
-    ws = socket.assigns.scope.current_workspace
-    subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
-    if subject, do: Subjects.delete(subject)
-    {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    if Permissions.admin?(scope) do
+      subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
+      if subject, do: Subjects.delete(subject)
+      {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("update_subject", %{"subject_id" => id, "subject_edit" => params}, socket) do
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    with true <- Permissions.admin?(scope),
+         %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
+         {:ok, coefficient} <- parse_coefficient(params["default_coefficient"]) do
+      case Subjects.update(subject, %{
+             name: String.trim(params["name"] || ""),
+             default_coefficient: coefficient,
+             category: params["category"]
+           }) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> assign(:subjects, Subjects.list(ws))
+           |> put_flash(:info, gettext("Matière mise à jour."))}
+
+        {:error, :duplicate_name} ->
+          {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle_subject_active", %{"id" => id}, socket) do
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    with true <- Permissions.admin?(scope),
+         %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
+      result =
+        if subject.active?,
+          do: Subjects.deactivate(subject),
+          else: Subjects.update(subject, %{active?: true})
+
+      case result do
+        {:ok, _} ->
+          {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("save_profile", %{"profile" => attrs}, socket) do
@@ -458,4 +592,24 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       _ -> nil
     end
   end
+
+  defp subject_form_params(subject) do
+    %{
+      "name" => subject.name,
+      "default_coefficient" => Decimal.to_string(subject.default_coefficient),
+      "category" => to_string(subject.category)
+    }
+  end
+
+  # Mirrors TeacherAssistant.Academics.Assignments.parse_coefficient/1 (private there).
+  defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
+
+  defp parse_coefficient(value) when is_binary(value) do
+    case Decimal.parse(String.trim(value)) do
+      {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
+      _ -> :error
+    end
+  end
+
+  defp parse_coefficient(_), do: :error
 end
