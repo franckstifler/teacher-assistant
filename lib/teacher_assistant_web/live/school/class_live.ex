@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Enrollments, Subjects}
+  alias TeacherAssistant.Academics.{Assignments, Courses, Enrollments, Subjects}
   alias TeacherAssistant.Accounts.{Permissions, Schools}
 
   def mount(%{"id" => id}, _session, socket) do
@@ -262,6 +262,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                   <th>{gettext("Enseignant")}</th>
                   <th>{gettext("H/semaine")}</th>
                   <th>{gettext("Coefficient")}</th>
+                  <th :if={@admin?}>{gettext("Regroupement")}</th>
                   <th :if={@admin?}><span class="sr-only">{gettext("Actions")}</span></th>
                 </tr>
               </thead>
@@ -282,6 +283,39 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                         class="input input-bordered input-xs w-20"
                         disabled={!@admin?}
                       />
+                    </form>
+                  </td>
+                  <td :if={@admin?}>
+                    <div :if={tc.combined_course_id} class="flex items-center gap-2">
+                      <span class="badge badge-sm badge-info">
+                        {tc.combined_course.label}
+                      </span>
+                      <button
+                        id={"split-#{tc.id}"}
+                        type="button"
+                        class="btn btn-ghost btn-xs"
+                        phx-click="split_course"
+                        phx-value-context-id={tc.id}
+                        data-confirm={gettext("Séparer cet enseignement combiné ?")}
+                      >
+                        {gettext("Séparer")}
+                      </button>
+                    </div>
+                    <form
+                      :if={!tc.combined_course_id && Map.get(@combinable_siblings, tc.id, []) != []}
+                      id={"teach-together-#{tc.id}"}
+                      phx-submit="teach_together"
+                      class="flex items-center gap-2"
+                    >
+                      <input type="hidden" name="context-id" value={tc.id} />
+                      <select name="sibling-ids[]" multiple class="select select-bordered select-xs">
+                        <option :for={sib <- Map.get(@combinable_siblings, tc.id, [])} value={sib.id}>
+                          {sib.class_group.label}
+                        </option>
+                      </select>
+                      <button type="submit" class="btn btn-ghost btn-xs">
+                        {gettext("Enseigner ensemble")}
+                      </button>
                     </form>
                   </td>
                   <td :if={@admin?}>
@@ -350,16 +384,26 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   defp load_roster(socket) do
     scope = socket.assigns.current_scope
     cg = socket.assigns.cg
+    assignments = Assignments.list_for_class(cg)
 
     assign(socket,
       roster: Academics.list_roster(cg),
       other_classes:
         Academics.list_class_groups(scope.current_workspace, scope.current_academic_year)
         |> Enum.reject(&(&1.id == cg.id)),
-      assignments: Assignments.list_for_class(cg),
+      assignments: assignments,
+      combinable_siblings: combinable_siblings_by_context(assignments, socket.assigns[:admin?]),
       members: Schools.list_members(scope.current_workspace)
     )
   end
+
+  defp combinable_siblings_by_context(assignments, true) do
+    assignments
+    |> Enum.reject(& &1.combined_course_id)
+    |> Map.new(&{&1.id, Assignments.combinable_siblings(&1)})
+  end
+
+  defp combinable_siblings_by_context(_assignments, _admin?), do: %{}
 
   def handle_event("enroll_new", %{"student" => params}, socket) do
     with true <- socket.assigns.manage? do
@@ -540,6 +584,67 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         _ ->
           {:noreply, socket}
       end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("teach_together", %{"context-id" => cid} = params, socket) do
+    with true <- socket.assigns.admin?,
+         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
+      sibling_ids = List.wrap(params["sibling-ids"])
+
+      siblings =
+        socket.assigns.combinable_siblings
+        |> Map.get(cid, [])
+        |> Enum.filter(&(&1.id in sibling_ids))
+
+      case Courses.combine([tc | siblings]) do
+        {:ok, _course} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("These classes are now taught together."))
+           |> load_roster()}
+
+        {:error, :need_two} ->
+          {:noreply, put_flash(socket, :error, gettext("Pick at least one other class."))}
+
+        {:error, :teacher_mismatch} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("These assignments don't share the same teacher.")
+           )}
+
+        {:error, :subject_mismatch} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("These assignments don't share the same subject.")
+           )}
+
+        {:error, :already_combined} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("One of these classes is already combined."))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("split_course", %{"context-id" => cid}, socket) do
+    with true <- socket.assigns.admin?,
+         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+         course_id when not is_nil(course_id) <- tc.combined_course_id,
+         {:ok, course} <- Academics.get_course(course_id) do
+      :ok = Courses.split(course)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, gettext("These classes are now taught separately."))
+       |> load_roster()}
     else
       _ -> {:noreply, socket}
     end

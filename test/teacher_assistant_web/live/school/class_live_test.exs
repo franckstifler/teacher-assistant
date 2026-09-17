@@ -258,6 +258,81 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     end
   end
 
+  describe "teach together / split (combined courses)" do
+    test "admin combines this class with a sibling class", %{
+      conn: conn,
+      cg: cg,
+      cg2: cg2,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      view
+      |> element("#teach-together-#{tc.id}")
+      |> render_submit(%{"sibling-ids" => [tc2.id]})
+
+      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Academics.get_teaching_context(tc2.id)
+
+      assert reloaded_tc.combined_course_id
+      assert reloaded_tc.combined_course_id == reloaded_tc2.combined_course_id
+    end
+
+    test "combined row shows the course label and a split control", %{
+      conn: conn,
+      cg: cg,
+      cg2: cg2,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+
+      {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert html =~ course.label
+      assert has_element?(view, "#split-#{tc.id}")
+    end
+
+    test "split unlinks a combined assignment", %{
+      conn: conn,
+      cg: cg,
+      cg2: cg2,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      view |> element("#split-#{tc.id}") |> render_click()
+
+      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Academics.get_teaching_context(tc2.id)
+      assert reloaded_tc.combined_course_id == nil
+      assert reloaded_tc2.combined_course_id == nil
+    end
+
+    test "a mismatched combine (different subject) surfaces a friendly flash", %{
+      conn: conn,
+      cg: cg,
+      cg2: cg2,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+
+      {:ok, _other_subject_tc} =
+        TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Anglais"})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      # No eligible sibling for "Maths" exists, so the control is not shown at all.
+      refute has_element?(view, "#teach-together-#{tc.id}")
+    end
+  end
+
   describe "form master" do
     test "admin assigns then clears the form master", %{
       conn: conn,
@@ -373,6 +448,39 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       render_hook(view, "set_form_master", %{"user_id" => head.id})
       {:ok, reloaded} = TeacherAssistant.Academics.fetch_owned_class_group(cg.id, school)
       assert reloaded.form_master_user_id == fm.id
+    end
+
+    test "form master cannot combine classes (forged teach_together)", %{
+      fm_conn: conn,
+      cg: cg,
+      cg2: cg2,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "teach_together", %{"context-id" => tc.id, "sibling-ids" => [tc2.id]})
+
+      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
+      assert reloaded_tc.combined_course_id == nil
+    end
+
+    test "form master cannot split a combined course (forged split_course)", %{
+      fm_conn: conn,
+      cg: cg,
+      cg2: cg2,
+      user: head
+    } do
+      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      render_hook(view, "split_course", %{"context-id" => tc.id})
+
+      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
+      assert reloaded_tc.combined_course_id != nil
     end
 
     test "a form master of another class is redirected", ctx do
