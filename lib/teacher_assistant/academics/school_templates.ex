@@ -52,10 +52,10 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
 
   # ---- levels --------------------------------------------------------------
 
-  def levels_for(_type, :anglophone), do: @anglophone_levels
-  def levels_for(:ces_ceg, _), do: @collège_levels
-  def levels_for(type, _) when type in [:cetic, :sar_sm], do: @technical_levels
+  def levels_for(type, _) when type in [:cetic, :sar_sm, :gtc, :gths], do: @technical_levels
   def levels_for(:lycee_technique, _), do: ~w(2nde 1ère Terminale)
+  def levels_for(:ces_ceg, _), do: @collège_levels
+  def levels_for(_type, :anglophone), do: @anglophone_levels
   def levels_for(_type, _subsystem), do: @francophone_general_levels
 
   # ---- streams (séries / spécialités) -------------------------------------

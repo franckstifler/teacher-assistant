@@ -38,12 +38,24 @@ defmodule TeacherAssistant.Academics.SchoolTemplatesTest do
 
   test "technical schools (:gtc, :gths) get specialities not séries/streams" do
     # Francophone technical school
-    %{kind: :specialite, values: values_gtc} = T.streams_for(:gtc, :francophone)
-    assert "ELEQ" in values_gtc and "MACO" in values_gtc
+    streams_gtc = T.streams_for(:gtc, :francophone)
+    assert streams_gtc.kind == :specialite
+    assert "ELEQ" in streams_gtc.values and "MACO" in streams_gtc.values
+
+    # Levels should match levels_for, not general levels
+    assert streams_gtc.levels == T.levels_for(:gtc, :francophone)
+    assert "1ère Année" in streams_gtc.levels
+    refute "6ème" in streams_gtc.levels
 
     # Anglophone technical school
-    %{kind: :specialite, values: values_gths} = T.streams_for(:gths, :anglophone)
-    assert "ELEQ" in values_gths and "MACO" in values_gths
+    streams_gths = T.streams_for(:gths, :anglophone)
+    assert streams_gths.kind == :specialite
+    assert "ELEQ" in streams_gths.values and "MACO" in streams_gths.values
+
+    # Levels should be technical years, not anglophone forms
+    assert streams_gths.levels == T.levels_for(:gths, :anglophone)
+    assert "1ère Année" in streams_gths.levels
+    refute "Form 1" in streams_gths.levels
 
     # Both have technical subjects
     subjects_gtc = T.subjects_for(:gtc, :francophone)
@@ -51,5 +63,14 @@ defmodule TeacherAssistant.Academics.SchoolTemplatesTest do
 
     assert Enum.any?(subjects_gtc, &(&1.name == "Atelier / Pratique"))
     assert Enum.any?(subjects_gths, &(&1.name == "Atelier / Pratique"))
+
+    # classes_for should not have speciality classes at general levels
+    classes_gtc = T.classes_for(:gtc, :francophone)
+    refute Enum.any?(classes_gtc, &(&1.level == "6ème"))
+    assert Enum.any?(classes_gtc, &(&1.level == "1ère Année" and &1.serie == "ELEQ"))
+
+    classes_gths = T.classes_for(:gths, :anglophone)
+    refute Enum.any?(classes_gths, &(&1.level == "Form 1"))
+    assert Enum.any?(classes_gths, &(&1.level == "1ère Année" and &1.serie == "ELEQ"))
   end
 end
