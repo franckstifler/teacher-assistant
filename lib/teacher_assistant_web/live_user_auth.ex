@@ -35,6 +35,14 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     end
   end
 
+  def on_mount(:require_operator, _params, _session, socket) do
+    if socket.assigns[:current_user] && socket.assigns.current_user.role == :admin do
+      {:cont, socket}
+    else
+      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/")}
+    end
+  end
+
   def on_mount(:require_teaching_scope, _params, _session, socket) do
     scope = socket.assigns.current_scope
 

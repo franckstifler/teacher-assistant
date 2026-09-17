@@ -21,6 +21,10 @@ defmodule TeacherAssistant.Accounts do
   def get_user(id) when is_binary(id), do: Ash.get(User, id, authorize?: false)
   def get_user(_id), do: {:error, :not_found}
 
+  def promote_to_admin(%User{} = user) do
+    user |> Ash.Changeset.for_update(:promote_to_admin, %{}) |> Ash.update(authorize?: false)
+  end
+
   def ensure_personal_workspace!(%TeacherAssistant.Accounts.User{} = user),
     do: TeacherAssistant.Academics.ensure_personal_workspace!(user)
 end

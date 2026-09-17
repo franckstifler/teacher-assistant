@@ -117,6 +117,14 @@ defmodule TeacherAssistantWeb.Router do
       on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
       live "/schools/new", Onboarding.CreateSchoolLive
     end
+
+    ash_authentication_live_session :operator,
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_operator}
+      ] do
+      live "/admin/schools", Admin.SchoolsLive
+    end
   end
 
   if Application.compile_env(:teacher_assistant, :dev_routes) do

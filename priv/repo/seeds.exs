@@ -30,6 +30,15 @@ if Mix.env() == :dev do
         |> Ash.read_first!(authorize?: false)
     end
 
+  # Promote the demo user to :admin (dev only) so /admin/schools is reachable locally.
+  user =
+    if user.role == :admin do
+      user
+    else
+      {:ok, admin} = Accounts.promote_to_admin(user)
+      admin
+    end
+
   ws = Academics.ensure_personal_workspace!(user)
 
   # Create or fetch academic year
