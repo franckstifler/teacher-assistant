@@ -1,0 +1,43 @@
+<div class="min-h-screen w-full lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+  <%!-- Brand panel — desktop only; on phones the form leads --%>
+  <aside class="ta-auth-panel relative hidden flex-col justify-between p-10 lg:flex xl:p-14">
+    <a href="/" class="flex items-center gap-2.5">
+      <span class="grid size-9 place-items-center rounded-lg bg-primary text-primary-content shadow-sm">
+        <.icon name="hero-academic-cap" class="size-5" />
+      </span>
+      <span class="ta-display text-lg font-semibold text-base-content">Teacher Assistant</span>
+    </a>
+
+    <div class="max-w-md">
+      <p class="ta-eyebrow">Cameroon secondary schools</p>
+      <h2 class="mt-4 font-display text-3xl font-semibold leading-tight text-base-content xl:text-4xl">
+        Run your school from one chalkboard.
+      </h2>
+      <ul class="mt-8 space-y-3.5 text-sm text-base-content/75">
+        <li class="flex items-center gap-3">
+          <.icon name="hero-clipboard-document-check" class="size-5 shrink-0 text-primary" />
+          Take the appel in one tap
+        </li>
+        <li class="flex items-center gap-3">
+          <.icon name="hero-pencil-square" class="size-5 shrink-0 text-primary" />
+          Marks and bulletins for every class
+        </li>
+        <li class="flex items-center gap-3">
+          <.icon name="hero-chart-bar" class="size-5 shrink-0 text-primary" />
+          Coverage of the programme, all year
+        </li>
+      </ul>
+    </div>
+
+    <p class="font-mono text-xs text-base-content/45">
+      APC / CBA · Francophone &amp; Anglophone · FR / EN
+    </p>
+  </aside>
+
+  <%!-- Form column --%>
+  <main class="flex min-h-screen items-center justify-center bg-base-100 px-4 py-12 sm:px-6">
+    <div class="w-full max-w-sm">
+      {@inner_content}
+    </div>
+  </main>
+</div>

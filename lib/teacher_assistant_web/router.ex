@@ -48,6 +48,7 @@ defmodule TeacherAssistantWeb.Router do
     sign_in_route register_path: "/register",
                   reset_path: "/reset",
                   auth_routes_prefix: "/auth",
+                  layout: {TeacherAssistantWeb.Layouts, :auth},
                   on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_no_user}],
                   overrides: [
                     TeacherAssistantWeb.AuthOverrides,
@@ -55,6 +56,7 @@ defmodule TeacherAssistantWeb.Router do
                   ]
 
     reset_route auth_routes_prefix: "/auth",
+                layout: {TeacherAssistantWeb.Layouts, :auth},
                 overrides: [
                   TeacherAssistantWeb.AuthOverrides,
                   Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
@@ -62,6 +64,7 @@ defmodule TeacherAssistantWeb.Router do
 
     magic_sign_in_route(TeacherAssistant.Accounts.User, :magic_link,
       auth_routes_prefix: "/auth",
+      layout: {TeacherAssistantWeb.Layouts, :auth},
       overrides: [
         TeacherAssistantWeb.AuthOverrides,
         Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
