@@ -59,4 +59,37 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
     assert rejected.verification_status == :rejected
     assert rejected.rejection_reason == "doc manquant"
   end
+
+  test "editing a rejected school's profile re-opens it for verification" do
+    user = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.user_fixture()
+    {:ok, school} = Schools.create_school(user, @attrs)
+    {:ok, profile} = Schools.fetch_school_profile(school)
+    {:ok, rejected} = Schools.reject_school(profile, op.id, "doc manquant")
+    assert rejected.verification_status == :rejected
+
+    assert {:ok, updated} = Schools.update_school_profile(rejected, %{short_name: "X"})
+    assert updated.verification_status == :unverified
+    assert updated.rejection_reason == nil
+    assert updated.verified_at == nil
+    assert updated.verified_by_user_id == nil
+    assert updated.short_name == "X"
+
+    assert Enum.any?(Schools.list_unverified_schools(), &(&1.id == updated.id))
+  end
+
+  test "editing a verified school's profile leaves it verified" do
+    user = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.user_fixture()
+    {:ok, school} = Schools.create_school(user, @attrs)
+    {:ok, profile} = Schools.fetch_school_profile(school)
+    {:ok, verified} = Schools.verify_school(profile, op.id)
+    assert verified.verification_status == :verified
+
+    assert {:ok, updated} = Schools.update_school_profile(verified, %{short_name: "Y"})
+    assert updated.verification_status == :verified
+    assert updated.verified_at != nil
+    assert updated.verified_by_user_id == op.id
+    assert updated.short_name == "Y"
+  end
 end

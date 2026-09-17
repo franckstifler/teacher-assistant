@@ -39,6 +39,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     end
 
     update :update do
+      require_atomic? false
+
       accept [
         :short_name,
         :school_type,
@@ -55,6 +57,18 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :registration_number,
         :logo_path
       ]
+
+      change fn changeset, _context ->
+        if Ash.Changeset.get_data(changeset, :verification_status) == :rejected do
+          changeset
+          |> Ash.Changeset.change_attribute(:verification_status, :unverified)
+          |> Ash.Changeset.change_attribute(:rejection_reason, nil)
+          |> Ash.Changeset.change_attribute(:verified_at, nil)
+          |> Ash.Changeset.change_attribute(:verified_by_user_id, nil)
+        else
+          changeset
+        end
+      end
     end
 
     update :verify do
