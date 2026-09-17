@@ -281,18 +281,25 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert reloaded_tc.combined_course_id == reloaded_tc2.combined_course_id
     end
 
-    test "combined row shows the course label and a split control", %{
+    test "combined row shows the real class labels (not the bare level) and a split control", %{
       conn: conn,
       cg: cg,
       cg2: cg2,
       user: head
     } do
+      # cg is "6e A" and cg2 is "6e B" — same level ("6ème"), distinct class
+      # labels. The initiating context (cg) arrives here from
+      # Assignments.list_for_class/1, which does NOT preload :class_group —
+      # this pins that Courses.combine/1 loads it itself rather than
+      # collapsing to a degenerate "Maths · 6ème" label.
       {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
       {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
       {:ok, course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
 
+      assert course.label == "Maths · 6e A+6e B"
+
       {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}")
-      assert html =~ course.label
+      assert html =~ "Maths · 6e A+6e B"
       assert has_element?(view, "#split-#{tc.id}")
     end
 

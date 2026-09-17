@@ -628,6 +628,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         {:error, :already_combined} ->
           {:noreply,
            put_flash(socket, :error, gettext("One of these classes is already combined."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not combine these classes."))}
       end
     else
       _ -> {:noreply, socket}

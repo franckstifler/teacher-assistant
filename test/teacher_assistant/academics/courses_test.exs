@@ -53,6 +53,16 @@ defmodule TeacherAssistant.Academics.CoursesTest do
              |> Enum.filter(&(&1.combined_course_id == course.id))
   end
 
+  test "combine builds the label from real class labels, not the bare level", ctx do
+    %{tc_maco: tc_maco, tc_menu: tc_menu} = ctx
+    # tc_maco/tc_menu come straight from Assignments.assign/3 — neither has
+    # :class_group preloaded. combine/1 must load it itself, otherwise both
+    # contexts (same level "1ère") collapse to a single bare-level label.
+    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+
+    assert course.label == "Mathématiques · 1ère A MACO+1ère A MENU"
+  end
+
   test "combine rejects mismatched subject/teacher and <2", ctx do
     %{tc_maco: tc_maco, tc_french: tc_french, cg_menu: cg_menu} = ctx
 

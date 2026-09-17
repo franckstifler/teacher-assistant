@@ -61,7 +61,14 @@ defmodule TeacherAssistant.Academics.Courses do
     end
   end
 
-  defp do_combine([first | _] = contexts) do
+  defp do_combine(contexts) do
+    # `build_label/1` needs `:class_group` on every member — the initiating
+    # context in particular may arrive here without it preloaded (e.g. from
+    # `Assignments.list_for_class/1`, which only loads `:teacher` and
+    # `:combined_course`). Load it here rather than trusting the caller.
+    contexts = Ash.load!(contexts, :class_group, authorize?: false)
+    [first | _] = contexts
+
     result =
       Repo.transaction(fn ->
         with {:ok, course} <- create_course(first, build_label(contexts)),
@@ -115,6 +122,7 @@ defmodule TeacherAssistant.Academics.Courses do
       |> Enum.map(&class_label/1)
       |> Enum.reject(&(&1 in [nil, ""]))
       |> Enum.uniq()
+      |> Enum.sort()
 
     subject <> " · " <> Enum.join(labels, "+")
   end
