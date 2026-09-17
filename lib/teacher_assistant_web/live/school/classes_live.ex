@@ -2,8 +2,10 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.SchoolTemplates
   alias TeacherAssistant.Academics.Subsystem
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Accounts.Schools
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -11,9 +13,18 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     if scope.current_workspace_type != :school do
       {:ok, push_navigate(socket, to: ~p"/teacher")}
     else
+      profile = Schools.fetch_school_profile(scope.current_workspace)
+
+      class_streams =
+        case profile do
+          {:ok, p} -> SchoolTemplates.streams_for(p.school_type, p.subsystem)
+          _ -> %{kind: :serie, values: [], levels: []}
+        end
+
       {:ok,
        socket
        |> assign(:admin?, Permissions.admin?(scope))
+       |> assign(:class_streams, class_streams)
        |> assign(
          :class_form,
          to_form(%{"label" => "", "level" => "", "serie" => ""}, as: :class_group)
@@ -98,7 +109,14 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
               <div class="grid gap-2 sm:grid-cols-4">
                 <.input field={@class_form[:label]} label={gettext("Label")} />
                 <.input field={@class_form[:level]} label={gettext("Level")} />
-                <.input field={@class_form[:serie]} label={gettext("Série (optionnel)")} />
+                <.input
+                  field={@class_form[:serie]}
+                  label={SchoolTemplates.stream_label(@class_streams.kind)}
+                  list="serie-options"
+                />
+                <datalist id="serie-options">
+                  <option :for={s <- @class_streams.values} value={s}>{s}</option>
+                </datalist>
                 <.input
                   type="select"
                   field={@class_form[:subsystem]}
