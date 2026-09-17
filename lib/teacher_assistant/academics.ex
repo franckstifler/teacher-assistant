@@ -403,6 +403,12 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
+  @doc """
+  Every plan in the workspace, raw. Teacher-facing call sites (dashboard,
+  teaching log, coverage lists, ...) should use `list_unit_plans/1` instead
+  — this includes a combined-course member context's stale pre-combine
+  plan alongside the course's own, which double-counts/double-lists it.
+  """
   def list_progression_plans(%Workspace{id: ws_id}) do
     ProgressionPlan
     |> Ash.Query.filter(workspace_id == ^ws_id)

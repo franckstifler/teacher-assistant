@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
 
   def mount(_params, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
-    plans = if ws, do: Academics.list_progression_plans(ws), else: []
+    plans = if ws, do: Academics.list_unit_plans(ws), else: []
     entries = Enum.flat_map(plans, &Academics.list_progression_entries/1)
 
     {:ok,
