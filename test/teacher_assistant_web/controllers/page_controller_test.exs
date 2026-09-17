@@ -19,10 +19,19 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     # account + session
     assert html =~ ~s(href="/register")
     assert html =~ ~s(href="/sign-in")
-    # school onboarding (the repositioned primary flow)
-    assert html =~ ~s(href="/schools/new")
+    # school onboarding intent (carries you to school setup after auth)
+    assert html =~ ~s(href="/schools/start")
     # bilingual switch
     assert html =~ ~s(href="/locale/fr")
     assert html =~ ~s(href="/locale/en")
+  end
+
+  test "GET /schools/start sends a visitor to register, bound for school setup", %{conn: conn} do
+    conn = get(conn, ~p"/schools/start")
+
+    # differentiation happens after auth: the school intent lands on /schools/new,
+    # not the default /teacher dashboard
+    assert redirected_to(conn) == ~p"/register"
+    assert get_session(conn, :return_to) == ~p"/schools/new"
   end
 end

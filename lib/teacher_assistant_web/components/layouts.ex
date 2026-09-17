@@ -122,7 +122,6 @@ defmodule TeacherAssistantWeb.Layouts do
                 </div>
               </div>
             </div>
-            <Layouts.theme_toggle />
             <%= if @current_user do %>
               <div class="hidden text-right sm:block">
                 <div class="text-xs font-semibold">{@current_user.email}</div>

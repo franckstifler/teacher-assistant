@@ -25,6 +25,7 @@ defmodule TeacherAssistantWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/schools/start", PageController, :start_school
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
     sign_out_route AuthController
     get "/workspaces/select/:id", WorkspaceController, :select
