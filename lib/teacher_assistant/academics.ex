@@ -300,6 +300,23 @@ defmodule TeacherAssistant.Academics do
     ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
+  @doc """
+  Creates a `ProgressionPlan` owned by a `CombinedCourse` rather than a lone
+  `TeachingContext` — the course delivers one set of lessons, so it owns one
+  plan. Mirrors `create_progression_plan/2`, which stamps `teaching_context_id`
+  instead.
+  """
+  def create_course_plan(%CombinedCourse{} = course, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:combined_course_id, course.id)
+      |> Map.put(:workspace_id, course.workspace_id)
+      |> Map.put_new(:academic_year_id, course.academic_year_id)
+      |> Map.put_new(:title, course.subject)
+
+    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
   def list_progression_plans(%Workspace{id: ws_id}) do
     ProgressionPlan
     |> Ash.Query.filter(workspace_id == ^ws_id)
