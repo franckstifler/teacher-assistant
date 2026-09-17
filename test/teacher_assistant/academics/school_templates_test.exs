@@ -35,4 +35,21 @@ defmodule TeacherAssistant.Academics.SchoolTemplatesTest do
     assert Enum.any?(classes, &(&1.level == "6ème" and is_nil(&1.serie)))
     assert Enum.any?(classes, &(&1.level == "2nde" and &1.serie == "C"))
   end
+
+  test "technical schools (:gtc, :gths) get specialities not séries/streams" do
+    # Francophone technical school
+    %{kind: :specialite, values: values_gtc} = T.streams_for(:gtc, :francophone)
+    assert "ELEQ" in values_gtc and "MACO" in values_gtc
+
+    # Anglophone technical school
+    %{kind: :specialite, values: values_gths} = T.streams_for(:gths, :anglophone)
+    assert "ELEQ" in values_gths and "MACO" in values_gths
+
+    # Both have technical subjects
+    subjects_gtc = T.subjects_for(:gtc, :francophone)
+    subjects_gths = T.subjects_for(:gths, :anglophone)
+
+    assert Enum.any?(subjects_gtc, &(&1.name == "Atelier / Pratique"))
+    assert Enum.any?(subjects_gths, &(&1.name == "Atelier / Pratique"))
+  end
 end

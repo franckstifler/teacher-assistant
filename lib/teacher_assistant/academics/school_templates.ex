@@ -8,6 +8,8 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
 
   @dec &Decimal.new/1
 
+  @technical_types [:cetic, :lycee_technique, :gtc, :gths, :sar_sm]
+
   @general_subjects [
     {"Mathématiques", "MATH", :general, 4},
     {"Français", "FR", :general, 4},
@@ -38,7 +40,7 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
 
   # ---- subjects ------------------------------------------------------------
 
-  def subjects_for(type, _subsystem) when type in [:cetic, :lycee_technique, :gtc, :gths, :sar_sm],
+  def subjects_for(type, _subsystem) when type in @technical_types,
     do: to_subjects(@general_subjects ++ @technical_subjects)
 
   def subjects_for(_type, _subsystem), do: to_subjects(@general_subjects)
@@ -58,16 +60,21 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
 
   # ---- streams (séries / spécialités) -------------------------------------
 
-  def streams_for(_type, :anglophone),
-    do: %{kind: :stream, values: ["Arts", "Science"], levels: @sixth}
-
   def streams_for(type, _) when type in [:cetic, :sar_sm],
     do: %{kind: :specialite, values: @cetic_specialities, levels: @technical_levels}
 
   def streams_for(:lycee_technique, _),
     do: %{kind: :specialite, values: ~w(F1 F2 F3 G1 G2), levels: ~w(2nde 1ère Terminale)}
 
+  def streams_for(type, subsystem) when type in [:gtc, :gths] do
+    levels = levels_for(type, subsystem)
+    %{kind: :specialite, values: @cetic_specialities, levels: levels}
+  end
+
   def streams_for(:ces_ceg, _), do: %{kind: :serie, values: [], levels: []}
+
+  def streams_for(_type, :anglophone),
+    do: %{kind: :stream, values: ["Arts", "Science"], levels: @sixth}
 
   def streams_for(_type, _subsystem),
     do: %{kind: :serie, values: @lycee_series, levels: @lycee_streamed_levels}
