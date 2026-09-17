@@ -1,12 +1,14 @@
 defmodule TeacherAssistant.Academics.SubjectTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics.Subject
+  alias TeacherAssistant.Academics.Subjects
   alias TeacherAssistant.Accounts.Schools
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, school} = Schools.create_school(head, %{name: "Lycée Test"})
+    Enum.each(Subjects.list(school), &Subjects.delete/1)
     %{ws: school}
   end
 

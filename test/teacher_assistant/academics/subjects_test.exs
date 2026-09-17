@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Academics.SubjectsTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    Enum.each(Subjects.list(ws), &Subjects.delete/1)
     %{ws: ws}
   end
 
