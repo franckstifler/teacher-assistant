@@ -1,6 +1,8 @@
 import Config
 config :ash, policies: [show_policy_breakdowns?: true]
 
+config :teacher_assistant, uploads_dir: Path.join(File.cwd!(), "priv/uploads")
+
 # Configure your database
 config :teacher_assistant, TeacherAssistant.Repo,
   username: "postgres",

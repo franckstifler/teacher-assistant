@@ -23,6 +23,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          :year_form,
          to_form(%{"name" => "", "start_date" => "", "end_date" => ""}, as: :year)
        )
+       |> allow_upload(:logo,
+         accept: ~w(.png .jpg .jpeg),
+         max_entries: 1,
+         max_file_size: 2_000_000
+       )
        |> load_years()
        |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)}
     end
@@ -106,6 +111,26 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               />
             </div>
             <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+          </.form>
+
+          <.form
+            for={%{}}
+            id="school-logo-form"
+            phx-submit="save_logo"
+            phx-change="validate_logo"
+            multipart
+            class="space-y-3"
+          >
+            <img
+              :if={@profile.logo_path}
+              src={~p"/school/logo"}
+              alt={gettext("Logo de l'école")}
+              class="h-16 w-16 rounded object-cover"
+            />
+            <.live_file_input upload={@uploads.logo} />
+            <button type="submit" class="btn btn-secondary btn-sm">
+              {gettext("Téléverser le logo")}
+            </button>
           </.form>
         </div>
 
@@ -250,6 +275,50 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, gettext("Impossible de mettre à jour le profil."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("validate_logo", _params, socket), do: {:noreply, socket}
+
+  def handle_event("save_logo", _params, socket) do
+    scope = socket.assigns.scope
+
+    if Permissions.admin?(scope) and socket.assigns.profile do
+      uploads_dir = Application.fetch_env!(:teacher_assistant, :uploads_dir)
+      workspace_id = scope.current_workspace.id
+
+      uploaded =
+        consume_uploaded_entries(socket, :logo, fn %{path: tmp}, entry ->
+          ext = Path.extname(entry.client_name)
+          filename = Ash.UUIDv7.generate() <> ext
+          relative_path = Path.join(["school_logos", workspace_id, filename])
+          dest = Path.join(uploads_dir, relative_path)
+
+          dest |> Path.dirname() |> File.mkdir_p!()
+          File.cp!(tmp, dest)
+
+          {:ok, relative_path}
+        end)
+
+      case uploaded do
+        [relative_path] ->
+          case Schools.update_school_profile(socket.assigns.profile, %{logo_path: relative_path}) do
+            {:ok, _profile} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, gettext("Logo mis à jour."))
+               |> load_profile()}
+
+            {:error, _changeset} ->
+              {:noreply,
+               put_flash(socket, :error, gettext("Impossible de mettre à jour le logo."))}
+          end
+
+        [] ->
+          {:noreply, socket}
       end
     else
       {:noreply, socket}
