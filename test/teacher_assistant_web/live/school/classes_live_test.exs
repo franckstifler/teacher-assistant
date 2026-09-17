@@ -42,6 +42,14 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     assert render(view) =~ "2nde C"
   end
 
+  test "série field offers template suggestions", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/school/classes")
+    # datalist of séries from the lycée template
+    assert html =~ "list=\"serie-options\""
+    assert html =~ "C"
+    assert html =~ "D"
+  end
+
   test "delete is blocked when the class has enrollments", ctx do
     %{conn: conn, school: school, year: year} = ctx
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})

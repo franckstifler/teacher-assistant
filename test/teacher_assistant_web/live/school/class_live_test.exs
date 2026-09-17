@@ -131,32 +131,58 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   end
 
   describe "assignments panel" do
+    test "assign form lists catalog subjects", %{conn: conn, school: school, cg: cg} do
+      # "Musique" is not part of the school's seeded starter catalog, so
+      # creating it here (rather than reusing a seeded subject) proves the
+      # assign form reads live from the catalog.
+      {:ok, _} =
+        TeacherAssistant.Academics.Subjects.create(school, %{
+          name: "Musique",
+          default_coefficient: Decimal.new(4)
+        })
+
+      {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert html =~ "Musique"
+      assert html =~ "name=\"assignment[subject]\""
+    end
+
     test "assigns a teacher to a subject", %{conn: conn, cg: cg, user: head} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
       |> form("#assign-form", %{
-        "assignment" => %{"user_id" => head.id, "subject" => "Maths", "weekly_hours" => "5"}
+        "assignment" => %{
+          "user_id" => head.id,
+          "subject" => "Mathématiques",
+          "weekly_hours" => "5"
+        }
       })
       |> render_submit()
 
       assert [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
-      assert tc.subject == "Maths" and tc.teacher_user_id == head.id
+      assert tc.subject == "Mathématiques" and tc.teacher_user_id == head.id
     end
 
     test "duplicate subject on the class is rejected with a message", ctx do
       %{conn: conn, cg: cg, user: head} = ctx
-      {:ok, _} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+
+      {:ok, _} =
+        TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Mathématiques"})
+
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
       |> form("#assign-form", %{
-        "assignment" => %{"user_id" => head.id, "subject" => "Maths", "weekly_hours" => "4"}
+        "assignment" => %{
+          "user_id" => head.id,
+          "subject" => "Mathématiques",
+          "weekly_hours" => "4"
+        }
       })
       |> render_submit()
 
       assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
-      assert render(view) =~ "Maths"
+      assert render(view) =~ "Mathématiques"
     end
 
     test "unassign removes a data-free assignment; blocked with data", ctx do
@@ -174,22 +200,26 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
     end
 
-    test "assign sets a coefficient", %{conn: conn, cg: cg, user: head} do
+    test "assign defaults the coefficient from the chosen subject's catalog entry", %{
+      conn: conn,
+      cg: cg,
+      user: head
+    } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
       |> form("#assign-form", %{
         "assignment" => %{
           "user_id" => head.id,
-          "subject" => "Maths",
-          "weekly_hours" => "4",
-          "coefficient" => "5"
+          "subject" => "Mathématiques",
+          "weekly_hours" => "4"
         }
       })
       |> render_submit()
 
+      # "Mathématiques" is seeded with default_coefficient 4 (SchoolTemplates).
       [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
-      assert Decimal.equal?(tc.coefficient, Decimal.new(5))
+      assert Decimal.equal?(tc.coefficient, Decimal.new(4))
     end
 
     test "editing a coefficient inline persists it", %{conn: conn, cg: cg, user: head} do

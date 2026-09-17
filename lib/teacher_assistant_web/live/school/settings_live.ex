@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.Subjects
   alias TeacherAssistant.Accounts.{Permissions, Schools}
   alias TeacherAssistant.Accounts.{SchoolTypes, SchoolSubsystems, SchoolSectors, CameroonRegions}
 
@@ -23,6 +24,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          :year_form,
          to_form(%{"name" => "", "start_date" => "", "end_date" => ""}, as: :year)
        )
+       |> assign(:subjects, Subjects.list(scope.current_workspace))
+       |> assign(:subject_form, to_form(%{"name" => "", "category" => "general"}, as: :subject))
        |> allow_upload(:logo,
          accept: ~w(.png .jpg .jpeg),
          max_entries: 1,
@@ -39,102 +42,106 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       <section id="school-settings-page" class="space-y-6">
         <.page_header eyebrow={gettext("École")} title={gettext("Paramètres")} />
 
-        <.form
-          :if={@head?}
-          for={@name_form}
-          id="school-settings"
-          phx-submit="save"
-          class="ta-leaf space-y-3"
-        >
-          <.input field={@name_form[:name]} type="text" label={gettext("Nom de l'école")} />
-          <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-        </.form>
+        <nav class="flex flex-wrap gap-3 border-b border-base-300 pb-3 text-sm">
+          <a href="#profil" class="link link-hover">{gettext("Profil")}</a>
+          <a href="#annee" class="link link-hover">{gettext("Année scolaire")}</a>
+          <a href="#matieres" class="link link-hover">{gettext("Matières")}</a>
+          <a href="#emploi" class="link link-hover">{gettext("Emploi du temps")}</a>
+          <.link navigate={~p"/school/classes"} class="link link-hover">{gettext("Classes")}</.link>
+        </nav>
 
-        <div :if={@admin?}>
-          <.link navigate={~p"/school/periods"} class="link link-primary text-sm">
-            {gettext("Emploi du temps — périodes")}
-          </.link>
-        </div>
-
-        <div :if={@admin? and @profile_form} class="ta-leaf space-y-3">
-          <h2 class="text-lg font-semibold">{gettext("Profil de l'école")}</h2>
-
+        <section id="profil" class="space-y-6">
           <.form
-            for={@profile_form}
-            id="school-profile-form"
-            phx-submit="save_profile"
-            class="space-y-3"
+            :if={@head?}
+            for={@name_form}
+            id="school-settings"
+            phx-submit="save"
+            class="ta-leaf space-y-3"
           >
-            <div class="grid gap-2 sm:grid-cols-2">
-              <.input field={@profile_form[:short_name]} label={gettext("Nom court")} />
-              <.input
-                type="select"
-                field={@profile_form[:school_type]}
-                label={gettext("Type d'établissement")}
-                options={for t <- SchoolTypes.all(), do: {SchoolTypes.label(t), t}}
-                prompt={gettext("Sélectionner un type")}
-              />
-              <.input
-                type="select"
-                field={@profile_form[:subsystem]}
-                label={gettext("Sous-système")}
-                options={for s <- SchoolSubsystems.all(), do: {SchoolSubsystems.label(s), s}}
-                prompt={gettext("Sélectionner un sous-système")}
-              />
-              <.input
-                type="select"
-                field={@profile_form[:sector]}
-                label={gettext("Secteur")}
-                options={for s <- SchoolSectors.all(), do: {SchoolSectors.label(s), s}}
-                prompt={gettext("Sélectionner un secteur")}
-              />
-              <.input
-                type="select"
-                field={@profile_form[:region]}
-                label={gettext("Région")}
-                options={for r <- CameroonRegions.all(), do: {CameroonRegions.label(r), r}}
-                prompt={gettext("Sélectionner une région")}
-              />
-              <.input field={@profile_form[:department]} label={gettext("Département")} />
-              <.input field={@profile_form[:town]} label={gettext("Ville")} />
-              <.input field={@profile_form[:phone]} label={gettext("Téléphone")} />
-              <.input field={@profile_form[:email]} label={gettext("Email")} />
-              <.input field={@profile_form[:address]} label={gettext("Adresse")} />
-              <.input
-                field={@profile_form[:head_name]}
-                label={gettext("Nom du chef d'établissement")}
-              />
-              <.input field={@profile_form[:motto]} label={gettext("Devise")} />
-              <.input
-                field={@profile_form[:registration_number]}
-                label={gettext("Numéro d'autorisation")}
-              />
-            </div>
+            <.input field={@name_form[:name]} type="text" label={gettext("Nom de l'école")} />
             <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
           </.form>
 
-          <.form
-            for={%{}}
-            id="school-logo-form"
-            phx-submit="save_logo"
-            phx-change="validate_logo"
-            multipart
-            class="space-y-3"
-          >
-            <img
-              :if={@profile.logo_path}
-              src={~p"/school/logo"}
-              alt={gettext("Logo de l'école")}
-              class="h-16 w-16 rounded object-cover"
-            />
-            <.live_file_input upload={@uploads.logo} />
-            <button type="submit" class="btn btn-secondary btn-sm">
-              {gettext("Téléverser le logo")}
-            </button>
-          </.form>
-        </div>
+          <div :if={@admin? and @profile_form} class="ta-leaf space-y-3">
+            <h2 class="text-lg font-semibold">{gettext("Profil de l'école")}</h2>
 
-        <div :if={@admin?} class="space-y-4">
+            <.form
+              for={@profile_form}
+              id="school-profile-form"
+              phx-submit="save_profile"
+              class="space-y-3"
+            >
+              <div class="grid gap-2 sm:grid-cols-2">
+                <.input field={@profile_form[:short_name]} label={gettext("Nom court")} />
+                <.input
+                  type="select"
+                  field={@profile_form[:school_type]}
+                  label={gettext("Type d'établissement")}
+                  options={for t <- SchoolTypes.all(), do: {SchoolTypes.label(t), t}}
+                  prompt={gettext("Sélectionner un type")}
+                />
+                <.input
+                  type="select"
+                  field={@profile_form[:subsystem]}
+                  label={gettext("Sous-système")}
+                  options={for s <- SchoolSubsystems.all(), do: {SchoolSubsystems.label(s), s}}
+                  prompt={gettext("Sélectionner un sous-système")}
+                />
+                <.input
+                  type="select"
+                  field={@profile_form[:sector]}
+                  label={gettext("Secteur")}
+                  options={for s <- SchoolSectors.all(), do: {SchoolSectors.label(s), s}}
+                  prompt={gettext("Sélectionner un secteur")}
+                />
+                <.input
+                  type="select"
+                  field={@profile_form[:region]}
+                  label={gettext("Région")}
+                  options={for r <- CameroonRegions.all(), do: {CameroonRegions.label(r), r}}
+                  prompt={gettext("Sélectionner une région")}
+                />
+                <.input field={@profile_form[:department]} label={gettext("Département")} />
+                <.input field={@profile_form[:town]} label={gettext("Ville")} />
+                <.input field={@profile_form[:phone]} label={gettext("Téléphone")} />
+                <.input field={@profile_form[:email]} label={gettext("Email")} />
+                <.input field={@profile_form[:address]} label={gettext("Adresse")} />
+                <.input
+                  field={@profile_form[:head_name]}
+                  label={gettext("Nom du chef d'établissement")}
+                />
+                <.input field={@profile_form[:motto]} label={gettext("Devise")} />
+                <.input
+                  field={@profile_form[:registration_number]}
+                  label={gettext("Numéro d'autorisation")}
+                />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+            </.form>
+
+            <.form
+              for={%{}}
+              id="school-logo-form"
+              phx-submit="save_logo"
+              phx-change="validate_logo"
+              multipart
+              class="space-y-3"
+            >
+              <img
+                :if={@profile.logo_path}
+                src={~p"/school/logo"}
+                alt={gettext("Logo de l'école")}
+                class="h-16 w-16 rounded object-cover"
+              />
+              <.live_file_input upload={@uploads.logo} />
+              <button type="submit" class="btn btn-secondary btn-sm">
+                {gettext("Téléverser le logo")}
+              </button>
+            </.form>
+          </div>
+        </section>
+
+        <section :if={@admin?} id="annee" class="space-y-4">
           <h2 class="text-lg font-semibold">{gettext("Année scolaire")}</h2>
 
           <div class="overflow-x-auto">
@@ -191,7 +198,121 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Create")}</button>
             </.form>
           </div>
-        </div>
+        </section>
+
+        <section :if={@admin?} id="matieres" class="space-y-4">
+          <h2 class="text-lg font-semibold">{gettext("Matières")}</h2>
+
+          <div class="overflow-x-auto">
+            <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>{gettext("Nom")}</th>
+                  <th>{gettext("Coefficient")}</th>
+                  <th>{gettext("Catégorie")}</th>
+                  <th>{gettext("Statut")}</th>
+                  <th><span class="sr-only">{gettext("Actions")}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={s <- @subjects} id={"subject-row-#{s.id}"}>
+                  <td colspan="5">
+                    <.form
+                      for={to_form(subject_form_params(s), as: :subject_edit)}
+                      id={"subject-edit-form-#{s.id}"}
+                      phx-submit="update_subject"
+                      class="grid items-end gap-2 sm:grid-cols-6"
+                    >
+                      <input type="hidden" name="subject_id" value={s.id} />
+                      <.input name="subject_edit[name]" value={s.name} label={gettext("Nom")} />
+                      <.input
+                        name="subject_edit[default_coefficient]"
+                        value={s.default_coefficient}
+                        label={gettext("Coefficient")}
+                      />
+                      <.input
+                        name="subject_edit[category]"
+                        type="select"
+                        value={to_string(s.category)}
+                        options={[
+                          {gettext("Générale"), "general"},
+                          {gettext("Langue"), "language"},
+                          {gettext("Technique"), "technical"}
+                        ]}
+                        label={gettext("Catégorie")}
+                      />
+                      <div>
+                        <span :if={s.active?} class="badge badge-primary">{gettext("Active")}</span>
+                        <span :if={!s.active?} class="badge badge-ghost">
+                          {gettext("Inactive")}
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                          {gettext("Enregistrer")}
+                        </button>
+                        <button
+                          type="button"
+                          id={"subject-toggle-active-#{s.id}"}
+                          class="btn btn-ghost btn-sm"
+                          phx-click="toggle_subject_active"
+                          phx-value-id={s.id}
+                        >
+                          {if s.active?, do: gettext("Désactiver"), else: gettext("Réactiver")}
+                        </button>
+                        <button
+                          type="button"
+                          id={"subject-delete-#{s.id}"}
+                          phx-click="delete_subject"
+                          phx-value-id={s.id}
+                          class="btn btn-ghost btn-sm text-error"
+                        >
+                          <span class="sr-only">{s.name}</span>
+                          {gettext("Supprimer")}
+                        </button>
+                      </div>
+                    </.form>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <.empty_state
+            :if={@subjects == []}
+            icon="hero-book-open"
+            title={gettext("Aucune matière pour l'instant")}
+          />
+
+          <div class="ta-leaf space-y-3">
+            <h3 class="text-sm font-semibold">{gettext("Ajouter une matière")}</h3>
+            <.form
+              for={@subject_form}
+              id="subject-form"
+              phx-submit="create_subject"
+              class="flex flex-wrap items-end gap-2"
+            >
+              <.input field={@subject_form[:name]} label={gettext("Nom de la matière")} />
+              <.input
+                field={@subject_form[:category]}
+                type="select"
+                label={gettext("Catégorie")}
+                options={[
+                  {gettext("Générale"), "general"},
+                  {gettext("Langue"), "language"},
+                  {gettext("Technique"), "technical"}
+                ]}
+              />
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>
+            </.form>
+          </div>
+        </section>
+
+        <section :if={@admin?} id="emploi">
+          <.link navigate={~p"/school/periods"} class="link link-primary text-sm">
+            {gettext("Emploi du temps — périodes")}
+          </.link>
+        </section>
       </section>
     </Layouts.app>
     """
@@ -232,7 +353,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       }
 
       case Academics.create_academic_year(scope.current_workspace, attrs) do
-        {:ok, _year} ->
+        {:ok, year} ->
+          TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
+
           {:noreply,
            socket
            |> put_flash(:info, gettext("Année scolaire créée."))
@@ -257,6 +380,102 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
        socket
        |> put_flash(:info, gettext("Année scolaire activée."))
        |> load_years()}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("create_subject", %{"subject" => params}, socket) do
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    if Permissions.admin?(scope) do
+      case Subjects.create(ws, %{
+             name: String.trim(params["name"] || ""),
+             category: params["category"] || "general"
+           }) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> assign(:subjects, Subjects.list(ws))
+           |> assign(
+             :subject_form,
+             to_form(%{"name" => "", "category" => "general"}, as: :subject)
+           )}
+
+        {:error, :duplicate_name} ->
+          {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Nom de matière invalide."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("delete_subject", %{"id" => id}, socket) do
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    if Permissions.admin?(scope) do
+      subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
+      if subject, do: Subjects.delete(subject)
+      {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("update_subject", %{"subject_id" => id, "subject_edit" => params}, socket) do
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    with true <- Permissions.admin?(scope),
+         %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
+         {:ok, coefficient} <- parse_coefficient(params["default_coefficient"]) do
+      case Subjects.update(subject, %{
+             name: String.trim(params["name"] || ""),
+             default_coefficient: coefficient,
+             category: params["category"]
+           }) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> assign(:subjects, Subjects.list(ws))
+           |> put_flash(:info, gettext("Matière mise à jour."))}
+
+        {:error, :duplicate_name} ->
+          {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle_subject_active", %{"id" => id}, socket) do
+    scope = socket.assigns.scope
+    ws = scope.current_workspace
+
+    with true <- Permissions.admin?(scope),
+         %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
+      result =
+        if subject.active?,
+          do: Subjects.deactivate(subject),
+          else: Subjects.update(subject, %{active?: true})
+
+      case result do
+        {:ok, _} ->
+          {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
+      end
     else
       _ -> {:noreply, socket}
     end
@@ -373,4 +592,24 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       _ -> nil
     end
   end
+
+  defp subject_form_params(subject) do
+    %{
+      "name" => subject.name,
+      "default_coefficient" => Decimal.to_string(subject.default_coefficient),
+      "category" => to_string(subject.category)
+    }
+  end
+
+  # Mirrors TeacherAssistant.Academics.Assignments.parse_coefficient/1 (private there).
+  defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
+
+  defp parse_coefficient(value) when is_binary(value) do
+    case Decimal.parse(String.trim(value)) do
+      {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
+      _ -> :error
+    end
+  end
+
+  defp parse_coefficient(_), do: :error
 end

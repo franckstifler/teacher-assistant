@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Enrollments}
+  alias TeacherAssistant.Academics.{Assignments, Enrollments, Subjects}
   alias TeacherAssistant.Accounts.{Permissions, Schools}
 
   def mount(%{"id" => id}, _session, socket) do
@@ -11,6 +11,11 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with :school <- scope.current_workspace_type,
          {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
+      subject_options =
+        scope.current_workspace
+        |> Subjects.list()
+        |> Enum.filter(& &1.active?)
+
       {:ok,
        socket
        |> assign(
@@ -24,7 +29,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          fees_link?:
            Permissions.fees_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          search_results: [],
-         q: ""
+         q: "",
+         subject_options: subject_options
        )
        |> load_roster()}
     else
@@ -315,16 +321,14 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           />
 
           <form :if={@admin?} id="assign-form" phx-submit="assign" class="space-y-2">
-            <div class="grid gap-2 sm:grid-cols-5">
+            <div class="grid gap-2 sm:grid-cols-4">
               <select name="assignment[user_id]" class="select select-bordered select-sm">
                 <option :for={m <- @members} value={m.user_id}>{m.user.email}</option>
               </select>
-              <input
-                type="text"
-                name="assignment[subject]"
-                placeholder={gettext("Matière")}
-                class="input input-bordered input-sm"
-              />
+              <select name="assignment[subject]" class="select select-bordered select-sm">
+                <option value="">{gettext("Choisir une matière")}</option>
+                <option :for={s <- @subject_options} value={s.name}>{s.name}</option>
+              </select>
               <input
                 type="number"
                 name="assignment[weekly_hours]"
@@ -332,15 +336,6 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 min="1"
                 max="40"
                 placeholder={gettext("H/semaine")}
-                class="input input-bordered input-sm"
-              />
-              <input
-                type="number"
-                name="assignment[coefficient]"
-                value="1"
-                min="0"
-                step="0.5"
-                placeholder={gettext("Coefficient")}
                 class="input input-bordered input-sm"
               />
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Affecter")}</button>
@@ -447,10 +442,18 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("assign", %{"assignment" => params}, socket) do
     with true <- socket.assigns.admin?,
          %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == params["user_id"])) do
+      coef =
+        socket.assigns.subject_options
+        |> Enum.find(&(&1.name == params["subject"]))
+        |> case do
+          nil -> Decimal.new(1)
+          s -> s.default_coefficient
+        end
+
       case Assignments.assign(socket.assigns.cg, member.user, %{
              subject: params["subject"],
              weekly_hours: parse_hours(params["weekly_hours"]),
-             coefficient: parse_coef(params["coefficient"])
+             coefficient: coef
            }) do
         {:ok, _} ->
           {:noreply, socket |> put_flash(:info, gettext("Teacher assigned.")) |> load_roster()}
@@ -546,13 +549,6 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     case Integer.parse(to_string(v)) do
       {n, _} when n > 0 and n <= 40 -> n
       _ -> 4
-    end
-  end
-
-  defp parse_coef(value) do
-    case Decimal.parse(String.trim(to_string(value))) do
-      {dec, ""} -> if Decimal.positive?(dec), do: dec, else: Decimal.new(1)
-      _ -> Decimal.new(1)
     end
   end
 

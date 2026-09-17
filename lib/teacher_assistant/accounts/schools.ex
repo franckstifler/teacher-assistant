@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Accounts.Schools do
   require Ash.Query
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Workspace
+  alias TeacherAssistant.Academics.{SchoolTemplates, Subject, Workspace}
   alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership, SchoolProfile, User}
   alias TeacherAssistant.Accounts.User.Senders.SendSchoolInvitationEmail
   alias TeacherAssistant.Repo
@@ -60,7 +60,13 @@ defmodule TeacherAssistant.Accounts.Schools do
                  user_id: user.id,
                  roles: [:head]
                })
-               |> Ash.create(authorize?: false) do
+               |> Ash.create(authorize?: false),
+             :ok <-
+               seed_catalog(
+                 school.id,
+                 Map.get(profile_attrs, :school_type),
+                 Map.get(profile_attrs, :subsystem)
+               ) do
           school
         else
           {:error, reason} -> Repo.rollback(reason)
@@ -284,4 +290,20 @@ defmodule TeacherAssistant.Accounts.Schools do
   end
 
   defp gen_token, do: 24 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
+
+  defp seed_catalog(workspace_id, type, subsystem) do
+    SchoolTemplates.subjects_for(type, subsystem)
+    |> Enum.with_index()
+    |> Enum.reduce_while(:ok, fn {attrs, i}, :ok ->
+      params =
+        attrs
+        |> Map.put(:workspace_id, workspace_id)
+        |> Map.put(:position, i)
+
+      case Subject |> Ash.Changeset.for_create(:create, params) |> Ash.create(authorize?: false) do
+        {:ok, _} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
 end
