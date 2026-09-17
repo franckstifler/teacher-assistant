@@ -232,7 +232,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       }
 
       case Academics.create_academic_year(scope.current_workspace, attrs) do
-        {:ok, _year} ->
+        {:ok, year} ->
+          TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
+
           {:noreply,
            socket
            |> put_flash(:info, gettext("Année scolaire créée."))
