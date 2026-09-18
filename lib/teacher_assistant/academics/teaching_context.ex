@@ -23,6 +23,10 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         name: "teaching_contexts_unique_school_assignment",
         message: "this class already has a teacher for this subject"
     end
+
+    references do
+      reference :combined_course, on_delete: :nilify
+    end
   end
 
   actions do
@@ -55,7 +59,8 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :target_module_count,
         :target_lesson_count,
         :class_group_id,
-        :teacher_user_id
+        :teacher_user_id,
+        :combined_course_id
       ]
     ]
   end
@@ -87,6 +92,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     attribute :annual_hours, :decimal, allow_nil?: true, public?: true
     attribute :target_module_count, :integer, allow_nil?: true, public?: true
     attribute :target_lesson_count, :integer, allow_nil?: true, public?: true
+    attribute :combined_course_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end
@@ -112,6 +118,13 @@ defmodule TeacherAssistant.Academics.TeachingContext do
 
     belongs_to :teacher, TeacherAssistant.Accounts.User do
       source_attribute :teacher_user_id
+      allow_nil? true
+      public? true
+    end
+
+    belongs_to :combined_course, TeacherAssistant.Academics.CombinedCourse do
+      source_attribute :combined_course_id
+      define_attribute? false
       allow_nil? true
       public? true
     end

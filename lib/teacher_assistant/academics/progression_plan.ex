@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
   postgres do
     table "progression_plans"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :combined_course, on_delete: :nilify
+    end
   end
 
   actions do
@@ -19,6 +23,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
         :status,
         :template,
         :teaching_context_id,
+        :combined_course_id,
         :academic_year_id,
         :workspace_id
       ],
@@ -32,6 +37,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     end
   end
 
+  validations do
+    validate TeacherAssistant.Academics.ProgressionPlan.ExactlyOneOwner, on: [:create]
+  end
+
   attributes do
     uuid_v7_primary_key :id
     attribute :title, :string, allow_nil?: false, public?: true
@@ -42,13 +51,21 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       public?: true
 
     attribute :template, :boolean, allow_nil?: false, default: false, public?: true
+    attribute :combined_course_id, :uuid, allow_nil?: true, public?: true
     timestamps()
   end
 
   relationships do
     belongs_to :teaching_context, TeacherAssistant.Academics.TeachingContext do
       source_attribute :teaching_context_id
-      allow_nil? false
+      allow_nil? true
+      public? true
+    end
+
+    belongs_to :combined_course, TeacherAssistant.Academics.CombinedCourse do
+      source_attribute :combined_course_id
+      define_attribute? false
+      allow_nil? true
       public? true
     end
 

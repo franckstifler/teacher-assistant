@@ -9,8 +9,13 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
     socket =
       if year do
         ws = scope.current_workspace
-        plans = Academics.list_progression_plans(ws)
-        kpis = Enum.map(plans, fn p -> %{plan: p, coverage: Academics.coverage_for_plan(p)} end)
+        plans = Academics.list_unit_plans(ws)
+
+        kpis =
+          Enum.map(plans, fn p ->
+            %{plan: p, coverage: Academics.coverage_for_plan(p), context_id: link_context_id(p)}
+          end)
+
         contexts_count = length(Academics.list_teaching_contexts(ws, year))
         current_seq = Academics.current_sequence(year, Date.utc_today())
 
@@ -28,6 +33,27 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
 
     {:ok, socket}
   end
+
+  # KPI action links (Marks/Roster/Results) navigate through a teaching
+  # context. A solo plan already has one; a combined-course plan doesn't
+  # (`teaching_context_id` is nil), so fall back to one of the course's
+  # member contexts.
+  defp link_context_id(%{teaching_context_id: id}) when not is_nil(id), do: id
+
+  defp link_context_id(%{combined_course_id: course_id}) when not is_nil(course_id) do
+    case Academics.get_course(course_id) do
+      {:ok, course} ->
+        case Academics.contexts_of_course(course) do
+          [%{id: id} | _] -> id
+          [] -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp link_context_id(_), do: nil
 
   defp overall_rate([]), do: nil
 
@@ -107,21 +133,24 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
                   <.icon name="hero-arrow-right" class="size-3.5" />
                 </.link>
                 <.link
-                  navigate={~p"/teacher/contexts/#{kpi.plan.teaching_context_id}/marks"}
+                  :if={kpi.context_id}
+                  navigate={~p"/teacher/contexts/#{kpi.context_id}/marks"}
                   class="btn btn-outline btn-xs gap-1"
                 >
                   <.icon name="hero-pencil-square" class="size-3" />
                   {gettext("Marks")}
                 </.link>
                 <.link
-                  navigate={~p"/teacher/contexts/#{kpi.plan.teaching_context_id}/marks/summary"}
+                  :if={kpi.context_id}
+                  navigate={~p"/teacher/contexts/#{kpi.context_id}/marks/summary"}
                   class="btn btn-ghost btn-xs"
                 >
                   {gettext("Results")}
                 </.link>
                 <.link
+                  :if={kpi.context_id}
                   id={"kpi-roster-#{kpi.plan.id}"}
-                  navigate={~p"/teacher/contexts/#{kpi.plan.teaching_context_id}/roster"}
+                  navigate={~p"/teacher/contexts/#{kpi.context_id}/roster"}
                   class="btn btn-ghost btn-xs"
                 >
                   {gettext("Roster")}

@@ -98,6 +98,49 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
     end
   end
 
+  describe "combinable_siblings (P2 combined courses)" do
+    setup ctx do
+      %{school: school, year: year} = ctx
+      {:ok, cg2} = Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+      %{cg2: cg2}
+    end
+
+    test "finds another class with the same teacher and subject", ctx do
+      %{head: head, cg: cg, cg2: cg2} = ctx
+      {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = Assignments.assign(cg2, head, %{subject: "Maths"})
+
+      assert [%{id: id}] = Assignments.combinable_siblings(tc)
+      assert id == tc2.id
+    end
+
+    test "excludes a different subject or a different teacher", ctx do
+      %{head: head, school: school, cg: cg, cg2: cg2} = ctx
+      other = TeacherFixtures.user_fixture()
+      {:ok, _} = add_active_member(school, head, other)
+
+      {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, _} = Assignments.assign(cg2, head, %{subject: "Anglais"})
+      {:ok, _} = Assignments.assign(cg2, other, %{subject: "Maths"})
+
+      assert Assignments.combinable_siblings(tc) == []
+    end
+
+    test "excludes a sibling already part of a combined course", ctx do
+      %{head: head, cg: cg, cg2: cg2} = ctx
+      {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+
+      {:ok, cg3} =
+        Academics.create_class_group(ctx.school, ctx.year, %{label: "6e C", level: "6ème"})
+
+      {:ok, tc3} = Assignments.assign(cg3, head, %{subject: "Maths"})
+
+      assert Assignments.combinable_siblings(tc3) == []
+    end
+  end
+
   # Creates an active membership for `user` in `school` via the invitation flow.
   defp add_active_member(school, head, user) do
     {:ok, inv} =

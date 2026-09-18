@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Permissions
 
@@ -41,42 +42,88 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
 
       case teaching_context_id do
         "" ->
-          :ok = Timetables.clear_slot(socket.assigns.cg, day_atom, period_id)
-          {:noreply, load_timetable(socket)}
+          clear_cell(socket, day_atom, period_id)
 
         _ ->
           case Enum.find(socket.assigns.assignments, &(&1.id == teaching_context_id)) do
             nil ->
               {:noreply, socket}
 
-            _assignment ->
-              case Timetables.place_slot(socket.assigns.cg, %{
-                     day: day_atom,
-                     period_id: period_id,
-                     teaching_context_id: teaching_context_id
-                   }) do
-                {:ok, _slot} ->
-                  {:noreply, load_timetable(socket)}
-
-                {:error, {:teacher_clash, class_label}} ->
-                  {:noreply,
-                   socket
-                   |> put_flash(
-                     :error,
-                     gettext("This teacher already has a class in %{class} at this period.",
-                       class: class_label
-                     )
-                   )
-                   |> load_timetable()}
-
-                {:error, :invalid} ->
-                  {:noreply, socket}
-              end
+            assignment ->
+              place_cell(socket, assignment, day_atom, period_id)
           end
       end
     else
       _ -> {:noreply, socket}
     end
+  end
+
+  # A member of a `CombinedCourse` places the same delivery into EVERY member
+  # class's cell at once (`Timetables.place_combined_slot/3`) — a combined
+  # course is deliberately one teacher in several classes at once, so this is
+  # not a clash. A solo assignment keeps placing only this class's cell,
+  # exactly as before.
+  defp place_cell(socket, %{combined_course: %CombinedCourse{} = course}, day_atom, period_id) do
+    case Timetables.place_combined_slot(course, day_atom, period_id) do
+      {:ok, _slots} ->
+        {:noreply, load_timetable(socket)}
+
+      {:error, {:teacher_clash, class_label}} ->
+        {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
+
+      {:error, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp place_cell(socket, assignment, day_atom, period_id) do
+    case Timetables.place_slot(socket.assigns.cg, %{
+           day: day_atom,
+           period_id: period_id,
+           teaching_context_id: assignment.id
+         }) do
+      {:ok, _slot} ->
+        {:noreply, load_timetable(socket)}
+
+      {:error, {:teacher_clash, class_label}} ->
+        {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
+
+      {:error, :invalid} ->
+        {:noreply, socket}
+    end
+  end
+
+  # Clearing a cell that holds a combined slot clears it for every member
+  # class (`Timetables.clear_combined_slot/3`); otherwise it clears only this
+  # class's cell, exactly as before.
+  defp clear_cell(socket, day_atom, period_id) do
+    case combined_course_at(socket.assigns.assignments, socket.assigns.slots, day_atom, period_id) do
+      %CombinedCourse{} = course ->
+        :ok = Timetables.clear_combined_slot(course, day_atom, period_id)
+
+      nil ->
+        :ok = Timetables.clear_slot(socket.assigns.cg, day_atom, period_id)
+    end
+
+    {:noreply, load_timetable(socket)}
+  end
+
+  defp combined_course_at(assignments, slots, day_atom, period_id) do
+    with %{teaching_context_id: teaching_context_id} <- slots[{day_atom, period_id}],
+         %{combined_course: %CombinedCourse{} = course} <-
+           Enum.find(assignments, &(&1.id == teaching_context_id)) do
+      course
+    else
+      _ -> nil
+    end
+  end
+
+  defp flash_clash(socket, class_label) do
+    put_flash(
+      socket,
+      :error,
+      gettext("This teacher already has a class in %{class} at this period.", class: class_label)
+    )
   end
 
   defp day_atom(day) when day in ~w(monday tuesday wednesday thursday friday saturday),
@@ -148,7 +195,9 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                             value={a.id}
                             selected={slot && slot.teaching_context_id == a.id}
                           >
-                            {a.subject} — {a.teacher.email}
+                            {a.subject} — {a.teacher.email}{if a.combined_course,
+                              do: " (#{gettext("combiné")})",
+                              else: ""}
                           </option>
                         </select>
                       </form>

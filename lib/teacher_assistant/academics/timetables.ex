@@ -3,14 +3,17 @@ defmodule TeacherAssistant.Academics.Timetables do
 
   require Ash.Query
 
+  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Accounts.User
+  alias TeacherAssistant.Repo
 
   def list_periods(%Workspace{id: ws_id}) do
     Period
@@ -68,15 +71,26 @@ defmodule TeacherAssistant.Academics.Timetables do
   context's teacher in another class at the same (workspace, day, period)
   with `{:error, {:teacher_clash, other_class_label}}`. Otherwise upserts the
   cell (replacing any current occupant) and returns `{:ok, slot}`.
+
+  An optional `:exempt_class_group_ids` key lists other classes whose slots
+  should NOT count as a clash against this placement — used by
+  `place_combined_slot/3` so a combined course's sibling classes (the same
+  teacher, deliberately, at the same cell) don't trip the clash guard
+  against each other while a genuine clash with any other class still is.
   """
-  def place_slot(%ClassGroup{} = cg, %{
-        day: day,
-        period_id: period_id,
-        teaching_context_id: teaching_context_id
-      }) do
+  def place_slot(
+        %ClassGroup{} = cg,
+        %{
+          day: day,
+          period_id: period_id,
+          teaching_context_id: teaching_context_id
+        } = attrs
+      ) do
+    exempt_class_group_ids = Map.get(attrs, :exempt_class_group_ids, [])
+
     with {:ok, %TeachingContext{class_group_id: cg_id} = tc} when cg_id == cg.id <-
            Ash.get(TeachingContext, teaching_context_id, authorize?: false) do
-      case teacher_clash(cg, day, period_id, tc.teacher_user_id) do
+      case teacher_clash(cg, day, period_id, tc.teacher_user_id, exempt_class_group_ids) do
         {:clash, class_label} ->
           {:error, {:teacher_clash, class_label}}
 
@@ -97,6 +111,75 @@ defmodule TeacherAssistant.Academics.Timetables do
     |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
     |> Ash.read!(authorize?: false)
     |> Enum.each(&Ash.destroy!(&1, authorize?: false))
+
+    :ok
+  end
+
+  @doc """
+  Places a `TimetableSlot` for EVERY member class of a `CombinedCourse` at
+  the same `day`/`period_id`, each referencing that class's own
+  teaching_context — the combined course occupies one logical cell across
+  its classes. A combined course is deliberately the same teacher teaching
+  several classes at once, so the member classes are exempted from the
+  teacher-clash guard against each other (see `place_slot/2`'s
+  `:exempt_class_group_ids`); a genuine clash against any class OUTSIDE the
+  course is still rejected with `{:error, {:teacher_clash, class_label}}`.
+
+  All member slots are placed inside one transaction: on any failure (a
+  clash, or an inconsistent context), nothing is persisted for any member
+  class. Returns `{:ok, [slot, ...]}` (one per member class) or `{:error,
+  reason}`.
+  """
+  def place_combined_slot(%CombinedCourse{} = course, day, period_id) do
+    contexts =
+      course
+      |> Academics.contexts_of_course()
+      |> Ash.load!(:class_group, authorize?: false)
+
+    case contexts do
+      [] ->
+        {:error, :invalid}
+
+      _ ->
+        member_class_ids = Enum.map(contexts, & &1.class_group_id)
+
+        result =
+          Repo.transaction(fn ->
+            contexts
+            |> Enum.reduce_while([], fn tc, acc ->
+              case place_slot(tc.class_group, %{
+                     day: day,
+                     period_id: period_id,
+                     teaching_context_id: tc.id,
+                     exempt_class_group_ids: member_class_ids
+                   }) do
+                {:ok, slot} -> {:cont, [slot | acc]}
+                {:error, reason} -> {:halt, {:error, reason}}
+              end
+            end)
+            |> case do
+              {:error, reason} -> Repo.rollback(reason)
+              slots -> Enum.reverse(slots)
+            end
+          end)
+
+        case result do
+          {:ok, slots} -> {:ok, slots}
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
+  @doc """
+  Clears the (day, period) cell for EVERY member class of a `CombinedCourse`.
+  Mirrors `clear_slot/3` per member class. Always returns `:ok` (idempotent —
+  clearing an already-empty cell is a no-op).
+  """
+  def clear_combined_slot(%CombinedCourse{} = course, day, period_id) do
+    course
+    |> Academics.contexts_of_course()
+    |> Ash.load!(:class_group, authorize?: false)
+    |> Enum.each(fn tc -> clear_slot(tc.class_group, day, period_id) end)
 
     :ok
   end
@@ -179,11 +262,19 @@ defmodule TeacherAssistant.Academics.Timetables do
     if class_label, do: Map.put(base, :class_label, class_label), else: base
   end
 
-  defp teacher_clash(%ClassGroup{id: cg_id, workspace_id: ws_id}, day, period_id, teacher_user_id) do
+  defp teacher_clash(
+         %ClassGroup{id: cg_id, workspace_id: ws_id},
+         day,
+         period_id,
+         teacher_user_id,
+         exempt_class_group_ids
+       ) do
+    excluded_ids = [cg_id | exempt_class_group_ids]
+
     TimetableSlot
     |> Ash.Query.filter(
       workspace_id == ^ws_id and day == ^day and period_id == ^period_id and
-        class_group_id != ^cg_id
+        class_group_id not in ^excluded_ids
     )
     |> Ash.Query.load(:teaching_context)
     |> Ash.read!(authorize?: false)

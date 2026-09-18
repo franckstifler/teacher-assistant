@@ -8,6 +8,8 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Subject
   alias TeacherAssistant.Academics.Student
@@ -38,6 +40,7 @@ defmodule TeacherAssistant.Academics do
     resource Term
     resource Sequence
     resource TeachingContext
+    resource CombinedCourse
     resource ClassGroup
     resource Subject
     resource Student
@@ -276,6 +279,53 @@ defmodule TeacherAssistant.Academics do
   end
 
   @doc """
+  Scope-aware teaching-*unit* listing for the class switcher: like
+  `list_contexts_for_scope/1`, but contexts belonging to the same combined
+  course collapse into a single `{:course, %CombinedCourse{}}` entry
+  (via `Courses.list_units_for_user/3`); everything else stays
+  `{:solo, %TeachingContext{}}`. Returns `[]` when there is no current
+  academic year.
+  """
+  def list_units_for_scope(%TeacherAssistant.Scope{
+        current_workspace: ws,
+        current_academic_year: year,
+        current_workspace_type: type,
+        current_user: user
+      }) do
+    cond do
+      is_nil(ws) or is_nil(year) -> []
+      type == :school -> Courses.list_units_for_user(ws, year, user)
+      true -> Enum.map(list_teaching_contexts(ws, year), &{:solo, &1})
+    end
+  end
+
+  @doc """
+  Display label for a teaching unit as shown in the class switcher: the
+  course label for `{:course, _}`, or the usual context label for
+  `{:solo, _}`.
+  """
+  def unit_label({:course, %CombinedCourse{label: label}}), do: label
+  def unit_label({:solo, %TeachingContext{} = ctx}), do: teaching_context_label(ctx)
+
+  @doc """
+  The context id to select when a teaching unit's switcher row is picked —
+  a representative member context for `{:course, _}` (so the existing
+  `/teacher/select-context/:id` route still resolves it), or the context's
+  own id for `{:solo, _}`.
+  """
+  def unit_select_id({:course, %CombinedCourse{} = course}) do
+    course |> contexts_of_course() |> List.first() |> Map.fetch!(:id)
+  end
+
+  def unit_select_id({:solo, %TeachingContext{id: id}}), do: id
+
+  defp teaching_context_label(%{subject: subject, class_group: %{label: label}})
+       when is_binary(label),
+       do: "#{subject} — #{label}"
+
+  defp teaching_context_label(%{level: level, subject: subject}), do: "#{level} · #{subject}"
+
+  @doc """
   Resolves the active TeachingContext for the shell's class switcher.
   Owner + active-year scoped: only the workspace's own contexts are searched, so a
   foreign/invalid/stale id simply falls back to the first (alphabetical) context.
@@ -298,11 +348,66 @@ defmodule TeacherAssistant.Academics do
     ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
+  @doc """
+  Creates a `ProgressionPlan` owned by a `CombinedCourse` rather than a lone
+  `TeachingContext` — the course delivers one set of lessons, so it owns one
+  plan. Mirrors `create_progression_plan/2`, which stamps `teaching_context_id`
+  instead.
+  """
+  def create_course_plan(%CombinedCourse{} = course, attrs) do
+    attrs =
+      attrs
+      |> Map.put(:combined_course_id, course.id)
+      |> Map.put(:workspace_id, course.workspace_id)
+      |> Map.put_new(:academic_year_id, course.academic_year_id)
+      |> Map.put_new(:title, course.subject)
+
+    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+  end
+
+  def get_course(id), do: Ash.get(CombinedCourse, id, authorize?: false)
+
+  @doc """
+  Lists the `TeachingContext`s currently linked to a `CombinedCourse`.
+  """
+  def contexts_of_course(%CombinedCourse{id: id}) do
+    TeachingContext
+    |> Ash.Query.filter(combined_course_id == ^id)
+    |> Ash.read!(authorize?: false)
+  end
+
+  @doc """
+  Every plan in the workspace, raw. Teacher-facing call sites (dashboard,
+  teaching log, coverage lists, ...) should use `list_unit_plans/1` instead
+  — this includes a combined-course member context's stale pre-combine
+  plan alongside the course's own, which double-counts/double-lists it.
+  """
   def list_progression_plans(%Workspace{id: ws_id}) do
     ProgressionPlan
     |> Ash.Query.filter(workspace_id == ^ws_id)
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.read!(authorize?: false)
+  end
+
+  @doc """
+  `list_progression_plans/1` filtered down to one plan per teaching *unit*:
+  course plans, plus the plans of contexts that are NOT part of a combined
+  course. Drops a member context's stale solo plan (created before the
+  context was combined) so a `CombinedCourse` surfaces exactly one coverage
+  KPI instead of one per member class.
+  """
+  def list_unit_plans(%Workspace{id: ws_id} = ws) do
+    combined_context_ids =
+      TeachingContext
+      |> Ash.Query.filter(workspace_id == ^ws_id and not is_nil(combined_course_id))
+      |> Ash.read!(authorize?: false)
+      |> MapSet.new(& &1.id)
+
+    ws
+    |> list_progression_plans()
+    |> Enum.reject(fn plan ->
+      plan.teaching_context_id && MapSet.member?(combined_context_ids, plan.teaching_context_id)
+    end)
   end
 
   def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
@@ -538,6 +643,142 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
+  @doc """
+  The union roster of a `CombinedCourse`: every student of every member
+  class, grouped by class (each group carries its own `class_group` and
+  `teaching_context`, so a mark can always be routed back to the right
+  context). Marks stay per-student, per-context — this is purely a read
+  shape for the combined marks page; it never merges rosters across
+  classes into one flat list.
+  """
+  def list_union_students(%CombinedCourse{} = course) do
+    course
+    |> contexts_of_course()
+    |> Ash.load!(:class_group, authorize?: false)
+    |> Enum.reject(&is_nil(&1.class_group))
+    |> Enum.map(fn ctx ->
+      %{
+        teaching_context: ctx,
+        class_group: ctx.class_group,
+        students: list_students(ctx.class_group)
+      }
+    end)
+    |> Enum.sort_by(&String.downcase(&1.class_group.label))
+  end
+
+  @doc """
+  Per-séquence assessments for a `CombinedCourse`: one underlying
+  `Assessment` row per member `TeachingContext` (a student's mark always
+  lands on their own class's context — `Mark`'s identity and the bulletin
+  read path never change), grouped by label into one teacher-facing
+  "assessment" column per séquence. If a member context is missing an
+  assessment for a label another member already has (e.g. a class joined
+  the course after assessments were created), creates the missing one so
+  every member class stays in sync for that séquence.
+
+  Returns `[%{id, label, weight, max_score, by_class_group_id}]` — `id` is
+  a stable identifier for that logical column (the assessment id of the
+  course's first member class, by class label) used to select/route it;
+  `by_class_group_id` maps each member `class_group_id` to that class's own
+  `Assessment`, which is what `upsert_marks/2` actually writes to.
+  """
+  def combined_assessments_for(%CombinedCourse{} = course, %Sequence{} = seq) do
+    contexts =
+      course
+      |> contexts_of_course()
+      |> Ash.load!(:class_group, authorize?: false)
+      |> Enum.reject(&is_nil(&1.class_group))
+      |> Enum.sort_by(&String.downcase(&1.class_group.label))
+
+    case contexts do
+      [] ->
+        []
+
+      [primary | rest] ->
+        by_context_id = Map.new(contexts, fn ctx -> {ctx.id, list_assessments(ctx, seq)} end)
+        primary_labels = Enum.map(by_context_id[primary.id], & &1.label)
+
+        extra_labels =
+          rest
+          |> Enum.flat_map(&by_context_id[&1.id])
+          |> Enum.map(& &1.label)
+          |> Enum.uniq()
+          |> Enum.reject(&(&1 in primary_labels))
+
+        (primary_labels ++ extra_labels)
+        |> Enum.map(&build_combined_entry(&1, contexts, primary, by_context_id, seq))
+    end
+  end
+
+  defp build_combined_entry(label, contexts, primary, by_context_id, seq) do
+    by_class_group_id =
+      Map.new(contexts, fn ctx ->
+        assessment =
+          Enum.find(by_context_id[ctx.id], &(&1.label == label)) ||
+            backfill_assessment!(ctx, seq, label)
+
+        {ctx.class_group_id, assessment}
+      end)
+
+    primary_assessment = Map.fetch!(by_class_group_id, primary.class_group_id)
+
+    %{
+      id: primary_assessment.id,
+      label: label,
+      weight: primary_assessment.weight,
+      max_score: primary_assessment.max_score,
+      by_class_group_id: by_class_group_id
+    }
+  end
+
+  defp backfill_assessment!(ctx, seq, label) do
+    case create_assessment(ctx, seq, %{label: label}) do
+      {:ok, a} ->
+        a
+
+      {:error, error} ->
+        raise "could not sync combined assessment across member classes: #{inspect(error)}"
+    end
+  end
+
+  @doc """
+  Creates one `Assessment{label, sequence}` per member context of a
+  `CombinedCourse`, all inside one transaction — the create path behind
+  `combined_assessments_for/2`'s "same assessment across every member
+  class" guarantee. Returns `{:ok, [%Assessment{}, ...]}` (one per member
+  context) or rolls back and returns the first `{:error, reason}`.
+
+  Skips a member context with no `class_group` yet, same as
+  `combined_assessments_for/2` and `list_union_students/1` — a
+  `class_group_id`-keyed map can never reference such a context anyway, so
+  creating an assessment against it would only orphan a row no routing
+  path can reach.
+  """
+  def create_combined_assessment(%CombinedCourse{} = course, %Sequence{} = seq, attrs) do
+    label = Map.get(attrs, :label) || Map.get(attrs, "label")
+
+    contexts =
+      course
+      |> contexts_of_course()
+      |> Ash.load!(:class_group, authorize?: false)
+      |> Enum.reject(&is_nil(&1.class_group))
+
+    result =
+      Repo.transaction(fn ->
+        Enum.map(contexts, fn ctx ->
+          case create_assessment(ctx, seq, %{label: label}) do
+            {:ok, a} -> a
+            {:error, error} -> Repo.rollback(error)
+          end
+        end)
+      end)
+
+    case result do
+      {:ok, assessments} -> {:ok, assessments}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   def fetch_owned_assessment(id, %Workspace{} = ws) do
     case Ash.get(Assessment, id, authorize?: false) do
       {:ok, assessment} ->
@@ -567,6 +808,43 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
+  @doc """
+  Like `upsert_marks/2`, but atomic across several assessments at once —
+  the combined-marks save path. `assessment_entries` is
+  `[{%Assessment{}, [entry]}]`, one pair per member class. Every pair's
+  entries are range-checked against *their own* assessment's `max_score`
+  BEFORE anything is written, and every write happens inside a single
+  transaction, so a combined course's per-class saves are all-or-nothing:
+  one class's out-of-range score can never leave another class's valid
+  score persisted (no partial commit across classes).
+  """
+  def upsert_marks_all_or_nothing(assessment_entries) do
+    out_of_range? =
+      Enum.any?(assessment_entries, fn {%Assessment{max_score: max_score}, entries} ->
+        not Enum.all?(entries, &score_in_range?(&1, max_score))
+      end)
+
+    if out_of_range? do
+      {:error, :out_of_range}
+    else
+      result =
+        Repo.transaction(fn ->
+          Enum.flat_map(assessment_entries, fn {%Assessment{id: assessment_id}, entries} ->
+            persist_marks_notifications!(assessment_id, entries)
+          end)
+        end)
+
+      case result do
+        {:ok, notifications} ->
+          Ash.Notifier.notify(notifications)
+          :ok
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
   # A mark is valid when absent (nil) or within 0..max_score inclusive. Callers
   # pass a `%Decimal{}` or nil; anything else is left to the resource layer.
   defp score_in_range?(entry, max_score) do
@@ -583,40 +861,7 @@ defmodule TeacherAssistant.Academics do
   end
 
   defp persist_marks(assessment_id, entries) do
-    result =
-      Repo.transaction(fn ->
-        existing =
-          Mark
-          |> Ash.Query.filter(assessment_id == ^assessment_id)
-          |> Ash.read!(authorize?: false)
-          |> Map.new(fn m -> {m.student_id, m} end)
-
-        Enum.flat_map(entries, fn %{student_id: student_id} = entry ->
-          score = Map.get(entry, :score)
-
-          case Map.get(existing, student_id) do
-            nil ->
-              case Mark
-                   |> Ash.Changeset.for_create(:create, %{
-                     assessment_id: assessment_id,
-                     student_id: student_id,
-                     score: score
-                   })
-                   |> Ash.create(authorize?: false, return_notifications?: true) do
-                {:ok, _mark, notifs} -> notifs
-                {:error, reason} -> Repo.rollback(reason)
-              end
-
-            %Mark{} = mark ->
-              case mark
-                   |> Ash.Changeset.for_update(:update, %{score: score})
-                   |> Ash.update(authorize?: false, return_notifications?: true) do
-                {:ok, _mark, notifs} -> notifs
-                {:error, reason} -> Repo.rollback(reason)
-              end
-          end
-        end)
-      end)
+    result = Repo.transaction(fn -> persist_marks_notifications!(assessment_id, entries) end)
 
     case result do
       {:ok, notifications} ->
@@ -626,6 +871,44 @@ defmodule TeacherAssistant.Academics do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # Core create/update loop, deliberately without its own `Repo.transaction` —
+  # `persist_marks/2` wraps a single call in one, `upsert_marks_all_or_nothing/1`
+  # wraps several (one per assessment) in one shared transaction, so a failure
+  # partway through rolls back every assessment's writes, not just this one's.
+  defp persist_marks_notifications!(assessment_id, entries) do
+    existing =
+      Mark
+      |> Ash.Query.filter(assessment_id == ^assessment_id)
+      |> Ash.read!(authorize?: false)
+      |> Map.new(fn m -> {m.student_id, m} end)
+
+    Enum.flat_map(entries, fn %{student_id: student_id} = entry ->
+      score = Map.get(entry, :score)
+
+      case Map.get(existing, student_id) do
+        nil ->
+          case Mark
+               |> Ash.Changeset.for_create(:create, %{
+                 assessment_id: assessment_id,
+                 student_id: student_id,
+                 score: score
+               })
+               |> Ash.create(authorize?: false, return_notifications?: true) do
+            {:ok, _mark, notifs} -> notifs
+            {:error, reason} -> Repo.rollback(reason)
+          end
+
+        %Mark{} = mark ->
+          case mark
+               |> Ash.Changeset.for_update(:update, %{score: score})
+               |> Ash.update(authorize?: false, return_notifications?: true) do
+            {:ok, _mark, notifs} -> notifs
+            {:error, reason} -> Repo.rollback(reason)
+          end
+      end
+    end)
   end
 
   def list_marks(%Assessment{id: assessment_id}) do

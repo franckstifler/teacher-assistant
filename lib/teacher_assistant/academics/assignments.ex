@@ -96,7 +96,29 @@ defmodule TeacherAssistant.Academics.Assignments do
   def list_for_class(%ClassGroup{id: cg_id}) do
     TeachingContext
     |> Ash.Query.filter(class_group_id == ^cg_id and not is_nil(teacher_user_id))
-    |> Ash.Query.load(:teacher)
+    |> Ash.Query.load([:teacher, :combined_course])
+    |> Ash.Query.sort(subject: :asc)
+    |> Ash.read!(authorize?: false)
+  end
+
+  @doc """
+  Sibling `TeachingContext`s eligible to be combined with `ctx` via
+  `Courses.combine/1`: same workspace, academic year, subject and teacher,
+  attached to a (different) class, and not already part of a combined
+  course. Used to populate the "teach together" picker.
+  """
+  def combinable_siblings(%TeachingContext{} = ctx) do
+    TeachingContext
+    |> Ash.Query.filter(
+      workspace_id == ^ctx.workspace_id and
+        academic_year_id == ^ctx.academic_year_id and
+        subject == ^ctx.subject and
+        teacher_user_id == ^ctx.teacher_user_id and
+        is_nil(combined_course_id) and
+        id != ^ctx.id and
+        not is_nil(class_group_id)
+    )
+    |> Ash.Query.load(:class_group)
     |> Ash.Query.sort(subject: :asc)
     |> Ash.read!(authorize?: false)
   end
