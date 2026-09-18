@@ -2,7 +2,16 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Courses, EnrollmentStatus, Enrollments, Subjects}
+
+  alias TeacherAssistant.Academics.{
+    Assignments,
+    Courses,
+    EnrollmentStatus,
+    Enrollments,
+    Sex,
+    Subjects
+  }
+
   alias TeacherAssistant.Accounts.{Permissions, Schools}
 
   def mount(%{"id" => id}, _session, socket) do
@@ -176,8 +185,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 class="input input-bordered input-sm"
               />
               <select name="student[sex]" class="select select-bordered select-sm">
-                <option value="f">{gettext("Féminin")}</option>
-                <option value="m">{gettext("Masculin")}</option>
+                <option :for={s <- [:f, :m]} value={s}>{Sex.label(s)}</option>
               </select>
               <input
                 type="text"
