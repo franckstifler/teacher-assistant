@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   import Phoenix.LiveViewTest
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -71,7 +71,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
       Timetables.place_slot(cg, %{

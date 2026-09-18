@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Timetables
@@ -26,7 +26,9 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [seq | _] = Organization.list_sequences(year)
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+
+    {:ok, tc} =
+      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
       Academics.create_assessment(tc, seq, %{
@@ -64,7 +66,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [term1 | _] = TeacherAssistant.Organization.list_terms(year)
     _ = seq
 
-    [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
     {:ok, a2} =
       TeacherAssistant.Academics.create_assessment(tc, s2, %{
@@ -104,7 +106,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
 
     :ok = Timetables.build_default_periods(school)
-    [tc] = Assignments.list_for_class(cg)
+    [tc] = Curriculum.list_assignments_for_class(cg)
     periods = Timetables.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
     [period1, period2 | _] = periods
 

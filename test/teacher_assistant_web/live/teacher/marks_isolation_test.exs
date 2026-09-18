@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Assignments}
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -29,12 +29,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
 
     # Teacher A owns the Maths context.
     teacher_a = member(school, head)
-    {:ok, tc_a} = Assignments.assign(cg, teacher_a, %{subject: "Maths"})
+    {:ok, tc_a} = Curriculum.assign_teacher(cg, teacher_a, %{subject: "Maths"})
 
     # Teacher B is a member who teaches a DIFFERENT subject (so B passes the
     # teaching-scope guard and reaches mount) but does NOT teach tc_a.
     teacher_b = member(school, head)
-    {:ok, _tc_b} = Assignments.assign(cg, teacher_b, %{subject: "Français"})
+    {:ok, _tc_b} = Curriculum.assign_teacher(cg, teacher_b, %{subject: "Français"})
 
     conn_b =
       conn |> log_in_user(teacher_b) |> Plug.Conn.put_session(:workspace_id, school.id)

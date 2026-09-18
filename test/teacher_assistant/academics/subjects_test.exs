@@ -1,32 +1,32 @@
 defmodule TeacherAssistant.Academics.SubjectsTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics.Subjects
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
-    Enum.each(Subjects.list(ws), &Subjects.delete/1)
+    Enum.each(Curriculum.list_subjects(ws), &Curriculum.delete_subject/1)
     %{ws: ws}
   end
 
   test "create then list, ordered", %{ws: ws} do
-    {:ok, _} = Subjects.create(ws, %{name: "Français", position: 2})
-    {:ok, _} = Subjects.create(ws, %{name: "Mathématiques", position: 1})
-    assert ["Mathématiques", "Français"] = Enum.map(Subjects.list(ws), & &1.name)
+    {:ok, _} = Curriculum.create_subject(ws, %{name: "Français", position: 2})
+    {:ok, _} = Curriculum.create_subject(ws, %{name: "Mathématiques", position: 1})
+    assert ["Mathématiques", "Français"] = Enum.map(Curriculum.list_subjects(ws), & &1.name)
   end
 
   test "duplicate name is a tagged error", %{ws: ws} do
-    {:ok, _} = Subjects.create(ws, %{name: "Anglais"})
-    assert {:error, :duplicate_name} = Subjects.create(ws, %{name: "Anglais"})
+    {:ok, _} = Curriculum.create_subject(ws, %{name: "Anglais"})
+    assert {:error, :duplicate_name} = Curriculum.create_subject(ws, %{name: "Anglais"})
   end
 
   test "deactivate and delete", %{ws: ws} do
-    {:ok, s} = Subjects.create(ws, %{name: "EPS"})
-    {:ok, s} = Subjects.deactivate(s)
+    {:ok, s} = Curriculum.create_subject(ws, %{name: "EPS"})
+    {:ok, s} = Curriculum.deactivate_subject(s)
     refute s.active?
-    assert :ok = Subjects.delete(s)
-    assert Subjects.list(ws) == []
+    assert :ok = Curriculum.delete_subject(s)
+    assert Curriculum.list_subjects(ws) == []
   end
 end

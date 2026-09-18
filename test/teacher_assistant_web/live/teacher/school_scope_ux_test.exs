@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Assignments}
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, user, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
     {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, year: year, cg: cg, tc: tc, user: user}

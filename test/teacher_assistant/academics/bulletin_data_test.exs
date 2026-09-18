@@ -2,7 +2,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -23,7 +23,9 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+
+    {:ok, tc} =
+      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
       Academics.create_assessment(tc, seq, %{

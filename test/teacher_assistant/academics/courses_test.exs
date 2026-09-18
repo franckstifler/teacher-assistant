@@ -3,7 +3,8 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Assignments, Courses}
+  alias TeacherAssistant.Academics.Courses
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -26,9 +27,9 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     {:ok, cg_menu} =
       Enrollment.create_class_group(ws, year, %{label: "1ère A MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(cg_maco, head, %{subject: "Mathématiques"})
-    {:ok, tc_menu} = Assignments.assign(cg_menu, head, %{subject: "Mathématiques"})
-    {:ok, tc_french} = Assignments.assign(cg_maco, head, %{subject: "Français"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(cg_maco, head, %{subject: "Mathématiques"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(cg_menu, head, %{subject: "Mathématiques"})
+    {:ok, tc_french} = Curriculum.assign_teacher(cg_maco, head, %{subject: "Français"})
 
     %{
       head: head,
@@ -57,7 +58,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
   test "combine builds the label from real class labels, not the bare level", ctx do
     %{tc_maco: tc_maco, tc_menu: tc_menu} = ctx
-    # tc_maco/tc_menu come straight from Assignments.assign/3 — neither has
+    # tc_maco/tc_menu come straight from Curriculum.assign_teacher/3 — neither has
     # :class_group preloaded. combine/1 must load it itself, otherwise both
     # contexts (same level "1ère") collapse to a single bare-level label.
     {:ok, course} = Courses.combine([tc_maco, tc_menu])
@@ -73,7 +74,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
     other = TeacherFixtures.user_fixture()
     {:ok, _} = add_active_member(ctx.ws, ctx.head, other)
-    {:ok, tc_other} = Assignments.assign(cg_menu, other, %{subject: "Français"})
+    {:ok, tc_other} = Curriculum.assign_teacher(cg_menu, other, %{subject: "Français"})
 
     assert {:error, :teacher_mismatch} = Courses.combine([tc_french, tc_other])
   end
@@ -86,7 +87,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     {:ok, cg_third} =
       Enrollment.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
 
-    {:ok, tc_third} = Assignments.assign(cg_third, head, %{subject: "Mathématiques"})
+    {:ok, tc_third} = Curriculum.assign_teacher(cg_third, head, %{subject: "Mathématiques"})
     tc_maco = Academics.get_teaching_context(tc_maco.id) |> elem(1)
 
     assert {:error, :already_combined} = Courses.combine([tc_maco, tc_third])

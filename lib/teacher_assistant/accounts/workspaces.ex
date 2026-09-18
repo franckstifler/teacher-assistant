@@ -71,7 +71,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   defp resolve_assigned_context(_ws, nil, _user, _context_id), do: nil
 
   defp resolve_assigned_context(ws, year, user, context_id) do
-    contexts = TeacherAssistant.Academics.Assignments.list_for_user(ws, year, user)
+    contexts = TeacherAssistant.Curriculum.list_assignments_for_user(ws, year, user)
     Enum.find(contexts, &(&1.id == context_id)) || List.first(contexts)
   end
 end

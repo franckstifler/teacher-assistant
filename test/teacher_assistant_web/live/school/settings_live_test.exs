@@ -138,15 +138,14 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   end
 
   test "admin edits a subject's coefficient", %{conn: conn, school: school} do
-    alias TeacherAssistant.Academics.Subjects
-
+    alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
     view
@@ -155,29 +154,28 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     )
     |> render_submit()
 
-    updated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    updated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
     assert Decimal.equal?(updated.default_coefficient, Decimal.new("2.5"))
   end
 
   test "admin deactivates and reactivates a subject", %{conn: conn, school: school} do
-    alias TeacherAssistant.Academics.Subjects
-
+    alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
-    deactivated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    deactivated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
     assert deactivated.active? == false
     assert render(view) =~ "Réactiver"
 
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
-    reactivated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    reactivated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
     assert reactivated.active? == true
   end
 
@@ -186,17 +184,16 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     school: school,
     actor: head
   } do
-    alias TeacherAssistant.Academics.Subjects
-
+    alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
-    catalog_size_before = length(Subjects.list(school))
+    catalog_size_before = length(Curriculum.list_subjects(school))
 
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -232,7 +229,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     render_hook(tview, "toggle_subject_active", %{"id" => subject.id})
     render_hook(tview, "delete_subject", %{"id" => subject.id})
 
-    subjects = Subjects.list(school)
+    subjects = Curriculum.list_subjects(school)
     assert length(subjects) == catalog_size_before
     refute Enum.any?(subjects, &(&1.name == "Forged"))
 

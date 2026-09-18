@@ -1,7 +1,8 @@
 defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Assignments, CombinedCourse}
+  alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -18,7 +19,7 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "1A", level: "1ère"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Mathématiques"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Mathématiques"})
 
     {:ok, course} =
       CombinedCourse

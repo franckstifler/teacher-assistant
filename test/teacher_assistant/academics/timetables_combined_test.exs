@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
   require Ash.Query
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
@@ -28,8 +28,8 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     {:ok, menu} = Enrollment.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
     {:ok, unrelated} = Enrollment.create_class_group(ws, year, %{label: "1ère C", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Maths"})
-    {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Maths"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
 
     {:ok, course} = Courses.combine([tc_maco, tc_menu])
 
@@ -77,7 +77,8 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   test "a genuine clash between an unrelated class and the combined course's teacher is still rejected",
        ctx do
-    {:ok, tc_unrelated} = Assignments.assign(ctx.unrelated, ctx.head, %{subject: "Physique"})
+    {:ok, tc_unrelated} =
+      Curriculum.assign_teacher(ctx.unrelated, ctx.head, %{subject: "Physique"})
 
     {:ok, _slot} =
       Timetables.place_slot(ctx.unrelated, %{
@@ -104,8 +105,11 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
     {:ok, _member} = Accounts.accept_invitation(inv.token, other_teacher)
 
-    {:ok, tc_other} = Assignments.assign(ctx.unrelated, other_teacher, %{subject: "Anglais"})
-    {:ok, tc_unrelated_head} = Assignments.assign(ctx.unrelated, ctx.head, %{subject: "Physique"})
+    {:ok, tc_other} =
+      Curriculum.assign_teacher(ctx.unrelated, other_teacher, %{subject: "Anglais"})
+
+    {:ok, tc_unrelated_head} =
+      Curriculum.assign_teacher(ctx.unrelated, ctx.head, %{subject: "Physique"})
 
     {:ok, _slot} =
       Timetables.place_slot(ctx.maco, %{

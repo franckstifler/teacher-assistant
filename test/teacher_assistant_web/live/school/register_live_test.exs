@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     :ok = Organization.build_default_calendar(year)
 
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
     :ok = Timetables.build_default_periods(school)
     period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))

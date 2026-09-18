@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.Timetables do
   require Ash.Query
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Period
@@ -31,7 +31,7 @@ defmodule TeacherAssistant.Academics.Timetables do
   @doc """
   Deletes a period, unless a `TimetableSlot` still references it — in that
   case returns `{:error, :has_slots}` without deleting (mirrors the
-  `Assignments.remove/1` "has data" guard).
+  `Curriculum.remove_assignment/1` "has data" guard).
   """
   def delete_period(%Period{id: id} = period) do
     has_slots =
@@ -190,7 +190,7 @@ defmodule TeacherAssistant.Academics.Timetables do
   Returns `%{slots: %{{day, period_id} => slot_view}, tally: [tally_row]}`.
   `slot_view` is `%{teaching_context_id, subject, teacher_email, day, period_id}`.
   `tally_row` is `%{teaching_context_id, subject, placed, required, status}`,
-  one row per assignment from `Assignments.list_for_class/1` (zero-placement
+  one row per assignment from `Curriculum.list_assignments_for_class/1` (zero-placement
   assignments included), with `status` in `[:under, :exact, :over]`.
   """
   def class_timetable(%ClassGroup{id: cg_id} = cg) do
@@ -212,7 +212,7 @@ defmodule TeacherAssistant.Academics.Timetables do
 
     tally =
       cg
-      |> Assignments.list_for_class()
+      |> Curriculum.list_assignments_for_class()
       |> Enum.map(fn tc ->
         placed = Map.get(placed_by_tc, tc.id, 0)
         required = tc.weekly_hours

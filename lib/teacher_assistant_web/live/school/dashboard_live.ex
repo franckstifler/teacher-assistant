@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Accounts
 
@@ -137,7 +137,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
     teachers_count =
       classes
-      |> Enum.flat_map(&Assignments.list_for_class(&1))
+      |> Enum.flat_map(&Curriculum.list_assignments_for_class(&1))
       |> Enum.map(& &1.teacher_user_id)
       |> Enum.uniq()
       |> length()

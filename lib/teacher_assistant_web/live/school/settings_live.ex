@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics.{SubjectCategory, Subjects}
+  alias TeacherAssistant.Academics.SubjectCategory
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts.{Permissions}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -25,7 +26,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          :year_form,
          to_form(%{"name" => "", "start_date" => "", "end_date" => ""}, as: :year)
        )
-       |> assign(:subjects, Subjects.list(scope.current_workspace))
+       |> assign(:subjects, Curriculum.list_subjects(scope.current_workspace))
        |> assign(:subject_form, to_form(%{"name" => "", "category" => "general"}, as: :subject))
        |> allow_upload(:logo,
          accept: ~w(.png .jpg .jpeg),
@@ -391,14 +392,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     ws = scope.current_workspace
 
     if Permissions.admin?(scope) do
-      case Subjects.create(ws, %{
+      case Curriculum.create_subject(ws, %{
              name: String.trim(params["name"] || ""),
              category: params["category"] || "general"
            }) do
         {:ok, _} ->
           {:noreply,
            socket
-           |> assign(:subjects, Subjects.list(ws))
+           |> assign(:subjects, Curriculum.list_subjects(ws))
            |> assign(
              :subject_form,
              to_form(%{"name" => "", "category" => "general"}, as: :subject)
@@ -421,8 +422,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
     if Permissions.admin?(scope) do
       subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
-      if subject, do: Subjects.delete(subject)
-      {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+      if subject, do: Curriculum.delete_subject(subject)
+      {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
     else
       {:noreply, socket}
     end
@@ -435,7 +436,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     with true <- Permissions.admin?(scope),
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
          {:ok, coefficient} <- parse_coefficient(params["default_coefficient"]) do
-      case Subjects.update(subject, %{
+      case Curriculum.update_subject(subject, %{
              name: String.trim(params["name"] || ""),
              default_coefficient: coefficient,
              category: params["category"]
@@ -443,7 +444,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         {:ok, _} ->
           {:noreply,
            socket
-           |> assign(:subjects, Subjects.list(ws))
+           |> assign(:subjects, Curriculum.list_subjects(ws))
            |> put_flash(:info, gettext("Matière mise à jour."))}
 
         {:error, :duplicate_name} ->
@@ -466,12 +467,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
       result =
         if subject.active?,
-          do: Subjects.deactivate(subject),
-          else: Subjects.update(subject, %{active?: true})
+          do: Curriculum.deactivate_subject(subject),
+          else: Curriculum.update_subject(subject, %{active?: true})
 
       case result do
         {:ok, _} ->
-          {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
 
         _ ->
           {:noreply,
@@ -602,7 +603,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     }
   end
 
-  # Mirrors TeacherAssistant.Academics.Assignments.parse_coefficient/1 (private there).
+  # Mirrors TeacherAssistant.Curriculum.parse_coefficient/1 (private there).
   defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
 
   defp parse_coefficient(value) when is_binary(value) do

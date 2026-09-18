@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
   import Phoenix.LiveViewTest
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
@@ -29,8 +29,8 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
     {:ok, menu} =
       Enrollment.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Maths"})
-    {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Maths"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
 
     {:ok, _s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
     {:ok, _s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})

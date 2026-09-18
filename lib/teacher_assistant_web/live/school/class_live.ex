@@ -4,7 +4,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
 
-  alias TeacherAssistant.Academics.{Assignments, Courses, EnrollmentStatus, Sex, Subjects}
+  alias TeacherAssistant.Academics.{Courses, EnrollmentStatus, Sex}
+  alias TeacherAssistant.Curriculum
 
   alias TeacherAssistant.Accounts.{Permissions}
   alias TeacherAssistant.Accounts
@@ -17,7 +18,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          true <- Permissions.admin_or_form_master?(scope, cg) do
       subject_options =
         scope.current_workspace
-        |> Subjects.list()
+        |> Curriculum.list_subjects()
         |> Enum.filter(& &1.active?)
 
       {:ok,
@@ -385,7 +386,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   defp load_roster(socket) do
     scope = socket.assigns.current_scope
     cg = socket.assigns.cg
-    assignments = Assignments.list_for_class(cg)
+    assignments = Curriculum.list_assignments_for_class(cg)
 
     assign(socket,
       roster: Enrollment.list_roster(cg),
@@ -401,7 +402,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   defp combinable_siblings_by_context(assignments, true) do
     assignments
     |> Enum.reject(& &1.combined_course_id)
-    |> Map.new(&{&1.id, Assignments.combinable_siblings(&1)})
+    |> Map.new(&{&1.id, Curriculum.combinable_siblings(&1)})
   end
 
   defp combinable_siblings_by_context(_assignments, _admin?), do: %{}
@@ -495,7 +496,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           s -> s.default_coefficient
         end
 
-      case Assignments.assign(socket.assigns.cg, member.user, %{
+      case Curriculum.assign_teacher(socket.assigns.cg, member.user, %{
              subject: params["subject"],
              weekly_hours: parse_hours(params["weekly_hours"]),
              coefficient: coef
@@ -522,7 +523,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("unassign", %{"context-id" => cid}, socket) do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
-      case Assignments.remove(tc) do
+      case Curriculum.remove_assignment(tc) do
         :ok ->
           {:noreply, socket |> put_flash(:info, gettext("Assignment removed.")) |> load_roster()}
 
@@ -542,7 +543,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("set_coefficient", %{"context-id" => cid, "coefficient" => value}, socket) do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
-         {:ok, _} <- Assignments.set_coefficient(tc, value) do
+         {:ok, _} <- Curriculum.set_assignment_coefficient(tc, value) do
       {:noreply, socket |> put_flash(:info, gettext("Coefficient updated.")) |> load_roster()}
     else
       {:error, :invalid_coefficient} ->
@@ -557,7 +558,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == uid)),
-         {:ok, _} <- Assignments.reassign(tc, member.user) do
+         {:ok, _} <- Curriculum.reassign_teacher(tc, member.user) do
       {:noreply, socket |> put_flash(:info, gettext("Teacher reassigned.")) |> load_roster()}
     else
       _ -> {:noreply, socket}

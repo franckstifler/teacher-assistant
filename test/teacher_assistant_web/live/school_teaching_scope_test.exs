@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
 
   test "an assigned teacher reaches /teacher under school scope", ctx do
     %{conn: conn, cg: cg, user: user} = ctx
-    {:ok, _tc} = Assignments.assign(cg, user, %{subject: "Maths"})
+    {:ok, _tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
     assert {:ok, _view, html} = live(conn, ~p"/teacher")
     assert html =~ "Maths"
   end

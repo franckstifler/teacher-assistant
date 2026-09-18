@@ -3,7 +3,8 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Assignments, Courses}
+  alias TeacherAssistant.Academics.Courses
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -109,8 +110,8 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       {:ok, cg_a} = Enrollment.create_class_group(school, year, %{label: "1ère A", level: "1ère"})
       {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "1ère B", level: "1ère"})
 
-      {:ok, tc_a} = Assignments.assign(cg_a, head, %{subject: "Mathématiques"})
-      {:ok, tc_b} = Assignments.assign(cg_b, head, %{subject: "Mathématiques"})
+      {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head, %{subject: "Mathématiques"})
+      {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Mathématiques"})
 
       # Pre-existing solo plans/lessons on each member class, created before
       # combining — these must NOT surface on the log once tc_a/tc_b share a

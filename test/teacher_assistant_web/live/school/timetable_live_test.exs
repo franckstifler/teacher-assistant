@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
@@ -22,7 +22,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
     :ok = Timetables.build_default_periods(school)
     period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   test "placing a combined assignment fills the same cell for every member class, and clearing it clears both",
        %{conn: conn, cg: cg, tc: tc, period: period, school: school, year: year, head: head} do
     {:ok, other_cg} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
-    {:ok, other_tc} = Assignments.assign(other_cg, head, %{subject: "Maths"})
+    {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
     {:ok, _course} = Courses.combine([tc, other_tc])
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/timetable")
@@ -128,7 +128,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     {:ok, other_cg} =
       Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
 
-    {:ok, other_tc} = Assignments.assign(other_cg, head, %{subject: "Maths"})
+    {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
       Timetables.place_slot(other_cg, %{

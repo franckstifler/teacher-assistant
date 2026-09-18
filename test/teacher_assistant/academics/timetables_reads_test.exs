@@ -2,7 +2,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
   use TeacherAssistant.DataCase, async: true
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -22,13 +22,13 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
     {:ok, tc_maths} =
-      Assignments.assign(cg, head, %{subject: "Maths", weekly_hours: 5})
+      Curriculum.assign_teacher(cg, head, %{subject: "Maths", weekly_hours: 5})
 
     {:ok, tc_eps} =
-      Assignments.assign(cg, head, %{subject: "EPS", weekly_hours: 2})
+      Curriculum.assign_teacher(cg, head, %{subject: "EPS", weekly_hours: 2})
 
     {:ok, tc_svt} =
-      Assignments.assign(cg, head, %{subject: "SVT", weekly_hours: 3})
+      Curriculum.assign_teacher(cg, head, %{subject: "SVT", weekly_hours: 3})
 
     :ok = Timetables.build_default_periods(school)
 
@@ -135,7 +135,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       {:ok, cg_b} =
         Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
 
-      {:ok, tc_b} = Assignments.assign(cg_b, head, %{subject: "Histoire", weekly_hours: 3})
+      {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Histoire", weekly_hours: 3})
 
       {:ok, _} =
         Timetables.place_slot(cg_a, %{

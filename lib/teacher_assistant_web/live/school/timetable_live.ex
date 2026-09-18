@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.DayOfWeek
   alias TeacherAssistant.Academics.Timetables
@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
          cg: cg,
          admin?: Permissions.admin?(scope),
          periods: Timetables.list_periods(scope.current_workspace),
-         assignments: Assignments.list_for_class(cg),
+         assignments: Curriculum.list_assignments_for_class(cg),
          days: @days
        )
        |> load_timetable()}

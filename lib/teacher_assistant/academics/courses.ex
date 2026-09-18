@@ -9,7 +9,8 @@ defmodule TeacherAssistant.Academics.Courses do
   require Ash.Query
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, CombinedCourse, ProgressionPlan, TeachingContext}
+  alias TeacherAssistant.Academics.{CombinedCourse, ProgressionPlan, TeachingContext}
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Repo
 
   @doc """
@@ -64,7 +65,7 @@ defmodule TeacherAssistant.Academics.Courses do
   defp do_combine(contexts) do
     # `build_label/1` needs `:class_group` on every member — the initiating
     # context in particular may arrive here without it preloaded (e.g. from
-    # `Assignments.list_for_class/1`, which only loads `:teacher` and
+    # `Curriculum.list_assignments_for_class/1`, which only loads `:teacher` and
     # `:combined_course`). Load it here rather than trusting the caller.
     contexts = Ash.load!(contexts, :class_group, authorize?: false)
     [first | _] = contexts
@@ -172,7 +173,7 @@ defmodule TeacherAssistant.Academics.Courses do
   per course), everything else stays solo.
   """
   def list_units_for_user(ws, year, user) do
-    contexts = Assignments.list_for_user(ws, year, user)
+    contexts = Curriculum.list_assignments_for_user(ws, year, user)
 
     {units, _seen} =
       Enum.reduce(contexts, {[], MapSet.new()}, fn ctx, {units, seen} ->

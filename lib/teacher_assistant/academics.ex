@@ -112,7 +112,7 @@ defmodule TeacherAssistant.Academics do
   @doc """
   Scope-aware context listing for the class switcher: under personal scope,
   the workspace's own teaching contexts; under school scope, only the
-  contexts assigned to the current user (via Assignments.list_for_user/3).
+  contexts assigned to the current user (via Curriculum.list_assignments_for_user/3).
   Returns `[]` when there is no current academic year.
   """
   def list_contexts_for_scope(%TeacherAssistant.Scope{
@@ -123,7 +123,7 @@ defmodule TeacherAssistant.Academics do
       }) do
     cond do
       is_nil(ws) or is_nil(year) -> []
-      type == :school -> TeacherAssistant.Academics.Assignments.list_for_user(ws, year, user)
+      type == :school -> TeacherAssistant.Curriculum.list_assignments_for_user(ws, year, user)
       true -> list_teaching_contexts(ws, year)
     end
   end

@@ -4,7 +4,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Assignments, Courses}
+  alias TeacherAssistant.Academics.Courses
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -30,8 +31,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     {:ok, menu} =
       Enrollment.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Mathématiques"})
-    {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Mathématiques"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Mathématiques"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Mathématiques"})
 
     {:ok, s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
     {:ok, s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})

@@ -136,7 +136,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       # creating it here (rather than reusing a seeded subject) proves the
       # assign form reads live from the catalog.
       {:ok, _} =
-        TeacherAssistant.Academics.Subjects.create(school, %{
+        TeacherAssistant.Curriculum.create_subject(school, %{
           name: "Musique",
           default_coefficient: Decimal.new(4)
         })
@@ -159,7 +159,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       })
       |> render_submit()
 
-      assert [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
       assert tc.subject == "Mathématiques" and tc.teacher_user_id == head.id
     end
 
@@ -167,7 +167,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       %{conn: conn, cg: cg, user: head} = ctx
 
       {:ok, _} =
-        TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Mathématiques"})
+        TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Mathématiques"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -181,23 +181,23 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       })
       |> render_submit()
 
-      assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
+      assert length(TeacherAssistant.Curriculum.list_assignments_for_class(cg)) == 1
       assert render(view) =~ "Mathématiques"
     end
 
     test "unassign removes a data-free assignment; blocked with data", ctx do
       %{conn: conn, cg: cg, user: head} = ctx
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, _} = TeacherAssistant.Academics.create_progression_plan(tc, %{title: "P"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view |> element("#unassign-#{tc.id}") |> render_click()
-      assert [_] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      assert [_] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
-      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Anglais"})
+      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Anglais"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       view |> element("#unassign-#{tc2.id}") |> render_click()
-      assert length(TeacherAssistant.Academics.Assignments.list_for_class(cg)) == 1
+      assert length(TeacherAssistant.Curriculum.list_assignments_for_class(cg)) == 1
     end
 
     test "assign defaults the coefficient from the chosen subject's catalog entry", %{
@@ -218,25 +218,25 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> render_submit()
 
       # "Mathématiques" is seeded with default_coefficient 4 (SchoolTemplates).
-      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
       assert Decimal.equal?(tc.coefficient, Decimal.new(4))
     end
 
     test "editing a coefficient inline persists it", %{conn: conn, cg: cg, user: head} do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
       |> element("#coefficient-#{tc.id}")
       |> render_change(%{"coefficient" => "3"})
 
-      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
       assert Decimal.equal?(tc.coefficient, Decimal.new(3))
     end
 
     test "a non-admin non-form-master cannot reach the class to change a coefficient", ctx do
       %{school: school, cg: cg, user: head} = ctx
-      {:ok, _tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, _tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
@@ -265,8 +265,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg2: cg2,
       user: head
     } do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -289,11 +289,11 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     } do
       # cg is "6e A" and cg2 is "6e B" — same level ("6ème"), distinct class
       # labels. The initiating context (cg) arrives here from
-      # Assignments.list_for_class/1, which does NOT preload :class_group —
+      # Curriculum.list_assignments_for_class/1, which does NOT preload :class_group —
       # this pins that Courses.combine/1 loads it itself rather than
       # collapsing to a degenerate "Maths · 6ème" label.
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
       {:ok, course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
 
       assert course.label == "Maths · 6e A+6e B"
@@ -309,8 +309,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg2: cg2,
       user: head
     } do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
       {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
@@ -328,10 +328,10 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg2: cg2,
       user: head
     } do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
       {:ok, _other_subject_tc} =
-        TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Anglais"})
+        TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Anglais"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -429,7 +429,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     test "form master cannot assign a teacher (forged event)", %{fm_conn: conn, cg: cg, fm: fm} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "assign", %{"assignment" => %{"user_id" => fm.id, "subject" => "X"}})
-      assert TeacherAssistant.Academics.Assignments.list_for_class(cg) == []
+      assert TeacherAssistant.Curriculum.list_assignments_for_class(cg) == []
     end
 
     test "form master cannot change a coefficient (forged event)", %{
@@ -437,10 +437,10 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg: cg,
       user: head
     } do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
-      [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
       assert Decimal.equal?(tc.coefficient, Decimal.new(1))
     end
 
@@ -463,8 +463,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg2: cg2,
       user: head
     } do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "teach_together", %{"context-id" => tc.id, "sibling-ids" => [tc2.id]})
@@ -479,8 +479,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg2: cg2,
       user: head
     } do
-      {:ok, tc} = TeacherAssistant.Academics.Assignments.assign(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Academics.Assignments.assign(cg2, head, %{subject: "Maths"})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
       {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")

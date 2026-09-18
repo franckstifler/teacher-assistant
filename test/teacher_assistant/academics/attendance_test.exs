@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
@@ -27,7 +27,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
     {:ok, cg_other} = Enrollment.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
 
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
     {:ok, _student1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Bilal", sex: :m})

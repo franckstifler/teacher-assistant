@@ -63,6 +63,46 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :combined_course_id
       ]
     ]
+
+    read :for_class_group do
+      argument :class_group_id, :uuid, allow_nil?: false
+      filter expr(class_group_id == ^arg(:class_group_id) and not is_nil(teacher_user_id))
+      prepare build(load: [:teacher, :combined_course], sort: [subject: :asc])
+    end
+
+    read :for_workspace_year_teacher do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :teacher_user_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id) and
+                 teacher_user_id == ^arg(:teacher_user_id)
+             )
+
+      prepare build(load: [:class_group], sort: [subject: :asc])
+    end
+
+    read :combinable_siblings do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :subject, :string, allow_nil?: false
+      argument :teacher_user_id, :uuid, allow_nil?: true
+      argument :exclude_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id) and
+                 subject == ^arg(:subject) and
+                 teacher_user_id == ^arg(:teacher_user_id) and
+                 is_nil(combined_course_id) and
+                 id != ^arg(:exclude_id) and
+                 not is_nil(class_group_id)
+             )
+
+      prepare build(load: [:class_group], sort: [subject: :asc])
+    end
   end
 
   policies do

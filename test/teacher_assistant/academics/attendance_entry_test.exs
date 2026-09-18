@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   require Ash.Query
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Organization
@@ -23,7 +23,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
     {:ok, student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
