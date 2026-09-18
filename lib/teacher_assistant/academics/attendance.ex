@@ -4,6 +4,7 @@ defmodule TeacherAssistant.Academics.Attendance do
   require Ash.Query
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
@@ -82,11 +83,11 @@ defmodule TeacherAssistant.Academics.Attendance do
   merges rosters across classes into one flat list.
 
   Skips a member context with no `class_group` yet, same as
-  `Academics.list_union_students/1`.
+  `Curriculum.list_union_students/1`.
   """
   def combined_period_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date) do
-    course
-    |> Academics.contexts_of_course()
+    course.id
+    |> Curriculum.contexts_of_course!()
     |> Ash.load!(:class_group, authorize?: false)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->

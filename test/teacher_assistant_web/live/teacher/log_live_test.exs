@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
@@ -136,7 +135,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
           entry_type: :lesson
         })
 
-      {:ok, course} = Courses.combine([tc_a, tc_b])
+      {:ok, course} = Curriculum.combine_course([tc_a, tc_b])
 
       [course_plan] =
         Academics.list_progression_plans(school)

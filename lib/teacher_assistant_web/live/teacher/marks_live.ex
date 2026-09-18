@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Organization
@@ -60,14 +61,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # backed by one real `Assessment` per member context — a student's score
   # always lands on their own class's context's assessment.
   defp mount_combined(ctx, course_id, params, socket, ws) do
-    case Academics.get_course(course_id) do
+    case Curriculum.get_course(course_id) do
       {:ok, course} ->
         year = Organization.current_academic_year(ws)
         sequences = if year, do: Organization.list_sequences(year), else: []
         seq = pick(sequences, params["seq"])
         combined = if seq, do: Academics.combined_assessments_for(course, seq), else: []
         selected = pick(combined, params["assessment"])
-        groups = Academics.list_union_students(course)
+        groups = Curriculum.list_union_students(course)
 
         {:ok,
          socket

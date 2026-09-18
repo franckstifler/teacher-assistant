@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.CombinedCourse
-  alias TeacherAssistant.Academics.Courses
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Assessment
   alias TeacherAssistant.Academics.Mark
@@ -129,27 +129,6 @@ defmodule TeacherAssistant.Academics do
   end
 
   @doc """
-  Scope-aware teaching-*unit* listing for the class switcher: like
-  `list_contexts_for_scope/1`, but contexts belonging to the same combined
-  course collapse into a single `{:course, %CombinedCourse{}}` entry
-  (via `Courses.list_units_for_user/3`); everything else stays
-  `{:solo, %TeachingContext{}}`. Returns `[]` when there is no current
-  academic year.
-  """
-  def list_units_for_scope(%TeacherAssistant.Scope{
-        current_workspace: ws,
-        current_academic_year: year,
-        current_workspace_type: type,
-        current_user: user
-      }) do
-    cond do
-      is_nil(ws) or is_nil(year) -> []
-      type == :school -> Courses.list_units_for_user(ws, year, user)
-      true -> Enum.map(list_teaching_contexts(ws, year), &{:solo, &1})
-    end
-  end
-
-  @doc """
   Display label for a teaching unit as shown in the class switcher: the
   course label for `{:course, _}`, or the usual context label for
   `{:solo, _}`.
@@ -164,7 +143,7 @@ defmodule TeacherAssistant.Academics do
   own id for `{:solo, _}`.
   """
   def unit_select_id({:course, %CombinedCourse{} = course}) do
-    course |> contexts_of_course() |> List.first() |> Map.fetch!(:id)
+    course.id |> Curriculum.contexts_of_course!() |> List.first() |> Map.fetch!(:id)
   end
 
   def unit_select_id({:solo, %TeachingContext{id: id}}), do: id
@@ -215,17 +194,6 @@ defmodule TeacherAssistant.Academics do
     ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
-  def get_course(id), do: Ash.get(CombinedCourse, id, authorize?: false)
-
-  @doc """
-  Lists the `TeachingContext`s currently linked to a `CombinedCourse`.
-  """
-  def contexts_of_course(%CombinedCourse{id: id}) do
-    TeachingContext
-    |> Ash.Query.filter(combined_course_id == ^id)
-    |> Ash.read!(authorize?: false)
-  end
-
   @doc """
   Every plan in the workspace, raw. Teacher-facing call sites (dashboard,
   teaching log, coverage lists, ...) should use `list_unit_plans/1` instead
@@ -246,18 +214,8 @@ defmodule TeacherAssistant.Academics do
   context was combined) so a `CombinedCourse` surfaces exactly one coverage
   KPI instead of one per member class.
   """
-  def list_unit_plans(%Workspace{id: ws_id} = ws) do
-    combined_context_ids =
-      TeachingContext
-      |> Ash.Query.filter(workspace_id == ^ws_id and not is_nil(combined_course_id))
-      |> Ash.read!(authorize?: false)
-      |> MapSet.new(& &1.id)
-
-    ws
-    |> list_progression_plans()
-    |> Enum.reject(fn plan ->
-      plan.teaching_context_id && MapSet.member?(combined_context_ids, plan.teaching_context_id)
-    end)
+  def list_unit_plans(%Workspace{id: ws_id}) do
+    Curriculum.unit_plans!(ws_id)
   end
 
   def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
@@ -375,29 +333,6 @@ defmodule TeacherAssistant.Academics do
   end
 
   @doc """
-  The union roster of a `CombinedCourse`: every student of every member
-  class, grouped by class (each group carries its own `class_group` and
-  `teaching_context`, so a mark can always be routed back to the right
-  context). Marks stay per-student, per-context — this is purely a read
-  shape for the combined marks page; it never merges rosters across
-  classes into one flat list.
-  """
-  def list_union_students(%CombinedCourse{} = course) do
-    course
-    |> contexts_of_course()
-    |> Ash.load!(:class_group, authorize?: false)
-    |> Enum.reject(&is_nil(&1.class_group))
-    |> Enum.map(fn ctx ->
-      %{
-        teaching_context: ctx,
-        class_group: ctx.class_group,
-        students: Enrollment.list_students(ctx.class_group)
-      }
-    end)
-    |> Enum.sort_by(&String.downcase(&1.class_group.label))
-  end
-
-  @doc """
   Per-séquence assessments for a `CombinedCourse`: one underlying
   `Assessment` row per member `TeachingContext` (a student's mark always
   lands on their own class's context — `Mark`'s identity and the bulletin
@@ -415,8 +350,8 @@ defmodule TeacherAssistant.Academics do
   """
   def combined_assessments_for(%CombinedCourse{} = course, %Sequence{} = seq) do
     contexts =
-      course
-      |> contexts_of_course()
+      course.id
+      |> Curriculum.contexts_of_course!()
       |> Ash.load!(:class_group, authorize?: false)
       |> Enum.reject(&is_nil(&1.class_group))
       |> Enum.sort_by(&String.downcase(&1.class_group.label))
@@ -489,8 +424,8 @@ defmodule TeacherAssistant.Academics do
     label = Map.get(attrs, :label) || Map.get(attrs, "label")
 
     contexts =
-      course
-      |> contexts_of_course()
+      course.id
+      |> Curriculum.contexts_of_course!()
       |> Ash.load!(:class_group, authorize?: false)
       |> Enum.reject(&is_nil(&1.class_group))
 

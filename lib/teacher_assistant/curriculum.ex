@@ -3,10 +3,13 @@ defmodule TeacherAssistant.Curriculum do
 
   require Ash.Query
 
+  alias TeacherAssistant.Academics
+
   alias TeacherAssistant.Academics.{
     AcademicYear,
     Assessment,
     ClassGroup,
+    CombinedCourse,
     ProgressionPlan,
     Subject,
     TeachingContext,
@@ -15,6 +18,7 @@ defmodule TeacherAssistant.Curriculum do
 
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.User
+  alias TeacherAssistant.Enrollment
 
   resources do
     resource Subject do
@@ -22,9 +26,18 @@ defmodule TeacherAssistant.Curriculum do
       define :delete_subject, action: :destroy
     end
 
-    resource TeachingContext
-    resource TeacherAssistant.Academics.CombinedCourse
-    resource ProgressionPlan
+    resource TeachingContext do
+      define :contexts_of_course, action: :for_combined_course, args: [:combined_course_id]
+    end
+
+    resource CombinedCourse do
+      define :get_course, action: :read, get_by: [:id]
+    end
+
+    resource ProgressionPlan do
+      define :unit_plans, action: :unit_plans, args: [:workspace_id]
+    end
+
     resource TeacherAssistant.Academics.ProgressionEntry
     resource TeacherAssistant.Academics.ProgressionModule
     resource TeacherAssistant.Academics.TeachingLogEntry
@@ -175,7 +188,7 @@ defmodule TeacherAssistant.Curriculum do
 
   @doc """
   Sibling `TeachingContext`s eligible to be combined with `ctx` via
-  `Courses.combine/1`: same workspace, academic year, subject and teacher,
+  `combine_course/1`: same workspace, academic year, subject and teacher,
   attached to a (different) class, and not already part of a combined
   course. Used to populate the "teach together" picker.
   """
@@ -222,4 +235,141 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   defp already_assigned?(_error), do: false
+
+  # --- Combined courses & teaching units -------------------------------------
+
+  @doc """
+  Combines two or more `TeachingContext`s into a fresh `CombinedCourse`.
+
+  All contexts must share the same `teacher_user_id` and `subject`, and none
+  may already belong to a course. The transactional create/stamp/plan work runs
+  in `CombinedCourse`'s `:combine` action; the validations here return the bare
+  error atoms (`:need_two`, `:teacher_mismatch`, `:subject_mismatch`,
+  `:already_combined`) that call sites match on.
+  """
+  def combine_course(contexts) when is_list(contexts) do
+    with :ok <- validate_count(contexts),
+         :ok <- validate_same_teacher(contexts),
+         :ok <- validate_same_subject(contexts),
+         :ok <- validate_not_already_combined(contexts) do
+      CombinedCourse
+      |> Ash.ActionInput.for_action(:combine, %{contexts: contexts})
+      |> Ash.run_action()
+    end
+  end
+
+  defp validate_count(contexts) when length(contexts) >= 2, do: :ok
+  defp validate_count(_contexts), do: {:error, :need_two}
+
+  defp validate_same_teacher(contexts) do
+    contexts
+    |> Enum.map(& &1.teacher_user_id)
+    |> Enum.uniq()
+    |> case do
+      [_single] -> :ok
+      _ -> {:error, :teacher_mismatch}
+    end
+  end
+
+  defp validate_same_subject(contexts) do
+    contexts
+    |> Enum.map(& &1.subject)
+    |> Enum.uniq()
+    |> case do
+      [_single] -> :ok
+      _ -> {:error, :subject_mismatch}
+    end
+  end
+
+  defp validate_not_already_combined(contexts) do
+    if Enum.any?(contexts, & &1.combined_course_id) do
+      {:error, :already_combined}
+    else
+      :ok
+    end
+  end
+
+  @doc """
+  Splits a `CombinedCourse` apart via its `:split` action: unlinks every member
+  context, destroys the course's shared `ProgressionPlan`, then destroys the
+  course. Always returns `:ok`.
+  """
+  def split_course(%CombinedCourse{} = course) do
+    CombinedCourse
+    |> Ash.ActionInput.for_action(:split, %{course: course})
+    |> Ash.run_action!()
+
+    :ok
+  end
+
+  @doc """
+  Lists the teaching units assigned to `user` in `ws`/`year`: each is either
+  `{:solo, %TeachingContext{}}` or `{:course, %CombinedCourse{}}` — contexts
+  sharing a `combined_course_id` collapse into a single course entry (once per
+  course), everything else stays solo.
+  """
+  def list_units_for_user(%Workspace{} = ws, %AcademicYear{} = year, %User{} = user) do
+    contexts = list_assignments_for_user(ws, year, user)
+
+    {units, _seen} =
+      Enum.reduce(contexts, {[], MapSet.new()}, fn ctx, {units, seen} ->
+        case ctx.combined_course_id do
+          nil ->
+            {[{:solo, ctx} | units], seen}
+
+          course_id ->
+            if MapSet.member?(seen, course_id) do
+              {units, seen}
+            else
+              {:ok, course} = get_course(course_id)
+              {[{:course, course} | units], MapSet.put(seen, course_id)}
+            end
+        end
+      end)
+
+    Enum.reverse(units)
+  end
+
+  @doc """
+  Scope-aware teaching-*unit* listing for the class switcher: contexts
+  belonging to the same combined course collapse into a single
+  `{:course, %CombinedCourse{}}` entry (via `list_units_for_user/3`);
+  everything else stays `{:solo, %TeachingContext{}}`. Returns `[]` when there
+  is no current academic year.
+  """
+  def list_units_for_scope(%TeacherAssistant.Scope{
+        current_workspace: ws,
+        current_academic_year: year,
+        current_workspace_type: type,
+        current_user: user
+      }) do
+    cond do
+      is_nil(ws) or is_nil(year) -> []
+      type == :school -> list_units_for_user(ws, year, user)
+      true -> Enum.map(Academics.list_teaching_contexts(ws, year), &{:solo, &1})
+    end
+  end
+
+  @doc """
+  The union roster of a `CombinedCourse`: every student of every member class,
+  grouped by class (each group carries its own `class_group` and
+  `teaching_context`, so a mark can always be routed back to the right context).
+  Marks stay per-student, per-context — this is purely a read shape for the
+  combined marks page; it never merges rosters across classes into one flat
+  list. Skips a member context with no `class_group` yet.
+  """
+  def list_union_students(%CombinedCourse{id: id}) do
+    id
+    |> contexts_of_course!()
+    |> Ash.load!(:class_group)
+    |> Enum.reject(&is_nil(&1.class_group))
+    |> Enum.map(fn ctx ->
+      %{
+        teaching_context: ctx,
+        class_group: ctx.class_group,
+        students: Enrollment.list_students(ctx.class_group)
+      }
+    end)
+    |> Enum.sort_by(&String.downcase(&1.class_group.label))
+  end
 end

@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.AttendanceLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.AttendanceStatus
@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
          teaching_context: %TeachingContext{combined_course_id: course_id}
        })
        when not is_nil(course_id) do
-    case Academics.get_course(course_id) do
+    case Curriculum.get_course(course_id) do
       {:ok, course} -> course
       _ -> nil
     end

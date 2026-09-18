@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.DashboardLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -41,9 +42,9 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
   defp link_context_id(%{teaching_context_id: id}) when not is_nil(id), do: id
 
   defp link_context_id(%{combined_course_id: course_id}) when not is_nil(course_id) do
-    case Academics.get_course(course_id) do
+    case Curriculum.get_course(course_id) do
       {:ok, course} ->
-        case Academics.contexts_of_course(course) do
+        case Curriculum.contexts_of_course!(course.id) do
           [%{id: id} | _] -> id
           [] -> nil
         end

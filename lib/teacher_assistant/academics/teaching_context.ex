@@ -70,6 +70,11 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       prepare build(load: [:teacher, :combined_course], sort: [subject: :asc])
     end
 
+    read :for_combined_course do
+      argument :combined_course_id, :uuid, allow_nil?: false
+      filter expr(combined_course_id == ^arg(:combined_course_id))
+    end
+
     read :for_workspace_year_teacher do
       argument :workspace_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false

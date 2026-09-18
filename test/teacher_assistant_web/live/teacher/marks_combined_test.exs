@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -37,7 +36,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     {:ok, s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
     {:ok, s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     {:ok, profile} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(profile, head.id)

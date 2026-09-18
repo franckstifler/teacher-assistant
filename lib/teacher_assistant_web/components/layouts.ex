@@ -41,7 +41,7 @@ defmodule TeacherAssistantWeb.Layouts do
     units =
       case current_scope do
         %{current_workspace: %{}} ->
-          TeacherAssistant.Academics.list_units_for_scope(current_scope)
+          TeacherAssistant.Curriculum.list_units_for_scope(current_scope)
 
         _ ->
           []

@@ -290,11 +290,11 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       # cg is "6e A" and cg2 is "6e B" — same level ("6ème"), distinct class
       # labels. The initiating context (cg) arrives here from
       # Curriculum.list_assignments_for_class/1, which does NOT preload :class_group —
-      # this pins that Courses.combine/1 loads it itself rather than
+      # this pins that Curriculum.combine_course/1 loads it itself rather than
       # collapsing to a degenerate "Maths · 6ème" label.
       {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+      {:ok, course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
 
       assert course.label == "Maths · 6e A+6e B"
 
@@ -311,7 +311,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     } do
       {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       view |> element("#split-#{tc.id}") |> render_click()
@@ -481,7 +481,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     } do
       {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "split_course", %{"context-id" => tc.id})

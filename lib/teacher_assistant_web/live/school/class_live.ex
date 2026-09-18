@@ -1,10 +1,9 @@
 defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
 
-  alias TeacherAssistant.Academics.{Courses, EnrollmentStatus, Sex}
+  alias TeacherAssistant.Academics.{EnrollmentStatus, Sex}
   alias TeacherAssistant.Curriculum
 
   alias TeacherAssistant.Accounts.{Permissions}
@@ -601,7 +600,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         |> Map.get(cid, [])
         |> Enum.filter(&(&1.id in sibling_ids))
 
-      case Courses.combine([tc | siblings]) do
+      case Curriculum.combine_course([tc | siblings]) do
         {:ok, _course} ->
           {:noreply,
            socket
@@ -643,8 +642,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          course_id when not is_nil(course_id) <- tc.combined_course_id,
-         {:ok, course} <- Academics.get_course(course_id) do
-      :ok = Courses.split(course)
+         {:ok, course} <- Curriculum.get_course(course_id) do
+      :ok = Curriculum.split_course(course)
 
       {:noreply,
        socket

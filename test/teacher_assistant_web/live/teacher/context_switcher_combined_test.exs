@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
@@ -27,7 +26,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head, %{subject: "Mathématiques"})
     {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Mathématiques"})
 
-    {:ok, course} = Courses.combine([tc_a, tc_b])
+    {:ok, course} = Curriculum.combine_course([tc_a, tc_b])
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

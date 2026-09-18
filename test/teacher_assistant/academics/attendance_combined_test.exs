@@ -7,7 +7,6 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -36,7 +35,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
     [%{enrollment: enr_maco}] = Enrollment.list_roster(maco)
     [%{enrollment: enr_menu}] = Enrollment.list_roster(menu)
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     :ok = Timetables.build_default_periods(ws)
     period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))

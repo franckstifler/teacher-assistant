@@ -29,6 +29,23 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       ],
       update: [:title, :status, :template]
     ]
+
+    # One plan per teaching *unit* in a workspace: course plans, plus the plans
+    # of contexts that are NOT part of a combined course. Drops a member
+    # context's stale solo plan (created before the context was combined) so a
+    # `CombinedCourse` surfaces exactly one coverage KPI instead of one per
+    # member class. A course plan has no `teaching_context_id`; a lone-context
+    # plan's `teaching_context.combined_course_id` is nil — either keeps it.
+    read :unit_plans do
+      argument :workspace_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 (is_nil(teaching_context_id) or is_nil(teaching_context.combined_course_id))
+             )
+
+      prepare build(sort: [inserted_at: :desc])
+    end
   end
 
   policies do

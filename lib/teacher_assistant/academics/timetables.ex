@@ -3,7 +3,6 @@ defmodule TeacherAssistant.Academics.Timetables do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
@@ -132,8 +131,8 @@ defmodule TeacherAssistant.Academics.Timetables do
   """
   def place_combined_slot(%CombinedCourse{} = course, day, period_id) do
     contexts =
-      course
-      |> Academics.contexts_of_course()
+      course.id
+      |> Curriculum.contexts_of_course!()
       |> Ash.load!(:class_group, authorize?: false)
 
     case contexts do
@@ -176,8 +175,8 @@ defmodule TeacherAssistant.Academics.Timetables do
   clearing an already-empty cell is a no-op).
   """
   def clear_combined_slot(%CombinedCourse{} = course, day, period_id) do
-    course
-    |> Academics.contexts_of_course()
+    course.id
+    |> Curriculum.contexts_of_course!()
     |> Ash.load!(:class_group, authorize?: false)
     |> Enum.each(fn tc -> clear_slot(tc.class_group, day, period_id) end)
 

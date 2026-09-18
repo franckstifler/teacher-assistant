@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -90,7 +89,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
        %{conn: conn, cg: cg, tc: tc, period: period, school: school, year: year, head: head} do
     {:ok, other_cg} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
     {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
-    {:ok, _course} = Courses.combine([tc, other_tc])
+    {:ok, _course} = Curriculum.combine_course([tc, other_tc])
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/timetable")
 

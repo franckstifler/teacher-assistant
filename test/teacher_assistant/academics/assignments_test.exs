@@ -137,7 +137,7 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
       %{head: head, cg: cg, cg2: cg2} = ctx
       {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
       {:ok, tc2} = Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
 
       {:ok, cg3} =
         Enrollment.create_class_group(ctx.school, ctx.year, %{label: "6e C", level: "6ème"})

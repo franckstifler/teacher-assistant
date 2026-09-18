@@ -5,7 +5,6 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Accounts
@@ -31,7 +30,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
     {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     :ok = Timetables.build_default_periods(ws)
     period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))

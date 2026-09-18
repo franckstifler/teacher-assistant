@@ -3,7 +3,6 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -46,10 +45,10 @@ defmodule TeacherAssistant.Academics.CoursesTest do
   test "combine links contexts and creates one shared plan", ctx do
     %{tc_maco: tc_maco, tc_menu: tc_menu, ws: ws} = ctx
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     assert Enum.sort([tc_maco.id, tc_menu.id]) ==
-             Enum.sort(Enum.map(Academics.contexts_of_course(course), & &1.id))
+             Enum.sort(Enum.map(Curriculum.contexts_of_course!(course.id), & &1.id))
 
     assert [_plan] =
              Academics.list_progression_plans(ws)
@@ -61,7 +60,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     # tc_maco/tc_menu come straight from Curriculum.assign_teacher/3 — neither has
     # :class_group preloaded. combine/1 must load it itself, otherwise both
     # contexts (same level "1ère") collapse to a single bare-level label.
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     assert course.label == "Mathématiques · 1ère A MACO+1ère A MENU"
   end
@@ -69,20 +68,20 @@ defmodule TeacherAssistant.Academics.CoursesTest do
   test "combine rejects mismatched subject/teacher and <2", ctx do
     %{tc_maco: tc_maco, tc_french: tc_french, cg_menu: cg_menu} = ctx
 
-    assert {:error, :need_two} = Courses.combine([tc_maco])
-    assert {:error, :subject_mismatch} = Courses.combine([tc_maco, tc_french])
+    assert {:error, :need_two} = Curriculum.combine_course([tc_maco])
+    assert {:error, :subject_mismatch} = Curriculum.combine_course([tc_maco, tc_french])
 
     other = TeacherFixtures.user_fixture()
     {:ok, _} = add_active_member(ctx.ws, ctx.head, other)
     {:ok, tc_other} = Curriculum.assign_teacher(cg_menu, other, %{subject: "Français"})
 
-    assert {:error, :teacher_mismatch} = Courses.combine([tc_french, tc_other])
+    assert {:error, :teacher_mismatch} = Curriculum.combine_course([tc_french, tc_other])
   end
 
   test "combine rejects a context already in a course", ctx do
     %{tc_maco: tc_maco, tc_menu: tc_menu, cg_maco: cg_maco, head: head} = ctx
 
-    {:ok, _course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, _course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     {:ok, cg_third} =
       Enrollment.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
@@ -90,20 +89,20 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     {:ok, tc_third} = Curriculum.assign_teacher(cg_third, head, %{subject: "Mathématiques"})
     tc_maco = Academics.get_teaching_context(tc_maco.id) |> elem(1)
 
-    assert {:error, :already_combined} = Courses.combine([tc_maco, tc_third])
+    assert {:error, :already_combined} = Curriculum.combine_course([tc_maco, tc_third])
     refute cg_maco == nil
   end
 
   describe "split" do
     setup ctx do
-      {:ok, course} = Courses.combine([ctx.tc_maco, ctx.tc_menu])
+      {:ok, course} = Curriculum.combine_course([ctx.tc_maco, ctx.tc_menu])
       %{course: course}
     end
 
     test "split unlinks contexts and removes the course and its plan", ctx do
       %{course: course, tc_maco: tc_maco, tc_menu: tc_menu, ws: ws} = ctx
 
-      assert :ok = Courses.split(course)
+      assert :ok = Curriculum.split_course(course)
 
       assert Academics.get_teaching_context(tc_maco.id) |> elem(1) |> Map.get(:combined_course_id) ==
                nil
@@ -111,7 +110,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
       assert Academics.get_teaching_context(tc_menu.id) |> elem(1) |> Map.get(:combined_course_id) ==
                nil
 
-      assert {:error, _} = Academics.get_course(course.id)
+      assert {:error, _} = Curriculum.get_course(course.id)
 
       assert [] =
                Academics.list_progression_plans(ws)
@@ -123,9 +122,9 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, ws: ws, year: year, head: head} =
       ctx
 
-    {:ok, _} = Courses.combine([tc_maco, tc_menu])
+    {:ok, _} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    units = Courses.list_units_for_user(ws, year, head)
+    units = Curriculum.list_units_for_user(ws, year, head)
 
     assert Enum.count(units, &match?({:course, _}, &1)) == 1
     assert Enum.count(units, &match?({:solo, _}, &1)) == 1
@@ -148,7 +147,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
     {:ok, french_plan} = Academics.create_progression_plan(tc_french, %{title: "Français"})
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     unit_plans = Academics.list_unit_plans(ws)
 
