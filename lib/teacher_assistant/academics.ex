@@ -670,6 +670,131 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
+  @doc """
+  The union roster of a `CombinedCourse`: every student of every member
+  class, grouped by class (each group carries its own `class_group` and
+  `teaching_context`, so a mark can always be routed back to the right
+  context). Marks stay per-student, per-context — this is purely a read
+  shape for the combined marks page; it never merges rosters across
+  classes into one flat list.
+  """
+  def list_union_students(%CombinedCourse{} = course) do
+    course
+    |> contexts_of_course()
+    |> Ash.load!(:class_group, authorize?: false)
+    |> Enum.reject(&is_nil(&1.class_group))
+    |> Enum.map(fn ctx ->
+      %{
+        teaching_context: ctx,
+        class_group: ctx.class_group,
+        students: list_students(ctx.class_group)
+      }
+    end)
+    |> Enum.sort_by(&String.downcase(&1.class_group.label))
+  end
+
+  @doc """
+  Per-séquence assessments for a `CombinedCourse`: one underlying
+  `Assessment` row per member `TeachingContext` (a student's mark always
+  lands on their own class's context — `Mark`'s identity and the bulletin
+  read path never change), grouped by label into one teacher-facing
+  "assessment" column per séquence. If a member context is missing an
+  assessment for a label another member already has (e.g. a class joined
+  the course after assessments were created), creates the missing one so
+  every member class stays in sync for that séquence.
+
+  Returns `[%{id, label, weight, max_score, by_class_group_id}]` — `id` is
+  a stable identifier for that logical column (the assessment id of the
+  course's first member class, by class label) used to select/route it;
+  `by_class_group_id` maps each member `class_group_id` to that class's own
+  `Assessment`, which is what `upsert_marks/2` actually writes to.
+  """
+  def combined_assessments_for(%CombinedCourse{} = course, %Sequence{} = seq) do
+    contexts =
+      course
+      |> contexts_of_course()
+      |> Ash.load!(:class_group, authorize?: false)
+      |> Enum.reject(&is_nil(&1.class_group))
+      |> Enum.sort_by(&String.downcase(&1.class_group.label))
+
+    case contexts do
+      [] ->
+        []
+
+      [primary | rest] ->
+        by_context_id = Map.new(contexts, fn ctx -> {ctx.id, list_assessments(ctx, seq)} end)
+        primary_labels = Enum.map(by_context_id[primary.id], & &1.label)
+
+        extra_labels =
+          rest
+          |> Enum.flat_map(&by_context_id[&1.id])
+          |> Enum.map(& &1.label)
+          |> Enum.uniq()
+          |> Enum.reject(&(&1 in primary_labels))
+
+        (primary_labels ++ extra_labels)
+        |> Enum.map(&build_combined_entry(&1, contexts, primary, by_context_id, seq))
+    end
+  end
+
+  defp build_combined_entry(label, contexts, primary, by_context_id, seq) do
+    by_class_group_id =
+      Map.new(contexts, fn ctx ->
+        assessment =
+          Enum.find(by_context_id[ctx.id], &(&1.label == label)) ||
+            backfill_assessment!(ctx, seq, label)
+
+        {ctx.class_group_id, assessment}
+      end)
+
+    primary_assessment = Map.fetch!(by_class_group_id, primary.class_group_id)
+
+    %{
+      id: primary_assessment.id,
+      label: label,
+      weight: primary_assessment.weight,
+      max_score: primary_assessment.max_score,
+      by_class_group_id: by_class_group_id
+    }
+  end
+
+  defp backfill_assessment!(ctx, seq, label) do
+    case create_assessment(ctx, seq, %{label: label}) do
+      {:ok, a} ->
+        a
+
+      {:error, error} ->
+        raise "could not sync combined assessment across member classes: #{inspect(error)}"
+    end
+  end
+
+  @doc """
+  Creates one `Assessment{label, sequence}` per member context of a
+  `CombinedCourse`, all inside one transaction — the create path behind
+  `combined_assessments_for/2`'s "same assessment across every member
+  class" guarantee. Returns `{:ok, [%Assessment{}, ...]}` (one per member
+  context) or rolls back and returns the first `{:error, reason}`.
+  """
+  def create_combined_assessment(%CombinedCourse{} = course, %Sequence{} = seq, attrs) do
+    label = Map.get(attrs, :label) || Map.get(attrs, "label")
+    contexts = contexts_of_course(course)
+
+    result =
+      Repo.transaction(fn ->
+        Enum.map(contexts, fn ctx ->
+          case create_assessment(ctx, seq, %{label: label}) do
+            {:ok, a} -> a
+            {:error, error} -> Repo.rollback(error)
+          end
+        end)
+      end)
+
+    case result do
+      {:ok, assessments} -> {:ok, assessments}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   def fetch_owned_assessment(id, %Workspace{} = ws) do
     case Ash.get(Assessment, id, authorize?: false) do
       {:ok, assessment} ->

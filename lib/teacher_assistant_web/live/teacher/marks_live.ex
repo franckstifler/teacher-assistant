@@ -1,13 +1,26 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.CombinedCourse
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
 
-    with {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope),
-         false <- is_nil(ctx.class_group_id),
+    case Academics.fetch_assigned_teaching_context(ctx_id, scope) do
+      {:ok, %{combined_course_id: course_id} = ctx} when not is_nil(course_id) ->
+        mount_combined(ctx, course_id, params, socket, ws)
+
+      {:ok, ctx} ->
+        mount_solo(ctx, params, socket, ws)
+
+      _ ->
+        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+    end
+  end
+
+  defp mount_solo(ctx, params, socket, ws) do
+    with false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Academics.current_academic_year(ws)
       sequences = if year, do: Academics.list_sequences(year), else: []
@@ -32,7 +45,41 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     else
       # true => context owned but has no class group (go set up the roster); anything else => not found / not owned
       true ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx_id}/roster")}
+        {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx.id}/roster")}
+
+      _ ->
+        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+    end
+  end
+
+  # Combined mode: the mounted context is a member of a `CombinedCourse`.
+  # The page shows the union roster of every member class (grouped by
+  # class), and the "assessment" the teacher picks is a logical column
+  # backed by one real `Assessment` per member context — a student's score
+  # always lands on their own class's context's assessment.
+  defp mount_combined(ctx, course_id, params, socket, ws) do
+    case Academics.get_course(course_id) do
+      {:ok, course} ->
+        year = Academics.current_academic_year(ws)
+        sequences = if year, do: Academics.list_sequences(year), else: []
+        seq = pick(sequences, params["seq"])
+        combined = if seq, do: Academics.combined_assessments_for(course, seq), else: []
+        selected = pick(combined, params["assessment"])
+        groups = Academics.list_union_students(course)
+
+        {:ok,
+         socket
+         |> assign(:ws, ws)
+         |> assign(:ctx, ctx)
+         |> assign(:course, course)
+         |> assign(:groups, groups)
+         |> assign(:sequences, sequences)
+         |> assign(:seq, seq)
+         |> assign(:combined_assessments, combined)
+         |> assign(:selected, selected)
+         |> assign(:scores, combined_existing_scores(selected))
+         |> assign(:unsaved, %{})
+         |> assign(:new_assessment_form, to_form(%{}, as: :assessment))}
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
@@ -47,6 +94,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp existing_scores(assessment) do
     assessment
     |> Academics.list_marks()
+    |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
+  end
+
+  defp combined_existing_scores(nil), do: %{}
+
+  defp combined_existing_scores(%{by_class_group_id: by_class_group_id}) do
+    by_class_group_id
+    |> Map.values()
+    |> Enum.uniq_by(& &1.id)
+    |> Enum.flat_map(&Academics.list_marks/1)
     |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
   end
 
@@ -100,14 +157,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   def handle_event("new_assessment", %{"assessment" => p}, socket) do
-    with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
-         {:ok, a} <- Academics.create_assessment(socket.assigns.ctx, seq, %{label: p["label"]}) do
-      {:noreply,
-       push_patch(socket,
-         to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}"
-       )}
-    else
-      _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
+    case socket.assigns[:course] do
+      %CombinedCourse{} = course -> new_combined_assessment(socket, course, p["label"])
+      _ -> new_solo_assessment(socket, p["label"])
     end
   end
 
@@ -124,21 +176,56 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          gettext("École en attente de vérification — enregistrement indisponible.")
        )}
     else
-      parsed =
-        Enum.map(socket.assigns.students, fn s ->
-          {s.id, parse_score(Map.get(scores, s.id))}
-        end)
-
-      if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
-         )}
-      else
-        save_marks(socket, parsed)
+      case socket.assigns[:course] do
+        %CombinedCourse{} -> save_combined(socket, scores)
+        _ -> save_solo(socket, scores)
       end
+    end
+  end
+
+  defp new_solo_assessment(socket, label) do
+    with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
+         {:ok, a} <- Academics.create_assessment(socket.assigns.ctx, seq, %{label: label}) do
+      {:noreply,
+       push_patch(socket,
+         to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}"
+       )}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
+    end
+  end
+
+  defp new_combined_assessment(socket, course, label) do
+    with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
+         {:ok, _created} <- Academics.create_combined_assessment(course, seq, %{label: label}),
+         %{id: id} <-
+           course
+           |> Academics.combined_assessments_for(seq)
+           |> Enum.find(&(&1.label == label)) do
+      {:noreply,
+       push_patch(socket,
+         to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{id}"
+       )}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
+    end
+  end
+
+  defp save_solo(socket, scores) do
+    parsed =
+      Enum.map(socket.assigns.students, fn s ->
+        {s.id, parse_score(Map.get(scores, s.id))}
+      end)
+
+    if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+       )}
+    else
+      save_marks(socket, parsed)
     end
   end
 
@@ -168,6 +255,64 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
+  # Combined mode: each student's score is routed to *their own class's*
+  # assessment — never the other member class's — via
+  # `selected.by_class_group_id[class_group_id]`. Every group is upserted
+  # in its own `Academics.upsert_marks/2` call, so `Mark`'s
+  # `[:assessment_id, :student_id]` identity and the bulletin read path are
+  # untouched: a MACO student's mark still belongs to MACO's context.
+  defp save_combined(socket, scores) do
+    %{groups: groups, selected: selected} = socket.assigns
+
+    all_students = Enum.flat_map(groups, & &1.students)
+
+    parsed =
+      Enum.map(all_students, fn s ->
+        {s.id, parse_score(Map.get(scores, s.id))}
+      end)
+
+    if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+       )}
+    else
+      scores_by_id = Map.new(parsed, fn {id, {:ok, score}} -> {id, score} end)
+
+      results =
+        Enum.map(groups, fn %{class_group: cg, students: students} ->
+          assessment = Map.fetch!(selected.by_class_group_id, cg.id)
+
+          entries =
+            Enum.map(students, fn s -> %{student_id: s.id, score: Map.get(scores_by_id, s.id)} end)
+
+          Academics.upsert_marks(assessment, entries)
+        end)
+
+      cond do
+        Enum.all?(results, &(&1 == :ok)) ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Marks saved"))
+           |> assign(:unsaved, Map.delete(socket.assigns.unsaved, selected.id))
+           |> assign(:scores, combined_existing_scores(selected))}
+
+        Enum.any?(results, &match?({:error, :out_of_range}, &1)) ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("Marks must be between 0 and %{max}.", max: max_label(selected))
+           )}
+
+        true ->
+          {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}
+      end
+    end
+  end
+
   defp max_label(%{max_score: %Decimal{} = m}), do: Decimal.to_string(m, :normal)
 
   def handle_params(params, _uri, socket) do
@@ -175,25 +320,40 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     # outgoing column, restore any previously stashed edits for the incoming one,
     # so an accidental tap on a selector never discards typed marks.
     unsaved = stash_current(socket)
-
     seq = pick(socket.assigns.sequences, params["seq"])
-    assessments = if seq, do: Academics.list_assessments(socket.assigns.ctx, seq), else: []
-    assessment = pick(assessments, params["assessment"])
 
-    {:noreply,
-     socket
-     |> assign(:seq, seq)
-     |> assign(:assessments, assessments)
-     |> assign(:assessment, assessment)
-     |> assign(:unsaved, unsaved)
-     |> assign(:scores, restore_scores(assessment, unsaved))
-     |> assign(:sibling_scores, sibling_scores(socket.assigns.ctx, seq))}
+    case socket.assigns[:course] do
+      %CombinedCourse{} = course ->
+        combined = if seq, do: Academics.combined_assessments_for(course, seq), else: []
+        selected = pick(combined, params["assessment"])
+
+        {:noreply,
+         socket
+         |> assign(:seq, seq)
+         |> assign(:combined_assessments, combined)
+         |> assign(:selected, selected)
+         |> assign(:unsaved, unsaved)
+         |> assign(:scores, restore_combined_scores(selected, unsaved))}
+
+      _ ->
+        assessments = if seq, do: Academics.list_assessments(socket.assigns.ctx, seq), else: []
+        assessment = pick(assessments, params["assessment"])
+
+        {:noreply,
+         socket
+         |> assign(:seq, seq)
+         |> assign(:assessments, assessments)
+         |> assign(:assessment, assessment)
+         |> assign(:unsaved, unsaved)
+         |> assign(:scores, restore_scores(assessment, unsaved))
+         |> assign(:sibling_scores, sibling_scores(socket.assigns.ctx, seq))}
+    end
   end
 
   defp stash_current(socket) do
     unsaved = socket.assigns[:unsaved] || %{}
 
-    case socket.assigns[:assessment] do
+    case socket.assigns[:selected] || socket.assigns[:assessment] do
       %{id: id} -> Map.put(unsaved, id, socket.assigns[:scores] || %{})
       _ -> unsaved
     end
@@ -203,6 +363,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp restore_scores(%{id: id} = assessment, unsaved),
     do: Map.merge(existing_scores(assessment), Map.get(unsaved, id, %{}))
+
+  defp restore_combined_scores(nil, _unsaved), do: %{}
+
+  defp restore_combined_scores(%{id: id} = selected, unsaved),
+    do: Map.merge(combined_existing_scores(selected), Map.get(unsaved, id, %{}))
 
   # Parses a raw score field into {:ok, Decimal.t() | nil} — nil meaning absent —
   # or :error. Accepts a French decimal comma; rejects any non-empty value that is
@@ -228,6 +393,100 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       {:ok, d} -> d
       :error -> nil
     end
+  end
+
+  def render(%{course: %CombinedCourse{}} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <section id="teacher-marks" class="mx-auto max-w-3xl space-y-4">
+        <.page_header eyebrow={gettext("Marks")} title={@course.label} />
+
+        <div
+          id="marks-toolbar"
+          class="ta-leaf sticky top-16 z-10 flex flex-wrap items-end gap-2 backdrop-blur"
+        >
+          <form id="seq-select" phx-change="select_seq" class="min-w-36 flex-1">
+            <.input
+              type="select"
+              name="seq"
+              value={@seq && @seq.id}
+              label={gettext("Séquence")}
+              options={for s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", s.id}}
+            />
+          </form>
+
+          <form
+            :if={@seq}
+            id="assessment-select"
+            phx-change="select_assessment"
+            class="min-w-36 flex-1"
+          >
+            <.input
+              type="select"
+              name="assessment"
+              value={@selected && @selected.id}
+              label={gettext("Assessment")}
+              options={for a <- @combined_assessments, do: {a.label, a.id}}
+            />
+          </form>
+
+          <.form
+            :if={@seq}
+            for={@new_assessment_form}
+            id="new-assessment-form"
+            phx-submit="new_assessment"
+            class="flex flex-1 items-end gap-2"
+          >
+            <.input field={@new_assessment_form[:label]} placeholder={gettext("New assessment")} />
+            <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
+          </.form>
+        </div>
+
+        <%= if @selected do %>
+          <p class="text-xs text-base-content/55">
+            {gettext("Blank = absent. Marks are out of 20.")}
+          </p>
+
+          <.form
+            for={to_form(%{}, as: :scores)}
+            id="marks-form"
+            phx-change="preview"
+            phx-submit="save"
+            class="space-y-4"
+          >
+            <div :for={group <- @groups} id={"marks-class-#{group.class_group.id}"} class="space-y-2">
+              <h3 class="ta-eyebrow">{group.class_group.label}</h3>
+
+              <div
+                :for={s <- group.students}
+                id={"mark-row-#{s.id}"}
+                class="ta-leaf flex items-center justify-between gap-2"
+              >
+                <span class="flex-1">{s.full_name}</span>
+                <input
+                  id={"mark-input-#{s.id}"}
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="20"
+                  inputmode="decimal"
+                  aria-label={s.full_name}
+                  placeholder={gettext("Abs")}
+                  name={"scores[#{s.id}]"}
+                  value={Map.get(@scores, s.id, "")}
+                  phx-debounce="300"
+                  class="ta-num input input-bordered h-11 w-24 text-right"
+                />
+              </div>
+            </div>
+            <.button id="marks-submit" type="submit" class="btn btn-primary w-full">
+              {gettext("Save marks")}
+            </.button>
+          </.form>
+        <% end %>
+      </section>
+    </Layouts.app>
+    """
   end
 
   def render(assigns) do
