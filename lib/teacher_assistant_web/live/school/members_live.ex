@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{Permissions, SchoolRoles, Schools}
+  alias TeacherAssistant.Accounts.{Permissions, SchoolRole, Schools}
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -44,7 +44,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     phx-value-id={m.id}
                     class="flex flex-wrap gap-2"
                   >
-                    <label :for={role <- SchoolRoles.all()} class="label cursor-pointer gap-1">
+                    <label :for={role <- SchoolRole.values()} class="label cursor-pointer gap-1">
                       <input
                         type="checkbox"
                         name="roles[]"
@@ -52,11 +52,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                         checked={role in m.roles}
                         class="checkbox checkbox-sm"
                       />
-                      <span class="text-xs">{SchoolRoles.label(role)}</span>
+                      <span class="text-xs">{SchoolRole.label(role)}</span>
                     </label>
                   </form>
                   <span :if={!@head?}>
-                    {m.roles |> Enum.map(&SchoolRoles.label/1) |> Enum.join(", ")}
+                    {m.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
                   </span>
                 </td>
                 <td>{gettext("Actif")}</td>
@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             <div class="flex flex-wrap items-end gap-3">
               <.input field={@invite_form[:email]} type="email" label={gettext("Email")} />
               <div class="flex flex-wrap gap-2">
-                <label :for={role <- SchoolRoles.all()} class="label cursor-pointer gap-1">
+                <label :for={role <- SchoolRole.values()} class="label cursor-pointer gap-1">
                   <input
                     type="checkbox"
                     name="invite[roles][]"
@@ -97,7 +97,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     checked={role == :teacher}
                     class="checkbox checkbox-sm"
                   />
-                  <span class="text-xs">{SchoolRoles.label(role)}</span>
+                  <span class="text-xs">{SchoolRole.label(role)}</span>
                 </label>
               </div>
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Inviter")}</button>
@@ -120,7 +120,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             <div class="text-sm">
               <span class="font-medium">{inv.email}</span>
               <span class="text-base-content/60">
-                — {inv.roles |> Enum.map(&SchoolRoles.label/1) |> Enum.join(", ")}
+                — {inv.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
               </span>
             </div>
             <button

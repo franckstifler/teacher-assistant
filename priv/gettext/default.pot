@@ -1247,7 +1247,7 @@ msgstr ""
 msgid "Cadre pédagogique"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:25
+#: lib/teacher_assistant/accounts/school_role.ex:25
 #: lib/teacher_assistant_web/controllers/fiche_print_html/show.html.heex:58
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:56
 #: lib/teacher_assistant_web/live/school/class_live.ex:262
@@ -1265,7 +1265,7 @@ msgstr ""
 msgid "Actif"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:23
+#: lib/teacher_assistant/accounts/school_role.ex:23
 #, elixir-autogen, elixir-format
 msgid "Animateur pédagogique"
 msgstr ""
@@ -1280,7 +1280,7 @@ msgstr ""
 msgid "Aucune invitation en attente"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:20
+#: lib/teacher_assistant/accounts/school_role.ex:20
 #, elixir-autogen, elixir-format
 msgid "Censeur"
 msgstr ""
@@ -1315,12 +1315,12 @@ msgstr ""
 msgid "Cette personne est déjà membre de l'école."
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:19
+#: lib/teacher_assistant/accounts/school_role.ex:19
 #, elixir-autogen, elixir-format
 msgid "Chef d'établissement"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:26
+#: lib/teacher_assistant/accounts/school_role.ex:26
 #, elixir-autogen, elixir-format
 msgid "Conseiller d'orientation"
 msgstr ""
@@ -1330,7 +1330,7 @@ msgstr ""
 msgid "Créer un compte"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:27
+#: lib/teacher_assistant/accounts/school_role.ex:27
 #, elixir-autogen, elixir-format
 msgid "Documentaliste"
 msgstr ""
@@ -1389,7 +1389,7 @@ msgstr ""
 msgid "Impossible de retirer le rôle de chef d'établissement du dernier chef."
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:22
+#: lib/teacher_assistant/accounts/school_role.ex:22
 #, elixir-autogen, elixir-format
 msgid "Intendant"
 msgstr ""
@@ -1443,7 +1443,7 @@ msgstr ""
 msgid "Paramètres"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:24
+#: lib/teacher_assistant/accounts/school_role.ex:24
 #: lib/teacher_assistant_web/live/school/class_live.ex:244
 #: lib/teacher_assistant_web/live/school/results_live.ex:117
 #, elixir-autogen, elixir-format
@@ -1499,7 +1499,7 @@ msgstr ""
 msgid "Statut"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_roles.ex:21
+#: lib/teacher_assistant/accounts/school_role.ex:21
 #, elixir-autogen, elixir-format
 msgid "Surveillant général"
 msgstr ""
@@ -3027,7 +3027,7 @@ msgstr ""
 msgid "%{p} présents · %{a} absents · %{r} retards"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:17
+#: lib/teacher_assistant/accounts/cameroon_region.ex:18
 #, elixir-autogen, elixir-format
 msgid "Adamaoua"
 msgstr ""
@@ -3042,7 +3042,7 @@ msgstr ""
 msgid "Ajouter"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_subsystems.ex:6
+#: lib/teacher_assistant/accounts/school_subsystem.ex:7
 #, elixir-autogen, elixir-format
 msgid "Anglophone"
 msgstr ""
@@ -3065,17 +3065,17 @@ msgstr ""
 msgid "Aucun établissement en attente de vérification"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_subsystems.ex:7
+#: lib/teacher_assistant/accounts/school_subsystem.ex:8
 #, elixir-autogen, elixir-format
 msgid "Bilingue"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:19
+#: lib/teacher_assistant/accounts/school_type.ex:20
 #, elixir-autogen, elixir-format
 msgid "CES / CEG"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:21
+#: lib/teacher_assistant/accounts/school_type.ex:22
 #, elixir-autogen, elixir-format
 msgid "CETIC"
 msgstr ""
@@ -3087,7 +3087,7 @@ msgstr ""
 msgid "Catégorie"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:18
+#: lib/teacher_assistant/accounts/cameroon_region.ex:19
 #, elixir-autogen, elixir-format
 msgid "Centre"
 msgstr ""
@@ -3103,7 +3103,7 @@ msgstr ""
 msgid "Choisir une matière"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_sectors.ex:8
+#: lib/teacher_assistant/accounts/school_sector.ex:9
 #, elixir-autogen, elixir-format
 msgid "Communautaire"
 msgstr ""
@@ -3139,47 +3139,47 @@ msgstr ""
 msgid "Enregistrer l'appel"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:19
+#: lib/teacher_assistant/accounts/cameroon_region.ex:20
 #, elixir-autogen, elixir-format
 msgid "Est"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:20
+#: lib/teacher_assistant/accounts/cameroon_region.ex:21
 #, elixir-autogen, elixir-format
 msgid "Extrême-Nord"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_subsystems.ex:5
+#: lib/teacher_assistant/accounts/school_subsystem.ex:6
 #, elixir-autogen, elixir-format
 msgid "Francophone"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:23
+#: lib/teacher_assistant/accounts/school_type.ex:24
 #, elixir-autogen, elixir-format
 msgid "Government High School (GHS)"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:22
+#: lib/teacher_assistant/accounts/school_type.ex:23
 #, elixir-autogen, elixir-format
 msgid "Government Secondary School (GSS)"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:26
+#: lib/teacher_assistant/accounts/school_type.ex:27
 #, elixir-autogen, elixir-format
 msgid "Government Technical College (GTC)"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:27
+#: lib/teacher_assistant/accounts/school_type.ex:28
 #, elixir-autogen, elixir-format
 msgid "Government Technical High School (GTHS)"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:25
+#: lib/teacher_assistant/accounts/school_type.ex:26
 #, elixir-autogen, elixir-format
 msgid "Govt Bilingual High School (GBHS)"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:24
+#: lib/teacher_assistant/accounts/school_type.ex:25
 #, elixir-autogen, elixir-format
 msgid "Govt Bilingual Secondary School (GBSS)"
 msgstr ""
@@ -3216,7 +3216,7 @@ msgstr ""
 msgid "Langue"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:21
+#: lib/teacher_assistant/accounts/cameroon_region.ex:22
 #, elixir-autogen, elixir-format
 msgid "Littoral"
 msgstr ""
@@ -3231,12 +3231,12 @@ msgstr ""
 msgid "Logo mis à jour."
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:18
+#: lib/teacher_assistant/accounts/school_type.ex:19
 #, elixir-autogen, elixir-format
 msgid "Lycée"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:20
+#: lib/teacher_assistant/accounts/school_type.ex:21
 #, elixir-autogen, elixir-format
 msgid "Lycée technique"
 msgstr ""
@@ -3284,17 +3284,17 @@ msgstr ""
 msgid "Nom du chef d'établissement"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_verification_statuses.ex:5
+#: lib/teacher_assistant/accounts/school_verification_status.ex:6
 #, elixir-autogen, elixir-format
 msgid "Non vérifié"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:22
+#: lib/teacher_assistant/accounts/cameroon_region.ex:23
 #, elixir-autogen, elixir-format
 msgid "Nord"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:23
+#: lib/teacher_assistant/accounts/cameroon_region.ex:24
 #, elixir-autogen, elixir-format
 msgid "Nord-Ouest"
 msgstr ""
@@ -3309,7 +3309,7 @@ msgstr ""
 msgid "Opérateur"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:26
+#: lib/teacher_assistant/accounts/cameroon_region.ex:27
 #, elixir-autogen, elixir-format
 msgid "Ouest"
 msgstr ""
@@ -3319,12 +3319,12 @@ msgstr ""
 msgid "Personnel"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_sectors.ex:7
+#: lib/teacher_assistant/accounts/school_sector.ex:8
 #, elixir-autogen, elixir-format
 msgid "Privé confessionnel"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_sectors.ex:6
+#: lib/teacher_assistant/accounts/school_sector.ex:7
 #, elixir-autogen, elixir-format
 msgid "Privé laïc"
 msgstr ""
@@ -3349,7 +3349,7 @@ msgstr ""
 msgid "Profil de l'établissement"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_sectors.ex:5
+#: lib/teacher_assistant/accounts/school_sector.ex:6
 #, elixir-autogen, elixir-format
 msgid "Public"
 msgstr ""
@@ -3364,7 +3364,7 @@ msgstr ""
 msgid "Rejeter"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_verification_statuses.ex:7
+#: lib/teacher_assistant/accounts/school_verification_status.ex:8
 #, elixir-autogen, elixir-format
 msgid "Rejeté"
 msgstr ""
@@ -3374,7 +3374,7 @@ msgstr ""
 msgid "Région"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_types.ex:28
+#: lib/teacher_assistant/accounts/school_type.ex:29
 #, elixir-autogen, elixir-format
 msgid "SAR/SM"
 msgstr ""
@@ -3430,12 +3430,12 @@ msgstr ""
 msgid "Sous-système"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:24
+#: lib/teacher_assistant/accounts/cameroon_region.ex:25
 #, elixir-autogen, elixir-format
 msgid "Sud"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/cameroon_regions.ex:25
+#: lib/teacher_assistant/accounts/cameroon_region.ex:26
 #, elixir-autogen, elixir-format
 msgid "Sud-Ouest"
 msgstr ""
@@ -3501,7 +3501,7 @@ msgstr ""
 msgid "Vérifier"
 msgstr ""
 
-#: lib/teacher_assistant/accounts/school_verification_statuses.ex:6
+#: lib/teacher_assistant/accounts/school_verification_status.ex:7
 #, elixir-autogen, elixir-format
 msgid "Vérifié"
 msgstr ""

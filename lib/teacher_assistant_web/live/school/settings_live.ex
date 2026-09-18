@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Subjects
   alias TeacherAssistant.Accounts.{Permissions, Schools}
-  alias TeacherAssistant.Accounts.{SchoolTypes, SchoolSubsystems, SchoolSectors, CameroonRegions}
+  alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -77,28 +77,28 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                   type="select"
                   field={@profile_form[:school_type]}
                   label={gettext("Type d'établissement")}
-                  options={for t <- SchoolTypes.all(), do: {SchoolTypes.label(t), t}}
+                  options={for t <- SchoolType.values(), do: {SchoolType.label(t), t}}
                   prompt={gettext("Sélectionner un type")}
                 />
                 <.input
                   type="select"
                   field={@profile_form[:subsystem]}
                   label={gettext("Sous-système")}
-                  options={for s <- SchoolSubsystems.all(), do: {SchoolSubsystems.label(s), s}}
+                  options={for s <- SchoolSubsystem.values(), do: {SchoolSubsystem.label(s), s}}
                   prompt={gettext("Sélectionner un sous-système")}
                 />
                 <.input
                   type="select"
                   field={@profile_form[:sector]}
                   label={gettext("Secteur")}
-                  options={for s <- SchoolSectors.all(), do: {SchoolSectors.label(s), s}}
+                  options={for s <- SchoolSector.values(), do: {SchoolSector.label(s), s}}
                   prompt={gettext("Sélectionner un secteur")}
                 />
                 <.input
                   type="select"
                   field={@profile_form[:region]}
                   label={gettext("Région")}
-                  options={for r <- CameroonRegions.all(), do: {CameroonRegions.label(r), r}}
+                  options={for r <- CameroonRegion.values(), do: {CameroonRegion.label(r), r}}
                   prompt={gettext("Sélectionner une région")}
                 />
                 <.input field={@profile_form[:department]} label={gettext("Département")} />

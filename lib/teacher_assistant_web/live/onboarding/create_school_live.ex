@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Accounts.Schools
-  alias TeacherAssistant.Accounts.{SchoolTypes, SchoolSubsystems, SchoolSectors, CameroonRegions}
+  alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
     {:ok, assign(socket, form: to_form(%{}, as: :school))}
@@ -53,28 +53,28 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
               type="select"
               field={@form[:school_type]}
               label={gettext("School type")}
-              options={for t <- SchoolTypes.all(), do: {SchoolTypes.label(t), t}}
+              options={for t <- SchoolType.values(), do: {SchoolType.label(t), t}}
               prompt={gettext("Select a school type")}
             />
             <.input
               type="select"
               field={@form[:subsystem]}
               label={gettext("Subsystem")}
-              options={for s <- SchoolSubsystems.all(), do: {SchoolSubsystems.label(s), s}}
+              options={for s <- SchoolSubsystem.values(), do: {SchoolSubsystem.label(s), s}}
               prompt={gettext("Select a subsystem")}
             />
             <.input
               type="select"
               field={@form[:sector]}
               label={gettext("Sector")}
-              options={for s <- SchoolSectors.all(), do: {SchoolSectors.label(s), s}}
+              options={for s <- SchoolSector.values(), do: {SchoolSector.label(s), s}}
               prompt={gettext("Select a sector")}
             />
             <.input
               type="select"
               field={@form[:region]}
               label={gettext("Region")}
-              options={for r <- CameroonRegions.all(), do: {CameroonRegions.label(r), r}}
+              options={for r <- CameroonRegion.values(), do: {CameroonRegion.label(r), r}}
               prompt={gettext("Select a region")}
             />
             <.input field={@form[:town]} label={gettext("Town")} />

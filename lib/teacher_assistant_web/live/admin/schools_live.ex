@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.Schools
-  alias TeacherAssistant.Accounts.{SchoolTypes, SchoolSubsystems, SchoolSectors, CameroonRegions}
+  alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
     {:ok, reload_schools(socket)}
@@ -32,9 +32,9 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
             <div class="space-y-1">
               <h2 class="font-semibold">{p.workspace.name}</h2>
               <p class="text-sm text-base-content/70">
-                {SchoolTypes.label(p.school_type)} · {SchoolSubsystems.label(p.subsystem)} · {SchoolSectors.label(
+                {SchoolType.label(p.school_type)} · {SchoolSubsystem.label(p.subsystem)} · {SchoolSector.label(
                   p.sector
-                )} · {CameroonRegions.label(p.region)} · {p.town}
+                )} · {CameroonRegion.label(p.region)} · {p.town}
               </p>
               <p class="text-sm text-base-content/60">{p.owner_user.email}</p>
             </div>
