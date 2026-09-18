@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Sex
   alias TeacherAssistant.Accounts.Permissions

@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Organization

@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.AttendanceStatus
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.TeachingContext

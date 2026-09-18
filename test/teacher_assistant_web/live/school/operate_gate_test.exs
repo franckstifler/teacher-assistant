@@ -1,8 +1,9 @@
 defmodule TeacherAssistantWeb.School.OperateGateTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{Attendance, Timetables}
+  alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization

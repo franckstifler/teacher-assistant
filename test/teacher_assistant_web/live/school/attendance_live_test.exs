@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization

@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Organization

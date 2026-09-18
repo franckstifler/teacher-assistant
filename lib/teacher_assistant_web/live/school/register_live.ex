@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Accounts.Permissions
 
   def mount(%{"id" => id} = params, _session, socket) do
