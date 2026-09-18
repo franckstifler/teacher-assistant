@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -10,8 +11,8 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
-      sequences = if year, do: Academics.list_sequences(year), else: []
-      terms = if year, do: Academics.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(year), else: []
+      terms = if year, do: Organization.list_terms(year), else: []
 
       {:ok,
        socket

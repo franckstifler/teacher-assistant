@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -22,8 +23,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp mount_solo(ctx, params, socket, ws) do
     with false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
-      year = Academics.current_academic_year(ws)
-      sequences = if year, do: Academics.list_sequences(year), else: []
+      year = Organization.current_academic_year(ws)
+      sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"])
       assessments = if seq, do: Academics.list_assessments(ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
@@ -60,8 +61,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp mount_combined(ctx, course_id, params, socket, ws) do
     case Academics.get_course(course_id) do
       {:ok, course} ->
-        year = Academics.current_academic_year(ws)
-        sequences = if year, do: Academics.list_sequences(year), else: []
+        year = Organization.current_academic_year(ws)
+        sequences = if year, do: Organization.list_sequences(year), else: []
         seq = pick(sequences, params["seq"])
         combined = if seq, do: Academics.combined_assessments_for(course, seq), else: []
         selected = pick(combined, params["assessment"])

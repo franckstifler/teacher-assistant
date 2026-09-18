@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Academics.Discipline do
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Academics.AcademicYear
+  alias TeacherAssistant.Organization
 
   @valid_types MapSet.new([
                  :avertissement,
@@ -183,7 +184,7 @@ defmodule TeacherAssistant.Academics.Discipline do
     sequences =
       case term.sequences do
         %Ash.NotLoaded{} ->
-          Academics.list_terms(%AcademicYear{id: term.academic_year_id})
+          Organization.list_terms(%AcademicYear{id: term.academic_year_id})
           |> Enum.find(&(&1.id == term.id))
           |> then(fn t -> if t, do: t.sequences, else: [] end)
 
@@ -195,7 +196,7 @@ defmodule TeacherAssistant.Academics.Discipline do
   end
 
   def note_de_conduite(enrollment, {:annual, %AcademicYear{} = year}) do
-    mean_conduct_marks(enrollment, Academics.list_sequences(year))
+    mean_conduct_marks(enrollment, Organization.list_sequences(year))
   end
 
   defp mean_conduct_marks(enrollment, sequences) do
@@ -232,7 +233,7 @@ defmodule TeacherAssistant.Academics.Discipline do
     sequences =
       case term.sequences do
         %Ash.NotLoaded{} ->
-          Academics.list_terms(%AcademicYear{id: term.academic_year_id})
+          Organization.list_terms(%AcademicYear{id: term.academic_year_id})
           |> Enum.find(&(&1.id == term.id))
           |> then(fn t -> if t, do: t.sequences, else: [] end)
 
@@ -244,7 +245,7 @@ defmodule TeacherAssistant.Academics.Discipline do
   end
 
   defp period_sequence_ids({:annual, %AcademicYear{} = year}) do
-    year |> Academics.list_sequences() |> Enum.map(& &1.id)
+    year |> Organization.list_sequences() |> Enum.map(& &1.id)
   end
 
   @doc """

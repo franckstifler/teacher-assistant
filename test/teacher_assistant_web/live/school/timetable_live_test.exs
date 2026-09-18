@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -211,7 +211,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

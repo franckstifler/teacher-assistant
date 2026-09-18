@@ -16,14 +16,14 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
 
     test "shows coverage kpis after setup", %{conn: conn, workspace: ws} do
       {:ok, year} =
-        TeacherAssistant.Academics.create_academic_year(ws, %{
+        TeacherAssistant.Organization.create_academic_year(ws, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      :ok = TeacherAssistant.Academics.build_default_calendar(year)
+      :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
         TeacherAssistant.Academics.create_teaching_context(ws, year, %{
@@ -42,14 +42,14 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
 
     test "dashboard links to marks for a context", %{conn: conn, workspace: ws} do
       {:ok, year} =
-        TeacherAssistant.Academics.create_academic_year(ws, %{
+        TeacherAssistant.Organization.create_academic_year(ws, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      :ok = TeacherAssistant.Academics.build_default_calendar(year)
+      :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
         TeacherAssistant.Academics.create_teaching_context(ws, year, %{
@@ -80,14 +80,14 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       workspace: ws
     } do
       {:ok, year} =
-        TeacherAssistant.Academics.create_academic_year(ws, %{
+        TeacherAssistant.Organization.create_academic_year(ws, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      :ok = TeacherAssistant.Academics.build_default_calendar(year)
+      :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
         TeacherAssistant.Academics.create_teaching_context(ws, year, %{

@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Organization
 
   def mount(_params, _session, socket) do
     if socket.assigns.current_scope.current_workspace_type == :school do
@@ -37,13 +38,13 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
 
     with {wh, ""} <- Integer.parse(p["weekly_hours"] || ""),
          {:ok, year} <-
-           Academics.create_academic_year(ws, %{
+           Organization.create_academic_year(ws, %{
              name: p["name"],
              start_date: p["start_date"],
              end_date: p["end_date"],
              active: true
            }),
-         :ok <- Academics.build_default_calendar(year),
+         :ok <- Organization.build_default_calendar(year),
          {:ok, _ctx} <-
            Academics.create_teaching_context(ws, year, %{
              subject: p["subject"],

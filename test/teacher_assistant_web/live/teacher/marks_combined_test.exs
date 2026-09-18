@@ -13,15 +13,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Academics.build_default_calendar(year)
-    seq = Academics.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(year)
+    seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, maco} = Academics.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
     {:ok, menu} = Academics.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})

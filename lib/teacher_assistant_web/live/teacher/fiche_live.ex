@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Quota
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
@@ -168,8 +169,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       |> MapSet.new(& &1.id)
 
     ws = socket.assigns.current_scope.current_workspace
-    year = ws && Academics.current_academic_year(ws)
-    sequences = (year && Academics.list_sequences(year)) || []
+    year = ws && Organization.current_academic_year(ws)
+    sequences = (year && Organization.list_sequences(year)) || []
 
     socket
     |> assign(:plan, plan)

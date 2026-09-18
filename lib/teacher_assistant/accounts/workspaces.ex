@@ -1,8 +1,8 @@
 defmodule TeacherAssistant.Accounts.Workspaces do
-  alias TeacherAssistant.{Academics, Scope}
+  alias TeacherAssistant.{Academics, Organization, Scope}
   alias TeacherAssistant.Accounts
 
-  def ensure_personal_workspace!(user), do: Academics.ensure_personal_workspace!(user)
+  def ensure_personal_workspace!(user), do: Organization.ensure_personal_workspace!(user)
 
   def scope_for(user, workspace_id, context_id \\ nil)
 
@@ -12,7 +12,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   end
 
   def scope_for(user, workspace_id, context_id) do
-    case Academics.get_personal_workspace(workspace_id) do
+    case Organization.get_personal_workspace(workspace_id) do
       {:ok, %{kind: :personal} = ws} -> personal_scope(user, ws, context_id)
       {:ok, %{kind: :school} = ws} -> school_scope(user, ws, context_id)
       _ -> {:error, :workspace_not_found}
@@ -21,7 +21,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
 
   defp personal_scope(user, ws, context_id) do
     if ws.owner_user_id == user.id do
-      year = Academics.current_academic_year(ws)
+      year = Organization.current_academic_year(ws)
 
       {:ok,
        %Scope{
@@ -42,7 +42,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   defp school_scope(user, ws, context_id) do
     case Accounts.fetch_school_membership(ws, user) do
       {:ok, membership} ->
-        year = Academics.current_academic_year(ws)
+        year = Organization.current_academic_year(ws)
 
         status =
           case Accounts.fetch_school_profile(ws) do

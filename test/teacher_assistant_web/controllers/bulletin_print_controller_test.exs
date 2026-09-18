@@ -14,15 +14,15 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Print"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
-    [seq | _] = Academics.list_sequences(year)
+    :ok = Organization.build_default_calendar(year)
+    [seq | _] = Organization.list_sequences(year)
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
     {:ok, _} = Academics.add_student(cg, %{full_name: "Bob Eyong", sex: :m})
@@ -215,9 +215,9 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     seq: seq,
     school: school
   } do
-    year = TeacherAssistant.Academics.current_academic_year(school)
-    [_s1, s2 | _] = TeacherAssistant.Academics.list_sequences(year)
-    [term1 | _] = TeacherAssistant.Academics.list_terms(year)
+    year = TeacherAssistant.Organization.current_academic_year(school)
+    [_s1, s2 | _] = TeacherAssistant.Organization.list_sequences(year)
+    [term1 | _] = TeacherAssistant.Organization.list_terms(year)
     _ = seq
 
     [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
@@ -258,15 +258,15 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Non Vérifié"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
-    [seq | _] = Academics.list_sequences(year)
+    :ok = Organization.build_default_calendar(year)
+    [seq | _] = Organization.list_sequences(year)
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f})
 

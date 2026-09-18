@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Marks
+  alias TeacherAssistant.Organization
 
   @mention_order [:excellent, :tres_bien, :bien, :assez_bien, :passable, nil]
 
@@ -12,8 +13,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     with {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope),
          false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
-      year = Academics.current_academic_year(ws)
-      sequences = if year, do: Academics.list_sequences(year), else: []
+      year = Organization.current_academic_year(ws)
+      sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"]) || List.first(sequences)
       students = Academics.list_students(cg)
 

@@ -2,11 +2,12 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -53,7 +54,7 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
     ws: ws
   } do
     # a workspace whose only class is removed → resolve returns nil
-    for c <- Academics.list_teaching_contexts(ws, Academics.current_academic_year(ws)),
+    for c <- Academics.list_teaching_contexts(ws, Organization.current_academic_year(ws)),
         do: Ash.destroy!(c, authorize?: false)
 
     {:ok, view, _html} = live(conn, ~p"/teacher")

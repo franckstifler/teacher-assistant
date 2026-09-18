@@ -6,6 +6,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Sex
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
@@ -17,8 +18,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
       year = scope.current_academic_year
-      sequences = if year, do: Academics.list_sequences(year), else: []
-      terms = if year, do: Academics.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(year), else: []
+      terms = if year, do: Organization.list_terms(year), else: []
 
       period =
         (year && Academics.resolve_period(year, params["period"])) ||

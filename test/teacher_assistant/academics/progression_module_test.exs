@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionModuleTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.Academics.ProgressionModule
   alias TeacherAssistant.TeacherFixtures
 
@@ -8,7 +9,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     ws = TeacherFixtures.workspace_fixture()
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -31,8 +32,8 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, ay} =
       Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
 
-    :ok = Academics.build_default_calendar(ay)
-    [seq | _] = Academics.list_sequences(ay)
+    :ok = Organization.build_default_calendar(ay)
+    [seq | _] = Organization.list_sequences(ay)
     seq
   end
 

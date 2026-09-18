@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.ImportLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
 
   @max_pdf_bytes 10_000_000
 
@@ -22,7 +23,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
       |> assign(:confidence, :high)
       |> assign(:raw_text, "")
       |> assign(:capped?, false)
-      |> assign(:sequences, (year && Academics.list_sequences(year)) || [])
+      |> assign(:sequences, (year && Organization.list_sequences(year)) || [])
       |> allow_upload(:fiche, accept: ~w(.pdf), max_entries: 1, max_file_size: @max_pdf_bytes)
 
     {:ok, socket}

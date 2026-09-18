@@ -2,12 +2,13 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -54,10 +55,10 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
 
   test "redirects to /teacher when accessing another user's coverage (IDOR)", %{conn: conn} do
     other_user = TeacherFixtures.user_fixture()
-    other_ws = Academics.ensure_personal_workspace!(other_user)
+    other_ws = Organization.ensure_personal_workspace!(other_user)
 
     {:ok, year} =
-      Academics.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

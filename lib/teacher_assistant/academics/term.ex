@@ -12,6 +12,12 @@ defmodule TeacherAssistant.Academics.Term do
 
   actions do
     defaults [:read, :destroy, create: [:position, :academic_year_id], update: [:position]]
+
+    read :for_academic_year do
+      argument :academic_year_id, :uuid, allow_nil?: false
+      filter expr(academic_year_id == ^arg(:academic_year_id))
+      prepare build(load: [:sequences], sort: [position: :asc])
+    end
   end
 
   policies do

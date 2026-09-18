@@ -9,15 +9,15 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée P"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
-    sequences = Academics.list_sequences(year)
+    :ok = Organization.build_default_calendar(year)
+    sequences = Organization.list_sequences(year)
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(1)})
@@ -44,7 +44,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     grade.(s1, 12)
     grade.(s2, 16)
 
-    [term1 | _] = Academics.list_terms(year)
+    [term1 | _] = Organization.list_terms(year)
     r = Academics.class_results_for_period(cg, {:trimester, term1})
     data = r.per_student[student.id]
     # (12 + 16) / 2 = 14
@@ -59,7 +59,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     [s1, _s2 | _] = seqs
     grade.(s1, 11)
 
-    [term1 | _] = Academics.list_terms(year)
+    [term1 | _] = Organization.list_terms(year)
     r = Academics.class_results_for_period(cg, {:trimester, term1})
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(11))
   end
@@ -89,14 +89,14 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
       Organization.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{name: "Lycée Q"})
 
     {:ok, y2} =
-      Academics.create_academic_year(school2, %{
+      Organization.create_academic_year(school2, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(y2)
+    :ok = Organization.build_default_calendar(y2)
     {:ok, cg2} = Academics.create_class_group(school2, y2, %{label: "6e Z", level: "6ème"})
     assert Academics.class_results_for_period(cg2, {:annual, y2}) == nil
     _ = year
@@ -104,7 +104,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
   test "resolve_period maps params and rejects bad ones", %{year: year, sequences: seqs} do
     [s1 | _] = seqs
-    [term1 | _] = Academics.list_terms(year)
+    [term1 | _] = Organization.list_terms(year)
 
     assert {:sequence, got_seq} = Academics.resolve_period(year, "seq:#{s1.id}")
     assert got_seq.id == s1.id

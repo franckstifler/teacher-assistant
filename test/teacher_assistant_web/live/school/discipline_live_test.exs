@@ -12,14 +12,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée D"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
@@ -85,7 +85,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         cg,
         {:sequence,
          Academics.current_sequence(
-           TeacherAssistant.Academics.current_academic_year(school),
+           TeacherAssistant.Organization.current_academic_year(school),
            ~D[2025-09-10]
          )}
       )
@@ -102,7 +102,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
              cg,
              {:sequence,
               Academics.current_sequence(
-                TeacherAssistant.Academics.current_academic_year(school),
+                TeacherAssistant.Organization.current_academic_year(school),
                 ~D[2025-09-10]
               )}
            ) == []
@@ -143,7 +143,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         cg,
         {:sequence,
          Academics.current_sequence(
-           TeacherAssistant.Academics.current_academic_year(school),
+           TeacherAssistant.Organization.current_academic_year(school),
            ~D[2025-09-10]
          )}
       )
@@ -199,7 +199,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       )
 
     sequence = Academics.current_sequence(year, ~D[2025-09-10])
-    other_sequences = Academics.list_sequences(year) |> Enum.reject(&(&1.id == sequence.id))
+    other_sequences = Organization.list_sequences(year) |> Enum.reject(&(&1.id == sequence.id))
 
     conn = conn_for(school, head)
 
@@ -253,7 +253,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     sequence =
       Academics.current_sequence(
-        TeacherAssistant.Academics.current_academic_year(school),
+        TeacherAssistant.Organization.current_academic_year(school),
         ~D[2025-09-10]
       )
 
@@ -284,7 +284,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

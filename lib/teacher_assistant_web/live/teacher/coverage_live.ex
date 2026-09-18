@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.CoverageLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
@@ -17,8 +18,8 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLive do
 
         uncovered = Enum.reject(entries, &MapSet.member?(covered_ids, &1.id))
 
-        year = Academics.current_academic_year(ws)
-        sequences = (year && Academics.list_sequences(year)) || []
+        year = Organization.current_academic_year(ws)
+        sequences = (year && Organization.list_sequences(year)) || []
         per_entry = Map.new(coverage.per_entry, fn pe -> {pe.entry_id, pe} end)
 
         {:ok,

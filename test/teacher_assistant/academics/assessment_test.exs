@@ -1,21 +1,22 @@
 defmodule TeacherAssistant.Academics.AssessmentTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     ws = TeacherFixtures.workspace_fixture()
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Academics.build_default_calendar(year)
-    seq = Academics.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(year)
+    seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
       Academics.create_teaching_context(ws, year, %{

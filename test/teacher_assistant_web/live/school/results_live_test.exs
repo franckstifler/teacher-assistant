@@ -12,15 +12,15 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
-    [seq | _] = Academics.list_sequences(year)
+    :ok = Organization.build_default_calendar(year)
+    [seq | _] = Organization.list_sequences(year)
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
@@ -49,7 +49,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -112,8 +112,8 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   } do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results")
     # séquence 1 is the default; switch to Trimestre 1
-    year = TeacherAssistant.Academics.current_academic_year(school)
-    [term1 | _] = TeacherAssistant.Academics.list_terms(year)
+    year = TeacherAssistant.Organization.current_academic_year(school)
+    [term1 | _] = TeacherAssistant.Organization.list_terms(year)
 
     html =
       view

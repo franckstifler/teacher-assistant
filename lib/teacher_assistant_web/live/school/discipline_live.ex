@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
   @sanction_types [
@@ -22,8 +23,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
          true <- authorized?(scope, cg) do
       year = scope.current_academic_year
-      sequences = if year, do: Academics.list_sequences(year), else: []
-      terms = if year, do: Academics.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(year), else: []
+      terms = if year, do: Organization.list_terms(year), else: []
 
       {:ok,
        socket

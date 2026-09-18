@@ -40,7 +40,7 @@ defmodule TeacherAssistant.Accounts do
   end
 
   def ensure_personal_workspace!(%TeacherAssistant.Accounts.User{} = user),
-    do: TeacherAssistant.Academics.ensure_personal_workspace!(user)
+    do: TeacherAssistant.Organization.ensure_personal_workspace!(user)
 
   # --- School profiles -----------------------------------------------------
 

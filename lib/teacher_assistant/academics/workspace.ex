@@ -37,6 +37,12 @@ defmodule TeacherAssistant.Academics.Workspace do
       update: [:name]
     ]
 
+    read :for_owner do
+      argument :owner_user_id, :uuid, allow_nil?: false
+      get? true
+      filter expr(owner_user_id == ^arg(:owner_user_id))
+    end
+
     # School creation as a single transactional create: the workspace row is
     # inserted, then its profile, its :head membership and the seeded Subject
     # catalog are created in the same create transaction (an after_action

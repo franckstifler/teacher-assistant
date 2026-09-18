@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.TeacherFixtures do
-  alias TeacherAssistant.{Accounts, Academics}
-
+  alias TeacherAssistant.{Accounts, Organization}
   def user_fixture(attrs \\ %{}) do
     email = Map.get(attrs, :email, "teacher-#{System.unique_integer([:positive])}@example.com")
 
@@ -14,7 +13,7 @@ defmodule TeacherAssistant.TeacherFixtures do
     user
   end
 
-  def workspace_fixture(user \\ user_fixture()), do: Academics.ensure_personal_workspace!(user)
+  def workspace_fixture(user \\ user_fixture()), do: Organization.ensure_personal_workspace!(user)
 
   def admin_user_fixture(attrs \\ %{}) do
     user = user_fixture(attrs)

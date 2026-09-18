@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.RosterLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => ctx_id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -47,7 +48,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
   def handle_event("create_class", %{"class_group" => p}, socket) do
     ws = socket.assigns.ws
-    year = Academics.current_academic_year(ws)
+    year = Organization.current_academic_year(ws)
 
     with false <- is_nil(year),
          {:ok, cg} <-

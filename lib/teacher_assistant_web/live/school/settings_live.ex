@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{SubjectCategory, Subjects}
   alias TeacherAssistant.Accounts.{Permissions}
   alias TeacherAssistant.Accounts
@@ -354,7 +353,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         active: socket.assigns.years == []
       }
 
-      case Academics.create_academic_year(scope.current_workspace, attrs) do
+      case Organization.create_academic_year(scope.current_workspace, attrs) do
         {:ok, year} ->
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
 
@@ -375,9 +374,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     with true <- Permissions.admin?(scope),
-         {:ok, year} <- Academics.get_academic_year(id),
+         {:ok, year} <- Organization.get_academic_year(id),
          true <- year.workspace_id == scope.current_workspace.id,
-         {:ok, _} <- Academics.activate_academic_year(year) do
+         {:ok, _} <- Organization.activate_academic_year(year) do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Année scolaire activée."))
@@ -548,7 +547,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   defp load_years(socket) do
     scope = socket.assigns.scope
-    assign(socket, :years, Academics.list_academic_years(scope.current_workspace))
+    assign(socket, :years, Organization.list_academic_years(scope.current_workspace))
   end
 
   defp load_profile(socket) do

@@ -1,14 +1,15 @@
 defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     user = TeacherFixtures.user_fixture()
-    ws = Academics.ensure_personal_workspace!(user)
+    ws = Organization.ensure_personal_workspace!(user)
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -115,10 +116,10 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   end
 
   test "rejects a teaching context owned by another workspace", %{ws: ws} do
-    other_ws = Academics.ensure_personal_workspace!(TeacherFixtures.user_fixture())
+    other_ws = Organization.ensure_personal_workspace!(TeacherFixtures.user_fixture())
 
     {:ok, other_year} =
-      Academics.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

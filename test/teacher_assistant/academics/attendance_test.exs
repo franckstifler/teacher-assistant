@@ -17,7 +17,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -366,10 +366,10 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   describe "student_conduct/2 and class_conduct/2" do
     setup ctx do
-      :ok = Academics.build_default_calendar(ctx.year)
+      :ok = Organization.build_default_calendar(ctx.year)
 
-      [seq1, seq2 | _] = Academics.list_sequences(ctx.year)
-      [term1 | _] = Academics.list_terms(ctx.year)
+      [seq1, seq2 | _] = Organization.list_sequences(ctx.year)
+      [term1 | _] = Organization.list_terms(ctx.year)
 
       %{seq1: seq1, seq2: seq2, term1: term1}
     end
@@ -515,7 +515,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty"})
 
       {:ok, empty_year} =
-        Academics.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(empty_ws, %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],
@@ -601,7 +601,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty2"})
 
       {:ok, empty_year} =
-        Academics.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(empty_ws, %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],

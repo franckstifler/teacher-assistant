@@ -1,14 +1,13 @@
 defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics.{CombinedCourse, ProgressionPlan}
-  alias TeacherAssistant.{Academics, TeacherFixtures}
-
+  alias TeacherAssistant.{Academics, Organization, TeacherFixtures}
   setup do
     user = TeacherFixtures.user_fixture()
     ws = TeacherFixtures.workspace_fixture(user)
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

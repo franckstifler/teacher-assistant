@@ -2,18 +2,19 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
   use TeacherAssistantWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   defp seed_year_and_context(ws) do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
     {:ok, ctx} =
       Academics.create_teaching_context(ws, year, %{
@@ -174,10 +175,10 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     seed_year_and_context(ws)
 
     other_ws =
-      Academics.ensure_personal_workspace!(TeacherAssistant.TeacherFixtures.user_fixture())
+      Organization.ensure_personal_workspace!(TeacherAssistant.TeacherFixtures.user_fixture())
 
     {:ok, other_year} =
-      Academics.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

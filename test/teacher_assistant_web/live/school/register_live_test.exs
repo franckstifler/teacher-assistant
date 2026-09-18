@@ -14,14 +14,14 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
     {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
@@ -101,7 +101,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         enrollment,
         {:sequence,
          Academics.current_sequence(
-           TeacherAssistant.Academics.current_academic_year(school),
+           TeacherAssistant.Organization.current_academic_year(school),
            date
          )}
       )
@@ -175,7 +175,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     conduct =
       Attendance.student_conduct(
         enrollment,
-        {:sequence, Academics.current_sequence(Academics.current_academic_year(school), date)}
+        {:sequence, Academics.current_sequence(Organization.current_academic_year(school), date)}
       )
 
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :eq
@@ -205,7 +205,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

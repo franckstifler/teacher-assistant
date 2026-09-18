@@ -17,7 +17,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

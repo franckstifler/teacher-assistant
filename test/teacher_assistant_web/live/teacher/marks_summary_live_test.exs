@@ -2,19 +2,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Academics.build_default_calendar(year)
-    seq = Academics.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(year)
+    seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
       Academics.create_teaching_context(ws, year, %{
@@ -94,8 +95,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   end
 
   test "séquence switcher patches to the chosen séquence", %{conn: conn, ctx: ctx, ws: ws} do
-    year = Academics.current_academic_year(ws)
-    seq2 = Academics.list_sequences(year) |> Enum.at(1)
+    year = Organization.current_academic_year(ws)
+    seq2 = Organization.list_sequences(year) |> Enum.at(1)
 
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary")
 
@@ -121,7 +122,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   end
 
   test "context without class group redirects to roster", %{conn: conn, ws: ws} do
-    {:ok, year} = {:ok, Academics.current_academic_year(ws)}
+    {:ok, year} = {:ok, Organization.current_academic_year(ws)}
 
     {:ok, ctx_no_roster} =
       Academics.create_teaching_context(ws, year, %{

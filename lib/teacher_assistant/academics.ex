@@ -5,6 +5,7 @@ defmodule TeacherAssistant.Academics do
   use Ash.Domain, otp_app: :teacher_assistant, validate_config_inclusion?: false
 
   require Ash.Query
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Academics.AcademicYear
@@ -35,128 +36,6 @@ defmodule TeacherAssistant.Academics do
   resources do
   end
 
-  def ensure_personal_workspace!(%User{} = user) do
-    case personal_workspace_for_user(user) do
-      {:ok, ws} ->
-        ws
-
-      {:error, :not_found} ->
-        {:ok, ws} =
-          Workspace
-          |> Ash.Changeset.for_create(:create, %{
-            name: "Personal workspace",
-            kind: :personal,
-            owner_user_id: user.id
-          })
-          |> Ash.create(authorize?: false)
-
-        ws
-    end
-  end
-
-  def personal_workspace_for_user(%User{id: user_id}) do
-    Workspace
-    |> Ash.Query.filter(owner_user_id == ^user_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
-  def get_personal_workspace(id), do: Ash.get(Workspace, id, authorize?: false)
-
-  def create_academic_year(%Workspace{} = ws, attrs) do
-    attrs = attrs |> Map.put(:workspace_id, ws.id) |> Map.put_new(:active, true)
-
-    with {:ok, year} <-
-           AcademicYear
-           |> Ash.Changeset.for_create(:create, attrs)
-           |> Ash.create(authorize?: false) do
-      if year.active, do: deactivate_other_years(ws, year.id)
-      {:ok, year}
-    end
-  end
-
-  def list_academic_years(%Workspace{id: id}) do
-    AcademicYear
-    |> Ash.Query.filter(workspace_id == ^id)
-    |> Ash.Query.sort(start_date: :desc)
-    |> Ash.read!(authorize?: false)
-  end
-
-  def current_academic_year(%Workspace{id: id}) do
-    AcademicYear
-    |> Ash.Query.filter(workspace_id == ^id and active == true)
-    |> Ash.Query.sort(start_date: :desc)
-    |> Ash.read!(authorize?: false)
-    |> List.first()
-  end
-
-  def get_academic_year(id), do: Ash.get(AcademicYear, id, authorize?: false)
-
-  def activate_academic_year(%AcademicYear{} = year) do
-    deactivate_other_years(%Workspace{id: year.workspace_id}, year.id)
-
-    year
-    |> Ash.Changeset.for_update(:update, %{active: true})
-    |> Ash.update(authorize?: false)
-  end
-
-  defp deactivate_other_years(%Workspace{id: ws_id}, keep_id) do
-    AcademicYear
-    |> Ash.Query.filter(workspace_id == ^ws_id and id != ^keep_id and active == true)
-    |> Ash.read!(authorize?: false)
-    |> Enum.each(fn y ->
-      y |> Ash.Changeset.for_update(:update, %{active: false}) |> Ash.update!(authorize?: false)
-    end)
-  end
-
-  def build_default_calendar(%AcademicYear{} = year) do
-    preset = TeacherAssistant.Academics.Reference.default_calendar_preset()
-
-    Enum.each(preset.terms, fn term_spec ->
-      {:ok, term} =
-        Term
-        |> Ash.Changeset.for_create(:create, %{
-          position: term_spec.position,
-          academic_year_id: year.id
-        })
-        |> Ash.create(authorize?: false)
-
-      Enum.each(term_spec.sequences, fn s ->
-        Sequence
-        |> Ash.Changeset.for_create(
-          :create,
-          Map.put(
-            Map.take(s, [:number, :position_in_term, :start_date, :end_date, :integration_week]),
-            :term_id,
-            term.id
-          )
-        )
-        |> Ash.create!(authorize?: false)
-      end)
-    end)
-
-    :ok
-  end
-
-  def list_sequences(%AcademicYear{id: year_id}) do
-    Sequence
-    |> Ash.Query.filter(term.academic_year_id == ^year_id)
-    |> Ash.Query.load(:term)
-    |> Ash.Query.sort(number: :asc)
-    |> Ash.read!(authorize?: false)
-  end
-
-  def list_terms(%AcademicYear{id: year_id}) do
-    Term
-    |> Ash.Query.filter(academic_year_id == ^year_id)
-    |> Ash.Query.load(:sequences)
-    |> Ash.Query.sort(position: :asc)
-    |> Ash.read!(authorize?: false)
-  end
-
   def period_kind({:sequence, _}), do: :sequence
   def period_kind({:trimester, _}), do: :trimester
   def period_kind({:annual, _}), do: :annual
@@ -168,14 +47,14 @@ defmodule TeacherAssistant.Academics do
   def resolve_period(%AcademicYear{} = year, "annee"), do: {:annual, year}
 
   def resolve_period(%AcademicYear{} = year, "seq:" <> id) do
-    case Enum.find(list_sequences(year), &(&1.id == id)) do
+    case Enum.find(Organization.list_sequences(year), &(&1.id == id)) do
       nil -> nil
       seq -> {:sequence, seq}
     end
   end
 
   def resolve_period(%AcademicYear{} = year, "trim:" <> id) do
-    case Enum.find(list_terms(year), &(&1.id == id)) do
+    case Enum.find(Organization.list_terms(year), &(&1.id == id)) do
       nil -> nil
       term -> {:trimester, term}
     end
@@ -192,7 +71,7 @@ defmodule TeacherAssistant.Academics do
   end
 
   def period_date_range({:annual, %AcademicYear{} = year}) do
-    sequence_date_range(list_sequences(year))
+    sequence_date_range(Organization.list_sequences(year))
   end
 
   defp sequence_date_range([]), do: nil
@@ -205,7 +84,7 @@ defmodule TeacherAssistant.Academics do
 
   def current_sequence(%AcademicYear{} = year, %Date{} = date) do
     year
-    |> list_sequences()
+    |> Organization.list_sequences()
     |> Enum.find(fn s ->
       Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
     end)
@@ -421,7 +300,7 @@ defmodule TeacherAssistant.Academics do
          plan: plan,
          ctx: ctx,
          class_group: class_group,
-         year: current_academic_year(ws),
+         year: Organization.current_academic_year(ws),
          effectif: effectif
        }}
     end
@@ -958,7 +837,7 @@ defmodule TeacherAssistant.Academics do
   end
 
   def class_results_for_period(%ClassGroup{} = cg, {:annual, %AcademicYear{} = year}) do
-    seqs = list_sequences(year)
+    seqs = Organization.list_sequences(year)
     period_result(cg, seqs, :trimesters)
   end
 

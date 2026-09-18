@@ -1,14 +1,15 @@
 defmodule TeacherAssistant.Academics.EnrollmentsModelTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     user = TeacherFixtures.user_fixture()
-    ws = Academics.ensure_personal_workspace!(user)
+    ws = Organization.ensure_personal_workspace!(user)
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -76,7 +77,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsModelTest do
 
   test "fetch_owned_student scopes by workspace", %{cg: cg} do
     {:ok, s} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    other = Academics.ensure_personal_workspace!(TeacherFixtures.user_fixture())
+    other = Organization.ensure_personal_workspace!(TeacherFixtures.user_fixture())
     assert {:ok, _} = Academics.fetch_owned_student(s.id, %{other | id: s.workspace_id})
     assert {:error, :not_found} = Academics.fetch_owned_student(s.id, other)
   end
