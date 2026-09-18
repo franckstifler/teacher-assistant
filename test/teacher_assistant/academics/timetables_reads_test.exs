@@ -3,7 +3,8 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -30,10 +31,10 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
     {:ok, tc_svt} =
       Curriculum.assign_teacher(cg, head, %{subject: "SVT", weekly_hours: 3})
 
-    :ok = Timetables.build_default_periods(school)
+    :ok = Attendance.build_default_periods(school)
 
     periods =
-      Timetables.list_periods(school)
+      Attendance.list_periods(school)
       |> Enum.filter(&(&1.kind == :lesson))
 
     %{
@@ -54,41 +55,41 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       [p1, p2, p3 | _] = periods
 
       {:ok, _} =
-        Timetables.place_slot(cg, %{
+        Timetabling.place_slot(cg, %{
           day: :monday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetables.place_slot(cg, %{
+        Timetabling.place_slot(cg, %{
           day: :tuesday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetables.place_slot(cg, %{
+        Timetabling.place_slot(cg, %{
           day: :wednesday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetables.place_slot(cg, %{
+        Timetabling.place_slot(cg, %{
           day: :monday,
           period_id: p2.id,
           teaching_context_id: tc_eps.id
         })
 
       {:ok, _} =
-        Timetables.place_slot(cg, %{
+        Timetabling.place_slot(cg, %{
           day: :tuesday,
           period_id: p2.id,
           teaching_context_id: tc_eps.id
         })
 
-      result = Timetables.class_timetable(cg)
+      result = Timetabling.class_timetable(cg)
 
       assert map_size(result.slots) == 5
 
@@ -138,20 +139,20 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Histoire", weekly_hours: 3})
 
       {:ok, _} =
-        Timetables.place_slot(cg_a, %{
+        Timetabling.place_slot(cg_a, %{
           day: :monday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetables.place_slot(cg_b, %{
+        Timetabling.place_slot(cg_b, %{
           day: :tuesday,
           period_id: p2.id,
           teaching_context_id: tc_b.id
         })
 
-      result = Timetables.teacher_timetable(school, head)
+      result = Timetabling.teacher_timetable(school, head)
 
       assert map_size(result) == 2
 
@@ -170,7 +171,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       %{school: school} = ctx
       other_teacher = TeacherFixtures.user_fixture()
 
-      assert Timetables.teacher_timetable(school, other_teacher) == %{}
+      assert Timetabling.teacher_timetable(school, other_teacher) == %{}
     end
   end
 end

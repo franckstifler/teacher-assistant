@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics.PeriodKind
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Accounts.Permissions
 
   @kinds ~w(lesson break)
@@ -123,7 +123,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) do
-      :ok = Timetables.build_default_periods(scope.current_workspace)
+      :ok = Attendance.build_default_periods(scope.current_workspace)
       {:noreply, load_periods(socket)}
     else
       {:noreply, socket}
@@ -139,7 +139,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           {:noreply, socket}
 
         period ->
-          case Timetables.update_period(period, parse_period_attrs(params)) do
+          case Attendance.update_period(period, parse_period_attrs(params)) do
             {:ok, _period} ->
               {:noreply,
                socket
@@ -165,7 +165,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           {:noreply, socket}
 
         period ->
-          case Timetables.delete_period(period) do
+          case Attendance.delete_period(period) do
             :ok ->
               {:noreply, load_periods(socket)}
 
@@ -190,7 +190,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   end
 
   defp load_periods(socket) do
-    assign(socket, :periods, Timetables.list_periods(socket.assigns.scope.current_workspace))
+    assign(socket, :periods, Attendance.list_periods(socket.assigns.scope.current_workspace))
   end
 
   defp period_form_params(period) do

@@ -5,7 +5,8 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -32,8 +33,8 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    :ok = Timetables.build_default_periods(ws)
-    period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(ws)
+    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
 
     %{
       head: head,
@@ -51,7 +52,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   test "place_combined_slot creates one slot per member class without tripping the teacher clash guard",
        ctx do
-    assert {:ok, slots} = Timetables.place_combined_slot(ctx.course, :monday, ctx.period.id)
+    assert {:ok, slots} = Timetabling.place_combined_slot(ctx.course, :monday, ctx.period.id)
 
     assert length(slots) == 2
     class_group_ids = Enum.map(slots, & &1.class_group_id) |> Enum.sort()
@@ -67,11 +68,11 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
   end
 
   test "clear_combined_slot removes both member slots and is idempotent", ctx do
-    {:ok, _slots} = Timetables.place_combined_slot(ctx.course, :monday, ctx.period.id)
+    {:ok, _slots} = Timetabling.place_combined_slot(ctx.course, :monday, ctx.period.id)
 
-    assert :ok = Timetables.clear_combined_slot(ctx.course, :monday, ctx.period.id)
+    assert :ok = Timetabling.clear_combined_slot(ctx.course, :monday, ctx.period.id)
     assert list_slots_for_cell(ctx.ws, :monday, ctx.period.id) == []
-    assert :ok = Timetables.clear_combined_slot(ctx.course, :monday, ctx.period.id)
+    assert :ok = Timetabling.clear_combined_slot(ctx.course, :monday, ctx.period.id)
   end
 
   test "a genuine clash between an unrelated class and the combined course's teacher is still rejected",
@@ -80,14 +81,14 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
       Curriculum.assign_teacher(ctx.unrelated, ctx.head, %{subject: "Physique"})
 
     {:ok, _slot} =
-      Timetables.place_slot(ctx.unrelated, %{
+      Timetabling.place_slot(ctx.unrelated, %{
         day: :monday,
         period_id: ctx.period.id,
         teaching_context_id: tc_unrelated.id
       })
 
     assert {:error, {:teacher_clash, "1ère C"}} =
-             Timetables.place_combined_slot(ctx.course, :monday, ctx.period.id)
+             Timetabling.place_combined_slot(ctx.course, :monday, ctx.period.id)
 
     assert list_slots_for_cell(ctx.ws, :monday, ctx.period.id)
            |> Enum.reject(&(&1.class_group_id == ctx.unrelated.id)) == []
@@ -111,21 +112,21 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
       Curriculum.assign_teacher(ctx.unrelated, ctx.head, %{subject: "Physique"})
 
     {:ok, _slot} =
-      Timetables.place_slot(ctx.maco, %{
+      Timetabling.place_slot(ctx.maco, %{
         day: :tuesday,
         period_id: ctx.period.id,
         teaching_context_id: ctx.tc_maco.id
       })
 
     assert {:ok, %TimetableSlot{}} =
-             Timetables.place_slot(ctx.unrelated, %{
+             Timetabling.place_slot(ctx.unrelated, %{
                day: :tuesday,
                period_id: ctx.period.id,
                teaching_context_id: tc_other.id
              })
 
     assert {:error, {:teacher_clash, "1ère MACO"}} =
-             Timetables.place_slot(ctx.unrelated, %{
+             Timetabling.place_slot(ctx.unrelated, %{
                day: :tuesday,
                period_id: ctx.period.id,
                teaching_context_id: tc_unrelated_head.id

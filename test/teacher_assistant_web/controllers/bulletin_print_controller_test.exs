@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -79,12 +79,12 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
 
-    :ok = Timetables.build_default_periods(school)
+    :ok = Attendance.build_default_periods(school)
     [tc] = Curriculum.list_assignments_for_class(cg)
-    [period1, period2 | _] = Timetables.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+    [period1, period2 | _] = Attendance.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
 
     {:ok, slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period1.id,
         teaching_context_id: tc.id

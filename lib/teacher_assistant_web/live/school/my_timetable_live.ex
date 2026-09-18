@@ -2,7 +2,8 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics.DayOfWeek
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
 
   @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
 
@@ -14,8 +15,8 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
     else
       {:ok,
        assign(socket,
-         periods: Timetables.list_periods(scope.current_workspace),
-         grid: Timetables.teacher_timetable(scope.current_workspace, scope.current_user),
+         periods: Attendance.list_periods(scope.current_workspace),
+         grid: Timetabling.teacher_timetable(scope.current_workspace, scope.current_user),
          days: @days
        )}
     end

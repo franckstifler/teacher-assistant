@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -14,9 +14,9 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
   test "build_default_periods seeds a sorted bell schedule with breaks and lessons", %{
     school: school
   } do
-    assert :ok = Timetables.build_default_periods(school)
+    assert :ok = Attendance.build_default_periods(school)
 
-    periods = Timetables.list_periods(school)
+    periods = Attendance.list_periods(school)
     assert periods != []
     assert Enum.map(periods, & &1.position) == Enum.sort(Enum.map(periods, & &1.position))
 
@@ -28,17 +28,17 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
   end
 
   test "build_default_periods is idempotent", %{school: school} do
-    :ok = Timetables.build_default_periods(school)
-    count_after_first = length(Timetables.list_periods(school))
+    :ok = Attendance.build_default_periods(school)
+    count_after_first = length(Attendance.list_periods(school))
 
-    assert :ok = Timetables.build_default_periods(school)
-    assert length(Timetables.list_periods(school)) == count_after_first
+    assert :ok = Attendance.build_default_periods(school)
+    assert length(Attendance.list_periods(school)) == count_after_first
   end
 
   test "list_periods returns [] for an unseeded workspace" do
     user = TeacherFixtures.user_fixture()
     {:ok, other_school} = Organization.create_school(user, %{name: "Other School"})
 
-    assert Timetables.list_periods(other_school) == []
+    assert Attendance.list_periods(other_school) == []
   end
 end

@@ -4,7 +4,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -22,7 +23,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   end
 
   test "empty state: seeding populates the list", %{conn: conn, school: school} do
-    assert Timetables.list_periods(school) == []
+    assert Attendance.list_periods(school) == []
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")
 
@@ -30,12 +31,12 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     |> element("#seed-periods")
     |> render_click()
 
-    assert Timetables.list_periods(school) != []
+    assert Attendance.list_periods(school) != []
   end
 
   test "editing a period's label and start_time persists", %{conn: conn, school: school} do
-    :ok = Timetables.build_default_periods(school)
-    [period | _] = Timetables.list_periods(school)
+    :ok = Attendance.build_default_periods(school)
+    [period | _] = Attendance.list_periods(school)
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")
 
@@ -51,7 +52,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     })
     |> render_submit()
 
-    [updated | _] = Timetables.list_periods(school)
+    [updated | _] = Attendance.list_periods(school)
     assert updated.label == "Cours modifié"
     assert updated.start_time == ~T[08:00:00]
   end
@@ -59,8 +60,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   test "deleting a period with a referencing slot shows a friendly message and keeps it", ctx do
     %{conn: conn, school: school, user: head} = ctx
 
-    :ok = Timetables.build_default_periods(school)
-    [period | _] = Timetables.list_periods(school)
+    :ok = Attendance.build_default_periods(school)
+    [period | _] = Attendance.list_periods(school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -74,7 +75,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
@@ -90,7 +91,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
              render(view) =~ "ne peut pas" or
              render(view) =~ "ne peut être supprimée"
 
-    assert Enum.any?(Timetables.list_periods(school), &(&1.id == period.id))
+    assert Enum.any?(Attendance.list_periods(school), &(&1.id == period.id))
   end
 
   test "non-admin member is redirected and forged events make no change", ctx do

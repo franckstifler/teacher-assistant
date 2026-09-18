@@ -3,7 +3,8 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -23,11 +24,11 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     {:ok, _slot} =
-      Timetables.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

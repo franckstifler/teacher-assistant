@@ -14,12 +14,16 @@ defmodule TeacherAssistant.Attendance do
   # two never collide under one bare `Enrollment` alias.
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Period
+  alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Academics.TeachingContext
-  alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
+  alias TeacherAssistant.Academics.Workspace
 
   resources do
-    resource Period
+    resource Period do
+      define :list_periods_for_workspace_id, action: :for_workspace, args: [:workspace_id]
+      define :update_period, action: :update
+    end
 
     resource AttendanceEntry do
       define :for_period_date_class,
@@ -51,6 +55,47 @@ defmodule TeacherAssistant.Attendance do
     unjustified_hours: Decimal.new(0),
     retards: 0
   }
+
+  # --- Periods -------------------------------------------------------------
+
+  @doc "Every period in `workspace`, sorted by position."
+  def list_periods(%Workspace{id: ws_id}), do: list_periods_for_workspace_id!(ws_id)
+
+  @doc """
+  Deletes a period, unless a `TimetableSlot` still references it — in that
+  case returns `{:error, :has_slots}` without deleting (mirrors the
+  `Curriculum.remove_assignment/1` "has data" guard).
+  """
+  def delete_period(%Period{id: id} = period) do
+    has_slots = TeacherAssistant.Timetabling.list_for_period!(id) != []
+
+    if has_slots do
+      {:error, :has_slots}
+    else
+      Ash.destroy!(period)
+      :ok
+    end
+  end
+
+  @doc """
+  Seeds `workspace`'s bell schedule from `Reference.default_periods_preset/0`,
+  unless periods are already seeded. Idempotent.
+  """
+  def build_default_periods(%Workspace{} = ws) do
+    case list_periods(ws) do
+      [] ->
+        Enum.each(Reference.default_periods_preset(), fn preset ->
+          Period
+          |> Ash.Changeset.for_create(:create, Map.put(preset, :workspace_id, ws.id))
+          |> Ash.create!()
+        end)
+
+        :ok
+
+      _ ->
+        :ok
+    end
+  end
 
   # --- Slot / roll -------------------------------------------------------
 
@@ -259,7 +304,7 @@ defmodule TeacherAssistant.Attendance do
 
     periods =
       workspace
-      |> Timetables.list_periods()
+      |> list_periods()
       |> Enum.filter(&(&1.kind == :lesson))
 
     period_ids = Enum.map(periods, & &1.id)

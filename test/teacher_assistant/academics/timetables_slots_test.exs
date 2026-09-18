@@ -3,7 +3,8 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -27,8 +28,8 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head, %{subject: "Maths"})
     {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Maths"})
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     %{
       head: head,
@@ -46,7 +47,7 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     %{cg_a: cg_a, tc_a: tc_a, period: period} = ctx
 
     assert {:ok, %TimetableSlot{} = slot} =
-             Timetables.place_slot(cg_a, %{
+             Timetabling.place_slot(cg_a, %{
                day: :monday,
                period_id: period.id,
                teaching_context_id: tc_a.id
@@ -60,14 +61,14 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     %{cg_a: cg_a, cg_b: cg_b, tc_a: tc_a, tc_b: tc_b, period: period} = ctx
 
     {:ok, _slot} =
-      Timetables.place_slot(cg_a, %{
+      Timetabling.place_slot(cg_a, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_a.id
       })
 
     assert {:error, {:teacher_clash, "6e A"}} =
-             Timetables.place_slot(cg_b, %{
+             Timetabling.place_slot(cg_b, %{
                day: :monday,
                period_id: period.id,
                teaching_context_id: tc_b.id
@@ -94,14 +95,14 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     {:ok, tc_other} = Curriculum.assign_teacher(cg_b, other_teacher, %{subject: "Anglais"})
 
     {:ok, _slot_a} =
-      Timetables.place_slot(cg_a, %{
+      Timetabling.place_slot(cg_a, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_a.id
       })
 
     assert {:ok, %TimetableSlot{}} =
-             Timetables.place_slot(cg_b, %{
+             Timetabling.place_slot(cg_b, %{
                day: :monday,
                period_id: period.id,
                teaching_context_id: tc_other.id
@@ -113,14 +114,14 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     {:ok, tc_a2} = Curriculum.assign_teacher(cg_a, ctx.head, %{subject: "SVT"})
 
     {:ok, slot1} =
-      Timetables.place_slot(cg_a, %{
+      Timetabling.place_slot(cg_a, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_a.id
       })
 
     assert {:ok, slot2} =
-             Timetables.place_slot(cg_a, %{
+             Timetabling.place_slot(cg_a, %{
                day: :monday,
                period_id: period.id,
                teaching_context_id: tc_a2.id
@@ -135,7 +136,7 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     %{cg_a: cg_a, tc_b: tc_b, period: period} = ctx
 
     assert {:error, :invalid} =
-             Timetables.place_slot(cg_a, %{
+             Timetabling.place_slot(cg_a, %{
                day: :monday,
                period_id: period.id,
                teaching_context_id: tc_b.id
@@ -146,15 +147,15 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     %{cg_a: cg_a, tc_a: tc_a, period: period} = ctx
 
     {:ok, _slot} =
-      Timetables.place_slot(cg_a, %{
+      Timetabling.place_slot(cg_a, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_a.id
       })
 
-    assert :ok = Timetables.clear_slot(cg_a, :monday, period.id)
+    assert :ok = Timetabling.clear_slot(cg_a, :monday, period.id)
     assert list_slots_for_cell(cg_a, :monday, period.id) == []
-    assert :ok = Timetables.clear_slot(cg_a, :monday, period.id)
+    assert :ok = Timetabling.clear_slot(cg_a, :monday, period.id)
   end
 
   defp list_slots_for_cell(cg, day, period_id) do

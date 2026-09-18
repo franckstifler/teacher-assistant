@@ -17,6 +17,14 @@ defmodule TeacherAssistant.Academics.Period do
       create: [:position, :label, :start_time, :end_time, :kind, :workspace_id],
       update: [:position, :label, :start_time, :end_time, :kind]
     ]
+
+    read :for_workspace do
+      argument :workspace_id, :uuid, allow_nil?: false
+
+      filter expr(workspace_id == ^arg(:workspace_id))
+
+      prepare build(sort: [position: :asc])
+    end
   end
 
   policies do

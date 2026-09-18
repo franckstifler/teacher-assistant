@@ -2,7 +2,8 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
   use TeacherAssistantWeb, :controller
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Accounts.{Permissions, Workspaces}
 
   @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
@@ -15,7 +16,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
          :school <- scope.current_workspace_type,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
-      timetable = Timetables.class_timetable(cg)
+      timetable = Timetabling.class_timetable(cg)
 
       conn
       |> put_layout(false)
@@ -25,7 +26,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
         title: cg.label,
         etablissement: scope.current_workspace.name,
         annee: scope.current_academic_year && scope.current_academic_year.name,
-        periods: Timetables.list_periods(scope.current_workspace),
+        periods: Attendance.list_periods(scope.current_workspace),
         grid: timetable.slots,
         days: @days
       )
@@ -48,8 +49,8 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
         title: to_string(user.email),
         etablissement: scope.current_workspace.name,
         annee: scope.current_academic_year && scope.current_academic_year.name,
-        periods: Timetables.list_periods(scope.current_workspace),
-        grid: Timetables.teacher_timetable(scope.current_workspace, user),
+        periods: Attendance.list_periods(scope.current_workspace),
+        grid: Timetabling.teacher_timetable(scope.current_workspace, user),
         days: @days
       )
     else

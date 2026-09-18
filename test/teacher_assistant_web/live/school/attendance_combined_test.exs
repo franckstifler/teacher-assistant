@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -39,14 +39,14 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday. Only MACO's slot is placed at this cell (see the note in
     # attendance_combined_test.exs) — navigating to MACO's own attendance
     # page is what puts this LiveView in combined mode.
     {:ok, _slot_maco} =
-      Timetables.place_slot(maco, %{
+      Timetabling.place_slot(maco, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_maco.id

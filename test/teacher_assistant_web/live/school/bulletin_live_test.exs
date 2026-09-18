@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -105,14 +105,14 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert baseline_html =~ "Moyenne générale"
     [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
 
-    :ok = Timetables.build_default_periods(school)
+    :ok = Attendance.build_default_periods(school)
     [tc] = Curriculum.list_assignments_for_class(cg)
-    periods = Timetables.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+    periods = Attendance.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
     [period1, period2 | _] = periods
 
     # 2025-09-15 is a Monday within séquence 1's date range.
     {:ok, slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period1.id,
         teaching_context_id: tc.id

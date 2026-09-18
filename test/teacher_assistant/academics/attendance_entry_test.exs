@@ -6,7 +6,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -27,8 +27,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
     {:ok, student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
-    :ok = Timetables.build_default_periods(ws)
-    period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(ws)
+    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
 
     %{
       ws: ws,

@@ -76,7 +76,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   defp fetch_period(period_id, workspace) do
     workspace
-    |> TeacherAssistant.Academics.Timetables.list_periods()
+    |> Attendance.list_periods()
     |> Enum.find(&(&1.id == period_id))
     |> case do
       nil -> {:error, :not_found}

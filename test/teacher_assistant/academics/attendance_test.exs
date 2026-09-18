@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -40,15 +40,15 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     other_roster = Enrollment.list_roster(cg_other)
     [%{enrollment: other_enrollment}] = other_roster
 
-    :ok = Timetables.build_default_periods(ws)
-    period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(ws)
+    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
 
     other_period =
-      Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
+      Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
 
     # 2025-09-15 is a Monday
     {:ok, slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id

@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -37,8 +37,8 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    :ok = Timetables.build_default_periods(ws)
-    period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(ws)
+    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
 
     # 2025-09-08 is a Monday. Only MACO's slot is placed at this period: the
     # teacher can only be physically timetabled in one class at a time, so a
@@ -47,7 +47,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
     # therefore resolves with no teaching_context, which is a legitimate
     # state `period_roll/3` already handles.
     {:ok, _slot_maco} =
-      Timetables.place_slot(maco, %{
+      Timetabling.place_slot(maco, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_maco.id
