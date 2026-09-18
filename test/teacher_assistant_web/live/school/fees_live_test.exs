@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Fees
+  alias TeacherAssistant.Fees
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 

@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Fees
+  alias TeacherAssistant.Fees
   alias TeacherAssistant.Academics.PaymentMethod
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistantWeb.Money

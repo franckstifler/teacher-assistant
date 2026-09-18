@@ -33,6 +33,14 @@ defmodule TeacherAssistant.Academics.FeeTranche do
         :position
       ]
     ]
+
+    read :for_class_group do
+      argument :class_group_id, :uuid, allow_nil?: false
+
+      filter expr(class_group_id == ^arg(:class_group_id))
+
+      prepare build(sort: [position: :asc])
+    end
   end
 
   policies do

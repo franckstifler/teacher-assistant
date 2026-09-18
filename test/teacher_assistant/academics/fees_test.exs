@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
   require Ash.Query
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Fees
+  alias TeacherAssistant.Fees
   alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Academics.FeeTranche
   alias TeacherAssistant.Academics.Payment
