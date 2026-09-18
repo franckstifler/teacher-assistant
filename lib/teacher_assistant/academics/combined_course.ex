@@ -52,7 +52,5 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
       allow_nil? false
       public? true
     end
-
-    has_many :teaching_contexts, TeacherAssistant.Academics.TeachingContext
   end
 end

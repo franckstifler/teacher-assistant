@@ -326,33 +326,6 @@ defmodule TeacherAssistant.Academics do
   defp teaching_context_label(%{level: level, subject: subject}), do: "#{level} · #{subject}"
 
   @doc """
-  Resolves the shared plan that owns a teaching context's fiche/coverage:
-  the `CombinedCourse`'s plan when `ctx` belongs to one, otherwise the
-  context's own plan. Mirrors `fetch_owned_plan/2`'s `{:error, :not_found}`
-  contract when no plan exists yet.
-  """
-  def plan_for_context(%TeachingContext{combined_course_id: course_id}, %Workspace{id: ws_id})
-      when not is_nil(course_id) do
-    ProgressionPlan
-    |> Ash.Query.filter(workspace_id == ^ws_id and combined_course_id == ^course_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
-  def plan_for_context(%TeachingContext{id: ctx_id}, %Workspace{id: ws_id}) do
-    ProgressionPlan
-    |> Ash.Query.filter(workspace_id == ^ws_id and teaching_context_id == ^ctx_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
-  @doc """
   Resolves the active TeachingContext for the shell's class switcher.
   Owner + active-year scoped: only the workspace's own contexts are searched, so a
   foreign/invalid/stale id simply falls back to the first (alphabetical) context.

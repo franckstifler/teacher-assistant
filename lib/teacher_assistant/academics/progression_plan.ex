@@ -37,6 +37,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     end
   end
 
+  validations do
+    validate TeacherAssistant.Academics.ProgressionPlan.ExactlyOneOwner, on: [:create]
+  end
+
   attributes do
     uuid_v7_primary_key :id
     attribute :title, :string, allow_nil?: false, public?: true

@@ -185,7 +185,6 @@ defmodule TeacherAssistant.Academics.Courses do
               {units, seen}
             else
               {:ok, course} = Academics.get_course(course_id)
-              course = Ash.load!(course, :teaching_contexts, authorize?: false)
               {[{:course, course} | units], MapSet.put(seen, course_id)}
             end
         end
