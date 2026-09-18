@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.TimetablePrintController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.{Permissions, Workspaces}
 
@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
          :school <- scope.current_workspace_type,
-         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       timetable = Timetables.class_timetable(cg)
 

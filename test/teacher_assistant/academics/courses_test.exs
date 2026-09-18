@@ -2,6 +2,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
   use TeacherAssistant.DataCase, async: true
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{Assignments, Courses}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -20,10 +21,10 @@ defmodule TeacherAssistant.Academics.CoursesTest do
       })
 
     {:ok, cg_maco} =
-      Academics.create_class_group(ws, year, %{label: "1ère A MACO", level: "1ère"})
+      Enrollment.create_class_group(ws, year, %{label: "1ère A MACO", level: "1ère"})
 
     {:ok, cg_menu} =
-      Academics.create_class_group(ws, year, %{label: "1ère A MENU", level: "1ère"})
+      Enrollment.create_class_group(ws, year, %{label: "1ère A MENU", level: "1ère"})
 
     {:ok, tc_maco} = Assignments.assign(cg_maco, head, %{subject: "Mathématiques"})
     {:ok, tc_menu} = Assignments.assign(cg_menu, head, %{subject: "Mathématiques"})
@@ -83,7 +84,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     {:ok, _course} = Courses.combine([tc_maco, tc_menu])
 
     {:ok, cg_third} =
-      Academics.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
+      Enrollment.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
 
     {:ok, tc_third} = Assignments.assign(cg_third, head, %{subject: "Mathématiques"})
     tc_maco = Academics.get_teaching_context(tc_maco.id) |> elem(1)

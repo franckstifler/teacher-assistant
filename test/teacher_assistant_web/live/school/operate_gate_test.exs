@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.OperateGateTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{Assignments, Attendance, Timetables}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -27,7 +27,7 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
     :ok = Timetables.build_default_periods(school)
     period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
@@ -35,7 +35,7 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
     {:ok, _slot} =
       Timetables.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, period: period, date: ~D[2025-09-08], head: head}
   end

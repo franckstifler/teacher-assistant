@@ -4,6 +4,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.Workspaces
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.TeacherFixtures
 
   setup do
@@ -71,7 +72,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
           active: true
         })
 
-      {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+      {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
       %{school: school, year: year, cg: cg}
     end
 

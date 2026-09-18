@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.BulletinDataTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -20,8 +21,8 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
@@ -45,7 +46,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
   test "class_results computes a bulletin for the séquence", ctx do
     %{cg: cg, seq: seq, a: a} = ctx
-    [student] = Academics.list_students(cg)
+    [student] = Enrollment.list_students(cg)
     :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
 
     r = Academics.class_results(cg, seq)
@@ -55,7 +56,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
   test "class_results is nil when the class has no subjects", ctx do
     {:ok, cg2} =
-      Academics.create_class_group(ctx.school, ctx.year, %{label: "6e B", level: "6ème"})
+      Enrollment.create_class_group(ctx.school, ctx.year, %{label: "6e B", level: "6ème"})
 
     assert Academics.class_results(cg2, ctx.seq) == nil
   end

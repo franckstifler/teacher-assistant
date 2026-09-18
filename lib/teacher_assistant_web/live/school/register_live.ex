@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Accounts.Permissions
 
@@ -9,7 +10,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     scope = socket.assigns.current_scope
     date = parse_date(params["date"])
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- authorized?(scope, cg) do
       {:ok,
        socket

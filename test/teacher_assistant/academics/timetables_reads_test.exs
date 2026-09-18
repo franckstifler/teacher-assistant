@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.TimetablesReadsTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Organization
@@ -19,7 +19,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
     {:ok, tc_maths} =
       Assignments.assign(cg, head, %{subject: "Maths", weekly_hours: 5})
@@ -133,7 +133,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       [p1, p2 | _] = periods
 
       {:ok, cg_b} =
-        Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+        Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
 
       {:ok, tc_b} = Assignments.assign(cg_b, head, %{subject: "Histoire", weekly_hours: 3})
 

@@ -5,6 +5,7 @@ defmodule TeacherAssistant.Academics do
   use Ash.Domain, otp_app: :teacher_assistant, validate_config_inclusion?: false
 
   require Ash.Query
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Academics.Workspace
@@ -15,8 +16,6 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.ClassGroup
-  alias TeacherAssistant.Academics.Student
-  alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Assessment
   alias TeacherAssistant.Academics.Mark
   alias TeacherAssistant.Academics.Bulletins
@@ -292,7 +291,7 @@ defmodule TeacherAssistant.Academics do
          {:ok, ctx} <- fetch_owned_teaching_context(plan.teaching_context_id, ws) do
       entry = Ash.load!(entry, :progression_module, authorize?: false)
       class_group = load_owned_class_group(ctx.class_group_id, ws)
-      effectif = if class_group, do: length(list_students(class_group)), else: 0
+      effectif = if class_group, do: length(Enrollment.list_students(class_group)), else: 0
 
       {:ok,
        %{
@@ -309,7 +308,7 @@ defmodule TeacherAssistant.Academics do
   defp load_owned_class_group(nil, _ws), do: nil
 
   defp load_owned_class_group(id, ws) do
-    case fetch_owned_class_group(id, ws) do
+    case Enrollment.fetch_owned_class_group(id, ws) do
       {:ok, cg} -> cg
       _ -> nil
     end
@@ -353,125 +352,6 @@ defmodule TeacherAssistant.Academics do
 
   def fetch_assigned_teaching_context(_id, %Scope{}), do: {:error, :not_found}
 
-  def create_class_group(%Workspace{} = ws, %AcademicYear{} = year, attrs) do
-    attrs =
-      attrs
-      |> Map.put(:workspace_id, ws.id)
-      |> Map.put(:academic_year_id, year.id)
-      |> Map.put_new(:subsystem, :francophone)
-
-    ClassGroup |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
-  end
-
-  def list_class_groups(%Workspace{id: ws_id}, %AcademicYear{id: year_id}) do
-    ClassGroup
-    |> Ash.Query.filter(workspace_id == ^ws_id and academic_year_id == ^year_id)
-    |> Ash.Query.sort(label: :asc)
-    |> Ash.read!(authorize?: false)
-  end
-
-  def fetch_owned_class_group(id, %Workspace{id: ws_id}) do
-    ClassGroup
-    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
-  def update_class_group(%ClassGroup{} = cg, attrs),
-    do: cg |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
-
-  def delete_class_group(%ClassGroup{id: id} = cg) do
-    has_enrollments =
-      Enrollment |> Ash.Query.filter(class_group_id == ^id) |> Ash.read!(authorize?: false) != []
-
-    has_assignments =
-      TeachingContext
-      |> Ash.Query.filter(class_group_id == ^id and not is_nil(teacher_user_id))
-      |> Ash.read!(authorize?: false) != []
-
-    if has_enrollments or has_assignments do
-      {:error, :has_data}
-    else
-      Ash.destroy!(cg, authorize?: false)
-      :ok
-    end
-  end
-
-  def add_student(%ClassGroup{} = cg, attrs) do
-    {repeater, attrs} = Map.pop(attrs, :repeater, false)
-    {status, attrs} = Map.pop(attrs, :status, :inscription)
-    attrs = Map.put(attrs, :workspace_id, cg.workspace_id)
-
-    result =
-      Repo.transaction(fn ->
-        with {:ok, student, student_notifications} <-
-               Student
-               |> Ash.Changeset.for_create(:create, attrs)
-               |> Ash.create(authorize?: false, return_notifications?: true),
-             {:ok, _enr, enrollment_notifications} <-
-               Enrollment
-               |> Ash.Changeset.for_create(:create, %{
-                 student_id: student.id,
-                 class_group_id: cg.id,
-                 academic_year_id: cg.academic_year_id,
-                 workspace_id: cg.workspace_id,
-                 repeater: repeater,
-                 status: status
-               })
-               |> Ash.create(authorize?: false, return_notifications?: true) do
-          Ash.Notifier.notify(student_notifications ++ enrollment_notifications)
-          student
-        else
-          {:error, error} -> Repo.rollback(error)
-        end
-      end)
-
-    case result do
-      {:ok, %Student{}} = ok -> ok
-      {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-    end
-  end
-
-  def list_students(%ClassGroup{id: cg_id}) do
-    Enrollment
-    |> Ash.Query.filter(class_group_id == ^cg_id)
-    |> Ash.Query.load(:student)
-    |> Ash.read!(authorize?: false)
-    |> Enum.map(& &1.student)
-    |> Enum.sort_by(&String.downcase(&1.full_name))
-  end
-
-  def list_roster(%ClassGroup{id: cg_id}) do
-    Enrollment
-    |> Ash.Query.filter(class_group_id == ^cg_id)
-    |> Ash.Query.load(:student)
-    |> Ash.read!(authorize?: false)
-    |> Enum.map(&%{student: &1.student, enrollment: &1})
-    |> Enum.sort_by(&String.downcase(&1.student.full_name))
-  end
-
-  def update_enrollment(%Enrollment{} = e, attrs),
-    do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
-
-  def update_student(%Student{} = s, attrs),
-    do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
-
-  def delete_student(%Student{} = s), do: Ash.destroy(s, authorize?: false)
-
-  def fetch_owned_student(id, %Workspace{id: ws_id}) do
-    Student
-    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      {:ok, s} -> {:ok, s}
-      _ -> {:error, :not_found}
-    end
-  end
-
   def link_class_group(%TeachingContext{} = ctx, %ClassGroup{id: cg_id}) do
     ctx
     |> Ash.Changeset.for_update(:update, %{class_group_id: cg_id})
@@ -511,7 +391,7 @@ defmodule TeacherAssistant.Academics do
       %{
         teaching_context: ctx,
         class_group: ctx.class_group,
-        students: list_students(ctx.class_group)
+        students: Enrollment.list_students(ctx.class_group)
       }
     end)
     |> Enum.sort_by(&String.downcase(&1.class_group.label))
@@ -817,7 +697,9 @@ defmodule TeacherAssistant.Academics do
         nil
 
       subjects ->
-        students = cg |> list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+        students =
+          cg |> Enrollment.list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+
         Bulletins.compile(students, subjects)
     end
   end
@@ -845,7 +727,7 @@ defmodule TeacherAssistant.Academics do
   # breakdown carried on each subject row: :sequences (per séquence, for trimester)
   # or :trimesters (per term, for annual).
   defp period_result(cg, seqs, component_kind) do
-    students = cg |> list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+    students = cg |> Enrollment.list_students() |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
 
     # per séquence: %{context_id => %{label, coefficient, per_student_avg}}
     per_seq =
@@ -1468,29 +1350,5 @@ defmodule TeacherAssistant.Academics do
     entries = list_progression_entries(plan)
     logs = list_logs_for_plan(plan)
     TeacherAssistant.Academics.Coverage.summarize(entries, logs)
-  end
-
-  def set_form_master(%ClassGroup{} = cg, user_id) do
-    cg
-    |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id})
-    |> Ash.update(authorize?: false)
-  end
-
-  def form_master(%ClassGroup{form_master_user_id: nil}), do: nil
-
-  def form_master(%ClassGroup{form_master_user_id: uid}) do
-    case Ash.get(TeacherAssistant.Accounts.User, uid, authorize?: false) do
-      {:ok, user} -> user
-      _ -> nil
-    end
-  end
-
-  def list_form_master_classes(%Workspace{id: ws_id}, %{id: uid}, %AcademicYear{id: year_id}) do
-    ClassGroup
-    |> Ash.Query.filter(
-      workspace_id == ^ws_id and academic_year_id == ^year_id and form_master_user_id == ^uid
-    )
-    |> Ash.Query.sort(label: :asc)
-    |> Ash.read!(authorize?: false)
   end
 end

@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Timetables
@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
 
     :ok = Timetables.build_default_periods(school)
@@ -37,8 +37,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, profile} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(profile, head.id)
@@ -75,8 +75,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date,
     enrollment: enrollment
   } do
-    {:ok, other} = Academics.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
-    other_enr = Enum.find(Academics.list_roster(cg), &(&1.student.id == other.id)).enrollment
+    {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
+    other_enr = Enum.find(Enrollment.list_roster(cg), &(&1.student.id == other.id)).enrollment
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
@@ -98,8 +98,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date,
     enrollment: enrollment
   } do
-    {:ok, other} = Academics.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
-    other_enr = Enum.find(Academics.list_roster(cg), &(&1.student.id == other.id)).enrollment
+    {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
+    other_enr = Enum.find(Enrollment.list_roster(cg), &(&1.student.id == other.id)).enrollment
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
@@ -204,7 +204,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, att_path(ocg, period, date))

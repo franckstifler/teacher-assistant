@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Organization
 
@@ -22,13 +23,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp mount_solo(ctx, params, socket, ws) do
     with false <- is_nil(ctx.class_group_id),
-         {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"])
       assessments = if seq, do: Academics.list_assessments(ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
-      students = Academics.list_students(cg)
+      students = Enrollment.list_students(cg)
 
       {:ok,
        socket

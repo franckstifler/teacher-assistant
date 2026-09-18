@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.FeeTrancheTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.FeeTranche
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -18,7 +18,7 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
 
     %{
       ws: ws,

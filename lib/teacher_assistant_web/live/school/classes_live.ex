@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.ClassesLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.SchoolTemplates
   alias TeacherAssistant.Academics.Subsystem
   alias TeacherAssistant.Accounts.Permissions
@@ -139,7 +139,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     with true <- Permissions.admin?(scope),
          year when not is_nil(year) <- scope.current_academic_year,
          {:ok, _} <-
-           Academics.create_class_group(scope.current_workspace, year, %{
+           Enrollment.create_class_group(scope.current_workspace, year, %{
              label: params["label"],
              level: params["level"],
              serie: presence(params["serie"]),
@@ -158,7 +158,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
     with true <- Permissions.admin?(scope),
          %{cg: cg} <- Enum.find(socket.assigns.classes, &(&1.cg.id == id)),
-         :ok <- Academics.delete_class_group(cg) do
+         :ok <- Enrollment.delete_class_group(cg) do
       {:noreply, socket |> put_flash(:info, gettext("Class deleted.")) |> load_classes()}
     else
       {:error, :has_data} ->
@@ -180,9 +180,9 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
     classes =
       if year do
-        Academics.list_class_groups(scope.current_workspace, year)
+        Enrollment.list_class_groups(scope.current_workspace, year)
         |> Enum.map(fn cg ->
-          %{cg: cg, effectif: length(Academics.list_roster(cg))}
+          %{cg: cg, effectif: length(Enrollment.list_roster(cg))}
         end)
       else
         []

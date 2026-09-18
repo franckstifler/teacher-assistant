@@ -1,6 +1,6 @@
 defmodule TeacherAssistant.Academics.ClassGroupFormMasterTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
 
   setup do
@@ -15,7 +15,7 @@ defmodule TeacherAssistant.Academics.ClassGroupFormMasterTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     %{user: user, cg: cg}
   end
 

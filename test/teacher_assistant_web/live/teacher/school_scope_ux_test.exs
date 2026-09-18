@@ -2,7 +2,8 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Enrollments}
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Academics.{Assignments}
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -18,9 +19,9 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, user, %{subject: "Maths"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, year: year, cg: cg, tc: tc, user: user}
   end
@@ -37,7 +38,7 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
     # event name must match RosterLive's actual add handler
     render_hook(view, "add_student", %{"student" => %{"full_name" => "X", "sex" => "m"}})
 
-    assert Academics.list_students(%TeacherAssistant.Academics.ClassGroup{id: tc.class_group_id})
+    assert Enrollment.list_students(%TeacherAssistant.Academics.ClassGroup{id: tc.class_group_id})
            |> length() == 1
   end
 

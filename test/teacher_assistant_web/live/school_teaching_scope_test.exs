@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Organization
 
@@ -18,7 +18,7 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, year: year, cg: cg, user: user}
   end

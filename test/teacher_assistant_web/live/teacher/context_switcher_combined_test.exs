@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
   import Phoenix.LiveViewTest
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{Assignments, Courses}
   alias TeacherAssistant.Organization
 
@@ -19,8 +20,8 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
         active: true
       })
 
-    {:ok, cg_a} = Academics.create_class_group(school, year, %{label: "1ère A", level: "1ère"})
-    {:ok, cg_b} = Academics.create_class_group(school, year, %{label: "1ère B", level: "1ère"})
+    {:ok, cg_a} = Enrollment.create_class_group(school, year, %{label: "1ère A", level: "1ère"})
+    {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "1ère B", level: "1ère"})
 
     {:ok, tc_a} = Assignments.assign(cg_a, head, %{subject: "Mathématiques"})
     {:ok, tc_b} = Assignments.assign(cg_b, head, %{subject: "Mathématiques"})

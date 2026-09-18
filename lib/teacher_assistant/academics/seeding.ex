@@ -2,7 +2,7 @@ defmodule TeacherAssistant.Academics.Seeding do
   @moduledoc "One-time starter classes for a school's first academic year (spec §3)."
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, SchoolTemplates, Workspace}
   alias TeacherAssistant.Accounts
 
@@ -14,7 +14,8 @@ defmodule TeacherAssistant.Academics.Seeding do
       rows = SchoolTemplates.classes_for(profile.school_type, profile.subsystem)
 
       Enum.each(rows, fn %{label: label, level: level, serie: serie} ->
-        {:ok, _} = Academics.create_class_group(ws, year, %{label: label, level: level, serie: serie})
+        {:ok, _} =
+          Enrollment.create_class_group(ws, year, %{label: label, level: level, serie: serie})
       end)
 
       {:ok, length(rows)}

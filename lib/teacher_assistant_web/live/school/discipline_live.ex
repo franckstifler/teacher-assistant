@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
@@ -20,7 +21,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- authorized?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(year), else: []
@@ -34,7 +35,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          sequences: sequences,
          terms: terms,
          can_edit?: Permissions.conduct_manager?(scope),
-         roster: Academics.list_roster(cg),
+         roster: Enrollment.list_roster(cg),
          sanction_types: @sanction_types
        )
        |> select_period(nil)}

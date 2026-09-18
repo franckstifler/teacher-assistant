@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -25,9 +26,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
     {:ok, ctx} = Academics.link_class_group(ctx, cg)
-    {:ok, s1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
     %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1, cg: cg}
   end
@@ -169,7 +170,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     s1: s1,
     cg: cg
   } do
-    {:ok, s2} = Academics.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")

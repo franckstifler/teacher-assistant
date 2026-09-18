@@ -3,7 +3,6 @@ defmodule TeacherAssistant.Academics.Fees do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.FeeAdjustment
@@ -229,7 +228,7 @@ defmodule TeacherAssistant.Academics.Fees do
   adjustment.
   """
   def class_balances(%ClassGroup{} = class_group, on_date \\ Date.utc_today()) do
-    roster = Academics.list_roster(class_group)
+    roster = TeacherAssistant.Enrollment.list_roster(class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     tranches = list_tranches(class_group)

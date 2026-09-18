@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
@@ -24,9 +24,9 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
         active: true
       })
 
-    {:ok, maco} = Academics.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Academics.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
-    {:ok, unrelated} = Academics.create_class_group(ws, year, %{label: "1ère C", level: "1ère"})
+    {:ok, maco} = Enrollment.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
+    {:ok, menu} = Enrollment.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, unrelated} = Enrollment.create_class_group(ws, year, %{label: "1ère C", level: "1ère"})
 
     {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Maths"})
     {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Maths"})

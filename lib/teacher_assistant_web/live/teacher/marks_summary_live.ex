@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Marks
   alias TeacherAssistant.Organization
 
@@ -12,11 +13,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
     with {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope),
          false <- is_nil(ctx.class_group_id),
-         {:ok, cg} <- Academics.fetch_owned_class_group(ctx.class_group_id, ws) do
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"]) || List.first(sequences)
-      students = Academics.list_students(cg)
+      students = Enrollment.list_students(cg)
 
       {:ok,
        socket

@@ -6,8 +6,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
   """
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Enrollments}
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Academics.{Assignments}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -24,8 +24,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
 
     # Teacher A owns the Maths context.
     teacher_a = member(school, head)

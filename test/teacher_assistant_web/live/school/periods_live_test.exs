@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
@@ -70,7 +70,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =

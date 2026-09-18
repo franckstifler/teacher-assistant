@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -25,10 +26,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
     {:ok, ctx} = Academics.link_class_group(ctx, cg)
-    {:ok, s1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, s2} = Academics.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
     {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
 
     :ok =
@@ -60,7 +61,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     cg: cg,
     s2: s2
   } do
-    {:ok, ungraded} = Academics.add_student(cg, %{full_name: "Chantal", sex: :f})
+    {:ok, ungraded} = Enrollment.add_student(cg, %{full_name: "Chantal", sex: :f})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
@@ -80,7 +81,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     seq: seq,
     cg: cg
   } do
-    {:ok, _ungraded} = Academics.add_student(cg, %{full_name: "Chantal", sex: :f})
+    {:ok, _ungraded} = Enrollment.add_student(cg, %{full_name: "Chantal", sex: :f})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")

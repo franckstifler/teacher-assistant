@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Timetables
@@ -23,7 +24,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
     :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
 
     :ok = Timetables.build_default_periods(school)
@@ -39,8 +40,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _count} =
       Attendance.record_period(cg, period, tc, date, [{enrollment.id, :absent}], head.id)
@@ -130,7 +131,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     date: date
   } do
     other_date = Date.add(date, 7)
-    {:ok, _student2} = Academics.add_student(cg, %{full_name: "Zinedine Bello", sex: :m})
+    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Zinedine Bello", sex: :m})
     _ = head
 
     {:ok, view, html} =
@@ -159,7 +160,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -212,7 +213,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/register?date=#{Date.to_iso8601(date)}")

@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
@@ -23,9 +24,9 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Bob Eyong", sex: :m})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Bob Eyong", sex: :m})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
@@ -35,7 +36,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
         max_score: Decimal.new(20)
       })
 
-    roster = Academics.list_roster(cg)
+    roster = Enrollment.list_roster(cg)
 
     for %{student: s} <- roster,
         do: Academics.upsert_marks(a, [%{student_id: s.id, score: Decimal.new(14)}])
@@ -191,7 +192,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -204,7 +205,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   end
 
   test "the bulletin names the form master when set", %{conn: conn, cg: cg, seq: seq, head: head} do
-    {:ok, _} = Academics.set_form_master(cg, head.id)
+    {:ok, _} = Enrollment.set_form_master(cg, head.id)
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
     assert html_response(conn, 200) =~ to_string(head.email)
   end
@@ -229,7 +230,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
         max_score: Decimal.new(20)
       })
 
-    for %{student: s} <- TeacherAssistant.Academics.list_roster(cg),
+    for %{student: s} <- TeacherAssistant.Enrollment.list_roster(cg),
         do:
           TeacherAssistant.Academics.upsert_marks(a2, [
             %{student_id: s.id, score: Decimal.new(15)}
@@ -267,8 +268,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f})
 
     conn =
       conn

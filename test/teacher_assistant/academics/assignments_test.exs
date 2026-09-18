@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.AssignmentsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -18,7 +19,7 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     %{head: head, school: school, year: year, cg: cg}
   end
 
@@ -102,7 +103,7 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
   describe "combinable_siblings (P2 combined courses)" do
     setup ctx do
       %{school: school, year: year} = ctx
-      {:ok, cg2} = Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+      {:ok, cg2} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
       %{cg2: cg2}
     end
 
@@ -134,7 +135,7 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
       {:ok, _course} = TeacherAssistant.Academics.Courses.combine([tc, tc2])
 
       {:ok, cg3} =
-        Academics.create_class_group(ctx.school, ctx.year, %{label: "6e C", level: "6ème"})
+        Enrollment.create_class_group(ctx.school, ctx.year, %{label: "6e C", level: "6ème"})
 
       {:ok, tc3} = Assignments.assign(cg3, head, %{subject: "Maths"})
 

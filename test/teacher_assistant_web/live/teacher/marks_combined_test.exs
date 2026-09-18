@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
   import Phoenix.LiveViewTest
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{Assignments, Courses}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -23,14 +24,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     Organization.build_default_calendar(year)
     seq = Organization.list_sequences(year) |> List.first()
 
-    {:ok, maco} = Academics.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Academics.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, maco} =
+      Enrollment.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
+
+    {:ok, menu} =
+      Enrollment.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
 
     {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Mathématiques"})
     {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Mathématiques"})
 
-    {:ok, s_maco} = Academics.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, s_menu} = Academics.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
+    {:ok, s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
 
     {:ok, course} = Courses.combine([tc_maco, tc_menu])
 

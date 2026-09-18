@@ -1,8 +1,7 @@
 defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Enrollments
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -19,8 +18,8 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg2} = Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg2} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, cg2: cg2, actor: user}
   end
@@ -34,16 +33,16 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
 
     assert render(view) =~ "Awa"
     view |> element("#import-confirm") |> render_click()
-    assert length(Academics.list_roster(cg)) == 2
+    assert length(Enrollment.list_roster(cg)) == 2
   end
 
   test "matricule matching an existing student previews as réinscription", ctx do
     %{conn: conn, cg: cg, cg2: cg2} = ctx
 
     {:ok, %{enrollment: e}} =
-      Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
+      Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
 
-    :ok = Enrollments.withdraw(e)
+    :ok = Enrollment.withdraw(e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/import")
 
@@ -53,12 +52,12 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
 
     assert render(view) =~ "éinscription"
     view |> element("#import-confirm") |> render_click()
-    assert [%{enrollment: %{status: :reinscription}}] = Academics.list_roster(cg2)
+    assert [%{enrollment: %{status: :reinscription}}] = Enrollment.list_roster(cg2)
   end
 
   test "already-enrolled matricule is flagged as a conflict and skipped", ctx do
     %{conn: conn, cg: cg, cg2: cg2} = ctx
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Bi", sex: :m, matricule: "M-2"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Bi", sex: :m, matricule: "M-2"})
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/import")
 
@@ -68,7 +67,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
 
     assert render(view) =~ "conflict" or render(view) =~ "conflit"
     view |> element("#import-confirm") |> render_click()
-    assert [] = Academics.list_roster(cg2)
+    assert [] = Enrollment.list_roster(cg2)
   end
 
   test "non-admin cannot reach the import page", %{school: school, cg: cg, actor: head} do
@@ -97,6 +96,6 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
 
     assert render(view) =~ "Awa"
     view |> element("#import-confirm") |> render_click()
-    assert length(Academics.list_roster(cg)) == 2
+    assert length(Enrollment.list_roster(cg)) == 2
   end
 end

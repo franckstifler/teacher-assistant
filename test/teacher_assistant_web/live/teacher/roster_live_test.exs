@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -46,10 +47,10 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
 
   describe "with a linked class group" do
     setup %{ws: ws, year: year, ctx: ctx} do
-      {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+      {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
       {:ok, ctx} = Academics.link_class_group(ctx, cg)
-      {:ok, s1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-      {:ok, s2} = Academics.add_student(cg, %{full_name: "Beba", sex: :m})
+      {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+      {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
       %{ctx: ctx, cg: cg, s1: s1, s2: s2}
     end
 
@@ -72,7 +73,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
           weekly_hours: 2
         })
 
-      {:ok, cg2} = Academics.create_class_group(ws, year, %{label: "3e P", level: "3ème"})
+      {:ok, cg2} = Enrollment.create_class_group(ws, year, %{label: "3e P", level: "3ème"})
       {:ok, ctx2} = Academics.link_class_group(ctx2, cg2)
 
       {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx2.id}/roster")

@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.TeachingContextTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -16,7 +17,7 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
     %{user: user, ws: ws, year: year, cg: cg}
   end
 
@@ -29,7 +30,7 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
   test "two teachers can hold the same subject/level on different classes", ctx do
     %{ws: ws, year: year, cg: cg, user: u1} = ctx
     u2 = TeacherFixtures.user_fixture()
-    {:ok, cg2} = Academics.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg2} = Enrollment.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
 
     base = %{subject: "Maths", level: "6ème", subsystem: :francophone}
 

@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -21,10 +22,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     sequence = Academics.current_sequence(year, ~D[2025-09-08])
 
@@ -230,7 +231,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -291,7 +292,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/discipline")

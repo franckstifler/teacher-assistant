@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Fees
   alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Academics.FeeTranche
@@ -23,12 +23,12 @@ defmodule TeacherAssistant.Academics.FeesTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
 
-    {:ok, _student1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, _student2} = Academics.add_student(cg, %{full_name: "Bilal", sex: :m})
+    {:ok, _student1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Bilal", sex: :m})
 
-    [%{enrollment: enrollment1}, %{enrollment: enrollment2}] = Academics.list_roster(cg)
+    [%{enrollment: enrollment1}, %{enrollment: enrollment2}] = Enrollment.list_roster(cg)
 
     %{
       ws: ws,

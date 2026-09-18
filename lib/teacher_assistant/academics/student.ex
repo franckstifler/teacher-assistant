@@ -25,6 +25,31 @@ defmodule TeacherAssistant.Academics.Student do
       create: [:full_name, :sex, :matricule, :workspace_id],
       update: [:full_name, :sex, :matricule]
     ]
+
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      get? true
+      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+    end
+
+    read :by_matricule do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :matricule, :string, allow_nil?: false
+      filter expr(workspace_id == ^arg(:workspace_id) and matricule == ^arg(:matricule))
+    end
+
+    read :search_by_name do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :query, :string, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 contains(string_downcase(full_name), ^arg(:query))
+             )
+
+      prepare build(sort: [full_name: :asc], limit: 10)
+    end
   end
 
   policies do

@@ -59,7 +59,7 @@ defmodule TeacherAssistant.Academics.Attendance do
 
     students =
       class_group
-      |> Academics.list_roster()
+      |> TeacherAssistant.Enrollment.list_roster()
       |> Enum.map(fn %{student: student, enrollment: enrollment} ->
         %{
           enrollment_id: enrollment.id,
@@ -173,7 +173,7 @@ defmodule TeacherAssistant.Academics.Attendance do
 
     valid_enrollment_ids =
       class_group
-      |> Academics.list_roster()
+      |> TeacherAssistant.Enrollment.list_roster()
       |> MapSet.new(& &1.enrollment.id)
 
     with :ok <- validate_marks(marks, valid_enrollment_ids) do
@@ -226,7 +226,7 @@ defmodule TeacherAssistant.Academics.Attendance do
 
     students =
       class_group
-      |> Academics.list_roster()
+      |> TeacherAssistant.Enrollment.list_roster()
       |> Enum.map(fn %{student: student, enrollment: enrollment} ->
         marks = Map.get(cells_by_enrollment, enrollment.id, %{})
         cells = Map.new(period_ids, &{&1, Map.get(marks, &1)})
@@ -318,7 +318,7 @@ defmodule TeacherAssistant.Academics.Attendance do
   def class_conduct(%ClassGroup{} = class_group, period_tuple) do
     roster_enrollment_ids =
       class_group
-      |> Academics.list_roster()
+      |> TeacherAssistant.Enrollment.list_roster()
       |> Enum.map(& &1.enrollment.id)
 
     zero_map = Map.new(roster_enrollment_ids, &{&1, @zero_totals})

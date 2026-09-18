@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
@@ -23,8 +24,8 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
@@ -34,7 +35,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
         max_score: Decimal.new(20)
       })
 
-    [%{student: student, enrollment: enr}] = Academics.list_roster(cg)
+    [%{student: student, enrollment: enr}] = Enrollment.list_roster(cg)
     :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head}
@@ -72,7 +73,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
         max_score: Decimal.new(20)
       })
 
-    [%{student: student}] = TeacherAssistant.Academics.list_roster(cg)
+    [%{student: student}] = TeacherAssistant.Enrollment.list_roster(cg)
 
     :ok =
       TeacherAssistant.Academics.upsert_marks(a2, [
@@ -231,13 +232,13 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     school: school
   } do
     {:ok, cg2} =
-      Academics.create_class_group(school, Organization.current_academic_year(school), %{
+      Enrollment.create_class_group(school, Organization.current_academic_year(school), %{
         label: "6e B",
         level: "6ème"
       })
 
-    {:ok, _} = Academics.add_student(cg2, %{full_name: "Bob", sex: :m})
-    [%{enrollment: other_enr}] = Academics.list_roster(cg2)
+    {:ok, _} = Enrollment.add_student(cg2, %{full_name: "Bob", sex: :m})
+    [%{enrollment: other_enr}] = Enrollment.list_roster(cg2)
 
     assert {:error, {:live_redirect, %{}}} =
              live(

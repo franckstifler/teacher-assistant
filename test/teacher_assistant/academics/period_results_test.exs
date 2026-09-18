@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.PeriodResultsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Organization
 
@@ -18,10 +19,10 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
     :ok = Organization.build_default_calendar(year)
     sequences = Organization.list_sequences(year)
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(1)})
-    [student] = Academics.list_students(cg)
+    [student] = Enrollment.list_students(cg)
 
     # helper: give the student `score`/20 in séquence `seq` for Maths
     grade = fn seq, score ->
@@ -86,7 +87,9 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
   test "class_results_for_period is nil when the class has no subjects", %{year: year} do
     {:ok, school2} =
-      Organization.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{name: "Lycée Q"})
+      Organization.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{
+        name: "Lycée Q"
+      })
 
     {:ok, y2} =
       Organization.create_academic_year(school2, %{
@@ -97,7 +100,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
       })
 
     :ok = Organization.build_default_calendar(y2)
-    {:ok, cg2} = Academics.create_class_group(school2, y2, %{label: "6e Z", level: "6ème"})
+    {:ok, cg2} = Enrollment.create_class_group(school2, y2, %{label: "6e Z", level: "6ème"})
     assert Academics.class_results_for_period(cg2, {:annual, y2}) == nil
     _ = year
   end

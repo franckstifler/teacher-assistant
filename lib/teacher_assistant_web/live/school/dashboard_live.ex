@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.DashboardLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Accounts
@@ -128,11 +128,11 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     year = scope.current_academic_year
 
     classes =
-      if year, do: Academics.list_class_groups(scope.current_workspace, year), else: []
+      if year, do: Enrollment.list_class_groups(scope.current_workspace, year), else: []
 
     students_count =
       classes
-      |> Enum.map(&length(Academics.list_roster(&1)))
+      |> Enum.map(&length(Enrollment.list_roster(&1)))
       |> Enum.sum()
 
     teachers_count =
@@ -144,7 +144,8 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
     my_classes =
       if year,
-        do: Academics.list_form_master_classes(scope.current_workspace, scope.current_user, year),
+        do:
+          Enrollment.list_form_master_classes(scope.current_workspace, scope.current_user, year),
         else: []
 
     profile_complete? =

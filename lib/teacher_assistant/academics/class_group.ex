@@ -21,6 +21,39 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       create: [:label, :level, :serie, :subsystem, :workspace_id, :academic_year_id],
       update: [:label, :level, :serie, :subsystem, :form_master_user_id]
     ]
+
+    read :for_workspace_and_year do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id)
+             )
+
+      prepare build(sort: [label: :asc])
+    end
+
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      get? true
+      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+    end
+
+    read :for_form_master do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :form_master_user_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id) and
+                 form_master_user_id == ^arg(:form_master_user_id)
+             )
+
+      prepare build(sort: [label: :asc])
+    end
   end
 
   policies do

@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
@@ -21,8 +21,8 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
         active: true
       })
 
-    {:ok, cg_a} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg_b} = Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg_a} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
 
     {:ok, tc_a} = Assignments.assign(cg_a, head, %{subject: "Maths"})
     {:ok, tc_b} = Assignments.assign(cg_b, head, %{subject: "Maths"})

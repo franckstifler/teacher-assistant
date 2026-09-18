@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.AssessmentTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -26,7 +27,7 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
     %{ws: ws, ctx: ctx, cg: cg, seq: seq}
   end
 

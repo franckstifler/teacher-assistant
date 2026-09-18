@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -22,9 +23,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
     {:ok, ctx} = Academics.link_class_group(ctx, cg)
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
 
     {:ok, m1} = Academics.create_module(plan, %{title: "M1"})

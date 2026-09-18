@@ -1,8 +1,7 @@
 defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Enrollments
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -24,8 +23,8 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   end
 
   test "lists classes with effectif", %{conn: conn, school: school, year: year} do
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
     {:ok, _view, html} = live(conn, ~p"/school/classes")
     assert html =~ "6e A"
     assert html =~ "1"
@@ -53,8 +52,8 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
 
   test "delete is blocked when the class has enrollments", ctx do
     %{conn: conn, school: school, year: year} = ctx
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes")
     view |> element("#class-delete-#{cg.id}") |> render_click()
     assert render(view) =~ "6e A"
@@ -79,7 +78,7 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     refute has_element?(view, "#class-form")
 
     render_hook(view, "create_class", %{"class_group" => %{"label" => "X", "level" => "6ème"}})
-    assert Academics.list_class_groups(school, year) == []
+    assert Enrollment.list_class_groups(school, year) == []
   end
 
   test "no active year shows the setup gate", %{conn: conn, actor: user} do

@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
 
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Academics.ConductMark
@@ -23,9 +23,9 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     Organization.build_default_calendar(year)
     seq = Organization.list_sequences(year) |> List.first()
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     %{ws: ws, seq: seq, enrollment: enrollment}
   end

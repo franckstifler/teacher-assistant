@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.FeesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Fees
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -177,7 +177,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -234,8 +234,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     cg: cg,
     head: head
   } do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -272,8 +272,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     cg: cg,
     head: head
   } do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Bella Fon", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Bella Fon", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -293,8 +293,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "a fees manager deletes a payment", %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -326,8 +326,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "status chip shows Soldé when fully paid", %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -349,8 +349,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
   test "a form master sees balances read-only and forged payment/adjustment events are rejected",
        %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -361,7 +361,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -390,8 +390,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "a zero or non-numeric payment amount is rejected", %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -430,7 +430,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/fees")

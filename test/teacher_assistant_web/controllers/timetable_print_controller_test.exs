@@ -1,6 +1,6 @@
 defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
@@ -19,7 +19,7 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
 
     :ok = Timetables.build_default_periods(school)

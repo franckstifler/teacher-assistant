@@ -2,15 +2,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
 
-  alias TeacherAssistant.Academics.{
-    Assignments,
-    Courses,
-    EnrollmentStatus,
-    Enrollments,
-    Sex,
-    Subjects
-  }
+  alias TeacherAssistant.Academics.{Assignments, Courses, EnrollmentStatus, Sex, Subjects}
 
   alias TeacherAssistant.Accounts.{Permissions}
   alias TeacherAssistant.Accounts
@@ -19,7 +13,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     scope = socket.assigns.current_scope
 
     with :school <- scope.current_workspace_type,
-         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       subject_options =
         scope.current_workspace
@@ -394,9 +388,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     assignments = Assignments.list_for_class(cg)
 
     assign(socket,
-      roster: Academics.list_roster(cg),
+      roster: Enrollment.list_roster(cg),
       other_classes:
-        Academics.list_class_groups(scope.current_workspace, scope.current_academic_year)
+        Enrollment.list_class_groups(scope.current_workspace, scope.current_academic_year)
         |> Enum.reject(&(&1.id == cg.id)),
       assignments: assignments,
       combinable_siblings: combinable_siblings_by_context(assignments, socket.assigns[:admin?]),
@@ -414,7 +408,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
   def handle_event("enroll_new", %{"student" => params}, socket) do
     with true <- socket.assigns.manage? do
-      case Enrollments.enroll_new(socket.assigns.cg, %{
+      case Enrollment.enroll_new(socket.assigns.cg, %{
              full_name: params["full_name"],
              sex: parse_sex(params["sex"]),
              matricule: presence(params["matricule"]),
@@ -442,7 +436,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("search", %{"q" => q}, socket) do
     results =
       if socket.assigns.manage?,
-        do: Enrollments.search_students(socket.assigns.current_scope.current_workspace, q),
+        do: Enrollment.search_students(socket.assigns.current_scope.current_workspace, q),
         else: []
 
     {:noreply, assign(socket, search_results: results, q: q)}
@@ -451,7 +445,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("enroll_existing", %{"student-id" => sid}, socket) do
     with true <- socket.assigns.manage?,
          %{} = student <- Enum.find(socket.assigns.search_results, &(&1.id == sid)) do
-      case Enrollments.enroll_existing(socket.assigns.cg, student) do
+      case Enrollment.enroll_existing(socket.assigns.cg, student) do
         {:ok, _} ->
           {:noreply,
            socket
@@ -473,7 +467,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          true <- cgid != "",
          %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)),
          %{} = target <- Enum.find(socket.assigns.other_classes, &(&1.id == cgid)),
-         {:ok, _} <- Enrollments.transfer(e, target) do
+         {:ok, _} <- Enrollment.transfer(e, target) do
       {:noreply, socket |> put_flash(:info, gettext("Student transferred.")) |> load_roster()}
     else
       _ -> {:noreply, socket}
@@ -483,7 +477,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("withdraw", %{"enrollment-id" => eid}, socket) do
     with true <- socket.assigns.manage?,
          %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)) do
-      :ok = Enrollments.withdraw(e)
+      :ok = Enrollment.withdraw(e)
       {:noreply, socket |> put_flash(:info, gettext("Enrollment removed.")) |> load_roster()}
     else
       _ -> {:noreply, socket}
@@ -577,13 +571,13 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
       case target do
         :clear ->
-          {:ok, cg} = Academics.set_form_master(socket.assigns.cg, nil)
+          {:ok, cg} = Enrollment.set_form_master(socket.assigns.cg, nil)
 
           {:noreply,
            socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master cleared."))}
 
         %{user_id: user_id} ->
-          {:ok, cg} = Academics.set_form_master(socket.assigns.cg, user_id)
+          {:ok, cg} = Enrollment.set_form_master(socket.assigns.cg, user_id)
 
           {:noreply,
            socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master assigned."))}

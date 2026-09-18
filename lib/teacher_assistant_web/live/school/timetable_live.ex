@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.TimetableLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.DayOfWeek
@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       {:ok,
        socket

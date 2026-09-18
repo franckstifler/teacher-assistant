@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.AttendanceStatus
   alias TeacherAssistant.Academics.CombinedCourse
@@ -16,7 +17,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     scope = socket.assigns.current_scope
     date = parse_date(params["date"])
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          {:ok, period} <- fetch_period(period_id, scope.current_workspace),
          {:ok, slot_or_nil} <- resolve_slot(cg, date, period.id),
          true <- authorized?(scope, slot_or_nil) do

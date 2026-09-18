@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
 
     :ok = Timetables.build_default_periods(school)
@@ -88,7 +88,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
   test "placing a combined assignment fills the same cell for every member class, and clearing it clears both",
        %{conn: conn, cg: cg, tc: tc, period: period, school: school, year: year, head: head} do
-    {:ok, other_cg} = Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+    {:ok, other_cg} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
     {:ok, other_tc} = Assignments.assign(other_cg, head, %{subject: "Maths"})
     {:ok, _course} = Courses.combine([tc, other_tc])
 
@@ -126,7 +126,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     head: head
   } do
     {:ok, other_cg} =
-      Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+      Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
 
     {:ok, other_tc} = Assignments.assign(other_cg, head, %{subject: "Maths"})
 
@@ -164,7 +164,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -218,7 +218,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/timetable")

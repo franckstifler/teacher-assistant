@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -21,8 +22,8 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
@@ -32,7 +33,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         max_score: Decimal.new(20)
       })
 
-    [student] = Academics.list_students(cg)
+    [student] = Enrollment.list_students(cg)
     :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, student: student, head: head}
@@ -56,7 +57,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
     _ = head
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
@@ -93,7 +94,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -138,7 +139,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
     assert html =~ to_string(fm.email)

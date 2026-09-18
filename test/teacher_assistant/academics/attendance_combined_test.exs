@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.AttendanceEntry
@@ -24,17 +24,17 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
         active: true
       })
 
-    {:ok, maco} = Academics.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Academics.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, maco} = Enrollment.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
+    {:ok, menu} = Enrollment.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
 
     {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Maths"})
     {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Maths"})
 
-    {:ok, _s_maco} = Academics.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, _s_menu} = Academics.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, _s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
+    {:ok, _s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
 
-    [%{enrollment: enr_maco}] = Academics.list_roster(maco)
-    [%{enrollment: enr_menu}] = Academics.list_roster(menu)
+    [%{enrollment: enr_maco}] = Enrollment.list_roster(maco)
+    [%{enrollment: enr_menu}] = Enrollment.list_roster(menu)
 
     {:ok, course} = Courses.combine([tc_maco, tc_menu])
 

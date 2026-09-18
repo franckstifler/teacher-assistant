@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
@@ -24,20 +24,20 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg_other} = Academics.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg_other} = Enrollment.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
 
     {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
 
-    {:ok, _student1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, _student2} = Academics.add_student(cg, %{full_name: "Bilal", sex: :m})
+    {:ok, _student1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Bilal", sex: :m})
 
-    {:ok, _other_student} = Academics.add_student(cg_other, %{full_name: "Zara", sex: :f})
+    {:ok, _other_student} = Enrollment.add_student(cg_other, %{full_name: "Zara", sex: :f})
 
-    roster = Academics.list_roster(cg)
+    roster = Enrollment.list_roster(cg)
     [%{enrollment: enrollment1}, %{enrollment: enrollment2}] = roster
 
-    other_roster = Academics.list_roster(cg_other)
+    other_roster = Enrollment.list_roster(cg_other)
     [%{enrollment: other_enrollment}] = other_roster
 
     :ok = Timetables.build_default_periods(ws)
