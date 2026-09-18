@@ -3,12 +3,13 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Enrollments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée I"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée I"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -74,9 +75,9 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()

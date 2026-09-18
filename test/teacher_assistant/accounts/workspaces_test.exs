@@ -1,5 +1,7 @@
 defmodule TeacherAssistant.Accounts.WorkspacesTest do
   use TeacherAssistant.DataCase, async: true
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.Workspaces
   alias TeacherAssistant.Academics
   alias TeacherAssistant.TeacherFixtures
@@ -43,7 +45,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
   end
 
   test "scope_for resolves a school workspace via active membership", %{user: user} do
-    {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(user, %{name: "École Scope"})
+    {:ok, school} = Organization.create_school(user, %{name: "École Scope"})
     assert {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
     assert scope.current_workspace_type == :school
     assert :head in scope.current_roles
@@ -51,7 +53,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
   test "scope_for rejects a school the user is not a member of", %{user: user} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(head, %{name: "École X"})
+    {:ok, school} = Organization.create_school(head, %{name: "École X"})
 
     assert {:error, :not_a_member} =
              TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
@@ -59,7 +61,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
   describe "school teaching scope (P2.2)" do
     setup %{user: user} do
-      {:ok, school} = TeacherAssistant.Accounts.Schools.create_school(user, %{name: "Lycée S"})
+      {:ok, school} = Organization.create_school(user, %{name: "Lycée S"})
 
       {:ok, year} =
         Academics.create_academic_year(school, %{
@@ -96,12 +98,12 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       other = TeacherFixtures.user_fixture()
 
       {:ok, inv} =
-        TeacherAssistant.Accounts.Schools.invite_member(school, user, %{
+        Accounts.invite_member(school, user, %{
           email: to_string(other.email),
           roles: [:teacher]
         })
 
-      {:ok, _} = TeacherAssistant.Accounts.Schools.accept_invitation(inv.token, other)
+      {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
       {:ok, mine} = TeacherAssistant.Academics.Assignments.assign(cg, user, %{subject: "Maths"})
 

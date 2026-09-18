@@ -1,6 +1,6 @@
 defmodule TeacherAssistant.Accounts.Workspaces do
   alias TeacherAssistant.{Academics, Scope}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
 
   def ensure_personal_workspace!(user), do: Academics.ensure_personal_workspace!(user)
 
@@ -40,12 +40,12 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   end
 
   defp school_scope(user, ws, context_id) do
-    case Schools.fetch_school_membership(ws, user) do
+    case Accounts.fetch_school_membership(ws, user) do
       {:ok, membership} ->
         year = Academics.current_academic_year(ws)
 
         status =
-          case Schools.fetch_school_profile(ws) do
+          case Accounts.fetch_school_profile(ws) do
             {:ok, p} -> p.verification_status
             _ -> :unverified
           end

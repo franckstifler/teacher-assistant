@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Academics.ConductTest do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Conduct
   alias TeacherAssistant.Academics.Period
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
 
   describe "period_hours/1" do
     test "computes hours as a Decimal for a 07:30-08:25 period" do
@@ -53,7 +53,7 @@ defmodule TeacherAssistant.Academics.ConductTest do
   describe "period_date_range/1" do
     setup do
       head = TeacherAssistant.TeacherFixtures.user_fixture()
-      {:ok, school} = Schools.create_school(head, %{name: "Lycée P"})
+      {:ok, school} = Organization.create_school(head, %{name: "Lycée P"})
 
       {:ok, year} =
         Academics.create_academic_year(school, %{

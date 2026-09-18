@@ -3,12 +3,12 @@ defmodule TeacherAssistant.Academics.SeedingTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Seeding
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test", school_type: :lycee, subsystem: :francophone})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test", school_type: :lycee, subsystem: :francophone})
     {:ok, year} = Academics.create_academic_year(ws, %{name: "2025-2026", start_date: ~D[2025-09-08], end_date: ~D[2026-07-31], active: true})
     %{ws: ws, year: year}
   end

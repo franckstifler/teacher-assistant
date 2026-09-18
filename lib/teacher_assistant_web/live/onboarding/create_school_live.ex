@@ -1,6 +1,6 @@
 defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
@@ -17,7 +17,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
       town: p["town"]
     }
 
-    case Schools.create_school(socket.assigns.current_scope.current_user, attrs) do
+    case Organization.create_school(socket.assigns.current_scope.current_user, attrs) do
       {:ok, school} ->
         {:noreply, redirect(socket, to: ~p"/workspaces/select/#{school.id}")}
 

@@ -4,12 +4,12 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{

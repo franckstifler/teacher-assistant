@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.Admin.SchoolsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
@@ -79,7 +79,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
 
       profile ->
         {:ok, _} =
-          Schools.verify_school(profile, socket.assigns.current_scope.current_user.id)
+          Accounts.verify_school(profile, socket.assigns.current_scope.current_user.id)
 
         {:noreply, reload_schools(socket)}
     end
@@ -92,7 +92,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
 
       profile ->
         {:ok, _} =
-          Schools.reject_school(
+          Accounts.reject_school(
             profile,
             socket.assigns.current_scope.current_user.id,
             reason
@@ -106,5 +106,5 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
     Enum.find(socket.assigns.schools, &(to_string(&1.workspace_id) == to_string(workspace_id)))
   end
 
-  defp reload_schools(socket), do: assign(socket, :schools, Schools.list_unverified_schools())
+  defp reload_schools(socket), do: assign(socket, :schools, Accounts.list_unverified_schools())
 end

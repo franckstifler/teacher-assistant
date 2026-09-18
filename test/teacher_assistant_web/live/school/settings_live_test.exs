@@ -1,11 +1,12 @@
 defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Ancien Nom"})
+    {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school}
   end
@@ -70,9 +71,9 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -100,12 +101,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     vp = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(vp.email),
         roles: [:vice_principal]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, vp)
+    {:ok, _} = Accounts.accept_invitation(inv.token, vp)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -206,9 +207,9 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     teacher_conn =
       Phoenix.ConnTest.build_conn()

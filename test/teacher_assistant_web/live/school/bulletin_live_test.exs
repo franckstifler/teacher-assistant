@@ -6,12 +6,12 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Bu"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Bu"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{

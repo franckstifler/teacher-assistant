@@ -5,12 +5,13 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Print"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Print"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -39,8 +40,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     for %{student: s} <- roster,
         do: Academics.upsert_marks(a, [%{student_id: s.id, score: Decimal.new(14)}])
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, roster: roster, head: head}
@@ -163,9 +164,9 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -187,9 +188,9 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
     {:ok, _} = Academics.set_form_master(cg, fm.id)
 
     conn =
@@ -254,7 +255,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
   test "an unverified school cannot print bulletins", %{conn: conn} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Non Vérifié"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Non Vérifié"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{

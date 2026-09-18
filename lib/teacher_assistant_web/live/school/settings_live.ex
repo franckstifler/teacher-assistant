@@ -3,7 +3,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{SubjectCategory, Subjects}
-  alias TeacherAssistant.Accounts.{Permissions, Schools}
+  alias TeacherAssistant.Accounts.{Permissions}
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
@@ -322,7 +324,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     if Permissions.head?(scope) do
-      case Schools.rename_school(scope.current_workspace, name) do
+      case Organization.rename_school(scope.current_workspace, name) do
         {:ok, school} ->
           new_scope = %{scope | current_workspace: school}
 
@@ -485,7 +487,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) and socket.assigns.profile do
-      case Schools.update_school_profile(socket.assigns.profile, attrs) do
+      case Accounts.update_school_profile(socket.assigns.profile, attrs) do
         {:ok, _profile} ->
           {:noreply,
            socket
@@ -524,7 +526,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
       case uploaded do
         [relative_path] ->
-          case Schools.update_school_profile(socket.assigns.profile, %{logo_path: relative_path}) do
+          case Accounts.update_school_profile(socket.assigns.profile, %{logo_path: relative_path}) do
             {:ok, _profile} ->
               {:noreply,
                socket
@@ -552,7 +554,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   defp load_profile(socket) do
     scope = socket.assigns.scope
 
-    case Schools.fetch_school_profile(scope.current_workspace) do
+    case Accounts.fetch_school_profile(scope.current_workspace) do
       {:ok, profile} ->
         socket
         |> assign(:profile, profile)

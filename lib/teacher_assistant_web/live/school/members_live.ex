@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{Permissions, SchoolRole, Schools}
+  alias TeacherAssistant.Accounts.{Permissions, SchoolRole}
+  alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -146,7 +147,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     if Permissions.head?(scope) do
       roles = parse_roles(params["roles"])
 
-      case Schools.invite_member(scope.current_workspace, scope.current_user, %{
+      case Accounts.invite_member(scope.current_workspace, scope.current_user, %{
              email: params["email"],
              roles: roles
            }) do
@@ -171,7 +172,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, socket}
 
         inv ->
-          {:ok, _} = Schools.revoke_invitation(inv)
+          {:ok, _} = Accounts.revoke_invitation(inv)
           {:noreply, reload_members(socket)}
       end
     else
@@ -188,7 +189,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, socket}
 
         membership ->
-          case Schools.deactivate_member(membership) do
+          case Accounts.deactivate_member(membership) do
             {:ok, _} ->
               {:noreply, reload_members(socket)}
 
@@ -217,7 +218,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, socket}
 
         membership ->
-          case Schools.update_member_roles(membership, roles) do
+          case Accounts.update_member_roles(membership, roles) do
             {:ok, _} ->
               {:noreply, reload_members(socket)}
 
@@ -239,8 +240,8 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     school = socket.assigns.scope.current_workspace
 
     socket
-    |> assign(:members, Schools.list_members(school))
-    |> assign(:invitations, Schools.list_pending_invitations(school))
+    |> assign(:members, Accounts.list_members(school))
+    |> assign(:invitations, Accounts.list_pending_invitations(school))
   end
 
   defp parse_roles(nil), do: [:teacher]
@@ -258,13 +259,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   defp find_invitation(school, id) do
     school
-    |> Schools.list_pending_invitations()
+    |> Accounts.list_pending_invitations()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end
 
   defp find_membership(school, id) do
     school
-    |> Schools.list_members()
+    |> Accounts.list_members()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end
 end

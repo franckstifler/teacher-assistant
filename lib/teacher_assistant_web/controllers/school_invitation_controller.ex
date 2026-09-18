@@ -1,10 +1,10 @@
 defmodule TeacherAssistantWeb.SchoolInvitationController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
 
   def show(conn, %{"token" => token}) do
-    case Schools.fetch_invitation_by_token(token) do
+    case Accounts.fetch_invitation_by_token(token) do
       {:ok, invitation} ->
         current_user = conn.assigns[:current_user]
 
@@ -30,7 +30,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
     user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
     conn = assign(conn, :current_user, user)
 
-    case Schools.accept_invitation(token, user) do
+    case Accounts.accept_invitation(token, user) do
       {:ok, school} ->
         conn
         |> put_session(:workspace_id, school.id)

@@ -3,13 +3,14 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{Assignments, Attendance, Timetables}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
     {:ok, school} =
-      Schools.create_school(head, %{
+      Organization.create_school(head, %{
         name: "Lycée G",
         school_type: :lycee,
         subsystem: :francophone,
@@ -61,8 +62,8 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
     date: date,
     head: head
   } do
-    {:ok, p} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(p, head.id)
+    {:ok, p} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(p, head.id)
 
     {:ok, view, _} =
       live(conn, "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")

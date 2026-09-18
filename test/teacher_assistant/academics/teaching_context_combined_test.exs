@@ -2,12 +2,12 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{Assignments, CombinedCourse}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
       Academics.create_academic_year(ws, %{

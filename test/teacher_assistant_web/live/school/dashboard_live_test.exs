@@ -1,11 +1,12 @@
 defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   test "a member sees the school shell after selecting the school", %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée Central"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée Central"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#school-dashboard")
@@ -15,7 +16,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   test "teacher pages redirect to /school while in a school scope without a teaching assignment",
        %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "École Guard"})
+    {:ok, school} = Organization.create_school(user, %{name: "École Guard"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/teacher/setup")
   end
@@ -24,7 +25,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     alias TeacherAssistant.Academics
     alias TeacherAssistant.Academics.Enrollments
 
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée Stats"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée Stats"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
     {:ok, year} =
@@ -43,7 +44,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   end
 
   test "dashboard without a year prompts to create one", %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "École SansAnnée"})
+    {:ok, school} = Organization.create_school(user, %{name: "École SansAnnée"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
     {:ok, view, html} = live(conn, ~p"/school")
@@ -55,13 +56,13 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     conn: _conn,
     actor: head
   } do
-    {:ok, school} = Schools.create_school(head, %{name: "École SansAnnéeVP"})
+    {:ok, school} = Organization.create_school(head, %{name: "École SansAnnéeVP"})
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -78,7 +79,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     alias TeacherAssistant.Academics
 
     setup %{conn: conn, actor: head} do
-      {:ok, school} = Schools.create_school(head, %{name: "Lycée Dash"})
+      {:ok, school} = Organization.create_school(head, %{name: "Lycée Dash"})
 
       {:ok, year} =
         Academics.create_academic_year(school, %{
@@ -108,7 +109,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   describe "verification banner" do
     setup %{conn: conn, actor: head} do
-      {:ok, school} = Schools.create_school(head, %{name: "Lycée Vérif"})
+      {:ok, school} = Organization.create_school(head, %{name: "Lycée Vérif"})
       conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
       %{conn: conn, school: school, head: head}
     end
@@ -120,8 +121,8 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     end
 
     test "hides the banner once verified", %{conn: conn, school: school, head: head} do
-      {:ok, p} = Schools.fetch_school_profile(school)
-      {:ok, _} = Schools.verify_school(p, head.id)
+      {:ok, p} = Accounts.fetch_school_profile(school)
+      {:ok, _} = Accounts.verify_school(p, head.id)
       {:ok, view, _html} = live(conn, ~p"/school")
       refute has_element?(view, "#pending-verification")
     end

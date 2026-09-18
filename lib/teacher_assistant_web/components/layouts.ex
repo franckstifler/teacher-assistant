@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.Layouts do
   used by your application.
   """
   use TeacherAssistantWeb, :html
+  alias TeacherAssistant.Organization
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -48,7 +49,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
     workspaces =
       if current_user,
-        do: TeacherAssistant.Accounts.Schools.list_workspaces_for(current_user),
+        do: Organization.list_workspaces_for(current_user),
         else: []
 
     assigns =

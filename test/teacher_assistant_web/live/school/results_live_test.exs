@@ -3,12 +3,13 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée R"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -45,7 +46,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
 
   test "cross-school class id redirects", %{conn: conn, head: head} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
       Academics.create_academic_year(os, %{
@@ -66,9 +67,9 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -89,9 +90,9 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
     {:ok, _} = Academics.set_form_master(cg, fm.id)
 
     conn =
@@ -134,9 +135,9 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
     {:ok, _} = Academics.set_form_master(cg, fm.id)
 
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")

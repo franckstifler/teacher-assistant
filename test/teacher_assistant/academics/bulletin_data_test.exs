@@ -2,12 +2,12 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée B"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée B"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{

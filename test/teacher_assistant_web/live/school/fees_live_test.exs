@@ -3,12 +3,13 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Fees
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée F"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée F"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -42,9 +43,9 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     bursar = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(bursar.email), roles: [:bursar]})
+      Accounts.invite_member(school, head, %{email: to_string(bursar.email), roles: [:bursar]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, bursar)
+    {:ok, _} = Accounts.accept_invitation(inv.token, bursar)
 
     conn = conn_for(school, bursar)
 
@@ -173,9 +174,9 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
     {:ok, _} = Academics.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
@@ -218,9 +219,9 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn = conn_for(school, other)
 
@@ -357,9 +358,9 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
     {:ok, _} = Academics.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
@@ -419,7 +420,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
       Academics.create_academic_year(os, %{

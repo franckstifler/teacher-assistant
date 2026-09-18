@@ -7,12 +7,12 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
   alias TeacherAssistant.Academics.ConductMark
   alias TeacherAssistant.Academics.Discipline
   alias TeacherAssistant.Academics.SanctionEntry
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
       Academics.create_academic_year(ws, %{
@@ -232,7 +232,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     test "returns [] when the period range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty"})
+      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty"})
 
       {:ok, empty_year} =
         Academics.create_academic_year(empty_ws, %{

@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Accounts.Permissions
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -148,12 +148,12 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         else: []
 
     profile_complete? =
-      case Schools.fetch_school_profile(scope.current_workspace) do
+      case Accounts.fetch_school_profile(scope.current_workspace) do
         {:ok, profile} -> profile.head_name not in [nil, ""]
         _ -> false
       end
 
-    staff_count = scope.current_workspace |> Schools.list_members() |> length()
+    staff_count = scope.current_workspace |> Accounts.list_members() |> length()
 
     socket
     |> assign(:year, year)

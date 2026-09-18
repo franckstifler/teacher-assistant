@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{Assignments, Courses}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
@@ -95,7 +95,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
 
   describe "combined course" do
     setup %{conn: conn, actor: head} do
-      {:ok, school} = Schools.create_school(head, %{name: "Lycée Log"})
+      {:ok, school} = Organization.create_school(head, %{name: "Lycée Log"})
 
       {:ok, year} =
         Academics.create_academic_year(school, %{

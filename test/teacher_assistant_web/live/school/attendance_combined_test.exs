@@ -7,12 +7,13 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -51,8 +52,8 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
 
     date = ~D[2025-09-08]
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

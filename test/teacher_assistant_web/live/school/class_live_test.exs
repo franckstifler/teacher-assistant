@@ -3,12 +3,13 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Enrollments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée D"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée D"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -94,7 +95,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "cross-school class id is not found", %{conn: conn, actor: user} do
     other_head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, other_school} = Schools.create_school(other_head, %{name: "Autre"})
+    {:ok, other_school} = Organization.create_school(other_head, %{name: "Autre"})
 
     {:ok, oy} =
       Academics.create_academic_year(other_school, %{
@@ -116,9 +117,9 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -240,12 +241,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
-        TeacherAssistant.Accounts.Schools.invite_member(school, head, %{
+        TeacherAssistant.Accounts.invite_member(school, head, %{
           email: to_string(other.email),
           roles: [:teacher]
         })
 
-      {:ok, _} = TeacherAssistant.Accounts.Schools.accept_invitation(inv.token, other)
+      {:ok, _} = TeacherAssistant.Accounts.accept_invitation(inv.token, other)
 
       conn =
         Phoenix.ConnTest.build_conn()
@@ -369,9 +370,9 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
-        Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+        Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-      {:ok, _} = Schools.accept_invitation(inv.token, other)
+      {:ok, _} = Accounts.accept_invitation(inv.token, other)
       {:ok, _} = TeacherAssistant.Academics.set_form_master(cg, other.id)
 
       conn =
@@ -395,9 +396,9 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
-        Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+        Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-      {:ok, _} = Schools.accept_invitation(inv.token, fm)
+      {:ok, _} = Accounts.accept_invitation(inv.token, fm)
       {:ok, _} = TeacherAssistant.Academics.set_form_master(cg, fm.id)
 
       conn =

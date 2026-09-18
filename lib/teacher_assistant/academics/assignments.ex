@@ -15,7 +15,8 @@ defmodule TeacherAssistant.Academics.Assignments do
     Workspace
   }
 
-  alias TeacherAssistant.Accounts.{Schools, User}
+  alias TeacherAssistant.Accounts.{User}
+  alias TeacherAssistant.Accounts
 
   def assign(%ClassGroup{} = cg, %User{} = teacher, attrs) do
     with :ok <- assignable(cg, teacher) do
@@ -136,7 +137,7 @@ defmodule TeacherAssistant.Academics.Assignments do
   defp assignable(%ClassGroup{workspace_id: ws_id}, teacher), do: assignable_ws(ws_id, teacher)
 
   defp assignable_ws(ws_id, teacher) do
-    case Schools.fetch_school_membership(%Workspace{id: ws_id}, teacher) do
+    case Accounts.fetch_school_membership(%Workspace{id: ws_id}, teacher) do
       {:ok, _membership} -> :ok
       {:error, :not_a_member} -> {:error, :not_assignable}
     end

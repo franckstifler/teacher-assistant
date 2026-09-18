@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   alias TeacherAssistant.Academics.SchoolTemplates
   alias TeacherAssistant.Academics.Subsystem
   alias TeacherAssistant.Accounts.Permissions
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     if scope.current_workspace_type != :school do
       {:ok, push_navigate(socket, to: ~p"/teacher")}
     else
-      profile = Schools.fetch_school_profile(scope.current_workspace)
+      profile = Accounts.fetch_school_profile(scope.current_workspace)
 
       class_streams =
         case profile do

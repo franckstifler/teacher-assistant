@@ -2,13 +2,15 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics.Workspace
-  alias TeacherAssistant.Accounts.{SchoolMembership, Schools}
+  alias TeacherAssistant.Accounts.{SchoolMembership}
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   describe "with a school profile" do
     setup %{conn: conn, actor: user} do
-      {:ok, school} = Schools.create_school(user, %{name: "Ancien Nom"})
+      {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
       conn = get(conn, ~p"/workspaces/select/#{school.id}")
       %{conn: conn, school: school}
     end
@@ -30,7 +32,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       })
       |> render_submit()
 
-      {:ok, p} = Schools.fetch_school_profile(school)
+      {:ok, p} = Accounts.fetch_school_profile(school)
       assert p.short_name == "GBHS"
       assert p.head_name == "M. Ndenge"
     end

@@ -4,12 +4,12 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{Assignments, Courses}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{

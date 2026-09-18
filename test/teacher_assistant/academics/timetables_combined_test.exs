@@ -8,12 +8,13 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
       Academics.create_academic_year(ws, %{
@@ -96,12 +97,12 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     other_teacher = TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(ctx.ws, ctx.head, %{
+      Accounts.invite_member(ctx.ws, ctx.head, %{
         email: to_string(other_teacher.email),
         roles: [:teacher]
       })
 
-    {:ok, _member} = Schools.accept_invitation(inv.token, other_teacher)
+    {:ok, _member} = Accounts.accept_invitation(inv.token, other_teacher)
 
     {:ok, tc_other} = Assignments.assign(ctx.unrelated, other_teacher, %{subject: "Anglais"})
     {:ok, tc_unrelated_head} = Assignments.assign(ctx.unrelated, ctx.head, %{subject: "Physique"})

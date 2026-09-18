@@ -8,12 +8,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{Assignments, Enrollments}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Iso"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Iso"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -45,9 +46,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, user)
+    {:ok, _} = Accounts.accept_invitation(inv.token, user)
     user
   end
 

@@ -4,13 +4,13 @@ defmodule TeacherAssistant.Academics.Seeding do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, SchoolTemplates, Workspace}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
 
   def seed_starter_classes(%Workspace{} = ws, %AcademicYear{} = year) do
     if has_any_class?(ws) do
       {:ok, 0}
     else
-      {:ok, profile} = Schools.fetch_school_profile(ws)
+      {:ok, profile} = Accounts.fetch_school_profile(ws)
       rows = SchoolTemplates.classes_for(profile.school_type, profile.subsystem)
 
       Enum.each(rows, fn %{label: label, level: level, serie: serie} ->

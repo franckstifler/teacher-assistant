@@ -9,12 +9,12 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
       Academics.create_academic_year(ws, %{

@@ -2,12 +2,12 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
   use TeacherAssistant.DataCase, async: true
 
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     user = TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée Test"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée Test"})
     %{school: school}
   end
 
@@ -37,7 +37,7 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
 
   test "list_periods returns [] for an unseeded workspace" do
     user = TeacherFixtures.user_fixture()
-    {:ok, other_school} = Schools.create_school(user, %{name: "Other School"})
+    {:ok, other_school} = Organization.create_school(user, %{name: "Other School"})
 
     assert Timetables.list_periods(other_school) == []
   end

@@ -2,11 +2,11 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
 
   setup do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée P"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée P"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -86,7 +86,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
   test "class_results_for_period is nil when the class has no subjects", %{year: year} do
     {:ok, school2} =
-      Schools.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{name: "Lycée Q"})
+      Organization.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{name: "Lycée Q"})
 
     {:ok, y2} =
       Academics.create_academic_year(school2, %{

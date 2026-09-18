@@ -9,12 +9,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
       Academics.create_academic_year(ws, %{
@@ -512,7 +512,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "returns zeros when the period date range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty"})
+      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty"})
 
       {:ok, empty_year} =
         Academics.create_academic_year(empty_ws, %{
@@ -598,7 +598,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "class_conduct returns zeros for every roster enrollment when the range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty2"})
+      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty2"})
 
       {:ok, empty_year} =
         Academics.create_academic_year(empty_ws, %{

@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.SchoolLogoController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Accounts.{Permissions, Schools, Workspaces}
+  alias TeacherAssistant.Accounts.{Permissions, Workspaces}
+  alias TeacherAssistant.Accounts
 
   def show(conn, _params) do
     user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
@@ -10,7 +11,7 @@ defmodule TeacherAssistantWeb.SchoolLogoController do
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
          :school <- scope.current_workspace_type,
          true <- Permissions.member?(scope),
-         {:ok, profile} <- Schools.fetch_school_profile(scope.current_workspace),
+         {:ok, profile} <- Accounts.fetch_school_profile(scope.current_workspace),
          logo_path when is_binary(logo_path) <- profile.logo_path,
          {:ok, path} <- safe_logo_path(logo_path) do
       conn

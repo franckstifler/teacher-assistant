@@ -5,12 +5,13 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée T"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -39,8 +40,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
     [%{enrollment: enrollment}] = Academics.list_roster(cg)
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -121,12 +122,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
 
     {:ok, view, _html} = live(conn_for(school, dm), att_path(cg, period, date))
 
@@ -179,9 +180,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn_for(school, other), att_path(cg, period, date))
@@ -193,7 +194,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date
   } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
       Academics.create_academic_year(os, %{

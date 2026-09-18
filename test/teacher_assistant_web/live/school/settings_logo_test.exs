@@ -1,12 +1,13 @@
 defmodule TeacherAssistantWeb.School.SettingsLogoTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "École du Logo"})
+    {:ok, school} = Organization.create_school(user, %{name: "École du Logo"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school}
   end
@@ -26,7 +27,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
     render_upload(logo, "logo.png")
     view |> element("#school-logo-form") |> render_submit()
 
-    {:ok, p} = Schools.fetch_school_profile(school)
+    {:ok, p} = Accounts.fetch_school_profile(school)
     assert p.logo_path
 
     assert File.exists?(
@@ -49,7 +50,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
     render_upload(logo, "logo.png")
     view |> element("#school-logo-form") |> render_submit()
 
-    {:ok, _p} = Schools.fetch_school_profile(school)
+    {:ok, _p} = Accounts.fetch_school_profile(school)
 
     conn = get(conn, ~p"/school/logo")
     assert conn.status == 200

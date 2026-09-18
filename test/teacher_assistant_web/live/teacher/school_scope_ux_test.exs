@@ -3,12 +3,12 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.{Assignments, Enrollments}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée UX"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée UX"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{

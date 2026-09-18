@@ -3,12 +3,13 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Enrollments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée C"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée C"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -64,9 +65,9 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -82,7 +83,7 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   end
 
   test "no active year shows the setup gate", %{conn: conn, actor: user} do
-    {:ok, school2} = Schools.create_school(user, %{name: "Lycée SansAnnée"})
+    {:ok, school2} = Organization.create_school(user, %{name: "Lycée SansAnnée"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school2.id)
     {:ok, view, html} = live(conn, ~p"/school/classes")
     assert html =~ "année" or html =~ "year"
@@ -93,13 +94,13 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     conn: _conn,
     actor: head
   } do
-    {:ok, school2} = Schools.create_school(head, %{name: "Lycée SansAnnéeVP"})
+    {:ok, school2} = Organization.create_school(head, %{name: "Lycée SansAnnéeVP"})
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school2, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school2, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()

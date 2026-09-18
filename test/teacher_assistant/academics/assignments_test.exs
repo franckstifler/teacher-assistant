@@ -2,12 +2,13 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
       Academics.create_academic_year(school, %{
@@ -144,8 +145,8 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
   # Creates an active membership for `user` in `school` via the invitation flow.
   defp add_active_member(school, head, user) do
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
 
-    Schools.accept_invitation(inv.token, user)
+    Accounts.accept_invitation(inv.token, user)
   end
 end

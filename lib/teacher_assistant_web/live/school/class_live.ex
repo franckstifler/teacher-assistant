@@ -12,7 +12,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     Subjects
   }
 
-  alias TeacherAssistant.Accounts.{Permissions, Schools}
+  alias TeacherAssistant.Accounts.{Permissions}
+  alias TeacherAssistant.Accounts
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -399,7 +400,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         |> Enum.reject(&(&1.id == cg.id)),
       assignments: assignments,
       combinable_siblings: combinable_siblings_by_context(assignments, socket.assigns[:admin?]),
-      members: Schools.list_members(scope.current_workspace)
+      members: Accounts.list_members(scope.current_workspace)
     )
   end
 
