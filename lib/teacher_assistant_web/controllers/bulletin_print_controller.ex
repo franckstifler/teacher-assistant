@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts.{Permissions, Workspaces}
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do

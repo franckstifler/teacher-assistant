@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization

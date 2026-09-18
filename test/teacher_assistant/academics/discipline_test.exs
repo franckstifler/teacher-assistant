@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.ConductMark
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Academics.SanctionEntry
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures

@@ -35,6 +35,32 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
         :issued_by_user_id
       ]
     ]
+
+    read :for_class_in_range do
+      argument :class_group_id, :uuid, allow_nil?: false
+      argument :first, :date, allow_nil?: false
+      argument :last, :date, allow_nil?: false
+
+      filter expr(
+               enrollment.class_group_id == ^arg(:class_group_id) and date >= ^arg(:first) and
+                 date <= ^arg(:last)
+             )
+
+      prepare build(load: [enrollment: :student], sort: [date: :desc])
+    end
+
+    read :for_enrollment_in_range do
+      argument :enrollment_id, :uuid, allow_nil?: false
+      argument :first, :date, allow_nil?: false
+      argument :last, :date, allow_nil?: false
+
+      filter expr(
+               enrollment_id == ^arg(:enrollment_id) and date >= ^arg(:first) and
+                 date <= ^arg(:last)
+             )
+
+      prepare build(load: [enrollment: :student], sort: [date: :desc])
+    end
   end
 
   policies do

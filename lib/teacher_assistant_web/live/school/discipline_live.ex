@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels

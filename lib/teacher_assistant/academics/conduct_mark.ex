@@ -29,6 +29,27 @@ defmodule TeacherAssistant.Academics.ConductMark do
       upsert? true
       upsert_identity :unique_conduct_mark
     end
+
+    read :for_enrollment_sequence do
+      argument :enrollment_id, :uuid, allow_nil?: false
+      argument :sequence_id, :uuid, allow_nil?: false
+
+      filter expr(enrollment_id == ^arg(:enrollment_id) and sequence_id == ^arg(:sequence_id))
+    end
+
+    read :for_enrollment_sequences do
+      argument :enrollment_id, :uuid, allow_nil?: false
+      argument :sequence_ids, {:array, :uuid}, allow_nil?: false
+
+      filter expr(enrollment_id == ^arg(:enrollment_id) and sequence_id in ^arg(:sequence_ids))
+    end
+
+    read :for_enrollments_sequences do
+      argument :enrollment_ids, {:array, :uuid}, allow_nil?: false
+      argument :sequence_ids, {:array, :uuid}, allow_nil?: false
+
+      filter expr(enrollment_id in ^arg(:enrollment_ids) and sequence_id in ^arg(:sequence_ids))
+    end
   end
 
   policies do

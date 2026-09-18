@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
