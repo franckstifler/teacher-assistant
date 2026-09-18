@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
@@ -65,7 +66,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
       "lesson_plan" => %{"situation_probleme" => "Au marché"}
     })
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
     assert lp.situation_probleme == "Au marché"
     assert has_element?(view, "#fiche-saved-indicator")
   end
@@ -96,31 +97,31 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     view |> element("#step-add") |> render_click()
     view |> element("#step-add") |> render_click()
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
-    [s1, s2] = Academics.list_lesson_steps(lp)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
+    [s1, s2] = Curriculum.list_lesson_steps!(lp.id)
 
     # edit step 1's étape (autosave fires on the change/blur event)
     view
     |> element("#step-row-#{s1.id} form")
     |> render_change(%{"_target" => ["step", "etape"], "step" => %{"etape" => "Découverte"}})
 
-    assert Academics.list_lesson_steps(lp) |> List.first() |> Map.get(:etape) == "Découverte"
+    assert Curriculum.list_lesson_steps!(lp.id) |> List.first() |> Map.get(:etape) == "Découverte"
 
     # move step 1 down
     view |> element("#step-down-#{s1.id}") |> render_click()
-    assert Academics.list_lesson_steps(lp) |> Enum.map(& &1.id) == [s2.id, s1.id]
+    assert Curriculum.list_lesson_steps!(lp.id) |> Enum.map(& &1.id) == [s2.id, s1.id]
 
     # delete step 2 (now first)
     view |> element("#step-delete-#{s2.id}") |> render_click()
-    assert Academics.list_lesson_steps(lp) |> Enum.map(& &1.id) == [s1.id]
+    assert Curriculum.list_lesson_steps!(lp.id) |> Enum.map(& &1.id) == [s1.id]
   end
 
   test "shows the running-duration check", %{conn: conn, entry: entry} do
     {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
-    [s1] = Academics.list_lesson_steps(lp)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
+    [s1] = Curriculum.list_lesson_steps!(lp.id)
 
     view
     |> element("#step-row-#{s1.id} form")
@@ -140,8 +141,8 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
-    [s1] = Academics.list_lesson_steps(lp)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
+    [s1] = Curriculum.list_lesson_steps!(lp.id)
 
     # under budget: no warning tone
     refute render(element(view, "#fiche-duration-check")) =~ "text-warning"

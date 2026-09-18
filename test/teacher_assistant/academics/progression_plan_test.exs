@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -29,7 +30,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   test "create and list a progression plan", %{ws: ws, ctx: ctx} do
     assert {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Maths 6ème 2025-2026"})
     assert plan.status == :draft
-    assert [listed] = Academics.list_progression_plans(ws)
+    assert [listed] = Curriculum.list_progression_plans!(ws.id)
     assert listed.id == plan.id
   end
 
@@ -54,8 +55,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
 
     {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
 
-    original_entries = Academics.list_progression_entries(plan)
-    copied_entries = Academics.list_progression_entries(copy)
+    original_entries = Curriculum.list_progression_entries!(plan.id)
+    copied_entries = Curriculum.list_progression_entries!(copy.id)
 
     assert length(copied_entries) == 2
 
@@ -93,7 +94,9 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
 
     {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
 
-    [copied_module] = Academics.list_progression_modules(copy) |> Enum.filter(&(!&1.default?))
+    [copied_module] =
+      Curriculum.list_progression_modules!(copy.id) |> Enum.filter(&(!&1.default?))
+
     assert copied_module.sequence_id == seq.id
     assert [copied_entry] = copied_module.entries
     assert copied_entry.completed? == true

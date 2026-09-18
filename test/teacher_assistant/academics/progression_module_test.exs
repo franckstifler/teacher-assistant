@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionModuleTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Academics.ProgressionModule
   alias TeacherAssistant.TeacherFixtures
@@ -67,7 +68,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, bucket} = Academics.ensure_default_module(plan)
 
     assert :ok = Academics.delete_module(m)
-    [reloaded] = Academics.list_progression_modules(plan) |> Enum.filter(& &1.default?)
+    [reloaded] = Curriculum.list_progression_modules!(plan.id) |> Enum.filter(& &1.default?)
     assert reloaded.id == bucket.id
     assert length(reloaded.entries) == 1
     assert {:error, :default_bucket} = Academics.delete_module(bucket)
@@ -77,7 +78,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
     {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
     {:ok, _} = Academics.add_progression_entry(m1, %{lesson_title: "L1", entry_type: :lesson})
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M1", "M2"]
     assert [%{lesson_title: "L1"}] = hd(mods).entries
     assert m2.id in Enum.map(mods, & &1.id)
@@ -113,7 +114,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, e1} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
     {:ok, m} = Academics.assign_module_sequence(m, seq.id)
     assert m.sequence_id == seq.id
-    {:ok, e1} = Academics.get_progression_entry(e1.id)
+    {:ok, e1} = Curriculum.get_progression_entry(e1.id)
     assert e1.sequence_id == seq.id
   end
 
@@ -121,7 +122,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     seq = seed_sequence(plan)
     {:ok, m} = Academics.create_module(plan, %{title: "M1"})
     {:ok, m} = Academics.assign_module_sequence(m, seq.id)
-    {:ok, m} = Academics.fetch_owned_module(m.id, ws)
+    {:ok, m} = Curriculum.fetch_owned_module(m.id, ws)
     {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L2", entry_type: :lesson})
     assert e.sequence_id == seq.id
   end

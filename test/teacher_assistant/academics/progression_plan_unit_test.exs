@@ -1,7 +1,8 @@
 defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics.{CombinedCourse, ProgressionPlan}
-  alias TeacherAssistant.{Academics, Organization, TeacherFixtures}
+  alias TeacherAssistant.{Academics, Curriculum, Organization, TeacherFixtures}
+
   setup do
     user = TeacherFixtures.user_fixture()
     ws = TeacherFixtures.workspace_fixture(user)
@@ -37,7 +38,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   end
 
   test "a plan can belong to a combined course", %{course: course} do
-    {:ok, plan} = Academics.create_course_plan(course, %{title: "Maths"})
+    {:ok, plan} = Curriculum.create_course_plan(course, %{title: "Maths"})
     assert plan.combined_course_id == course.id
     assert is_nil(plan.teaching_context_id)
     assert plan.workspace_id == course.workspace_id
@@ -53,7 +54,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   test "create_course_plan defaults title and academic_year_id from the course", %{
     course: course
   } do
-    {:ok, plan} = Academics.create_course_plan(course, %{})
+    {:ok, plan} = Curriculum.create_course_plan(course, %{})
     assert plan.title == course.subject
     assert plan.academic_year_id == course.academic_year_id
   end
@@ -97,7 +98,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
 
     test "create succeeds when exactly one owner FK is set", %{ctx: ctx, course: course} do
       assert {:ok, _plan} = Academics.create_progression_plan(ctx, %{title: "Solo"})
-      assert {:ok, _plan} = Academics.create_course_plan(course, %{title: "Combined"})
+      assert {:ok, _plan} = Curriculum.create_course_plan(course, %{title: "Combined"})
     end
 
     defp error_on_field?(%{errors: errors}, field) do

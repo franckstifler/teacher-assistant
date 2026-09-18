@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionEntryTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -46,7 +47,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
 
     assert e1.position == 1
     assert e2.position == 2
-    assert length(Academics.list_progression_entries(plan)) == 2
+    assert length(Curriculum.list_progression_entries!(plan.id)) == 2
   end
 
   test "entry defaults completed? to false and accepts it on update", %{plan: plan} do

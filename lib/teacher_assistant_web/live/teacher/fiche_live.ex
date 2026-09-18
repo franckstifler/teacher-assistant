@@ -3,12 +3,13 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Quota
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    case ws && Academics.fetch_owned_plan(id, ws) do
+    case ws && Curriculum.fetch_owned_plan(id, ws) do
       {:ok, plan} ->
         {:ok, assign_modules(socket, plan)}
 
@@ -39,7 +40,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("rename-module", %{"module_id" => id, "title" => title}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
          {:ok, _} <- Academics.rename_module(m, title) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
@@ -50,7 +51,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("delete-module", %{"id" => id}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
          :ok <- Academics.delete_module(m) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
@@ -66,7 +67,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, entry_attrs} <- entry_attrs_from_params(p),
-         {:ok, module} <- ws && Academics.fetch_owned_module(module_id, ws),
+         {:ok, module} <- ws && Curriculum.fetch_owned_module(module_id, ws),
          {:ok, _} <- Academics.add_progression_entry(module, entry_attrs) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
@@ -77,7 +78,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("delete-entry", %{"id" => id}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    case ws && Academics.fetch_owned_entry(id, ws) do
+    case ws && Curriculum.fetch_owned_entry(id, ws) do
       {:ok, entry} ->
         case Academics.delete_progression_entry(entry) do
           :ok -> {:noreply, assign_modules(socket, socket.assigns.plan)}
@@ -122,7 +123,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("save-module-credit", %{"module_id" => id, "credit_hours" => raw}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
          {:ok, _} <- Academics.update_module_credit(m, parse_decimal(raw)) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
@@ -133,7 +134,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("toggle-complete", %{"id" => id}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, e} <- ws && Academics.fetch_owned_entry(id, ws),
+    with {:ok, e} <- ws && Curriculum.fetch_owned_entry(id, ws),
          {:ok, _} <- Academics.set_entry_completed(e, not e.completed?) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
@@ -145,7 +146,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
     sequence_id = if raw in [nil, ""], do: nil, else: raw
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
          {:ok, _} <- Academics.assign_module_sequence(m, sequence_id) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
@@ -160,12 +161,12 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         _ -> nil
       end
 
-    modules = Academics.list_progression_modules(plan)
+    modules = Curriculum.list_progression_modules!(plan.id)
 
     prepared =
       modules
       |> Enum.flat_map(& &1.entries)
-      |> Enum.filter(fn e -> Academics.get_lesson_plan_for_entry(e.id) end)
+      |> Enum.filter(fn e -> Curriculum.get_lesson_plan_for_entry(e.id) end)
       |> MapSet.new(& &1.id)
 
     ws = socket.assigns.current_scope.current_workspace
@@ -253,7 +254,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       <p class={["ta-num mt-1 text-2xl font-semibold leading-none", ratio_accent(@ratio)]}>
         {@value}<span :if={@target} class="text-base font-normal text-base-content/55">
           / {@target}{@suffix}
-        </span><span
+        </span>
+        <span
           :if={!@target && @suffix}
           class="text-base font-normal text-base-content/55"
         >

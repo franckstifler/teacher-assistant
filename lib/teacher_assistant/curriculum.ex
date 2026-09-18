@@ -10,9 +10,14 @@ defmodule TeacherAssistant.Curriculum do
     Assessment,
     ClassGroup,
     CombinedCourse,
+    LessonPlan,
+    LessonStep,
+    ProgressionEntry,
+    ProgressionModule,
     ProgressionPlan,
     Subject,
     TeachingContext,
+    TeachingLogEntry,
     Workspace
   }
 
@@ -36,13 +41,35 @@ defmodule TeacherAssistant.Curriculum do
 
     resource ProgressionPlan do
       define :unit_plans, action: :unit_plans, args: [:workspace_id]
+      define :create_course_plan, action: :for_course, args: [:course]
+      define :list_progression_plans, action: :for_workspace, args: [:workspace_id]
+      define :get_progression_plan, action: :read, get_by: [:id]
     end
 
-    resource TeacherAssistant.Academics.ProgressionEntry
-    resource TeacherAssistant.Academics.ProgressionModule
-    resource TeacherAssistant.Academics.TeachingLogEntry
-    resource TeacherAssistant.Academics.LessonPlan
-    resource TeacherAssistant.Academics.LessonStep
+    resource ProgressionEntry do
+      define :list_progression_entries, action: :for_plan, args: [:progression_plan_id]
+      define :get_progression_entry, action: :read, get_by: [:id]
+    end
+
+    resource ProgressionModule do
+      define :list_progression_modules, action: :for_plan, args: [:progression_plan_id]
+    end
+
+    resource TeachingLogEntry do
+      define :list_logs_for_plan, action: :for_plan, args: [:progression_plan_id]
+      define :list_recent_logs, action: :recent, args: [:workspace_id, :limit]
+    end
+
+    resource LessonPlan do
+      define :update_lesson_plan, action: :update
+    end
+
+    resource LessonStep do
+      define :list_lesson_steps, action: :for_lesson_plan, args: [:lesson_plan_id]
+      define :update_lesson_step, action: :update
+      define :delete_lesson_step, action: :destroy
+      define :move_lesson_step, action: :move, args: [:direction]
+    end
   end
 
   authorization do
@@ -371,5 +398,177 @@ defmodule TeacherAssistant.Curriculum do
       }
     end)
     |> Enum.sort_by(&String.downcase(&1.class_group.label))
+  end
+
+  # --- Progression plans -------------------------------------------------
+
+  @doc """
+  Owner-scoped single-plan lookup (IDOR guard): `id` must name a plan of
+  `ws`. Returns `{:error, :not_found}` (not an Ash error struct) so call
+  sites can pattern-match the bare atom as before.
+  """
+  def fetch_owned_plan(id, %Workspace{id: ws_id}) do
+    ProgressionPlan
+    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.read_one()
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  # --- Progression entries ------------------------------------------------
+
+  @doc """
+  Owner-scoped single-entry lookup (IDOR guard): `id` must name an entry
+  whose plan belongs to `ws`.
+  """
+  def fetch_owned_entry(id, %Workspace{id: ws_id}) do
+    ProgressionEntry
+    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.read_one()
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  @doc """
+  The "prepare a lesson" cartouche bundle for a progression entry: the
+  entry (with its module loaded), its plan, its teaching context, the
+  linked class group (if any), the active academic year, and the class's
+  headcount. Owner-scoped end to end — every lookup is workspace-filtered,
+  so a foreign entry id resolves to `{:error, :not_found}` (IDOR guard).
+  """
+  def fetch_owned_entry_with_context(entry_id, %Workspace{} = ws) do
+    with {:ok, entry} <- fetch_owned_entry(entry_id, ws),
+         {:ok, plan} <- fetch_owned_plan(entry.progression_plan_id, ws),
+         {:ok, ctx} <- Academics.fetch_owned_teaching_context(plan.teaching_context_id, ws) do
+      entry = Ash.load!(entry, :progression_module)
+      class_group = load_owned_class_group(ctx.class_group_id, ws)
+      effectif = if class_group, do: length(Enrollment.list_students(class_group)), else: 0
+
+      {:ok,
+       %{
+         entry: entry,
+         plan: plan,
+         ctx: ctx,
+         class_group: class_group,
+         year: TeacherAssistant.Organization.current_academic_year(ws),
+         effectif: effectif
+       }}
+    end
+  end
+
+  defp load_owned_class_group(nil, _ws), do: nil
+
+  defp load_owned_class_group(id, ws) do
+    case Enrollment.fetch_owned_class_group(id, ws) do
+      {:ok, cg} -> cg
+      _ -> nil
+    end
+  end
+
+  # --- Progression modules -------------------------------------------------
+
+  @doc """
+  Owner-scoped single-module lookup (IDOR guard): `id` must name a module
+  whose plan belongs to `ws`.
+  """
+  def fetch_owned_module(id, %Workspace{id: ws_id}) do
+    ProgressionModule
+    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.read_one()
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
+  end
+
+  # --- Lesson plans & steps -------------------------------------------------
+
+  @doc """
+  The (at most one) `LessonPlan` for a progression entry, or `nil`.
+  """
+  def get_lesson_plan_for_entry(entry_id) do
+    LessonPlan
+    |> Ash.Query.for_read(:for_entry, %{progression_entry_id: entry_id})
+    |> Ash.read_one!()
+  end
+
+  @doc """
+  Gets or creates the `LessonPlan` for a progression entry ("préparer" /
+  fiche de préparation). Race-safe: if two requests lose to each other on
+  the first open, the `unique_entry` identity rejects the second insert and
+  this re-fetches the winner rather than erroring or duplicating.
+  """
+  def ensure_lesson_plan(%ProgressionEntry{} = entry, %TeachingContext{} = _ctx) do
+    case get_lesson_plan_for_entry(entry.id) do
+      %LessonPlan{} = lp ->
+        {:ok, lp}
+
+      nil ->
+        case create_lesson_plan_from_entry(entry) do
+          {:ok, lp} ->
+            {:ok, lp}
+
+          {:error, error} ->
+            case get_lesson_plan_for_entry(entry.id) do
+              %LessonPlan{} = lp -> {:ok, lp}
+              nil -> {:error, error}
+            end
+        end
+    end
+  end
+
+  defp create_lesson_plan_from_entry(%ProgressionEntry{} = entry) do
+    duration =
+      entry.planned_hours
+      |> Decimal.mult(60)
+      |> Decimal.round(0)
+      |> Decimal.to_integer()
+
+    attrs = %{
+      progression_entry_id: entry.id,
+      titre: entry.lesson_title,
+      competence_attendue: entry.competence_visee,
+      duration_minutes: duration
+    }
+
+    LessonPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+  end
+
+  @doc """
+  Appends a new step to a lesson plan at the next free position
+  (`max(position) + 1`, or `1` for the first step).
+  """
+  def add_lesson_step(%LessonPlan{} = lp, attrs \\ %{}) do
+    next =
+      lp.id
+      |> list_lesson_steps!()
+      |> Enum.map(& &1.position)
+      |> Enum.max(fn -> 0 end)
+      |> Kernel.+(1)
+
+    attrs =
+      attrs
+      |> Map.put(:lesson_plan_id, lp.id)
+      |> Map.put_new(:position, next)
+
+    LessonStep |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+  end
+
+  @doc """
+  Owner-scoped single-step lookup (IDOR guard): `id` must name a step of
+  `lp`.
+  """
+  def fetch_owned_lesson_step(id, %LessonPlan{id: lp_id}) do
+    LessonStep
+    |> Ash.Query.for_read(:owned, %{id: id, lesson_plan_id: lp_id})
+    |> Ash.read_one()
+    |> case do
+      {:ok, nil} -> {:error, :not_found}
+      result -> result
+    end
   end
 end

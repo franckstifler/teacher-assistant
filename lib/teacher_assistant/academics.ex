@@ -23,8 +23,6 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.ProgressionEntry
   alias TeacherAssistant.Academics.ProgressionModule
   alias TeacherAssistant.Academics.TeachingLogEntry
-  alias TeacherAssistant.Academics.LessonPlan
-  alias TeacherAssistant.Academics.LessonStep
   alias TeacherAssistant.Repo
   alias TeacherAssistant.Scope
 
@@ -178,98 +176,14 @@ defmodule TeacherAssistant.Academics do
   end
 
   @doc """
-  Creates a `ProgressionPlan` owned by a `CombinedCourse` rather than a lone
-  `TeachingContext` — the course delivers one set of lessons, so it owns one
-  plan. Mirrors `create_progression_plan/2`, which stamps `teaching_context_id`
-  instead.
-  """
-  def create_course_plan(%CombinedCourse{} = course, attrs) do
-    attrs =
-      attrs
-      |> Map.put(:combined_course_id, course.id)
-      |> Map.put(:workspace_id, course.workspace_id)
-      |> Map.put_new(:academic_year_id, course.academic_year_id)
-      |> Map.put_new(:title, course.subject)
-
-    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
-  end
-
-  @doc """
-  Every plan in the workspace, raw. Teacher-facing call sites (dashboard,
-  teaching log, coverage lists, ...) should use `list_unit_plans/1` instead
-  — this includes a combined-course member context's stale pre-combine
-  plan alongside the course's own, which double-counts/double-lists it.
-  """
-  def list_progression_plans(%Workspace{id: ws_id}) do
-    ProgressionPlan
-    |> Ash.Query.filter(workspace_id == ^ws_id)
-    |> Ash.Query.sort(inserted_at: :desc)
-    |> Ash.read!(authorize?: false)
-  end
-
-  @doc """
-  `list_progression_plans/1` filtered down to one plan per teaching *unit*:
-  course plans, plus the plans of contexts that are NOT part of a combined
-  course. Drops a member context's stale solo plan (created before the
-  context was combined) so a `CombinedCourse` surfaces exactly one coverage
-  KPI instead of one per member class.
+  `Curriculum.list_progression_plans/1` filtered down to one plan per
+  teaching *unit*: course plans, plus the plans of contexts that are NOT
+  part of a combined course. Drops a member context's stale solo plan
+  (created before the context was combined) so a `CombinedCourse` surfaces
+  exactly one coverage KPI instead of one per member class.
   """
   def list_unit_plans(%Workspace{id: ws_id}) do
     Curriculum.unit_plans!(ws_id)
-  end
-
-  def get_progression_plan(id), do: Ash.get(ProgressionPlan, id, authorize?: false)
-
-  def fetch_owned_plan(id, %Workspace{id: ws_id}) do
-    ProgressionPlan
-    |> Ash.Query.filter(id == ^id and workspace_id == ^ws_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
-  def fetch_owned_entry(id, %Workspace{} = ws) do
-    case Ash.get(ProgressionEntry, id, authorize?: false) do
-      {:ok, entry} ->
-        case fetch_owned_plan(entry.progression_plan_id, ws) do
-          {:ok, _} -> {:ok, entry}
-          _ -> {:error, :not_found}
-        end
-
-      error ->
-        error
-    end
-  end
-
-  def fetch_owned_entry_with_context(entry_id, %Workspace{} = ws) do
-    with {:ok, entry} <- fetch_owned_entry(entry_id, ws),
-         {:ok, plan} <- fetch_owned_plan(entry.progression_plan_id, ws),
-         {:ok, ctx} <- fetch_owned_teaching_context(plan.teaching_context_id, ws) do
-      entry = Ash.load!(entry, :progression_module, authorize?: false)
-      class_group = load_owned_class_group(ctx.class_group_id, ws)
-      effectif = if class_group, do: length(Enrollment.list_students(class_group)), else: 0
-
-      {:ok,
-       %{
-         entry: entry,
-         plan: plan,
-         ctx: ctx,
-         class_group: class_group,
-         year: Organization.current_academic_year(ws),
-         effectif: effectif
-       }}
-    end
-  end
-
-  defp load_owned_class_group(nil, _ws), do: nil
-
-  defp load_owned_class_group(id, ws) do
-    case Enrollment.fetch_owned_class_group(id, ws) do
-      {:ok, cg} -> cg
-      _ -> nil
-    end
   end
 
   def fetch_owned_teaching_context(id, %Workspace{id: ws_id}) do
@@ -892,7 +806,7 @@ defmodule TeacherAssistant.Academics do
            ProgressionPlan
            |> Ash.Changeset.for_create(:create, attrs)
            |> Ash.create(authorize?: false) do
-      for m <- list_progression_modules(plan) do
+      for m <- Curriculum.list_progression_modules!(plan.id) do
         {:ok, new_m} =
           ProgressionModule
           |> Ash.Changeset.for_create(
@@ -956,14 +870,6 @@ defmodule TeacherAssistant.Academics do
         })
         |> Ash.create(authorize?: false)
     end
-  end
-
-  def list_progression_modules(%ProgressionPlan{id: plan_id}) do
-    ProgressionModule
-    |> Ash.Query.filter(progression_plan_id == ^plan_id)
-    |> Ash.Query.sort(position: :asc)
-    |> Ash.Query.load(entries: Ash.Query.sort(ProgressionEntry, position: :asc))
-    |> Ash.read!(authorize?: false)
   end
 
   def create_module(%ProgressionPlan{id: plan_id}, attrs) do
@@ -1036,16 +942,6 @@ defmodule TeacherAssistant.Academics do
     ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
-  def fetch_owned_module(id, %Workspace{id: ws_id}) do
-    ProgressionModule
-    |> Ash.Query.filter(id == ^id and progression_plan.workspace_id == ^ws_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
   defp module_count(plan_id) do
     ProgressionModule
     |> Ash.Query.filter(progression_plan_id == ^plan_id)
@@ -1065,18 +961,10 @@ defmodule TeacherAssistant.Academics do
     |> Ash.read!(authorize?: false)
   end
 
-  def list_progression_entries(%ProgressionPlan{id: plan_id}) do
-    list_entries_query(plan_id)
-    |> Ash.Query.sort(position: :asc)
-    |> Ash.Query.load(:progression_module)
-    |> Ash.read!(authorize?: false)
-  end
-
   def update_progression_entry(%ProgressionEntry{} = e, attrs),
     do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
 
   def delete_progression_entry(%ProgressionEntry{} = e), do: Ash.destroy(e, authorize?: false)
-  def get_progression_entry(id), do: Ash.get(ProgressionEntry, id, authorize?: false)
 
   defp list_entries_query(plan_id) do
     ProgressionEntry |> Ash.Query.filter(progression_plan_id == ^plan_id)
@@ -1149,141 +1037,14 @@ defmodule TeacherAssistant.Academics do
 
   defp id_set_matches?(a, b), do: MapSet.new(a) == MapSet.new(b) and length(a) == length(b)
 
-  def get_lesson_plan_for_entry(entry_id) do
-    LessonPlan
-    |> Ash.Query.filter(progression_entry_id == ^entry_id)
-    |> Ash.read_one!(authorize?: false)
-  end
-
-  def ensure_lesson_plan(%ProgressionEntry{} = entry, %TeachingContext{} = _ctx) do
-    case get_lesson_plan_for_entry(entry.id) do
-      %LessonPlan{} = lp ->
-        {:ok, lp}
-
-      nil ->
-        case create_lesson_plan_from_entry(entry) do
-          {:ok, lp} ->
-            {:ok, lp}
-
-          {:error, error} ->
-            # Lost a concurrent first-open race: the unique_entry identity rejected
-            # this insert because another process already created the fiche. Return
-            # the winner rather than clobbering it or crashing the caller.
-            case get_lesson_plan_for_entry(entry.id) do
-              %LessonPlan{} = lp -> {:ok, lp}
-              nil -> {:error, error}
-            end
-        end
-    end
-  end
-
-  defp create_lesson_plan_from_entry(%ProgressionEntry{} = entry) do
-    duration =
-      entry.planned_hours
-      |> Decimal.mult(60)
-      |> Decimal.round(0)
-      |> Decimal.to_integer()
-
-    attrs = %{
-      progression_entry_id: entry.id,
-      titre: entry.lesson_title,
-      competence_attendue: entry.competence_visee,
-      duration_minutes: duration
-    }
-
-    LessonPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
-  end
-
-  def update_lesson_plan(%LessonPlan{} = lp, attrs),
-    do: lp |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
-
-  def list_lesson_steps(%LessonPlan{id: lp_id}) do
-    LessonStep
-    |> Ash.Query.filter(lesson_plan_id == ^lp_id)
-    |> Ash.Query.sort(position: :asc)
-    |> Ash.read!(authorize?: false)
-  end
-
-  def add_lesson_step(%LessonPlan{} = lp, attrs \\ %{}) do
-    next =
-      lp
-      |> list_lesson_steps()
-      |> Enum.map(& &1.position)
-      |> Enum.max(fn -> 0 end)
-      |> Kernel.+(1)
-
-    attrs =
-      attrs
-      |> Map.put(:lesson_plan_id, lp.id)
-      |> Map.put_new(:position, next)
-
-    LessonStep |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
-  end
-
-  def update_lesson_step(%LessonStep{} = s, attrs),
-    do: s |> Ash.Changeset.for_update(:update, attrs) |> Ash.update(authorize?: false)
-
-  def delete_lesson_step(%LessonStep{} = s), do: Ash.destroy(s, authorize?: false)
-
-  def move_lesson_step(%LessonStep{} = step, direction) when direction in [:up, :down] do
-    steps =
-      LessonStep
-      |> Ash.Query.filter(lesson_plan_id == ^step.lesson_plan_id)
-      |> Ash.Query.sort(position: :asc)
-      |> Ash.read!(authorize?: false)
-
-    idx = Enum.find_index(steps, &(&1.id == step.id))
-    swap_idx = if direction == :up, do: idx && idx - 1, else: idx && idx + 1
-
-    cond do
-      is_nil(idx) ->
-        {:ok, step}
-
-      swap_idx < 0 or swap_idx >= length(steps) ->
-        {:ok, step}
-
-      true ->
-        other = Enum.at(steps, swap_idx)
-        {:ok, _} = update_lesson_step(other, %{position: step.position})
-        update_lesson_step(step, %{position: other.position})
-    end
-  end
-
-  def fetch_owned_lesson_step(id, %LessonPlan{id: lp_id}) do
-    LessonStep
-    |> Ash.Query.filter(id == ^id and lesson_plan_id == ^lp_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
   def log_teaching(%Workspace{id: ws_id}, attrs) do
     attrs = Map.put(attrs, :workspace_id, ws_id)
     TeachingLogEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 
-  def list_logs_for_plan(%ProgressionPlan{id: plan_id}) do
-    entry_ids = list_entries_query(plan_id) |> Ash.read!(authorize?: false) |> Enum.map(& &1.id)
-
-    TeachingLogEntry
-    |> Ash.Query.filter(progression_entry_id in ^entry_ids)
-    |> Ash.Query.sort(date: :desc)
-    |> Ash.read!(authorize?: false)
-  end
-
-  def list_recent_logs(%Workspace{id: ws_id}, limit \\ 10) do
-    TeachingLogEntry
-    |> Ash.Query.filter(workspace_id == ^ws_id)
-    |> Ash.Query.sort(date: :desc)
-    |> Ash.Query.limit(limit)
-    |> Ash.read!(authorize?: false)
-  end
-
-  def coverage_for_plan(%ProgressionPlan{} = plan) do
-    entries = list_progression_entries(plan)
-    logs = list_logs_for_plan(plan)
+  def coverage_for_plan(%ProgressionPlan{id: plan_id}) do
+    entries = Curriculum.list_progression_entries!(plan_id)
+    logs = Curriculum.list_logs_for_plan!(plan_id)
     TeacherAssistant.Academics.Coverage.summarize(entries, logs)
   end
 end

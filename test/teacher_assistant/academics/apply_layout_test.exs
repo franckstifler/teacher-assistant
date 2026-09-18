@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.ApplyLayoutTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -47,7 +48,7 @@ defmodule TeacherAssistant.Academics.ApplyLayoutTest do
 
     assert {:ok, :applied} = Academics.apply_layout(plan, layout)
 
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M2", "M1"]
     [first, second] = mods
     assert Enum.map(first.entries, & &1.lesson_title) == ["C", "B"]
@@ -82,7 +83,7 @@ defmodule TeacherAssistant.Academics.ApplyLayoutTest do
 
     assert {:error, :invalid_layout} = Academics.apply_layout(plan, layout)
 
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M1", "M2"]
     [first, _second] = mods
     assert Enum.map(first.entries, & &1.lesson_title) == ["A", "B"]
@@ -103,7 +104,7 @@ defmodule TeacherAssistant.Academics.ApplyLayoutTest do
 
     assert {:error, :invalid_layout} = Academics.apply_layout(plan, layout)
 
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M1", "M2"]
     [first, second] = mods
     assert Enum.map(first.entries, & &1.lesson_title) == ["A", "B"]

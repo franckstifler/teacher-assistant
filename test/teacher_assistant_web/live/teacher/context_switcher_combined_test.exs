@@ -59,8 +59,8 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     course: course
   } do
     [plan] =
-      ws
-      |> Academics.list_progression_plans()
+      ws.id
+      |> Curriculum.list_progression_plans!()
       |> Enum.filter(&(&1.combined_course_id == course.id))
 
     {:ok, view, _html} = live(conn, ~p"/teacher")

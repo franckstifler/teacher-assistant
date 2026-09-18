@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -48,7 +49,7 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
              })
 
     assert log.status == :done
-    assert [listed] = Academics.list_logs_for_plan(plan)
+    assert [listed] = Curriculum.list_logs_for_plan!(plan.id)
     assert listed.id == log.id
   end
 end

@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
@@ -61,7 +62,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     view |> form("#add-module-form", %{module: %{title: "Algorithmique"}}) |> render_submit()
     assert render(view) =~ "Algorithmique"
 
-    module = Academics.list_progression_modules(plan) |> Enum.find(&(&1.title == "Algorithmique"))
+    module =
+      Curriculum.list_progression_modules!(plan.id) |> Enum.find(&(&1.title == "Algorithmique"))
 
     view
     |> form("#add-entry-form-#{module.id}",
@@ -83,7 +85,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     view |> element("#module-delete-#{m.id}") |> render_click()
 
     assert render(view) =~ "Orpheline"
-    refute Academics.list_progression_modules(plan) |> Enum.any?(&(&1.id == m.id))
+    refute Curriculum.list_progression_modules!(plan.id) |> Enum.any?(&(&1.id == m.id))
   end
 
   test "shows a running planned-hours total with weeks estimate", %{conn: conn, plan: plan} do
@@ -126,7 +128,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
 
     # once a fiche exists, the indicator shows on reload
     {:ok, ctx} = TeacherAssistant.Academics.get_teaching_context(plan.teaching_context_id)
-    {:ok, _lp} = TeacherAssistant.Academics.ensure_lesson_plan(entry, ctx)
+    {:ok, _lp} = TeacherAssistant.Curriculum.ensure_lesson_plan(entry, ctx)
 
     {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
     assert has_element?(view, "#entry-prepared-#{entry.id}")
@@ -144,7 +146,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     assert render(view) =~ "Nouveau titre"
     refute render(view) =~ "Ancien titre"
 
-    assert Academics.list_progression_modules(plan)
+    assert Curriculum.list_progression_modules!(plan.id)
            |> Enum.find(&(&1.id == m.id))
            |> Map.fetch!(:title) == "Nouveau titre"
   end
@@ -164,7 +166,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
       ]
     })
 
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M2", "M1"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["C", "A"]
   end
@@ -218,7 +220,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     |> form("#module-credit-form-#{m.id}", %{credit_hours: "11", module_id: m.id})
     |> render_submit()
 
-    m = Academics.fetch_owned_module(m.id, ws) |> elem(1)
+    m = Curriculum.fetch_owned_module(m.id, ws) |> elem(1)
     assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
   end
 
@@ -234,7 +236,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
     {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
     view |> element("#entry-complete-#{e.id}") |> render_click()
-    {:ok, e} = Academics.get_progression_entry(e.id)
+    {:ok, e} = Curriculum.get_progression_entry(e.id)
     assert e.completed? == true
   end
 
@@ -252,7 +254,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     |> form("#seq-form-#{m.id}", %{module_id: m.id, sequence_id: seq.id})
     |> render_change()
 
-    {:ok, e} = Academics.get_progression_entry(e.id)
+    {:ok, e} = Curriculum.get_progression_entry(e.id)
     assert e.sequence_id == seq.id
   end
 end

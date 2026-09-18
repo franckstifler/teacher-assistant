@@ -1,17 +1,18 @@
 defmodule TeacherAssistantWeb.Teacher.LogLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
 
   def mount(_params, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
     plans = if ws, do: Academics.list_unit_plans(ws), else: []
-    entries = Enum.flat_map(plans, &Academics.list_progression_entries/1)
+    entries = Enum.flat_map(plans, &Curriculum.list_progression_entries!(&1.id))
 
     {:ok,
      socket
      |> assign(:ws, ws)
      |> assign(:entries, entries)
-     |> assign(:recent, (ws && Academics.list_recent_logs(ws, 5)) || [])
+     |> assign(:recent, (ws && Curriculum.list_recent_logs!(ws.id, 5)) || [])
      |> assign(:form, to_form(%{"hours" => "1"}, as: :log))}
   end
 
@@ -28,7 +29,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
   def handle_event("save", %{"log" => p}, socket) do
     ws = socket.assigns.ws
 
-    with {:ok, _entry} <- ws && Academics.fetch_owned_entry(p["progression_entry_id"], ws),
+    with {:ok, _entry} <- ws && Curriculum.fetch_owned_entry(p["progression_entry_id"], ws),
          {:ok, _} <-
            Academics.log_teaching(ws, %{
              progression_entry_id: p["progression_entry_id"],
@@ -42,7 +43,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Logged"))
-       |> assign(:recent, Academics.list_recent_logs(ws, 5))
+       |> assign(:recent, Curriculum.list_recent_logs!(ws.id, 5))
        |> assign(:form, to_form(%{"hours" => "1"}, as: :log))}
     else
       _ ->

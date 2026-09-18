@@ -1,15 +1,16 @@
 defmodule TeacherAssistantWeb.Teacher.CoverageLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    case ws && Academics.fetch_owned_plan(id, ws) do
+    case ws && Curriculum.fetch_owned_plan(id, ws) do
       {:ok, plan} ->
         coverage = Academics.coverage_for_plan(plan)
-        entries = Academics.list_progression_entries(plan)
+        entries = Curriculum.list_progression_entries!(plan.id)
 
         covered_ids =
           coverage.per_entry

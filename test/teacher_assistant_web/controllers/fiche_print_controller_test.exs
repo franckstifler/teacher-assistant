@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.FichePrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -31,8 +32,8 @@ defmodule TeacherAssistantWeb.FichePrintControllerTest do
         entry_type: :lesson
       })
 
-    {:ok, lp} = Academics.ensure_lesson_plan(entry, ctx)
-    {:ok, _} = Academics.add_lesson_step(lp, %{etape: "Découverte", contenus: "les nombres"})
+    {:ok, lp} = Curriculum.ensure_lesson_plan(entry, ctx)
+    {:ok, _} = Curriculum.add_lesson_step(lp, %{etape: "Découverte", contenus: "les nombres"})
     %{entry: entry}
   end
 

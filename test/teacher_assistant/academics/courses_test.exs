@@ -51,7 +51,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
              Enum.sort(Enum.map(Curriculum.contexts_of_course!(course.id), & &1.id))
 
     assert [_plan] =
-             Academics.list_progression_plans(ws)
+             Curriculum.list_progression_plans!(ws.id)
              |> Enum.filter(&(&1.combined_course_id == course.id))
   end
 
@@ -113,7 +113,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
       assert {:error, _} = Curriculum.get_course(course.id)
 
       assert [] =
-               Academics.list_progression_plans(ws)
+               Curriculum.list_progression_plans!(ws.id)
                |> Enum.filter(&(&1.combined_course_id == course.id))
     end
   end

@@ -12,7 +12,7 @@
 
 if Mix.env() == :dev do
   require Ash.Query
-  alias TeacherAssistant.{Accounts, Academics}
+  alias TeacherAssistant.{Accounts, Academics, Curriculum}
   email = "demo@example.com"
 
   user =
@@ -79,7 +79,7 @@ if Mix.env() == :dev do
     end
 
   # Create progression plan only if none exist
-  if ctx && Academics.list_progression_plans(ws) == [] do
+  if ctx && Curriculum.list_progression_plans!(ws.id) == [] do
     Academics.create_progression_plan(ctx, %{title: "Mathématiques 6ème 2025-2026"})
   end
 end

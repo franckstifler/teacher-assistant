@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -58,7 +59,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
     assert plan.title == "Imported"
     assert plan.status == :draft
-    entries = Academics.list_progression_entries(plan)
+    entries = Curriculum.list_progression_entries!(plan.id)
     assert Enum.map(entries, & &1.lesson_title) == ["Les entiers", "Évaluation"]
     assert Enum.map(entries, & &1.position) == [1, 2]
     assert Enum.at(entries, 1).entry_type == :evaluation
@@ -85,7 +86,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
                bad
              )
 
-    assert Academics.list_progression_plans(ws) == []
+    assert Curriculum.list_progression_plans!(ws.id) == []
   end
 
   test "import creates modules from row order and links entries", %{ws: ws, ctx: ctx} do
@@ -104,7 +105,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     {:ok, plan} =
       Academics.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
 
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M1", "Général", "M2"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["L1", "L2"]
 

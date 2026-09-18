@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
   use TeacherAssistantWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
@@ -164,10 +165,10 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     })
     |> render_submit()
 
-    [plan] = Academics.list_progression_plans(ws)
+    [plan] = Curriculum.list_progression_plans!(ws.id)
     assert plan.title == "Imported plan"
     assert plan.status == :draft
-    assert [entry] = Academics.list_progression_entries(plan)
+    assert [entry] = Curriculum.list_progression_entries!(plan.id)
     assert entry.lesson_title == "Les entiers"
   end
 

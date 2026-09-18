@@ -26,6 +26,29 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
       ],
       update: [:date, :content_taught, :hours, :status, :homework, :note, :progression_entry_id]
     ]
+
+    # All log entries whose progression entry belongs to a plan, most recent
+    # first. Mirrors the old `Academics.list_logs_for_plan/1` (previously two
+    # queries — id-list then `in`; expressed here as one relationship-path
+    # filter with the same exclusion of entry-less logs).
+    read :for_plan do
+      argument :progression_plan_id, :uuid, allow_nil?: false
+      filter expr(progression_entry.progression_plan_id == ^arg(:progression_plan_id))
+      prepare build(sort: [date: :desc])
+    end
+
+    # The `limit` most recent log entries of a workspace. Mirrors the old
+    # `Academics.list_recent_logs/2`.
+    read :recent do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :limit, :integer, allow_nil?: false, default: 10
+      filter expr(workspace_id == ^arg(:workspace_id))
+      prepare build(sort: [date: :desc])
+
+      prepare fn query, _context ->
+        Ash.Query.limit(query, Ash.Query.get_argument(query, :limit))
+      end
+    end
   end
 
   policies do

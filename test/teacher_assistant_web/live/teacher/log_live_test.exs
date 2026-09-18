@@ -53,7 +53,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
     )
     |> render_submit()
 
-    assert length(Academics.list_logs_for_plan(plan)) == 1
+    assert length(Curriculum.list_logs_for_plan!(plan.id)) == 1
   end
 
   test "hours field shows its default value", %{conn: conn} do
@@ -138,7 +138,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       {:ok, course} = Curriculum.combine_course([tc_a, tc_b])
 
       [course_plan] =
-        Academics.list_progression_plans(school)
+        Curriculum.list_progression_plans!(school.id)
         |> Enum.filter(&(&1.combined_course_id == course.id))
 
       {:ok, course_module} = Academics.create_module(course_plan, %{title: "M"})

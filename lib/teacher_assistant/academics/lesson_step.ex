@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.LessonStep do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  require Ash.Query
+
   postgres do
     table "lesson_steps"
     repo TeacherAssistant.Repo
@@ -25,6 +27,63 @@ defmodule TeacherAssistant.Academics.LessonStep do
       ],
       update: [:position, :etape, :duration_minutes, :contenus, :supports, :activites]
     ]
+
+    # All steps of a lesson plan, in position order. Mirrors the old
+    # `Academics.list_lesson_steps/1`.
+    read :for_lesson_plan do
+      argument :lesson_plan_id, :uuid, allow_nil?: false
+      filter expr(lesson_plan_id == ^arg(:lesson_plan_id))
+      prepare build(sort: [position: :asc])
+    end
+
+    # Owner-scoped single-step lookup (IDOR guard): the step must belong to
+    # the given lesson plan. Backs `Curriculum.fetch_owned_lesson_step/2`.
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :lesson_plan_id, :uuid, allow_nil?: false
+      filter expr(id == ^arg(:id) and lesson_plan_id == ^arg(:lesson_plan_id))
+    end
+
+    # Swaps this step's position with its immediate neighbor (:up / :down);
+    # a no-op at either end of the list. Mirrors the old
+    # `Academics.move_lesson_step/2` exactly — same lookup, same swap, same
+    # boundary no-op — as a single transactional update (the neighbor's
+    # write happens in an `after_action` hook so both rows commit together).
+    update :move do
+      require_atomic? false
+      argument :direction, :atom, constraints: [one_of: [:up, :down]], allow_nil?: false
+
+      change fn changeset, _context ->
+        step = changeset.data
+        direction = Ash.Changeset.get_argument(changeset, :direction)
+
+        siblings =
+          __MODULE__
+          |> Ash.Query.filter(lesson_plan_id == ^step.lesson_plan_id)
+          |> Ash.Query.sort(position: :asc)
+          |> Ash.read!()
+
+        idx = Enum.find_index(siblings, &(&1.id == step.id))
+        swap_idx = if direction == :up, do: idx && idx - 1, else: idx && idx + 1
+
+        if is_nil(idx) or swap_idx < 0 or swap_idx >= length(siblings) do
+          changeset
+        else
+          other = Enum.at(siblings, swap_idx)
+
+          changeset
+          |> Ash.Changeset.change_attribute(:position, other.position)
+          |> Ash.Changeset.after_action(fn _changeset, updated_step ->
+            case other
+                 |> Ash.Changeset.for_update(:update, %{position: step.position})
+                 |> Ash.update() do
+              {:ok, _other} -> {:ok, updated_step}
+              {:error, error} -> {:error, error}
+            end
+          end)
+        end
+      end
+    end
   end
 
   policies do

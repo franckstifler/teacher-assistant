@@ -46,6 +46,58 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
 
       prepare build(sort: [inserted_at: :desc])
     end
+
+    # Every plan in the workspace, raw (includes a combined member's stale
+    # pre-combine plan — teacher-facing call sites should prefer
+    # `:unit_plans`). Mirrors the old `Academics.list_progression_plans/1`.
+    read :for_workspace do
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(workspace_id == ^arg(:workspace_id))
+      prepare build(sort: [inserted_at: :desc])
+    end
+
+    # Owner-scoped single-plan lookup (IDOR guard): the plan must belong to
+    # the given workspace. Backs `Curriculum.fetch_owned_plan/2`.
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+    end
+
+    # Creates a plan owned by a `CombinedCourse` rather than a lone
+    # `TeachingContext` — the course delivers one set of lessons, so it owns
+    # one plan. Defaults `academic_year_id` from the course and `title` from
+    # the course's subject when the caller doesn't supply them (mirrors the
+    # old `Academics.create_course_plan/2`'s `Map.put_new/3` behavior).
+    create :for_course do
+      accept [:title, :status, :template]
+
+      argument :course, :struct,
+        allow_nil?: false,
+        constraints: [instance_of: TeacherAssistant.Academics.CombinedCourse]
+
+      change fn changeset, _context ->
+        course = Ash.Changeset.get_argument(changeset, :course)
+
+        changeset
+        |> Ash.Changeset.force_change_attribute(:combined_course_id, course.id)
+        |> Ash.Changeset.force_change_attribute(:workspace_id, course.workspace_id)
+        |> then(fn changeset ->
+          if Ash.Changeset.changing_attribute?(changeset, :academic_year_id) do
+            changeset
+          else
+            Ash.Changeset.change_attribute(changeset, :academic_year_id, course.academic_year_id)
+          end
+        end)
+        |> then(fn changeset ->
+          if Ash.Changeset.changing_attribute?(changeset, :title) do
+            changeset
+          else
+            Ash.Changeset.change_attribute(changeset, :title, course.subject)
+          end
+        end)
+      end
+    end
   end
 
   policies do
