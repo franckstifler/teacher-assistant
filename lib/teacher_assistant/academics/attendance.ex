@@ -6,12 +6,14 @@ defmodule TeacherAssistant.Academics.Attendance do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Conduct
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Academics.TimetableSlot
+  alias TeacherAssistant.Repo
 
   @valid_statuses [:present, :absent, :late]
 
@@ -67,6 +69,85 @@ defmodule TeacherAssistant.Academics.Attendance do
       end)
 
     %{students: students, teaching_context: teaching_context}
+  end
+
+  @doc """
+  Builds the union roll for a `CombinedCourse`/`period`/`date`: `period_roll/3`
+  run once per member class, concatenated as one group per class — each
+  group has the same shape `period_roll/3` returns (`:students`,
+  `:teaching_context`) plus its own `:class_group`. A combined attendance
+  session shows every member class's roster in one screen; recording still
+  writes each `AttendanceEntry` to the student's own class (see
+  `record_combined_period/5`) — this is purely a read shape, it never
+  merges rosters across classes into one flat list.
+
+  Skips a member context with no `class_group` yet, same as
+  `Academics.list_union_students/1`.
+  """
+  def combined_period_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date) do
+    course
+    |> Academics.contexts_of_course()
+    |> Ash.load!(:class_group, authorize?: false)
+    |> Enum.reject(&is_nil(&1.class_group))
+    |> Enum.map(fn ctx ->
+      ctx.class_group
+      |> period_roll(period, date)
+      |> Map.put(:class_group, ctx.class_group)
+    end)
+    |> Enum.sort_by(&String.downcase(&1.class_group.label))
+  end
+
+  @doc """
+  Records one combined attendance session: `marks` (`{enrollment_id, status}`
+  pairs covering every member class's roster, as returned by
+  `combined_period_roll/3`) are routed to each enrollment's own class and
+  written via `record_period/6` — one call per member class. All groups are
+  written inside a single transaction: if any member class's marks are
+  invalid, NOTHING is persisted for ANY class (no partial commit), mirroring
+  the "record once, all classes together" combined-marks save. Returns
+  `{:ok, total_count}` or `{:error, reason}`.
+  """
+  def record_combined_period(
+        %CombinedCourse{} = course,
+        %Period{} = period,
+        %Date{} = date,
+        marks,
+        recorded_by_user_id
+      )
+      when is_list(marks) do
+    groups = combined_period_roll(course, period, date)
+
+    per_group_marks =
+      Enum.map(groups, fn %{class_group: cg, teaching_context: tc, students: students} ->
+        group_enrollment_ids = MapSet.new(students, & &1.enrollment_id)
+
+        group_marks =
+          Enum.filter(marks, fn {enrollment_id, _status} ->
+            MapSet.member?(group_enrollment_ids, enrollment_id)
+          end)
+
+        {cg, tc, group_marks}
+      end)
+
+    result =
+      Repo.transaction(fn ->
+        per_group_marks
+        |> Enum.reduce_while(0, fn {cg, tc, group_marks}, acc ->
+          case record_period(cg, period, tc, date, group_marks, recorded_by_user_id) do
+            {:ok, count} -> {:cont, acc + count}
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
+        end)
+        |> case do
+          {:error, reason} -> Repo.rollback(reason)
+          total_count -> total_count
+        end
+      end)
+
+    case result do
+      {:ok, total_count} -> {:ok, total_count}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
