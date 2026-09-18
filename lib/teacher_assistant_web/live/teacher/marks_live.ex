@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.CombinedCourse
@@ -28,7 +29,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"])
-      assessments = if seq, do: Academics.list_assessments(ctx, seq), else: []
+      assessments = if seq, do: Assessment.list_assessments(ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
       students = Enrollment.list_students(cg)
 
@@ -66,7 +67,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         year = Organization.current_academic_year(ws)
         sequences = if year, do: Organization.list_sequences(year), else: []
         seq = pick(sequences, params["seq"])
-        combined = if seq, do: Academics.combined_assessments_for(course, seq), else: []
+        combined = if seq, do: Assessment.combined_assessments_for(course, seq), else: []
         selected = pick(combined, params["assessment"])
         groups = Curriculum.list_union_students(course)
 
@@ -96,7 +97,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp existing_scores(assessment) do
     assessment
-    |> Academics.list_marks()
+    |> Assessment.list_marks()
     |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
   end
 
@@ -106,7 +107,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     by_class_group_id
     |> Map.values()
     |> Enum.uniq_by(& &1.id)
-    |> Enum.flat_map(&Academics.list_marks/1)
+    |> Enum.flat_map(&Assessment.list_marks/1)
     |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
   end
 
@@ -115,7 +116,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp sibling_scores(ctx, seq) do
     ctx
-    |> Academics.list_marks_for_context_sequence(seq)
+    |> Assessment.list_marks_for_context_sequence(seq)
     |> Map.new(fn m -> {{m.student_id, m.assessment_id}, m.score} end)
   end
 
@@ -188,7 +189,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp new_solo_assessment(socket, label) do
     with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
-         {:ok, a} <- Academics.create_assessment(socket.assigns.ctx, seq, %{label: label}) do
+         {:ok, a} <- Assessment.create_assessment(socket.assigns.ctx, seq, %{label: label}) do
       {:noreply,
        push_patch(socket,
          to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}"
@@ -200,10 +201,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp new_combined_assessment(socket, course, label) do
     with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
-         {:ok, _created} <- Academics.create_combined_assessment(course, seq, %{label: label}),
+         {:ok, _created} <- Assessment.create_combined_assessment(course, seq, %{label: label}),
          %{id: id} <-
            course
-           |> Academics.combined_assessments_for(seq)
+           |> Assessment.combined_assessments_for(seq)
            |> Enum.find(&(&1.label == label)) do
       {:noreply,
        push_patch(socket,
@@ -235,7 +236,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp save_marks(socket, parsed) do
     entries = Enum.map(parsed, fn {id, {:ok, score}} -> %{student_id: id, score: score} end)
 
-    case Academics.upsert_marks(socket.assigns.assessment, entries) do
+    case Assessment.upsert_marks(socket.assigns.assessment, entries) do
       :ok ->
         {:noreply,
          socket
@@ -261,7 +262,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # Combined mode: each student's score is routed to *their own class's*
   # assessment — never the other member class's — via
   # `selected.by_class_group_id[class_group_id]`. All groups are written in
-  # ONE `Academics.upsert_marks_all_or_nothing/1` call: if any class's
+  # ONE `Assessment.upsert_marks_all_or_nothing/1` call: if any class's
   # scores are out of range, NOTHING is persisted for ANY class (no partial
   # commit), matching the "record once, all classes together" model.
   # `Mark`'s `[:assessment_id, :student_id]` identity and the bulletin read
@@ -296,7 +297,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           {assessment, entries}
         end)
 
-      case Academics.upsert_marks_all_or_nothing(assessment_entries) do
+      case Assessment.upsert_marks_all_or_nothing(assessment_entries) do
         :ok ->
           {:noreply,
            socket
@@ -329,7 +330,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     case socket.assigns[:course] do
       %CombinedCourse{} = course ->
-        combined = if seq, do: Academics.combined_assessments_for(course, seq), else: []
+        combined = if seq, do: Assessment.combined_assessments_for(course, seq), else: []
         selected = pick(combined, params["assessment"])
 
         {:noreply,
@@ -341,7 +342,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:scores, restore_combined_scores(selected, unsaved))}
 
       _ ->
-        assessments = if seq, do: Academics.list_assessments(socket.assigns.ctx, seq), else: []
+        assessments = if seq, do: Assessment.list_assessments(socket.assigns.ctx, seq), else: []
         assessment = pick(assessments, params["assessment"])
 
         {:noreply,

@@ -1,6 +1,6 @@
 defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
@@ -32,7 +32,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Academics.create_assessment(tc, seq, %{
+      Assessment.create_assessment(tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -41,7 +41,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     roster = Enrollment.list_roster(cg)
 
     for %{student: s} <- roster,
-        do: Academics.upsert_marks(a, [%{student_id: s.id, score: Decimal.new(14)}])
+        do: Assessment.upsert_marks(a, [%{student_id: s.id, score: Decimal.new(14)}])
 
     {:ok, profile} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(profile, head.id)
@@ -226,7 +226,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
     {:ok, a2} =
-      TeacherAssistant.Academics.create_assessment(tc, s2, %{
+      TeacherAssistant.Assessment.create_assessment(tc, s2, %{
         label: "D2",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -234,7 +234,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     for %{student: s} <- TeacherAssistant.Enrollment.list_roster(cg),
         do:
-          TeacherAssistant.Academics.upsert_marks(a2, [
+          TeacherAssistant.Assessment.upsert_marks(a2, [
             %{student_id: s.id, score: Decimal.new(15)}
           ])
 

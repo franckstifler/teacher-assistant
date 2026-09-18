@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
@@ -30,10 +31,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     {:ok, ctx} = Academics.link_class_group(ctx, cg)
     {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
-    {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
 
     :ok =
-      Academics.upsert_marks(a, [
+      Assessment.upsert_marks(a, [
         %{student_id: s1.id, score: Decimal.new("14")},
         %{student_id: s2.id, score: Decimal.new("8")}
       ])

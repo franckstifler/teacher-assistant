@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.AssessmentTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -37,7 +38,7 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
   end
 
   test "creates an assessment with defaults", %{ctx: ctx, seq: seq} do
-    {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
     assert a.label == "Devoir 1"
     assert Decimal.equal?(a.weight, Decimal.new(1))
     assert Decimal.equal?(a.max_score, Decimal.new(20))
@@ -46,16 +47,16 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
   end
 
   test "lists assessments for a context + sequence", %{ctx: ctx, seq: seq} do
-    {:ok, _} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
-    {:ok, _} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
-    assert length(Academics.list_assessments(ctx, seq)) == 2
+    {:ok, _} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, _} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 2"})
+    assert length(Assessment.list_assessments(ctx, seq)) == 2
   end
 
   test "fetch_owned_assessment refuses another workspace", %{ws: ws, ctx: ctx, seq: seq} do
-    {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
     other = TeacherFixtures.workspace_fixture()
-    assert {:error, :not_found} = Academics.fetch_owned_assessment(a.id, other)
-    assert {:ok, %{id: id}} = Academics.fetch_owned_assessment(a.id, ws)
+    assert {:error, :not_found} = Assessment.fetch_owned_assessment(a.id, other)
+    assert {:ok, %{id: id}} = Assessment.fetch_owned_assessment(a.id, ws)
     assert id == a.id
   end
 end

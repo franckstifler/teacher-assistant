@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.Attendance
@@ -31,14 +31,14 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Academics.create_assessment(tc, seq, %{
+      Assessment.create_assessment(tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
       })
 
     [%{student: student, enrollment: enr}] = Enrollment.list_roster(cg)
-    :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
+    :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head}
   end
@@ -69,7 +69,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
     {:ok, a2} =
-      TeacherAssistant.Academics.create_assessment(tc, s2, %{
+      TeacherAssistant.Assessment.create_assessment(tc, s2, %{
         label: "D2",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -78,7 +78,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [%{student: student}] = TeacherAssistant.Enrollment.list_roster(cg)
 
     :ok =
-      TeacherAssistant.Academics.upsert_marks(a2, [
+      TeacherAssistant.Assessment.upsert_marks(a2, [
         %{student_id: student.id, score: Decimal.new(17)}
       ])
 

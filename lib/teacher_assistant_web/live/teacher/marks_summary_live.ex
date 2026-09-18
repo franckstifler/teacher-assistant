@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Marks
   alias TeacherAssistant.Organization
@@ -53,8 +54,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
     summary =
       if seq do
-        assessments = Academics.list_assessments(ctx, seq)
-        marks = Academics.list_marks_for_context_sequence(ctx, seq)
+        assessments = Assessment.list_assessments(ctx, seq)
+        marks = Assessment.list_marks_for_context_sequence(ctx, seq)
 
         if assessments == [] do
           nil

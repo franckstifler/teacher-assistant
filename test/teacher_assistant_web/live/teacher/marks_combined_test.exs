@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
@@ -67,8 +67,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     s_maco: s_maco,
     s_menu: s_menu
   } do
-    {:ok, _} = Academics.create_combined_assessment(course, seq, %{label: "Devoir 1"})
-    %{id: aid} = course |> Academics.combined_assessments_for(seq) |> List.first()
+    {:ok, _} = Assessment.create_combined_assessment(course, seq, %{label: "Devoir 1"})
+    %{id: aid} = course |> Assessment.combined_assessments_for(seq) |> List.first()
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}&assessment=#{aid}")
@@ -91,8 +91,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
     |> render_submit()
 
-    assert [a_maco] = Academics.list_assessments(tc_maco, seq)
-    assert [a_menu] = Academics.list_assessments(tc_menu, seq)
+    assert [a_maco] = Assessment.list_assessments(tc_maco, seq)
+    assert [a_menu] = Assessment.list_assessments(tc_menu, seq)
     assert a_maco.label == "Devoir 1"
     assert a_menu.label == "Devoir 1"
     assert a_maco.id != a_menu.id
@@ -117,14 +117,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#marks-form", %{"scores" => %{s_maco.id => "15", s_menu.id => "12"}})
     |> render_submit()
 
-    [a_maco] = Academics.list_assessments(tc_maco, seq)
-    [a_menu] = Academics.list_assessments(tc_menu, seq)
+    [a_maco] = Assessment.list_assessments(tc_maco, seq)
+    [a_menu] = Assessment.list_assessments(tc_menu, seq)
 
-    assert [m_maco] = Academics.list_marks(a_maco)
+    assert [m_maco] = Assessment.list_marks(a_maco)
     assert m_maco.student_id == s_maco.id
     assert Decimal.equal?(m_maco.score, Decimal.new("15"))
 
-    assert [m_menu] = Academics.list_marks(a_menu)
+    assert [m_menu] = Assessment.list_marks(a_menu)
     assert m_menu.student_id == s_menu.id
     assert Decimal.equal?(m_menu.score, Decimal.new("12"))
   end
@@ -151,10 +151,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
     assert html =~ "0 and 20"
 
-    [a_maco] = Academics.list_assessments(tc_maco, seq)
-    [a_menu] = Academics.list_assessments(tc_menu, seq)
+    [a_maco] = Assessment.list_assessments(tc_maco, seq)
+    [a_menu] = Assessment.list_assessments(tc_menu, seq)
 
-    assert Academics.list_marks(a_maco) == []
-    assert Academics.list_marks(a_menu) == []
+    assert Assessment.list_marks(a_maco) == []
+    assert Assessment.list_marks(a_menu) == []
   end
 end

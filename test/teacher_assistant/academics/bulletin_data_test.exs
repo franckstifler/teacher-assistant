@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.BulletinDataTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
@@ -28,7 +29,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Academics.create_assessment(tc, seq, %{
+      Assessment.create_assessment(tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -49,7 +50,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
   test "class_results computes a bulletin for the séquence", ctx do
     %{cg: cg, seq: seq, a: a} = ctx
     [student] = Enrollment.list_students(cg)
-    :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
+    :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
 
     r = Academics.class_results(cg, seq)
     assert r.effectif == 1

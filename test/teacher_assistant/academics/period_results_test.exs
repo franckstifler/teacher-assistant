@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.PeriodResultsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
@@ -30,13 +31,13 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     # helper: give the student `score`/20 in séquence `seq` for Maths
     grade = fn seq, score ->
       {:ok, a} =
-        Academics.create_assessment(tc, seq, %{
+        Assessment.create_assessment(tc, seq, %{
           label: "D",
           weight: Decimal.new(1),
           max_score: Decimal.new(20)
         })
 
-      :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(score)}])
+      :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(score)}])
     end
 
     %{year: year, cg: cg, sequences: sequences, student: student, grade: grade}

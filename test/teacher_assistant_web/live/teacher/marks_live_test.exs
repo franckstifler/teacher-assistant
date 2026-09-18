@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
@@ -29,7 +30,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
     {:ok, ctx} = Academics.link_class_group(ctx, cg)
     {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
     %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1, cg: cg}
   end
 
@@ -41,7 +42,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     |> form("#marks-form", %{"scores" => %{s1.id => "15"}})
     |> render_submit()
 
-    assert [m] = Academics.list_marks(a)
+    assert [m] = Assessment.list_marks(a)
     assert Decimal.equal?(m.score, Decimal.new("15"))
   end
 
@@ -61,7 +62,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       |> render_submit()
 
     assert html =~ "0 and 20"
-    assert Academics.list_marks(a) == []
+    assert Assessment.list_marks(a) == []
   end
 
   test "accepts a French decimal comma", %{conn: conn, ctx: ctx, seq: seq, a: a, s1: s1} do
@@ -70,7 +71,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     view |> form("#marks-form", %{"scores" => %{s1.id => "13,5"}}) |> render_submit()
 
-    assert [m] = Academics.list_marks(a)
+    assert [m] = Assessment.list_marks(a)
     assert Decimal.equal?(m.score, Decimal.new("13.5"))
   end
 
@@ -87,7 +88,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     html = view |> form("#marks-form", %{"scores" => %{s1.id => "abc"}}) |> render_submit()
 
     assert html =~ "valid"
-    assert Academics.list_marks(a) == []
+    assert Assessment.list_marks(a) == []
   end
 
   test "keeps unsaved marks when switching assessment and back", %{
@@ -97,7 +98,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     a: a,
     s1: s1
   } do
-    {:ok, other} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
+    {:ok, other} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 2"})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
@@ -111,7 +112,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     # the unsaved 14 is still in the input, not lost
     assert has_element?(view, "#mark-input-#{s1.id}[value='14']")
-    assert Academics.list_marks(a) == []
+    assert Assessment.list_marks(a) == []
   end
 
   test "mark inputs are debounced to avoid a round-trip per keystroke", %{
@@ -202,10 +203,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     a: a,
     s1: s1
   } do
-    {:ok, other} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
+    {:ok, other} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 2"})
 
     :ok =
-      Academics.upsert_marks(other, [
+      Assessment.upsert_marks(other, [
         %{student_id: s1.id, score: Decimal.new("17")}
       ])
 
