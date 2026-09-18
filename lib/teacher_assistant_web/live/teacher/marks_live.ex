@@ -257,10 +257,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   # Combined mode: each student's score is routed to *their own class's*
   # assessment — never the other member class's — via
-  # `selected.by_class_group_id[class_group_id]`. Every group is upserted
-  # in its own `Academics.upsert_marks/2` call, so `Mark`'s
-  # `[:assessment_id, :student_id]` identity and the bulletin read path are
-  # untouched: a MACO student's mark still belongs to MACO's context.
+  # `selected.by_class_group_id[class_group_id]`. All groups are written in
+  # ONE `Academics.upsert_marks_all_or_nothing/1` call: if any class's
+  # scores are out of range, NOTHING is persisted for ANY class (no partial
+  # commit), matching the "record once, all classes together" model.
+  # `Mark`'s `[:assessment_id, :student_id]` identity and the bulletin read
+  # path are untouched: a MACO student's mark still belongs to MACO's context.
   defp save_combined(socket, scores) do
     %{groups: groups, selected: selected} = socket.assigns
 
@@ -281,25 +283,25 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     else
       scores_by_id = Map.new(parsed, fn {id, {:ok, score}} -> {id, score} end)
 
-      results =
+      assessment_entries =
         Enum.map(groups, fn %{class_group: cg, students: students} ->
           assessment = Map.fetch!(selected.by_class_group_id, cg.id)
 
           entries =
             Enum.map(students, fn s -> %{student_id: s.id, score: Map.get(scores_by_id, s.id)} end)
 
-          Academics.upsert_marks(assessment, entries)
+          {assessment, entries}
         end)
 
-      cond do
-        Enum.all?(results, &(&1 == :ok)) ->
+      case Academics.upsert_marks_all_or_nothing(assessment_entries) do
+        :ok ->
           {:noreply,
            socket
            |> put_flash(:info, gettext("Marks saved"))
            |> assign(:unsaved, Map.delete(socket.assigns.unsaved, selected.id))
            |> assign(:scores, combined_existing_scores(selected))}
 
-        Enum.any?(results, &match?({:error, :out_of_range}, &1)) ->
+        {:error, :out_of_range} ->
           {:noreply,
            put_flash(
              socket,
@@ -307,7 +309,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
              gettext("Marks must be between 0 and %{max}.", max: max_label(selected))
            )}
 
-        true ->
+        _ ->
           {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}
       end
     end

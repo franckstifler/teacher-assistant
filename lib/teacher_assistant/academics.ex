@@ -774,10 +774,21 @@ defmodule TeacherAssistant.Academics do
   `combined_assessments_for/2`'s "same assessment across every member
   class" guarantee. Returns `{:ok, [%Assessment{}, ...]}` (one per member
   context) or rolls back and returns the first `{:error, reason}`.
+
+  Skips a member context with no `class_group` yet, same as
+  `combined_assessments_for/2` and `list_union_students/1` — a
+  `class_group_id`-keyed map can never reference such a context anyway, so
+  creating an assessment against it would only orphan a row no routing
+  path can reach.
   """
   def create_combined_assessment(%CombinedCourse{} = course, %Sequence{} = seq, attrs) do
     label = Map.get(attrs, :label) || Map.get(attrs, "label")
-    contexts = contexts_of_course(course)
+
+    contexts =
+      course
+      |> contexts_of_course()
+      |> Ash.load!(:class_group, authorize?: false)
+      |> Enum.reject(&is_nil(&1.class_group))
 
     result =
       Repo.transaction(fn ->
@@ -824,6 +835,43 @@ defmodule TeacherAssistant.Academics do
     end
   end
 
+  @doc """
+  Like `upsert_marks/2`, but atomic across several assessments at once —
+  the combined-marks save path. `assessment_entries` is
+  `[{%Assessment{}, [entry]}]`, one pair per member class. Every pair's
+  entries are range-checked against *their own* assessment's `max_score`
+  BEFORE anything is written, and every write happens inside a single
+  transaction, so a combined course's per-class saves are all-or-nothing:
+  one class's out-of-range score can never leave another class's valid
+  score persisted (no partial commit across classes).
+  """
+  def upsert_marks_all_or_nothing(assessment_entries) do
+    out_of_range? =
+      Enum.any?(assessment_entries, fn {%Assessment{max_score: max_score}, entries} ->
+        not Enum.all?(entries, &score_in_range?(&1, max_score))
+      end)
+
+    if out_of_range? do
+      {:error, :out_of_range}
+    else
+      result =
+        Repo.transaction(fn ->
+          Enum.flat_map(assessment_entries, fn {%Assessment{id: assessment_id}, entries} ->
+            persist_marks_notifications!(assessment_id, entries)
+          end)
+        end)
+
+      case result do
+        {:ok, notifications} ->
+          Ash.Notifier.notify(notifications)
+          :ok
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
   # A mark is valid when absent (nil) or within 0..max_score inclusive. Callers
   # pass a `%Decimal{}` or nil; anything else is left to the resource layer.
   defp score_in_range?(entry, max_score) do
@@ -840,40 +888,7 @@ defmodule TeacherAssistant.Academics do
   end
 
   defp persist_marks(assessment_id, entries) do
-    result =
-      Repo.transaction(fn ->
-        existing =
-          Mark
-          |> Ash.Query.filter(assessment_id == ^assessment_id)
-          |> Ash.read!(authorize?: false)
-          |> Map.new(fn m -> {m.student_id, m} end)
-
-        Enum.flat_map(entries, fn %{student_id: student_id} = entry ->
-          score = Map.get(entry, :score)
-
-          case Map.get(existing, student_id) do
-            nil ->
-              case Mark
-                   |> Ash.Changeset.for_create(:create, %{
-                     assessment_id: assessment_id,
-                     student_id: student_id,
-                     score: score
-                   })
-                   |> Ash.create(authorize?: false, return_notifications?: true) do
-                {:ok, _mark, notifs} -> notifs
-                {:error, reason} -> Repo.rollback(reason)
-              end
-
-            %Mark{} = mark ->
-              case mark
-                   |> Ash.Changeset.for_update(:update, %{score: score})
-                   |> Ash.update(authorize?: false, return_notifications?: true) do
-                {:ok, _mark, notifs} -> notifs
-                {:error, reason} -> Repo.rollback(reason)
-              end
-          end
-        end)
-      end)
+    result = Repo.transaction(fn -> persist_marks_notifications!(assessment_id, entries) end)
 
     case result do
       {:ok, notifications} ->
@@ -883,6 +898,44 @@ defmodule TeacherAssistant.Academics do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # Core create/update loop, deliberately without its own `Repo.transaction` —
+  # `persist_marks/2` wraps a single call in one, `upsert_marks_all_or_nothing/1`
+  # wraps several (one per assessment) in one shared transaction, so a failure
+  # partway through rolls back every assessment's writes, not just this one's.
+  defp persist_marks_notifications!(assessment_id, entries) do
+    existing =
+      Mark
+      |> Ash.Query.filter(assessment_id == ^assessment_id)
+      |> Ash.read!(authorize?: false)
+      |> Map.new(fn m -> {m.student_id, m} end)
+
+    Enum.flat_map(entries, fn %{student_id: student_id} = entry ->
+      score = Map.get(entry, :score)
+
+      case Map.get(existing, student_id) do
+        nil ->
+          case Mark
+               |> Ash.Changeset.for_create(:create, %{
+                 assessment_id: assessment_id,
+                 student_id: student_id,
+                 score: score
+               })
+               |> Ash.create(authorize?: false, return_notifications?: true) do
+            {:ok, _mark, notifs} -> notifs
+            {:error, reason} -> Repo.rollback(reason)
+          end
+
+        %Mark{} = mark ->
+          case mark
+               |> Ash.Changeset.for_update(:update, %{score: score})
+               |> Ash.update(authorize?: false, return_notifications?: true) do
+            {:ok, _mark, notifs} -> notifs
+            {:error, reason} -> Repo.rollback(reason)
+          end
+      end
+    end)
   end
 
   def list_marks(%Assessment{id: assessment_id}) do

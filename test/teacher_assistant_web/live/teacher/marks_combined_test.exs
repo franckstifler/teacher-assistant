@@ -123,4 +123,33 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert m_menu.student_id == s_menu.id
     assert Decimal.equal?(m_menu.score, Decimal.new("12"))
   end
+
+  test "an out-of-range score in one class saves nothing for either class (all-or-nothing)", %{
+    conn: conn,
+    tc_maco: tc_maco,
+    tc_menu: tc_menu,
+    seq: seq,
+    s_maco: s_maco,
+    s_menu: s_menu
+  } do
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
+
+    view
+    |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
+    |> render_submit()
+
+    # MACO's score (15) is valid; MENU's (25) is out of range (marks are /20).
+    html =
+      view
+      |> form("#marks-form", %{"scores" => %{s_maco.id => "15", s_menu.id => "25"}})
+      |> render_submit()
+
+    assert html =~ "0 and 20"
+
+    [a_maco] = Academics.list_assessments(tc_maco, seq)
+    [a_menu] = Academics.list_assessments(tc_menu, seq)
+
+    assert Academics.list_marks(a_maco) == []
+    assert Academics.list_marks(a_menu) == []
+  end
 end
