@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Attendance
   alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Academics.Sex
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistantWeb.SanctionLabels
 
@@ -104,8 +105,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
 
-  defp sex_label(:f), do: gettext("Féminin")
-  defp sex_label(_), do: gettext("Masculin")
+  defp sex_label(s), do: Sex.label(s)
 
   defp no_data_message(:trimester), do: gettext("No marks for this term yet.")
   defp no_data_message(:annual), do: gettext("No marks for this year yet.")

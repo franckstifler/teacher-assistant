@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Fees
+  alias TeacherAssistant.Academics.PaymentMethod
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistantWeb.Money
 
@@ -281,10 +282,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
   defp parse_positive_amount(_), do: {:error, :invalid_amount}
 
-  defp method_label(:cash), do: gettext("Espèces")
-  defp method_label(:mobile_money), do: gettext("Mobile money")
-  defp method_label(:bank_transfer), do: gettext("Virement bancaire")
-  defp method_label(:other), do: gettext("Autre")
+  defp method_label(m), do: PaymentMethod.label(m)
 
   defp status_chip(%{status: :paid_up}), do: gettext("Soldé")
   defp status_chip(%{status: :on_track}), do: gettext("À jour")

@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Academics.AttendanceStatus
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
@@ -204,9 +205,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     )
   end
 
-  defp status_label(:present), do: gettext("Présent")
-  defp status_label(:absent), do: gettext("Absent")
-  defp status_label(:late), do: gettext("Retard")
+  defp status_label(s), do: AttendanceStatus.label(s)
 
   defp status_short(:present), do: "P"
   defp status_short(:absent), do: "A"

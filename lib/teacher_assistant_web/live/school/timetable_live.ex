@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
   alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Academics.DayOfWeek
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Permissions
 
@@ -131,12 +132,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
 
   defp day_atom(_), do: nil
 
-  defp day_label(:monday), do: gettext("Lundi")
-  defp day_label(:tuesday), do: gettext("Mardi")
-  defp day_label(:wednesday), do: gettext("Mercredi")
-  defp day_label(:thursday), do: gettext("Jeudi")
-  defp day_label(:friday), do: gettext("Vendredi")
-  defp day_label(:saturday), do: gettext("Samedi")
+  defp day_label(d), do: DayOfWeek.label(d)
 
   defp status_badge_class(:under), do: "badge-warning"
   defp status_badge_class(:exact), do: "badge-success"

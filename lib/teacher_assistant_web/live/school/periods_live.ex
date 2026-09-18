@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.School.PeriodsLive do
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.Academics.PeriodKind
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Permissions
 
@@ -74,7 +75,10 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
                       name="period[kind]"
                       type="select"
                       value={period.kind}
-                      options={[{gettext("Cours"), "lesson"}, {gettext("Récréation"), "break"}]}
+                      options={[
+                        {PeriodKind.label(:lesson), "lesson"},
+                        {PeriodKind.label(:break), "break"}
+                      ]}
                       label={gettext("Type")}
                     />
                     <div class="flex gap-2">

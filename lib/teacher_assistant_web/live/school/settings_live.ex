@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Subjects
+  alias TeacherAssistant.Academics.{SubjectCategory, Subjects}
   alias TeacherAssistant.Accounts.{Permissions, Schools}
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
@@ -235,9 +235,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                         type="select"
                         value={to_string(s.category)}
                         options={[
-                          {gettext("Générale"), "general"},
-                          {gettext("Langue"), "language"},
-                          {gettext("Technique"), "technical"}
+                          {SubjectCategory.label(:general), "general"},
+                          {SubjectCategory.label(:language), "language"},
+                          {SubjectCategory.label(:technical), "technical"}
                         ]}
                         label={gettext("Catégorie")}
                       />
@@ -298,9 +298,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 type="select"
                 label={gettext("Catégorie")}
                 options={[
-                  {gettext("Générale"), "general"},
-                  {gettext("Langue"), "language"},
-                  {gettext("Technique"), "technical"}
+                  {SubjectCategory.label(:general), "general"},
+                  {SubjectCategory.label(:language), "language"},
+                  {SubjectCategory.label(:technical), "technical"}
                 ]}
               />
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>

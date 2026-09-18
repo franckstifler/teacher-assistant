@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Courses, Enrollments, Subjects}
+  alias TeacherAssistant.Academics.{Assignments, Courses, EnrollmentStatus, Enrollments, Subjects}
   alias TeacherAssistant.Accounts.{Permissions, Schools}
 
   def mount(%{"id" => id}, _session, socket) do
@@ -121,9 +121,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 <td>{row.student.matricule}</td>
                 <td>
                   <span class="badge badge-sm">
-                    {if row.enrollment.status == :reinscription,
-                      do: gettext("Réinscription"),
-                      else: gettext("Inscription")}
+                    {EnrollmentStatus.label(row.enrollment.status)}
                   </span>
                 </td>
                 <td>
