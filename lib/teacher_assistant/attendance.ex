@@ -20,7 +20,24 @@ defmodule TeacherAssistant.Attendance do
 
   resources do
     resource Period
-    resource AttendanceEntry
+
+    resource AttendanceEntry do
+      define :for_period_date_class,
+        action: :for_period_date_class,
+        args: [:period_id, :date, :class_group_id]
+
+      define :for_date_periods_class,
+        action: :for_date_periods_class,
+        args: [:date, :period_ids, :class_group_id]
+
+      define :absences_for_day, action: :absences_for_day, args: [:enrollment_id, :date]
+
+      define :for_enrollment_range,
+        action: :for_enrollment_range,
+        args: [:enrollment_id, :first, :last]
+
+      define :for_class_range, action: :for_class_range, args: [:class_group_id, :first, :last]
+    end
   end
 
   authorization do
@@ -248,13 +265,8 @@ defmodule TeacherAssistant.Attendance do
     period_ids = Enum.map(periods, & &1.id)
 
     cells_by_enrollment =
-      AttendanceEntry
-      |> Ash.Query.for_read(:for_date_periods_class, %{
-        date: date,
-        period_ids: period_ids,
-        class_group_id: class_group.id
-      })
-      |> Ash.read!()
+      date
+      |> for_date_periods_class!(period_ids, class_group.id)
       |> Enum.group_by(& &1.enrollment_id, &{&1.period_id, &1.status})
       |> Map.new(fn {enrollment_id, pairs} -> {enrollment_id, Map.new(pairs)} end)
 
@@ -297,10 +309,7 @@ defmodule TeacherAssistant.Attendance do
   defp set_justification(enrollment, %Date{} = date, justified, note) do
     enrollment_id = enrollment_id(enrollment)
 
-    entries =
-      AttendanceEntry
-      |> Ash.Query.for_read(:absences_for_day, %{enrollment_id: enrollment_id, date: date})
-      |> Ash.read!()
+    entries = absences_for_day!(enrollment_id, date)
 
     results =
       Enum.map(entries, fn entry ->
@@ -329,13 +338,8 @@ defmodule TeacherAssistant.Attendance do
         @zero_totals
 
       {first, last} ->
-        AttendanceEntry
-        |> Ash.Query.for_read(:for_enrollment_range, %{
-          enrollment_id: enrollment_id,
-          first: first,
-          last: last
-        })
-        |> Ash.read!()
+        enrollment_id
+        |> for_enrollment_range!(first, last)
         |> Enum.map(&%{status: &1.status, justified: &1.justified, period: &1.period})
         |> Conduct.totals()
     end
@@ -360,13 +364,8 @@ defmodule TeacherAssistant.Attendance do
 
       {first, last} ->
         totals_by_enrollment =
-          AttendanceEntry
-          |> Ash.Query.for_read(:for_class_range, %{
-            class_group_id: class_group.id,
-            first: first,
-            last: last
-          })
-          |> Ash.read!()
+          class_group.id
+          |> for_class_range!(first, last)
           |> Enum.group_by(& &1.enrollment_id)
           |> Map.new(fn {enrollment_id, entries} ->
             totals =

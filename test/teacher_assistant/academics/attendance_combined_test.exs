@@ -146,5 +146,53 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
                |> Ash.read!(authorize?: false)
     end
+
+    test "a genuine DB-level failure in the second group rolls back the first group's already-written entry",
+         ctx do
+      # `Attendance.record_combined_period/5` pre-validates status/enrollment
+      # in plain Elixir before ever touching the DB, so it can never exercise
+      # `AttendanceEntry`'s `:record_combined_period` action's own
+      # `transaction? true` — every failure it can reach is caught before the
+      # transaction opens. This test drives the action directly with a
+      # `teaching_context_id` that doesn't exist (a real foreign-key
+      # violation, `attendance_entries_teaching_context_id_fkey`), which only
+      # fails once the DB is touched. MACO's group is entirely valid and
+      # would insert first; MENU's group is the one that trips the FK. If
+      # `transaction? true` didn't roll back, MACO's entry would survive.
+      bogus_teaching_context_id = Ecto.UUID.generate()
+
+      groups = [
+        %{
+          workspace_id: ctx.maco.workspace_id,
+          teaching_context_id: ctx.tc_maco.id,
+          marks: [%{enrollment_id: ctx.enr_maco.id, status: :present}]
+        },
+        %{
+          workspace_id: ctx.menu.workspace_id,
+          teaching_context_id: bogus_teaching_context_id,
+          marks: [%{enrollment_id: ctx.enr_menu.id, status: :absent}]
+        }
+      ]
+
+      assert {:error, _reason} =
+               AttendanceEntry
+               |> Ash.ActionInput.for_action(:record_combined_period, %{
+                 period_id: ctx.period.id,
+                 date: ctx.date,
+                 recorded_by_user_id: ctx.head.id,
+                 groups: groups
+               })
+               |> Ash.run_action()
+
+      assert [] =
+               AttendanceEntry
+               |> Ash.Query.filter(enrollment_id == ^ctx.enr_maco.id)
+               |> Ash.read!(authorize?: false)
+
+      assert [] =
+               AttendanceEntry
+               |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
+               |> Ash.read!(authorize?: false)
+    end
   end
 end
