@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.FeeTranche do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Fees,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 

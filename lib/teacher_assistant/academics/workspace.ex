@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.Workspace do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Organization,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 

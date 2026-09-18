@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.LessonStep do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Curriculum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 

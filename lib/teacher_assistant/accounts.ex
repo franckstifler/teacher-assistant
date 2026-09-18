@@ -4,6 +4,10 @@ defmodule TeacherAssistant.Accounts do
 
   alias TeacherAssistant.Accounts.User
 
+  authorization do
+    authorize :when_requested
+  end
+
   resources do
     resource TeacherAssistant.Accounts.Token
     resource User

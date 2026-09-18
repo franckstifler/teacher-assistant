@@ -1,5 +1,8 @@
 defmodule TeacherAssistant.Academics do
-  use Ash.Domain, otp_app: :teacher_assistant
+  # Intentionally NOT registered in :ash_domains — its resources now live in
+  # focused domains. It remains an Ash.Domain module only to host legacy
+  # functions (dissolved in Phase C), so skip the config-inclusion check.
+  use Ash.Domain, otp_app: :teacher_assistant, validate_config_inclusion?: false
 
   require Ash.Query
   alias TeacherAssistant.Accounts.User
@@ -11,7 +14,6 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.ClassGroup
-  alias TeacherAssistant.Academics.Subject
   alias TeacherAssistant.Academics.Student
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.Assessment
@@ -23,44 +25,14 @@ defmodule TeacherAssistant.Academics do
   alias TeacherAssistant.Academics.TeachingLogEntry
   alias TeacherAssistant.Academics.LessonPlan
   alias TeacherAssistant.Academics.LessonStep
-  alias TeacherAssistant.Academics.Period
-  alias TeacherAssistant.Academics.TimetableSlot
-  alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.SanctionEntry
-  alias TeacherAssistant.Academics.ConductMark
-  alias TeacherAssistant.Academics.FeeTranche
-  alias TeacherAssistant.Academics.Payment
-  alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Repo
   alias TeacherAssistant.Scope
 
+  # Resources have moved to focused domains (Organization, Enrollment,
+  # Curriculum, Assessment, Attendance, Discipline, Timetabling, Fees).
+  # This domain is no longer registered in :ash_domains; it survives only to
+  # host its hand-written functions until Phase C dissolves them.
   resources do
-    resource Workspace
-    resource AcademicYear
-    resource Term
-    resource Sequence
-    resource TeachingContext
-    resource CombinedCourse
-    resource ClassGroup
-    resource Subject
-    resource Student
-    resource Enrollment
-    resource Assessment
-    resource Mark
-    resource ProgressionPlan
-    resource ProgressionEntry
-    resource ProgressionModule
-    resource TeachingLogEntry
-    resource LessonPlan
-    resource LessonStep
-    resource Period
-    resource TimetableSlot
-    resource AttendanceEntry
-    resource SanctionEntry
-    resource ConductMark
-    resource FeeTranche
-    resource Payment
-    resource FeeAdjustment
   end
 
   def ensure_personal_workspace!(%User{} = user) do
