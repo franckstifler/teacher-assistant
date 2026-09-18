@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Assignments
+  alias TeacherAssistant.Academics.Courses
   alias TeacherAssistant.Academics.Timetables
   alias TeacherAssistant.Accounts.Schools
 
@@ -82,6 +83,36 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
     timetable = Timetables.class_timetable(cg)
     refute Map.has_key?(timetable.slots, {:monday, period.id})
+  end
+
+  test "placing a combined assignment fills the same cell for every member class, and clearing it clears both",
+       %{conn: conn, cg: cg, tc: tc, period: period, school: school, year: year, head: head} do
+    {:ok, other_cg} = Academics.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+    {:ok, other_tc} = Assignments.assign(other_cg, head, %{subject: "Maths"})
+    {:ok, _course} = Courses.combine([tc, other_tc])
+
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/timetable")
+
+    html =
+      view
+      |> form("#cell-monday-#{period.id} form", %{"teaching_context_id" => tc.id})
+      |> render_change()
+
+    assert html =~ "combiné"
+
+    timetable = Timetables.class_timetable(cg)
+    other_timetable = Timetables.class_timetable(other_cg)
+    assert timetable.slots[{:monday, period.id}].teaching_context_id == tc.id
+    assert other_timetable.slots[{:monday, period.id}].teaching_context_id == other_tc.id
+
+    view
+    |> form("#cell-monday-#{period.id} form", %{"teaching_context_id" => ""})
+    |> render_change()
+
+    timetable = Timetables.class_timetable(cg)
+    other_timetable = Timetables.class_timetable(other_cg)
+    refute Map.has_key?(timetable.slots, {:monday, period.id})
+    refute Map.has_key?(other_timetable.slots, {:monday, period.id})
   end
 
   test "placing a clashing teacher flashes and creates no slot", %{
