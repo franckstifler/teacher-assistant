@@ -1,43 +1,211 @@
-<div class="min-h-screen w-full lg:grid lg:grid-cols-[1.05fr_0.95fr]">
-  <%!-- Brand panel — desktop only; on phones the form leads --%>
-  <aside class="ta-auth-panel relative hidden flex-col justify-between p-10 lg:flex xl:p-14">
+<%!--
+  Auth pages — paper palette (the public, pre-login world), matching the
+  "Onboarding.dc.html" design proposal's isAuth screens: a dark brand panel
+  beside a white boxed-input form. Scoped to `.ta-auth-paper` so the rest of
+  the app keeps the Tableau chalkboard identity — the same scoping pattern
+  the landing page uses for `.ta-landing` (see page_html/home.html.heex).
+
+  Wraps every AshAuthentication.Phoenix page: sign-in, register, the "forgot
+  password" request step, the request confirmation and password fields are
+  supplied by AshAuthentication.Phoenix itself (styled via AuthOverrides);
+  this layout only supplies the surrounding chrome and the per-screen
+  eyebrow/title/subtitle/reassurance copy (see Layouts.auth_copy/1).
+--%>
+<% assigns = assign(assigns, :auth_copy, auth_copy(assigns)) %>
+<% assigns = assign(assigns, :auth_points, auth_points()) %>
+<style>
+  .ta-auth-paper {
+    background: #F4F1EA;
+    color: #1E2A2B;
+    font-family: "Libre Franklin", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .ta-auth-paper h1, .ta-auth-paper h2 { font-family: Fraunces, Georgia, "Times New Roman", serif; }
+  .ta-auth-paper a { color: #0E7A5F; text-decoration: none; }
+  .ta-auth-paper a:hover { color: #0B5E49; text-decoration: underline; }
+  .ta-auth-paper .ta-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  /* boxed fields — a rule you fill in, not a chalk-underline */
+  .ta-auth-paper input[type="email"],
+  .ta-auth-paper input[type="text"],
+  .ta-auth-paper input[type="password"] {
+    display: block;
+    width: 100%;
+    height: 2.5rem;
+    padding: 0 0.7rem;
+    border: 1px solid #D7CFBE;
+    border-radius: 0.45rem;
+    background: #FFFFFF;
+    font-family: inherit;
+    font-size: 0.88rem;
+    color: #1E2A2B;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ta-auth-paper input::placeholder { color: #8A9391; }
+  .ta-auth-paper input[type="email"]:focus,
+  .ta-auth-paper input[type="text"]:focus,
+  .ta-auth-paper input[type="password"]:focus {
+    border-color: #0E7A5F;
+    box-shadow: 0 0 0 3px rgba(14, 122, 95, 0.14);
+  }
+  .ta-auth-paper .ta-field-input-error { border-color: #B3452E !important; }
+  .ta-auth-paper input[type="checkbox"] {
+    width: 0.95rem;
+    height: 0.95rem;
+    accent-color: #0E7A5F;
+  }
+
+  .ta-auth-paper .ta-field-wrap { margin: 0 0 0.9rem; }
+  .ta-auth-paper .ta-field-label {
+    display: block;
+    margin: 0 0 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: #44514F;
+  }
+  .ta-auth-paper .ta-error-list {
+    margin: 0.35rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.78rem;
+    color: #B3452E;
+  }
+
+  .ta-auth-paper .ta-remember-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: -0.2rem 0 0.9rem;
+    font-size: 0.82rem;
+    color: #44514F;
+    cursor: pointer;
+  }
+  .ta-auth-paper .ta-toggler-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem 1rem;
+    margin: 0 0 0.9rem;
+  }
+  .ta-auth-paper .ta-toggler-row a { font-size: 0.8rem; font-weight: 650; }
+
+  .ta-auth-paper button[type="submit"] {
+    display: block;
+    width: 100%;
+    height: 2.7rem;
+    margin-top: 0.2rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #0E7A5F;
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+  }
+  .ta-auth-paper button[type="submit"]:hover { background: #0B5E49; }
+  .ta-auth-paper button[type="submit"]:active { transform: translateY(1px); }
+  .ta-auth-paper button[type="submit"]:disabled { opacity: 0.7; cursor: default; }
+
+  .ta-auth-paper .ta-auth-error {
+    margin: 0 0 0.9rem;
+    border: 1px solid #E7B9AC;
+    border-radius: 0.5rem;
+    background: #FBEAE4;
+    color: #7A2E1C;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.82rem;
+  }
+
+  .ta-auth-paper :where(a, button, input, [role="button"]):focus-visible {
+    outline: 2px solid #0E7A5F;
+    outline-offset: 2px;
+    border-radius: 0.35rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ta-auth-paper * { transition: none !important; }
+  }
+</style>
+
+<div class="ta-auth-paper flex min-h-screen flex-col lg:flex-row">
+  <%!-- brand panel — stacked on top at phone widths, side-by-side from lg --%>
+  <aside
+    class="flex flex-col justify-between gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:w-[42%] lg:px-14 lg:py-12"
+    style="background: #172321; color: #E8E5DC"
+  >
     <a href="/" class="flex items-center gap-2.5">
-      <span class="grid size-9 place-items-center rounded-lg bg-primary text-primary-content shadow-sm">
-        <.icon name="hero-academic-cap" class="size-5" />
+      <span
+        class="grid size-9 place-items-center rounded-lg"
+        style="background: #E8E5DC; color: #172321; font-family: Fraunces, Georgia, serif; font-size: 1rem; font-weight: 700"
+      >
+        TA
       </span>
-      <span class="ta-display text-lg font-semibold text-base-content">Teacher Assistant</span>
+      <span style="font-family: Fraunces, Georgia, serif; font-size: 1.05rem; font-weight: 600; color: #FFFFFF">
+        Teacher Assistant
+      </span>
     </a>
 
     <div class="max-w-md">
-      <p class="ta-eyebrow">Cameroon secondary schools</p>
-      <h2 class="mt-4 font-display text-3xl font-semibold leading-tight text-base-content xl:text-4xl">
-        Run your school from one chalkboard.
+      <p
+        class="ta-mono"
+        style="margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8FC9B4"
+      >
+        Établissements secondaires · Cameroun
+      </p>
+      <h2 style="margin: 0.8rem 0 0; font-size: 1.85rem; font-weight: 650; line-height: 1.15; color: #FFFFFF">
+        Tout l'établissement sur un seul tableau.
       </h2>
-      <ul class="mt-8 space-y-3.5 text-sm text-base-content/75">
-        <li class="flex items-center gap-3">
-          <.icon name="hero-clipboard-document-check" class="size-5 shrink-0 text-primary" />
-          Take the appel in one tap
-        </li>
-        <li class="flex items-center gap-3">
-          <.icon name="hero-pencil-square" class="size-5 shrink-0 text-primary" />
-          Marks and bulletins for every class
-        </li>
-        <li class="flex items-center gap-3">
-          <.icon name="hero-chart-bar" class="size-5 shrink-0 text-primary" />
-          Coverage of the programme, all year
-        </li>
-      </ul>
+      <div class="mt-6 flex flex-col gap-3">
+        <span :for={point <- @auth_points} class="flex items-center gap-3" style="font-size: 0.88rem; color: #C9D3CF">
+          <span
+            class="grid size-6 flex-none place-items-center rounded-full"
+            style="background: #24332F; color: #8FC9B4"
+          >
+            <.icon name="hero-check" class="size-3.5" />
+          </span>
+          {point}
+        </span>
+      </div>
     </div>
 
-    <p class="font-mono text-xs text-base-content/45">
-      APC / CBA · Francophone &amp; Anglophone · FR / EN
+    <p class="ta-mono" style="margin: 0; font-size: 0.72rem; color: #778A84">
+      APC / CBA · Francophone &amp; anglophone · FR / EN
     </p>
   </aside>
 
-  <%!-- Form column --%>
-  <main class="flex min-h-screen items-center justify-center bg-base-100 px-4 py-12 sm:px-6">
+  <%!-- form column --%>
+  <main class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-10" style="background: #FFFFFF">
     <div class="w-full max-w-sm">
-      {@inner_content}
+      <p
+        class="ta-mono"
+        style="margin: 0; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7A5F"
+      >
+        {@auth_copy.eyebrow}
+      </p>
+      <h1 style="margin: 0.4rem 0 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; color: #1E2A2B">
+        {@auth_copy.title}
+      </h1>
+      <p :if={@auth_copy.sub} style="margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.55; color: #5A6668">
+        {@auth_copy.sub}
+      </p>
+
+      <div class="mt-5">
+        {@inner_content}
+      </div>
+
+      <div class="mt-6 flex items-start gap-2 border-t pt-4" style="border-color: #EFEAE0">
+        <span style="color: #5A6668; flex: none; margin-top: 0.1rem">
+          <.icon name="hero-shield-check" class="size-4" />
+        </span>
+        <p style="margin: 0; font-size: 0.78rem; line-height: 1.5; color: #5A6668">
+          {@auth_copy.foot}
+        </p>
+      </div>
     </div>
   </main>
 </div>

@@ -19,6 +19,10 @@ defmodule TeacherAssistant.Accounts.User do
       password :password do
         identity_field :email
         hashed_password_field :hashed_password
+
+        resettable do
+          sender TeacherAssistant.Accounts.User.Senders.SendPasswordResetEmail
+        end
       end
 
       magic_link do

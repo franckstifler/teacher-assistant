@@ -492,4 +492,84 @@ defmodule TeacherAssistantWeb.Layouts do
     </div>
     """
   end
+
+  # --- auth layout (paper) helpers -------------------------------------------
+  #
+  # `Layouts.auth` (layouts/auth.html.heex) wraps every AshAuthentication.Phoenix
+  # page (sign-in, register, the "forgot password" request step, the token-based
+  # "set a new password" step, and the magic-link landing page). Phoenix passes
+  # the live view's full assigns through to the layout, so we can tell these
+  # screens apart from assigns alone — no changes to the auth library needed:
+  #
+  #   * `@strategy` is only ever assigned by `MagicSignInLive`.
+  #   * `@token` is assigned by `ResetLive` (the `/password-reset/:token` page)
+  #     and by `MagicSignInLive` (checked second, after `@strategy`).
+  #   * `@live_action` is `:register` / `:reset` / `:sign_in` on `SignInLive`
+  #     (`:reset` there is the "request a reset link" step, not the token step).
+
+  @auth_points [
+    "L'appel en un geste, même sur téléphone",
+    "Notes et bulletins pour toutes les classes",
+    "La couverture du programme, toute l'année"
+  ]
+
+  defp auth_points, do: @auth_points
+
+  defp auth_screen(assigns) do
+    cond do
+      assigns[:strategy] -> :magic_sign_in
+      assigns[:token] -> :reset_confirm
+      assigns[:live_action] == :register -> :register
+      assigns[:live_action] == :reset -> :reset_request
+      true -> :sign_in
+    end
+  end
+
+  defp auth_copy(assigns) do
+    case auth_screen(assigns) do
+      :register ->
+        %{
+          eyebrow: "Créer un compte",
+          title: "Commencez par votre compte",
+          sub:
+            "Ce compte sera celui du responsable de l'établissement. Vous inviterez votre équipe juste après.",
+          foot:
+            "Nous n'utilisons votre e-mail que pour l'accès au service et les notifications de votre établissement."
+        }
+
+      :reset_request ->
+        %{
+          eyebrow: "Mot de passe oublié",
+          title: "Recevez un lien de réinitialisation",
+          sub: "Nous envoyons un lien valable une heure à l'adresse de votre compte.",
+          foot:
+            "Si l'adresse n'existe pas, aucun message n'est envoyé — pour protéger les comptes de votre établissement."
+        }
+
+      :reset_confirm ->
+        %{
+          eyebrow: "Nouveau mot de passe",
+          title: "Choisissez un nouveau mot de passe",
+          sub: "Votre nouveau mot de passe doit contenir au moins 8 caractères.",
+          foot: "Ce lien de réinitialisation n'est valable qu'une seule fois."
+        }
+
+      :magic_sign_in ->
+        %{
+          eyebrow: "Connexion",
+          title: "Connexion en cours",
+          sub: nil,
+          foot: "Vous allez être redirigé·e automatiquement."
+        }
+
+      :sign_in ->
+        %{
+          eyebrow: "Connexion",
+          title: "Content de vous revoir",
+          sub: "Entrez l'adresse fournie par votre établissement.",
+          foot:
+            "Une invitation reçue par e-mail vous rattache automatiquement à votre établissement et à votre rôle."
+        }
+    end
+  end
 end
