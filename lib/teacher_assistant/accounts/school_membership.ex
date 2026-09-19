@@ -78,6 +78,18 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
     end
   end
 
+  aggregates do
+    # Count of other active head memberships in the same workspace (self
+    # excluded) — backs the "can't remove/deactivate the last head" guard in
+    # `TeacherAssistant.Accounts`.
+    count :other_active_heads, __MODULE__ do
+      filter expr(
+               workspace_id == parent(workspace_id) and active == true and :head in roles and
+                 id != parent(id)
+             )
+    end
+  end
+
   identities do
     identity :unique_member, [:workspace_id, :user_id]
   end

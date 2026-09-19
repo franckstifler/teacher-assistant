@@ -97,16 +97,12 @@ defmodule TeacherAssistant.Accounts do
     :head in m.roles and :head not in new_roles and last_head?(m)
   end
 
-  # TEMP: Task D1 replaces this with an `other_active_heads` aggregate + a
-  # resource validation. Until then the "can't remove/deactivate the last
-  # head" guard lives here so the callers keep returning `{:error, :last_head}`.
-  defp last_head?(%SchoolMembership{workspace_id: ws_id, id: id}) do
-    heads =
-      %Workspace{id: ws_id}
-      |> list_members()
-      |> Enum.filter(fn m -> :head in m.roles and m.id != id end)
-
-    heads == []
+  # The guard itself lives here (rather than as a resource validation) so
+  # callers keep getting the bare `{:error, :last_head}` atom instead of an
+  # `%Ash.Error.Invalid{}` — the `other_active_heads` aggregate on
+  # `SchoolMembership` does the actual counting.
+  defp last_head?(%SchoolMembership{} = m) do
+    m |> Ash.load!(:other_active_heads) |> Map.fetch!(:other_active_heads) == 0
   end
 
   # --- School invitations --------------------------------------------------

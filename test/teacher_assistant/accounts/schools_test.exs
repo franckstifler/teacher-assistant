@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Accounts.SchoolsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Accounts.SchoolMembership
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -33,5 +34,30 @@ defmodule TeacherAssistant.Accounts.SchoolsTest do
     {:ok, m} = Accounts.fetch_school_membership(school, head)
     assert {:error, :last_head} = Accounts.update_member_roles(m, [:teacher])
     assert {:error, :last_head} = Accounts.deactivate_member(m)
+  end
+
+  test "the other_active_heads aggregate lets one of two Heads be removed", %{
+    head: head,
+    other: other
+  } do
+    {:ok, school} = Organization.create_school(head, %{name: "École D"})
+
+    {:ok, other_membership} =
+      SchoolMembership
+      |> Ash.Changeset.for_create(:create, %{
+        workspace_id: school.id,
+        user_id: other.id,
+        roles: [:head]
+      })
+      |> Ash.create(authorize?: false)
+
+    {:ok, m} = Accounts.fetch_school_membership(school, head)
+    assert Ash.load!(m, :other_active_heads).other_active_heads == 1
+
+    assert {:ok, updated} = Accounts.update_member_roles(m, [:teacher])
+    refute :head in updated.roles
+
+    assert Ash.load!(other_membership, :other_active_heads).other_active_heads == 0
+    assert {:error, :last_head} = Accounts.deactivate_member(other_membership)
   end
 end
