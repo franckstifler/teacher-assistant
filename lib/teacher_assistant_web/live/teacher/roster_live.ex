@@ -1,6 +1,10 @@
 defmodule TeacherAssistantWeb.Teacher.RosterLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.Student
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
 
   def mount(%{"id" => ctx_id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -8,7 +12,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     read_only? = scope.current_workspace_type == :school
 
     with true <- not is_nil(ws),
-         {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope) do
+         {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope) do
       {:ok, load(socket, ws, ctx) |> assign(:read_only?, read_only?)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
@@ -22,13 +26,13 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           nil
 
         id ->
-          case Academics.fetch_owned_class_group(id, ws) do
+          case Enrollment.fetch_owned_class_group(id, ws) do
             {:ok, cg} -> cg
             _ -> nil
           end
       end
 
-    students = if class_group, do: Academics.list_students(class_group), else: []
+    students = if class_group, do: Enrollment.list_students(class_group), else: []
 
     socket
     |> assign(:ws, ws)
@@ -36,8 +40,24 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     |> assign(:class_group, class_group)
     |> assign(:students, students)
     |> assign(:undo_student, nil)
-    |> assign(:class_form, to_form(%{}, as: :class_group))
-    |> assign(:student_form, to_form(%{}, as: :student))
+    |> assign(:class_form, class_form())
+    |> assign(:student_form, student_form())
+  end
+
+  # Both `create_class` and `add_student` orchestrate more than their scaffold
+  # resource's bare action (linking the class to the teaching context; the
+  # Student+Enrollment pair created atomically via `Enrollment.:enroll_new`),
+  # so these forms stay scaffolds — submit always calls the domain functions.
+  defp class_form do
+    ClassGroup
+    |> AshPhoenix.Form.for_create(:create, as: "class_group")
+    |> to_form()
+  end
+
+  defp student_form do
+    Student
+    |> AshPhoenix.Form.for_create(:create, as: "student")
+    |> to_form()
   end
 
   def handle_event(event, _params, %{assigns: %{read_only?: true}} = socket)
@@ -47,12 +67,12 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
   def handle_event("create_class", %{"class_group" => p}, socket) do
     ws = socket.assigns.ws
-    year = Academics.current_academic_year(ws)
+    year = Organization.current_academic_year(ws)
 
     with false <- is_nil(year),
          {:ok, cg} <-
-           Academics.create_class_group(ws, year, %{label: p["label"], level: p["level"]}),
-         {:ok, ctx} <- Academics.link_class_group(socket.assigns.ctx, cg) do
+           Enrollment.create_class_group(ws, year, %{label: p["label"], level: p["level"]}),
+         {:ok, ctx} <- Curriculum.link_class_group(socket.assigns.ctx, cg) do
       {:noreply, load(socket, ws, ctx)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the class"))}
@@ -64,26 +84,26 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
     with false <- is_nil(cg),
          {:ok, _s} <-
-           Academics.add_student(cg, %{
+           Enrollment.add_student(cg, %{
              full_name: p["full_name"],
              sex: String.to_existing_atom(p["sex"]),
              matricule: blank_to(p["matricule"], nil)
            }) do
       {:noreply,
        socket
-       |> assign(:students, Academics.list_students(cg))
-       |> assign(:student_form, to_form(%{}, as: :student))}
+       |> assign(:students, Enrollment.list_students(cg))
+       |> assign(:student_form, student_form())}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not add the student"))}
     end
   end
 
   def handle_event("delete_student", %{"id" => id}, socket) do
-    with {:ok, s} <- Academics.fetch_owned_student(id, socket.assigns.ws),
-         :ok <- Academics.delete_student(s) do
+    with {:ok, s} <- Enrollment.fetch_owned_student(id, socket.assigns.ws),
+         :ok <- Enrollment.delete_student(s) do
       {:noreply,
        socket
-       |> assign(:students, Academics.list_students(socket.assigns.class_group))
+       |> assign(:students, Enrollment.list_students(socket.assigns.class_group))
        |> assign(:undo_student, %{full_name: s.full_name, sex: s.sex, matricule: s.matricule})}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not remove the student"))}
@@ -98,11 +118,11 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
         {:noreply, socket}
 
       attrs ->
-        case Academics.add_student(cg, attrs) do
+        case Enrollment.add_student(cg, attrs) do
           {:ok, _} ->
             {:noreply,
              socket
-             |> assign(:students, Academics.list_students(cg))
+             |> assign(:students, Enrollment.list_students(cg))
              |> assign(:undo_student, nil)}
 
           _ ->

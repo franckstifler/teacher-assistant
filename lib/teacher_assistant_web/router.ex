@@ -27,7 +27,12 @@ defmodule TeacherAssistantWeb.Router do
     get "/", PageController, :home
     get "/schools/start", PageController, :start_school
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
-    sign_out_route AuthController
+
+    sign_out_route AuthController, "/sign-out",
+      overrides: [
+        TeacherAssistantWeb.AuthOverrides,
+        Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
+      ]
     get "/workspaces/select/:id", WorkspaceController, :select
     post "/workspaces", WorkspaceController, :create
     get "/teacher/select-context/:id", TeacherContextController, :select

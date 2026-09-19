@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.Payment do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Fees,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -37,6 +37,20 @@ defmodule TeacherAssistant.Academics.Payment do
         :recorded_by_user_id
       ]
     ]
+
+    read :for_enrollment do
+      argument :enrollment_id, :uuid, allow_nil?: false
+
+      filter expr(enrollment_id == ^arg(:enrollment_id))
+
+      prepare build(sort: [paid_on: :desc, inserted_at: :desc])
+    end
+
+    read :for_enrollment_ids do
+      argument :enrollment_ids, {:array, :uuid}, allow_nil?: false
+
+      filter expr(enrollment_id in ^arg(:enrollment_ids))
+    end
   end
 
   policies do

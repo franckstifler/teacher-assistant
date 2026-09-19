@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.FeeAdjustment do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Fees,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -27,6 +27,18 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
 
       upsert? true
       upsert_identity :unique_adjustment
+    end
+
+    read :for_enrollment do
+      argument :enrollment_id, :uuid, allow_nil?: false
+
+      filter expr(enrollment_id == ^arg(:enrollment_id))
+    end
+
+    read :for_enrollment_ids do
+      argument :enrollment_ids, {:array, :uuid}, allow_nil?: false
+
+      filter expr(enrollment_id in ^arg(:enrollment_ids))
     end
   end
 

@@ -3,26 +3,26 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.SanctionEntry
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, student} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     %{
       ws: ws,

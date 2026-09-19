@@ -3,52 +3,52 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Attendance
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Academics.TimetableSlot
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg_other} = Academics.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg_other} = Enrollment.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
 
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    {:ok, _student1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, _student2} = Academics.add_student(cg, %{full_name: "Bilal", sex: :m})
+    {:ok, _student1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Bilal", sex: :m})
 
-    {:ok, _other_student} = Academics.add_student(cg_other, %{full_name: "Zara", sex: :f})
+    {:ok, _other_student} = Enrollment.add_student(cg_other, %{full_name: "Zara", sex: :f})
 
-    roster = Academics.list_roster(cg)
+    roster = Enrollment.list_roster(cg)
     [%{enrollment: enrollment1}, %{enrollment: enrollment2}] = roster
 
-    other_roster = Academics.list_roster(cg_other)
+    other_roster = Enrollment.list_roster(cg_other)
     [%{enrollment: other_enrollment}] = other_roster
 
-    :ok = Timetables.build_default_periods(ws)
-    period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(ws)
+    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
 
     other_period =
-      Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
+      Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
 
     # 2025-09-15 is a Monday
     {:ok, slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
@@ -366,10 +366,10 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   describe "student_conduct/2 and class_conduct/2" do
     setup ctx do
-      :ok = Academics.build_default_calendar(ctx.year)
+      :ok = Organization.build_default_calendar(ctx.year)
 
-      [seq1, seq2 | _] = Academics.list_sequences(ctx.year)
-      [term1 | _] = Academics.list_terms(ctx.year)
+      [seq1, seq2 | _] = Organization.list_sequences(ctx.year)
+      [term1 | _] = Organization.list_terms(ctx.year)
 
       %{seq1: seq1, seq2: seq2, term1: term1}
     end
@@ -512,10 +512,10 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "returns zeros when the period date range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty"})
+      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty"})
 
       {:ok, empty_year} =
-        Academics.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(empty_ws, %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],
@@ -598,10 +598,10 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "class_conduct returns zeros for every roster enrollment when the range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Schools.create_school(empty_year_head, %{name: "Lycée Empty2"})
+      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty2"})
 
       {:ok, empty_year} =
-        Academics.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(empty_ws, %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],

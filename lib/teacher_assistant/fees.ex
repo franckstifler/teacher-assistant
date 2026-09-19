@@ -1,27 +1,61 @@
-defmodule TeacherAssistant.Academics.Fees do
+defmodule TeacherAssistant.Fees do
   @moduledoc "Fees: tranche schedule CRUD, payments, adjustment, balances (P2.10)."
 
-  require Ash.Query
+  use Ash.Domain, otp_app: :teacher_assistant
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.ClassGroup
+  # `TeacherAssistant.Academics.Enrollment` is the resource struct (used for
+  # the `enrollment_id/1` pattern match below); the domain
+  # `TeacherAssistant.Enrollment` is always referenced fully qualified so the
+  # two never collide under one bare `Enrollment` alias.
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Academics.FeeBalance
   alias TeacherAssistant.Academics.FeeTranche
   alias TeacherAssistant.Academics.Payment
 
+  resources do
+    resource FeeTranche do
+      define :list_tranches_for_class_group_id,
+        action: :for_class_group,
+        args: [:class_group_id]
+
+      define :delete_tranche, action: :destroy
+    end
+
+    resource FeeAdjustment do
+      define :list_adjustments_for_enrollment_id,
+        action: :for_enrollment,
+        args: [:enrollment_id]
+
+      define :list_adjustments_for_enrollment_ids,
+        action: :for_enrollment_ids,
+        args: [:enrollment_ids]
+    end
+
+    resource Payment do
+      define :list_payments_for_enrollment_id, action: :for_enrollment, args: [:enrollment_id]
+
+      define :list_payments_for_enrollment_ids,
+        action: :for_enrollment_ids,
+        args: [:enrollment_ids]
+
+      define :delete_payment, action: :destroy
+    end
+  end
+
+  authorization do
+    authorize :when_requested
+  end
+
   @valid_methods MapSet.new([:cash, :mobile_money, :bank_transfer, :other])
+
+  # --- Tranches --------------------------------------------------------------
 
   @doc """
   Lists `FeeTranche`s for `class_group`, ordered by `position` ascending.
   """
-  def list_tranches(%ClassGroup{id: cg_id}) do
-    FeeTranche
-    |> Ash.Query.filter(class_group_id == ^cg_id)
-    |> Ash.Query.sort(position: :asc)
-    |> Ash.read!(authorize?: false)
-  end
+  def list_tranches(%ClassGroup{id: cg_id}), do: list_tranches_for_class_group_id!(cg_id)
 
   @doc """
   Adds a fee tranche to `class_group`. `attrs` carries `label`, `amount`
@@ -44,7 +78,7 @@ defmodule TeacherAssistant.Academics.Fees do
         workspace_id: class_group.workspace_id,
         class_group_id: class_group.id
       })
-      |> Ash.create(authorize?: false)
+      |> Ash.create()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
         {:error, _error} -> {:error, :tranche_failed}
@@ -66,7 +100,7 @@ defmodule TeacherAssistant.Academics.Fees do
 
       tranche
       |> Ash.Changeset.for_update(:update, update_attrs)
-      |> Ash.update(authorize?: false)
+      |> Ash.update()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
         {:error, _error} -> {:error, :tranche_failed}
@@ -78,14 +112,7 @@ defmodule TeacherAssistant.Academics.Fees do
   defp validate_amount(amount) when is_integer(amount) and amount >= 0, do: :ok
   defp validate_amount(_amount), do: {:error, :invalid_amount}
 
-  @doc "Deletes `tranche`."
-  def delete_tranche(%FeeTranche{} = tranche) do
-    case Ash.destroy(tranche, authorize?: false) do
-      :ok -> :ok
-      {:ok, _} -> :ok
-      {:error, _error} -> {:error, :delete_failed}
-    end
-  end
+  # --- Payments ----------------------------------------------------------
 
   @doc """
   Records a payment for `enrollment` (struct or bare id). `attrs` carries
@@ -112,7 +139,7 @@ defmodule TeacherAssistant.Academics.Fees do
         workspace_id: e.workspace_id,
         enrollment_id: e.id
       })
-      |> Ash.create(authorize?: false)
+      |> Ash.create()
       |> case do
         {:ok, payment} -> {:ok, payment}
         {:error, _error} -> {:error, :payment_failed}
@@ -127,27 +154,16 @@ defmodule TeacherAssistant.Academics.Fees do
     if MapSet.member?(@valid_methods, method), do: :ok, else: {:error, :invalid_method}
   end
 
-  @doc "Deletes `payment`."
-  def delete_payment(%Payment{} = payment) do
-    case Ash.destroy(payment, authorize?: false) do
-      :ok -> :ok
-      {:ok, _} -> :ok
-      {:error, _error} -> {:error, :delete_failed}
-    end
-  end
-
   @doc """
   Lists `Payment`s for `enrollment` (struct or bare id), newest first
   (`paid_on` desc, then `inserted_at` desc).
   """
   def list_payments(enrollment) do
     id = enrollment_id(enrollment)
-
-    Payment
-    |> Ash.Query.filter(enrollment_id == ^id)
-    |> Ash.Query.sort(paid_on: :desc, inserted_at: :desc)
-    |> Ash.read!(authorize?: false)
+    list_payments_for_enrollment_id!(id)
   end
+
+  # --- Adjustments ---------------------------------------------------------
 
   @doc """
   Upserts the fee adjustment for `enrollment` (struct or bare id) to `attrs`
@@ -168,7 +184,7 @@ defmodule TeacherAssistant.Academics.Fees do
         workspace_id: e.workspace_id,
         enrollment_id: e.id
       })
-      |> Ash.create(authorize?: false)
+      |> Ash.create()
       |> case do
         {:ok, adjustment} -> {:ok, adjustment}
         {:error, _error} -> {:error, :adjustment_failed}
@@ -179,23 +195,17 @@ defmodule TeacherAssistant.Academics.Fees do
   @doc "Deletes the fee adjustment for `enrollment` (struct or bare id), if any."
   def clear_adjustment(enrollment) do
     id = enrollment_id(enrollment)
+    adjustments = list_adjustments_for_enrollment_id!(id)
 
-    FeeAdjustment
-    |> Ash.Query.filter(enrollment_id == ^id)
-    |> Ash.read(authorize?: false)
-    |> case do
-      {:ok, adjustments} ->
-        try do
-          Enum.each(adjustments, &Ash.destroy!(&1, authorize?: false))
-          {:ok, length(adjustments)}
-        rescue
-          _ -> {:error, :adjustment_failed}
-        end
-
-      {:error, _error} ->
-        {:error, :adjustment_failed}
+    try do
+      Enum.each(adjustments, &Ash.destroy!/1)
+      {:ok, length(adjustments)}
+    rescue
+      _ -> {:error, :adjustment_failed}
     end
   end
+
+  # --- Balances --------------------------------------------------------------
 
   @doc """
   Returns the `FeeBalance.compute/4` map for `enrollment` (struct or bare
@@ -213,10 +223,7 @@ defmodule TeacherAssistant.Academics.Fees do
   end
 
   defp adjustment_amount_for(enrollment_id) do
-    FeeAdjustment
-    |> Ash.Query.filter(enrollment_id == ^enrollment_id)
-    |> Ash.read!(authorize?: false)
-    |> case do
+    case list_adjustments_for_enrollment_id!(enrollment_id) do
       [adjustment | _] -> adjustment.amount
       [] -> 0
     end
@@ -229,7 +236,7 @@ defmodule TeacherAssistant.Academics.Fees do
   adjustment.
   """
   def class_balances(%ClassGroup{} = class_group, on_date \\ Date.utc_today()) do
-    roster = Academics.list_roster(class_group)
+    roster = TeacherAssistant.Enrollment.list_roster(class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     tranches = list_tranches(class_group)
@@ -238,9 +245,8 @@ defmodule TeacherAssistant.Academics.Fees do
       if enrollment_ids == [] do
         %{}
       else
-        Payment
-        |> Ash.Query.filter(enrollment_id in ^enrollment_ids)
-        |> Ash.read!(authorize?: false)
+        enrollment_ids
+        |> list_payments_for_enrollment_ids!()
         |> Enum.group_by(& &1.enrollment_id)
       end
 
@@ -248,9 +254,8 @@ defmodule TeacherAssistant.Academics.Fees do
       if enrollment_ids == [] do
         %{}
       else
-        FeeAdjustment
-        |> Ash.Query.filter(enrollment_id in ^enrollment_ids)
-        |> Ash.read!(authorize?: false)
+        enrollment_ids
+        |> list_adjustments_for_enrollment_ids!()
         |> Map.new(&{&1.enrollment_id, &1.amount})
       end
 
@@ -270,7 +275,7 @@ defmodule TeacherAssistant.Academics.Fees do
   defp fetch_enrollment(%Enrollment{} = e), do: {:ok, e}
 
   defp fetch_enrollment(id) when is_binary(id) do
-    case Ash.get(Enrollment, id, authorize?: false) do
+    case Ash.get(Enrollment, id) do
       {:ok, e} -> {:ok, e}
       {:error, _error} -> {:error, :not_found}
     end

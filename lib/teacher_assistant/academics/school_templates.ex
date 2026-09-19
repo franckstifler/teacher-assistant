@@ -35,7 +35,15 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
   @collège_levels ~w(6ème 5ème 4ème 3ème)
   @technical_levels ["1ère Année", "2ème Année", "3ème Année", "4ème Année"]
   @cetic_specialities ~w(ELEQ MACO MENU)
-  @anglophone_levels ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Lower Sixth", "Upper Sixth"]
+  @anglophone_levels [
+    "Form 1",
+    "Form 2",
+    "Form 3",
+    "Form 4",
+    "Form 5",
+    "Lower Sixth",
+    "Upper Sixth"
+  ]
   @sixth ["Lower Sixth", "Upper Sixth"]
 
   # ---- subjects ------------------------------------------------------------

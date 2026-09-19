@@ -1,19 +1,19 @@
 defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
 
   def mount(%{"entry_id" => entry_id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    case ws && Academics.fetch_owned_entry_with_context(entry_id, ws) do
+    case ws && Curriculum.fetch_owned_entry_with_context(entry_id, ws) do
       {:ok, bundle} ->
-        {:ok, lesson_plan} = Academics.ensure_lesson_plan(bundle.entry, bundle.ctx)
+        {:ok, lesson_plan} = Curriculum.ensure_lesson_plan(bundle.entry, bundle.ctx)
 
         {:ok,
          socket
          |> assign(:ctx_bundle, bundle)
          |> assign(:lesson_plan, lesson_plan)
-         |> assign(:steps, Academics.list_lesson_steps(lesson_plan))
+         |> assign(:steps, Curriculum.list_lesson_steps!(lesson_plan.id))
          |> assign(:saved_at, nil)
          |> assign(:header_form, header_form(lesson_plan))}
 
@@ -23,39 +23,36 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   end
 
   defp header_form(lesson_plan) do
-    to_form(
-      %{
-        "titre" => lesson_plan.titre,
-        "duration_minutes" => lesson_plan.duration_minutes,
-        "lesson_date" => lesson_plan.lesson_date,
-        "competence_attendue" => lesson_plan.competence_attendue,
-        "situation_probleme" => lesson_plan.situation_probleme,
-        "objectifs" => lesson_plan.objectifs,
-        "supports" => lesson_plan.supports,
-        "prerequis" => lesson_plan.prerequis
-      },
-      as: :lesson_plan
-    )
+    lesson_plan
+    |> AshPhoenix.Form.for_update(:update, as: "lesson_plan")
+    |> to_form()
   end
 
   def handle_event("save_header", %{"lesson_plan" => params}, socket) do
-    {:ok, lesson_plan} = Academics.update_lesson_plan(socket.assigns.lesson_plan, params)
+    case AshPhoenix.Form.submit(socket.assigns.header_form, params: params) do
+      {:ok, lesson_plan} ->
+        {:noreply,
+         socket
+         |> assign(:lesson_plan, lesson_plan)
+         |> assign(:header_form, header_form(lesson_plan))
+         |> assign(:saved_at, DateTime.utc_now())}
 
-    {:noreply,
-     socket
-     |> assign(:lesson_plan, lesson_plan)
-     |> assign(:header_form, header_form(lesson_plan))
-     |> assign(:saved_at, DateTime.utc_now())}
+      {:error, form} ->
+        {:noreply, assign(socket, :header_form, form)}
+    end
   end
 
   def handle_event("add_step", _params, socket) do
-    {:ok, _} = Academics.add_lesson_step(socket.assigns.lesson_plan)
+    {:ok, _} = Curriculum.add_lesson_step(socket.assigns.lesson_plan)
     {:noreply, reload_steps(socket)}
   end
 
   def handle_event("save_step", %{"id" => id, "step" => params}, socket) do
-    with {:ok, step} <- Academics.fetch_owned_lesson_step(id, socket.assigns.lesson_plan),
-         {:ok, _} <- Academics.update_lesson_step(step, params) do
+    with {:ok, step} <- Curriculum.fetch_owned_lesson_step(id, socket.assigns.lesson_plan),
+         {:ok, _} <-
+           step
+           |> AshPhoenix.Form.for_update(:update, as: "step")
+           |> AshPhoenix.Form.submit(params: params) do
       {:noreply, socket |> reload_steps() |> assign(:saved_at, DateTime.utc_now())}
     else
       _ -> {:noreply, socket}
@@ -64,8 +61,8 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
 
   def handle_event("move_step", %{"id" => id, "dir" => dir}, socket)
       when dir in ["up", "down"] do
-    with {:ok, step} <- Academics.fetch_owned_lesson_step(id, socket.assigns.lesson_plan) do
-      {:ok, _} = Academics.move_lesson_step(step, String.to_existing_atom(dir))
+    with {:ok, step} <- Curriculum.fetch_owned_lesson_step(id, socket.assigns.lesson_plan) do
+      {:ok, _} = Curriculum.move_lesson_step(step, String.to_existing_atom(dir))
       {:noreply, reload_steps(socket)}
     else
       _ -> {:noreply, socket}
@@ -73,8 +70,8 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   end
 
   def handle_event("delete_step", %{"id" => id}, socket) do
-    with {:ok, step} <- Academics.fetch_owned_lesson_step(id, socket.assigns.lesson_plan) do
-      :ok = Academics.delete_lesson_step(step)
+    with {:ok, step} <- Curriculum.fetch_owned_lesson_step(id, socket.assigns.lesson_plan) do
+      :ok = Curriculum.delete_lesson_step(step)
       {:noreply, reload_steps(socket)}
     else
       _ -> {:noreply, socket}
@@ -82,7 +79,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   end
 
   defp reload_steps(socket) do
-    assign(socket, :steps, Academics.list_lesson_steps(socket.assigns.lesson_plan))
+    assign(socket, :steps, Curriculum.list_lesson_steps!(socket.assigns.lesson_plan.id))
   end
 
   defp fmt_min(nil), do: "—"
@@ -98,17 +95,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   defp over_budget?(_steps, _lesson_plan), do: false
 
   defp step_form(step) do
-    to_form(
-      %{
-        "etape" => step.etape,
-        "duration_minutes" => step.duration_minutes,
-        "contenus" => step.contenus,
-        "supports" => step.supports,
-        "activites" => step.activites
-      },
-      as: :step,
-      id: "step-#{step.id}"
-    )
+    step
+    |> AshPhoenix.Form.for_update(:update, as: "step", id: "step-#{step.id}")
+    |> to_form()
   end
 
   def render(assigns) do

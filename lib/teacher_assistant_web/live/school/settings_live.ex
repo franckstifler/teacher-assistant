@@ -1,10 +1,12 @@
 defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Subjects
-  alias TeacherAssistant.Accounts.{Permissions, Schools}
-  alias TeacherAssistant.Accounts.{SchoolTypes, SchoolSubsystems, SchoolSectors, CameroonRegions}
+  alias TeacherAssistant.Academics.{AcademicYear, Subject, SubjectCategory}
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Accounts.{Permissions}
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -14,25 +16,30 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     else
       admin? = Permissions.admin?(scope)
 
-      {:ok,
-       socket
-       |> assign(:scope, scope)
-       |> assign(:head?, Permissions.head?(scope))
-       |> assign(:admin?, admin?)
-       |> assign(:name_form, to_form(%{"name" => scope.current_workspace.name}, as: :school))
-       |> assign(
-         :year_form,
-         to_form(%{"name" => "", "start_date" => "", "end_date" => ""}, as: :year)
-       )
-       |> assign(:subjects, Subjects.list(scope.current_workspace))
-       |> assign(:subject_form, to_form(%{"name" => "", "category" => "general"}, as: :subject))
-       |> allow_upload(:logo,
-         accept: ~w(.png .jpg .jpeg),
-         max_entries: 1,
-         max_file_size: 2_000_000
-       )
-       |> load_years()
-       |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)}
+      socket =
+        socket
+        |> assign(:scope, scope)
+        |> assign(:head?, Permissions.head?(scope))
+        |> assign(:admin?, admin?)
+        |> assign(:name_form, name_form(scope.current_workspace))
+        |> assign(:subjects, Curriculum.list_subjects(scope.current_workspace))
+        |> assign(:subject_form, subject_form(scope.current_workspace.id))
+        |> allow_upload(:logo,
+          accept: ~w(.png .jpg .jpeg),
+          max_entries: 1,
+          max_file_size: 2_000_000
+        )
+        # `load_years/1` must run before `year_form/2` is built: the form's
+        # `active` flag (see `year_form/2`) is derived from whether any years
+        # already exist.
+        |> load_years()
+
+      socket =
+        socket
+        |> assign(:year_form, year_form(scope.current_workspace.id, socket.assigns.years == []))
+        |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)
+
+      {:ok, socket}
     end
   end
 
@@ -55,6 +62,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             :if={@head?}
             for={@name_form}
             id="school-settings"
+            phx-change="validate_name"
             phx-submit="save"
             class="ta-leaf space-y-3"
           >
@@ -68,6 +76,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             <.form
               for={@profile_form}
               id="school-profile-form"
+              phx-change="validate_profile"
               phx-submit="save_profile"
               class="space-y-3"
             >
@@ -77,28 +86,28 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                   type="select"
                   field={@profile_form[:school_type]}
                   label={gettext("Type d'établissement")}
-                  options={for t <- SchoolTypes.all(), do: {SchoolTypes.label(t), t}}
+                  options={for t <- SchoolType.values(), do: {SchoolType.label(t), t}}
                   prompt={gettext("Sélectionner un type")}
                 />
                 <.input
                   type="select"
                   field={@profile_form[:subsystem]}
                   label={gettext("Sous-système")}
-                  options={for s <- SchoolSubsystems.all(), do: {SchoolSubsystems.label(s), s}}
+                  options={for s <- SchoolSubsystem.values(), do: {SchoolSubsystem.label(s), s}}
                   prompt={gettext("Sélectionner un sous-système")}
                 />
                 <.input
                   type="select"
                   field={@profile_form[:sector]}
                   label={gettext("Secteur")}
-                  options={for s <- SchoolSectors.all(), do: {SchoolSectors.label(s), s}}
+                  options={for s <- SchoolSector.values(), do: {SchoolSector.label(s), s}}
                   prompt={gettext("Sélectionner un secteur")}
                 />
                 <.input
                   type="select"
                   field={@profile_form[:region]}
                   label={gettext("Région")}
-                  options={for r <- CameroonRegions.all(), do: {CameroonRegions.label(r), r}}
+                  options={for r <- CameroonRegion.values(), do: {CameroonRegion.label(r), r}}
                   prompt={gettext("Sélectionner une région")}
                 />
                 <.input field={@profile_form[:department]} label={gettext("Département")} />
@@ -189,7 +198,13 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
           <div class="ta-leaf space-y-3">
             <h3 class="text-sm font-semibold">{gettext("Create an academic year")}</h3>
-            <.form for={@year_form} id="year-form" phx-submit="create_year" class="space-y-2">
+            <.form
+              for={@year_form}
+              id="year-form"
+              phx-change="validate_year"
+              phx-submit="create_year"
+              class="space-y-2"
+            >
               <div class="grid gap-2 sm:grid-cols-3">
                 <.input field={@year_form[:name]} label={gettext("Name")} />
                 <.input field={@year_form[:start_date]} type="date" label={gettext("Start date")} />
@@ -218,7 +233,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 <tr :for={s <- @subjects} id={"subject-row-#{s.id}"}>
                   <td colspan="5">
                     <.form
-                      for={to_form(subject_form_params(s), as: :subject_edit)}
+                      for={AshPhoenix.Form.for_update(s, :update, as: "subject_edit") |> to_form()}
                       id={"subject-edit-form-#{s.id}"}
                       phx-submit="update_subject"
                       class="grid items-end gap-2 sm:grid-cols-6"
@@ -235,9 +250,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                         type="select"
                         value={to_string(s.category)}
                         options={[
-                          {gettext("Générale"), "general"},
-                          {gettext("Langue"), "language"},
-                          {gettext("Technique"), "technical"}
+                          {SubjectCategory.label(:general), "general"},
+                          {SubjectCategory.label(:language), "language"},
+                          {SubjectCategory.label(:technical), "technical"}
                         ]}
                         label={gettext("Catégorie")}
                       />
@@ -289,6 +304,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             <.form
               for={@subject_form}
               id="subject-form"
+              phx-change="validate_subject"
               phx-submit="create_subject"
               class="flex flex-wrap items-end gap-2"
             >
@@ -298,9 +314,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 type="select"
                 label={gettext("Catégorie")}
                 options={[
-                  {gettext("Générale"), "general"},
-                  {gettext("Langue"), "language"},
-                  {gettext("Technique"), "technical"}
+                  {SubjectCategory.label(:general), "general"},
+                  {SubjectCategory.label(:language), "language"},
+                  {SubjectCategory.label(:technical), "technical"}
                 ]}
               />
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>
@@ -318,11 +334,16 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     """
   end
 
-  def handle_event("save", %{"school" => %{"name" => name}}, socket) do
+  def handle_event("validate_name", %{"school" => params}, socket) do
+    {:noreply,
+     assign(socket, :name_form, AshPhoenix.Form.validate(socket.assigns.name_form, params))}
+  end
+
+  def handle_event("save", %{"school" => params}, socket) do
     scope = socket.assigns.scope
 
     if Permissions.head?(scope) do
-      case Schools.rename_school(scope.current_workspace, name) do
+      case AshPhoenix.Form.submit(socket.assigns.name_form, params: params) do
         {:ok, school} ->
           new_scope = %{scope | current_workspace: school}
 
@@ -330,39 +351,48 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            socket
            |> assign(:scope, new_scope)
            |> assign(:current_scope, new_scope)
-           |> assign(:name_form, to_form(%{"name" => school.name}, as: :school))
+           |> assign(:name_form, name_form(school))
            |> put_flash(:info, gettext("École renommée avec succès."))}
 
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Impossible de renommer l'école."))}
+        {:error, form} ->
+          {:noreply,
+           socket
+           |> assign(:name_form, form)
+           |> put_flash(:error, gettext("Impossible de renommer l'école."))}
       end
     else
       {:noreply, socket}
     end
   end
 
+  def handle_event("validate_year", %{"year" => params}, socket) do
+    {:noreply,
+     assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
+  end
+
   def handle_event("create_year", %{"year" => params}, socket) do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) do
-      attrs = %{
-        name: params["name"],
-        start_date: parse_date(params["start_date"]),
-        end_date: parse_date(params["end_date"]),
-        active: socket.assigns.years == []
-      }
-
-      case Academics.create_academic_year(scope.current_workspace, attrs) do
+      case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
+
+          socket = load_years(socket)
 
           {:noreply,
            socket
            |> put_flash(:info, gettext("Année scolaire créée."))
-           |> load_years()}
+           |> assign(
+             :year_form,
+             year_form(scope.current_workspace.id, socket.assigns.years == [])
+           )}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Impossible de créer l'année scolaire."))}
+        {:error, form} ->
+          {:noreply,
+           socket
+           |> assign(:year_form, form)
+           |> put_flash(:error, gettext("Impossible de créer l'année scolaire."))}
       end
     else
       {:noreply, socket}
@@ -373,9 +403,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     with true <- Permissions.admin?(scope),
-         {:ok, year} <- Academics.get_academic_year(id),
+         {:ok, year} <- Organization.get_academic_year(id),
          true <- year.workspace_id == scope.current_workspace.id,
-         {:ok, _} <- Academics.activate_academic_year(year) do
+         {:ok, _} <- Organization.activate_academic_year(year) do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Année scolaire activée."))
@@ -385,29 +415,25 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
+  def handle_event("validate_subject", %{"subject" => params}, socket) do
+    {:noreply,
+     assign(socket, :subject_form, AshPhoenix.Form.validate(socket.assigns.subject_form, params))}
+  end
+
   def handle_event("create_subject", %{"subject" => params}, socket) do
     scope = socket.assigns.scope
     ws = scope.current_workspace
 
     if Permissions.admin?(scope) do
-      case Subjects.create(ws, %{
-             name: String.trim(params["name"] || ""),
-             category: params["category"] || "general"
-           }) do
+      case AshPhoenix.Form.submit(socket.assigns.subject_form, params: params) do
         {:ok, _} ->
           {:noreply,
            socket
-           |> assign(:subjects, Subjects.list(ws))
-           |> assign(
-             :subject_form,
-             to_form(%{"name" => "", "category" => "general"}, as: :subject)
-           )}
+           |> assign(:subjects, Curriculum.list_subjects(ws))
+           |> assign(:subject_form, subject_form(ws.id))}
 
-        {:error, :duplicate_name} ->
-          {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Nom de matière invalide."))}
+        {:error, form} ->
+          {:noreply, assign(socket, :subject_form, form)}
       end
     else
       {:noreply, socket}
@@ -420,8 +446,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
     if Permissions.admin?(scope) do
       subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
-      if subject, do: Subjects.delete(subject)
-      {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+      if subject, do: Curriculum.delete_subject(subject)
+      {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
     else
       {:noreply, socket}
     end
@@ -433,22 +459,21 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
     with true <- Permissions.admin?(scope),
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
-         {:ok, coefficient} <- parse_coefficient(params["default_coefficient"]) do
-      case Subjects.update(subject, %{
-             name: String.trim(params["name"] || ""),
-             default_coefficient: coefficient,
-             category: params["category"]
-           }) do
+         {:ok, coefficient} <- Curriculum.parse_coefficient(params["default_coefficient"]) do
+      form = AshPhoenix.Form.for_update(subject, :update, as: "subject_edit")
+
+      # `name` trims at the Subject type level (same as create and the seeder),
+      # so no per-handler trim is needed here — that asymmetry is now gone.
+      submit_params = Map.put(params, "default_coefficient", coefficient)
+
+      case AshPhoenix.Form.submit(form, params: submit_params) do
         {:ok, _} ->
           {:noreply,
            socket
-           |> assign(:subjects, Subjects.list(ws))
+           |> assign(:subjects, Curriculum.list_subjects(ws))
            |> put_flash(:info, gettext("Matière mise à jour."))}
 
-        {:error, :duplicate_name} ->
-          {:noreply, put_flash(socket, :error, gettext("Cette matière existe déjà."))}
-
-        {:error, _} ->
+        {:error, _form} ->
           {:noreply,
            put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
       end
@@ -465,12 +490,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
       result =
         if subject.active?,
-          do: Subjects.deactivate(subject),
-          else: Subjects.update(subject, %{active?: true})
+          do: Curriculum.deactivate_subject(subject),
+          else: Curriculum.update_subject(subject, %{active?: true})
 
       case result do
         {:ok, _} ->
-          {:noreply, assign(socket, :subjects, Subjects.list(ws))}
+          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
 
         _ ->
           {:noreply,
@@ -481,19 +506,35 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
+  def handle_event("validate_profile", %{"profile" => params}, socket) do
+    if socket.assigns.profile_form do
+      {:noreply,
+       assign(
+         socket,
+         :profile_form,
+         AshPhoenix.Form.validate(socket.assigns.profile_form, params)
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("save_profile", %{"profile" => attrs}, socket) do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) and socket.assigns.profile do
-      case Schools.update_school_profile(socket.assigns.profile, attrs) do
+      case AshPhoenix.Form.submit(socket.assigns.profile_form, params: attrs) do
         {:ok, _profile} ->
           {:noreply,
            socket
            |> put_flash(:info, gettext("Profil de l'école mis à jour."))
            |> load_profile()}
 
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Impossible de mettre à jour le profil."))}
+        {:error, form} ->
+          {:noreply,
+           socket
+           |> assign(:profile_form, form)
+           |> put_flash(:error, gettext("Impossible de mettre à jour le profil."))}
       end
     else
       {:noreply, socket}
@@ -524,7 +565,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
       case uploaded do
         [relative_path] ->
-          case Schools.update_school_profile(socket.assigns.profile, %{logo_path: relative_path}) do
+          case Accounts.update_school_profile(socket.assigns.profile, %{logo_path: relative_path}) do
             {:ok, _profile} ->
               {:noreply,
                socket
@@ -546,17 +587,20 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   defp load_years(socket) do
     scope = socket.assigns.scope
-    assign(socket, :years, Academics.list_academic_years(scope.current_workspace))
+    assign(socket, :years, Organization.list_academic_years(scope.current_workspace))
   end
 
   defp load_profile(socket) do
     scope = socket.assigns.scope
 
-    case Schools.fetch_school_profile(scope.current_workspace) do
+    case Accounts.fetch_school_profile(scope.current_workspace) do
       {:ok, profile} ->
         socket
         |> assign(:profile, profile)
-        |> assign(:profile_form, to_form(profile_params(profile), as: :profile))
+        |> assign(
+          :profile_form,
+          AshPhoenix.Form.for_update(profile, :update, as: "profile") |> to_form()
+        )
 
       {:error, _} ->
         socket
@@ -565,51 +609,43 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
-  defp profile_params(profile) do
-    %{
-      "short_name" => profile.short_name,
-      "school_type" => profile.school_type,
-      "subsystem" => profile.subsystem,
-      "sector" => profile.sector,
-      "region" => profile.region,
-      "department" => profile.department,
-      "town" => profile.town,
-      "phone" => profile.phone,
-      "email" => profile.email,
-      "address" => profile.address,
-      "head_name" => profile.head_name,
-      "motto" => profile.motto,
-      "registration_number" => profile.registration_number
-    }
+  defp name_form(workspace) do
+    workspace |> AshPhoenix.Form.for_update(:update, as: "school") |> to_form()
   end
 
-  defp parse_date(nil), do: nil
-  defp parse_date(""), do: nil
-
-  defp parse_date(str) do
-    case Date.from_iso8601(str) do
-      {:ok, date} -> date
-      _ -> nil
-    end
+  # `workspace_id` and `active` are server-controlled (never user input), so
+  # they're set on the changeset at build time via `prepare_source` — not
+  # merged into the submitted params at submit time. Only the first year of a
+  # workspace is created active (the `:create_for_workspace` action
+  # deactivates any other active year), so `active?` is a *live* value: it
+  # flips from `true` to `false` the moment the first year exists. Callers
+  # must rebuild the form — via this helper — on mount and again right after
+  # a successful year creation (see `handle_event("create_year", ...)`).
+  defp year_form(workspace_id, active?) do
+    AcademicYear
+    |> AshPhoenix.Form.for_create(:create_for_workspace,
+      as: "year",
+      prepare_source: fn changeset ->
+        changeset
+        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
+        |> Ash.Changeset.change_attribute(:active, active?)
+      end
+    )
+    |> to_form()
   end
 
-  defp subject_form_params(subject) do
-    %{
-      "name" => subject.name,
-      "default_coefficient" => Decimal.to_string(subject.default_coefficient),
-      "category" => to_string(subject.category)
-    }
+  # `workspace_id` is server-controlled, set on the changeset at build time
+  # via `prepare_source`. It's stable for the life of this LiveView (renaming
+  # the school doesn't change its id), so no mid-session rebuild is needed
+  # beyond the fresh scaffold assigned after each successful create.
+  defp subject_form(workspace_id) do
+    Subject
+    |> AshPhoenix.Form.for_create(:create,
+      as: "subject",
+      prepare_source: fn changeset ->
+        Ash.Changeset.change_attribute(changeset, :workspace_id, workspace_id)
+      end
+    )
+    |> to_form()
   end
-
-  # Mirrors TeacherAssistant.Academics.Assignments.parse_coefficient/1 (private there).
-  defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
-
-  defp parse_coefficient(value) when is_binary(value) do
-    case Decimal.parse(String.trim(value)) do
-      {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
-      _ -> :error
-    end
-  end
-
-  defp parse_coefficient(_), do: :error
 end

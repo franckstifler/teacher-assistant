@@ -1,13 +1,17 @@
 defmodule TeacherAssistantWeb.Teacher.FicheLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.ProgressionEntry
+  alias TeacherAssistant.Academics.ProgressionModule
   alias TeacherAssistant.Academics.Quota
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    case ws && Academics.fetch_owned_plan(id, ws) do
+    case ws && Curriculum.fetch_owned_plan(id, ws) do
       {:ok, plan} ->
         {:ok, assign_modules(socket, plan)}
 
@@ -25,7 +29,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         {:noreply, socket}
 
       t ->
-        case Academics.create_module(socket.assigns.plan, %{title: t}) do
+        case Curriculum.create_module(socket.assigns.plan, %{title: t}) do
           {:ok, _} ->
             {:noreply, assign_modules(socket, socket.assigns.plan)}
 
@@ -38,8 +42,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("rename-module", %{"module_id" => id, "title" => title}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
-         {:ok, _} <- Academics.rename_module(m, title) do
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
+         {:ok, _} <- Curriculum.rename_module(m, title) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not rename module"))}
@@ -49,8 +53,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("delete-module", %{"id" => id}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
-         :ok <- Academics.delete_module(m) do
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
+         :ok <- Curriculum.delete_module(m) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       {:error, :default_bucket} ->
@@ -65,8 +69,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, entry_attrs} <- entry_attrs_from_params(p),
-         {:ok, module} <- ws && Academics.fetch_owned_module(module_id, ws),
-         {:ok, _} <- Academics.add_progression_entry(module, entry_attrs) do
+         {:ok, module} <- ws && Curriculum.fetch_owned_module(module_id, ws),
+         {:ok, _} <- Curriculum.add_progression_entry(module, entry_attrs) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not add entry"))}
@@ -76,9 +80,9 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("delete-entry", %{"id" => id}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    case ws && Academics.fetch_owned_entry(id, ws) do
+    case ws && Curriculum.fetch_owned_entry(id, ws) do
       {:ok, entry} ->
-        case Academics.delete_progression_entry(entry) do
+        case Curriculum.delete_progression_entry(entry) do
           :ok -> {:noreply, assign_modules(socket, socket.assigns.plan)}
           {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
         end
@@ -89,14 +93,14 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   end
 
   def handle_event("apply-layout", %{"layout" => layout}, socket) do
-    case Academics.apply_layout(socket.assigns.plan, layout) do
+    case Curriculum.apply_layout(socket.assigns.plan, layout) do
       {:ok, :applied} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
       {:error, _} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
     end
   end
 
   def handle_event("duplicate-plan", _params, socket) do
-    case Academics.duplicate_progression_plan(socket.assigns.plan, %{}) do
+    case Curriculum.duplicate_progression_plan(socket.assigns.plan, %{}) do
       {:ok, copy} -> {:noreply, push_navigate(socket, to: ~p"/teacher/plans/#{copy.id}")}
       {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not duplicate plan"))}
     end
@@ -112,7 +116,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       target_lesson_count: parse_int(p["target_lesson_count"])
     }
 
-    case ws && ctx && Academics.update_teaching_context(ctx.id, ws, attrs) do
+    case ws && ctx && Curriculum.update_teaching_context(ctx.id, ws, attrs) do
       {:ok, _} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not save targets"))}
     end
@@ -121,8 +125,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("save-module-credit", %{"module_id" => id, "credit_hours" => raw}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
-         {:ok, _} <- Academics.update_module_credit(m, parse_decimal(raw)) do
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
+         {:ok, _} <- Curriculum.update_module_credit(m, parse_decimal(raw)) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not save credit"))}
@@ -132,8 +136,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   def handle_event("toggle-complete", %{"id" => id}, socket) do
     ws = socket.assigns.current_scope.current_workspace
 
-    with {:ok, e} <- ws && Academics.fetch_owned_entry(id, ws),
-         {:ok, _} <- Academics.set_entry_completed(e, not e.completed?) do
+    with {:ok, e} <- ws && Curriculum.fetch_owned_entry(id, ws),
+         {:ok, _} <- Curriculum.set_entry_completed(e, not e.completed?) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not update lesson"))}
@@ -144,8 +148,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
     sequence_id = if raw in [nil, ""], do: nil, else: raw
 
-    with {:ok, m} <- ws && Academics.fetch_owned_module(id, ws),
-         {:ok, _} <- Academics.assign_module_sequence(m, sequence_id) do
+    with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
+         {:ok, _} <- Curriculum.assign_module_sequence(m, sequence_id) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not assign sequence"))}
@@ -154,22 +158,22 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
   defp assign_modules(socket, plan) do
     ctx =
-      case Academics.get_teaching_context(plan.teaching_context_id) do
+      case Curriculum.get_teaching_context(plan.teaching_context_id) do
         {:ok, ctx} -> ctx
         _ -> nil
       end
 
-    modules = Academics.list_progression_modules(plan)
+    modules = Curriculum.list_progression_modules!(plan.id)
 
     prepared =
       modules
       |> Enum.flat_map(& &1.entries)
-      |> Enum.filter(fn e -> Academics.get_lesson_plan_for_entry(e.id) end)
+      |> Enum.filter(fn e -> Curriculum.get_lesson_plan_for_entry(e.id) end)
       |> MapSet.new(& &1.id)
 
     ws = socket.assigns.current_scope.current_workspace
-    year = ws && Academics.current_academic_year(ws)
-    sequences = (year && Academics.list_sequences(year)) || []
+    year = ws && Organization.current_academic_year(ws)
+    sequences = (year && Organization.list_sequences(year)) || []
 
     socket
     |> assign(:plan, plan)
@@ -177,9 +181,25 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     |> assign(:modules, modules)
     |> assign(:prepared, prepared)
     |> assign(:sequences, sequences)
-    |> assign(:module_form, to_form(%{}, as: :module))
+    |> assign(:module_form, module_form())
     |> assign(:quota, Quota.summarize(ctx, modules))
-    |> assign(:targets_form, to_form(%{}, as: :targets))
+    |> assign(:targets_form, targets_form())
+  end
+
+  # `create_module/2` computes `position` (private to `Curriculum`) and
+  # `update_teaching_context/3` re-checks workspace ownership before updating
+  # — neither is reproducible by a bare Ash action, so these two forms stay
+  # scaffolds; their handlers always call the domain function on submit.
+  defp module_form do
+    ProgressionModule
+    |> AshPhoenix.Form.for_create(:create, as: "module")
+    |> to_form()
+  end
+
+  defp targets_form do
+    TeachingContext
+    |> AshPhoenix.Form.for_create(:create, as: "targets")
+    |> to_form()
   end
 
   defp module_hours(%{entries: entries}),
@@ -252,7 +272,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       <p class={["ta-num mt-1 text-2xl font-semibold leading-none", ratio_accent(@ratio)]}>
         {@value}<span :if={@target} class="text-base font-normal text-base-content/55">
           / {@target}{@suffix}
-        </span><span
+        </span>
+        <span
           :if={!@target && @suffix}
           class="text-base font-normal text-base-content/55"
         >
@@ -308,7 +329,14 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
-  defp entry_form_for(m), do: to_form(%{}, as: :entry, id: "entry-form-#{m.id}")
+  # `add_progression_entry/2` computes `position` and inherits the module's
+  # `sequence_id` (private/derived, not reproducible by a bare Ash action), so
+  # this form is a scaffold — `add-entry` always calls the domain function.
+  defp entry_form_for(m) do
+    ProgressionEntry
+    |> AshPhoenix.Form.for_create(:create, as: "entry", id: "entry-form-#{m.id}")
+    |> to_form()
+  end
 
   def render(assigns) do
     ~H"""
@@ -450,7 +478,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 </span>
                 <.form
                   :if={not m.default?}
-                  for={to_form(%{}, as: :credit)}
+                  for={AshPhoenix.Form.for_update(m, :update, as: "credit") |> to_form()}
                   id={"module-credit-form-#{m.id}"}
                   phx-submit="save-module-credit"
                   class="flex items-end gap-1"
@@ -466,7 +494,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                   <.button type="submit" class="btn btn-ghost btn-xs">{gettext("Save")}</.button>
                 </.form>
                 <.form
-                  for={to_form(%{}, as: :seq)}
+                  for={AshPhoenix.Form.for_update(m, :update, as: "seq") |> to_form()}
                   id={"seq-form-#{m.id}"}
                   phx-change="assign-module-sequence"
                   class="flex items-center gap-1"

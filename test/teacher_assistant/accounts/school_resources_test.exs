@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Accounts.SchoolResourcesTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics.Workspace
-  alias TeacherAssistant.Accounts.{SchoolMembership, SchoolInvitation, SchoolRoles}
+  alias TeacherAssistant.Accounts.{SchoolMembership, SchoolInvitation, SchoolRole}
   alias TeacherAssistant.TeacherFixtures
 
   setup do
@@ -60,5 +60,5 @@ defmodule TeacherAssistant.Accounts.SchoolResourcesTest do
              |> Ash.create(authorize?: false)
   end
 
-  test "role labels are bilingual-ready", do: assert(SchoolRoles.label(:head) =~ "Chef")
+  test "role labels are bilingual-ready", do: assert(SchoolRole.label(:head) =~ "Chef")
 end

@@ -1,46 +1,47 @@
 defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Attendance
-  alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée T"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday, so the slot's day_of_week matches.
     date = ~D[2025-09-08]
 
     {:ok, _slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -74,8 +75,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date,
     enrollment: enrollment
   } do
-    {:ok, other} = Academics.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
-    other_enr = Enum.find(Academics.list_roster(cg), &(&1.student.id == other.id)).enrollment
+    {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
+    other_enr = Enum.find(Enrollment.list_roster(cg), &(&1.student.id == other.id)).enrollment
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
@@ -97,8 +98,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date,
     enrollment: enrollment
   } do
-    {:ok, other} = Academics.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
-    other_enr = Enum.find(Academics.list_roster(cg), &(&1.student.id == other.id)).enrollment
+    {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
+    other_enr = Enum.find(Enrollment.list_roster(cg), &(&1.student.id == other.id)).enrollment
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
@@ -121,12 +122,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
 
     {:ok, view, _html} = live(conn_for(school, dm), att_path(cg, period, date))
 
@@ -179,9 +180,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn_for(school, other), att_path(cg, period, date))
@@ -193,17 +194,17 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date
   } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, att_path(ocg, period, date))

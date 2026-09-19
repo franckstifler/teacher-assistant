@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.Enrollment do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Enrollment,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -28,6 +28,64 @@ defmodule TeacherAssistant.Academics.Enrollment do
       ],
       update: [:status, :repeater, :class_group_id]
     ]
+
+    read :for_class_group do
+      argument :class_group_id, :uuid, allow_nil?: false
+      filter expr(class_group_id == ^arg(:class_group_id))
+      prepare build(load: [:student])
+    end
+
+    read :for_student_and_year do
+      argument :student_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+
+      filter expr(student_id == ^arg(:student_id) and academic_year_id == ^arg(:academic_year_id))
+    end
+
+    # Atomically creates a Student and its first Enrollment (the "new
+    # student" path shared by the personal add_student/2 and the school
+    # enroll_new/2 flows). `transaction? true` wraps the whole run in a DB
+    # transaction (Ash starts it before `run` executes, per touches_resources
+    # below) — an Enrollment insert failure (e.g. the unique_enrollment_per_year
+    # identity) rolls back the just-created Student too, no orphan row.
+    action :enroll_new, :map do
+      argument :class_group_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :repeater, :boolean, allow_nil?: false, default: false
+
+      argument :status, TeacherAssistant.Academics.EnrollmentStatus,
+        allow_nil?: false,
+        default: :inscription
+
+      argument :student_attrs, :map, allow_nil?: false
+
+      touches_resources [TeacherAssistant.Academics.Student]
+      transaction? true
+
+      run fn input, _ctx ->
+        args = input.arguments
+        student_attrs = Map.put(args.student_attrs, :workspace_id, args.workspace_id)
+
+        with {:ok, student} <-
+               TeacherAssistant.Academics.Student
+               |> Ash.Changeset.for_create(:create, student_attrs)
+               |> Ash.create(),
+             {:ok, enrollment} <-
+               __MODULE__
+               |> Ash.Changeset.for_create(:create, %{
+                 student_id: student.id,
+                 class_group_id: args.class_group_id,
+                 academic_year_id: args.academic_year_id,
+                 workspace_id: args.workspace_id,
+                 repeater: args.repeater,
+                 status: args.status
+               })
+               |> Ash.create() do
+          {:ok, %{student: student, enrollment: enrollment}}
+        end
+      end
+    end
   end
 
   policies do

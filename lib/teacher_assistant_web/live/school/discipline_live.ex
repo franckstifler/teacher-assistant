@@ -1,9 +1,10 @@
 defmodule TeacherAssistantWeb.School.DisciplineLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
   @sanction_types [
@@ -19,11 +20,11 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- authorized?(scope, cg) do
       year = scope.current_academic_year
-      sequences = if year, do: Academics.list_sequences(year), else: []
-      terms = if year, do: Academics.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(year), else: []
+      terms = if year, do: Organization.list_terms(year), else: []
 
       {:ok,
        socket
@@ -33,7 +34,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          sequences: sequences,
          terms: terms,
          can_edit?: Permissions.conduct_manager?(scope),
-         roster: Academics.list_roster(cg),
+         roster: Enrollment.list_roster(cg),
          sanction_types: @sanction_types
        )
        |> select_period(nil)}
@@ -158,7 +159,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     year = socket.assigns.year
 
     period =
-      (year && param && Academics.resolve_period(year, param)) ||
+      (year && param && Organization.resolve_period(year, param)) ||
         socket.assigns[:period] ||
         default_period(socket.assigns.sequences)
 
@@ -168,7 +169,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
     assign(socket,
       period: period,
-      period_param: period && Academics.period_param(period),
+      period_param: period && Organization.period_param(period),
       sanctions: sanctions,
       discipline_by_enrollment: discipline_by_enrollment
     )

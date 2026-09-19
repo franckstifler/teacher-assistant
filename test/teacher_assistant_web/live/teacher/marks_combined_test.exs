@@ -2,39 +2,44 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Courses}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Assessment
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Academics.build_default_calendar(year)
-    seq = Academics.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(year)
+    seq = Organization.list_sequences(year) |> List.first()
 
-    {:ok, maco} = Academics.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Academics.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, maco} =
+      Enrollment.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Mathématiques"})
-    {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Mathématiques"})
+    {:ok, menu} =
+      Enrollment.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, s_maco} = Academics.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, s_menu} = Academics.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Mathématiques"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Mathématiques"})
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
+    {:ok, s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(profile, head.id)
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+
+    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -62,8 +67,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     s_maco: s_maco,
     s_menu: s_menu
   } do
-    {:ok, _} = Academics.create_combined_assessment(course, seq, %{label: "Devoir 1"})
-    %{id: aid} = course |> Academics.combined_assessments_for(seq) |> List.first()
+    {:ok, _} = Assessment.create_combined_assessment(course, seq, %{label: "Devoir 1"})
+    %{id: aid} = course |> Assessment.combined_assessments_for(seq) |> List.first()
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}&assessment=#{aid}")
@@ -86,8 +91,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
     |> render_submit()
 
-    assert [a_maco] = Academics.list_assessments(tc_maco, seq)
-    assert [a_menu] = Academics.list_assessments(tc_menu, seq)
+    assert [a_maco] = Assessment.list_assessments(tc_maco, seq)
+    assert [a_menu] = Assessment.list_assessments(tc_menu, seq)
     assert a_maco.label == "Devoir 1"
     assert a_menu.label == "Devoir 1"
     assert a_maco.id != a_menu.id
@@ -112,14 +117,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#marks-form", %{"scores" => %{s_maco.id => "15", s_menu.id => "12"}})
     |> render_submit()
 
-    [a_maco] = Academics.list_assessments(tc_maco, seq)
-    [a_menu] = Academics.list_assessments(tc_menu, seq)
+    [a_maco] = Assessment.list_assessments(tc_maco, seq)
+    [a_menu] = Assessment.list_assessments(tc_menu, seq)
 
-    assert [m_maco] = Academics.list_marks(a_maco)
+    assert [m_maco] = Assessment.list_marks(a_maco)
     assert m_maco.student_id == s_maco.id
     assert Decimal.equal?(m_maco.score, Decimal.new("15"))
 
-    assert [m_menu] = Academics.list_marks(a_menu)
+    assert [m_menu] = Assessment.list_marks(a_menu)
     assert m_menu.student_id == s_menu.id
     assert Decimal.equal?(m_menu.score, Decimal.new("12"))
   end
@@ -146,10 +151,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
     assert html =~ "0 and 20"
 
-    [a_maco] = Academics.list_assessments(tc_maco, seq)
-    [a_menu] = Academics.list_assessments(tc_menu, seq)
+    [a_maco] = Assessment.list_assessments(tc_maco, seq)
+    [a_menu] = Assessment.list_assessments(tc_menu, seq)
 
-    assert Academics.list_marks(a_maco) == []
-    assert Academics.list_marks(a_menu) == []
+    assert Assessment.list_marks(a_maco) == []
+    assert Assessment.list_marks(a_menu) == []
   end
 end

@@ -1,14 +1,14 @@
 defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Courses}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -16,19 +16,19 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
@@ -52,7 +52,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
     )
     |> render_submit()
 
-    assert length(Academics.list_logs_for_plan(plan)) == 1
+    assert length(Curriculum.list_logs_for_plan!(plan.id)) == 1
   end
 
   test "hours field shows its default value", %{conn: conn} do
@@ -95,55 +95,55 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
 
   describe "combined course" do
     setup %{conn: conn, actor: head} do
-      {:ok, school} = Schools.create_school(head, %{name: "Lycée Log"})
+      {:ok, school} = Organization.create_school(head, %{name: "Lycée Log"})
 
       {:ok, year} =
-        Academics.create_academic_year(school, %{
+        Organization.create_academic_year(school, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      {:ok, cg_a} = Academics.create_class_group(school, year, %{label: "1ère A", level: "1ère"})
-      {:ok, cg_b} = Academics.create_class_group(school, year, %{label: "1ère B", level: "1ère"})
+      {:ok, cg_a} = Enrollment.create_class_group(school, year, %{label: "1ère A", level: "1ère"})
+      {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "1ère B", level: "1ère"})
 
-      {:ok, tc_a} = Assignments.assign(cg_a, head, %{subject: "Mathématiques"})
-      {:ok, tc_b} = Assignments.assign(cg_b, head, %{subject: "Mathématiques"})
+      {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head, %{subject: "Mathématiques"})
+      {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Mathématiques"})
 
       # Pre-existing solo plans/lessons on each member class, created before
       # combining — these must NOT surface on the log once tc_a/tc_b share a
       # course plan.
-      {:ok, stale_plan_a} = Academics.create_progression_plan(tc_a, %{title: "A (stale)"})
-      {:ok, m_a} = Academics.create_module(stale_plan_a, %{title: "M"})
+      {:ok, stale_plan_a} = Curriculum.create_progression_plan(tc_a, %{title: "A (stale)"})
+      {:ok, m_a} = Curriculum.create_module(stale_plan_a, %{title: "M"})
 
       {:ok, _stale_entry_a} =
-        Academics.add_progression_entry(m_a, %{
+        Curriculum.add_progression_entry(m_a, %{
           lesson_title: "Stale lesson A",
           planned_hours: Decimal.new("1"),
           entry_type: :lesson
         })
 
-      {:ok, stale_plan_b} = Academics.create_progression_plan(tc_b, %{title: "B (stale)"})
-      {:ok, m_b} = Academics.create_module(stale_plan_b, %{title: "M"})
+      {:ok, stale_plan_b} = Curriculum.create_progression_plan(tc_b, %{title: "B (stale)"})
+      {:ok, m_b} = Curriculum.create_module(stale_plan_b, %{title: "M"})
 
       {:ok, _stale_entry_b} =
-        Academics.add_progression_entry(m_b, %{
+        Curriculum.add_progression_entry(m_b, %{
           lesson_title: "Stale lesson B",
           planned_hours: Decimal.new("1"),
           entry_type: :lesson
         })
 
-      {:ok, course} = Courses.combine([tc_a, tc_b])
+      {:ok, course} = Curriculum.combine_course([tc_a, tc_b])
 
       [course_plan] =
-        Academics.list_progression_plans(school)
+        Curriculum.list_progression_plans!(school.id)
         |> Enum.filter(&(&1.combined_course_id == course.id))
 
-      {:ok, course_module} = Academics.create_module(course_plan, %{title: "M"})
+      {:ok, course_module} = Curriculum.create_module(course_plan, %{title: "M"})
 
       {:ok, course_entry} =
-        Academics.add_progression_entry(course_module, %{
+        Curriculum.add_progression_entry(course_module, %{
           lesson_title: "Course lesson",
           planned_hours: Decimal.new("1"),
           entry_type: :lesson

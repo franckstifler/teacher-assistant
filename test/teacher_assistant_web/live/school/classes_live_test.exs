@@ -1,17 +1,17 @@
 defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Enrollments
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée C"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée C"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -23,8 +23,8 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   end
 
   test "lists classes with effectif", %{conn: conn, school: school, year: year} do
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
     {:ok, _view, html} = live(conn, ~p"/school/classes")
     assert html =~ "6e A"
     assert html =~ "1"
@@ -52,8 +52,8 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
 
   test "delete is blocked when the class has enrollments", ctx do
     %{conn: conn, school: school, year: year} = ctx
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes")
     view |> element("#class-delete-#{cg.id}") |> render_click()
     assert render(view) =~ "6e A"
@@ -64,9 +64,9 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -78,11 +78,11 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     refute has_element?(view, "#class-form")
 
     render_hook(view, "create_class", %{"class_group" => %{"label" => "X", "level" => "6ème"}})
-    assert Academics.list_class_groups(school, year) == []
+    assert Enrollment.list_class_groups(school, year) == []
   end
 
   test "no active year shows the setup gate", %{conn: conn, actor: user} do
-    {:ok, school2} = Schools.create_school(user, %{name: "Lycée SansAnnée"})
+    {:ok, school2} = Organization.create_school(user, %{name: "Lycée SansAnnée"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school2.id)
     {:ok, view, html} = live(conn, ~p"/school/classes")
     assert html =~ "année" or html =~ "year"
@@ -93,13 +93,13 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     conn: _conn,
     actor: head
   } do
-    {:ok, school2} = Schools.create_school(head, %{name: "Lycée SansAnnéeVP"})
+    {:ok, school2} = Organization.create_school(head, %{name: "Lycée SansAnnéeVP"})
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school2, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school2, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()

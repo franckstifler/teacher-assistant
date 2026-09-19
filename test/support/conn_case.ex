@@ -44,7 +44,7 @@ defmodule TeacherAssistantWeb.ConnCase do
 
   def register_and_log_in_user(%{conn: conn}) do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
-    workspace = TeacherAssistant.Academics.ensure_personal_workspace!(user)
+    workspace = TeacherAssistant.Organization.ensure_personal_workspace!(user)
 
     conn =
       conn

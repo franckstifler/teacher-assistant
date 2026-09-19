@@ -1,414 +1,272 @@
-<Layouts.app flash={@flash} current_scope={assigns[:current_scope]}>
-  <%!-- ============================ HERO ============================ --%>
-  <section id="landing-hero" class="relative overflow-hidden border-b border-base-300">
-    <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
-      <div>
-        <p class="ta-eyebrow">Cameroon secondary schools · APC / CBA</p>
+<%!--
+  Landing — pixel-matched to the "Landing.dc.html" design proposal (paper palette,
+  Fraunces + Libre Franklin + IBM Plex Mono). Rendered standalone on the root layout
+  (its own header/footer); the paper look is scoped to `.ta-landing` so the rest of
+  the app keeps the Tableau chalkboard identity. Internal routes are wired to the app.
+--%>
+<style>
+  .ta-landing { min-height: 100vh; display: flex; flex-direction: column; background: #F4F1EA; color: #1E2A2B; font-family: "Libre Franklin", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .ta-landing a { color: #0E7A5F; text-decoration: none; }
+  .ta-landing a:hover { color: #0B5E49; text-decoration: underline; }
+  .ta-landing a.ta-btn:hover, .ta-landing a.ta-navlink:hover, .ta-landing a.ta-brand:hover { text-decoration: none; }
+  .ta-landing a.ta-navlink:hover { color: #1E2A2B; }
+  .ta-landing h1, .ta-landing h2, .ta-landing h3 { font-family: Fraunces, Georgia, "Times New Roman", serif; }
+  .ta-landing .ta-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .ta-landing .ta-slot { display: grid; place-items: center; text-align: center; padding: 1rem; background: #EFEAE0; color: #8A9391; font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; line-height: 1.4; }
+  .ta-landing :where(a, button):focus-visible { outline: 2px solid #0E7A5F; outline-offset: 2px; border-radius: 0.35rem; }
+</style>
 
-        <h1 class="mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-5xl">
-          Run the whole établissement
-          from one chalkboard.
-        </h1>
-
-        <p class="mt-5 max-w-xl text-base leading-7 text-base-content/75">
-          Set up your school, bring your teachers in, and let every class take the <span class="font-semibold text-base-content">appel</span>, enter marks, and build
-          bulletins in the same place. How much of the programme has been covered stays visible all
-          year — on any phone, in French or English.
-        </p>
-
-        <div id="home-actions" class="mt-8 flex flex-col gap-3 sm:flex-row">
-          <.link href={~p"/schools/start"} class="btn btn-primary btn-lg">
-            <.icon name="hero-building-office-2" class="size-5" /> Create your school
-          </.link>
-          <.link href="#teacher-lane" class="btn btn-outline btn-lg">
-            <.icon name="hero-academic-cap" class="size-5" /> I just teach my own classes
-          </.link>
-        </div>
-
-        <p class="mt-4 text-sm text-base-content/55">
-          Already have an account?
-          <.link navigate={~p"/sign-in"} class="link link-hover font-semibold text-info">
-            Sign in
-          </.link>
-        </p>
-      </div>
-
-      <%!-- The one bold element: a head teacher's morning glance --%>
-      <div class="ta-board p-5 sm:p-6">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="ta-display truncate text-sm font-semibold">
-              Lycée Bilingue de Bafoussam
-            </div>
-            <div class="mt-1 flex items-center gap-1.5 text-[0.7rem] text-base-content/60">
-              <.icon name="hero-shield-check" class="size-3.5 text-primary" />
-              <span>Verified · Trimestre 1</span>
-            </div>
-          </div>
-          <span class="ta-num rounded-full border border-base-300 px-3 py-1 text-xs font-semibold text-base-content/70">
-            Séq 2
-          </span>
-        </div>
-
-        <div class="mt-5 space-y-4">
-          <div>
-            <div class="mb-1.5 flex items-center justify-between gap-2">
-              <span class="text-sm font-semibold">6e A · Mathématiques</span>
-              <span class="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-primary">
-                <.icon name="hero-check-circle" class="size-3.5" /> Appel fait · 42/42
-              </span>
-            </div>
-            <.coverage_ribbon rate={64} />
-          </div>
-          <div>
-            <div class="mb-1.5 flex items-center justify-between gap-2">
-              <span class="text-sm font-semibold">5e B · Français</span>
-              <span class="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-secondary">
-                <.icon name="hero-pencil-square" class="size-3.5" /> Notes · séq 3/5
-              </span>
-            </div>
-            <.coverage_ribbon rate={49} behind?={true} />
-          </div>
-        </div>
-
-        <div class="mt-5 grid grid-cols-3 gap-2 border-t border-base-300 pt-4 text-center">
-          <div>
-            <div class="ta-num text-lg font-semibold">18</div>
-            <div class="text-[0.65rem] text-base-content/55">classes</div>
-          </div>
-          <div>
-            <div class="ta-num text-lg font-semibold">96%</div>
-            <div class="text-[0.65rem] text-base-content/55">appel du jour</div>
-          </div>
-          <div>
-            <div class="ta-num text-lg font-semibold">7</div>
-            <div class="text-[0.65rem] text-base-content/55">bulletins prêts</div>
-          </div>
-        </div>
+<div class="ta-landing">
+  <header style="position: sticky; top: 0; z-index: 20; border-bottom: 1px solid #E3DDD0; background: rgba(244,241,234,.92); backdrop-filter: blur(8px)">
+    <div style="margin: 0 auto; max-width: 72rem; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1.25rem">
+      <a href={~p"/"} class="ta-brand" style="display: flex; align-items: center; gap: 0.55rem; color: inherit">
+        <span style="display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.45rem; background: #172321; color: #F4F1EA; font-family: Fraunces, Georgia, serif; font-size: 0.95rem; font-weight: 700">TA</span>
+        <span style="font-family: Fraunces, Georgia, serif; font-size: 1.02rem; font-weight: 600">Teacher Assistant</span>
+      </a>
+      <nav style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; margin-left: 0.75rem">
+        <a href="#roles" class="ta-navlink" style="font-size: 0.85rem; font-weight: 600; color: #5A6668">Pour qui</a>
+        <a href="#features" class="ta-navlink" style="font-size: 0.85rem; font-weight: 600; color: #5A6668">Fonctionnalités</a>
+        <a href="#terrain" class="ta-navlink" style="font-size: 0.85rem; font-weight: 600; color: #5A6668">Terrain camerounais</a>
+        <a href="#prix" class="ta-navlink" style="font-size: 0.85rem; font-weight: 600; color: #5A6668">Tarifs</a>
+      </nav>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 0.6rem">
+        <span class="ta-mono" style="display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 600; color: #5A6668">
+          <a href={~p"/locale/fr"} class="ta-navlink" style="color: #1E2A2B">FR</a><span style="color: #C4BCA8">/</span><a href={~p"/locale/en"} class="ta-navlink" style="color: #5A6668">EN</a>
+        </span>
+        <a href={~p"/sign-in"} class="ta-btn" style="display: inline-flex; align-items: center; height: 2.2rem; padding: 0 0.85rem; border: 1px solid #E3DDD0; border-radius: 0.45rem; background: #FFFFFF; font-size: 0.82rem; font-weight: 650; color: #1E2A2B">Se connecter</a>
+        <a href={~p"/schools/start"} class="ta-btn" style="display: inline-flex; align-items: center; height: 2.2rem; padding: 0 0.95rem; border: 1px solid transparent; border-radius: 0.45rem; background: #0E7A5F; font-size: 0.82rem; font-weight: 650; color: #FFFFFF">Inscrire mon établissement</a>
       </div>
     </div>
-  </section>
+  </header>
 
-  <%!-- ============================ TWO LANES ============================ --%>
-  <section id="landing-lanes" class="border-b border-base-300 bg-base-100">
-    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-      <p class="ta-eyebrow">Two ways in</p>
-      <h2 class="mt-3 max-w-2xl font-display text-2xl font-semibold leading-snug sm:text-3xl">
-        Built for a whole school — and for the teacher working alone.
-      </h2>
+  <main style="flex: 1">
+    <%!-- HERO --%>
+    <section style="margin: 0 auto; max-width: 72rem; padding: 3.5rem 1.5rem 2.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 2.5rem; align-items: center">
+      <div style="max-width: 34rem">
+        <p class="ta-mono" style="margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7A5F">Établissements secondaires · Cameroun</p>
+        <h1 style="margin: 0.7rem 0 0; font-size: 3rem; font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; text-wrap: balance">Tout l'établissement sur un seul tableau.</h1>
+        <p style="margin: 1rem 0 0; font-size: 1.05rem; line-height: 1.6; color: #44514F; text-wrap: pretty">Appel, notes, bulletins MINESEC, emplois du temps, couverture du programme et frais de scolarité — pour le proviseur, les censeurs, l'intendance et chaque enseignant. Francophone et anglophone, APC / CBA.</p>
+        <div style="margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: 0.6rem">
+          <a href={~p"/schools/start"} class="ta-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; height: 2.8rem; padding: 0 1.15rem; border-radius: 0.5rem; background: #0E7A5F; color: #FFFFFF; font-size: 0.92rem; font-weight: 650">
+            Inscrire mon établissement
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem"><path d="M5 12h13M13 7l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </a>
+          <a href="#portes" class="ta-btn" style="display: inline-flex; align-items: center; height: 2.8rem; padding: 0 1.15rem; border: 1px solid #D7CFBE; border-radius: 0.5rem; background: #FFFFFF; color: #1E2A2B; font-size: 0.92rem; font-weight: 650">Je suis enseignant, je commence seul</a>
+        </div>
+        <p style="margin: 0.9rem 0 0; font-size: 0.82rem; color: #5A6668">Gratuit pour un enseignant seul · gratuit jusqu'à la vérification de votre établissement</p>
+        <div style="margin-top: 1.8rem; display: flex; flex-wrap: wrap; gap: 1.4rem">
+          <span style="display: block">
+            <span class="ta-mono" style="display: block; font-variant-numeric: tabular-nums; font-size: 1.35rem; font-weight: 600">6</span>
+            <span style="display: block; font-size: 0.78rem; color: #5A6668">établissements pilotes</span>
+          </span>
+          <span style="display: block">
+            <span class="ta-mono" style="display: block; font-variant-numeric: tabular-nums; font-size: 1.35rem; font-weight: 600">4 800</span>
+            <span style="display: block; font-size: 0.78rem; color: #5A6668">élèves suivis</span>
+          </span>
+          <span style="display: block">
+            <span class="ta-mono" style="display: block; font-variant-numeric: tabular-nums; font-size: 1.35rem; font-weight: 600">48 h</span>
+            <span style="display: block; font-size: 0.78rem; color: #5A6668">vérification d'un dossier</span>
+          </span>
+        </div>
+      </div>
+      <div style="position: relative">
+        <div style="border: 1px solid #D7CFBE; border-radius: 0.9rem; background: #FFFFFF; padding: 0.5rem; box-shadow: 0 24px 50px rgba(23,35,33,.12)">
+          <div class="ta-slot" style="width: 100%; height: 22rem; border-radius: 8px">Capture du tableau de bord proviseur</div>
+        </div>
+        <div style="position: absolute; left: -0.5rem; bottom: -1.4rem; border: 1px solid #D7CFBE; border-radius: 0.7rem; background: #FFFFFF; padding: 0.7rem 0.9rem; box-shadow: 0 12px 30px rgba(23,35,33,.12)">
+          <p class="ta-mono" style="margin: 0; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #5A6668">Appel du jour</p>
+          <p style="margin: 0.25rem 0 0; font-size: 0.85rem; font-weight: 650">44 présents · 2 absents · 1 retard</p>
+        </div>
+      </div>
+    </section>
 
-      <div class="mt-8 grid gap-6 md:grid-cols-2">
-        <%!-- School lane: green accent, filled primary CTA --%>
-        <div
-          id="school-lane"
-          class="flex flex-col rounded-box border border-base-300 bg-base-200 p-6"
-        >
-          <div class="flex items-center gap-2 text-primary">
-            <.icon name="hero-building-office-2" class="size-5" />
-            <span class="font-mono text-xs font-semibold uppercase tracking-[0.14em]">
-              For your school
+    <%!-- DEUX FAÇONS DE COMMENCER --%>
+    <section id="portes" style="border-top: 1px solid #E3DDD0; border-bottom: 1px solid #E3DDD0; background: #FAF8F3">
+      <div style="margin: 0 auto; max-width: 72rem; padding: 3rem 1.5rem">
+        <h2 style="margin: 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em">Deux façons de commencer</h2>
+        <p style="margin: 0.6rem 0 0; max-width: 42rem; font-size: 0.98rem; line-height: 1.6; color: #44514F; text-wrap: pretty">Vous n'avez pas besoin d'attendre que votre établissement se décide. Un enseignant peut ouvrir son carnet dès ce soir, et rattacher ses classes plus tard sans rien retaper.</p>
+        <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem">
+          <%!-- Enseignant seul --%>
+          <div style="display: flex; flex-direction: column; gap: 0.8rem; border: 1px solid #E3DDD0; border-radius: 0.85rem; background: #FFFFFF; padding: 1.4rem">
+            <span class="ta-mono" style="display: inline-flex; align-self: flex-start; align-items: center; height: 1.7rem; padding: 0 0.6rem; border-radius: 999px; background: #EFEAE0; color: #44514F; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase">Enseignant seul</span>
+            <h3 style="margin: 0; font-size: 1.35rem; font-weight: 650; letter-spacing: -0.005em">Mon carnet de notes personnel</h3>
+            <p style="margin: 0; font-size: 0.9rem; line-height: 1.55; color: #44514F; text-wrap: pretty">Vos classes, vos élèves, vos notes et votre progression — sans attendre personne, sans rien demander à l'administration.</p>
+            <div style="display: flex; flex-direction: column; gap: 0.45rem">
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Appel et notes de vos propres classes</span>
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Moyennes, classement et relevés exportables en PDF</span>
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0E7A5F" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Couverture de votre fiche de progression</span>
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#8A5A08" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="M8 12h8" stroke-linecap="round" stroke-linejoin="round" /></svg>Pas de bulletin officiel ni de frais : c'est le rôle de l'établissement</span>
+            </div>
+            <a href={~p"/register"} class="ta-btn" style="margin-top: auto; display: inline-flex; align-items: center; justify-content: center; height: 2.6rem; border-radius: 0.5rem; border: 1px solid #D7CFBE; background: #FAF8F3; color: #1E2A2B; font-size: 0.88rem; font-weight: 650">Ouvrir mon carnet</a>
+            <p style="margin: 0; font-size: 0.78rem; color: #5A6668">Gratuit. Vos données restent les vôtres et partent avec vous.</p>
+          </div>
+          <%!-- Établissement --%>
+          <div style="display: flex; flex-direction: column; gap: 0.8rem; border: 1px solid #0E7A5F; border-radius: 0.85rem; background: #E4F1EB; padding: 1.4rem">
+            <span class="ta-mono" style="display: inline-flex; align-self: flex-start; align-items: center; height: 1.7rem; padding: 0 0.6rem; border-radius: 999px; background: #0E7A5F; color: #FFFFFF; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase">Établissement</span>
+            <h3 style="margin: 0; font-size: 1.35rem; font-weight: 650; letter-spacing: -0.005em">Tout le lycée sur un seul tableau</h3>
+            <p style="margin: 0; font-size: 0.9rem; line-height: 1.55; color: #44514F; text-wrap: pretty">Le proviseur configure une fois, et chaque rôle travaille dans son écran : censeurs, intendance, animateurs pédagogiques, enseignants.</p>
+            <div style="display: flex; flex-direction: column; gap: 0.45rem">
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0B5E49" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Bulletins officiels et conseils de classe</span>
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0B5E49" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Emplois du temps, salles et quotas horaires</span>
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0B5E49" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Frais de scolarité et vie scolaire</span>
+              <span style="display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.86rem; line-height: 1.45; color: #1E2A2B"><svg viewBox="0 0 24 24" fill="none" stroke="#0B5E49" stroke-width="2.5" style="width: 0.95rem; height: 0.95rem; flex: none; margin-top: 0.2rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>Couverture du programme, toutes classes confondues</span>
+            </div>
+            <a href={~p"/schools/start"} class="ta-btn" style="margin-top: auto; display: inline-flex; align-items: center; justify-content: center; height: 2.6rem; border-radius: 0.5rem; border: 1px solid #0E7A5F; background: #0E7A5F; color: #FFFFFF; font-size: 0.88rem; font-weight: 650">Inscrire mon établissement</a>
+            <p style="margin: 0; font-size: 0.78rem; color: #5A6668">Vérification sous 48 h ouvrées. Les enseignants déjà inscrits seuls rattachent leurs classes en un clic.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <%!-- CHAQUE RÔLE A SON ÉCRAN --%>
+    <section id="roles" style="margin: 0 auto; max-width: 72rem; padding: 3rem 1.5rem">
+      <h2 style="margin: 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em">Chaque rôle a son écran</h2>
+      <p style="margin: 0.6rem 0 0; max-width: 42rem; font-size: 0.98rem; line-height: 1.6; color: #44514F; text-wrap: pretty">Un seul compte par personne, un seul établissement partagé : ce que voit un censeur n'est pas ce que voit un enseignant, et personne ne ressaisit les données d'un autre.</p>
+      <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem">
+        <div :for={r <- [
+          %{title: "Proviseur / directeur", d: "M3.5 21h17M5 21V4.5h7V21M12 21V9.5h7V21", text: "Met l'établissement en place et garde la vue d'ensemble.", points: ["Classes, matières, coefficients, périodes", "Couverture du programme par matière", "Validation des notes et des bulletins"]},
+          %{title: "Censeur", d: "M6 3.5h12v17H6zM9 9h6M9 13h6", text: "Suit la discipline et la régularité de la saisie.", points: ["Absences et retards consolidés", "Sanctions et conseils de discipline", "Relances aux enseignants en retard"]},
+          %{title: "Enseignant", d: "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5", text: "Ses classes, ses notes, son cahier de textes.", points: ["Appel en un geste, même sur téléphone", "Notes de séquence et appréciations", "Fiche de progression et couverture"]},
+          %{title: "Intendant", d: "M3.5 7.5h17v9h-17zM3.5 11h17M7 14h3", text: "Encaissements et tranches de frais.", points: ["Tranches par niveau et échéances", "Reçus et relances des familles", "État du recouvrement en temps réel"]},
+          %{title: "Animateur pédagogique", d: "M4.5 5.5h15v14h-15zM4.5 10h15M8.5 3.5v4M15.5 3.5v4", text: "Harmonise les progressions entre collègues.", points: ["Fiches de progression par matière", "Écarts de couverture entre classes", "Validation des fiches de leçon"]}
+        ]} style="display: flex; flex-direction: column; gap: 0.6rem; border: 1px solid #E3DDD0; border-radius: 0.8rem; background: #FFFFFF; padding: 1.1rem">
+          <span style="display: grid; width: 2.1rem; height: 2.1rem; place-items: center; border-radius: 0.45rem; background: #E4F1EB; color: #0B5E49">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width: 1.1rem; height: 1.1rem"><path d={r.d} stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </span>
+          <h3 style="margin: 0; font-size: 1.1rem; font-weight: 650">{r.title}</h3>
+          <p style="margin: 0; font-size: 0.86rem; line-height: 1.55; color: #44514F; text-wrap: pretty">{r.text}</p>
+          <ul style="margin: 0.2rem 0 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: 0.25rem">
+            <li :for={p <- r.points} style="font-size: 0.83rem; line-height: 1.45; color: #5A6668">{p}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <%!-- FEATURES (dark) --%>
+    <section id="features" style="background: #172321; color: #E8E5DC">
+      <div style="margin: 0 auto; max-width: 72rem; padding: 3.5rem 1.5rem">
+        <p class="ta-mono" style="margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8FC9B4">Du premier appel au bulletin imprimé</p>
+        <h2 style="margin: 0.7rem 0 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em; color: #FFFFFF">Une année scolaire complète, sans tableur</h2>
+        <div style="margin-top: 1.8rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1.6rem 2rem">
+          <div :for={f <- [
+            %{num: "01", title: "Appel & présences", text: "Pointage par séance, justificatifs, cumul d'heures d'absence par élève et alertes de seuil."},
+            %{num: "02", title: "Notes & bulletins", text: "Devoirs, compositions, coefficients par niveau, moyennes calculées, bulletin au format attendu — prêt à imprimer."},
+            %{num: "03", title: "Couverture du programme", text: "Fiche de progression officielle importée, heures couvertes par module, comparaison avec l'avancement attendu."},
+            %{num: "04", title: "Emplois du temps", text: "Grille par classe, par enseignant et par salle, détection des conflits et des quotas dépassés."},
+            %{num: "05", title: "Frais de scolarité", text: "Tranches, échéances, encaissements de l'intendance, familles en retard identifiées sans ressaisie."},
+            %{num: "06", title: "Vie scolaire", text: "Retards, sanctions, notes de conduite et dossiers instruits par les censeurs, historiés."}
+          ]} style="display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid #3A4A45; padding-top: 0.9rem">
+            <span class="ta-mono" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; color: #8FC9B4">{f.num}</span>
+            <h3 style="margin: 0; font-size: 1.12rem; font-weight: 650; color: #FFFFFF">{f.title}</h3>
+            <p style="margin: 0; font-size: 0.87rem; line-height: 1.55; color: #C9D3CF; text-wrap: pretty">{f.text}</p>
+          </div>
+        </div>
+        <div style="margin-top: 2.5rem; border: 1px solid #3A4A45; border-radius: 0.9rem; background: #1E2C29; padding: 0.5rem">
+          <div class="ta-slot" style="width: 100%; height: 20rem; border-radius: 8px; background: #1E2C29; color: #6E827C; border: 1px dashed #3A4A45">Capture de la saisie des notes enseignant</div>
+        </div>
+      </div>
+    </section>
+
+    <%!-- TERRAIN CAMEROUNAIS --%>
+    <section id="terrain" style="margin: 0 auto; max-width: 72rem; padding: 3.5rem 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 2.5rem; align-items: start">
+      <div style="max-width: 32rem">
+        <h2 style="margin: 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em">Pensé pour le terrain camerounais</h2>
+        <p style="margin: 0.7rem 0 0; font-size: 0.98rem; line-height: 1.6; color: #44514F; text-wrap: pretty">Pas un logiciel étranger traduit : les niveaux, les séquences, les coefficients, les bulletins et les tranches de frais sont ceux de vos établissements.</p>
+        <div style="margin-top: 1.3rem; display: flex; flex-direction: column; gap: 0.75rem">
+          <div :for={t <- [
+            %{title: "Les deux sous-systèmes", text: "Francophone et anglophone, avec leurs niveaux propres (6e → Tle, Form 1 → Upper Sixth) et leurs séries."},
+            %{title: "Séquences et trimestres", text: "Six séquences, trois trimestres, moyennes et jalons de saisie conformes aux usages MINESEC."},
+            %{title: "Bulletins imprimables", text: "Conçus pour l'impression noir et blanc et la signature manuscrite, pas seulement pour l'écran."},
+            %{title: "Connexion faible", text: "Pages légères, saisie qui tient sur un téléphone, brouillons conservés si le réseau coupe."},
+            %{title: "Import de vos listes", text: "Vos fichiers d'inscription et vos fiches de progression existantes sont repris, pas retapés."}
+          ]} style="display: flex; gap: 0.7rem; align-items: flex-start">
+            <span style="display: grid; width: 1.35rem; height: 1.35rem; flex: none; place-items: center; border-radius: 999px; background: #E4F1EB; color: #0B5E49; margin-top: 0.1rem">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" style="width: 0.8rem; height: 0.8rem"><path d="m7.5 12.5 3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </span>
+            <span style="min-width: 0">
+              <span style="display: block; font-size: 0.9rem; font-weight: 650">{t.title}</span>
+              <span style="display: block; font-size: 0.85rem; line-height: 1.5; color: #5A6668">{t.text}</span>
             </span>
           </div>
-          <h3 class="mt-3 font-display text-xl font-semibold">
-            One place your whole staff works from
-          </h3>
-          <p class="mt-3 text-sm leading-6 text-base-content/75">
-            Register the établissement once — type, subsystem, region — then invite your teachers
-            and give each a role. Every class takes the appel, records marks, and prints bulletins
-            the same way, and you watch coverage across the school at a glance.
-          </p>
-          <ul class="mt-4 space-y-2 text-sm text-base-content/80">
-            <li class="flex items-start gap-2">
-              <.icon name="hero-check" class="mt-0.5 size-4 shrink-0 text-primary" />
-              Roll call, marks and bulletins for every class
-            </li>
-            <li class="flex items-start gap-2">
-              <.icon name="hero-check" class="mt-0.5 size-4 shrink-0 text-primary" />
-              Teachers you invite, roles you decide
-            </li>
-            <li class="flex items-start gap-2">
-              <.icon name="hero-check" class="mt-0.5 size-4 shrink-0 text-primary" />
-              Coverage of the programme, school-wide
-            </li>
+        </div>
+      </div>
+      <figure style="margin: 0; border: 1px solid #E3DDD0; border-radius: 0.9rem; background: #FFFFFF; padding: 1.4rem">
+        <blockquote style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 1.18rem; line-height: 1.5; font-weight: 500; text-wrap: pretty">« Avant, les bulletins de la séquence 2 sortaient trois semaines après la reprise. Cette année, ils étaient prêts le jour du conseil de classe. »</blockquote>
+        <figcaption style="margin-top: 1rem; display: flex; align-items: center; gap: 0.7rem">
+          <span class="ta-slot" style="width: 2.6rem; height: 2.6rem; flex: none; border-radius: 999px; font-size: 0.55rem">Photo</span>
+          <span>
+            <span style="display: block; font-size: 0.87rem; font-weight: 650">À remplacer par un vrai témoignage</span>
+            <span class="ta-mono" style="display: block; font-size: 0.74rem; color: #5A6668">Proviseur · établissement pilote</span>
+          </span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <%!-- TARIFS --%>
+    <section id="prix" style="margin: 0 auto; max-width: 72rem; padding: 1rem 1.5rem 3.5rem">
+      <h2 style="margin: 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em">Un tarif par élève inscrit, par année</h2>
+      <p style="margin: 0.6rem 0 0; max-width: 40rem; font-size: 0.95rem; line-height: 1.6; color: #44514F">Montants à confirmer avec vous — la structure est là, les chiffres sont des exemples.</p>
+      <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem">
+        <%!-- Pilote --%>
+        <div style="display: flex; flex-direction: column; gap: 0.7rem; border: 1px solid #E3DDD0; border-radius: 0.8rem; background: #FFFFFF; padding: 1.2rem">
+          <span class="ta-mono" style="font-size: 0.68rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #5A6668">Mise en route</span>
+          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 650">Pilote</h3>
+          <p class="ta-mono" style="margin: 0; display: flex; align-items: baseline; gap: 0.3rem; font-size: 1.5rem; font-weight: 600">0<span style="font-family: 'Libre Franklin', sans-serif; font-size: 0.82rem; font-weight: 500; color: #5A6668">F CFA la 1re séquence</span></p>
+          <ul style="margin: 0.2rem 0 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: 0.3rem">
+            <li :for={pt <- ["Un établissement, toutes les classes", "Tous les rôles inclus", "Accompagnement à la configuration", "Sans engagement"]} style="font-size: 0.85rem; line-height: 1.45; color: #44514F">{pt}</li>
           </ul>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <.link href={~p"/schools/start"} class="btn btn-primary">
-              Create your school
-            </.link>
-            <.link href="#start" class="btn btn-ghost">
-              How it works
-            </.link>
-          </div>
+          <a href={~p"/schools/start"} class="ta-btn" style="margin-top: auto; display: inline-flex; align-items: center; justify-content: center; height: 2.4rem; border-radius: 0.45rem; border: 1px solid #D7CFBE; background: #FAF8F3; color: #1E2A2B; font-size: 0.85rem; font-weight: 650">Inscrire l'établissement</a>
         </div>
-
-        <%!-- Teacher lane: sky accent, outline CTA --%>
-        <div
-          id="teacher-lane"
-          class="flex flex-col rounded-box border border-base-300 bg-base-200 p-6"
-        >
-          <div class="flex items-center gap-2 text-info">
-            <.icon name="hero-academic-cap" class="size-5" />
-            <span class="font-mono text-xs font-semibold uppercase tracking-[0.14em]">
-              For your own classes
-            </span>
-          </div>
-          <h3 class="mt-3 font-display text-xl font-semibold">
-            Follow your own teaching, with or without a school
-          </h3>
-          <p class="mt-3 text-sm leading-6 text-base-content/75">
-            Build your fiche de progression once, tick off what you cover each week, and watch your
-            <span class="ta-mark font-semibold">taux de couverture</span>
-            climb. It works entirely on its own — join a school later and nothing you logged is lost.
-          </p>
-          <ul class="mt-4 space-y-2 text-sm text-base-content/80">
-            <li class="flex items-start gap-2">
-              <.icon name="hero-check" class="mt-0.5 size-4 shrink-0 text-info" />
-              Your fiche de progression, six sequences a year
-            </li>
-            <li class="flex items-start gap-2">
-              <.icon name="hero-check" class="mt-0.5 size-4 shrink-0 text-info" />
-              A living cahier de textes you can print
-            </li>
-            <li class="flex items-start gap-2">
-              <.icon name="hero-check" class="mt-0.5 size-4 shrink-0 text-info" />
-              Your marks and averages, séquence by séquence
-            </li>
+        <%!-- Établissement --%>
+        <div style="display: flex; flex-direction: column; gap: 0.7rem; border: 1px solid #0E7A5F; border-radius: 0.8rem; background: #E4F1EB; padding: 1.2rem">
+          <span class="ta-mono" style="font-size: 0.68rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #0B5E49">Le plus courant</span>
+          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 650">Établissement</h3>
+          <p class="ta-mono" style="margin: 0; display: flex; align-items: baseline; gap: 0.3rem; font-size: 1.5rem; font-weight: 600">1 500<span style="font-family: 'Libre Franklin', sans-serif; font-size: 0.82rem; font-weight: 500; color: #5A6668">F CFA / élève / an</span></p>
+          <ul style="margin: 0.2rem 0 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: 0.3rem">
+            <li :for={pt <- ["Appel, notes, bulletins, emplois du temps", "Frais de scolarité et vie scolaire", "Imports et exports illimités", "Assistance par WhatsApp et e-mail"]} style="font-size: 0.85rem; line-height: 1.45; color: #44514F">{pt}</li>
           </ul>
-          <div class="mt-6">
-            <.link navigate={~p"/register"} class="btn btn-outline">
-              Track my own classes
-            </.link>
-          </div>
+          <a href={~p"/schools/start"} class="ta-btn" style="margin-top: auto; display: inline-flex; align-items: center; justify-content: center; height: 2.4rem; border-radius: 0.45rem; border: 1px solid #0E7A5F; background: #0E7A5F; color: #FFFFFF; font-size: 0.85rem; font-weight: 650">Demander un devis</a>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <%!-- ============================ WHAT THE SCHOOL RUNS ============================ --%>
-  <section id="landing-features" class="border-b border-base-300">
-    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-      <p class="ta-eyebrow">What the school runs</p>
-      <h2 class="mt-3 max-w-2xl font-display text-2xl font-semibold leading-snug sm:text-3xl">
-        Everything a term needs, in the teachers' hands.
-      </h2>
-
-      <%!-- ledger grid: 1px chalk-dust rules between cells, no floating cards --%>
-      <div class="mt-8 grid gap-px overflow-hidden rounded-box border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="bg-base-100 p-6">
-          <.icon name="hero-identification" class="size-6 text-primary" />
-          <h3 class="mt-3 text-base font-semibold">Set up the établissement</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Name, type — Lycée, CES, CETIC — subsystem, region and logo. Your school's real
-            identity, not a blank tenant.
-          </p>
-        </div>
-        <div class="bg-base-100 p-6">
-          <.icon name="hero-user-group" class="size-6 text-primary" />
-          <h3 class="mt-3 text-base font-semibold">Invite staff, assign roles</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Bring your teachers into the school and decide what each one can do. The head configures;
-            teachers record.
-          </p>
-        </div>
-        <div class="bg-base-100 p-6">
-          <.icon name="hero-clipboard-document-check" class="size-6 text-primary" />
-          <h3 class="mt-3 text-base font-semibold">Roll call in one tap</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Everyone starts present — mark only the absent and the late. The appel for a full class
-            takes seconds.
-          </p>
-        </div>
-        <div class="bg-base-100 p-6">
-          <.icon name="hero-pencil-square" class="size-6 text-primary" />
-          <h3 class="mt-3 text-base font-semibold">Marks by every teacher</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Each teacher enters their own notes, séquence by séquence, on any phone. Scores that fall
-            out of range are caught as you type.
-          </p>
-        </div>
-        <div class="bg-base-100 p-6">
-          <.icon name="hero-document-text" class="size-6 text-primary" />
-          <h3 class="mt-3 text-base font-semibold">Bulletins per class</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Averages and report cards come together from the marks already entered — ready to print
-            for a student or a whole class.
-          </p>
-        </div>
-        <div class="bg-base-100 p-6">
-          <.icon name="hero-shield-check" class="size-6 text-primary" />
-          <h3 class="mt-3 text-base font-semibold">Verified before you operate</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Set everything up for free straight away. Recording marks and attendance unlocks once
-            your school is verified — so records are trustworthy from day one.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <%!-- ============================ GETTING STARTED (a real sequence) ============================ --%>
-  <section id="start" class="border-b border-base-300 bg-base-100">
-    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-      <p class="ta-eyebrow">Getting started</p>
-      <h2 class="mt-3 max-w-2xl font-display text-2xl font-semibold leading-snug sm:text-3xl">
-        From nothing to your first appel in an afternoon.
-      </h2>
-
-      <ol class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <li class="border-t-2 border-base-300 pt-4">
-          <span class="ta-num grid size-9 place-items-center rounded-full border border-primary/40 text-sm font-semibold text-primary">
-            1
-          </span>
-          <h3 class="mt-3 text-base font-semibold">Create your school</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Name it, pick the type and subsystem. Free, and it takes a minute.
-          </p>
-        </li>
-        <li class="border-t-2 border-base-300 pt-4">
-          <span class="ta-num grid size-9 place-items-center rounded-full border border-primary/40 text-sm font-semibold text-primary">
-            2
-          </span>
-          <h3 class="mt-3 text-base font-semibold">Add classes and staff</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Set up your classes, invite teachers, and give each one their role.
-          </p>
-        </li>
-        <li class="border-t-2 border-base-300 pt-4">
-          <span class="ta-num grid size-9 place-items-center rounded-full border border-primary/40 text-sm font-semibold text-primary">
-            3
-          </span>
-          <h3 class="mt-3 text-base font-semibold">Get verified</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            We confirm the school. Setup stays fully open while you wait.
-          </p>
-        </li>
-        <li class="border-t-2 border-base-300 pt-4">
-          <span class="ta-num grid size-9 place-items-center rounded-full border border-primary/40 text-sm font-semibold text-primary">
-            4
-          </span>
-          <h3 class="mt-3 text-base font-semibold">Start recording</h3>
-          <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-            Appel, marks and bulletins are live for every class and every teacher.
-          </p>
-        </li>
-      </ol>
-
-      <div class="mt-8">
-        <.link href={~p"/schools/start"} class="btn btn-primary btn-lg">
-          <.icon name="hero-building-office-2" class="size-5" /> Create your school
-        </.link>
-      </div>
-    </div>
-  </section>
-
-  <%!-- ============================ CLASSROOM REALITY BAND ============================ --%>
-  <section id="landing-reality" class="border-b border-base-300">
-    <div class="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 sm:grid-cols-3">
-      <div>
-        <.icon name="hero-device-phone-mobile" class="size-6 text-base-content/70" />
-        <h3 class="mt-3 text-base font-semibold">Made for the phone in your hand</h3>
-        <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-          Quick, forgiving taps built for a smartphone on a patchy connection — your work is never
-          lost to a dropped request.
-        </p>
-      </div>
-      <div>
-        <.icon name="hero-language" class="size-6 text-base-content/70" />
-        <h3 class="mt-3 text-base font-semibold">Bilingual by design</h3>
-        <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-          Francophone and Anglophone subsystems, French or English interface — switch any time. One
-          national system, two tracks.
-        </p>
-      </div>
-      <div>
-        <.icon name="hero-lock-closed" class="size-6 text-base-content/70" />
-        <h3 class="mt-3 text-base font-semibold">Your school's records, kept safe</h3>
-        <p class="mt-1.5 text-sm leading-6 text-base-content/70">
-          Marks and attendance stay inside your school, visible only to the staff you invite.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <%!-- ============================ FINAL CTA ============================ --%>
-  <section id="landing-cta" class="bg-base-100">
-    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-      <div class="ta-board flex flex-col items-start gap-6 p-8 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 class="font-display text-2xl font-semibold sm:text-3xl">
-            Set your school up today.
-          </h2>
-          <p class="mt-2 max-w-xl text-sm leading-6 text-base-content/70">
-            Create the établissement on the bus home, invite your teachers tonight, and take the
-            first appel tomorrow morning.
-          </p>
-        </div>
-        <div class="flex shrink-0 flex-col gap-3 sm:flex-row">
-          <.link href={~p"/schools/start"} class="btn btn-primary btn-lg">
-            Create your school
-          </.link>
-          <.link navigate={~p"/sign-in"} class="btn btn-outline btn-lg">
-            Sign in
-          </.link>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <%!-- ============================ FOOTER (every link the front door needs) ============================ --%>
-  <footer class="border-t border-base-300 bg-base-100">
-    <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div class="grid gap-8 sm:grid-cols-3">
-        <div>
-          <div class="flex items-center gap-2.5">
-            <span class="grid size-9 place-items-center rounded-lg bg-primary text-primary-content shadow-sm">
-              <.icon name="hero-academic-cap" class="size-5" />
-            </span>
-            <span class="ta-display text-sm font-semibold">Teacher Assistant</span>
-          </div>
-          <p class="mt-3 max-w-xs text-sm leading-6 text-base-content/60">
-            The chalkboard for Cameroon secondary schools — appel, marks, bulletins and programme
-            coverage, in French and English.
-          </p>
-        </div>
-
-        <nav aria-label="Get started">
-          <p class="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-base-content/50">
-            Get started
-          </p>
-          <ul class="mt-3 space-y-2 text-sm">
-            <li>
-              <.link href={~p"/schools/start"} class="link link-hover">
-                Create your school
-              </.link>
-            </li>
-            <li>
-              <.link navigate={~p"/register"} class="link link-hover">Create an account</.link>
-            </li>
-            <li>
-              <.link navigate={~p"/sign-in"} class="link link-hover">Sign in</.link>
-            </li>
+        <%!-- Réseau --%>
+        <div style="display: flex; flex-direction: column; gap: 0.7rem; border: 1px solid #E3DDD0; border-radius: 0.8rem; background: #FFFFFF; padding: 1.2rem">
+          <span class="ta-mono" style="font-size: 0.68rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #5A6668">Groupes</span>
+          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 650">Réseau d'établissements</h3>
+          <p class="ta-mono" style="margin: 0; display: flex; align-items: baseline; gap: 0.3rem; font-size: 1.5rem; font-weight: 600">Sur mesure</p>
+          <ul style="margin: 0.2rem 0 0; padding-left: 1.05rem; display: flex; flex-direction: column; gap: 0.3rem">
+            <li :for={pt <- ["Plusieurs établissements sous un même toit", "Référentiels et bulletins harmonisés", "Tableau de bord consolidé", "Formation sur site"]} style="font-size: 0.85rem; line-height: 1.45; color: #44514F">{pt}</li>
           </ul>
-        </nav>
-
-        <div>
-          <p class="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-base-content/50">
-            Language
-          </p>
-          <div class="mt-3 flex items-center gap-1 text-sm">
-            <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-sm ta-num">Français</.link>
-            <span class="text-base-content/30">·</span>
-            <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-sm ta-num">English</.link>
-          </div>
-          <p class="mt-4 text-xs leading-5 text-base-content/50">
-            APC / CBA · Francophone &amp; Anglophone subsystems
-          </p>
+          <a href={~p"/schools/start"} class="ta-btn" style="margin-top: auto; display: inline-flex; align-items: center; justify-content: center; height: 2.4rem; border-radius: 0.45rem; border: 1px solid #D7CFBE; background: #FAF8F3; color: #1E2A2B; font-size: 0.85rem; font-weight: 650">Nous contacter</a>
         </div>
       </div>
+    </section>
 
-      <div class="mt-8 border-t border-base-300 pt-6 text-xs text-base-content/50">
-        © 2026 Teacher Assistant · Built for Cameroon secondary schools
+    <%!-- CTA BAND --%>
+    <section style="border-top: 1px solid #E3DDD0; background: #FAF8F3">
+      <div style="margin: 0 auto; max-width: 72rem; padding: 3rem 1.5rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem">
+        <div style="max-width: 34rem">
+          <h2 style="margin: 0; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance">Inscrivez votre établissement en dix minutes</h2>
+          <p style="margin: 0.6rem 0 0; font-size: 0.95rem; line-height: 1.6; color: #44514F">Créez le compte du proviseur, renseignez l'identité de l'établissement, importez vos classes : l'équipe de vérification valide sous 48 h ouvrées.</p>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.6rem">
+          <a href={~p"/schools/start"} class="ta-btn" style="display: inline-flex; align-items: center; height: 2.8rem; padding: 0 1.15rem; border-radius: 0.5rem; background: #0E7A5F; color: #FFFFFF; font-size: 0.92rem; font-weight: 650">Commencer</a>
+          <a href={~p"/sign-in"} class="ta-btn" style="display: inline-flex; align-items: center; height: 2.8rem; padding: 0 1.15rem; border: 1px solid #D7CFBE; border-radius: 0.5rem; background: #FFFFFF; color: #1E2A2B; font-size: 0.92rem; font-weight: 650">Se connecter</a>
+        </div>
       </div>
+    </section>
+  </main>
+
+  <footer style="border-top: 1px solid #E3DDD0; background: #F4F1EA">
+    <div style="margin: 0 auto; max-width: 72rem; padding: 2rem 1.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem">
+      <span style="display: flex; align-items: center; gap: 0.5rem">
+        <span style="display: grid; width: 1.7rem; height: 1.7rem; place-items: center; border-radius: 0.4rem; background: #172321; color: #F4F1EA; font-family: Fraunces, Georgia, serif; font-size: 0.78rem; font-weight: 700">TA</span>
+        <span style="font-size: 0.85rem; font-weight: 600">Teacher Assistant</span>
+      </span>
+      <span class="ta-mono" style="font-size: 0.74rem; color: #5A6668">APC / CBA · Francophone &amp; anglophone · Yaoundé, Cameroun</span>
+      <span style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 1rem">
+        <a href={~p"/sign-in"} style="font-size: 0.82rem; color: #5A6668">Se connecter</a>
+        <a href={~p"/register"} style="font-size: 0.82rem; color: #5A6668">Créer un compte</a>
+        <a href={~p"/schools/start"} style="font-size: 0.82rem; color: #5A6668">Inscrire un établissement</a>
+      </span>
     </div>
   </footer>
-</Layouts.app>
+</div>

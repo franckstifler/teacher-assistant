@@ -1,23 +1,25 @@
 defmodule TeacherAssistantWeb.School.ResultsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
-      sequences = if year, do: Academics.list_sequences(year), else: []
-      terms = if year, do: Academics.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(year), else: []
+      terms = if year, do: Organization.list_terms(year), else: []
 
       {:ok,
        socket
        |> assign(
          cg: cg,
-         form_master: Academics.form_master(cg),
+         form_master: Enrollment.form_master(cg),
          year: year,
          sequences: sequences,
          terms: terms
@@ -41,15 +43,15 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     year = socket.assigns.year
 
     period =
-      (year && param && Academics.resolve_period(year, param)) ||
+      (year && param && Organization.resolve_period(year, param)) ||
         default_period(socket.assigns.sequences)
 
-    results = period && Academics.class_results_for_period(socket.assigns.cg, period)
-    roster = Academics.list_roster(socket.assigns.cg)
+    results = period && Assessment.class_results_for_period(socket.assigns.cg, period)
+    roster = Enrollment.list_roster(socket.assigns.cg)
 
     assign(socket,
       period: period,
-      period_param: period && Academics.period_param(period),
+      period_param: period && Organization.period_param(period),
       results: results,
       roster: roster,
       rows: ranked_rows(results, roster)

@@ -17,6 +17,17 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
   actions do
     defaults [:read, :destroy]
 
+    read :for_workspace do
+      argument :workspace_id, :uuid, allow_nil?: false
+      get? true
+      filter expr(workspace_id == ^arg(:workspace_id))
+    end
+
+    read :unverified do
+      filter expr(verification_status == :unverified)
+      prepare build(load: [:workspace, :owner_user], sort: [inserted_at: :asc])
+    end
+
     create :create do
       accept [
         :workspace_id,

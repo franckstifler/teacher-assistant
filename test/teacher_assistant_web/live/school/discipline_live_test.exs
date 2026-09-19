@@ -1,31 +1,32 @@
 defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Discipline
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Discipline
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée D"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée D"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
-    sequence = Academics.current_sequence(year, ~D[2025-09-08])
+    sequence = Organization.current_sequence(year, ~D[2025-09-08])
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -56,12 +57,12 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
 
     conn = conn_for(school, dm)
 
@@ -83,8 +84,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       Discipline.list_sanctions(
         cg,
         {:sequence,
-         Academics.current_sequence(
-           TeacherAssistant.Academics.current_academic_year(school),
+         Organization.current_sequence(
+           TeacherAssistant.Organization.current_academic_year(school),
            ~D[2025-09-10]
          )}
       )
@@ -100,8 +101,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert Discipline.list_sanctions(
              cg,
              {:sequence,
-              Academics.current_sequence(
-                TeacherAssistant.Academics.current_academic_year(school),
+              Organization.current_sequence(
+                TeacherAssistant.Organization.current_academic_year(school),
                 ~D[2025-09-10]
               )}
            ) == []
@@ -116,12 +117,12 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
 
     conn = conn_for(school, dm)
 
@@ -141,8 +142,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       Discipline.list_sanctions(
         cg,
         {:sequence,
-         Academics.current_sequence(
-           TeacherAssistant.Academics.current_academic_year(school),
+         Organization.current_sequence(
+           TeacherAssistant.Organization.current_academic_year(school),
            ~D[2025-09-10]
          )}
       )
@@ -161,12 +162,12 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
 
     conn = conn_for(school, dm)
 
@@ -197,8 +198,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         head.id
       )
 
-    sequence = Academics.current_sequence(year, ~D[2025-09-10])
-    other_sequences = Academics.list_sequences(year) |> Enum.reject(&(&1.id == sequence.id))
+    sequence = Organization.current_sequence(year, ~D[2025-09-10])
+    other_sequences = Organization.list_sequences(year) |> Enum.reject(&(&1.id == sequence.id))
 
     conn = conn_for(school, head)
 
@@ -226,10 +227,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -251,8 +252,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     |> render_hook("set_note", %{"enrollment_id" => enrollment.id, "value" => "10"})
 
     sequence =
-      Academics.current_sequence(
-        TeacherAssistant.Academics.current_academic_year(school),
+      Organization.current_sequence(
+        TeacherAssistant.Organization.current_academic_year(school),
         ~D[2025-09-10]
       )
 
@@ -268,9 +269,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn = conn_for(school, other)
 
@@ -280,17 +281,17 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/discipline")

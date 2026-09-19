@@ -6,34 +6,35 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
   """
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, Enrollments}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Iso"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Iso"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollments.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
 
     # Teacher A owns the Maths context.
     teacher_a = member(school, head)
-    {:ok, tc_a} = Assignments.assign(cg, teacher_a, %{subject: "Maths"})
+    {:ok, tc_a} = Curriculum.assign_teacher(cg, teacher_a, %{subject: "Maths"})
 
     # Teacher B is a member who teaches a DIFFERENT subject (so B passes the
     # teaching-scope guard and reaches mount) but does NOT teach tc_a.
     teacher_b = member(school, head)
-    {:ok, _tc_b} = Assignments.assign(cg, teacher_b, %{subject: "Français"})
+    {:ok, _tc_b} = Curriculum.assign_teacher(cg, teacher_b, %{subject: "Français"})
 
     conn_b =
       conn |> log_in_user(teacher_b) |> Plug.Conn.put_session(:workspace_id, school.id)
@@ -45,9 +46,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, user)
+    {:ok, _} = Accounts.accept_invitation(inv.token, user)
     user
   end
 

@@ -1,14 +1,15 @@
 defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     user = TeacherFixtures.user_fixture()
-    ws = Academics.ensure_personal_workspace!(user)
+    ws = Organization.ensure_personal_workspace!(user)
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -16,7 +17,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
@@ -49,7 +50,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
   test "creates a draft plan with entries in order", %{ws: ws, ctx: ctx} do
     assert {:ok, plan} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: ctx.id, title: "Imported"},
                rows()
@@ -57,7 +58,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
     assert plan.title == "Imported"
     assert plan.status == :draft
-    entries = Academics.list_progression_entries(plan)
+    entries = Curriculum.list_progression_entries!(plan.id)
     assert Enum.map(entries, & &1.lesson_title) == ["Les entiers", "Évaluation"]
     assert Enum.map(entries, & &1.position) == [1, 2]
     assert Enum.at(entries, 1).entry_type == :evaluation
@@ -78,13 +79,13 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
         ]
 
     assert {:error, _} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: ctx.id, title: "Bad"},
                bad
              )
 
-    assert Academics.list_progression_plans(ws) == []
+    assert Curriculum.list_progression_plans!(ws.id) == []
   end
 
   test "import creates modules from row order and links entries", %{ws: ws, ctx: ctx} do
@@ -101,9 +102,9 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     ]
 
     {:ok, plan} =
-      Academics.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
+      Curriculum.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
 
-    mods = Academics.list_progression_modules(plan)
+    mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M1", "Général", "M2"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["L1", "L2"]
 
@@ -115,10 +116,10 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   end
 
   test "rejects a teaching context owned by another workspace", %{ws: ws} do
-    other_ws = Academics.ensure_personal_workspace!(TeacherFixtures.user_fixture())
+    other_ws = Organization.ensure_personal_workspace!(TeacherFixtures.user_fixture())
 
     {:ok, other_year} =
-      Academics.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -126,7 +127,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
       })
 
     {:ok, other_ctx} =
-      Academics.create_teaching_context(other_ws, other_year, %{
+      Curriculum.create_teaching_context(other_ws, other_year, %{
         subject: "Physics",
         level: "6ème",
         subsystem: :francophone,
@@ -134,7 +135,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
       })
 
     assert {:error, :not_found} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: other_ctx.id, title: "Nope"},
                rows()

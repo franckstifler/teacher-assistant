@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   test "completing setup creates a year, calendar and teaching context", %{
@@ -24,10 +25,10 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
     )
     |> render_submit()
 
-    year = Academics.current_academic_year(ws)
+    year = Organization.current_academic_year(ws)
     assert year.name == "2025-2026"
-    assert length(Academics.list_sequences(year)) == 6
-    assert [_ctx] = Academics.list_teaching_contexts(ws, year)
+    assert length(Organization.list_sequences(year)) == 6
+    assert [_ctx] = Curriculum.list_teaching_contexts(ws, year)
   end
 
   test "setup persists annual hours and count targets", %{conn: conn, workspace: ws} do
@@ -50,8 +51,8 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
     )
     |> render_submit()
 
-    year = Academics.current_academic_year(ws)
-    assert [ctx] = Academics.list_teaching_contexts(ws, year)
+    year = Organization.current_academic_year(ws)
+    assert [ctx] = Curriculum.list_teaching_contexts(ws, year)
     assert Decimal.equal?(ctx.annual_hours, Decimal.new("100"))
     assert ctx.target_module_count == 4
     assert ctx.target_lesson_count == 21

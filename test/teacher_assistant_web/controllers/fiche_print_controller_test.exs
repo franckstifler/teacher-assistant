@@ -1,11 +1,12 @@
 defmodule TeacherAssistantWeb.FichePrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -13,25 +14,25 @@ defmodule TeacherAssistantWeb.FichePrintControllerTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
       })
 
-    {:ok, lp} = Academics.ensure_lesson_plan(entry, ctx)
-    {:ok, _} = Academics.add_lesson_step(lp, %{etape: "Découverte", contenus: "les nombres"})
+    {:ok, lp} = Curriculum.ensure_lesson_plan(entry, ctx)
+    {:ok, _} = Curriculum.add_lesson_step(lp, %{etape: "Découverte", contenus: "les nombres"})
     %{entry: entry}
   end
 

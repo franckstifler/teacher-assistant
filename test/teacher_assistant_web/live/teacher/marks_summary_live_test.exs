@@ -1,37 +1,40 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Academics.build_default_calendar(year)
-    seq = Academics.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(year)
+    seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    {:ok, ctx} = Academics.link_class_group(ctx, cg)
-    {:ok, s1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, s2} = Academics.add_student(cg, %{full_name: "Beba", sex: :m})
-    {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
+    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
 
     :ok =
-      Academics.upsert_marks(a, [
+      Assessment.upsert_marks(a, [
         %{student_id: s1.id, score: Decimal.new("14")},
         %{student_id: s2.id, score: Decimal.new("8")}
       ])
@@ -59,7 +62,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     cg: cg,
     s2: s2
   } do
-    {:ok, ungraded} = Academics.add_student(cg, %{full_name: "Chantal", sex: :f})
+    {:ok, ungraded} = Enrollment.add_student(cg, %{full_name: "Chantal", sex: :f})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
@@ -79,7 +82,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     seq: seq,
     cg: cg
   } do
-    {:ok, _ungraded} = Academics.add_student(cg, %{full_name: "Chantal", sex: :f})
+    {:ok, _ungraded} = Enrollment.add_student(cg, %{full_name: "Chantal", sex: :f})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
@@ -94,8 +97,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   end
 
   test "séquence switcher patches to the chosen séquence", %{conn: conn, ctx: ctx, ws: ws} do
-    year = Academics.current_academic_year(ws)
-    seq2 = Academics.list_sequences(year) |> Enum.at(1)
+    year = Organization.current_academic_year(ws)
+    seq2 = Organization.list_sequences(year) |> Enum.at(1)
 
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary")
 
@@ -121,10 +124,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   end
 
   test "context without class group redirects to roster", %{conn: conn, ws: ws} do
-    {:ok, year} = {:ok, Academics.current_academic_year(ws)}
+    {:ok, year} = {:ok, Organization.current_academic_year(ws)}
 
     {:ok, ctx_no_roster} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "PCT",
         level: "3ème",
         subsystem: :francophone,

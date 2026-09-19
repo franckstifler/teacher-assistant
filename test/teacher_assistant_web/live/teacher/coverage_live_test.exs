@@ -1,13 +1,14 @@
 defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -15,33 +16,33 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, e1} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
       })
 
     {:ok, _e2} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L2",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
       })
 
     {:ok, _log} =
-      Academics.log_teaching(ws, %{
+      Curriculum.log_teaching(ws, %{
         date: ~D[2025-09-15],
         content_taught: "x",
         hours: Decimal.new("2"),
@@ -54,10 +55,10 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
 
   test "redirects to /teacher when accessing another user's coverage (IDOR)", %{conn: conn} do
     other_user = TeacherFixtures.user_fixture()
-    other_ws = Academics.ensure_personal_workspace!(other_user)
+    other_ws = Organization.ensure_personal_workspace!(other_user)
 
     {:ok, year} =
-      Academics.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -65,14 +66,14 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(other_ws, year, %{
+      Curriculum.create_teaching_context(other_ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, other_plan} = Academics.create_progression_plan(ctx, %{title: "Other Plan"})
+    {:ok, other_plan} = Curriculum.create_progression_plan(ctx, %{title: "Other Plan"})
 
     assert {:error, {:live_redirect, %{to: "/teacher"}}} =
              live(conn, ~p"/teacher/plans/#{other_plan.id}/coverage")

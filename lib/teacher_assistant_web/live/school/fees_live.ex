@@ -1,8 +1,9 @@
 defmodule TeacherAssistantWeb.School.FeesLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Fees
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Fees
+  alias TeacherAssistant.Academics.PaymentMethod
   alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistantWeb.Money
 
@@ -12,7 +13,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- authorized?(scope, cg) do
       {:ok,
        socket
@@ -20,7 +21,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          cg: cg,
          can_edit?: Permissions.fees_manager?(scope),
          editing_id: nil,
-         roster: Academics.list_roster(cg),
+         roster: Enrollment.list_roster(cg),
          payment_methods: @payment_methods,
          viewing_history_id: nil,
          history_payments: []
@@ -281,10 +282,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
   defp parse_positive_amount(_), do: {:error, :invalid_amount}
 
-  defp method_label(:cash), do: gettext("Espèces")
-  defp method_label(:mobile_money), do: gettext("Mobile money")
-  defp method_label(:bank_transfer), do: gettext("Virement bancaire")
-  defp method_label(:other), do: gettext("Autre")
+  defp method_label(m), do: PaymentMethod.label(m)
 
   defp status_chip(%{status: :paid_up}), do: gettext("Soldé")
   defp status_chip(%{status: :on_track}), do: gettext("À jour")

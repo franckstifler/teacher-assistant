@@ -16,17 +16,17 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
 
     test "shows coverage kpis after setup", %{conn: conn, workspace: ws} do
       {:ok, year} =
-        TeacherAssistant.Academics.create_academic_year(ws, %{
+        TeacherAssistant.Organization.create_academic_year(ws, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      :ok = TeacherAssistant.Academics.build_default_calendar(year)
+      :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
-        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+        TeacherAssistant.Curriculum.create_teaching_context(ws, year, %{
           subject: "Maths",
           level: "6ème",
           subsystem: :francophone,
@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
         })
 
       {:ok, _plan} =
-        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+        TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
       assert has_element?(view, "#coverage-kpis")
@@ -42,17 +42,17 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
 
     test "dashboard links to marks for a context", %{conn: conn, workspace: ws} do
       {:ok, year} =
-        TeacherAssistant.Academics.create_academic_year(ws, %{
+        TeacherAssistant.Organization.create_academic_year(ws, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      :ok = TeacherAssistant.Academics.build_default_calendar(year)
+      :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
-        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+        TeacherAssistant.Curriculum.create_teaching_context(ws, year, %{
           subject: "Maths",
           level: "6ème",
           subsystem: :francophone,
@@ -60,7 +60,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
         })
 
       {:ok, _plan} =
-        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+        TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
 
@@ -80,17 +80,17 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       workspace: ws
     } do
       {:ok, year} =
-        TeacherAssistant.Academics.create_academic_year(ws, %{
+        TeacherAssistant.Organization.create_academic_year(ws, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
           active: true
         })
 
-      :ok = TeacherAssistant.Academics.build_default_calendar(year)
+      :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
-        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+        TeacherAssistant.Curriculum.create_teaching_context(ws, year, %{
           subject: "Maths",
           level: "6ème",
           subsystem: :francophone,
@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
         })
 
       {:ok, plan} =
-        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+        TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
 

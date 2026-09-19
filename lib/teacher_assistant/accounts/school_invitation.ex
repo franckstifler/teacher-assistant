@@ -17,6 +17,23 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
       create: [:workspace_id, :email, :roles, :invited_by_user_id, :status, :token, :expires_at],
       update: [:status]
     ]
+
+    read :by_token do
+      argument :token, :string, allow_nil?: false
+      get? true
+      filter expr(token == ^arg(:token))
+      prepare build(load: [:workspace])
+    end
+
+    read :pending_for_workspace do
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(workspace_id == ^arg(:workspace_id) and status == :pending)
+      prepare build(sort: [inserted_at: :asc])
+    end
+
+    update :revoke do
+      change set_attribute(:status, :revoked)
+    end
   end
 
   policies do

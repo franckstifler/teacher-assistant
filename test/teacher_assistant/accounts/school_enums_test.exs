@@ -6,12 +6,7 @@ defmodule TeacherAssistant.Accounts.SchoolEnumsTest do
     SchoolSubsystem,
     SchoolSector,
     CameroonRegion,
-    SchoolVerificationStatus,
-    SchoolTypes,
-    SchoolSubsystems,
-    SchoolSectors,
-    CameroonRegions,
-    SchoolVerificationStatuses
+    SchoolVerificationStatus
   }
 
   test "enum value sets" do
@@ -24,16 +19,15 @@ defmodule TeacherAssistant.Accounts.SchoolEnumsTest do
     assert Enum.sort(SchoolVerificationStatus.values()) == [:rejected, :unverified, :verified]
   end
 
-  test "every value has a non-empty label and all/0 covers the value set" do
-    for {type, labels} <- [
-          {SchoolType, SchoolTypes},
-          {SchoolSubsystem, SchoolSubsystems},
-          {SchoolSector, SchoolSectors},
-          {CameroonRegion, CameroonRegions},
-          {SchoolVerificationStatus, SchoolVerificationStatuses}
+  test "every value has a non-empty label" do
+    for type <- [
+          SchoolType,
+          SchoolSubsystem,
+          SchoolSector,
+          CameroonRegion,
+          SchoolVerificationStatus
         ] do
-      assert Enum.sort(labels.all()) == Enum.sort(type.values())
-      for v <- type.values(), do: assert(is_binary(labels.label(v)) and labels.label(v) != "")
+      for v <- type.values(), do: assert(is_binary(type.label(v)) and type.label(v) != "")
     end
   end
 end

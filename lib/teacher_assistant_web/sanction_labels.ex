@@ -6,11 +6,9 @@ defmodule TeacherAssistantWeb.SanctionLabels do
 
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
-  def type_label(:avertissement), do: gettext("Avertissement")
-  def type_label(:blame), do: gettext("Blâme")
-  def type_label(:exclusion_temporaire), do: gettext("Exclusion temporaire")
-  def type_label(:exclusion_definitive), do: gettext("Exclusion définitive")
-  def type_label(:consigne), do: gettext("Consigne")
+  alias TeacherAssistant.Academics.SanctionType
+
+  def type_label(type), do: SanctionType.label(type)
 
   def sanction_label(%{type: :exclusion_temporaire, duration_days: days}) when is_integer(days) do
     "#{type_label(:exclusion_temporaire)} (#{days} #{gettext("j")})"

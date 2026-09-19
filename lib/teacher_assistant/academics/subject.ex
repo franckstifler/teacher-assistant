@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.Subject do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Curriculum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -17,6 +17,17 @@ defmodule TeacherAssistant.Academics.Subject do
       create: [:name, :code, :default_coefficient, :category, :position, :active?, :workspace_id],
       update: [:name, :code, :default_coefficient, :category, :position, :active?]
     ]
+
+    read :for_workspace do
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(workspace_id == ^arg(:workspace_id))
+      prepare build(sort: [:position, :name])
+    end
+
+    update :deactivate do
+      accept []
+      change set_attribute(:active?, false)
+    end
   end
 
   policies do

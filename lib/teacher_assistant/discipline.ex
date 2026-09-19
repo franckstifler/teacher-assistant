@@ -1,16 +1,50 @@
-defmodule TeacherAssistant.Academics.Discipline do
-  @moduledoc "Discipline: sanctions capture and listing (P2.9)."
+defmodule TeacherAssistant.Discipline do
+  use Ash.Domain, otp_app: :teacher_assistant
 
-  require Ash.Query
-
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.ConductMark
+  # `TeacherAssistant.Academics.Enrollment` is the resource struct (used for
+  # the `enrollment_id/1` pattern match below); the domain
+  # `TeacherAssistant.Enrollment` is always referenced fully qualified so the
+  # two never collide under one bare `Enrollment` alias.
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.SanctionEntry
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.Term
-  alias TeacherAssistant.Academics.AcademicYear
+  alias TeacherAssistant.Organization
+
+  resources do
+    resource SanctionEntry do
+      define :list_sanctions_for_class_in_range,
+        action: :for_class_in_range,
+        args: [:class_group_id, :first, :last]
+
+      define :list_sanctions_for_enrollment_in_range,
+        action: :for_enrollment_in_range,
+        args: [:enrollment_id, :first, :last]
+
+      define :delete_sanction, action: :destroy
+    end
+
+    resource ConductMark do
+      define :conduct_mark_for_enrollment_sequence,
+        action: :for_enrollment_sequence,
+        args: [:enrollment_id, :sequence_id]
+
+      define :conduct_marks_for_enrollment_sequences,
+        action: :for_enrollment_sequences,
+        args: [:enrollment_id, :sequence_ids]
+
+      define :conduct_marks_for_enrollments_sequences,
+        action: :for_enrollments_sequences,
+        args: [:enrollment_ids, :sequence_ids]
+    end
+  end
+
+  authorization do
+    authorize :when_requested
+  end
 
   @valid_types MapSet.new([
                  :avertissement,
@@ -23,38 +57,22 @@ defmodule TeacherAssistant.Academics.Discipline do
   @doc """
   Lists `SanctionEntry`s for `class_group` (or a single `enrollment`) whose
   `date` is within `period_tuple`'s inclusive date range (see
-  `Academics.period_date_range/1`), newest first, with the enrollment's
+  `Organization.period_date_range/1`), newest first, with the enrollment's
   student loaded. Returns `[]` when the range is `nil`.
   """
   def list_sanctions(%ClassGroup{id: cg_id}, period_tuple) do
-    case Academics.period_date_range(period_tuple) do
-      nil ->
-        []
-
-      {first, last} ->
-        SanctionEntry
-        |> Ash.Query.filter(
-          enrollment.class_group_id == ^cg_id and date >= ^first and date <= ^last
-        )
-        |> Ash.Query.load(enrollment: :student)
-        |> Ash.Query.sort(date: :desc)
-        |> Ash.read!(authorize?: false)
+    case Organization.period_date_range(period_tuple) do
+      nil -> []
+      {first, last} -> list_sanctions_for_class_in_range!(cg_id, first, last)
     end
   end
 
   def list_sanctions(enrollment, period_tuple) do
     id = enrollment_id(enrollment)
 
-    case Academics.period_date_range(period_tuple) do
-      nil ->
-        []
-
-      {first, last} ->
-        SanctionEntry
-        |> Ash.Query.filter(enrollment_id == ^id and date >= ^first and date <= ^last)
-        |> Ash.Query.load(enrollment: :student)
-        |> Ash.Query.sort(date: :desc)
-        |> Ash.read!(authorize?: false)
+    case Organization.period_date_range(period_tuple) do
+      nil -> []
+      {first, last} -> list_sanctions_for_enrollment_in_range!(id, first, last)
     end
   end
 
@@ -82,7 +100,7 @@ defmodule TeacherAssistant.Academics.Discipline do
         workspace_id: e.workspace_id,
         enrollment_id: e.id
       })
-      |> Ash.create(authorize?: false)
+      |> Ash.create()
       |> case do
         {:ok, sanction} -> {:ok, sanction}
         {:error, _error} -> {:error, :sanction_failed}
@@ -92,15 +110,6 @@ defmodule TeacherAssistant.Academics.Discipline do
 
   defp validate_type(type) do
     if MapSet.member?(@valid_types, type), do: :ok, else: {:error, :invalid_type}
-  end
-
-  @doc "Deletes `sanction`."
-  def delete_sanction(%SanctionEntry{} = sanction) do
-    case Ash.destroy(sanction, authorize?: false) do
-      :ok -> :ok
-      {:ok, _} -> :ok
-      {:error, _error} -> {:error, :delete_failed}
-    end
   end
 
   @doc """
@@ -119,7 +128,7 @@ defmodule TeacherAssistant.Academics.Discipline do
         enrollment_id: e.id,
         sequence_id: sequence.id
       })
-      |> Ash.create(authorize?: false)
+      |> Ash.create()
       |> case do
         {:ok, mark} -> {:ok, mark}
         {:error, _error} -> {:error, :conduct_mark_failed}
@@ -143,21 +152,13 @@ defmodule TeacherAssistant.Academics.Discipline do
   @doc "Deletes the conduct mark for `enrollment` on `sequence`, if any."
   def clear_conduct_mark(enrollment, %Sequence{id: sequence_id} = _sequence) do
     id = enrollment_id(enrollment)
+    marks = conduct_mark_for_enrollment_sequence!(id, sequence_id)
 
-    ConductMark
-    |> Ash.Query.filter(enrollment_id == ^id and sequence_id == ^sequence_id)
-    |> Ash.read(authorize?: false)
-    |> case do
-      {:ok, marks} ->
-        try do
-          Enum.each(marks, &Ash.destroy!(&1, authorize?: false))
-          {:ok, length(marks)}
-        rescue
-          _ -> {:error, :conduct_mark_failed}
-        end
-
-      {:error, _error} ->
-        {:error, :conduct_mark_failed}
+    try do
+      Enum.each(marks, &Ash.destroy!/1)
+      {:ok, length(marks)}
+    rescue
+      _ -> {:error, :conduct_mark_failed}
     end
   end
 
@@ -170,46 +171,39 @@ defmodule TeacherAssistant.Academics.Discipline do
   def note_de_conduite(enrollment, {:sequence, %Sequence{} = sequence}) do
     id = enrollment_id(enrollment)
 
-    ConductMark
-    |> Ash.Query.filter(enrollment_id == ^id and sequence_id == ^sequence.id)
-    |> Ash.read!(authorize?: false)
-    |> case do
+    case conduct_mark_for_enrollment_sequence!(id, sequence.id) do
       [mark | _] -> mark.value
       [] -> nil
     end
   end
 
   def note_de_conduite(enrollment, {:trimester, %Term{} = term}) do
-    sequences =
-      case term.sequences do
-        %Ash.NotLoaded{} ->
-          Academics.list_terms(%AcademicYear{id: term.academic_year_id})
-          |> Enum.find(&(&1.id == term.id))
-          |> then(fn t -> if t, do: t.sequences, else: [] end)
-
-        sequences ->
-          sequences
-      end
-
-    mean_conduct_marks(enrollment, sequences)
+    mean_conduct_marks(enrollment, resolve_term_sequences(term))
   end
 
   def note_de_conduite(enrollment, {:annual, %AcademicYear{} = year}) do
-    mean_conduct_marks(enrollment, Academics.list_sequences(year))
+    mean_conduct_marks(enrollment, Organization.list_sequences(year))
   end
 
   defp mean_conduct_marks(enrollment, sequences) do
     id = enrollment_id(enrollment)
     sequence_ids = Enum.map(sequences, & &1.id)
 
-    values =
-      ConductMark
-      |> Ash.Query.filter(enrollment_id == ^id and sequence_id in ^sequence_ids)
-      |> Ash.read!(authorize?: false)
-      |> Enum.map(& &1.value)
-
-    mean_of_values(values)
+    id
+    |> conduct_marks_for_enrollment_sequences!(sequence_ids)
+    |> Enum.map(& &1.value)
+    |> mean_of_values()
   end
+
+  # Resolves a `Term`'s séquences, re-fetching (with them loaded) if needed.
+  defp resolve_term_sequences(%Term{sequences: %Ash.NotLoaded{}} = term) do
+    %AcademicYear{id: term.academic_year_id}
+    |> Organization.list_terms()
+    |> Enum.find(&(&1.id == term.id))
+    |> then(fn t -> if t, do: t.sequences, else: [] end)
+  end
+
+  defp resolve_term_sequences(%Term{sequences: sequences}), do: sequences
 
   # Shared averaging rule: mean of present values only, never a raw sum.
   # `nil` when the list is empty. Used by both the single-student
@@ -229,22 +223,11 @@ defmodule TeacherAssistant.Academics.Discipline do
   defp period_sequence_ids({:sequence, %Sequence{id: id}}), do: [id]
 
   defp period_sequence_ids({:trimester, %Term{} = term}) do
-    sequences =
-      case term.sequences do
-        %Ash.NotLoaded{} ->
-          Academics.list_terms(%AcademicYear{id: term.academic_year_id})
-          |> Enum.find(&(&1.id == term.id))
-          |> then(fn t -> if t, do: t.sequences, else: [] end)
-
-        sequences ->
-          sequences
-      end
-
-    Enum.map(sequences, & &1.id)
+    term |> resolve_term_sequences() |> Enum.map(& &1.id)
   end
 
   defp period_sequence_ids({:annual, %AcademicYear{} = year}) do
-    year |> Academics.list_sequences() |> Enum.map(& &1.id)
+    year |> Organization.list_sequences() |> Enum.map(& &1.id)
   end
 
   @doc """
@@ -269,7 +252,7 @@ defmodule TeacherAssistant.Academics.Discipline do
   enrollments get `%{sanctions: [], consignes_count: 0, note_de_conduite: nil}`.
   """
   def class_discipline(%ClassGroup{} = class_group, period_tuple) do
-    roster = Academics.list_roster(class_group)
+    roster = TeacherAssistant.Enrollment.list_roster(class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     entries_by_enrollment =
@@ -304,9 +287,8 @@ defmodule TeacherAssistant.Academics.Discipline do
   defp batch_conduct_values(_sequence_ids, []), do: %{}
 
   defp batch_conduct_values(sequence_ids, enrollment_ids) do
-    ConductMark
-    |> Ash.Query.filter(enrollment_id in ^enrollment_ids and sequence_id in ^sequence_ids)
-    |> Ash.read!(authorize?: false)
+    enrollment_ids
+    |> conduct_marks_for_enrollments_sequences!(sequence_ids)
     |> Enum.group_by(& &1.enrollment_id, & &1.value)
   end
 
@@ -316,7 +298,7 @@ defmodule TeacherAssistant.Academics.Discipline do
   defp fetch_enrollment(%Enrollment{} = e), do: {:ok, e}
 
   defp fetch_enrollment(id) when is_binary(id) do
-    case Ash.get(Enrollment, id, authorize?: false) do
+    case Ash.get(Enrollment, id) do
       {:ok, e} -> {:ok, e}
       {:error, _error} -> {:error, :not_found}
     end

@@ -1,8 +1,9 @@
 defmodule TeacherAssistant.Accounts.Workspaces do
-  alias TeacherAssistant.{Academics, Scope}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.{Organization, Scope}
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Curriculum
 
-  def ensure_personal_workspace!(user), do: Academics.ensure_personal_workspace!(user)
+  def ensure_personal_workspace!(user), do: Organization.ensure_personal_workspace!(user)
 
   def scope_for(user, workspace_id, context_id \\ nil)
 
@@ -12,7 +13,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   end
 
   def scope_for(user, workspace_id, context_id) do
-    case Academics.get_personal_workspace(workspace_id) do
+    case Organization.get_personal_workspace(workspace_id) do
       {:ok, %{kind: :personal} = ws} -> personal_scope(user, ws, context_id)
       {:ok, %{kind: :school} = ws} -> school_scope(user, ws, context_id)
       _ -> {:error, :workspace_not_found}
@@ -21,7 +22,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
 
   defp personal_scope(user, ws, context_id) do
     if ws.owner_user_id == user.id do
-      year = Academics.current_academic_year(ws)
+      year = Organization.current_academic_year(ws)
 
       {:ok,
        %Scope{
@@ -32,7 +33,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
          current_roles: [:teacher],
          current_membership: nil,
          current_academic_year: year,
-         current_context: Academics.resolve_current_context(ws, year, context_id)
+         current_context: Curriculum.resolve_current_context(ws, year, context_id)
        }}
     else
       {:error, :workspace_not_found}
@@ -40,12 +41,12 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   end
 
   defp school_scope(user, ws, context_id) do
-    case Schools.fetch_school_membership(ws, user) do
+    case Accounts.fetch_school_membership(ws, user) do
       {:ok, membership} ->
-        year = Academics.current_academic_year(ws)
+        year = Organization.current_academic_year(ws)
 
         status =
-          case Schools.fetch_school_profile(ws) do
+          case Accounts.fetch_school_profile(ws) do
             {:ok, p} -> p.verification_status
             _ -> :unverified
           end
@@ -71,7 +72,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   defp resolve_assigned_context(_ws, nil, _user, _context_id), do: nil
 
   defp resolve_assigned_context(ws, year, user, context_id) do
-    contexts = TeacherAssistant.Academics.Assignments.list_for_user(ws, year, user)
+    contexts = TeacherAssistant.Curriculum.list_assignments_for_user(ws, year, user)
     Enum.find(contexts, &(&1.id == context_id)) || List.first(contexts)
   end
 end

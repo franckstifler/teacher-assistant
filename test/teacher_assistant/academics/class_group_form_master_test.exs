@@ -1,21 +1,21 @@
 defmodule TeacherAssistant.Academics.ClassGroupFormMasterTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Organization
 
   setup do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(user, %{name: "Lycée FM"})
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée FM"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     %{user: user, cg: cg}
   end
 

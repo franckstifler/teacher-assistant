@@ -1,8 +1,10 @@
 defmodule TeacherAssistantWeb.School.AttendanceLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Academics.AttendanceStatus
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
@@ -15,7 +17,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     scope = socket.assigns.current_scope
     date = parse_date(params["date"])
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          {:ok, period} <- fetch_period(period_id, scope.current_workspace),
          {:ok, slot_or_nil} <- resolve_slot(cg, date, period.id),
          true <- authorized?(scope, slot_or_nil) do
@@ -55,7 +57,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
          teaching_context: %TeachingContext{combined_course_id: course_id}
        })
        when not is_nil(course_id) do
-    case Academics.get_course(course_id) do
+    case Curriculum.get_course(course_id) do
       {:ok, course} -> course
       _ -> nil
     end
@@ -74,7 +76,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   defp fetch_period(period_id, workspace) do
     workspace
-    |> TeacherAssistant.Academics.Timetables.list_periods()
+    |> Attendance.list_periods()
     |> Enum.find(&(&1.id == period_id))
     |> case do
       nil -> {:error, :not_found}
@@ -204,9 +206,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     )
   end
 
-  defp status_label(:present), do: gettext("Présent")
-  defp status_label(:absent), do: gettext("Absent")
-  defp status_label(:late), do: gettext("Retard")
+  defp status_label(s), do: AttendanceStatus.label(s)
 
   defp status_short(:present), do: "P"
   defp status_short(:absent), do: "A"

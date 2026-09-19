@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.Sequence do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Organization,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -17,6 +17,12 @@ defmodule TeacherAssistant.Academics.Sequence do
       create: [:number, :position_in_term, :start_date, :end_date, :integration_week, :term_id],
       update: [:number, :position_in_term, :start_date, :end_date, :integration_week]
     ]
+
+    read :for_academic_year do
+      argument :academic_year_id, :uuid, allow_nil?: false
+      filter expr(term.academic_year_id == ^arg(:academic_year_id))
+      prepare build(load: [:term], sort: [number: :asc])
+    end
   end
 
   policies do

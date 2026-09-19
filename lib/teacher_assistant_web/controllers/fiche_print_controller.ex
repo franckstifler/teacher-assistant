@@ -1,8 +1,8 @@
 defmodule TeacherAssistantWeb.FichePrintController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Accounts.Workspaces
+  alias TeacherAssistant.Curriculum
 
   def show(conn, %{"entry_id" => entry_id}) do
     user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
@@ -10,9 +10,9 @@ defmodule TeacherAssistantWeb.FichePrintController do
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
          ws when not is_nil(ws) <- scope.current_workspace,
-         {:ok, bundle} <- Academics.fetch_owned_entry_with_context(entry_id, ws) do
-      {:ok, lesson_plan} = Academics.ensure_lesson_plan(bundle.entry, bundle.ctx)
-      steps = Academics.list_lesson_steps(lesson_plan)
+         {:ok, bundle} <- Curriculum.fetch_owned_entry_with_context(entry_id, ws) do
+      {:ok, lesson_plan} = Curriculum.ensure_lesson_plan(bundle.entry, bundle.ctx)
+      steps = Curriculum.list_lesson_steps!(lesson_plan.id)
 
       conn
       |> put_layout(false)
@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.FichePrintController do
   defp load_user(nil), do: nil
 
   defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id, authorize?: false) do
+    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
       {:ok, user} -> user
       _ -> nil
     end

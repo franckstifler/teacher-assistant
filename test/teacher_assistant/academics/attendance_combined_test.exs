@@ -3,43 +3,42 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Attendance
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.AttendanceEntry
-  alias TeacherAssistant.Academics.Courses
-  alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Timetabling
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, maco} = Academics.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Academics.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, maco} = Enrollment.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
+    {:ok, menu} = Enrollment.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Maths"})
-    {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Maths"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
 
-    {:ok, _s_maco} = Academics.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, _s_menu} = Academics.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, _s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
+    {:ok, _s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
 
-    [%{enrollment: enr_maco}] = Academics.list_roster(maco)
-    [%{enrollment: enr_menu}] = Academics.list_roster(menu)
+    [%{enrollment: enr_maco}] = Enrollment.list_roster(maco)
+    [%{enrollment: enr_menu}] = Enrollment.list_roster(menu)
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    :ok = Timetables.build_default_periods(ws)
-    period = Timetables.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(ws)
+    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
 
     # 2025-09-08 is a Monday. Only MACO's slot is placed at this period: the
     # teacher can only be physically timetabled in one class at a time, so a
@@ -48,7 +47,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
     # therefore resolves with no teaching_context, which is a legitimate
     # state `period_roll/3` already handles.
     {:ok, _slot_maco} =
-      Timetables.place_slot(maco, %{
+      Timetabling.place_slot(maco, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_maco.id
@@ -136,6 +135,54 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
                  marks,
                  ctx.head.id
                )
+
+      assert [] =
+               AttendanceEntry
+               |> Ash.Query.filter(enrollment_id == ^ctx.enr_maco.id)
+               |> Ash.read!(authorize?: false)
+
+      assert [] =
+               AttendanceEntry
+               |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
+               |> Ash.read!(authorize?: false)
+    end
+
+    test "a genuine DB-level failure in the second group rolls back the first group's already-written entry",
+         ctx do
+      # `Attendance.record_combined_period/5` pre-validates status/enrollment
+      # in plain Elixir before ever touching the DB, so it can never exercise
+      # `AttendanceEntry`'s `:record_combined_period` action's own
+      # `transaction? true` — every failure it can reach is caught before the
+      # transaction opens. This test drives the action directly with a
+      # `teaching_context_id` that doesn't exist (a real foreign-key
+      # violation, `attendance_entries_teaching_context_id_fkey`), which only
+      # fails once the DB is touched. MACO's group is entirely valid and
+      # would insert first; MENU's group is the one that trips the FK. If
+      # `transaction? true` didn't roll back, MACO's entry would survive.
+      bogus_teaching_context_id = Ecto.UUID.generate()
+
+      groups = [
+        %{
+          workspace_id: ctx.maco.workspace_id,
+          teaching_context_id: ctx.tc_maco.id,
+          marks: [%{enrollment_id: ctx.enr_maco.id, status: :present}]
+        },
+        %{
+          workspace_id: ctx.menu.workspace_id,
+          teaching_context_id: bogus_teaching_context_id,
+          marks: [%{enrollment_id: ctx.enr_menu.id, status: :absent}]
+        }
+      ]
+
+      assert {:error, _reason} =
+               AttendanceEntry
+               |> Ash.ActionInput.for_action(:record_combined_period, %{
+                 period_id: ctx.period.id,
+                 date: ctx.date,
+                 recorded_by_user_id: ctx.head.id,
+                 groups: groups
+               })
+               |> Ash.run_action()
 
       assert [] =
                AttendanceEntry

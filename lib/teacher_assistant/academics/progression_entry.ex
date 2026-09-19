@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionEntry do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Curriculum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -42,6 +42,22 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
         :completed?
       ]
     ]
+
+    # All entries of a plan, in position order, with their module preloaded.
+    # Mirrors the old `Academics.list_progression_entries/1`.
+    read :for_plan do
+      argument :progression_plan_id, :uuid, allow_nil?: false
+      filter expr(progression_plan_id == ^arg(:progression_plan_id))
+      prepare build(sort: [position: :asc], load: [:progression_module])
+    end
+
+    # Owner-scoped single-entry lookup (IDOR guard): the entry's plan must
+    # belong to the given workspace. Backs `Curriculum.fetch_owned_entry/2`.
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(id == ^arg(:id) and progression_plan.workspace_id == ^arg(:workspace_id))
+    end
   end
 
   policies do

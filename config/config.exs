@@ -61,7 +61,17 @@ config :spark,
 config :teacher_assistant,
   ecto_repos: [TeacherAssistant.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [TeacherAssistant.Accounts, TeacherAssistant.Academics],
+  ash_domains: [
+    TeacherAssistant.Accounts,
+    TeacherAssistant.Organization,
+    TeacherAssistant.Enrollment,
+    TeacherAssistant.Curriculum,
+    TeacherAssistant.Assessment,
+    TeacherAssistant.Attendance,
+    TeacherAssistant.Discipline,
+    TeacherAssistant.Timetabling,
+    TeacherAssistant.Fees
+  ],
   uploads_dir: "priv/uploads"
 
 # Configures the endpoint

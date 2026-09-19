@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.Admin.SchoolsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   @attrs %{
@@ -24,7 +25,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLiveTest do
 
   test "an admin sees an unverified school and verifies it", %{conn: conn} do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, @attrs)
+    {:ok, school} = Organization.create_school(head, @attrs)
     admin = TeacherFixtures.admin_user_fixture()
 
     conn =
@@ -34,7 +35,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLiveTest do
     assert html =~ "Lycée Op"
     view |> element("#verify-#{school.id}") |> render_click()
 
-    {:ok, p} = Schools.fetch_school_profile(school)
+    {:ok, p} = Accounts.fetch_school_profile(school)
     assert p.verification_status == :verified
   end
 end

@@ -2,48 +2,51 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Attendance
-  alias TeacherAssistant.Academics.Courses
-  alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, maco} = Academics.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Academics.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, maco} =
+      Enrollment.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
 
-    {:ok, tc_maco} = Assignments.assign(maco, head, %{subject: "Maths"})
-    {:ok, tc_menu} = Assignments.assign(menu, head, %{subject: "Maths"})
+    {:ok, menu} =
+      Enrollment.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, _s_maco} = Academics.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, _s_menu} = Academics.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
 
-    [%{enrollment: enr_maco}] = Academics.list_roster(maco)
-    [%{enrollment: enr_menu}] = Academics.list_roster(menu)
+    {:ok, _s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
+    {:ok, _s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
 
-    {:ok, course} = Courses.combine([tc_maco, tc_menu])
+    [%{enrollment: enr_maco}] = Enrollment.list_roster(maco)
+    [%{enrollment: enr_menu}] = Enrollment.list_roster(menu)
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday. Only MACO's slot is placed at this cell (see the note in
     # attendance_combined_test.exs) — navigating to MACO's own attendance
     # page is what puts this LiveView in combined mode.
     {:ok, _slot_maco} =
-      Timetables.place_slot(maco, %{
+      Timetabling.place_slot(maco, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_maco.id
@@ -51,8 +54,8 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
 
     date = ~D[2025-09-08]
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
-    {:ok, _} = Schools.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

@@ -1,11 +1,12 @@
 defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Schools.create_school(user, %{name: "Ancien Nom"})
+    {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school}
   end
@@ -16,7 +17,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert has_element?(view, "#school-settings")
     view |> form("#school-settings", %{"school" => %{"name" => "Nouveau Nom"}}) |> render_submit()
 
-    assert TeacherAssistant.Academics.get_personal_workspace(school.id)
+    assert TeacherAssistant.Organization.get_personal_workspace(school.id)
            |> elem(1)
            |> Map.get(:name) ==
              "Nouveau Nom"
@@ -35,10 +36,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   end
 
   test "activating a year deactivates the previous one", %{conn: conn, school: school} do
-    alias TeacherAssistant.Academics
-
     {:ok, y1} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2024-2025",
         start_date: ~D[2024-09-09],
         end_date: ~D[2025-07-31],
@@ -46,7 +45,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
       })
 
     {:ok, y2} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -56,8 +55,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/settings")
     view |> element("#year-activate-#{y2.id}") |> render_click()
 
-    assert Academics.current_academic_year(school).id == y2.id
-    assert {:ok, %{active: false}} = Academics.get_academic_year(y1.id)
+    assert Organization.current_academic_year(school).id == y2.id
+    assert {:ok, %{active: false}} = Organization.get_academic_year(y1.id)
   end
 
   test "a plain teacher member cannot create years (forged event)", %{
@@ -65,14 +64,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     school: school,
     actor: head
   } do
-    alias TeacherAssistant.Academics
-
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -87,7 +84,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
       "year" => %{"name" => "2025-2026", "start_date" => "2025-09-08", "end_date" => "2026-07-31"}
     })
 
-    assert Academics.list_academic_years(school) == []
+    assert Organization.list_academic_years(school) == []
   end
 
   test "a vice_principal member sees the Settings nav link and can manage years", %{
@@ -95,17 +92,15 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     school: school,
     actor: head
   } do
-    alias TeacherAssistant.Academics
-
     vp = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(vp.email),
         roles: [:vice_principal]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, vp)
+    {:ok, _} = Accounts.accept_invitation(inv.token, vp)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -126,7 +121,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     })
     |> render_submit()
 
-    assert Academics.list_academic_years(school) |> Enum.any?(&(&1.name == "2025-2026"))
+    assert Organization.list_academic_years(school) |> Enum.any?(&(&1.name == "2025-2026"))
   end
 
   test "head can add and remove a subject", %{conn: conn} do
@@ -143,15 +138,14 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   end
 
   test "admin edits a subject's coefficient", %{conn: conn, school: school} do
-    alias TeacherAssistant.Academics.Subjects
-
+    alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
     view
@@ -160,29 +154,28 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     )
     |> render_submit()
 
-    updated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    updated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
     assert Decimal.equal?(updated.default_coefficient, Decimal.new("2.5"))
   end
 
   test "admin deactivates and reactivates a subject", %{conn: conn, school: school} do
-    alias TeacherAssistant.Academics.Subjects
-
+    alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
-    deactivated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    deactivated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
     assert deactivated.active? == false
     assert render(view) =~ "Réactiver"
 
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
-    reactivated = Subjects.list(school) |> Enum.find(&(&1.id == subject.id))
+    reactivated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
     assert reactivated.active? == true
   end
 
@@ -191,24 +184,23 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     school: school,
     actor: head
   } do
-    alias TeacherAssistant.Academics.Subjects
-
+    alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Subjects.list(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
-    catalog_size_before = length(Subjects.list(school))
+    catalog_size_before = length(Curriculum.list_subjects(school))
 
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     teacher_conn =
       Phoenix.ConnTest.build_conn()
@@ -237,7 +229,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     render_hook(tview, "toggle_subject_active", %{"id" => subject.id})
     render_hook(tview, "delete_subject", %{"id" => subject.id})
 
-    subjects = Subjects.list(school)
+    subjects = Curriculum.list_subjects(school)
     assert length(subjects) == catalog_size_before
     refute Enum.any?(subjects, &(&1.name == "Forged"))
 
@@ -251,11 +243,9 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     conn: conn,
     school: school
   } do
-    alias TeacherAssistant.Academics
-
     # Create first year directly with active: true
     {:ok, _y1} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2024-2025",
         start_date: ~D[2024-09-09],
         end_date: ~D[2025-07-31],
@@ -272,10 +262,10 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     |> render_submit()
 
     # First year must still be active
-    assert Academics.current_academic_year(school).name == "2024-2025"
+    assert Organization.current_academic_year(school).name == "2024-2025"
 
     # Second year must exist and be inactive
-    years = Academics.list_academic_years(school)
+    years = Organization.list_academic_years(school)
     y2 = Enum.find(years, &(&1.name == "2025-2026"))
     assert y2 != nil
     assert y2.active == false

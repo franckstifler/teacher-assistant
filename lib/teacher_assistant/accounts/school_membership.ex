@@ -17,6 +17,33 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
       create: [:workspace_id, :user_id, :roles, :status, :active],
       update: [:roles, :status, :active]
     ]
+
+    read :active_for_workspace do
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(workspace_id == ^arg(:workspace_id) and active == true)
+      prepare build(load: [:user], sort: [inserted_at: :asc])
+    end
+
+    read :active_for_user do
+      argument :user_id, :uuid, allow_nil?: false
+      filter expr(user_id == ^arg(:user_id) and active == true)
+      prepare build(load: [:workspace])
+    end
+
+    read :for_workspace_and_user do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :user_id, :uuid, allow_nil?: false
+      get? true
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and user_id == ^arg(:user_id) and
+                 active == true
+             )
+    end
+
+    update :deactivate do
+      change set_attribute(:active, false)
+    end
   end
 
   policies do
@@ -48,6 +75,18 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
       source_attribute :user_id
       allow_nil? false
       public? true
+    end
+  end
+
+  aggregates do
+    # Count of other active head memberships in the same workspace (self
+    # excluded) — backs the "can't remove/deactivate the last head" guard in
+    # `TeacherAssistant.Accounts`.
+    count :other_active_heads, __MODULE__ do
+      filter expr(
+               workspace_id == parent(workspace_id) and active == true and :head in roles and
+                 id != parent(id)
+             )
     end
   end
 

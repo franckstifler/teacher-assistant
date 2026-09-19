@@ -1,26 +1,27 @@
 defmodule TeacherAssistantWeb.School.FeesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Fees
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Fees
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée F"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée F"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -42,9 +43,9 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     bursar = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(bursar.email), roles: [:bursar]})
+      Accounts.invite_member(school, head, %{email: to_string(bursar.email), roles: [:bursar]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, bursar)
+    {:ok, _} = Accounts.accept_invitation(inv.token, bursar)
 
     conn = conn_for(school, bursar)
 
@@ -173,10 +174,10 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -218,9 +219,9 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn = conn_for(school, other)
 
@@ -233,8 +234,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     cg: cg,
     head: head
   } do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -271,8 +272,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     cg: cg,
     head: head
   } do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Bella Fon", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Bella Fon", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -292,8 +293,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "a fees manager deletes a payment", %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -325,8 +326,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "status chip shows Soldé when fully paid", %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -348,8 +349,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
   test "a form master sees balances read-only and forged payment/adjustment events are rejected",
        %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -357,10 +358,10 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -389,8 +390,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "a zero or non-numeric payment amount is rejected", %{school: school, cg: cg, head: head} do
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -419,17 +420,17 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/fees")

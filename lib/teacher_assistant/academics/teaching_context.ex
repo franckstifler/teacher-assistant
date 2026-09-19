@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.TeachingContext do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Curriculum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -63,6 +63,89 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :combined_course_id
       ]
     ]
+
+    read :for_class_group do
+      argument :class_group_id, :uuid, allow_nil?: false
+      filter expr(class_group_id == ^arg(:class_group_id) and not is_nil(teacher_user_id))
+      prepare build(load: [:teacher, :combined_course], sort: [subject: :asc])
+    end
+
+    # Every context of a workspace in an academic year, subject-sorted. Backs
+    # `Curriculum.list_teaching_contexts/2`.
+    read :for_workspace_year do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id)
+             )
+
+      prepare build(sort: [subject: :asc])
+    end
+
+    # Owner-scoped single-context lookup (IDOR guard): the context must belong
+    # to the given workspace. Backs `Curriculum.fetch_owned_teaching_context/2`.
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+    end
+
+    # School-scoped single-context lookup: the context must belong to the
+    # workspace AND be assigned to the given teacher (a colleague may not open
+    # another teacher's roster by id). Backs the school clause of
+    # `Curriculum.fetch_assigned_teaching_context/2`.
+    read :assigned_in_school do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :teacher_user_id, :uuid, allow_nil?: false
+
+      filter expr(
+               id == ^arg(:id) and
+                 workspace_id == ^arg(:workspace_id) and
+                 teacher_user_id == ^arg(:teacher_user_id)
+             )
+    end
+
+    read :for_combined_course do
+      argument :combined_course_id, :uuid, allow_nil?: false
+      filter expr(combined_course_id == ^arg(:combined_course_id))
+    end
+
+    read :for_workspace_year_teacher do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :teacher_user_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id) and
+                 teacher_user_id == ^arg(:teacher_user_id)
+             )
+
+      prepare build(load: [:class_group], sort: [subject: :asc])
+    end
+
+    read :combinable_siblings do
+      argument :workspace_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :subject, :string, allow_nil?: false
+      argument :teacher_user_id, :uuid, allow_nil?: true
+      argument :exclude_id, :uuid, allow_nil?: false
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and
+                 academic_year_id == ^arg(:academic_year_id) and
+                 subject == ^arg(:subject) and
+                 teacher_user_id == ^arg(:teacher_user_id) and
+                 is_nil(combined_course_id) and
+                 id != ^arg(:exclude_id) and
+                 not is_nil(class_group_id)
+             )
+
+      prepare build(load: [:class_group], sort: [subject: :asc])
+    end
   end
 
   policies do

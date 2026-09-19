@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{Permissions, SchoolRoles, Schools}
+  alias TeacherAssistant.Accounts.{Permissions, SchoolInvitation, SchoolRole}
+  alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -11,7 +12,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        socket
        |> assign(:scope, scope)
        |> assign(:head?, Permissions.head?(scope))
-       |> assign(:invite_form, to_form(%{"email" => "", "roles" => ["teacher"]}, as: :invite))
+       |> assign(:invite_form, invite_form())
        |> reload_members()}
     else
       {:ok, push_navigate(socket, to: ~p"/teacher")}
@@ -44,7 +45,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     phx-value-id={m.id}
                     class="flex flex-wrap gap-2"
                   >
-                    <label :for={role <- SchoolRoles.all()} class="label cursor-pointer gap-1">
+                    <label :for={role <- SchoolRole.values()} class="label cursor-pointer gap-1">
                       <input
                         type="checkbox"
                         name="roles[]"
@@ -52,11 +53,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                         checked={role in m.roles}
                         class="checkbox checkbox-sm"
                       />
-                      <span class="text-xs">{SchoolRoles.label(role)}</span>
+                      <span class="text-xs">{SchoolRole.label(role)}</span>
                     </label>
                   </form>
                   <span :if={!@head?}>
-                    {m.roles |> Enum.map(&SchoolRoles.label/1) |> Enum.join(", ")}
+                    {m.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
                   </span>
                 </td>
                 <td>{gettext("Actif")}</td>
@@ -89,7 +90,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             <div class="flex flex-wrap items-end gap-3">
               <.input field={@invite_form[:email]} type="email" label={gettext("Email")} />
               <div class="flex flex-wrap gap-2">
-                <label :for={role <- SchoolRoles.all()} class="label cursor-pointer gap-1">
+                <label :for={role <- SchoolRole.values()} class="label cursor-pointer gap-1">
                   <input
                     type="checkbox"
                     name="invite[roles][]"
@@ -97,7 +98,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     checked={role == :teacher}
                     class="checkbox checkbox-sm"
                   />
-                  <span class="text-xs">{SchoolRoles.label(role)}</span>
+                  <span class="text-xs">{SchoolRole.label(role)}</span>
                 </label>
               </div>
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Inviter")}</button>
@@ -120,7 +121,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             <div class="text-sm">
               <span class="font-medium">{inv.email}</span>
               <span class="text-base-content/60">
-                — {inv.roles |> Enum.map(&SchoolRoles.label/1) |> Enum.join(", ")}
+                — {inv.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
               </span>
             </div>
             <button
@@ -146,12 +147,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     if Permissions.head?(scope) do
       roles = parse_roles(params["roles"])
 
-      case Schools.invite_member(scope.current_workspace, scope.current_user, %{
+      case Accounts.invite_member(scope.current_workspace, scope.current_user, %{
              email: params["email"],
              roles: roles
            }) do
         {:ok, _invitation} ->
-          {:noreply, reload_members(socket)}
+          {:noreply, socket |> assign(:invite_form, invite_form()) |> reload_members()}
 
         {:error, :already_member} ->
           {:noreply,
@@ -171,7 +172,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, socket}
 
         inv ->
-          {:ok, _} = Schools.revoke_invitation(inv)
+          {:ok, _} = Accounts.revoke_invitation(inv)
           {:noreply, reload_members(socket)}
       end
     else
@@ -188,7 +189,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, socket}
 
         membership ->
-          case Schools.deactivate_member(membership) do
+          case Accounts.deactivate_member(membership) do
             {:ok, _} ->
               {:noreply, reload_members(socket)}
 
@@ -217,7 +218,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {:noreply, socket}
 
         membership ->
-          case Schools.update_member_roles(membership, roles) do
+          case Accounts.update_member_roles(membership, roles) do
             {:ok, _} ->
               {:noreply, reload_members(socket)}
 
@@ -235,12 +236,22 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     end
   end
 
+  # The invite dialog binds to `SchoolInvitation :create` for its email field.
+  # Submit still routes through `Accounts.invite_member/3`, which owns the
+  # token/expiry generation, the "already a member" guard and the invitation
+  # email — behaviour the bare create action does not reproduce.
+  defp invite_form do
+    SchoolInvitation
+    |> AshPhoenix.Form.for_create(:create, as: "invite")
+    |> to_form()
+  end
+
   defp reload_members(socket) do
     school = socket.assigns.scope.current_workspace
 
     socket
-    |> assign(:members, Schools.list_members(school))
-    |> assign(:invitations, Schools.list_pending_invitations(school))
+    |> assign(:members, Accounts.list_members(school))
+    |> assign(:invitations, Accounts.list_pending_invitations(school))
   end
 
   defp parse_roles(nil), do: [:teacher]
@@ -258,13 +269,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   defp find_invitation(school, id) do
     school
-    |> Schools.list_pending_invitations()
+    |> Accounts.list_pending_invitations()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end
 
   defp find_membership(school, id) do
     school
-    |> Schools.list_members()
+    |> Accounts.list_members()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end
 end

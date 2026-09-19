@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.LessonPlan do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Curriculum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -36,6 +36,13 @@ defmodule TeacherAssistant.Academics.LessonPlan do
         :prerequis
       ]
     ]
+
+    # The (at most one, per `unique_entry`) lesson plan of a progression
+    # entry. Mirrors the old `Academics.get_lesson_plan_for_entry/1`.
+    read :for_entry do
+      argument :progression_entry_id, :uuid, allow_nil?: false
+      filter expr(progression_entry_id == ^arg(:progression_entry_id))
+    end
   end
 
   policies do

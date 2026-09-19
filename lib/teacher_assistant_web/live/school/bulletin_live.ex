@@ -1,32 +1,35 @@
 defmodule TeacherAssistantWeb.School.BulletinLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Attendance
-  alias TeacherAssistant.Academics.Discipline
+  alias TeacherAssistant.Assessment
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Discipline
+  alias TeacherAssistant.Academics.Sex
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg),
-         roster = Academics.list_roster(cg),
+         roster = Enrollment.list_roster(cg),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
       year = scope.current_academic_year
-      sequences = if year, do: Academics.list_sequences(year), else: []
-      terms = if year, do: Academics.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(year), else: []
+      terms = if year, do: Organization.list_terms(year), else: []
 
       period =
-        (year && Academics.resolve_period(year, params["period"])) ||
+        (year && Organization.resolve_period(year, params["period"])) ||
           case sequences do
             [seq | _] -> {:sequence, seq}
             [] -> nil
           end
 
-      results = period && Academics.class_results_for_period(cg, period)
+      results = period && Assessment.class_results_for_period(cg, period)
       data = results && results.per_student[student.id]
       conduct = period && Attendance.student_conduct(enrollment, period)
       discipline = period && Discipline.discipline_summary(enrollment, period)
@@ -40,8 +43,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          sequences: sequences,
          terms: terms,
          period: period,
-         period_param: period && Academics.period_param(period),
-         period_kind: period && Academics.period_kind(period),
+         period_param: period && Organization.period_param(period),
+         period_kind: period && Organization.period_kind(period),
          effectif: (results && results.effectif) || 0,
          data: data,
          conduct: conduct,
@@ -66,17 +69,17 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     year = socket.assigns.year
 
     period =
-      (year && Academics.resolve_period(year, params["period"])) || socket.assigns.period
+      (year && Organization.resolve_period(year, params["period"])) || socket.assigns.period
 
-    results = period && Academics.class_results_for_period(socket.assigns.cg, period)
+    results = period && Assessment.class_results_for_period(socket.assigns.cg, period)
     conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
     discipline = period && Discipline.discipline_summary(socket.assigns.enrollment, period)
 
     {:noreply,
      assign(socket,
        period: period,
-       period_param: period && Academics.period_param(period),
-       period_kind: period && Academics.period_kind(period),
+       period_param: period && Organization.period_param(period),
+       period_kind: period && Organization.period_kind(period),
        effectif: (results && results.effectif) || 0,
        data: results && results.per_student[socket.assigns.student.id],
        conduct: conduct,
@@ -104,8 +107,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
 
-  defp sex_label(:f), do: gettext("Féminin")
-  defp sex_label(_), do: gettext("Masculin")
+  defp sex_label(s), do: Sex.label(s)
 
   defp no_data_message(:trimester), do: gettext("No marks for this term yet.")
   defp no_data_message(:annual), do: gettext("No marks for this year yet.")

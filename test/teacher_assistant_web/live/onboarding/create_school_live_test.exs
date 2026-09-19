@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Academics.Workspace
   require Ash.Query
 
@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLiveTest do
     school =
       Workspace |> Ash.Query.filter(name == "Collège Vogt") |> Ash.read_one!(authorize?: false)
 
-    {:ok, profile} = Schools.fetch_school_profile(school)
+    {:ok, profile} = Accounts.fetch_school_profile(school)
     assert profile.verification_status == :unverified
     assert profile.owner_user_id == user.id
   end

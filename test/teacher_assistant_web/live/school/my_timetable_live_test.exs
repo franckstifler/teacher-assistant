@@ -1,32 +1,34 @@
 defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée T"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     {:ok, _slot} =
-      Timetables.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -63,9 +65,9 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(member.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(member.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, member)
+    {:ok, _} = Accounts.accept_invitation(inv.token, member)
 
     conn =
       Phoenix.ConnTest.build_conn()

@@ -1,15 +1,14 @@
 defmodule TeacherAssistantWeb.School.EnrollImportLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Enrollments
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Accounts.Permissions
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with :school <- scope.current_workspace_type,
-         {:ok, cg} <- Academics.fetch_owned_class_group(id, scope.current_workspace),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin?(scope) do
       {:ok,
        socket
@@ -117,7 +116,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
 
   def handle_event("parse", %{"import" => %{"raw" => raw}}, socket) do
     rows = parse_rows(raw)
-    preview = Enrollments.preview_rows(socket.assigns.cg, rows)
+    preview = Enrollment.preview_rows(socket.assigns.cg, rows)
 
     {:noreply,
      socket
@@ -132,7 +131,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
 
   def handle_event("confirm", _params, socket) do
     rows = parse_rows(socket.assigns.raw)
-    result = Enrollments.import_rows(socket.assigns.cg, rows)
+    result = Enrollment.import_rows(socket.assigns.cg, rows)
 
     {:noreply,
      socket

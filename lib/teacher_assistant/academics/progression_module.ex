@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionModule do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Curriculum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -23,6 +23,30 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     create :create_default_bucket do
       accept [:title, :position, :progression_plan_id]
       change set_attribute(:default?, true)
+    end
+
+    # All modules of a plan, in position order, each with its entries
+    # preloaded (also position-sorted). Mirrors the old
+    # `Academics.list_progression_modules/1`.
+    read :for_plan do
+      argument :progression_plan_id, :uuid, allow_nil?: false
+      filter expr(progression_plan_id == ^arg(:progression_plan_id))
+
+      prepare fn query, _context ->
+        query
+        |> Ash.Query.sort(position: :asc)
+        |> Ash.Query.load(
+          entries: Ash.Query.sort(TeacherAssistant.Academics.ProgressionEntry, position: :asc)
+        )
+      end
+    end
+
+    # Owner-scoped single-module lookup (IDOR guard): the module's plan must
+    # belong to the given workspace. Backs `Curriculum.fetch_owned_module/2`.
+    read :owned do
+      argument :id, :uuid, allow_nil?: false
+      argument :workspace_id, :uuid, allow_nil?: false
+      filter expr(id == ^arg(:id) and progression_plan.workspace_id == ^arg(:workspace_id))
     end
   end
 

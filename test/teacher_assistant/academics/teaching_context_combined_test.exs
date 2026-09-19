@@ -1,24 +1,25 @@
 defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.{Assignments, CombinedCourse}
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Schools.create_school(head, %{name: "Lycée Test"})
+    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
 
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "1A", level: "1ère"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Mathématiques"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "1A", level: "1ère"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Mathématiques"})
 
     {:ok, course} =
       CombinedCourse

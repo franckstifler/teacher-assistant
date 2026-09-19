@@ -1,45 +1,46 @@
 defmodule TeacherAssistantWeb.School.RegisterLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Attendance
-  alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Timetabling
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée R"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Timetables.build_default_periods(school)
-    period = Timetables.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday, so the slot's day_of_week matches.
     date = ~D[2025-09-08]
 
     {:ok, _slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Academics.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Academics.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _count} =
       Attendance.record_period(cg, period, tc, date, [{enrollment.id, :absent}], head.id)
@@ -76,12 +77,12 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{
+      Accounts.invite_member(school, head, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Schools.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
 
     conn = conn_for(school, dm)
 
@@ -99,8 +100,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       Attendance.student_conduct(
         enrollment,
         {:sequence,
-         Academics.current_sequence(
-           TeacherAssistant.Academics.current_academic_year(school),
+         Organization.current_sequence(
+           TeacherAssistant.Organization.current_academic_year(school),
            date
          )}
       )
@@ -129,7 +130,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     date: date
   } do
     other_date = Date.add(date, 7)
-    {:ok, _student2} = Academics.add_student(cg, %{full_name: "Zinedine Bello", sex: :m})
+    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Zinedine Bello", sex: :m})
     _ = head
 
     {:ok, view, html} =
@@ -155,10 +156,10 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, fm)
-    {:ok, _} = Academics.set_form_master(cg, fm.id)
+    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -174,7 +175,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     conduct =
       Attendance.student_conduct(
         enrollment,
-        {:sequence, Academics.current_sequence(Academics.current_academic_year(school), date)}
+        {:sequence,
+         Organization.current_sequence(Organization.current_academic_year(school), date)}
       )
 
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :eq
@@ -189,9 +191,9 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Schools.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Schools.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
     conn = conn_for(school, other)
 
@@ -201,17 +203,17 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
   test "cross-school class id redirects to /school/classes", %{conn: conn, date: date} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Schools.create_school(other, %{name: "Autre"})
+    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
 
     {:ok, oy} =
-      Academics.create_academic_year(os, %{
+      Organization.create_academic_year(os, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    {:ok, ocg} = Academics.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/register?date=#{Date.to_iso8601(date)}")

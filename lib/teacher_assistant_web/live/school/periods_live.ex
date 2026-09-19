@@ -1,10 +1,9 @@
 defmodule TeacherAssistantWeb.School.PeriodsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics.Timetables
+  alias TeacherAssistant.Academics.PeriodKind
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Accounts.Permissions
-
-  @kinds ~w(lesson break)
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -46,7 +45,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
               <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
                 <td colspan="6">
                   <.form
-                    for={to_form(period_form_params(period), as: :period)}
+                    for={AshPhoenix.Form.for_update(period, :update, as: "period") |> to_form()}
                     id={"period-form-#{period.id}"}
                     phx-submit="update_period"
                     class="grid items-end gap-2 sm:grid-cols-6"
@@ -74,7 +73,10 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
                       name="period[kind]"
                       type="select"
                       value={period.kind}
-                      options={[{gettext("Cours"), "lesson"}, {gettext("Récréation"), "break"}]}
+                      options={[
+                        {PeriodKind.label(:lesson), "lesson"},
+                        {PeriodKind.label(:break), "break"}
+                      ]}
                       label={gettext("Type")}
                     />
                     <div class="flex gap-2">
@@ -119,7 +121,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) do
-      :ok = Timetables.build_default_periods(scope.current_workspace)
+      :ok = Attendance.build_default_periods(scope.current_workspace)
       {:noreply, load_periods(socket)}
     else
       {:noreply, socket}
@@ -135,14 +137,16 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           {:noreply, socket}
 
         period ->
-          case Timetables.update_period(period, parse_period_attrs(params)) do
+          form = AshPhoenix.Form.for_update(period, :update, as: "period")
+
+          case AshPhoenix.Form.submit(form, params: normalize_period_params(params)) do
             {:ok, _period} ->
               {:noreply,
                socket
                |> put_flash(:info, gettext("Période mise à jour."))
                |> load_periods()}
 
-            {:error, _error} ->
+            {:error, _form} ->
               {:noreply,
                put_flash(socket, :error, gettext("Impossible de mettre à jour la période."))}
           end
@@ -161,7 +165,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           {:noreply, socket}
 
         period ->
-          case Timetables.delete_period(period) do
+          case Attendance.delete_period(period) do
             :ok ->
               {:noreply, load_periods(socket)}
 
@@ -186,55 +190,25 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   end
 
   defp load_periods(socket) do
-    assign(socket, :periods, Timetables.list_periods(socket.assigns.scope.current_workspace))
+    assign(socket, :periods, Attendance.list_periods(socket.assigns.scope.current_workspace))
   end
 
-  defp period_form_params(period) do
-    %{
-      "position" => period.position,
-      "label" => period.label,
-      "start_time" => period.start_time,
-      "end_time" => period.end_time,
-      "kind" => to_string(period.kind)
-    }
+  # The HTML time input posts `HH:MM`; `Ash.Type.Time` needs full ISO
+  # (`HH:MM:SS`), so widen the two time fields before the changeset casts them.
+  # Position (string) and kind (enum) cast cleanly on their own.
+  defp normalize_period_params(params) do
+    params
+    |> normalize_time_param("start_time")
+    |> normalize_time_param("end_time")
   end
 
-  defp parse_period_attrs(params) do
-    %{
-      position: parse_integer(params["position"]),
-      label: params["label"],
-      start_time: parse_time(params["start_time"]),
-      end_time: parse_time(params["end_time"]),
-      kind: parse_kind(params["kind"])
-    }
-    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-    |> Map.new()
-  end
+  defp normalize_time_param(params, key) do
+    case params do
+      %{^key => value} when is_binary(value) and byte_size(value) == 5 ->
+        Map.put(params, key, value <> ":00")
 
-  defp parse_integer(nil), do: nil
-
-  defp parse_integer(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {int, _} -> int
-      :error -> nil
+      _ ->
+        params
     end
   end
-
-  defp parse_integer(value) when is_integer(value), do: value
-
-  defp parse_time(nil), do: nil
-  defp parse_time(""), do: nil
-  defp parse_time(%Time{} = t), do: t
-
-  defp parse_time(value) when is_binary(value) do
-    normalized = if String.length(value) == 5, do: value <> ":00", else: value
-
-    case Time.from_iso8601(normalized) do
-      {:ok, time} -> time
-      _ -> nil
-    end
-  end
-
-  defp parse_kind(value) when value in @kinds, do: String.to_existing_atom(value)
-  defp parse_kind(_), do: nil
 end

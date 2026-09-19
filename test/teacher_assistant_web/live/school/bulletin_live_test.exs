@@ -1,41 +1,44 @@
 defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
-  alias TeacherAssistant.Academics.Assignments
-  alias TeacherAssistant.Academics.Attendance
-  alias TeacherAssistant.Academics.Discipline
-  alias TeacherAssistant.Academics.Timetables
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Assessment
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Attendance
+  alias TeacherAssistant.Discipline
+  alias TeacherAssistant.Timetabling
+  alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Bu"})
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Bu"})
 
     {:ok, year} =
-      Academics.create_academic_year(school, %{
+      Organization.create_academic_year(school, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
-    [seq | _] = Academics.list_sequences(year)
-    {:ok, cg} = Academics.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
-    {:ok, tc} = Assignments.assign(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+    :ok = Organization.build_default_calendar(year)
+    [seq | _] = Organization.list_sequences(year)
+    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
+
+    {:ok, tc} =
+      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Academics.create_assessment(tc, seq, %{
+      Assessment.create_assessment(tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
       })
 
-    [%{student: student, enrollment: enr}] = Academics.list_roster(cg)
-    :ok = Academics.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
+    [%{student: student, enrollment: enr}] = Enrollment.list_roster(cg)
+    :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head}
   end
@@ -58,24 +61,24 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     school: school
   } do
     # grade a second séquence in the same term so the trimester has two components
-    year = TeacherAssistant.Academics.current_academic_year(school)
-    [s1, s2 | _] = TeacherAssistant.Academics.list_sequences(year)
-    [term1 | _] = TeacherAssistant.Academics.list_terms(year)
+    year = TeacherAssistant.Organization.current_academic_year(school)
+    [s1, s2 | _] = TeacherAssistant.Organization.list_sequences(year)
+    [term1 | _] = TeacherAssistant.Organization.list_terms(year)
     _ = seq
 
-    [tc] = TeacherAssistant.Academics.Assignments.list_for_class(cg)
+    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
     {:ok, a2} =
-      TeacherAssistant.Academics.create_assessment(tc, s2, %{
+      TeacherAssistant.Assessment.create_assessment(tc, s2, %{
         label: "D2",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
       })
 
-    [%{student: student}] = TeacherAssistant.Academics.list_roster(cg)
+    [%{student: student}] = TeacherAssistant.Enrollment.list_roster(cg)
 
     :ok =
-      TeacherAssistant.Academics.upsert_marks(a2, [
+      TeacherAssistant.Assessment.upsert_marks(a2, [
         %{student_id: student.id, score: Decimal.new(17)}
       ])
 
@@ -102,14 +105,14 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert baseline_html =~ "Moyenne générale"
     [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
 
-    :ok = Timetables.build_default_periods(school)
-    [tc] = Assignments.list_for_class(cg)
-    periods = Timetables.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(school)
+    [tc] = Curriculum.list_assignments_for_class(cg)
+    periods = Attendance.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
     [period1, period2 | _] = periods
 
     # 2025-09-15 is a Monday within séquence 1's date range.
     {:ok, slot} =
-      Timetables.place_slot(cg, %{
+      Timetabling.place_slot(cg, %{
         day: :monday,
         period_id: period1.id,
         teaching_context_id: tc.id
@@ -231,13 +234,13 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     school: school
   } do
     {:ok, cg2} =
-      Academics.create_class_group(school, Academics.current_academic_year(school), %{
+      Enrollment.create_class_group(school, Organization.current_academic_year(school), %{
         label: "6e B",
         level: "6ème"
       })
 
-    {:ok, _} = Academics.add_student(cg2, %{full_name: "Bob", sex: :m})
-    [%{enrollment: other_enr}] = Academics.list_roster(cg2)
+    {:ok, _} = Enrollment.add_student(cg2, %{full_name: "Bob", sex: :m})
+    [%{enrollment: other_enr}] = Enrollment.list_roster(cg2)
 
     assert {:error, {:live_redirect, %{}}} =
              live(

@@ -5,12 +5,14 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     html = conn |> get(~p"/") |> html_response(200)
 
     assert html =~ "Teacher Assistant"
-    assert html =~ ~s(id="landing-hero")
-    # the school is the primary product, but teachers keep a first-class lane
-    assert html =~ ~s(id="school-lane")
-    assert html =~ ~s(id="teacher-lane")
-    # a real getting-started sequence
-    assert html =~ ~s(id="start")
+    # hero headline (pixel-matched French landing design)
+    assert html =~ "Tout l'établissement sur un seul tableau"
+    # the two ways in — school vs teacher — live in the #portes section
+    assert html =~ ~s(id="portes")
+    assert html =~ "Deux façons de commencer"
+    # each role has its screen, and there's a pricing section
+    assert html =~ ~s(id="roles")
+    assert html =~ ~s(id="prix")
   end
 
   test "GET / links to every entry point the front door needs", %{conn: conn} do

@@ -1,7 +1,16 @@
 defmodule TeacherAssistantWeb.Teacher.SetupLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
+
+  @default_params %{
+    "name" => "2025-2026",
+    "start_date" => "2025-09-08",
+    "end_date" => "2026-07-31",
+    "weekly_hours" => "4"
+  }
 
   def mount(_params, _session, socket) do
     if socket.assigns.current_scope.current_workspace_type == :school do
@@ -10,18 +19,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
       {:ok,
        socket
        |> assign(:subsystem, :francophone)
-       |> assign(
-         :form,
-         to_form(
-           %{
-             "name" => "2025-2026",
-             "start_date" => "2025-09-08",
-             "end_date" => "2026-07-31",
-             "weekly_hours" => "4"
-           },
-           as: :setup
-         )
-       )}
+       |> assign(:form, setup_form(@default_params))}
     end
   end
 
@@ -29,7 +27,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
     {:noreply,
      socket
      |> assign(:subsystem, String.to_existing_atom(sub))
-     |> assign(:form, to_form(p, as: :setup))}
+     |> assign(:form, setup_form(p))}
   end
 
   def handle_event("save", %{"setup" => p}, socket) do
@@ -37,15 +35,15 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
 
     with {wh, ""} <- Integer.parse(p["weekly_hours"] || ""),
          {:ok, year} <-
-           Academics.create_academic_year(ws, %{
+           Organization.create_academic_year(ws, %{
              name: p["name"],
              start_date: p["start_date"],
              end_date: p["end_date"],
              active: true
            }),
-         :ok <- Academics.build_default_calendar(year),
+         :ok <- Organization.build_default_calendar(year),
          {:ok, _ctx} <-
-           Academics.create_teaching_context(ws, year, %{
+           Curriculum.create_teaching_context(ws, year, %{
              subject: p["subject"],
              level: p["level"],
              subsystem: String.to_existing_atom(p["subsystem"]),
@@ -60,9 +58,22 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
       error ->
         {:noreply,
          socket
-         |> assign(:form, to_form(p, as: :setup))
+         |> assign(:form, setup_form(p))
          |> put_flash(:error, setup_error(error))}
     end
+  end
+
+  # The wizard's fields span two resources (AcademicYear + TeachingContext,
+  # created together by the multi-step orchestration in `handle_event/3`), so
+  # a bare `AshPhoenix.Form` can only scaffold the TeachingContext half —
+  # `name`/`start_date`/`end_date` render through AshPhoenix's raw-param
+  # fallback (present in `params`, not attributes of this resource). Submit
+  # always calls the domain functions directly; this form is never itself
+  # submitted via `AshPhoenix.Form.submit`.
+  defp setup_form(params) do
+    TeachingContext
+    |> AshPhoenix.Form.for_create(:create, as: "setup", params: params)
+    |> to_form()
   end
 
   defp setup_error(:error),

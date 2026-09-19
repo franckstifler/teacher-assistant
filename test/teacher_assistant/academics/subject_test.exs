@@ -1,14 +1,14 @@
 defmodule TeacherAssistant.Academics.SubjectTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics.Subject
-  alias TeacherAssistant.Academics.Subjects
-  alias TeacherAssistant.Accounts.Schools
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Schools.create_school(head, %{name: "Lycée Test"})
-    Enum.each(Subjects.list(school), &Subjects.delete/1)
+    {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
+    Enum.each(Curriculum.list_subjects(school), &Curriculum.delete_subject/1)
     %{ws: school}
   end
 
@@ -26,7 +26,11 @@ defmodule TeacherAssistant.Academics.SubjectTest do
 
   test "name is unique per workspace", %{ws: ws} do
     attrs = %{name: "Français", workspace_id: ws.id}
-    {:ok, _} = Subject |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
-    assert {:error, _} = Subject |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+
+    {:ok, _} =
+      Subject |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
+
+    assert {:error, _} =
+             Subject |> Ash.Changeset.for_create(:create, attrs) |> Ash.create(authorize?: false)
   end
 end

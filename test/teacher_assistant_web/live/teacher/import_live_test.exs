@@ -1,22 +1,23 @@
 defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
   use TeacherAssistantWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   defp seed_year_and_context(ws) do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Academics.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
@@ -163,10 +164,10 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     })
     |> render_submit()
 
-    [plan] = Academics.list_progression_plans(ws)
+    [plan] = Curriculum.list_progression_plans!(ws.id)
     assert plan.title == "Imported plan"
     assert plan.status == :draft
-    assert [entry] = Academics.list_progression_entries(plan)
+    assert [entry] = Curriculum.list_progression_entries!(plan.id)
     assert entry.lesson_title == "Les entiers"
   end
 
@@ -174,10 +175,10 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     seed_year_and_context(ws)
 
     other_ws =
-      Academics.ensure_personal_workspace!(TeacherAssistant.TeacherFixtures.user_fixture())
+      Organization.ensure_personal_workspace!(TeacherAssistant.TeacherFixtures.user_fixture())
 
     {:ok, other_year} =
-      Academics.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -185,7 +186,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       })
 
     {:ok, other_ctx} =
-      Academics.create_teaching_context(other_ws, other_year, %{
+      Curriculum.create_teaching_context(other_ws, other_year, %{
         subject: "Physics",
         level: "6ème",
         subsystem: :francophone,
@@ -193,7 +194,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       })
 
     assert {:error, :not_found} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: other_ctx.id, title: "Nope"},
                [

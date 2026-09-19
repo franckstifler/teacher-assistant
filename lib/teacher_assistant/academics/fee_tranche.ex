@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.FeeTranche do
   use Ash.Resource,
     otp_app: :teacher_assistant,
-    domain: TeacherAssistant.Academics,
+    domain: TeacherAssistant.Fees,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -33,6 +33,14 @@ defmodule TeacherAssistant.Academics.FeeTranche do
         :position
       ]
     ]
+
+    read :for_class_group do
+      argument :class_group_id, :uuid, allow_nil?: false
+
+      filter expr(class_group_id == ^arg(:class_group_id))
+
+      prepare build(sort: [position: :asc])
+    end
   end
 
   policies do

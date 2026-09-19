@@ -1,12 +1,14 @@
 defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -14,22 +16,22 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, ctx} = Academics.link_class_group(ctx, cg)
-    {:ok, _} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
+    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson,
@@ -63,7 +65,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
       "lesson_plan" => %{"situation_probleme" => "Au marché"}
     })
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
     assert lp.situation_probleme == "Au marché"
     assert has_element?(view, "#fiche-saved-indicator")
   end
@@ -94,31 +96,31 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     view |> element("#step-add") |> render_click()
     view |> element("#step-add") |> render_click()
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
-    [s1, s2] = Academics.list_lesson_steps(lp)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
+    [s1, s2] = Curriculum.list_lesson_steps!(lp.id)
 
     # edit step 1's étape (autosave fires on the change/blur event)
     view
     |> element("#step-row-#{s1.id} form")
     |> render_change(%{"_target" => ["step", "etape"], "step" => %{"etape" => "Découverte"}})
 
-    assert Academics.list_lesson_steps(lp) |> List.first() |> Map.get(:etape) == "Découverte"
+    assert Curriculum.list_lesson_steps!(lp.id) |> List.first() |> Map.get(:etape) == "Découverte"
 
     # move step 1 down
     view |> element("#step-down-#{s1.id}") |> render_click()
-    assert Academics.list_lesson_steps(lp) |> Enum.map(& &1.id) == [s2.id, s1.id]
+    assert Curriculum.list_lesson_steps!(lp.id) |> Enum.map(& &1.id) == [s2.id, s1.id]
 
     # delete step 2 (now first)
     view |> element("#step-delete-#{s2.id}") |> render_click()
-    assert Academics.list_lesson_steps(lp) |> Enum.map(& &1.id) == [s1.id]
+    assert Curriculum.list_lesson_steps!(lp.id) |> Enum.map(& &1.id) == [s1.id]
   end
 
   test "shows the running-duration check", %{conn: conn, entry: entry} do
     {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
-    [s1] = Academics.list_lesson_steps(lp)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
+    [s1] = Curriculum.list_lesson_steps!(lp.id)
 
     view
     |> element("#step-row-#{s1.id} form")
@@ -138,8 +140,8 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
-    lp = Academics.get_lesson_plan_for_entry(entry.id)
-    [s1] = Academics.list_lesson_steps(lp)
+    lp = Curriculum.get_lesson_plan_for_entry(entry.id)
+    [s1] = Curriculum.list_lesson_steps!(lp.id)
 
     # under budget: no warning tone
     refute render(element(view, "#fiche-duration-check")) =~ "text-warning"

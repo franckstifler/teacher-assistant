@@ -1,33 +1,36 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
+  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
     {:ok, year} =
-      Academics.create_academic_year(ws, %{
+      Organization.create_academic_year(ws, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Academics.build_default_calendar(year)
-    seq = Academics.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(year)
+    seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, cg} = Academics.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    {:ok, ctx} = Academics.link_class_group(ctx, cg)
-    {:ok, s1} = Academics.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, a} = Academics.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
+    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
     %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1, cg: cg}
   end
 
@@ -39,7 +42,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     |> form("#marks-form", %{"scores" => %{s1.id => "15"}})
     |> render_submit()
 
-    assert [m] = Academics.list_marks(a)
+    assert [m] = Assessment.list_marks(a)
     assert Decimal.equal?(m.score, Decimal.new("15"))
   end
 
@@ -59,7 +62,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       |> render_submit()
 
     assert html =~ "0 and 20"
-    assert Academics.list_marks(a) == []
+    assert Assessment.list_marks(a) == []
   end
 
   test "accepts a French decimal comma", %{conn: conn, ctx: ctx, seq: seq, a: a, s1: s1} do
@@ -68,7 +71,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     view |> form("#marks-form", %{"scores" => %{s1.id => "13,5"}}) |> render_submit()
 
-    assert [m] = Academics.list_marks(a)
+    assert [m] = Assessment.list_marks(a)
     assert Decimal.equal?(m.score, Decimal.new("13.5"))
   end
 
@@ -85,7 +88,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     html = view |> form("#marks-form", %{"scores" => %{s1.id => "abc"}}) |> render_submit()
 
     assert html =~ "valid"
-    assert Academics.list_marks(a) == []
+    assert Assessment.list_marks(a) == []
   end
 
   test "keeps unsaved marks when switching assessment and back", %{
@@ -95,7 +98,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     a: a,
     s1: s1
   } do
-    {:ok, other} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
+    {:ok, other} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 2"})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
@@ -109,7 +112,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     # the unsaved 14 is still in the input, not lost
     assert has_element?(view, "#mark-input-#{s1.id}[value='14']")
-    assert Academics.list_marks(a) == []
+    assert Assessment.list_marks(a) == []
   end
 
   test "mark inputs are debounced to avoid a round-trip per keystroke", %{
@@ -126,10 +129,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   end
 
   test "context without class group redirects to roster", %{conn: conn, ws: ws} do
-    {:ok, year} = {:ok, Academics.current_academic_year(ws)}
+    {:ok, year} = {:ok, Organization.current_academic_year(ws)}
 
     {:ok, ctx2} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "PCT",
         level: "3ème",
         subsystem: :francophone,
@@ -168,7 +171,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     s1: s1,
     cg: cg
   } do
-    {:ok, s2} = Academics.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
@@ -200,10 +203,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     a: a,
     s1: s1
   } do
-    {:ok, other} = Academics.create_assessment(ctx, seq, %{label: "Devoir 2"})
+    {:ok, other} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 2"})
 
     :ok =
-      Academics.upsert_marks(other, [
+      Assessment.upsert_marks(other, [
         %{student_id: s1.id, score: Decimal.new("17")}
       ])
 
@@ -212,5 +215,39 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     assert has_element?(view, "#marks-sheet-header", "Devoir 2")
     assert render(element(view, "#mark-row-#{s1.id}")) =~ "17"
+  end
+
+  test "creating an assessment in solo mode creates it and selects it", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq
+  } do
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+    view
+    |> form("#new-assessment-form", %{"assessment" => %{"label" => "Composition"}})
+    |> render_submit()
+
+    assert Enum.any?(Assessment.list_assessments(ctx, seq), &(&1.label == "Composition"))
+    # the newly created assessment is now the selected column — its sheet renders
+    assert has_element?(view, "#marks-sheet-header", "Composition")
+  end
+
+  test "a blank assessment label is rejected and creates nothing", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq
+  } do
+    existing = Assessment.list_assessments(ctx, seq)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+    view
+    |> form("#new-assessment-form", %{"assessment" => %{"label" => ""}})
+    |> render_submit()
+
+    # {:error, form} branch: nothing persisted, the toolbar form stays put
+    assert Assessment.list_assessments(ctx, seq) == existing
+    assert has_element?(view, "#new-assessment-form")
   end
 end
