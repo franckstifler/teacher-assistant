@@ -369,7 +369,66 @@ h1, h2, h3, .ta-display {
   color: var(--color-base-content);
 }
 
+/* =========================================================================
+   Navigation rail — the board, stood on its side. A slab of dark chalkboard
+   that stays dark in BOTH reading modes (the rail is always the board),
+   built only from existing tokens (the primary chalk hue folded into black)
+   so it introduces no new theme colours. On lg+ it sits fixed at the left;
+   on phones it slides in as a daisyUI drawer.
+   ========================================================================= */
+.ta-rail {
+  --ta-rail-fg: color-mix(in oklch, var(--color-primary) 8%, white);
+  --ta-rail-muted: color-mix(in oklch, var(--ta-rail-fg) 62%, transparent);
+  --ta-rail-faint: color-mix(in oklch, var(--ta-rail-fg) 44%, transparent);
+  --ta-rail-line: color-mix(in oklch, white 14%, transparent);
+  --ta-rail-hover: color-mix(in oklch, white 9%, transparent);
+  --ta-rail-active-bg: color-mix(in oklch, var(--color-primary) 30%, transparent);
+  --ta-rail-active-fg: color-mix(in oklch, var(--color-primary) 6%, white);
+
+  background: color-mix(in oklch, var(--color-primary) 20%, black);
+  color: var(--ta-rail-fg);
+}
+
+/* group heading — the ledger mono voice, dimmed to chalk-dust */
+.ta-rail__label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ta-rail-faint);
+}
+
+/* a nav row — quiet until hover, chalk-green wash when it is the current page */
+.ta-rail__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  border-radius: var(--radius-field);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ta-rail-muted);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.ta-rail__item:hover {
+  background: var(--ta-rail-hover);
+  color: var(--ta-rail-fg);
+}
+.ta-rail__item[aria-current="page"] {
+  background: var(--ta-rail-active-bg);
+  color: var(--ta-rail-active-fg);
+}
+.ta-rail__item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn, .ta-ribbon__fill { transition: none; }
   .btn:hover { transform: none; }
+  .ta-rail__item { transition: none; }
+  .drawer-side, .drawer-overlay { transition-duration: 0.01ms !important; }
 }

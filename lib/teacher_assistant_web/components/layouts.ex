@@ -55,6 +55,10 @@ defmodule TeacherAssistantWeb.Layouts do
     assigns =
       assigns
       |> assign(:current_user, current_user)
+      |> assign(
+        :user_initial,
+        current_user && String.upcase(String.slice(to_string(current_user.email), 0, 1))
+      )
       |> assign(:workspace_name, workspace_name(current_scope))
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
@@ -73,35 +77,64 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:current_path, assigns[:current_path] || "/teacher")
 
     ~H"""
-    <div class="flex min-h-screen flex-col bg-base-200 text-base-content">
-      <header class="sticky top-0 z-40 border-b border-base-300 bg-base-100/95 backdrop-blur">
-        <div class="mx-auto flex min-h-16 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
-          <a href="/" class="flex min-w-0 items-center gap-2.5">
-            <span class="grid size-9 place-items-center rounded-lg bg-primary text-primary-content shadow-sm">
-              <.icon name="hero-academic-cap" class="size-5" />
-            </span>
-            <span class="min-w-0 leading-tight">
-              <span class="block text-sm font-semibold ta-display">Teacher Assistant</span>
-              <span class="block truncate text-[0.7rem] text-base-content/55">
-                {@workspace_name || gettext("Cameroon teacher workspace")}
-              </span>
-            </span>
-          </a>
+    <%= if @current_user do %>
+      <div class="drawer lg:drawer-open">
+        <input id="app-drawer" type="checkbox" class="drawer-toggle" />
 
-          <div class="ml-auto flex items-center gap-2">
-            <div :if={@current_user} id="workspace-switcher" class="dropdown">
+        <div class="drawer-content flex min-h-screen flex-col bg-base-200 text-base-content">
+          <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-base-300 bg-base-100/95 px-4 py-2.5 backdrop-blur lg:hidden">
+            <label
+              for="app-drawer"
+              aria-label={gettext("Open navigation")}
+              class="btn btn-ghost btn-sm btn-square"
+            >
+              <.icon name="hero-bars-3" class="size-5" />
+            </label>
+            <span class="grid size-8 place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
+              TA
+            </span>
+            <span class="min-w-0 truncate text-sm font-semibold ta-display">
+              {@workspace_name || gettext("Teacher Assistant")}
+            </span>
+          </header>
+
+          <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
+            {render_slot(@inner_block)}
+          </main>
+        </div>
+
+        <div class="drawer-side z-40">
+          <label for="app-drawer" aria-label={gettext("Close navigation")} class="drawer-overlay">
+          </label>
+          <aside
+            class="ta-rail flex min-h-screen w-64 flex-col gap-4 p-3"
+            aria-label={gettext("Sidebar")}
+          >
+            <div id="workspace-switcher" class="dropdown w-full">
               <div
                 tabindex="0"
                 role="button"
-                class="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-sm font-semibold"
+                class="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-[color:var(--ta-rail-hover)]"
               >
-                <.icon name="hero-building-office-2" class="size-4 text-primary" />
-                <span class="hidden sm:inline">{@workspace_name}</span>
-                <.icon name="hero-chevron-down" class="size-3.5 text-base-content/50" />
+                <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
+                  TA
+                </span>
+                <span class="min-w-0 flex-1 leading-tight">
+                  <span class="block truncate text-sm font-semibold ta-display">
+                    {@workspace_name}
+                  </span>
+                  <span class="ta-num block truncate text-[0.6rem] uppercase tracking-widest text-[color:var(--ta-rail-faint)]">
+                    {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
+                  </span>
+                </span>
+                <.icon
+                  name="hero-chevron-up-down"
+                  class="size-4 flex-none text-[color:var(--ta-rail-faint)]"
+                />
               </div>
               <div
                 tabindex="0"
-                class="dropdown-content menu z-50 mt-1 w-64 rounded-box border border-base-300 bg-base-100 p-1 shadow"
+                class="dropdown-content menu z-50 mt-1 w-60 rounded-box border border-base-300 bg-base-100 p-1 text-base-content shadow"
               >
                 <ul>
                   <li :for={ws <- @workspaces} id={"workspace-switcher-item-#{ws.id}"}>
@@ -123,263 +156,219 @@ defmodule TeacherAssistantWeb.Layouts do
                 </div>
               </div>
             </div>
-            <%= if @current_user do %>
-              <div class="hidden text-right sm:block">
-                <div class="text-xs font-semibold">{@current_user.email}</div>
-                <div class="text-[0.7rem] uppercase tracking-wide text-base-content/50">
-                  {@workspace_type_label} · {@role_label}
+
+            <div :if={@units != []} id="class-switcher" class="dropdown w-full">
+              <div
+                tabindex="0"
+                role="button"
+                class="flex w-full items-center gap-2 rounded-lg border border-[color:var(--ta-rail-line)] px-2.5 py-2 text-sm font-semibold"
+              >
+                <.icon name="hero-users" class="size-4 flex-none text-primary" />
+                <span class="min-w-0 flex-1 truncate text-left">
+                  {context_label(@current_context)}
+                </span>
+                <.icon
+                  name="hero-chevron-down"
+                  class="size-3.5 flex-none text-[color:var(--ta-rail-faint)]"
+                />
+              </div>
+              <ul
+                tabindex="0"
+                class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 text-base-content shadow"
+              >
+                <li
+                  :for={u <- @units}
+                  id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
+                >
+                  <.link href={
+                    ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path}"
+                  }>
+                    {TeacherAssistant.Curriculum.unit_label(u)}
+                  </.link>
+                </li>
+              </ul>
+            </div>
+
+            <.link
+              :if={@units == [] && !@in_school?}
+              id="class-switcher"
+              navigate={~p"/teacher/setup"}
+              class="flex w-full items-center gap-2 rounded-lg border border-dashed border-[color:var(--ta-rail-line)] px-2.5 py-2 text-sm font-semibold text-[color:var(--ta-rail-muted)]"
+            >
+              <.icon name="hero-plus" class="size-4 flex-none" />
+              {gettext("Set up a class")}
+            </.link>
+
+            <nav
+              :if={!@in_school?}
+              id="main-nav"
+              class="flex flex-col gap-0.5"
+              aria-label={gettext("Main navigation")}
+            >
+              <p class="ta-rail__label px-1.5 pb-1">{gettext("Teaching")}</p>
+              <.rail_link
+                id="nav-dashboard"
+                href={~p"/teacher"}
+                icon="hero-squares-2x2"
+                current_path={@current_path}
+              >
+                {gettext("Dashboard")}
+              </.rail_link>
+              <.rail_link
+                id="nav-log"
+                href={~p"/teacher/log"}
+                icon="hero-pencil-square"
+                current_path={@current_path}
+              >
+                {gettext("Log")}
+              </.rail_link>
+              <.rail_link
+                id="nav-import"
+                href={~p"/teacher/import"}
+                icon="hero-arrow-up-tray"
+                current_path={@current_path}
+              >
+                {gettext("Import")}
+              </.rail_link>
+            </nav>
+
+            <nav
+              :if={@in_school?}
+              id="school-nav"
+              class="flex flex-col gap-0.5"
+              aria-label={gettext("School navigation")}
+            >
+              <p class="ta-rail__label px-1.5 pb-1">{gettext("School")}</p>
+              <.rail_link
+                id="nav-school-dashboard"
+                href={~p"/school"}
+                icon="hero-squares-2x2"
+                current_path={@current_path}
+              >
+                {gettext("Dashboard")}
+              </.rail_link>
+              <.rail_link
+                id="nav-school-classes"
+                href={~p"/school/classes"}
+                icon="hero-rectangle-group"
+                current_path={@current_path}
+              >
+                {gettext("Classes")}
+              </.rail_link>
+              <.rail_link
+                id="nav-school-timetable-me"
+                href={~p"/school/timetable/me"}
+                icon="hero-calendar-days"
+                current_path={@current_path}
+              >
+                {gettext("Mon emploi du temps")}
+              </.rail_link>
+              <.rail_link
+                id="nav-school-members"
+                href={~p"/school/members"}
+                icon="hero-user-group"
+                current_path={@current_path}
+              >
+                {gettext("Members")}
+              </.rail_link>
+              <.rail_link
+                :if={@is_admin?}
+                id="nav-school-settings"
+                href={~p"/school/settings"}
+                icon="hero-cog-6-tooth"
+                current_path={@current_path}
+              >
+                {gettext("Settings")}
+              </.rail_link>
+            </nav>
+
+            <nav
+              :if={@current_context}
+              id="per-class-nav"
+              class="flex flex-col gap-0.5"
+              aria-label={gettext("Class navigation")}
+            >
+              <p class="ta-rail__label truncate px-1.5 pb-1">{context_label(@current_context)}</p>
+              <.rail_link
+                id="nav-roster"
+                href={~p"/teacher/contexts/#{@current_context.id}/roster"}
+                icon="hero-user-group"
+                current_path={@current_path}
+              >
+                {gettext("Roster")}
+              </.rail_link>
+              <.rail_link
+                id="nav-marks"
+                href={~p"/teacher/contexts/#{@current_context.id}/marks"}
+                icon="hero-pencil-square"
+                current_path={@current_path}
+              >
+                {gettext("Marks")}
+              </.rail_link>
+              <.rail_link
+                id="nav-results"
+                href={~p"/teacher/contexts/#{@current_context.id}/marks/summary"}
+                icon="hero-trophy"
+                current_path={@current_path}
+              >
+                {gettext("Results")}
+              </.rail_link>
+            </nav>
+
+            <div class="mt-auto flex flex-col gap-2 border-t border-[color:var(--ta-rail-line)] pt-3">
+              <div class="flex items-center gap-2.5 px-1.5">
+                <span class="grid size-8 flex-none place-items-center rounded-full bg-[color:var(--ta-rail-hover)] ta-num text-xs font-semibold uppercase">
+                  {@user_initial}
+                </span>
+                <span class="min-w-0 flex-1 leading-tight">
+                  <span class="block truncate text-xs font-semibold">{@current_user.email}</span>
+                  <span class="ta-num block truncate text-[0.6rem] uppercase tracking-wide text-[color:var(--ta-rail-muted)]">
+                    {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
+                  </span>
+                </span>
+              </div>
+              <div class="flex items-center gap-1">
+                <.link href={~p"/sign-out"} method="delete" class="ta-rail__item flex-1">
+                  <.icon name="hero-arrow-right-on-rectangle" class="size-4 flex-none" />
+                  <span class="flex-1">{gettext("Sign out")}</span>
+                </.link>
+                <div id="locale-switch" class="flex items-center gap-0.5">
+                  <.link
+                    navigate={~p"/locale/fr"}
+                    class="ta-num rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
+                  >
+                    FR
+                  </.link>
+                  <span class="text-[color:var(--ta-rail-faint)]">·</span>
+                  <.link
+                    navigate={~p"/locale/en"}
+                    class="ta-num rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
+                  >
+                    EN
+                  </.link>
                 </div>
               </div>
-              <.link href={~p"/sign-out"} method="delete" class="btn btn-ghost btn-sm">
-                <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
-                <span class="hidden sm:inline">{gettext("Sign out")}</span>
-              </.link>
-            <% else %>
-              <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
-                <.icon name="hero-arrow-left-on-rectangle" class="size-4" />
-                {gettext("Sign in")}
-              </.link>
-            <% end %>
-          </div>
+            </div>
+          </aside>
         </div>
-
-        <nav
-          :if={@current_user && @in_school?}
-          id="school-nav"
-          class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-3 pb-2 sm:px-5"
-          aria-label={gettext("School navigation")}
-        >
-          <div :if={@units != []} id="class-switcher" class="dropdown">
-            <div
-              tabindex="0"
-              role="button"
-              class="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-sm font-semibold"
-            >
-              <.icon name="hero-users" class="size-4 text-primary" />
-              <span>{context_label(@current_context)}</span>
-              <.icon name="hero-chevron-down" class="size-3.5 text-base-content/50" />
-            </div>
-            <ul
-              tabindex="0"
-              class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow"
-            >
-              <li
-                :for={u <- @units}
-                id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
-              >
-                <.link href={
-                  ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path}"
-                }>
-                  {TeacherAssistant.Curriculum.unit_label(u)}
-                </.link>
-              </li>
-            </ul>
-          </div>
-
-          <span :if={@units != []} class="mx-1 hidden h-5 w-px bg-base-300 sm:block"></span>
-
-          <.tab_link
-            id="nav-school-dashboard"
-            href={~p"/school"}
-            icon="hero-squares-2x2"
-            current_path={@current_path}
-          >
-            {gettext("Dashboard")}
-          </.tab_link>
-          <.tab_link
-            id="nav-school-classes"
-            href={~p"/school/classes"}
-            icon="hero-rectangle-group"
-            current_path={@current_path}
-          >
-            {gettext("Classes")}
-          </.tab_link>
-          <.tab_link
-            id="nav-school-timetable-me"
-            href={~p"/school/timetable/me"}
-            icon="hero-calendar-days"
-            current_path={@current_path}
-          >
-            {gettext("Mon emploi du temps")}
-          </.tab_link>
-          <.tab_link
-            id="nav-school-members"
-            href={~p"/school/members"}
-            icon="hero-user-group"
-            current_path={@current_path}
-          >
-            {gettext("Members")}
-          </.tab_link>
-          <.tab_link
-            :if={@is_admin?}
-            id="nav-school-settings"
-            href={~p"/school/settings"}
-            icon="hero-cog-6-tooth"
-            current_path={@current_path}
-          >
-            {gettext("Settings")}
-          </.tab_link>
-
-          <div id="locale-switch" class="ml-auto flex items-center gap-1">
-            <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs ta-num">FR</.link>
-            <span class="text-base-content/30">·</span>
-            <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs ta-num">EN</.link>
-          </div>
-        </nav>
-
-        <nav
-          :if={@current_user && !@in_school?}
-          id="main-nav"
-          class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-3 pb-2 sm:px-5"
-          aria-label={gettext("Main navigation")}
-        >
-          <div :if={@units != []} id="class-switcher" class="dropdown">
-            <div
-              tabindex="0"
-              role="button"
-              class="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-sm font-semibold"
-            >
-              <.icon name="hero-users" class="size-4 text-primary" />
-              <span>{context_label(@current_context)}</span>
-              <.icon name="hero-chevron-down" class="size-3.5 text-base-content/50" />
-            </div>
-            <ul
-              tabindex="0"
-              class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow"
-            >
-              <li
-                :for={u <- @units}
-                id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
-              >
-                <.link href={
-                  ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path}"
-                }>
-                  {TeacherAssistant.Curriculum.unit_label(u)}
-                </.link>
-              </li>
-            </ul>
-          </div>
-
-          <.link
-            :if={@units == []}
-            id="class-switcher"
-            navigate={~p"/teacher/setup"}
-            class="inline-flex items-center gap-2 rounded-md border border-dashed border-base-300 px-3 py-1.5 text-sm font-semibold text-base-content/70"
-          >
-            <.icon name="hero-plus" class="size-4" />
-            {gettext("Set up a class")}
+      </div>
+    <% else %>
+      <div class="flex min-h-screen flex-col bg-base-200 text-base-content">
+        <header class="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-base-300 bg-base-100/95 px-4 backdrop-blur sm:px-6">
+          <a href="/" class="flex items-center gap-2.5">
+            <span class="grid size-8 place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
+              TA
+            </span>
+            <span class="text-sm font-semibold ta-display">Teacher Assistant</span>
+          </a>
+          <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm ml-auto">
+            <.icon name="hero-arrow-left-on-rectangle" class="size-4" />
+            {gettext("Sign in")}
           </.link>
-
-          <span class="mx-1 hidden h-5 w-px bg-base-300 sm:block"></span>
-
-          <.tab_link
-            id="nav-dashboard"
-            href={~p"/teacher"}
-            icon="hero-squares-2x2"
-            current_path={@current_path}
-          >
-            {gettext("Dashboard")}
-          </.tab_link>
-          <.tab_link
-            id="nav-log"
-            href={~p"/teacher/log"}
-            icon="hero-pencil-square"
-            current_path={@current_path}
-          >
-            {gettext("Log")}
-          </.tab_link>
-          <.tab_link
-            id="nav-import"
-            href={~p"/teacher/import"}
-            icon="hero-arrow-up-tray"
-            current_path={@current_path}
-          >
-            {gettext("Import")}
-          </.tab_link>
-
-          <div id="locale-switch" class="ml-auto flex items-center gap-1">
-            <.link navigate={~p"/locale/fr"} class="btn btn-ghost btn-xs ta-num">FR</.link>
-            <span class="text-base-content/30">·</span>
-            <.link navigate={~p"/locale/en"} class="btn btn-ghost btn-xs ta-num">EN</.link>
-          </div>
-        </nav>
-
-        <nav
-          :if={@current_user && @current_context}
-          id="per-class-nav"
-          class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-1 border-t border-base-300 px-3 py-1.5 sm:px-5"
-          aria-label={gettext("Class navigation")}
-        >
-          <.tab_link
-            id="nav-roster"
-            href={~p"/teacher/contexts/#{@current_context.id}/roster"}
-            icon="hero-user-group"
-            current_path={@current_path}
-          >
-            {gettext("Roster")}
-          </.tab_link>
-          <.tab_link
-            id="nav-marks"
-            href={~p"/teacher/contexts/#{@current_context.id}/marks"}
-            icon="hero-pencil-square"
-            current_path={@current_path}
-          >
-            {gettext("Marks")}
-          </.tab_link>
-          <.tab_link
-            id="nav-results"
-            href={~p"/teacher/contexts/#{@current_context.id}/marks/summary"}
-            icon="hero-trophy"
-            current_path={@current_path}
-          >
-            {gettext("Results")}
-          </.tab_link>
-        </nav>
-      </header>
-
-      <main class={[
-        "flex-1",
-        if(@current_user,
-          do: "mx-auto w-full max-w-6xl px-4 py-6 pb-20 sm:px-6 sm:pb-6",
-          else: "w-full"
-        )
-      ]}>
-        {render_slot(@inner_block)}
-      </main>
-    </div>
-
-    <nav
-      :if={@current_user}
-      id="mobile-nav"
-      class="fixed inset-x-0 bottom-0 z-40 flex border-t border-base-300 bg-base-100/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
-      aria-label={gettext("Bottom navigation")}
-    >
-      <.link
-        navigate={~p"/teacher"}
-        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
-      >
-        <.icon name="hero-squares-2x2" class="size-5" />{gettext("Dashboard")}
-      </.link>
-      <.link
-        :if={@current_context}
-        navigate={~p"/teacher/contexts/#{@current_context.id}/marks"}
-        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
-      >
-        <.icon name="hero-pencil-square" class="size-5" />{gettext("Marks")}
-      </.link>
-      <.link
-        navigate={~p"/teacher/log"}
-        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
-      >
-        <.icon name="hero-book-open" class="size-5" />{gettext("Log")}
-      </.link>
-      <.link
-        navigate={~p"/teacher/import"}
-        class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] text-base-content/70"
-      >
-        <.icon name="hero-arrow-up-tray" class="size-5" />{gettext("Import")}
-      </.link>
-    </nav>
+        </header>
+        <main class="w-full flex-1">{render_slot(@inner_block)}</main>
+      </div>
+    <% end %>
 
     <.flash_group flash={@flash} />
     """
@@ -391,22 +380,13 @@ defmodule TeacherAssistantWeb.Layouts do
   attr :current_path, :string, default: nil
   slot :inner_block, required: true
 
-  defp tab_link(assigns) do
+  defp rail_link(assigns) do
     assigns = assign(assigns, :active, assigns.current_path == assigns.href)
 
     ~H"""
-    <.link
-      id={@id}
-      navigate={@href}
-      aria-current={@active && "page"}
-      class={[
-        "group inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition",
-        @active && "bg-base-200 text-base-content",
-        !@active && "text-base-content/70 hover:bg-base-200 hover:text-base-content"
-      ]}
-    >
-      <.icon name={@icon} class="size-4 text-base-content/45 transition group-hover:text-primary" />
-      {render_slot(@inner_block)}
+    <.link id={@id} navigate={@href} aria-current={@active && "page"} class="ta-rail__item">
+      <.icon name={@icon} class="size-[1.05rem] flex-none opacity-90" />
+      <span class="flex-1">{render_slot(@inner_block)}</span>
     </.link>
     """
   end
