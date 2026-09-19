@@ -104,7 +104,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
             </:actions>
           </.page_header>
 
-    <!-- KPI strip (mockup: the row of stat cards) -->
+          <%!-- KPI strip (mockup: the row of stat cards) --%>
           <div id="dashboard-stats" class="grid grid-cols-3 gap-2 sm:gap-3">
             <.stat label={gettext("Classes")} value={"#{@contexts_count}"} />
             <.stat
@@ -119,8 +119,8 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
             />
           </div>
 
-    <!-- Coverage lag callout (mockup: "Retard de couverture") — only when the
-             real overall rate trails the elapsed year -->
+          <%!-- Coverage lag callout (mockup: "Retard de couverture") — only when the
+             real overall rate trails the elapsed year --%>
           <div
             :if={@overall_rate && behind?(@overall_rate, @elapsed)}
             id="coverage-lag"
@@ -138,7 +138,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
             </p>
           </div>
 
-    <!-- "Mes classes" — one card per progression plan, from @kpis -->
+          <%!-- "Mes classes" — one card per progression plan, from @kpis --%>
           <div class="flex flex-col gap-3">
             <h2 class="text-lg font-semibold">{gettext("My classes")}</h2>
 
