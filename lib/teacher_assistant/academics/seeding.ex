@@ -26,7 +26,7 @@ defmodule TeacherAssistant.Academics.Seeding do
     ClassGroup
     |> Ash.Query.filter(workspace_id == ^ws_id)
     |> Ash.Query.limit(1)
-    |> Ash.read!(authorize?: false)
+    |> Ash.read!()
     |> case do
       [] -> false
       _ -> true

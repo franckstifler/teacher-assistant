@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.FichePrintController do
   defp load_user(nil), do: nil
 
   defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id, authorize?: false) do
+    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
       {:ok, user} -> user
       _ -> nil
     end
