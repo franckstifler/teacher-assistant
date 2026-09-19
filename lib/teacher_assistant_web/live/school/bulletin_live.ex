@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.BulletinLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             [] -> nil
           end
 
-      results = period && Academics.class_results_for_period(cg, period)
+      results = period && Assessment.class_results_for_period(cg, period)
       data = results && results.per_student[student.id]
       conduct = period && Attendance.student_conduct(enrollment, period)
       discipline = period && Discipline.discipline_summary(enrollment, period)
@@ -71,7 +71,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     period =
       (year && Organization.resolve_period(year, params["period"])) || socket.assigns.period
 
-    results = period && Academics.class_results_for_period(socket.assigns.cg, period)
+    results = period && Assessment.class_results_for_period(socket.assigns.cg, period)
     conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
     discipline = period && Discipline.discipline_summary(socket.assigns.enrollment, period)
 

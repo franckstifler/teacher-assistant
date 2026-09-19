@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.BulletinPrintController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Academics
+  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
@@ -42,7 +42,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
          period when not is_nil(period) <- Organization.resolve_period(year, params["period"]) do
-      fun.(scope, cg, period, Academics.class_results_for_period(cg, period))
+      fun.(scope, cg, period, Assessment.class_results_for_period(cg, period))
     else
       {:operating, false} ->
         conn

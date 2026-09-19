@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.BulletinDataTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
@@ -40,7 +39,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
   test "class_subjects shapes each context with coefficient, assessments and marks", ctx do
     %{cg: cg, seq: seq, tc: tc} = ctx
-    [subj] = Academics.class_subjects(cg, seq)
+    [subj] = Assessment.class_subjects(cg, seq)
     assert subj.context_id == tc.id
     assert subj.label == "Maths"
     assert Decimal.equal?(subj.coefficient, Decimal.new(4))
@@ -52,7 +51,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
     [student] = Enrollment.list_students(cg)
     :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
 
-    r = Academics.class_results(cg, seq)
+    r = Assessment.class_results(cg, seq)
     assert r.effectif == 1
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(15))
   end
@@ -61,6 +60,6 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
     {:ok, cg2} =
       Enrollment.create_class_group(ctx.school, ctx.year, %{label: "6e B", level: "6ème"})
 
-    assert Academics.class_results(cg2, ctx.seq) == nil
+    assert Assessment.class_results(cg2, ctx.seq) == nil
   end
 end

@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.PeriodResultsTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
@@ -50,7 +49,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     grade.(s2, 16)
 
     [term1 | _] = Organization.list_terms(year)
-    r = Academics.class_results_for_period(cg, {:trimester, term1})
+    r = Assessment.class_results_for_period(cg, {:trimester, term1})
     data = r.per_student[student.id]
     # (12 + 16) / 2 = 14
     assert Decimal.equal?(data.moyenne_generale, Decimal.new(14))
@@ -65,7 +64,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     grade.(s1, 11)
 
     [term1 | _] = Organization.list_terms(year)
-    r = Academics.class_results_for_period(cg, {:trimester, term1})
+    r = Assessment.class_results_for_period(cg, {:trimester, term1})
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(11))
   end
 
@@ -76,7 +75,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     grade.(s2, 12)
     grade.(s3, 8)
 
-    r = Academics.class_results_for_period(cg, {:annual, year})
+    r = Assessment.class_results_for_period(cg, {:annual, year})
     # mean of present séquences: (10 + 12 + 8) / 3 = 10
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(10))
     maths = Enum.find(r.per_student[student.id].subjects, &(&1.label == "Maths"))
@@ -105,7 +104,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
     :ok = Organization.build_default_calendar(y2)
     {:ok, cg2} = Enrollment.create_class_group(school2, y2, %{label: "6e Z", level: "6ème"})
-    assert Academics.class_results_for_period(cg2, {:annual, y2}) == nil
+    assert Assessment.class_results_for_period(cg2, {:annual, y2}) == nil
     _ = year
   end
 

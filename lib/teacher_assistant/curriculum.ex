@@ -177,16 +177,21 @@ defmodule TeacherAssistant.Curriculum do
     end
   end
 
-  defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
+  @doc """
+  Canonical coefficient parser: accepts a positive `%Decimal{}` or a string that
+  parses cleanly to a positive decimal, returning `{:ok, decimal}` or `:error`.
+  Shared with the school settings LiveView so the two never drift.
+  """
+  def parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
 
-  defp parse_coefficient(value) when is_binary(value) do
+  def parse_coefficient(value) when is_binary(value) do
     case Decimal.parse(String.trim(value)) do
       {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
       _ -> :error
     end
   end
 
-  defp parse_coefficient(_), do: :error
+  def parse_coefficient(_), do: :error
 
   def remove_assignment(%TeachingContext{id: id} = tc) do
     has_plans =

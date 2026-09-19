@@ -435,7 +435,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
     with true <- Permissions.admin?(scope),
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
-         {:ok, coefficient} <- parse_coefficient(params["default_coefficient"]) do
+         {:ok, coefficient} <- Curriculum.parse_coefficient(params["default_coefficient"]) do
       case Curriculum.update_subject(subject, %{
              name: String.trim(params["name"] || ""),
              default_coefficient: coefficient,
@@ -603,15 +603,4 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     }
   end
 
-  # Mirrors TeacherAssistant.Curriculum.parse_coefficient/1 (private there).
-  defp parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
-
-  defp parse_coefficient(value) when is_binary(value) do
-    case Decimal.parse(String.trim(value)) do
-      {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
-      _ -> :error
-    end
-  end
-
-  defp parse_coefficient(_), do: :error
 end
