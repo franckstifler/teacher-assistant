@@ -715,17 +715,6 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   @doc """
-  `list_progression_plans/1` filtered down to one plan per teaching *unit*:
-  course plans, plus the plans of contexts that are NOT part of a combined
-  course. Drops a member context's stale solo plan (created before the context
-  was combined) so a `CombinedCourse` surfaces exactly one coverage KPI instead
-  of one per member class.
-  """
-  def list_unit_plans(%Workspace{id: ws_id}) do
-    unit_plans!(ws_id)
-  end
-
-  @doc """
   Creates a draft `ProgressionPlan` and its entries from imported rows in a
   single transaction (via the `ProgressionPlan.:import` generic action). Rolls
   back entirely on any failure (no orphan plan) and defers notifications until

@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
     socket =
       if year do
         ws = scope.current_workspace
-        plans = Curriculum.list_unit_plans(ws)
+        plans = Curriculum.unit_plans!(ws.id)
 
         kpis =
           Enum.map(plans, fn p ->

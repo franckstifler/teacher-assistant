@@ -139,7 +139,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     assert solo_ctx.id == tc_french.id
   end
 
-  test "list_unit_plans hides stale member-context plans after combining", ctx do
+  test "unit_plans hides stale member-context plans after combining", ctx do
     %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, ws: ws} = ctx
 
     {:ok, _stale_maco_plan} =
@@ -152,7 +152,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    unit_plans = Curriculum.list_unit_plans(ws)
+    unit_plans = Curriculum.unit_plans!(ws.id)
 
     assert length(unit_plans) == 2
     assert Enum.count(unit_plans, &(&1.combined_course_id == course.id)) == 1
