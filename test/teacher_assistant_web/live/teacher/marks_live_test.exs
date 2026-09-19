@@ -216,4 +216,38 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert has_element?(view, "#marks-sheet-header", "Devoir 2")
     assert render(element(view, "#mark-row-#{s1.id}")) =~ "17"
   end
+
+  test "creating an assessment in solo mode creates it and selects it", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq
+  } do
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+    view
+    |> form("#new-assessment-form", %{"assessment" => %{"label" => "Composition"}})
+    |> render_submit()
+
+    assert Enum.any?(Assessment.list_assessments(ctx, seq), &(&1.label == "Composition"))
+    # the newly created assessment is now the selected column — its sheet renders
+    assert has_element?(view, "#marks-sheet-header", "Composition")
+  end
+
+  test "a blank assessment label is rejected and creates nothing", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq
+  } do
+    existing = Assessment.list_assessments(ctx, seq)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+    view
+    |> form("#new-assessment-form", %{"assessment" => %{"label" => ""}})
+    |> render_submit()
+
+    # {:error, form} branch: nothing persisted, the toolbar form stays put
+    assert Assessment.list_assessments(ctx, seq) == existing
+    assert has_element?(view, "#new-assessment-form")
+  end
 end
