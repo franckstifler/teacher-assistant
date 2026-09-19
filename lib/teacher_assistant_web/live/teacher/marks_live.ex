@@ -44,7 +44,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:scores, existing_scores(assessment))
        |> assign(:unsaved, %{})
        |> assign(:sibling_scores, sibling_scores(ctx, seq))
-       |> assign(:new_assessment_form, to_form(%{}, as: :assessment))}
+       |> assign(:new_assessment_form, assessment_form())}
     else
       # true => context owned but has no class group (go set up the roster); anything else => not found / not owned
       true ->
@@ -82,7 +82,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:selected, selected)
          |> assign(:scores, combined_existing_scores(selected))
          |> assign(:unsaved, %{})
-         |> assign(:new_assessment_form, to_form(%{}, as: :assessment))}
+         |> assign(:new_assessment_form, assessment_form())}
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
@@ -162,7 +162,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   def handle_event("new_assessment", %{"assessment" => p}, socket) do
     case socket.assigns[:course] do
       %CombinedCourse{} = course -> new_combined_assessment(socket, course, p["label"])
-      _ -> new_solo_assessment(socket, p["label"])
+      _ -> new_solo_assessment(socket, p)
     end
   end
 
@@ -186,15 +186,48 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
-  defp new_solo_assessment(socket, label) do
-    with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
-         {:ok, a} <- Assessment.create_assessment(socket.assigns.ctx, seq, %{label: label}) do
-      {:noreply,
-       push_patch(socket,
-         to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}"
-       )}
-    else
-      _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
+  # Blank scaffold for the "new assessment" toolbar form. Backed by the real
+  # `Assessment :create` action so the `:label` field renders as an
+  # `AshPhoenix.Form` field; `as: "assessment"` keeps the posted param key
+  # (`%{"assessment" => %{"label" => …}}`) exactly as before. The two
+  # server-controlled ids (`teaching_context_id`/`sequence_id`) are merged in at
+  # submit time (solo), and in combined mode the form is scaffold-only — the
+  # multi-class create runs through `Assessment.create_combined_assessment/3`.
+  defp assessment_form do
+    TeacherAssistant.Academics.Assessment
+    |> AshPhoenix.Form.for_create(:create, as: "assessment")
+    |> to_form()
+  end
+
+  # Solo mode: drive the `Assessment :create` action through the form
+  # (sub-pattern (a)), merging in the server-controlled context/sequence ids.
+  # This is behaviourally identical to the old `Assessment.create_assessment/3`
+  # (which was itself `for_create(:create)` + `Ash.create/1` with those two ids
+  # merged). Errors keep the original flash; the scaffold form is untouched, so
+  # the toolbar re-renders unchanged.
+  defp new_solo_assessment(socket, params) do
+    case socket.assigns.seq do
+      %{} = seq ->
+        submit_params =
+          Map.merge(params, %{
+            "teaching_context_id" => socket.assigns.ctx.id,
+            "sequence_id" => seq.id
+          })
+
+        case AshPhoenix.Form.submit(socket.assigns.new_assessment_form, params: submit_params) do
+          {:ok, a} ->
+            {:noreply,
+             push_patch(socket,
+               to:
+                 ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}"
+             )}
+
+          {:error, _form} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
     end
   end
 
