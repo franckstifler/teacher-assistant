@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: build_form())}
+    {:ok, assign(socket, form: build_form(socket))}
   end
 
   def handle_event("validate", %{"school" => params}, socket) do
@@ -12,25 +12,13 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   end
 
   def handle_event("create", %{"school" => p}, socket) do
-    user = socket.assigns.current_scope.current_user
-    profile = build_profile(p)
+    # `owner_user_id` is a static server-controlled argument — it's set on the
+    # changeset at build time via `prepare_source` (see `build_form/1`). The
+    # `:profile` argument is assembled from the operator's own inputs, so it
+    # can't be a build-time value; it's supplied as a submit param.
+    params = Map.put(p, "profile", build_profile(p))
 
-    # `owner_user_id`/`profile` are the `:create_school` action's arguments
-    # (not attributes), so they can't come from the flat "school" params the
-    # form renders. `prepare_source` sets them straight on the changeset,
-    # before the submitted params (`p`, unchanged) are validated against it —
-    # they never ride along in the params bag.
-    Workspace
-    |> AshPhoenix.Form.for_create(:create_school,
-      as: "school",
-      prepare_source: fn changeset ->
-        changeset
-        |> Ash.Changeset.set_argument(:owner_user_id, user.id)
-        |> Ash.Changeset.set_argument(:profile, profile)
-      end
-    )
-    |> AshPhoenix.Form.submit(params: p)
-    |> case do
+    case AshPhoenix.Form.submit(socket.assigns.form, params: params) do
       {:ok, school} ->
         {:noreply, redirect(socket, to: ~p"/workspaces/select/#{school.id}")}
 
@@ -45,9 +33,16 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
     end
   end
 
-  defp build_form do
+  defp build_form(socket) do
+    user = socket.assigns.current_scope.current_user
+
     Workspace
-    |> AshPhoenix.Form.for_create(:create_school, as: "school")
+    |> AshPhoenix.Form.for_create(:create_school,
+      as: "school",
+      prepare_source: fn changeset ->
+        Ash.Changeset.set_argument(changeset, :owner_user_id, user.id)
+      end
+    )
     |> to_form()
   end
 
