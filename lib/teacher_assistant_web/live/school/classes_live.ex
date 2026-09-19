@@ -147,15 +147,20 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
     with true <- Permissions.admin?(scope),
          year when not is_nil(year) <- scope.current_academic_year do
-      submit_params =
-        params
-        |> Map.merge(%{
-          "workspace_id" => scope.current_workspace.id,
-          "academic_year_id" => year.id
-        })
-        |> drop_blank_serie()
+      submit_params = drop_blank_serie(params)
 
-      case AshPhoenix.Form.submit(socket.assigns.class_form, params: submit_params) do
+      form =
+        ClassGroup
+        |> AshPhoenix.Form.for_create(:create,
+          as: "class_group",
+          prepare_source: fn changeset ->
+            changeset
+            |> Ash.Changeset.change_attribute(:workspace_id, scope.current_workspace.id)
+            |> Ash.Changeset.change_attribute(:academic_year_id, year.id)
+          end
+        )
+
+      case AshPhoenix.Form.submit(form, params: submit_params) do
         {:ok, _class_group} ->
           {:noreply,
            socket

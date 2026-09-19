@@ -368,13 +368,18 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     if Permissions.admin?(scope) do
       # Only the first year of a workspace is created active (the
       # `:create_for_workspace` action deactivates any other active year).
-      submit_params =
-        Map.merge(params, %{
-          "workspace_id" => scope.current_workspace.id,
-          "active" => socket.assigns.years == []
-        })
+      form =
+        AcademicYear
+        |> AshPhoenix.Form.for_create(:create_for_workspace,
+          as: "year",
+          prepare_source: fn changeset ->
+            changeset
+            |> Ash.Changeset.change_attribute(:workspace_id, scope.current_workspace.id)
+            |> Ash.Changeset.change_attribute(:active, socket.assigns.years == [])
+          end
+        )
 
-      case AshPhoenix.Form.submit(socket.assigns.year_form, params: submit_params) do
+      case AshPhoenix.Form.submit(form, params: params) do
         {:ok, year} ->
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
 
@@ -421,9 +426,16 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     ws = scope.current_workspace
 
     if Permissions.admin?(scope) do
-      submit_params = Map.put(params, "workspace_id", ws.id)
+      form =
+        Subject
+        |> AshPhoenix.Form.for_create(:create,
+          as: "subject",
+          prepare_source: fn changeset ->
+            Ash.Changeset.change_attribute(changeset, :workspace_id, ws.id)
+          end
+        )
 
-      case AshPhoenix.Form.submit(socket.assigns.subject_form, params: submit_params) do
+      case AshPhoenix.Form.submit(form, params: params) do
         {:ok, _} ->
           {:noreply,
            socket

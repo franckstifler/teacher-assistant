@@ -189,10 +189,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # Blank scaffold for the "new assessment" toolbar form. Backed by the real
   # `Assessment :create` action so the `:label` field renders as an
   # `AshPhoenix.Form` field; `as: "assessment"` keeps the posted param key
-  # (`%{"assessment" => %{"label" => …}}`) exactly as before. The two
-  # server-controlled ids (`teaching_context_id`/`sequence_id`) are merged in at
-  # submit time (solo), and in combined mode the form is scaffold-only — the
-  # multi-class create runs through `Assessment.create_combined_assessment/3`.
+  # (`%{"assessment" => %{"label" => …}}`) exactly as before. This scaffold is
+  # only used to render the toolbar — `new_solo_assessment/2` builds its own
+  # form (with `prepare_source` setting the server-controlled ids) at submit
+  # time; in combined mode the multi-class create runs through
+  # `Assessment.create_combined_assessment/3`.
   defp assessment_form do
     TeacherAssistant.Academics.Assessment
     |> AshPhoenix.Form.for_create(:create, as: "assessment")
@@ -200,21 +201,27 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   # Solo mode: drive the `Assessment :create` action through the form
-  # (sub-pattern (a)), merging in the server-controlled context/sequence ids.
-  # This is behaviourally identical to the old `Assessment.create_assessment/3`
-  # (which was itself `for_create(:create)` + `Ash.create/1` with those two ids
-  # merged). Errors keep the original flash; the scaffold form is untouched, so
-  # the toolbar re-renders unchanged.
+  # (sub-pattern (a)), setting the server-controlled context/sequence ids via
+  # `prepare_source` on the changeset (never merged into the submitted
+  # params). This is behaviourally identical to the old
+  # `Assessment.create_assessment/3` (which was itself `for_create(:create)` +
+  # `Ash.create/1` with those two ids merged). Errors keep the original flash;
+  # the scaffold form is untouched, so the toolbar re-renders unchanged.
   defp new_solo_assessment(socket, params) do
     case socket.assigns.seq do
       %{} = seq ->
-        submit_params =
-          Map.merge(params, %{
-            "teaching_context_id" => socket.assigns.ctx.id,
-            "sequence_id" => seq.id
-          })
+        form =
+          TeacherAssistant.Academics.Assessment
+          |> AshPhoenix.Form.for_create(:create,
+            as: "assessment",
+            prepare_source: fn changeset ->
+              changeset
+              |> Ash.Changeset.change_attribute(:teaching_context_id, socket.assigns.ctx.id)
+              |> Ash.Changeset.change_attribute(:sequence_id, seq.id)
+            end
+          )
 
-        case AshPhoenix.Form.submit(socket.assigns.new_assessment_form, params: submit_params) do
+        case AshPhoenix.Form.submit(form, params: params) do
           {:ok, a} ->
             {:noreply,
              push_patch(socket,
