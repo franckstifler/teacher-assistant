@@ -14,8 +14,12 @@ msgstr ""
 msgid "can't be blank"
 msgstr ""
 
+## From Ash required attributes/arguments (runtime, not statically extractable)
+msgid "is required"
+msgstr "est requis"
+
 msgid "has already been taken"
-msgstr ""
+msgstr "est déjà utilisé"
 
 msgid "is invalid"
 msgstr ""

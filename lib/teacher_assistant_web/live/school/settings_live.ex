@@ -327,7 +327,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   end
 
   def handle_event("validate_name", %{"school" => params}, socket) do
-    {:noreply, assign(socket, :name_form, AshPhoenix.Form.validate(socket.assigns.name_form, params))}
+    {:noreply,
+     assign(socket, :name_form, AshPhoenix.Form.validate(socket.assigns.name_form, params))}
   end
 
   def handle_event("save", %{"school" => params}, socket) do
@@ -357,7 +358,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   end
 
   def handle_event("validate_year", %{"year" => params}, socket) do
-    {:noreply, assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
+    {:noreply,
+     assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
   end
 
   def handle_event("create_year", %{"year" => params}, socket) do
@@ -458,10 +460,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          {:ok, coefficient} <- Curriculum.parse_coefficient(params["default_coefficient"]) do
       form = AshPhoenix.Form.for_update(subject, :update, as: "subject_edit")
 
-      submit_params =
-        params
-        |> Map.put("name", String.trim(params["name"] || ""))
-        |> Map.put("default_coefficient", coefficient)
+      # `name` trims at the Subject type level (same as create and the seeder),
+      # so no per-handler trim is needed here — that asymmetry is now gone.
+      submit_params = Map.put(params, "default_coefficient", coefficient)
 
       case AshPhoenix.Form.submit(form, params: submit_params) do
         {:ok, _} ->
@@ -506,7 +507,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("validate_profile", %{"profile" => params}, socket) do
     if socket.assigns.profile_form do
       {:noreply,
-       assign(socket, :profile_form, AshPhoenix.Form.validate(socket.assigns.profile_form, params))}
+       assign(
+         socket,
+         :profile_form,
+         AshPhoenix.Form.validate(socket.assigns.profile_form, params)
+       )}
     else
       {:noreply, socket}
     end
@@ -590,7 +595,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       {:ok, profile} ->
         socket
         |> assign(:profile, profile)
-        |> assign(:profile_form, AshPhoenix.Form.for_update(profile, :update, as: "profile") |> to_form())
+        |> assign(
+          :profile_form,
+          AshPhoenix.Form.for_update(profile, :update, as: "profile") |> to_form()
+        )
 
       {:error, _} ->
         socket

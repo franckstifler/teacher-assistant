@@ -138,7 +138,8 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   end
 
   def handle_event("validate_class", %{"class_group" => params}, socket) do
-    {:noreply, assign(socket, :class_form, AshPhoenix.Form.validate(socket.assigns.class_form, params))}
+    {:noreply,
+     assign(socket, :class_form, AshPhoenix.Form.validate(socket.assigns.class_form, params))}
   end
 
   def handle_event("create_class", %{"class_group" => params}, socket) do
