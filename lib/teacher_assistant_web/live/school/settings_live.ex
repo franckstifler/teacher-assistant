@@ -16,22 +16,30 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     else
       admin? = Permissions.admin?(scope)
 
-      {:ok,
-       socket
-       |> assign(:scope, scope)
-       |> assign(:head?, Permissions.head?(scope))
-       |> assign(:admin?, admin?)
-       |> assign(:name_form, name_form(scope.current_workspace))
-       |> assign(:year_form, year_form())
-       |> assign(:subjects, Curriculum.list_subjects(scope.current_workspace))
-       |> assign(:subject_form, subject_form())
-       |> allow_upload(:logo,
-         accept: ~w(.png .jpg .jpeg),
-         max_entries: 1,
-         max_file_size: 2_000_000
-       )
-       |> load_years()
-       |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)}
+      socket =
+        socket
+        |> assign(:scope, scope)
+        |> assign(:head?, Permissions.head?(scope))
+        |> assign(:admin?, admin?)
+        |> assign(:name_form, name_form(scope.current_workspace))
+        |> assign(:subjects, Curriculum.list_subjects(scope.current_workspace))
+        |> assign(:subject_form, subject_form(scope.current_workspace.id))
+        |> allow_upload(:logo,
+          accept: ~w(.png .jpg .jpeg),
+          max_entries: 1,
+          max_file_size: 2_000_000
+        )
+        # `load_years/1` must run before `year_form/2` is built: the form's
+        # `active` flag (see `year_form/2`) is derived from whether any years
+        # already exist.
+        |> load_years()
+
+      socket =
+        socket
+        |> assign(:year_form, year_form(scope.current_workspace.id, socket.assigns.years == []))
+        |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)
+
+      {:ok, socket}
     end
   end
 
@@ -366,28 +374,19 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) do
-      # Only the first year of a workspace is created active (the
-      # `:create_for_workspace` action deactivates any other active year).
-      form =
-        AcademicYear
-        |> AshPhoenix.Form.for_create(:create_for_workspace,
-          as: "year",
-          prepare_source: fn changeset ->
-            changeset
-            |> Ash.Changeset.change_attribute(:workspace_id, scope.current_workspace.id)
-            |> Ash.Changeset.change_attribute(:active, socket.assigns.years == [])
-          end
-        )
-
-      case AshPhoenix.Form.submit(form, params: params) do
+      case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
+
+          socket = load_years(socket)
 
           {:noreply,
            socket
            |> put_flash(:info, gettext("Année scolaire créée."))
-           |> assign(:year_form, year_form())
-           |> load_years()}
+           |> assign(
+             :year_form,
+             year_form(scope.current_workspace.id, socket.assigns.years == [])
+           )}
 
         {:error, form} ->
           {:noreply,
@@ -426,21 +425,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     ws = scope.current_workspace
 
     if Permissions.admin?(scope) do
-      form =
-        Subject
-        |> AshPhoenix.Form.for_create(:create,
-          as: "subject",
-          prepare_source: fn changeset ->
-            Ash.Changeset.change_attribute(changeset, :workspace_id, ws.id)
-          end
-        )
-
-      case AshPhoenix.Form.submit(form, params: params) do
+      case AshPhoenix.Form.submit(socket.assigns.subject_form, params: params) do
         {:ok, _} ->
           {:noreply,
            socket
            |> assign(:subjects, Curriculum.list_subjects(ws))
-           |> assign(:subject_form, subject_form())}
+           |> assign(:subject_form, subject_form(ws.id))}
 
         {:error, form} ->
           {:noreply, assign(socket, :subject_form, form)}
@@ -623,11 +613,39 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     workspace |> AshPhoenix.Form.for_update(:update, as: "school") |> to_form()
   end
 
-  defp year_form do
-    AcademicYear |> AshPhoenix.Form.for_create(:create_for_workspace, as: "year") |> to_form()
+  # `workspace_id` and `active` are server-controlled (never user input), so
+  # they're set on the changeset at build time via `prepare_source` — not
+  # merged into the submitted params at submit time. Only the first year of a
+  # workspace is created active (the `:create_for_workspace` action
+  # deactivates any other active year), so `active?` is a *live* value: it
+  # flips from `true` to `false` the moment the first year exists. Callers
+  # must rebuild the form — via this helper — on mount and again right after
+  # a successful year creation (see `handle_event("create_year", ...)`).
+  defp year_form(workspace_id, active?) do
+    AcademicYear
+    |> AshPhoenix.Form.for_create(:create_for_workspace,
+      as: "year",
+      prepare_source: fn changeset ->
+        changeset
+        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
+        |> Ash.Changeset.change_attribute(:active, active?)
+      end
+    )
+    |> to_form()
   end
 
-  defp subject_form do
-    Subject |> AshPhoenix.Form.for_create(:create, as: "subject") |> to_form()
+  # `workspace_id` is server-controlled, set on the changeset at build time
+  # via `prepare_source`. It's stable for the life of this LiveView (renaming
+  # the school doesn't change its id), so no mid-session rebuild is needed
+  # beyond the fresh scaffold assigned after each successful create.
+  defp subject_form(workspace_id) do
+    Subject
+    |> AshPhoenix.Form.for_create(:create,
+      as: "subject",
+      prepare_source: fn changeset ->
+        Ash.Changeset.change_attribute(changeset, :workspace_id, workspace_id)
+      end
+    )
+    |> to_form()
   end
 end

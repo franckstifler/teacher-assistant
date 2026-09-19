@@ -26,7 +26,10 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
        socket
        |> assign(:admin?, Permissions.admin?(scope))
        |> assign(:class_streams, class_streams)
-       |> assign(:class_form, class_form())
+       |> assign(
+         :class_form,
+         class_form(scope.current_workspace.id, scope.current_academic_year)
+       )
        |> load_classes()}
     end
   end
@@ -149,23 +152,12 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
          year when not is_nil(year) <- scope.current_academic_year do
       submit_params = drop_blank_serie(params)
 
-      form =
-        ClassGroup
-        |> AshPhoenix.Form.for_create(:create,
-          as: "class_group",
-          prepare_source: fn changeset ->
-            changeset
-            |> Ash.Changeset.change_attribute(:workspace_id, scope.current_workspace.id)
-            |> Ash.Changeset.change_attribute(:academic_year_id, year.id)
-          end
-        )
-
-      case AshPhoenix.Form.submit(form, params: submit_params) do
+      case AshPhoenix.Form.submit(socket.assigns.class_form, params: submit_params) do
         {:ok, _class_group} ->
           {:noreply,
            socket
            |> put_flash(:info, gettext("Class created."))
-           |> assign(:class_form, class_form())
+           |> assign(:class_form, class_form(scope.current_workspace.id, year))
            |> load_classes()}
 
         {:error, form} ->
@@ -215,9 +207,23 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     assign(socket, classes: classes, year: year)
   end
 
-  defp class_form do
+  # `workspace_id` and `academic_year_id` are server-controlled (never user
+  # input), so they're set on the changeset at build time via `prepare_source`
+  # — not merged into the submitted params at submit time. `academic_year_id`
+  # is a *live* value (the active year can be created after this form is
+  # first built), so callers must rebuild the form — via this helper — on
+  # mount and again after any change to `year` (currently: after a
+  # successful class creation).
+  defp class_form(workspace_id, year) do
     ClassGroup
-    |> AshPhoenix.Form.for_create(:create, as: "class_group")
+    |> AshPhoenix.Form.for_create(:create,
+      as: "class_group",
+      prepare_source: fn changeset ->
+        changeset
+        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
+        |> Ash.Changeset.change_attribute(:academic_year_id, year && year.id)
+      end
+    )
     |> to_form()
   end
 
