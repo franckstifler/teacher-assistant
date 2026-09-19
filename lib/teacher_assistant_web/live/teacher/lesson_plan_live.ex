@@ -23,29 +23,23 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   end
 
   defp header_form(lesson_plan) do
-    to_form(
-      %{
-        "titre" => lesson_plan.titre,
-        "duration_minutes" => lesson_plan.duration_minutes,
-        "lesson_date" => lesson_plan.lesson_date,
-        "competence_attendue" => lesson_plan.competence_attendue,
-        "situation_probleme" => lesson_plan.situation_probleme,
-        "objectifs" => lesson_plan.objectifs,
-        "supports" => lesson_plan.supports,
-        "prerequis" => lesson_plan.prerequis
-      },
-      as: :lesson_plan
-    )
+    lesson_plan
+    |> AshPhoenix.Form.for_update(:update, as: "lesson_plan")
+    |> to_form()
   end
 
   def handle_event("save_header", %{"lesson_plan" => params}, socket) do
-    {:ok, lesson_plan} = Curriculum.update_lesson_plan(socket.assigns.lesson_plan, params)
+    case AshPhoenix.Form.submit(socket.assigns.header_form, params: params) do
+      {:ok, lesson_plan} ->
+        {:noreply,
+         socket
+         |> assign(:lesson_plan, lesson_plan)
+         |> assign(:header_form, header_form(lesson_plan))
+         |> assign(:saved_at, DateTime.utc_now())}
 
-    {:noreply,
-     socket
-     |> assign(:lesson_plan, lesson_plan)
-     |> assign(:header_form, header_form(lesson_plan))
-     |> assign(:saved_at, DateTime.utc_now())}
+      {:error, form} ->
+        {:noreply, assign(socket, :header_form, form)}
+    end
   end
 
   def handle_event("add_step", _params, socket) do
@@ -55,7 +49,10 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
 
   def handle_event("save_step", %{"id" => id, "step" => params}, socket) do
     with {:ok, step} <- Curriculum.fetch_owned_lesson_step(id, socket.assigns.lesson_plan),
-         {:ok, _} <- Curriculum.update_lesson_step(step, params) do
+         {:ok, _} <-
+           step
+           |> AshPhoenix.Form.for_update(:update, as: "step")
+           |> AshPhoenix.Form.submit(params: params) do
       {:noreply, socket |> reload_steps() |> assign(:saved_at, DateTime.utc_now())}
     else
       _ -> {:noreply, socket}
@@ -98,17 +95,9 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
   defp over_budget?(_steps, _lesson_plan), do: false
 
   defp step_form(step) do
-    to_form(
-      %{
-        "etape" => step.etape,
-        "duration_minutes" => step.duration_minutes,
-        "contenus" => step.contenus,
-        "supports" => step.supports,
-        "activites" => step.activites
-      },
-      as: :step,
-      id: "step-#{step.id}"
-    )
+    step
+    |> AshPhoenix.Form.for_update(:update, as: "step", id: "step-#{step.id}")
+    |> to_form()
   end
 
   def render(assigns) do

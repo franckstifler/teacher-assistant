@@ -1,6 +1,9 @@
 defmodule TeacherAssistantWeb.Teacher.LogLive do
   use TeacherAssistantWeb, :live_view
+  alias TeacherAssistant.Academics.TeachingLogEntry
   alias TeacherAssistant.Curriculum
+
+  @default_params %{"hours" => "1"}
 
   def mount(_params, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
@@ -12,17 +15,31 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
      |> assign(:ws, ws)
      |> assign(:entries, entries)
      |> assign(:recent, (ws && Curriculum.list_recent_logs!(ws.id, 5)) || [])
-     |> assign(:form, to_form(%{"hours" => "1"}, as: :log))}
+     |> assign(:form, log_form(@default_params))}
   end
 
   def handle_event("validate", %{"log" => p}, socket) do
-    errors =
+    form = AshPhoenix.Form.validate(socket.assigns.form, p)
+
+    # `hours`' friendly format check is a UI rule beyond the resource's plain
+    # `:decimal` cast, so it is layered on top of the Ash validation as an
+    # extra field error rather than reproduced as a resource constraint.
+    form =
       case Decimal.parse(p["hours"] || "") do
-        {_d, ""} -> []
-        _ -> [hours: {gettext("Enter hours like 1 or 1.5"), []}]
+        {_d, ""} ->
+          form
+
+        _ ->
+          AshPhoenix.Form.add_error(
+            form,
+            Ash.Error.Changes.InvalidAttribute.exception(
+              field: :hours,
+              message: gettext("Enter hours like 1 or 1.5")
+            )
+          )
       end
 
-    {:noreply, assign(socket, :form, to_form(p, as: :log, errors: errors, action: :validate))}
+    {:noreply, assign(socket, :form, form)}
   end
 
   def handle_event("save", %{"log" => p}, socket) do
@@ -43,7 +60,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
        socket
        |> put_flash(:info, gettext("Logged"))
        |> assign(:recent, Curriculum.list_recent_logs!(ws.id, 5))
-       |> assign(:form, to_form(%{"hours" => "1"}, as: :log))}
+       |> assign(:form, log_form(@default_params))}
     else
       _ ->
         {:noreply, put_flash(socket, :error, gettext("Could not log"))}
@@ -53,6 +70,16 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
   defp blank_to(nil, d), do: d
   defp blank_to("", d), do: d
   defp blank_to(v, _), do: v
+
+  # `log_teaching/2` adds an ownership guard (`fetch_owned_entry`) a bare
+  # create action can't reproduce (progression_entry_id has no Ash policy tying
+  # it to the workspace — see the resource's `authorize_if always()`), so this
+  # form is a scaffold; "save" always calls the domain function directly.
+  defp log_form(params) do
+    TeachingLogEntry
+    |> AshPhoenix.Form.for_create(:create, as: "log", params: params)
+    |> to_form()
+  end
 
   def render(assigns) do
     ~H"""

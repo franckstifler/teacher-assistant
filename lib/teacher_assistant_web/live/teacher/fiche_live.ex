@@ -1,7 +1,10 @@
 defmodule TeacherAssistantWeb.Teacher.FicheLive do
   use TeacherAssistantWeb, :live_view
+  alias TeacherAssistant.Academics.ProgressionEntry
+  alias TeacherAssistant.Academics.ProgressionModule
   alias TeacherAssistant.Academics.Quota
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
@@ -178,9 +181,25 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     |> assign(:modules, modules)
     |> assign(:prepared, prepared)
     |> assign(:sequences, sequences)
-    |> assign(:module_form, to_form(%{}, as: :module))
+    |> assign(:module_form, module_form())
     |> assign(:quota, Quota.summarize(ctx, modules))
-    |> assign(:targets_form, to_form(%{}, as: :targets))
+    |> assign(:targets_form, targets_form())
+  end
+
+  # `create_module/2` computes `position` (private to `Curriculum`) and
+  # `update_teaching_context/3` re-checks workspace ownership before updating
+  # — neither is reproducible by a bare Ash action, so these two forms stay
+  # scaffolds; their handlers always call the domain function on submit.
+  defp module_form do
+    ProgressionModule
+    |> AshPhoenix.Form.for_create(:create, as: "module")
+    |> to_form()
+  end
+
+  defp targets_form do
+    TeachingContext
+    |> AshPhoenix.Form.for_create(:create, as: "targets")
+    |> to_form()
   end
 
   defp module_hours(%{entries: entries}),
@@ -310,7 +329,14 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     end
   end
 
-  defp entry_form_for(m), do: to_form(%{}, as: :entry, id: "entry-form-#{m.id}")
+  # `add_progression_entry/2` computes `position` and inherits the module's
+  # `sequence_id` (private/derived, not reproducible by a bare Ash action), so
+  # this form is a scaffold — `add-entry` always calls the domain function.
+  defp entry_form_for(m) do
+    ProgressionEntry
+    |> AshPhoenix.Form.for_create(:create, as: "entry", id: "entry-form-#{m.id}")
+    |> to_form()
+  end
 
   def render(assigns) do
     ~H"""
@@ -452,7 +478,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 </span>
                 <.form
                   :if={not m.default?}
-                  for={to_form(%{}, as: :credit)}
+                  for={AshPhoenix.Form.for_update(m, :update, as: "credit") |> to_form()}
                   id={"module-credit-form-#{m.id}"}
                   phx-submit="save-module-credit"
                   class="flex items-end gap-1"
@@ -468,7 +494,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                   <.button type="submit" class="btn btn-ghost btn-xs">{gettext("Save")}</.button>
                 </.form>
                 <.form
-                  for={to_form(%{}, as: :seq)}
+                  for={AshPhoenix.Form.for_update(m, :update, as: "seq") |> to_form()}
                   id={"seq-form-#{m.id}"}
                   phx-change="assign-module-sequence"
                   class="flex items-center gap-1"

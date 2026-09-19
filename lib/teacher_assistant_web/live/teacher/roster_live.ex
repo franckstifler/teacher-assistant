@@ -1,5 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.RosterLive do
   use TeacherAssistantWeb, :live_view
+  alias TeacherAssistant.Academics.ClassGroup
+  alias TeacherAssistant.Academics.Student
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Curriculum
@@ -38,8 +40,24 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     |> assign(:class_group, class_group)
     |> assign(:students, students)
     |> assign(:undo_student, nil)
-    |> assign(:class_form, to_form(%{}, as: :class_group))
-    |> assign(:student_form, to_form(%{}, as: :student))
+    |> assign(:class_form, class_form())
+    |> assign(:student_form, student_form())
+  end
+
+  # Both `create_class` and `add_student` orchestrate more than their scaffold
+  # resource's bare action (linking the class to the teaching context; the
+  # Student+Enrollment pair created atomically via `Enrollment.:enroll_new`),
+  # so these forms stay scaffolds — submit always calls the domain functions.
+  defp class_form do
+    ClassGroup
+    |> AshPhoenix.Form.for_create(:create, as: "class_group")
+    |> to_form()
+  end
+
+  defp student_form do
+    Student
+    |> AshPhoenix.Form.for_create(:create, as: "student")
+    |> to_form()
   end
 
   def handle_event(event, _params, %{assigns: %{read_only?: true}} = socket)
@@ -74,7 +92,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
       {:noreply,
        socket
        |> assign(:students, Enrollment.list_students(cg))
-       |> assign(:student_form, to_form(%{}, as: :student))}
+       |> assign(:student_form, student_form())}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not add the student"))}
     end
