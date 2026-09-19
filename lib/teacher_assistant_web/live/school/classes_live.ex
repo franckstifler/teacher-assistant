@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.SchoolTemplates
   alias TeacherAssistant.Academics.Subsystem
   alias TeacherAssistant.Accounts.Permissions
@@ -25,10 +26,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
        socket
        |> assign(:admin?, Permissions.admin?(scope))
        |> assign(:class_streams, class_streams)
-       |> assign(
-         :class_form,
-         to_form(%{"label" => "", "level" => "", "serie" => ""}, as: :class_group)
-       )
+       |> assign(:class_form, class_form())
        |> load_classes()}
     end
   end
@@ -105,7 +103,13 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
           <div :if={@admin?} class="ta-leaf space-y-3">
             <h2 class="text-sm font-semibold">{gettext("Create a class")}</h2>
-            <.form for={@class_form} id="class-form" phx-submit="create_class" class="space-y-2">
+            <.form
+              for={@class_form}
+              id="class-form"
+              phx-change="validate_class"
+              phx-submit="create_class"
+              class="space-y-2"
+            >
               <div class="grid gap-2 sm:grid-cols-4">
                 <.input field={@class_form[:label]} label={gettext("Label")} />
                 <.input field={@class_form[:level]} label={gettext("Level")} />
@@ -133,23 +137,37 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     """
   end
 
+  def handle_event("validate_class", %{"class_group" => params}, socket) do
+    {:noreply, assign(socket, :class_form, AshPhoenix.Form.validate(socket.assigns.class_form, params))}
+  end
+
   def handle_event("create_class", %{"class_group" => params}, socket) do
     %{current_scope: scope} = socket.assigns
 
     with true <- Permissions.admin?(scope),
-         year when not is_nil(year) <- scope.current_academic_year,
-         {:ok, _} <-
-           Enrollment.create_class_group(scope.current_workspace, year, %{
-             label: params["label"],
-             level: params["level"],
-             serie: presence(params["serie"]),
-             subsystem: parse_subsystem(params["subsystem"])
-           }) do
-      {:noreply, socket |> put_flash(:info, gettext("Class created.")) |> load_classes()}
+         year when not is_nil(year) <- scope.current_academic_year do
+      submit_params =
+        params
+        |> Map.merge(%{
+          "workspace_id" => scope.current_workspace.id,
+          "academic_year_id" => year.id
+        })
+        |> drop_blank_serie()
+
+      case AshPhoenix.Form.submit(socket.assigns.class_form, params: submit_params) do
+        {:ok, _class_group} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Class created."))
+           |> assign(:class_form, class_form())
+           |> load_classes()}
+
+        {:error, form} ->
+          {:noreply, assign(socket, :class_form, form)}
+      end
     else
       false -> {:noreply, socket}
       nil -> {:noreply, put_flash(socket, :error, gettext("Create an academic year first."))}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not create the class."))}
     end
   end
 
@@ -191,10 +209,16 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     assign(socket, classes: classes, year: year)
   end
 
-  defp presence(""), do: nil
-  defp presence(nil), do: nil
-  defp presence(v), do: v
+  defp class_form do
+    ClassGroup
+    |> AshPhoenix.Form.for_create(:create, as: "class_group")
+    |> to_form()
+  end
 
-  defp parse_subsystem(v) when v in ~w(francophone anglophone), do: String.to_existing_atom(v)
-  defp parse_subsystem(_), do: :francophone
+  # `ClassGroup.serie` is a nullable string; an empty selection stays `nil`
+  # (mirrors the previous `presence/1` helper) rather than being stored as "".
+  defp drop_blank_serie(%{"serie" => serie} = params) when serie in ["", nil],
+    do: Map.delete(params, "serie")
+
+  defp drop_blank_serie(params), do: params
 end

@@ -1,15 +1,24 @@
 defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: to_form(%{}, as: :school))}
+    {:ok, assign(socket, form: build_form())}
+  end
+
+  def handle_event("validate", %{"school" => params}, socket) do
+    {:noreply, assign(socket, form: AshPhoenix.Form.validate(socket.assigns.form, params))}
   end
 
   def handle_event("create", %{"school" => p}, socket) do
-    attrs = %{
-      name: p["name"],
+    user = socket.assigns.current_scope.current_user
+
+    # The `:create_school` action takes the flat identity fields as a nested
+    # `:profile` map argument (atom keys, matching the action's `Map.take/2`)
+    # and the creator as the `:owner_user_id` argument. The flat params are
+    # merged back in so the form re-renders the entered values on error.
+    profile = %{
       school_type: to_atom(p["school_type"]),
       subsystem: to_atom(p["subsystem"]),
       sector: to_atom(p["sector"]),
@@ -17,19 +26,27 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
       town: p["town"]
     }
 
-    case Organization.create_school(socket.assigns.current_scope.current_user, attrs) do
+    params = Map.merge(p, %{"owner_user_id" => user.id, "profile" => profile})
+
+    case AshPhoenix.Form.submit(socket.assigns.form, params: params) do
       {:ok, school} ->
         {:noreply, redirect(socket, to: ~p"/workspaces/select/#{school.id}")}
 
-      {:error, _} ->
+      {:error, form} ->
         {:noreply,
          socket
-         |> assign(:form, to_form(p, as: :school))
+         |> assign(:form, form)
          |> put_flash(
            :error,
            gettext("Impossible de créer l'établissement — vérifiez les champs.")
          )}
     end
+  end
+
+  defp build_form do
+    Workspace
+    |> AshPhoenix.Form.for_create(:create_school, as: "school")
+    |> to_form()
   end
 
   defp to_atom(nil), do: nil
@@ -45,7 +62,13 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
           title={gettext("Create your school")}
         />
 
-        <.form for={@form} id="create-school-form" phx-submit="create" class="space-y-5">
+        <.form
+          for={@form}
+          id="create-school-form"
+          phx-change="validate"
+          phx-submit="create"
+          class="space-y-5"
+        >
           <fieldset class="ta-leaf space-y-2">
             <legend class="ta-eyebrow px-1">{gettext("School identity")}</legend>
             <.input field={@form[:name]} label={gettext("School name")} />

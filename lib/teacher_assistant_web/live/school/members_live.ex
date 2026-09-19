@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{Permissions, SchoolRole}
+  alias TeacherAssistant.Accounts.{Permissions, SchoolInvitation, SchoolRole}
   alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        socket
        |> assign(:scope, scope)
        |> assign(:head?, Permissions.head?(scope))
-       |> assign(:invite_form, to_form(%{"email" => "", "roles" => ["teacher"]}, as: :invite))
+       |> assign(:invite_form, invite_form())
        |> reload_members()}
     else
       {:ok, push_navigate(socket, to: ~p"/teacher")}
@@ -152,7 +152,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
              roles: roles
            }) do
         {:ok, _invitation} ->
-          {:noreply, reload_members(socket)}
+          {:noreply, socket |> assign(:invite_form, invite_form()) |> reload_members()}
 
         {:error, :already_member} ->
           {:noreply,
@@ -234,6 +234,16 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     else
       {:noreply, socket}
     end
+  end
+
+  # The invite dialog binds to `SchoolInvitation :create` for its email field.
+  # Submit still routes through `Accounts.invite_member/3`, which owns the
+  # token/expiry generation, the "already a member" guard and the invitation
+  # email — behaviour the bare create action does not reproduce.
+  defp invite_form do
+    SchoolInvitation
+    |> AshPhoenix.Form.for_create(:create, as: "invite")
+    |> to_form()
   end
 
   defp reload_members(socket) do
