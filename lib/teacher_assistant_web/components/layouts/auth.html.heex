@@ -51,6 +51,18 @@
     box-shadow: 0 0 0 3px rgba(14, 122, 95, 0.14);
   }
   .ta-auth-paper .ta-field-input-error { border-color: #B3452E !important; }
+  /* keep the boxed-white look when the browser autofills a field (and when
+     Chrome/Safari paint a "recognized login form" suggestion highlight on an
+     unfilled field with saved credentials for this origin) */
+  .ta-auth-paper input:-webkit-autofill,
+  .ta-auth-paper input:-webkit-autofill:hover,
+  .ta-auth-paper input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #1E2A2B;
+    -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+    box-shadow: 0 0 0 1000px #FFFFFF inset;
+    caret-color: #1E2A2B;
+    border-radius: 0.45rem;
+  }
   .ta-auth-paper input[type="checkbox"] {
     width: 0.95rem;
     height: 0.95rem;
