@@ -2,7 +2,6 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
@@ -49,7 +48,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
     assert length(item_ids) == 1
 
-    representative_id = Academics.unit_select_id({:course, course})
+    representative_id = Curriculum.unit_select_id({:course, course})
     assert has_element?(view, "#class-switcher-item-#{representative_id}", course.label)
   end
 

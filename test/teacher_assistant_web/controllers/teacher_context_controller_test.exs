@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.TeacherContextControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,

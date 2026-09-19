@@ -188,7 +188,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     test "unassign removes a data-free assignment; blocked with data", ctx do
       %{conn: conn, cg: cg, user: head} = ctx
       {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, _} = TeacherAssistant.Academics.create_progression_plan(tc, %{title: "P"})
+      {:ok, _} = TeacherAssistant.Curriculum.create_progression_plan(tc, %{title: "P"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view |> element("#unassign-#{tc.id}") |> render_click()
@@ -274,8 +274,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> element("#teach-together-#{tc.id}")
       |> render_submit(%{"sibling-ids" => [tc2.id]})
 
-      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
-      {:ok, reloaded_tc2} = TeacherAssistant.Academics.get_teaching_context(tc2.id)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(tc2.id)
 
       assert reloaded_tc.combined_course_id
       assert reloaded_tc.combined_course_id == reloaded_tc2.combined_course_id
@@ -316,8 +316,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       view |> element("#split-#{tc.id}") |> render_click()
 
-      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
-      {:ok, reloaded_tc2} = TeacherAssistant.Academics.get_teaching_context(tc2.id)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(tc2.id)
       assert reloaded_tc.combined_course_id == nil
       assert reloaded_tc2.combined_course_id == nil
     end
@@ -469,7 +469,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "teach_together", %{"context-id" => tc.id, "sibling-ids" => [tc2.id]})
 
-      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id)
       assert reloaded_tc.combined_course_id == nil
     end
 
@@ -486,7 +486,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "split_course", %{"context-id" => tc.id})
 
-      {:ok, reloaded_tc} = TeacherAssistant.Academics.get_teaching_context(tc.id)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id)
       assert reloaded_tc.combined_course_id != nil
     end
 

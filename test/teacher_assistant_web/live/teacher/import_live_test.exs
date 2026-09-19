@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
   use TeacherAssistantWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
@@ -18,7 +17,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
     :ok = Organization.build_default_calendar(year)
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
@@ -187,7 +186,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       })
 
     {:ok, other_ctx} =
-      Academics.create_teaching_context(other_ws, other_year, %{
+      Curriculum.create_teaching_context(other_ws, other_year, %{
         subject: "Physics",
         level: "6ème",
         subsystem: :francophone,
@@ -195,7 +194,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       })
 
     assert {:error, :not_found} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: other_ctx.id, title: "Nope"},
                [

@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.ConductTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Conduct
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Organization
@@ -71,7 +70,7 @@ defmodule TeacherAssistant.Academics.ConductTest do
     test "returns the séquence's own dates for {:sequence, seq}", %{year: year} do
       [seq | _] = Organization.list_sequences(year)
 
-      assert Academics.period_date_range({:sequence, seq}) == {seq.start_date, seq.end_date}
+      assert Organization.period_date_range({:sequence, seq}) == {seq.start_date, seq.end_date}
     end
 
     test "returns min-start/max-end across the term's séquences for {:trimester, term}", %{
@@ -82,7 +81,8 @@ defmodule TeacherAssistant.Academics.ConductTest do
       expected_first = term1.sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
       expected_last = term1.sequences |> Enum.map(& &1.end_date) |> Enum.max(Date)
 
-      assert Academics.period_date_range({:trimester, term1}) == {expected_first, expected_last}
+      assert Organization.period_date_range({:trimester, term1}) ==
+               {expected_first, expected_last}
     end
 
     test "returns min-start/max-end across the year's séquences for {:annual, year}", %{
@@ -93,7 +93,7 @@ defmodule TeacherAssistant.Academics.ConductTest do
       expected_first = sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
       expected_last = sequences |> Enum.map(& &1.end_date) |> Enum.max(Date)
 
-      assert Academics.period_date_range({:annual, year}) == {expected_first, expected_last}
+      assert Organization.period_date_range({:annual, year}) == {expected_first, expected_last}
     end
   end
 end

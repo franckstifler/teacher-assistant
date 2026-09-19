@@ -3,7 +3,6 @@ defmodule TeacherAssistant.Attendance do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
@@ -18,6 +17,7 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Academics.Workspace
+  alias TeacherAssistant.Organization
 
   resources do
     resource Period do
@@ -372,13 +372,13 @@ defmodule TeacherAssistant.Attendance do
   @doc """
   Aggregates justified/unjustified absence hours and retards for `enrollment`
   (struct or bare id) within `period_tuple`'s date range (see
-  `Academics.period_date_range/1`). Returns zero totals when the range is
+  `Organization.period_date_range/1`). Returns zero totals when the range is
   `nil`.
   """
   def student_conduct(enrollment, period_tuple) do
     enrollment_id = enrollment_id(enrollment)
 
-    case Academics.period_date_range(period_tuple) do
+    case Organization.period_date_range(period_tuple) do
       nil ->
         @zero_totals
 
@@ -403,7 +403,7 @@ defmodule TeacherAssistant.Attendance do
 
     zero_map = Map.new(roster_enrollment_ids, &{&1, @zero_totals})
 
-    case Academics.period_date_range(period_tuple) do
+    case Organization.period_date_range(period_tuple) do
       nil ->
         zero_map
 

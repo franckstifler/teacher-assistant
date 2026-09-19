@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
@@ -17,19 +16,19 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
@@ -115,21 +114,21 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       # Pre-existing solo plans/lessons on each member class, created before
       # combining — these must NOT surface on the log once tc_a/tc_b share a
       # course plan.
-      {:ok, stale_plan_a} = Academics.create_progression_plan(tc_a, %{title: "A (stale)"})
-      {:ok, m_a} = Academics.create_module(stale_plan_a, %{title: "M"})
+      {:ok, stale_plan_a} = Curriculum.create_progression_plan(tc_a, %{title: "A (stale)"})
+      {:ok, m_a} = Curriculum.create_module(stale_plan_a, %{title: "M"})
 
       {:ok, _stale_entry_a} =
-        Academics.add_progression_entry(m_a, %{
+        Curriculum.add_progression_entry(m_a, %{
           lesson_title: "Stale lesson A",
           planned_hours: Decimal.new("1"),
           entry_type: :lesson
         })
 
-      {:ok, stale_plan_b} = Academics.create_progression_plan(tc_b, %{title: "B (stale)"})
-      {:ok, m_b} = Academics.create_module(stale_plan_b, %{title: "M"})
+      {:ok, stale_plan_b} = Curriculum.create_progression_plan(tc_b, %{title: "B (stale)"})
+      {:ok, m_b} = Curriculum.create_module(stale_plan_b, %{title: "M"})
 
       {:ok, _stale_entry_b} =
-        Academics.add_progression_entry(m_b, %{
+        Curriculum.add_progression_entry(m_b, %{
           lesson_title: "Stale lesson B",
           planned_hours: Decimal.new("1"),
           entry_type: :lesson
@@ -141,10 +140,10 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
         Curriculum.list_progression_plans!(school.id)
         |> Enum.filter(&(&1.combined_course_id == course.id))
 
-      {:ok, course_module} = Academics.create_module(course_plan, %{title: "M"})
+      {:ok, course_module} = Curriculum.create_module(course_plan, %{title: "M"})
 
       {:ok, course_entry} =
-        Academics.add_progression_entry(course_module, %{
+        Curriculum.add_progression_entry(course_module, %{
           lesson_title: "Course lesson",
           planned_hours: Decimal.new("1"),
           entry_type: :lesson

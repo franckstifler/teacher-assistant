@@ -1,8 +1,8 @@
 defmodule TeacherAssistantWeb.Teacher.SetupLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
 
   def mount(_params, _session, socket) do
     if socket.assigns.current_scope.current_workspace_type == :school do
@@ -46,7 +46,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
            }),
          :ok <- Organization.build_default_calendar(year),
          {:ok, _ctx} <-
-           Academics.create_teaching_context(ws, year, %{
+           Curriculum.create_teaching_context(ws, year, %{
              subject: p["subject"],
              level: p["level"],
              subsystem: String.to_existing_atom(p["subsystem"]),

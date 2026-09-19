@@ -1,10 +1,10 @@
 defmodule TeacherAssistantWeb.School.RegisterLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Organization
 
   def mount(%{"id" => id} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -50,7 +50,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     sequence =
       case scope.current_academic_year do
         nil -> nil
-        year -> Academics.current_sequence(year, socket.assigns.date)
+        year -> Organization.current_sequence(year, socket.assigns.date)
       end
 
     conduct_by_enrollment =

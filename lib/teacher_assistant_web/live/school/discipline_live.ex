@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.School.DisciplineLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts.Permissions
@@ -160,7 +159,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     year = socket.assigns.year
 
     period =
-      (year && param && Academics.resolve_period(year, param)) ||
+      (year && param && Organization.resolve_period(year, param)) ||
         socket.assigns[:period] ||
         default_period(socket.assigns.sequences)
 
@@ -170,7 +169,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
     assign(socket,
       period: period,
-      period_param: period && Academics.period_param(period),
+      period_param: period && Organization.period_param(period),
       sanctions: sanctions,
       discipline_by_enrollment: discipline_by_enrollment
     )

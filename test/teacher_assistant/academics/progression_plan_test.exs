@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -17,7 +16,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
@@ -28,32 +27,32 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   end
 
   test "create and list a progression plan", %{ws: ws, ctx: ctx} do
-    assert {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Maths 6ème 2025-2026"})
+    assert {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème 2025-2026"})
     assert plan.status == :draft
     assert [listed] = Curriculum.list_progression_plans!(ws.id)
     assert listed.id == plan.id
   end
 
   test "duplicate creates a new plan record", %{ctx: ctx} do
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Original"})
-    {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Original"})
+    {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
     assert copy.id != plan.id
     assert copy.title == "Copy"
   end
 
   test "duplicate copies progression entries onto the new plan", %{ctx: ctx} do
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Original"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Original"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
-    {:ok, m2} = Academics.create_module(plan, %{title: "M2"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
+    {:ok, m2} = Curriculum.create_module(plan, %{title: "M2"})
 
     {:ok, e1} =
-      Academics.add_progression_entry(m1, %{lesson_title: "Lesson 1"})
+      Curriculum.add_progression_entry(m1, %{lesson_title: "Lesson 1"})
 
     {:ok, e2} =
-      Academics.add_progression_entry(m2, %{lesson_title: "Lesson 2"})
+      Curriculum.add_progression_entry(m2, %{lesson_title: "Lesson 2"})
 
-    {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
+    {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
 
     original_entries = Curriculum.list_progression_entries!(plan.id)
     copied_entries = Curriculum.list_progression_entries!(copy.id)
@@ -76,7 +75,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   end
 
   test "duplicate copies module sequence_id and entry completed? flag", %{ctx: ctx} do
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Original"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Original"})
 
     {:ok, ay} =
       Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
@@ -84,15 +83,15 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     :ok = Organization.build_default_calendar(ay)
     [seq | _] = Organization.list_sequences(ay)
 
-    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
-    {:ok, m} = Academics.assign_module_sequence(m, seq.id)
+    {:ok, m} = Curriculum.create_module(plan, %{title: "M1"})
+    {:ok, m} = Curriculum.assign_module_sequence(m, seq.id)
 
     {:ok, e} =
-      Academics.add_progression_entry(m, %{lesson_title: "Lesson 1", entry_type: :lesson})
+      Curriculum.add_progression_entry(m, %{lesson_title: "Lesson 1", entry_type: :lesson})
 
-    {:ok, _e} = Academics.set_entry_completed(e, true)
+    {:ok, _e} = Curriculum.set_entry_completed(e, true)
 
-    {:ok, copy} = Academics.duplicate_progression_plan(plan, %{title: "Copy"})
+    {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
 
     [copied_module] =
       Curriculum.list_progression_modules!(copy.id) |> Enum.filter(&(!&1.default?))

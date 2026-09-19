@@ -1,7 +1,6 @@
 defmodule TeacherAssistant.Academics.CoursesTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
@@ -87,7 +86,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
       Enrollment.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
 
     {:ok, tc_third} = Curriculum.assign_teacher(cg_third, head, %{subject: "Mathématiques"})
-    tc_maco = Academics.get_teaching_context(tc_maco.id) |> elem(1)
+    tc_maco = Curriculum.get_teaching_context(tc_maco.id) |> elem(1)
 
     assert {:error, :already_combined} = Curriculum.combine_course([tc_maco, tc_third])
     refute cg_maco == nil
@@ -104,10 +103,14 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
       assert :ok = Curriculum.split_course(course)
 
-      assert Academics.get_teaching_context(tc_maco.id) |> elem(1) |> Map.get(:combined_course_id) ==
+      assert Curriculum.get_teaching_context(tc_maco.id)
+             |> elem(1)
+             |> Map.get(:combined_course_id) ==
                nil
 
-      assert Academics.get_teaching_context(tc_menu.id) |> elem(1) |> Map.get(:combined_course_id) ==
+      assert Curriculum.get_teaching_context(tc_menu.id)
+             |> elem(1)
+             |> Map.get(:combined_course_id) ==
                nil
 
       assert {:error, _} = Curriculum.get_course(course.id)
@@ -140,16 +143,16 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, ws: ws} = ctx
 
     {:ok, _stale_maco_plan} =
-      Academics.create_progression_plan(tc_maco, %{title: "Maco (stale)"})
+      Curriculum.create_progression_plan(tc_maco, %{title: "Maco (stale)"})
 
     {:ok, _stale_menu_plan} =
-      Academics.create_progression_plan(tc_menu, %{title: "Menu (stale)"})
+      Curriculum.create_progression_plan(tc_menu, %{title: "Menu (stale)"})
 
-    {:ok, french_plan} = Academics.create_progression_plan(tc_french, %{title: "Français"})
+    {:ok, french_plan} = Curriculum.create_progression_plan(tc_french, %{title: "Français"})
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    unit_plans = Academics.list_unit_plans(ws)
+    unit_plans = Curriculum.list_unit_plans(ws)
 
     assert length(unit_plans) == 2
     assert Enum.count(unit_plans, &(&1.combined_course_id == course.id)) == 1

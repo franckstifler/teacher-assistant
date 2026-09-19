@@ -1,10 +1,10 @@
 defmodule TeacherAssistant.Academics.MarkTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
+  alias TeacherAssistant.Curriculum
 
   setup do
     ws = TeacherFixtures.workspace_fixture()
@@ -21,7 +21,7 @@ defmodule TeacherAssistant.Academics.MarkTest do
     seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,

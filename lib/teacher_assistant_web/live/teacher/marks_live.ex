@@ -1,6 +1,5 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
@@ -11,7 +10,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
 
-    case Academics.fetch_assigned_teaching_context(ctx_id, scope) do
+    case Curriculum.fetch_assigned_teaching_context(ctx_id, scope) do
       {:ok, %{combined_course_id: course_id} = ctx} when not is_nil(course_id) ->
         mount_combined(ctx, course_id, params, socket, ws)
 

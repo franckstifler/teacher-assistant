@@ -34,7 +34,11 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
       argument :workspace_id, :uuid, allow_nil?: false
       argument :user_id, :uuid, allow_nil?: false
       get? true
-      filter expr(workspace_id == ^arg(:workspace_id) and user_id == ^arg(:user_id) and active == true)
+
+      filter expr(
+               workspace_id == ^arg(:workspace_id) and user_id == ^arg(:user_id) and
+                 active == true
+             )
     end
 
     update :deactivate do

@@ -23,7 +23,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       terms = if year, do: Organization.list_terms(year), else: []
 
       period =
-        (year && Academics.resolve_period(year, params["period"])) ||
+        (year && Organization.resolve_period(year, params["period"])) ||
           case sequences do
             [seq | _] -> {:sequence, seq}
             [] -> nil
@@ -43,8 +43,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          sequences: sequences,
          terms: terms,
          period: period,
-         period_param: period && Academics.period_param(period),
-         period_kind: period && Academics.period_kind(period),
+         period_param: period && Organization.period_param(period),
+         period_kind: period && Organization.period_kind(period),
          effectif: (results && results.effectif) || 0,
          data: data,
          conduct: conduct,
@@ -69,7 +69,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     year = socket.assigns.year
 
     period =
-      (year && Academics.resolve_period(year, params["period"])) || socket.assigns.period
+      (year && Organization.resolve_period(year, params["period"])) || socket.assigns.period
 
     results = period && Academics.class_results_for_period(socket.assigns.cg, period)
     conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
@@ -78,8 +78,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     {:noreply,
      assign(socket,
        period: period,
-       period_param: period && Academics.period_param(period),
-       period_kind: period && Academics.period_kind(period),
+       period_param: period && Organization.period_param(period),
+       period_kind: period && Organization.period_kind(period),
        effectif: (results && results.effectif) || 0,
        data: results && results.per_student[socket.assigns.student.id],
        conduct: conduct,

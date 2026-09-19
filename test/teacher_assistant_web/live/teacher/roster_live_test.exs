@@ -1,9 +1,9 @@
 defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
@@ -16,7 +16,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,
@@ -48,7 +48,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
   describe "with a linked class group" do
     setup %{ws: ws, year: year, ctx: ctx} do
       {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-      {:ok, ctx} = Academics.link_class_group(ctx, cg)
+      {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
       {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
       {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
       %{ctx: ctx, cg: cg, s1: s1, s2: s2}
@@ -66,7 +66,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
 
     test "empty roster shows a strong empty state", %{conn: conn, ws: ws, year: year} do
       {:ok, ctx2} =
-        Academics.create_teaching_context(ws, year, %{
+        Curriculum.create_teaching_context(ws, year, %{
           subject: "PCT",
           level: "3ème",
           subsystem: :francophone,
@@ -74,7 +74,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
         })
 
       {:ok, cg2} = Enrollment.create_class_group(ws, year, %{label: "3e P", level: "3ème"})
-      {:ok, ctx2} = Academics.link_class_group(ctx2, cg2)
+      {:ok, ctx2} = Curriculum.link_class_group(ctx2, cg2)
 
       {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx2.id}/roster")
       # apostrophe is HTML-escaped in the rendered title — assert around it

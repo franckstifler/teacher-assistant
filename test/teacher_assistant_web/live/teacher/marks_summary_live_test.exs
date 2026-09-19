@@ -1,10 +1,10 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,
@@ -28,7 +28,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    {:ok, ctx} = Academics.link_class_group(ctx, cg)
+    {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
     {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
     {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
@@ -127,7 +127,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     {:ok, year} = {:ok, Organization.current_academic_year(ws)}
 
     {:ok, ctx_no_roster} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "PCT",
         level: "3ème",
         subsystem: :francophone,

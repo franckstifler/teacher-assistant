@@ -1,11 +1,10 @@
 defmodule TeacherAssistantWeb.Teacher.LogLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
 
   def mount(_params, _session, socket) do
     ws = socket.assigns.current_scope.current_workspace
-    plans = if ws, do: Academics.list_unit_plans(ws), else: []
+    plans = if ws, do: Curriculum.list_unit_plans(ws), else: []
     entries = Enum.flat_map(plans, &Curriculum.list_progression_entries!(&1.id))
 
     {:ok,
@@ -31,7 +30,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
 
     with {:ok, _entry} <- ws && Curriculum.fetch_owned_entry(p["progression_entry_id"], ws),
          {:ok, _} <-
-           Academics.log_teaching(ws, %{
+           Curriculum.log_teaching(ws, %{
              progression_entry_id: p["progression_entry_id"],
              date: p["date"],
              content_taught: p["content_taught"],

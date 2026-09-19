@@ -6,10 +6,6 @@ defmodule TeacherAssistant.Accounts do
   alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership, SchoolProfile, User}
   alias TeacherAssistant.Accounts.User.Senders.SendSchoolInvitationEmail
 
-  authorization do
-    authorize :when_requested
-  end
-
   resources do
     resource TeacherAssistant.Accounts.Token
     resource User
@@ -24,6 +20,10 @@ defmodule TeacherAssistant.Accounts do
       define :verify_school, action: :verify, args: [:verified_by_user_id]
       define :reject_school, action: :reject, args: [:verified_by_user_id, :rejection_reason]
     end
+  end
+
+  authorization do
+    authorize :when_requested
   end
 
   def create_user(attrs) do

@@ -1,9 +1,9 @@
 defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Academics.{LessonPlan, LessonStep}
   alias TeacherAssistant.TeacherFixtures
+  alias TeacherAssistant.Curriculum
 
   setup do
     user = TeacherFixtures.user_fixture()
@@ -18,19 +18,19 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson

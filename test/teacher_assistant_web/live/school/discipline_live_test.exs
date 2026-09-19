@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts
@@ -27,7 +26,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
-    sequence = Academics.current_sequence(year, ~D[2025-09-08])
+    sequence = Organization.current_sequence(year, ~D[2025-09-08])
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -85,7 +84,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       Discipline.list_sanctions(
         cg,
         {:sequence,
-         Academics.current_sequence(
+         Organization.current_sequence(
            TeacherAssistant.Organization.current_academic_year(school),
            ~D[2025-09-10]
          )}
@@ -102,7 +101,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert Discipline.list_sanctions(
              cg,
              {:sequence,
-              Academics.current_sequence(
+              Organization.current_sequence(
                 TeacherAssistant.Organization.current_academic_year(school),
                 ~D[2025-09-10]
               )}
@@ -143,7 +142,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       Discipline.list_sanctions(
         cg,
         {:sequence,
-         Academics.current_sequence(
+         Organization.current_sequence(
            TeacherAssistant.Organization.current_academic_year(school),
            ~D[2025-09-10]
          )}
@@ -199,7 +198,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         head.id
       )
 
-    sequence = Academics.current_sequence(year, ~D[2025-09-10])
+    sequence = Organization.current_sequence(year, ~D[2025-09-10])
     other_sequences = Organization.list_sequences(year) |> Enum.reject(&(&1.id == sequence.id))
 
     conn = conn_for(school, head)
@@ -253,7 +252,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     |> render_hook("set_note", %{"enrollment_id" => enrollment.id, "value" => "10"})
 
     sequence =
-      Academics.current_sequence(
+      Organization.current_sequence(
         TeacherAssistant.Organization.current_academic_year(school),
         ~D[2025-09-10]
       )

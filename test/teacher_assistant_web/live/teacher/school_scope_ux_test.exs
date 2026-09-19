@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
@@ -48,12 +47,12 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
 
   test "fiche print shows the school name as établissement", ctx do
     %{conn: conn, tc: tc} = ctx
-    {:ok, plan} = Academics.create_progression_plan(tc, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(tc, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson

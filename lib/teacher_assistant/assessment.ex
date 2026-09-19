@@ -75,7 +75,7 @@ defmodule TeacherAssistant.Assessment do
   def fetch_owned_assessment(id, %Workspace{} = ws) do
     case Ash.get(Assessment, id) do
       {:ok, assessment} ->
-        case TeacherAssistant.Academics.fetch_owned_teaching_context(
+        case TeacherAssistant.Curriculum.fetch_owned_teaching_context(
                assessment.teaching_context_id,
                ws
              ) do

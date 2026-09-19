@@ -20,10 +20,6 @@ defmodule TeacherAssistant.Organization do
     :registration_number
   ]
 
-  authorization do
-    authorize :when_requested
-  end
-
   resources do
     resource Workspace do
       define :rename_school, action: :update, args: [:name]
@@ -37,6 +33,10 @@ defmodule TeacherAssistant.Organization do
 
     resource Term
     resource Sequence
+  end
+
+  authorization do
+    authorize :when_requested
   end
 
   @doc """
@@ -171,5 +171,67 @@ defmodule TeacherAssistant.Organization do
     Term
     |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id})
     |> Ash.read!()
+  end
+
+  # --- Period resolution (séquence / trimester / annual) --------------------
+  #
+  # A "period" is a `{:sequence, %Sequence{}}`, `{:trimester, %Term{}}` or
+  # `{:annual, %AcademicYear{}}` tuple: the unit over which marks, attendance
+  # and discipline are aggregated. These helpers translate between a period and
+  # its URL param (`period_param/1` / `resolve_period/2`), expose its kind and
+  # calendar date span, and locate the séquence covering a given day.
+
+  def period_kind({:sequence, _}), do: :sequence
+  def period_kind({:trimester, _}), do: :trimester
+  def period_kind({:annual, _}), do: :annual
+
+  def period_param({:sequence, %Sequence{id: id}}), do: "seq:" <> id
+  def period_param({:trimester, %Term{id: id}}), do: "trim:" <> id
+  def period_param({:annual, _}), do: "annee"
+
+  def resolve_period(%AcademicYear{} = year, "annee"), do: {:annual, year}
+
+  def resolve_period(%AcademicYear{} = year, "seq:" <> id) do
+    case Enum.find(list_sequences(year), &(&1.id == id)) do
+      nil -> nil
+      seq -> {:sequence, seq}
+    end
+  end
+
+  def resolve_period(%AcademicYear{} = year, "trim:" <> id) do
+    case Enum.find(list_terms(year), &(&1.id == id)) do
+      nil -> nil
+      term -> {:trimester, term}
+    end
+  end
+
+  def resolve_period(_year, _param), do: nil
+
+  def period_date_range({:sequence, %Sequence{start_date: start_date, end_date: end_date}}) do
+    {start_date, end_date}
+  end
+
+  def period_date_range({:trimester, %Term{sequences: sequences}}) do
+    sequence_date_range(sequences)
+  end
+
+  def period_date_range({:annual, %AcademicYear{} = year}) do
+    sequence_date_range(list_sequences(year))
+  end
+
+  defp sequence_date_range([]), do: nil
+
+  defp sequence_date_range(sequences) do
+    first = sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
+    last = sequences |> Enum.map(& &1.end_date) |> Enum.max(Date)
+    {first, last}
+  end
+
+  def current_sequence(%AcademicYear{} = year, %Date{} = date) do
+    year
+    |> list_sequences()
+    |> Enum.find(fn s ->
+      Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
+    end)
   end
 end

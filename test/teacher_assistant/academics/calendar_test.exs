@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.CalendarTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -27,7 +26,7 @@ defmodule TeacherAssistant.Academics.CalendarTest do
 
   test "current_sequence finds the sequence covering a date", %{year: year} do
     :ok = Organization.build_default_calendar(year)
-    seq = Academics.current_sequence(year, ~D[2025-09-20])
+    seq = Organization.current_sequence(year, ~D[2025-09-20])
     assert seq.number == 1
   end
 end

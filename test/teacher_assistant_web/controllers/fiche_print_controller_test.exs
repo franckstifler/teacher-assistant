@@ -1,6 +1,5 @@
 defmodule TeacherAssistantWeb.FichePrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
@@ -15,18 +14,18 @@ defmodule TeacherAssistantWeb.FichePrintControllerTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson

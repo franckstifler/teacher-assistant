@@ -1,6 +1,5 @@
 defmodule TeacherAssistantWeb.Teacher.FicheLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.Quota
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Curriculum
@@ -27,7 +26,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         {:noreply, socket}
 
       t ->
-        case Academics.create_module(socket.assigns.plan, %{title: t}) do
+        case Curriculum.create_module(socket.assigns.plan, %{title: t}) do
           {:ok, _} ->
             {:noreply, assign_modules(socket, socket.assigns.plan)}
 
@@ -41,7 +40,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
-         {:ok, _} <- Academics.rename_module(m, title) do
+         {:ok, _} <- Curriculum.rename_module(m, title) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not rename module"))}
@@ -52,7 +51,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
-         :ok <- Academics.delete_module(m) do
+         :ok <- Curriculum.delete_module(m) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       {:error, :default_bucket} ->
@@ -68,7 +67,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
     with {:ok, entry_attrs} <- entry_attrs_from_params(p),
          {:ok, module} <- ws && Curriculum.fetch_owned_module(module_id, ws),
-         {:ok, _} <- Academics.add_progression_entry(module, entry_attrs) do
+         {:ok, _} <- Curriculum.add_progression_entry(module, entry_attrs) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not add entry"))}
@@ -80,7 +79,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
     case ws && Curriculum.fetch_owned_entry(id, ws) do
       {:ok, entry} ->
-        case Academics.delete_progression_entry(entry) do
+        case Curriculum.delete_progression_entry(entry) do
           :ok -> {:noreply, assign_modules(socket, socket.assigns.plan)}
           {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete entry"))}
         end
@@ -91,14 +90,14 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
   end
 
   def handle_event("apply-layout", %{"layout" => layout}, socket) do
-    case Academics.apply_layout(socket.assigns.plan, layout) do
+    case Curriculum.apply_layout(socket.assigns.plan, layout) do
       {:ok, :applied} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
       {:error, _} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
     end
   end
 
   def handle_event("duplicate-plan", _params, socket) do
-    case Academics.duplicate_progression_plan(socket.assigns.plan, %{}) do
+    case Curriculum.duplicate_progression_plan(socket.assigns.plan, %{}) do
       {:ok, copy} -> {:noreply, push_navigate(socket, to: ~p"/teacher/plans/#{copy.id}")}
       {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not duplicate plan"))}
     end
@@ -114,7 +113,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
       target_lesson_count: parse_int(p["target_lesson_count"])
     }
 
-    case ws && ctx && Academics.update_teaching_context(ctx.id, ws, attrs) do
+    case ws && ctx && Curriculum.update_teaching_context(ctx.id, ws, attrs) do
       {:ok, _} -> {:noreply, assign_modules(socket, socket.assigns.plan)}
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not save targets"))}
     end
@@ -124,7 +123,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
-         {:ok, _} <- Academics.update_module_credit(m, parse_decimal(raw)) do
+         {:ok, _} <- Curriculum.update_module_credit(m, parse_decimal(raw)) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not save credit"))}
@@ -135,7 +134,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     ws = socket.assigns.current_scope.current_workspace
 
     with {:ok, e} <- ws && Curriculum.fetch_owned_entry(id, ws),
-         {:ok, _} <- Academics.set_entry_completed(e, not e.completed?) do
+         {:ok, _} <- Curriculum.set_entry_completed(e, not e.completed?) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not update lesson"))}
@@ -147,7 +146,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     sequence_id = if raw in [nil, ""], do: nil, else: raw
 
     with {:ok, m} <- ws && Curriculum.fetch_owned_module(id, ws),
-         {:ok, _} <- Academics.assign_module_sequence(m, sequence_id) do
+         {:ok, _} <- Curriculum.assign_module_sequence(m, sequence_id) do
       {:noreply, assign_modules(socket, socket.assigns.plan)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not assign sequence"))}
@@ -156,7 +155,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
   defp assign_modules(socket, plan) do
     ctx =
-      case Academics.get_teaching_context(plan.teaching_context_id) do
+      case Curriculum.get_teaching_context(plan.teaching_context_id) do
         {:ok, ctx} -> ctx
         _ -> nil
       end

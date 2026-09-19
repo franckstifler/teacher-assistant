@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.DashboardLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Organization
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -10,15 +10,15 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
     socket =
       if year do
         ws = scope.current_workspace
-        plans = Academics.list_unit_plans(ws)
+        plans = Curriculum.list_unit_plans(ws)
 
         kpis =
           Enum.map(plans, fn p ->
-            %{plan: p, coverage: Academics.coverage_for_plan(p), context_id: link_context_id(p)}
+            %{plan: p, coverage: Curriculum.coverage_for_plan(p), context_id: link_context_id(p)}
           end)
 
-        contexts_count = length(Academics.list_teaching_contexts(ws, year))
-        current_seq = Academics.current_sequence(year, Date.utc_today())
+        contexts_count = length(Curriculum.list_teaching_contexts(ws, year))
+        current_seq = Organization.current_sequence(year, Date.utc_today())
 
         assign(socket,
           year: year,

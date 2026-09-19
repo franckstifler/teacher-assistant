@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.LessonStepTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -18,19 +17,19 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
@@ -79,19 +78,19 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
     {:ok, year} = {:ok, Organization.current_academic_year(ws)}
 
     {:ok, ctx2} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "PCT",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 2
       })
 
-    {:ok, plan2} = Academics.create_progression_plan(ctx2, %{title: "P2"})
+    {:ok, plan2} = Curriculum.create_progression_plan(ctx2, %{title: "P2"})
 
-    {:ok, m} = Academics.create_module(plan2, %{title: "M"})
+    {:ok, m} = Curriculum.create_module(plan2, %{title: "M"})
 
     {:ok, entry2} =
-      Academics.add_progression_entry(m, %{
+      Curriculum.add_progression_entry(m, %{
         lesson_title: "L",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson

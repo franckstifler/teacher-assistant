@@ -1,6 +1,5 @@
 defmodule TeacherAssistantWeb.Teacher.CoverageLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
 
@@ -9,7 +8,7 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLive do
 
     case ws && Curriculum.fetch_owned_plan(id, ws) do
       {:ok, plan} ->
-        coverage = Academics.coverage_for_plan(plan)
+        coverage = Curriculum.coverage_for_plan(plan)
         entries = Curriculum.list_progression_entries!(plan.id)
 
         covered_ids =

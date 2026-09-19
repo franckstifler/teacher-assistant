@@ -1,7 +1,6 @@
 defmodule TeacherAssistant.Discipline do
   use Ash.Domain, otp_app: :teacher_assistant
 
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.ConductMark
@@ -58,11 +57,11 @@ defmodule TeacherAssistant.Discipline do
   @doc """
   Lists `SanctionEntry`s for `class_group` (or a single `enrollment`) whose
   `date` is within `period_tuple`'s inclusive date range (see
-  `Academics.period_date_range/1`), newest first, with the enrollment's
+  `Organization.period_date_range/1`), newest first, with the enrollment's
   student loaded. Returns `[]` when the range is `nil`.
   """
   def list_sanctions(%ClassGroup{id: cg_id}, period_tuple) do
-    case Academics.period_date_range(period_tuple) do
+    case Organization.period_date_range(period_tuple) do
       nil -> []
       {first, last} -> list_sanctions_for_class_in_range!(cg_id, first, last)
     end
@@ -71,7 +70,7 @@ defmodule TeacherAssistant.Discipline do
   def list_sanctions(enrollment, period_tuple) do
     id = enrollment_id(enrollment)
 
-    case Academics.period_date_range(period_tuple) do
+    case Organization.period_date_range(period_tuple) do
       nil -> []
       {first, last} -> list_sanctions_for_enrollment_in_range!(id, first, last)
     end

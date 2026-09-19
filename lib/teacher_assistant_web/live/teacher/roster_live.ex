@@ -1,8 +1,8 @@
 defmodule TeacherAssistantWeb.Teacher.RosterLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
 
   def mount(%{"id" => ctx_id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     read_only? = scope.current_workspace_type == :school
 
     with true <- not is_nil(ws),
-         {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope) do
+         {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope) do
       {:ok, load(socket, ws, ctx) |> assign(:read_only?, read_only?)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
@@ -54,7 +54,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     with false <- is_nil(year),
          {:ok, cg} <-
            Enrollment.create_class_group(ws, year, %{label: p["label"], level: p["level"]}),
-         {:ok, ctx} <- Academics.link_class_group(socket.assigns.ctx, cg) do
+         {:ok, ctx} <- Curriculum.link_class_group(socket.assigns.ctx, cg) do
       {:noreply, load(socket, ws, ctx)}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the class"))}

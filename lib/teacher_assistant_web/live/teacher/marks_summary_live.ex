@@ -1,10 +1,10 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Marks
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
 
   @mention_order [:excellent, :tres_bien, :bien, :assez_bien, :passable, nil]
 
@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
 
-    with {:ok, ctx} <- Academics.fetch_assigned_teaching_context(ctx_id, scope),
+    with {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope),
          false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Organization.current_academic_year(ws)

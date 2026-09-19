@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -17,19 +16,19 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
 
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, entry} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
@@ -40,7 +39,7 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
 
   test "log against a planned entry", %{ws: ws, plan: plan, entry: entry} do
     assert {:ok, log} =
-             Academics.log_teaching(ws, %{
+             Curriculum.log_teaching(ws, %{
                date: ~D[2025-09-15],
                content_taught: "Intro",
                hours: Decimal.new("2"),

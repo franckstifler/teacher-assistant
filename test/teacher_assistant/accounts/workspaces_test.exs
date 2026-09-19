@@ -3,9 +3,9 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.Workspaces
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.TeacherFixtures
+  alias TeacherAssistant.Curriculum
 
   setup do
     user = TeacherFixtures.user_fixture()
@@ -20,7 +20,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,

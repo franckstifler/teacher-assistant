@@ -1,10 +1,10 @@
 defmodule TeacherAssistant.Academics.AssessmentTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
+  alias TeacherAssistant.Curriculum
 
   setup do
     ws = TeacherFixtures.workspace_fixture()
@@ -21,7 +21,7 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
     seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,
@@ -33,7 +33,7 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
   end
 
   test "links a class group to a teaching context", %{ctx: ctx, cg: cg} do
-    {:ok, ctx2} = Academics.link_class_group(ctx, cg)
+    {:ok, ctx2} = Curriculum.link_class_group(ctx, cg)
     assert ctx2.class_group_id == cg.id
   end
 

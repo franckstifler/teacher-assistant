@@ -43,7 +43,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     year = socket.assigns.year
 
     period =
-      (year && param && Academics.resolve_period(year, param)) ||
+      (year && param && Organization.resolve_period(year, param)) ||
         default_period(socket.assigns.sequences)
 
     results = period && Academics.class_results_for_period(socket.assigns.cg, period)
@@ -51,7 +51,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
 
     assign(socket,
       period: period,
-      period_param: period && Academics.period_param(period),
+      period_param: period && Organization.period_param(period),
       results: results,
       roster: roster,
       rows: ranked_rows(results, roster)

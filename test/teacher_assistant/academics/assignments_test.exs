@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.AssignmentsTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
@@ -53,7 +52,7 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
   test "remove is blocked when the context has data", ctx do
     %{head: head, cg: cg} = ctx
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-    {:ok, _plan} = Academics.create_progression_plan(tc, %{title: "Plan"})
+    {:ok, _plan} = Curriculum.create_progression_plan(tc, %{title: "Plan"})
     assert {:error, :has_data} = Curriculum.remove_assignment(tc)
   end
 

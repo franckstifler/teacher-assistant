@@ -26,7 +26,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
-        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+        TeacherAssistant.Curriculum.create_teaching_context(ws, year, %{
           subject: "Maths",
           level: "6ème",
           subsystem: :francophone,
@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
         })
 
       {:ok, _plan} =
-        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+        TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
       assert has_element?(view, "#coverage-kpis")
@@ -52,7 +52,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
-        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+        TeacherAssistant.Curriculum.create_teaching_context(ws, year, %{
           subject: "Maths",
           level: "6ème",
           subsystem: :francophone,
@@ -60,7 +60,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
         })
 
       {:ok, _plan} =
-        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+        TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
 
@@ -90,7 +90,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       :ok = TeacherAssistant.Organization.build_default_calendar(year)
 
       {:ok, ctx} =
-        TeacherAssistant.Academics.create_teaching_context(ws, year, %{
+        TeacherAssistant.Curriculum.create_teaching_context(ws, year, %{
           subject: "Maths",
           level: "6ème",
           subsystem: :francophone,
@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
         })
 
       {:ok, plan} =
-        TeacherAssistant.Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+        TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
       {:ok, view, _html} = live(conn, ~p"/teacher")
 

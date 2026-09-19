@@ -1,8 +1,8 @@
 defmodule TeacherAssistantWeb.Teacher.ShellTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
   setup :register_and_log_in_user
 
   setup %{workspace: ws} do
@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "3ème",
         subsystem: :francophone,
@@ -54,7 +54,7 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
     ws: ws
   } do
     # a workspace whose only class is removed → resolve returns nil
-    for c <- Academics.list_teaching_contexts(ws, Organization.current_academic_year(ws)),
+    for c <- Curriculum.list_teaching_contexts(ws, Organization.current_academic_year(ws)),
         do: Ash.destroy!(c, authorize?: false)
 
     {:ok, view, _html} = live(conn, ~p"/teacher")

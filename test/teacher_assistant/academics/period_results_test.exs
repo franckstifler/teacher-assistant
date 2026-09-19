@@ -113,18 +113,18 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     [s1 | _] = seqs
     [term1 | _] = Organization.list_terms(year)
 
-    assert {:sequence, got_seq} = Academics.resolve_period(year, "seq:#{s1.id}")
+    assert {:sequence, got_seq} = Organization.resolve_period(year, "seq:#{s1.id}")
     assert got_seq.id == s1.id
-    assert {:trimester, got_term} = Academics.resolve_period(year, "trim:#{term1.id}")
+    assert {:trimester, got_term} = Organization.resolve_period(year, "trim:#{term1.id}")
     assert got_term.id == term1.id
-    assert {:annual, got_year} = Academics.resolve_period(year, "annee")
+    assert {:annual, got_year} = Organization.resolve_period(year, "annee")
     assert got_year.id == year.id
-    assert Academics.resolve_period(year, "seq:#{Ecto.UUID.generate()}") == nil
-    assert Academics.resolve_period(year, "garbage") == nil
+    assert Organization.resolve_period(year, "seq:#{Ecto.UUID.generate()}") == nil
+    assert Organization.resolve_period(year, "garbage") == nil
 
     # round-trips
-    assert Academics.period_param({:sequence, s1}) == "seq:#{s1.id}"
-    assert Academics.period_param({:trimester, term1}) == "trim:#{term1.id}"
-    assert Academics.period_param({:annual, year}) == "annee"
+    assert Organization.period_param({:sequence, s1}) == "seq:#{s1.id}"
+    assert Organization.period_param({:trimester, term1}) == "trim:#{term1.id}"
+    assert Organization.period_param({:annual, year}) == "annee"
   end
 end

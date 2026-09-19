@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Academics.{CombinedCourse, ProgressionPlan}
-  alias TeacherAssistant.{Academics, Curriculum, Organization, TeacherFixtures}
+  alias TeacherAssistant.{Curriculum, Organization, TeacherFixtures}
 
   setup do
     user = TeacherFixtures.user_fixture()
@@ -16,7 +16,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
@@ -46,7 +46,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   end
 
   test "a plan created from a teaching context has no combined_course_id", %{ctx: ctx} do
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Maths 6ème"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
     assert plan.teaching_context_id == ctx.id
     assert is_nil(plan.combined_course_id)
   end
@@ -97,7 +97,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
     end
 
     test "create succeeds when exactly one owner FK is set", %{ctx: ctx, course: course} do
-      assert {:ok, _plan} = Academics.create_progression_plan(ctx, %{title: "Solo"})
+      assert {:ok, _plan} = Curriculum.create_progression_plan(ctx, %{title: "Solo"})
       assert {:ok, _plan} = Curriculum.create_course_plan(course, %{title: "Combined"})
     end
 

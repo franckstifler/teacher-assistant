@@ -6,6 +6,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
   alias TeacherAssistant.Accounts.{Permissions, Workspaces}
+  alias TeacherAssistant.Organization
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
     with_class(conn, id, params, fn scope, cg, period, results ->
@@ -40,7 +41,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
          true <- Permissions.admin_or_form_master?(scope, cg),
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
-         period when not is_nil(period) <- Academics.resolve_period(year, params["period"]) do
+         period when not is_nil(period) <- Organization.resolve_period(year, params["period"]) do
       fun.(scope, cg, period, Academics.class_results_for_period(cg, period))
     else
       {:operating, false} ->
@@ -81,7 +82,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       annee: scope.current_academic_year && scope.current_academic_year.name,
       professeur_principal: fm && fm.email,
       cg: cg,
-      period_kind: Academics.period_kind(period),
+      period_kind: Organization.period_kind(period),
       period_heading: period_heading(period),
       effectif: (results && results.effectif) || 0,
       bundles: bundles

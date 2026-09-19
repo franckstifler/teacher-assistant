@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Accounts.Workspaces do
-  alias TeacherAssistant.{Academics, Organization, Scope}
+  alias TeacherAssistant.{Organization, Scope}
   alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Curriculum
 
   def ensure_personal_workspace!(user), do: Organization.ensure_personal_workspace!(user)
 
@@ -32,7 +33,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
          current_roles: [:teacher],
          current_membership: nil,
          current_academic_year: year,
-         current_context: Academics.resolve_current_context(ws, year, context_id)
+         current_context: Curriculum.resolve_current_context(ws, year, context_id)
        }}
     else
       {:error, :workspace_not_found}

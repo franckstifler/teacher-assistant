@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -18,7 +17,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
@@ -51,7 +50,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
   test "creates a draft plan with entries in order", %{ws: ws, ctx: ctx} do
     assert {:ok, plan} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: ctx.id, title: "Imported"},
                rows()
@@ -80,7 +79,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
         ]
 
     assert {:error, _} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: ctx.id, title: "Bad"},
                bad
@@ -103,7 +102,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     ]
 
     {:ok, plan} =
-      Academics.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
+      Curriculum.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
 
     mods = Curriculum.list_progression_modules!(plan.id)
     assert Enum.map(mods, & &1.title) == ["M1", "Général", "M2"]
@@ -128,7 +127,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
       })
 
     {:ok, other_ctx} =
-      Academics.create_teaching_context(other_ws, other_year, %{
+      Curriculum.create_teaching_context(other_ws, other_year, %{
         subject: "Physics",
         level: "6ème",
         subsystem: :francophone,
@@ -136,7 +135,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
       })
 
     assert {:error, :not_found} =
-             Academics.import_progression_plan(
+             Curriculum.import_progression_plan(
                ws,
                %{teaching_context_id: other_ctx.id, title: "Nope"},
                rows()

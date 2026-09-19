@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.ImportLive do
   use TeacherAssistantWeb, :live_view
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Curriculum
 
   @max_pdf_bytes 10_000_000
 
@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
     year = scope.current_academic_year
-    contexts = if ws && year, do: Academics.list_teaching_contexts(ws, year), else: []
+    contexts = if ws && year, do: Curriculum.list_teaching_contexts(ws, year), else: []
 
     socket =
       socket
@@ -324,7 +324,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
           title: title_or_default(params, socket)
         }
 
-        case Academics.import_progression_plan(ws, attrs, rows) do
+        case Curriculum.import_progression_plan(ws, attrs, rows) do
           {:ok, plan} ->
             {:noreply,
              socket

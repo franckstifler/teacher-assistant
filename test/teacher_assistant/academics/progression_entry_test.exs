@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.ProgressionEntryTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -17,29 +16,29 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
       })
 
     {:ok, ctx} =
-      Academics.create_teaching_context(ws, year, %{
+      Curriculum.create_teaching_context(ws, year, %{
         subject: "Maths",
         level: "6ème",
         subsystem: :francophone,
         weekly_hours: 4
       })
 
-    {:ok, plan} = Academics.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
     %{plan: plan}
   end
 
   test "add entries get incrementing positions", %{plan: plan} do
-    {:ok, m1} = Academics.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
 
     {:ok, e1} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
       })
 
     {:ok, e2} =
-      Academics.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(m1, %{
         lesson_title: "L2",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
@@ -51,8 +50,8 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
   end
 
   test "entry defaults completed? to false and accepts it on update", %{plan: plan} do
-    {:ok, m} = Academics.create_module(plan, %{title: "M1"})
-    {:ok, e} = Academics.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
+    {:ok, m} = Curriculum.create_module(plan, %{title: "M1"})
+    {:ok, e} = Curriculum.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
     assert e.completed? == false
 
     {:ok, e} =

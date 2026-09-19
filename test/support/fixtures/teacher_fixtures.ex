@@ -1,5 +1,6 @@
 defmodule TeacherAssistant.TeacherFixtures do
   alias TeacherAssistant.{Accounts, Organization}
+
   def user_fixture(attrs \\ %{}) do
     email = Map.get(attrs, :email, "teacher-#{System.unique_integer([:positive])}@example.com")
 

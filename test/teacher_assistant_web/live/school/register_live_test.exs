@@ -1,7 +1,6 @@
 defmodule TeacherAssistantWeb.School.RegisterLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Academics
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
@@ -101,7 +100,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       Attendance.student_conduct(
         enrollment,
         {:sequence,
-         Academics.current_sequence(
+         Organization.current_sequence(
            TeacherAssistant.Organization.current_academic_year(school),
            date
          )}
@@ -176,7 +175,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     conduct =
       Attendance.student_conduct(
         enrollment,
-        {:sequence, Academics.current_sequence(Organization.current_academic_year(school), date)}
+        {:sequence,
+         Organization.current_sequence(Organization.current_academic_year(school), date)}
       )
 
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :eq

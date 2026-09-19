@@ -165,12 +165,12 @@ defmodule TeacherAssistantWeb.Layouts do
             >
               <li
                 :for={u <- @units}
-                id={"class-switcher-item-#{TeacherAssistant.Academics.unit_select_id(u)}"}
+                id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
               >
                 <.link href={
-                  ~p"/teacher/select-context/#{TeacherAssistant.Academics.unit_select_id(u)}?return_to=#{@current_path}"
+                  ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path}"
                 }>
-                  {TeacherAssistant.Academics.unit_label(u)}
+                  {TeacherAssistant.Curriculum.unit_label(u)}
                 </.link>
               </li>
             </ul>
@@ -249,12 +249,12 @@ defmodule TeacherAssistantWeb.Layouts do
             >
               <li
                 :for={u <- @units}
-                id={"class-switcher-item-#{TeacherAssistant.Academics.unit_select_id(u)}"}
+                id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
               >
                 <.link href={
-                  ~p"/teacher/select-context/#{TeacherAssistant.Academics.unit_select_id(u)}?return_to=#{@current_path}"
+                  ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path}"
                 }>
-                  {TeacherAssistant.Academics.unit_label(u)}
+                  {TeacherAssistant.Curriculum.unit_label(u)}
                 </.link>
               </li>
             </ul>
