@@ -99,4 +99,54 @@ defmodule TeacherAssistant.Academics.MarkTest do
     :ok = Assessment.upsert_marks(a2, [%{student_id: s1.id, score: Decimal.new("11")}])
     assert length(Assessment.list_marks_for_context_sequence(ctx, seq)) == 2
   end
+
+  test "saving a new mark broadcasts a create notification on marks:assessment:<id>", %{
+    a: a,
+    s1: s1
+  } do
+    topic = "marks:assessment:#{a.id}"
+    Phoenix.PubSub.subscribe(TeacherAssistant.PubSub, topic)
+
+    :ok = Assessment.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("15")}])
+
+    assert_receive %Phoenix.Socket.Broadcast{
+      topic: ^topic,
+      event: "create",
+      payload: %Ash.Notifier.Notification{
+        resource: TeacherAssistant.Academics.Mark,
+        data: %TeacherAssistant.Academics.Mark{
+          assessment_id: assessment_id,
+          student_id: student_id
+        }
+      }
+    }
+
+    assert assessment_id == a.id
+    assert student_id == s1.id
+  end
+
+  test "saving over an existing mark broadcasts an update notification on marks:assessment:<id>",
+       %{a: a, s1: s1} do
+    :ok = Assessment.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("15")}])
+
+    topic = "marks:assessment:#{a.id}"
+    Phoenix.PubSub.subscribe(TeacherAssistant.PubSub, topic)
+
+    :ok = Assessment.upsert_marks(a, [%{student_id: s1.id, score: Decimal.new("18")}])
+
+    assert_receive %Phoenix.Socket.Broadcast{
+      topic: ^topic,
+      event: "update",
+      payload: %Ash.Notifier.Notification{
+        resource: TeacherAssistant.Academics.Mark,
+        data: %TeacherAssistant.Academics.Mark{
+          assessment_id: assessment_id,
+          student_id: student_id
+        }
+      }
+    }
+
+    assert assessment_id == a.id
+    assert student_id == s1.id
+  end
 end

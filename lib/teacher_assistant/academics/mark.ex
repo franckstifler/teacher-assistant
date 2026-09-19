@@ -3,7 +3,8 @@ defmodule TeacherAssistant.Academics.Mark do
     otp_app: :teacher_assistant,
     domain: TeacherAssistant.Assessment,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   postgres do
     table "marks"
@@ -44,8 +45,10 @@ defmodule TeacherAssistant.Academics.Mark do
     # and returned as the third element of `{:ok, result, notifications}`, so
     # Ash dispatches them only *after* the transaction commits — the deferred
     # broadcast that keeps rolled-back rows from producing phantom PubSub
-    # events. (Task E1 replaces this manual collection with an
-    # `Ash.Notifier.PubSub` notifier.)
+    # events. `Ash.run_action/2` (called without `return_notifications?:
+    # true` at the call site) hands the collected list to
+    # `Ash.Notifier.notify/1` once the transaction closes, which the
+    # `pub_sub` block above turns into a `marks:assessment:<id>` broadcast.
     action :upsert_all, :atom do
       argument :marks, {:array, :map}, allow_nil?: false
 
@@ -72,6 +75,15 @@ defmodule TeacherAssistant.Academics.Mark do
     policy always() do
       authorize_if always()
     end
+  end
+
+  # Broadcasts a create/update on `marks:assessment:<assessment_id>`, the topic
+  # a marks screen subscribes to for live updates on that assessment's marks.
+  pub_sub do
+    module TeacherAssistantWeb.Endpoint
+    prefix "marks"
+    publish_all :create, ["assessment", :assessment_id]
+    publish_all :update, ["assessment", :assessment_id]
   end
 
   attributes do
