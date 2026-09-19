@@ -185,10 +185,23 @@ All 11 `to_form` LiveViews convert:
   (`roster_live`), log (`log_live`) — bind to `AshPhoenix.Form` over the
   resource action. Validation errors come from Ash.
 - **Bulk grids** — the marks union grid (`marks_live`) and attendance roll
-  are row-editors. They bind to the **bulk/generic actions** from §4 via a
-  form backed by that action, **not** a naïve 1:1 `to_form` swap. This is the
-  one non-mechanical conversion; behavior (all-or-nothing save, per-class
-  routing) is preserved.
+  (`attendance_live`) are row-editors, and their SAVE already routes through the
+  idiomatic transactional bulk/generic actions from §4
+  (`Assessment.upsert_marks` → `Mark :upsert_all`;
+  `Attendance.record_combined_period`), preserving all-or-nothing + per-class
+  routing.
+  **AMENDED 2026-09-19 (F2 ruling):** these grids are **NOT** wrapped in
+  `AshPhoenix.Form`. Forcing it would be a bad abstraction the sweep forbids:
+  (i) marks range validation + the French-decimal parser live in the
+  `Assessment` domain wrapper, *outside* `:upsert_all` — a form bound to the
+  bare action would bypass them or force relocating validation into the action
+  (a C7-scope change); (ii) the attendance roll is a `phx-click` editor with no
+  `<form>` to bind. So the grids keep their bulk-param submit (through the
+  idiomatic transactional action), and only the **auxiliary** single-record
+  forms inside those LiveViews convert (e.g. `marks_live`'s solo
+  `new_assessment_form` → `AshPhoenix.Form.for_create(Assessment, :create)`).
+  Optional future follow-up: move mark range validation into the `:upsert_all`
+  action, after which the marks grid could bind to it non-lossily.
 
 ## 9. Testing, migrations, sequencing, risks
 
@@ -234,10 +247,19 @@ green-suite checkpoint:
 - No parallel enum label/order modules; every UI-surfaced enum exposes `label/1`.
 - `code_interface` defines the domain APIs; the 12 hand-written context modules
   are gone (their names live on as domain/resource APIs).
-- All 11 LiveViews use `AshPhoenix.Form` (bulk grids via bulk-action-backed
-  forms).
-- `last_head`, class averages/rankings, and the double-count filter are Ash
-  calculations/aggregates; marks notifications go through an Ash notifier.
-- `mix test` = 632 passing (or more, with added focused tests), 0 failures.
+- The dialog LiveViews use `AshPhoenix.Form`. **AMENDED 2026-09-19 (F2
+  ruling):** the two bulk grids (`marks_live` scores grid, `attendance_live`
+  roll) are NOT wrapped in `AshPhoenix.Form` — they submit through the idiomatic
+  transactional bulk/generic actions instead, because forcing a form would be a
+  bad abstraction (see §8). Auxiliary single-record forms inside those LiveViews
+  do convert.
+- **AMENDED 2026-09-19 (D2 ruling):** class averages/rankings are realized as
+  domain functions over the pure `Marks`/`Bulletins` modules (numbers must stay
+  byte-identical; SQL aggregates would change `Decimal` rounding), not SQL
+  calculations/aggregates — the location moved off the god-domain, the
+  computation form did not. `last_head` (aggregate) and the double-count filter
+  (read action) ARE Ash calc/aggregate/read-action as specified; marks
+  notifications go through an `Ash.Notifier.PubSub` notifier.
+- `mix test` = 632 passing at start (now higher, with added focused tests), 0 failures.
 - No unexpected DB migration; snapshots committed.
 - The god-domain `academics.ex` no longer exists as a 1440-line module.
