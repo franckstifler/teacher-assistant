@@ -86,6 +86,8 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     create :register_with_password do
+      accept [:name]
+
       argument :email, :ci_string, allow_nil?: false
 
       argument :password, :string,
@@ -132,6 +134,7 @@ defmodule TeacherAssistant.Accounts.User do
 
     attribute :email, :ci_string, allow_nil?: false, public?: true
     attribute :role, TeacherAssistant.Accounts.UserRole, default: :teacher, public?: true
+    attribute :name, :string, allow_nil?: true, public?: true
 
     attribute :hashed_password, :string do
       allow_nil? true

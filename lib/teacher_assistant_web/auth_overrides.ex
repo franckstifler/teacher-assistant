@@ -139,6 +139,7 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     set :show_first, :sign_in
     set :hide_class, "hidden"
     set :sign_in_extra_component, &__MODULE__.remember_me_extra/1
+    set :register_extra_component, &__MODULE__.name_extra/1
   end
 
   override Components.Password.SignInForm do
@@ -205,6 +206,39 @@ defmodule TeacherAssistantWeb.AuthOverrides do
       <input type="checkbox" />
       <span>Rester connecté</span>
     </label>
+    """
+  end
+
+  # --- "Nom et prénom" field, register-only ----------------------------------
+  #
+  # `User.name` is a plain nullable attribute (see
+  # `TeacherAssistant.Accounts.User`) accepted by `:register_with_password`.
+  # Rendered via `register_extra_component` (the same extension point as
+  # `remember_me_extra` above), so it's real, bound, submitted form input —
+  # boxed the same way as the email/password fields (`.ta-field-wrap` /
+  # `.ta-field-label`, styled by `.ta-auth-paper input[type="text"]` in
+  # `layouts/auth.html.heex`) — and it only ever renders on the register
+  # form; sign-in has no `register_extra_component` set, so `/sign-in`
+  # never shows it.
+
+  attr :form, :any, default: nil
+
+  def name_extra(assigns) do
+    ~H"""
+    <div class="ta-field-wrap">
+      <label for={Phoenix.HTML.Form.input_id(@form, :name)} class="ta-field-label">
+        Nom et prénom
+      </label>
+      <input
+        type="text"
+        name={Phoenix.HTML.Form.input_name(@form, :name)}
+        id={Phoenix.HTML.Form.input_id(@form, :name)}
+        value={Phoenix.HTML.Form.input_value(@form, :name)}
+        placeholder="Prénom Nom"
+        autocomplete="name"
+        phx-debounce="300"
+      />
+    </div>
     """
   end
 

@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
   import Phoenix.LiveViewTest
 
   test "sign-in page renders the paper layout, French copy, and hides magic link", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/sign-in")
+    {:ok, view, html} = live(conn, ~p"/sign-in")
 
     assert html =~ "Content de vous revoir"
     assert html =~ "Se connecter"
@@ -23,14 +23,30 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
     # current live_action) are hidden via CSS, not removed from the DOM
     assert html =~ ~s(hidden)
     assert html =~ ~s(type="submit")
+    # "Nom et prénom" belongs to the register form only. Like the rest of
+    # that form, it's present in the DOM on /sign-in (forms aren't removed,
+    # just toggled) but it lives inside the register wrapper, which carries
+    # `hidden` here — so it's never visible on the sign-in screen.
+    assert has_element?(
+             view,
+             "[id$='register-with-password-wrapper'].hidden input[name='user[name]']"
+           )
   end
 
-  test "register page renders French copy and the register form", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/register")
+  test "register page renders French copy, the register form, and the name field", %{
+    conn: conn
+  } do
+    {:ok, view, html} = live(conn, ~p"/register")
 
     assert html =~ "Commencez par votre compte"
     assert html =~ "Créer mon compte"
     assert html =~ "Adresse e-mail"
+    assert html =~ "Nom et prénom"
+    # on /register the register wrapper is the visible one (no `hidden`)
+    assert has_element?(
+             view,
+             "[id$='register-with-password-wrapper']:not(.hidden) input[name='user[name]']"
+           )
   end
 
   test "forgot-password (reset request) page renders directly", %{conn: conn} do
