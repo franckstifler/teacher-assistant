@@ -6,17 +6,26 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
   def show(conn, %{"token" => token}) do
     case Accounts.fetch_invitation_by_token(token) do
       {:ok, invitation} ->
-        current_user = conn.assigns[:current_user]
+        current_user = resolve_current_user(conn)
 
-        email_match? =
-          current_user && to_string(current_user.email) == to_string(invitation.email)
+        {auth_state, conn} =
+          cond do
+            is_nil(current_user) ->
+              {:signed_out, put_session(conn, :return_to, ~p"/schools/invitations/#{token}")}
+
+            to_string(current_user.email) == to_string(invitation.email) ->
+              {:match, conn}
+
+            true ->
+              {:mismatch, conn}
+          end
 
         conn
         |> render(:show,
           invitation: invitation,
           school_name: invitation.workspace.name,
           current_user: current_user,
-          email_match?: email_match?
+          auth_state: auth_state
         )
 
       {:error, :not_found} ->
@@ -27,7 +36,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
   end
 
   def accept(conn, %{"token" => token}) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
+    user = resolve_current_user(conn)
     conn = assign(conn, :current_user, user)
 
     case Accounts.accept_invitation(token, user) do
@@ -50,6 +59,13 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
     do: gettext("Cette invitation a été envoyée à une autre adresse email.")
 
   defp error_message(_), do: gettext("Impossible d'accepter cette invitation.")
+
+  # Prefers the (real AshAuthentication) `:current_user` assign, but falls back to
+  # the session's plain `:user_id` — the shape our test helpers and the accept/2
+  # flow have always signed conns in with.
+  defp resolve_current_user(conn) do
+    conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
+  end
 
   defp load_user(nil), do: nil
 
