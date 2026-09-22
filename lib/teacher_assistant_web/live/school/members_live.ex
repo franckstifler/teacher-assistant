@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{Permissions, SchoolInvitation, SchoolRole}
+  alias TeacherAssistant.Accounts.{MembershipStatus, Permissions, SchoolInvitation, SchoolRole}
   alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
@@ -60,7 +60,24 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     {m.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
                   </span>
                 </td>
-                <td>{gettext("Actif")}</td>
+                <td>
+                  <form
+                    :if={@head?}
+                    id={"member-status-form-#{m.id}"}
+                    phx-change="set_status"
+                    phx-value-id={m.id}
+                  >
+                    <select name="status" class="select select-bordered select-xs">
+                      <option value="" selected={is_nil(m.status)}>—</option>
+                      <option :for={s <- MembershipStatus.values()} value={s} selected={m.status == s}>
+                        {MembershipStatus.label(s)}
+                      </option>
+                    </select>
+                  </form>
+                  <span :if={!@head?}>
+                    {if m.status, do: MembershipStatus.label(m.status), else: "—"}
+                  </span>
+                </td>
                 <td :if={@head?}>
                   <button
                     id={"member-deactivate-#{m.id}"}
@@ -101,6 +118,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                   <span class="text-xs">{SchoolRole.label(role)}</span>
                 </label>
               </div>
+              <.input
+                field={@invite_form[:membership_status]}
+                type="select"
+                label={gettext("Statut d'emploi")}
+                prompt={gettext("Non précisé")}
+                options={Enum.map(MembershipStatus.values(), &{MembershipStatus.label(&1), &1})}
+              />
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Inviter")}</button>
             </div>
           </.form>
@@ -149,7 +173,8 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
       case Accounts.invite_member(scope.current_workspace, scope.current_user, %{
              email: params["email"],
-             roles: roles
+             roles: roles,
+             membership_status: parse_membership_status(params["membership_status"])
            }) do
         {:ok, _invitation} ->
           {:noreply, socket |> assign(:invite_form, invite_form()) |> reload_members()}
@@ -236,6 +261,25 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     end
   end
 
+  def handle_event("set_status", %{"id" => id, "status" => status}, socket) do
+    scope = socket.assigns.scope
+
+    if Permissions.head?(scope) do
+      case find_membership(scope.current_workspace, id) do
+        nil ->
+          {:noreply, socket}
+
+        membership ->
+          case Accounts.update_member_status(membership, parse_membership_status(status)) do
+            {:ok, _} -> {:noreply, reload_members(socket)}
+            {:error, _} -> {:noreply, socket}
+          end
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   # The invite dialog binds to `SchoolInvitation :create` for its email field.
   # Submit still routes through `Accounts.invite_member/3`, which owns the
   # token/expiry generation, the "already a member" guard and the invitation
@@ -266,6 +310,10 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       parsed -> parsed
     end
   end
+
+  defp parse_membership_status(nil), do: nil
+  defp parse_membership_status(""), do: nil
+  defp parse_membership_status(status) when is_binary(status), do: String.to_existing_atom(status)
 
   defp find_invitation(school, id) do
     school

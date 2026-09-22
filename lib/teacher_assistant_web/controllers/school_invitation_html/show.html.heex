@@ -7,14 +7,15 @@
         {gettext("Vous avez été invité(e) à rejoindre")} <strong>{@school_name}</strong>.
       </p>
 
-      <p :if={@current_user && !@email_match?} class="text-error">
+      <p :if={@auth_state == :mismatch} class="text-error">
         {gettext(
-          "Cette invitation a été envoyée à une autre adresse email que celle de votre compte connecté."
+          "Cette invitation a été envoyée à %{email}. Déconnectez-vous pour l'accepter avec cette adresse.",
+          email: @invitation.email
         )}
       </p>
 
       <.form
-        :if={@current_user && @email_match?}
+        :if={@auth_state == :match}
         for={%{}}
         as={:accept}
         id="accept-invitation-form"
@@ -26,12 +27,12 @@
         </button>
       </.form>
 
-      <div :if={!@current_user} class="flex flex-wrap gap-2">
-        <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm">
-          {gettext("Se connecter pour accepter")}
+      <div :if={@auth_state == :signed_out} class="flex flex-wrap gap-2">
+        <.link navigate={~p"/register"} class="btn btn-primary btn-sm">
+          {gettext("Créer un compte pour accepter")}
         </.link>
-        <.link navigate={~p"/register"} class="btn btn-outline btn-sm">
-          {gettext("Créer un compte")}
+        <.link navigate={~p"/sign-in"} class="btn btn-outline btn-sm">
+          {gettext("Se connecter")}
         </.link>
       </div>
     </div>

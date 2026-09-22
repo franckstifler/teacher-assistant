@@ -94,6 +94,9 @@ config :teacher_assistant, TeacherAssistantWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :teacher_assistant, TeacherAssistant.Mailer, adapter: Swoosh.Adapters.Local
 
+config :teacher_assistant, TeacherAssistant.Accounts.Emails,
+  from: {"Teacher Assistant", "no-reply@teacherassistant.cm"}
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",

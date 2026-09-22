@@ -14,7 +14,16 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
     defaults [
       :read,
       :destroy,
-      create: [:workspace_id, :email, :roles, :invited_by_user_id, :status, :token, :expires_at],
+      create: [
+        :workspace_id,
+        :email,
+        :roles,
+        :invited_by_user_id,
+        :status,
+        :membership_status,
+        :token,
+        :expires_at
+      ],
       update: [:status]
     ]
 
@@ -53,6 +62,10 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
     attribute :status, TeacherAssistant.Accounts.InvitationStatus,
       allow_nil?: false,
       default: :pending,
+      public?: true
+
+    attribute :membership_status, TeacherAssistant.Accounts.MembershipStatus,
+      allow_nil?: true,
       public?: true
 
     attribute :token, :string, allow_nil?: false, public?: true
