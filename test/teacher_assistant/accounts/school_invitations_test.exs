@@ -1,5 +1,6 @@
 defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
   use TeacherAssistant.DataCase, async: true
+  import Swoosh.TestAssertions
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
@@ -58,5 +59,17 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
                email: to_string(head.email),
                roles: [:teacher]
              })
+  end
+
+  test "invite_member delivers an email to the invited address with the accept link" do
+    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(ws, head, %{email: "new@example.com", roles: [:teacher]})
+
+    assert_email_sent(fn email ->
+      assert {_, "new@example.com"} = hd(email.to)
+      assert email.text_body =~ inv.token
+    end)
   end
 end
