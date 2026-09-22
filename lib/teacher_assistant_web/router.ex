@@ -120,6 +120,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/members", School.MembersLive, :index
       live "/school/settings", School.SettingsLive, :index
       live "/school/periods", School.PeriodsLive, :index
+      live "/school/setup", Onboarding.SetupWizardLive, :index
     end
 
     ash_authentication_live_session :onboarding,
