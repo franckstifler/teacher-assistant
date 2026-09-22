@@ -2,14 +2,24 @@ defmodule TeacherAssistant.Accounts.User.Senders.SendPasswordResetEmail do
   @moduledoc """
   Sends a password reset email to the user.
 
-  A no-op stub for now (mirrors `SendMagicLinkEmail`) — actual delivery isn't
-  wired yet, but this makes the `password.resettable` strategy structurally
-  complete so the "Mot de passe oublié ?" request-reset flow and the
-  `/password-reset/:token` page actually render and function.
+  Builds the reset link against the token-bearing `/password-reset/:token`
+  live route (see `reset_route/1` in `TeacherAssistantWeb.Router`) and
+  delivers it via `TeacherAssistant.Mailer`.
   """
 
   use AshAuthentication.Sender
+  use TeacherAssistantWeb, :verified_routes
+
+  alias TeacherAssistant.{Accounts.Emails, Mailer}
 
   @impl true
-  def send(_user_or_email, _token, _opts), do: :ok
+  def send(user, token, _opts) do
+    reset_url = TeacherAssistantWeb.Endpoint.url() <> ~p"/password-reset/#{token}"
+
+    user
+    |> Emails.password_reset(reset_url)
+    |> Mailer.deliver()
+
+    :ok
+  end
 end
