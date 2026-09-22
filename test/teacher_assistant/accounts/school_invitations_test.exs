@@ -72,4 +72,41 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
       assert email.text_body =~ inv.token
     end)
   end
+
+  test "invite with employment type carries onto the membership on accept" do
+    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(ws, head, %{
+        email: "t@example.com",
+        roles: [:teacher],
+        membership_status: :contractuel
+      })
+
+    assert inv.membership_status == :contractuel
+
+    user = TeacherFixtures.user_fixture(%{email: "t@example.com"})
+    {:ok, _ws} = Accounts.accept_invitation(inv.token, user)
+    {:ok, m} = Accounts.fetch_school_membership(ws, user)
+    assert m.status == :contractuel
+  end
+
+  test "invite without employment type leaves membership status nil" do
+    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(ws, head, %{email: "u@example.com", roles: [:teacher]})
+
+    user = TeacherFixtures.user_fixture(%{email: "u@example.com"})
+    {:ok, _} = Accounts.accept_invitation(inv.token, user)
+    {:ok, m} = Accounts.fetch_school_membership(ws, user)
+    assert m.status == nil
+  end
+
+  test "update_member_status changes a member's employment type" do
+    %{workspace: ws} = TeacherFixtures.school_fixture()
+    m = TeacherFixtures.membership_fixture(ws, roles: [:teacher])
+    {:ok, m2} = Accounts.update_member_status(m, :titulaire)
+    assert m2.status == :titulaire
+  end
 end

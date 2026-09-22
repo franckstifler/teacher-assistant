@@ -83,6 +83,12 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
+  def update_member_status(%SchoolMembership{} = m, status) do
+    m
+    |> Ash.Changeset.for_update(:update, %{status: status})
+    |> Ash.update(authorize?: false)
+  end
+
   def deactivate_member(%SchoolMembership{} = m) do
     if :head in m.roles and last_head?(m) do
       {:error, :last_head}
@@ -108,6 +114,7 @@ defmodule TeacherAssistant.Accounts do
   def invite_member(%Workspace{} = school, %User{} = inviter, %{} = attrs) do
     email = attrs[:email] || attrs["email"]
     roles = attrs[:roles] || attrs["roles"] || [:teacher]
+    membership_status = attrs[:membership_status] || attrs["membership_status"]
 
     if active_member_email?(school, email) do
       {:error, :already_member}
@@ -118,6 +125,7 @@ defmodule TeacherAssistant.Accounts do
           workspace_id: school.id,
           email: email,
           roles: roles,
+          membership_status: membership_status,
           invited_by_user_id: inviter.id,
           token: gen_token(),
           expires_at: DateTime.add(DateTime.utc_now(), 14, :day) |> DateTime.truncate(:second)
@@ -165,7 +173,8 @@ defmodule TeacherAssistant.Accounts do
             |> Ash.Changeset.for_create(:create, %{
               workspace_id: inv.workspace_id,
               user_id: user.id,
-              roles: inv.roles
+              roles: inv.roles,
+              status: inv.membership_status
             })
             |> Ash.create()
 
