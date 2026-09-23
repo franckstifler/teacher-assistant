@@ -42,17 +42,21 @@ defmodule TeacherAssistantWeb.ConnCase do
     |> Plug.Conn.put_session(:user_id, user.id)
   end
 
+  @doc """
+  Logs in a fresh user as the head of a fresh, setup-complete school and puts
+  the school in the session. `workspace` is the school; `year` its active year.
+  """
   def register_and_log_in_user(%{conn: conn}) do
-    user = TeacherAssistant.TeacherFixtures.user_fixture()
-    workspace = TeacherAssistant.Organization.ensure_personal_workspace!(user)
+    %{workspace: school, head_user: head, year: year} =
+      TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
 
     conn =
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, user.id)
-      |> Plug.Conn.put_session(:workspace_id, workspace.id)
+      |> Plug.Conn.put_session(:user_id, head.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    {:ok, conn: conn, workspace: workspace, actor: user}
+    {:ok, conn: conn, workspace: school, actor: head, year: year}
   end
 
   def update_nested_form(view, form_selector, trigger_element, position \\ "end") do

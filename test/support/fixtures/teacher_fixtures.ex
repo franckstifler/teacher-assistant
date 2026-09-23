@@ -78,4 +78,79 @@ defmodule TeacherAssistant.TeacherFixtures do
 
     m
   end
+
+  @doc "Invites, accepts and assigns a plain `:teacher` member to a class of `school`."
+  def school_teacher_fixture(workspace, head, attrs \\ %{}) do
+    teacher = attrs[:teacher] || user_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(workspace, head, %{
+        email: to_string(teacher.email),
+        roles: [:teacher]
+      })
+
+    {:ok, _} = Accounts.accept_invitation(inv.token, teacher)
+    {:ok, membership} = Accounts.fetch_school_membership(workspace, teacher)
+    year = Organization.current_academic_year(workspace)
+
+    class_group =
+      attrs[:class_group] ||
+        TeacherAssistant.Enrollment.list_class_groups(workspace, year) |> List.first()
+
+    {:ok, tc} =
+      TeacherAssistant.Curriculum.assign_teacher(class_group, teacher, %{
+        subject: attrs[:subject] || "Maths"
+      })
+
+    %{teacher: teacher, membership: membership, class_group: class_group, teaching_context: tc}
+  end
+
+  @doc """
+  A teaching context on `workspace`/`year` for a real member teacher and a real
+  class group (replaces the personal `create_teaching_context`).
+  """
+  def assigned_context_fixture(workspace, year, attrs \\ %{}) do
+    head =
+      case Accounts.fetch_school_profile(workspace) do
+        {:ok, profile} ->
+          {:ok, u} = Accounts.get_user(profile.owner_user_id)
+          u
+      end
+
+    teacher =
+      attrs[:teacher] ||
+        (fn ->
+           u = user_fixture()
+
+           {:ok, inv} =
+             Accounts.invite_member(workspace, head, %{
+               email: to_string(u.email),
+               roles: [:teacher]
+             })
+
+           {:ok, _} = Accounts.accept_invitation(inv.token, u)
+           u
+         end).()
+
+    class_group =
+      attrs[:class_group] ||
+        (fn ->
+           {:ok, cg} =
+             TeacherAssistant.Enrollment.create_class_group(workspace, year, %{
+               label: "#{attrs[:level] || "3ème"} #{System.unique_integer([:positive])}",
+               level: attrs[:level] || "3ème",
+               serie: attrs[:serie]
+             })
+
+           cg
+         end).()
+
+    {:ok, tc} =
+      TeacherAssistant.Curriculum.assign_teacher(class_group, teacher, %{
+        subject: attrs[:subject] || "Maths",
+        coefficient: attrs[:coefficient] || Decimal.new(1)
+      })
+
+    tc
+  end
 end

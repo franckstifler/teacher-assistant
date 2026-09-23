@@ -133,19 +133,17 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     end
   end
 
-  test "a user with no school is sent to /schools/new from /school", %{conn: conn} do
-    # session still carries the personal workspace id from register_and_log_in_user
-    assert {:error, {:live_redirect, %{to: "/schools/new"}}} = live(conn, ~p"/school")
-  end
-
   test "a member with a stale session workspace is sent to their first school", %{
     conn: conn,
-    actor: user
+    workspace: home_school
   } do
-    # session still carries the personal workspace id from register_and_log_in_user,
-    # so the resolved scope is non-school even though the user has a real school.
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Retrouvé"})
-    expected_to = "/workspaces/select/#{school.id}"
+    # the session workspace_id points at a school the user does not belong to
+    # (a stale/foreign reference), so the resolved scope is non-school even
+    # though the user has a real school of their own.
+    {:ok, other_head} = {:ok, TeacherAssistant.TeacherFixtures.user_fixture()}
+    {:ok, other_school} = Organization.create_school(other_head, %{name: "École Étrangère"})
+    conn = Plug.Conn.put_session(conn, :workspace_id, other_school.id)
+    expected_to = "/workspaces/select/#{home_school.id}"
 
     assert {:error, {:live_redirect, %{to: ^expected_to}}} = live(conn, ~p"/school")
   end

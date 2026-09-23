@@ -5,30 +5,24 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
 
-  setup %{workspace: ws} do
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
+  setup %{workspace: ws, year: year, actor: head} do
+    {:ok, p} = Accounts.fetch_school_profile(ws)
+    {:ok, _} = Accounts.verify_school(p, head.id)
 
-    Organization.build_default_calendar(year)
     seq = Organization.list_sequences(year) |> List.first()
 
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
+    ctx =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "Maths",
         level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
+    {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.class_group_id, ws)
     {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
     {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
@@ -123,15 +117,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert row =~ "Bien"
   end
 
-  test "context without class group redirects to roster", %{conn: conn, ws: ws} do
-    {:ok, year} = {:ok, Organization.current_academic_year(ws)}
+  test "context without class group redirects to roster", %{conn: conn, ws: ws, actor: head} do
+    year = Organization.current_academic_year(ws)
 
     {:ok, ctx_no_roster} =
       Curriculum.create_teaching_context(ws, year, %{
         subject: "PCT",
         level: "3ème",
         subsystem: :francophone,
-        weekly_hours: 4
+        weekly_hours: 4,
+        teacher_user_id: head.id
       })
 
     assert {:error, {:live_redirect, %{to: to}}} =
