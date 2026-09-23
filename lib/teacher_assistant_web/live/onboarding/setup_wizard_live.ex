@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{AcademicYear, Seeding}
+  alias TeacherAssistant.Academics.{AcademicYear, Seeding, SchoolTemplates}
   alias TeacherAssistant.Accounts.Permissions
 
   @steps [:identity, :year, :classes, :invite]
@@ -13,12 +13,16 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     year = scope.current_academic_year
 
     {:ok,
-     assign(socket,
+     socket
+     |> assign(
        step: initial_step(ws, year),
        ws: ws,
        year: year,
-       year_form: year_form(ws.id, year == nil)
-     )}
+       year_form: year_form(ws.id, year == nil),
+       class_streams: class_streams_for(ws),
+       class_form: class_form()
+     )
+     |> assign_classes(year)}
   end
 
   defp initial_step(ws, year) do
@@ -131,6 +135,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
            socket
            |> assign(:year, year)
            |> assign(:step, :classes)
+           |> assign_classes(year)
            |> put_flash(:info, gettext("Année scolaire créée."))}
 
         {:error, form} ->
@@ -143,6 +148,90 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
       {:noreply, socket}
     end
   end
+
+  def handle_event("add_class", %{"class_group" => params}, socket) do
+    %{ws: ws, year: year} = socket.assigns
+    attrs = class_attrs(params)
+
+    case Enrollment.create_class_group(ws, year, attrs) do
+      {:ok, _class_group} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Class created."))
+         |> assign(:class_form, class_form())
+         |> assign_classes(year)}
+
+      {:error, _error} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not create the class."))}
+    end
+  end
+
+  def handle_event("delete_class", %{"id" => id}, socket) do
+    %{classes: classes, year: year} = socket.assigns
+
+    case Enum.find(classes, &(&1.id == id)) do
+      nil ->
+        {:noreply, socket}
+
+      class_group ->
+        case Enrollment.delete_class_group(class_group) do
+          :ok ->
+            {:noreply,
+             socket
+             |> put_flash(:info, gettext("Class deleted."))
+             |> assign_classes(year)}
+
+          {:error, :has_data} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               gettext("This class has students or teachers — remove them first.")
+             )}
+        end
+    end
+  end
+
+  def handle_event("continue_classes", _params, socket) do
+    if socket.assigns.classes == [] do
+      {:noreply, socket}
+    else
+      {:noreply, assign(socket, :step, :invite)}
+    end
+  end
+
+  defp assign_classes(socket, nil), do: assign(socket, :classes, [])
+
+  defp assign_classes(socket, year) do
+    assign(socket, :classes, Enrollment.list_class_groups(socket.assigns.ws, year))
+  end
+
+  defp class_streams_for(ws) do
+    case TeacherAssistant.Accounts.fetch_school_profile(ws) do
+      {:ok, profile} -> SchoolTemplates.streams_for(profile.school_type, profile.subsystem)
+      _ -> %{kind: :serie, values: [], levels: []}
+    end
+  end
+
+  # A plain (non-`AshPhoenix.Form`) form: `add_class` calls
+  # `Enrollment.create_class_group/3` directly, which already sets
+  # `workspace_id`/`academic_year_id`/`subsystem` — there's no changeset to
+  # attach `prepare_source` to here (unlike `ClassesLive.class_form/2`).
+  defp class_form, do: to_form(%{"label" => "", "level" => "", "serie" => ""}, as: "class_group")
+
+  # `ClassGroup.serie` is a nullable string; an empty selection stays `nil`
+  # rather than being stored as "" (mirrors `ClassesLive.drop_blank_serie/1`).
+  defp class_attrs(params) do
+    %{
+      label: Map.get(params, "label", ""),
+      level: Map.get(params, "level", ""),
+      serie: presence(Map.get(params, "serie"))
+    }
+  end
+
+  defp presence(nil), do: nil
+  defp presence(""), do: nil
+  defp presence(value), do: value
 
   # `workspace_id` and `active` are server-controlled (never user input), so
   # they're set on the changeset at build time via `prepare_source` — same
@@ -210,12 +299,72 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   defp classes_panel(assigns) do
     ~H"""
-    <div id="wizard-panel-classes" class="space-y-2">
-      <p class="ta-eyebrow">{gettext("Classes")}</p>
-      <h2 class="text-lg font-semibold">{gettext("Create your first class")}</h2>
-      <p class="text-sm text-base-content/70">
-        {gettext("Add at least one class to continue.")}
-      </p>
+    <div id="wizard-panel-classes" class="space-y-4">
+      <div class="space-y-2">
+        <p class="ta-eyebrow">{gettext("Classes")}</p>
+        <h2 class="text-lg font-semibold">{gettext("Review your classes")}</h2>
+        <p class="text-sm text-base-content/70">
+          {gettext("We've suggested starter classes below — edit them, then add at least one to continue.")}
+        </p>
+      </div>
+
+      <ul :if={@classes != []} id="wizard-classes-list" class="space-y-2">
+        <li
+          :for={cg <- @classes}
+          id={"wizard-class-#{cg.id}"}
+          class="ta-leaf flex items-center justify-between gap-2 px-3 py-2"
+        >
+          <span class="text-sm">
+            <span class="font-medium">{cg.label}</span>
+            <span class="text-base-content/60">· {cg.level}</span>
+            <span :if={cg.serie} class="text-base-content/60">· {cg.serie}</span>
+          </span>
+          <button
+            id={"wizard-class-delete-#{cg.id}"}
+            type="button"
+            class="btn btn-ghost btn-xs"
+            phx-click="delete_class"
+            phx-value-id={cg.id}
+            data-confirm={gettext("Delete this class?")}
+          >
+            {gettext("Delete")}
+          </button>
+        </li>
+      </ul>
+
+      <.empty_state
+        :if={@classes == []}
+        icon="hero-rectangle-group"
+        title={gettext("No classes yet")}
+      />
+
+      <div class="ta-leaf space-y-3">
+        <h3 class="text-sm font-semibold">{gettext("Add a class")}</h3>
+        <.form for={@class_form} id="class-form" phx-submit="add_class" class="space-y-2">
+          <div class="grid gap-2 sm:grid-cols-3">
+            <.input field={@class_form[:label]} label={gettext("Label")} />
+            <.input field={@class_form[:level]} label={gettext("Level")} />
+            <.input
+              field={@class_form[:serie]}
+              label={SchoolTemplates.stream_label(@class_streams.kind)}
+              list="wizard-serie-options"
+            />
+            <datalist id="wizard-serie-options">
+              <option :for={s <- @class_streams.values} value={s}>{s}</option>
+            </datalist>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">{gettext("Add class")}</button>
+        </.form>
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-primary btn-sm"
+        phx-click="continue_classes"
+        disabled={@classes == []}
+      >
+        {gettext("Continuer")}
+      </button>
     </div>
     """
   end
