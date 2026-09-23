@@ -79,18 +79,31 @@ defmodule TeacherAssistant.TeacherFixtures do
     m
   end
 
-  @doc "Invites, accepts and assigns a plain `:teacher` member to a class of `school`."
+  @doc """
+  Invites, accepts and assigns a plain `:teacher` member to a class of
+  `school`. When `attrs[:teacher]` is already a member of `workspace`, the
+  existing membership is reused instead of inviting them again.
+  """
   def school_teacher_fixture(workspace, head, attrs \\ %{}) do
     teacher = attrs[:teacher] || user_fixture()
 
-    {:ok, inv} =
-      Accounts.invite_member(workspace, head, %{
-        email: to_string(teacher.email),
-        roles: [:teacher]
-      })
+    membership =
+      case Accounts.fetch_school_membership(workspace, teacher) do
+        {:ok, membership} ->
+          membership
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, teacher)
-    {:ok, membership} = Accounts.fetch_school_membership(workspace, teacher)
+        {:error, _} ->
+          {:ok, inv} =
+            Accounts.invite_member(workspace, head, %{
+              email: to_string(teacher.email),
+              roles: [:teacher]
+            })
+
+          {:ok, _} = Accounts.accept_invitation(inv.token, teacher)
+          {:ok, membership} = Accounts.fetch_school_membership(workspace, teacher)
+          membership
+      end
+
     year = Organization.current_academic_year(workspace)
 
     class_group =
@@ -117,33 +130,8 @@ defmodule TeacherAssistant.TeacherFixtures do
           u
       end
 
-    teacher =
-      attrs[:teacher] ||
-        (fn ->
-           u = user_fixture()
-
-           {:ok, inv} =
-             Accounts.invite_member(workspace, head, %{
-               email: to_string(u.email),
-               roles: [:teacher]
-             })
-
-           {:ok, _} = Accounts.accept_invitation(inv.token, u)
-           u
-         end).()
-
-    class_group =
-      attrs[:class_group] ||
-        (fn ->
-           {:ok, cg} =
-             TeacherAssistant.Enrollment.create_class_group(workspace, year, %{
-               label: "#{attrs[:level] || "3ème"} #{System.unique_integer([:positive])}",
-               level: attrs[:level] || "3ème",
-               serie: attrs[:serie]
-             })
-
-           cg
-         end).()
+    teacher = attrs[:teacher] || member_teacher(workspace, head)
+    class_group = attrs[:class_group] || new_class_group(workspace, year, attrs)
 
     {:ok, tc} =
       TeacherAssistant.Curriculum.assign_teacher(class_group, teacher, %{
@@ -152,5 +140,30 @@ defmodule TeacherAssistant.TeacherFixtures do
       })
 
     tc
+  end
+
+  # Invites, accepts and returns a fresh `:teacher` member of `workspace`.
+  defp member_teacher(workspace, head) do
+    u = user_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(workspace, head, %{
+        email: to_string(u.email),
+        roles: [:teacher]
+      })
+
+    {:ok, _} = Accounts.accept_invitation(inv.token, u)
+    u
+  end
+
+  defp new_class_group(workspace, year, attrs) do
+    {:ok, cg} =
+      TeacherAssistant.Enrollment.create_class_group(workspace, year, %{
+        label: "#{attrs[:level] || "3ème"} #{System.unique_integer([:positive])}",
+        level: attrs[:level] || "3ème",
+        serie: attrs[:serie]
+      })
+
+    cg
   end
 end
