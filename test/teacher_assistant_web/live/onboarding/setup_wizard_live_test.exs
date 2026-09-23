@@ -10,6 +10,34 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     %{conn: conn, ws: ws, head: head}
   end
 
+  describe "invite step" do
+    setup %{conn: conn} do
+      %{workspace: ws, head_user: head} = setup_complete_school_fixture()
+      conn = conn |> log_in_user(head) |> put_session(:workspace_id, ws.id)
+      %{conn: conn, ws: ws, head: head}
+    end
+
+    test "inviting a teammate sends an email and lists them as pending", %{conn: conn} do
+      import Swoosh.TestAssertions
+
+      {:ok, view, _} = live(conn, ~p"/school/setup")
+
+      view
+      |> form("#invite-form", %{"invite" => %{"email" => "prof@example.com", "roles" => ["teacher"]}})
+      |> render_submit()
+
+      assert_email_sent(fn e -> assert {_, "prof@example.com"} = hd(e.to) end)
+      assert render(view) =~ "prof@example.com"
+    end
+
+    test "finish redirects to the dashboard", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/school/setup")
+
+      assert {:error, {:live_redirect, %{to: "/school"}}} =
+               render_click(element(view, "#finish-setup"))
+    end
+  end
+
   test "renders the wizard on the academic-year step for a fresh school", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/school/setup")
     assert html =~ "setup-wizard"

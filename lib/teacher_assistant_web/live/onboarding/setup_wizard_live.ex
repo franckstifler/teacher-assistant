@@ -3,7 +3,17 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{AcademicYear, Seeding, SchoolTemplates}
-  alias TeacherAssistant.Accounts.Permissions
+  alias TeacherAssistant.Accounts
+
+  alias TeacherAssistant.Accounts.{
+    CameroonRegion,
+    MembershipStatus,
+    Permissions,
+    SchoolInvitation,
+    SchoolRole,
+    SchoolSubsystem,
+    SchoolType
+  }
 
   @steps [:identity, :year, :classes, :invite]
 
@@ -20,9 +30,12 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
        year: year,
        year_form: year_form(ws.id, year == nil),
        class_streams: class_streams_for(ws),
-       class_form: class_form()
+       class_form: class_form(),
+       invite_form: invite_form(),
+       profile: fetch_profile(ws)
      )
-     |> assign_classes(year)}
+     |> assign_classes(year)
+     |> assign_invitations()}
   end
 
   defp initial_step(ws, year) do
@@ -200,11 +213,72 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     end
   end
 
+  def handle_event("invite", %{"invite" => params}, socket) do
+    scope = socket.assigns.current_scope
+
+    if Permissions.head?(scope) do
+      roles = parse_invite_roles(params["roles"])
+
+      case Accounts.invite_member(scope.current_workspace, scope.current_user, %{
+             email: params["email"],
+             roles: roles,
+             membership_status: parse_membership_status(params["membership_status"])
+           }) do
+        {:ok, _invitation} ->
+          {:noreply,
+           socket
+           |> assign(:invite_form, invite_form())
+           |> assign_invitations()
+           |> put_flash(:info, gettext("Invitation envoyée."))}
+
+        {:error, :already_member} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("finish", _params, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/school")}
+  end
+
   defp assign_classes(socket, nil), do: assign(socket, :classes, [])
 
   defp assign_classes(socket, year) do
     assign(socket, :classes, Enrollment.list_class_groups(socket.assigns.ws, year))
   end
+
+  defp assign_invitations(socket) do
+    assign(socket, :invitations, Accounts.list_pending_invitations(socket.assigns.ws))
+  end
+
+  defp fetch_profile(ws) do
+    case Accounts.fetch_school_profile(ws) do
+      {:ok, profile} -> profile
+      _ -> nil
+    end
+  end
+
+  # Mirrors `MembersLive.parse_roles/1` — an invite always needs at least one
+  # role, defaulting to `:teacher` when none are checked.
+  defp parse_invite_roles(nil), do: [:teacher]
+  defp parse_invite_roles([]), do: [:teacher]
+
+  defp parse_invite_roles(roles) when is_list(roles) do
+    roles
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.map(&String.to_existing_atom/1)
+    |> case do
+      [] -> [:teacher]
+      parsed -> parsed
+    end
+  end
+
+  defp parse_membership_status(nil), do: nil
+  defp parse_membership_status(""), do: nil
+  defp parse_membership_status(status) when is_binary(status), do: String.to_existing_atom(status)
 
   defp class_streams_for(ws) do
     case TeacherAssistant.Accounts.fetch_school_profile(ws) do
@@ -233,6 +307,16 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   defp presence(""), do: nil
   defp presence(value), do: value
 
+  # The invite dialog binds to `SchoolInvitation :create` for its email
+  # field. Submit still routes through `Accounts.invite_member/3`, which owns
+  # the token/expiry generation, the "already a member" guard and the
+  # invitation email — mirrors `MembersLive.invite_form/0`.
+  defp invite_form do
+    SchoolInvitation
+    |> AshPhoenix.Form.for_create(:create, as: "invite")
+    |> to_form()
+  end
+
   # `workspace_id` and `active` are server-controlled (never user input), so
   # they're set on the changeset at build time via `prepare_source` — same
   # pattern as `School.SettingsLive.year_form/2`. Only the first year of a
@@ -250,18 +334,40 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     |> to_form()
   end
 
-  # Panels are placeholders for now — filled in by later tasks in this
-  # feature (year/classes/invite panels get real forms; identity gets a
-  # proper recap). This task only wires the shell + step derivation.
-
+  # `identity_panel/1` is only reached if a head navigates back to `:identity`
+  # after setup is already complete (the derived initial step never lands
+  # there) — so it's a read-only recap, not a form. It deliberately does not
+  # link to `/school/settings`: that page is gated behind setup completion
+  # and would just bounce back here mid-wizard.
   defp identity_panel(assigns) do
     ~H"""
-    <div id="wizard-panel-identity" class="space-y-2">
-      <p class="ta-eyebrow">{gettext("Your school")}</p>
-      <h2 class="text-lg font-semibold">{@ws && @ws.name}</h2>
-      <p class="text-sm text-base-content/70">
-        {gettext("Setup is complete — here's a quick recap.")}
-      </p>
+    <div id="wizard-panel-identity" class="space-y-4">
+      <div class="space-y-2">
+        <p class="ta-eyebrow">{gettext("Your school")}</p>
+        <h2 class="text-lg font-semibold">{@ws && @ws.name}</h2>
+        <p class="text-sm text-base-content/70">
+          {gettext("Setup is complete — here's a quick recap.")}
+        </p>
+      </div>
+
+      <dl :if={@profile} class="ta-leaf grid gap-4 px-4 py-4 sm:grid-cols-2">
+        <div>
+          <dt class="ta-eyebrow">{gettext("Name")}</dt>
+          <dd class="text-sm font-medium">{@profile.short_name || @ws.name}</dd>
+        </div>
+        <div>
+          <dt class="ta-eyebrow">{gettext("Type")}</dt>
+          <dd class="text-sm font-medium">{SchoolType.label(@profile.school_type)}</dd>
+        </div>
+        <div>
+          <dt class="ta-eyebrow">{gettext("Subsystem")}</dt>
+          <dd class="text-sm font-medium">{SchoolSubsystem.label(@profile.subsystem)}</dd>
+        </div>
+        <div>
+          <dt class="ta-eyebrow">{gettext("Region")}</dt>
+          <dd class="text-sm font-medium">{CameroonRegion.label(@profile.region)}</dd>
+        </div>
+      </dl>
     </div>
     """
   end
@@ -371,12 +477,72 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   defp invite_panel(assigns) do
     ~H"""
-    <div id="wizard-panel-invite" class="space-y-2">
-      <p class="ta-eyebrow">{gettext("Invite team")}</p>
-      <h2 class="text-lg font-semibold">{gettext("Invite your team")}</h2>
-      <p class="text-sm text-base-content/70">
-        {gettext("Invite teachers and staff to join your school.")}
-      </p>
+    <div id="wizard-panel-invite" class="space-y-5">
+      <div class="space-y-2">
+        <p class="ta-eyebrow">{gettext("Invite team")}</p>
+        <h2 class="text-lg font-semibold">{gettext("Invite your team")}</h2>
+        <p class="text-sm text-base-content/70">
+          {gettext("Invite teachers and staff to join your school.")}
+        </p>
+      </div>
+
+      <div class="ta-leaf space-y-3">
+        <.form for={@invite_form} id="invite-form" phx-submit="invite">
+          <div class="flex flex-wrap items-end gap-3">
+            <.input field={@invite_form[:email]} type="email" label={gettext("Email")} />
+            <div class="flex flex-wrap gap-2">
+              <label :for={role <- SchoolRole.values()} class="label cursor-pointer gap-1">
+                <input
+                  type="checkbox"
+                  name="invite[roles][]"
+                  value={role}
+                  checked={role == :teacher}
+                  class="checkbox checkbox-sm"
+                />
+                <span class="text-xs">{SchoolRole.label(role)}</span>
+              </label>
+            </div>
+            <.input
+              field={@invite_form[:membership_status]}
+              type="select"
+              label={gettext("Statut d'emploi")}
+              prompt={gettext("Non précisé")}
+              options={Enum.map(MembershipStatus.values(), &{MembershipStatus.label(&1), &1})}
+            />
+            <button type="submit" class="btn btn-primary btn-sm">{gettext("Inviter")}</button>
+          </div>
+        </.form>
+      </div>
+
+      <div id="wizard-invitations-list" class="space-y-2">
+        <h3 class="text-sm font-semibold">{gettext("Invitations en attente")}</h3>
+        <.empty_state
+          :if={@invitations == []}
+          icon="hero-envelope"
+          title={gettext("Aucune invitation en attente")}
+        />
+        <div
+          :for={inv <- @invitations}
+          id={"wizard-invitation-#{inv.id}"}
+          class="ta-leaf flex items-center justify-between gap-3 px-3 py-2"
+        >
+          <div class="text-sm">
+            <span class="font-medium">{inv.email}</span>
+            <span class="text-base-content/60">
+              — {inv.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="finish-setup" type="button" class="btn btn-primary btn-sm" phx-click="finish">
+          {gettext("Terminer la configuration")}
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" phx-click="finish">
+          {gettext("Passer pour l'instant")}
+        </button>
+      </div>
     </div>
     """
   end
