@@ -57,19 +57,14 @@ defmodule TeacherAssistant.Organization do
   end
 
   @doc """
-  The user's personal workspace followed by every school they are an active
-  member of.
+  Every school the user is an active member of, in membership order.
+  Personal workspaces are paused and never listed.
   """
   def list_workspaces_for(%User{} = user) do
-    personal = ensure_personal_workspace!(user)
-
-    schools =
-      SchoolMembership
-      |> Ash.Query.for_read(:active_for_user, %{user_id: user.id})
-      |> Ash.read!()
-      |> Enum.map(& &1.workspace)
-
-    [personal | schools]
+    SchoolMembership
+    |> Ash.Query.for_read(:active_for_user, %{user_id: user.id})
+    |> Ash.read!()
+    |> Enum.map(& &1.workspace)
   end
 
   # --- Personal workspace ---------------------------------------------------

@@ -37,9 +37,6 @@ defmodule TeacherAssistant.Accounts do
   def get_user(id) when is_binary(id), do: Ash.get(User, id)
   def get_user(_id), do: {:error, :not_found}
 
-  def ensure_personal_workspace!(%TeacherAssistant.Accounts.User{} = user),
-    do: TeacherAssistant.Organization.ensure_personal_workspace!(user)
-
   # --- School profiles -----------------------------------------------------
 
   def fetch_school_profile(%Workspace{id: ws_id}) do

@@ -16,12 +16,11 @@ defmodule TeacherAssistant.Accounts.SchoolsTest do
     assert :head in m.roles
   end
 
-  test "list_workspaces_for returns the personal workspace plus member schools", %{head: head} do
+  test "list_workspaces_for returns schools only", %{head: head} do
     {:ok, school} = Organization.create_school(head, %{name: "École A"})
     ids = Organization.list_workspaces_for(head) |> Enum.map(& &1.id)
-    assert school.id in ids
-    # personal workspace also present
-    assert Enum.any?(Organization.list_workspaces_for(head), &(&1.kind == :personal))
+    assert ids == [school.id]
+    refute Enum.any?(Organization.list_workspaces_for(head), &(&1.kind == :personal))
   end
 
   test "a non-member is rejected", %{head: head, other: other} do

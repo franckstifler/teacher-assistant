@@ -132,4 +132,15 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       refute has_element?(view, "#pending-verification")
     end
   end
+
+  test "a user with no school is sent to /schools/new from /school", %{conn: conn} do
+    # session still carries the personal workspace id from register_and_log_in_user
+    assert {:error, {:live_redirect, %{to: "/schools/new"}}} = live(conn, ~p"/school")
+  end
+
+  test "a user with no workspace in session and no school is sent to /schools/new" do
+    user = TeacherAssistant.TeacherFixtures.user_fixture()
+    conn = Phoenix.ConnTest.build_conn() |> log_in_user(user)
+    assert {:error, {:live_redirect, %{to: "/schools/new"}}} = live(conn, ~p"/school")
+  end
 end

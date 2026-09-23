@@ -115,4 +115,24 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       assert scope.current_context.id == mine.id
     end
   end
+
+  describe "default workspace (school-only product)" do
+    test "scope_for with nil workspace resolves the first active school membership", %{user: user} do
+      {:ok, school} = Organization.create_school(user, %{name: "École Défaut"})
+      assert {:ok, scope} = Workspaces.scope_for(user, nil)
+      assert scope.current_workspace.id == school.id
+      assert scope.current_workspace_type == :school
+    end
+
+    test "scope_for with nil workspace and no membership returns an error" do
+      user = TeacherFixtures.user_fixture()
+      assert {:error, :no_workspace} = Workspaces.scope_for(user, nil)
+    end
+
+    test "list_workspaces_for returns schools only", %{user: user} do
+      {:ok, school} = Organization.create_school(user, %{name: "École Liste"})
+      ids = user |> Organization.list_workspaces_for() |> Enum.map(& &1.id)
+      assert ids == [school.id]
+    end
+  end
 end

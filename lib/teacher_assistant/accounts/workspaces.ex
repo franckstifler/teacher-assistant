@@ -3,13 +3,15 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Curriculum
 
-  def ensure_personal_workspace!(user), do: Organization.ensure_personal_workspace!(user)
-
   def scope_for(user, workspace_id, context_id \\ nil)
 
+  # No workspace chosen yet: default to the first school the user belongs to.
+  # Personal workspaces are paused (docs/audits/2026-09-23-school-focus/README.md §6).
   def scope_for(user, nil, context_id) do
-    ws = ensure_personal_workspace!(user)
-    scope_for(user, ws.id, context_id)
+    case Organization.list_workspaces_for(user) do
+      [ws | _] -> scope_for(user, ws.id, context_id)
+      [] -> {:error, :no_workspace}
+    end
   end
 
   def scope_for(user, workspace_id, context_id) do
