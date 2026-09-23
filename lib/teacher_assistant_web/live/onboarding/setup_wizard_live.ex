@@ -2,24 +2,29 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Academics.{AcademicYear, Seeding}
+  alias TeacherAssistant.Accounts.Permissions
 
   @steps [:identity, :year, :classes, :invite]
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
+    ws = scope.current_workspace
+    year = scope.current_academic_year
 
     {:ok,
      assign(socket,
-       step: initial_step(scope),
-       ws: scope.current_workspace,
-       year: scope.current_academic_year
+       step: initial_step(ws, year),
+       ws: ws,
+       year: year,
+       year_form: year_form(ws.id, year == nil)
      )}
   end
 
-  defp initial_step(scope) do
+  defp initial_step(ws, year) do
     cond do
-      scope.current_academic_year == nil -> :year
-      Enrollment.list_class_groups(scope.current_workspace, scope.current_academic_year) == [] -> :classes
+      year == nil -> :year
+      Enrollment.list_class_groups(ws, year) == [] -> :classes
       true -> :invite
     end
   end
@@ -103,6 +108,59 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   defp step_badge_class(:current), do: "border-2 border-primary text-primary"
   defp step_badge_class(:upcoming), do: "bg-base-300 text-base-content/50"
 
+  def handle_event("validate_year", %{"year" => params}, socket) do
+    {:noreply,
+     assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
+  end
+
+  def handle_event("create_year", %{"year" => params}, socket) do
+    scope = socket.assigns.current_scope
+    ws = socket.assigns.ws
+
+    if Permissions.admin?(scope) do
+      case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
+        {:ok, year} ->
+          Seeding.seed_starter_classes(ws, year)
+
+          # Deliberately land on the `:classes` step rather than re-deriving
+          # via `initial_step/2` — seeding just populated classes, so the
+          # derived step would jump straight past it to `:invite`. We want
+          # the head to see (and can edit) the seeded starter classes before
+          # continuing.
+          {:noreply,
+           socket
+           |> assign(:year, year)
+           |> assign(:step, :classes)
+           |> put_flash(:info, gettext("Année scolaire créée."))}
+
+        {:error, form} ->
+          {:noreply,
+           socket
+           |> assign(:year_form, form)
+           |> put_flash(:error, gettext("Impossible de créer l'année scolaire."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # `workspace_id` and `active` are server-controlled (never user input), so
+  # they're set on the changeset at build time via `prepare_source` — same
+  # pattern as `School.SettingsLive.year_form/2`. Only the first year of a
+  # workspace is created active.
+  defp year_form(workspace_id, active?) do
+    AcademicYear
+    |> AshPhoenix.Form.for_create(:create_for_workspace,
+      as: "year",
+      prepare_source: fn changeset ->
+        changeset
+        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
+        |> Ash.Changeset.change_attribute(:active, active?)
+      end
+    )
+    |> to_form()
+  end
+
   # Panels are placeholders for now — filled in by later tasks in this
   # feature (year/classes/invite panels get real forms; identity gets a
   # proper recap). This task only wires the shell + step derivation.
@@ -121,12 +179,31 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   defp year_panel(assigns) do
     ~H"""
-    <div id="wizard-panel-year" class="space-y-2">
-      <p class="ta-eyebrow">{gettext("Academic year")}</p>
-      <h2 class="text-lg font-semibold">{gettext("Set up your academic year")}</h2>
-      <p class="text-sm text-base-content/70">
-        {gettext("Create the academic year to unlock classes and enrollment.")}
-      </p>
+    <div id="wizard-panel-year" class="space-y-4">
+      <div class="space-y-2">
+        <p class="ta-eyebrow">{gettext("Academic year")}</p>
+        <h2 class="text-lg font-semibold">{gettext("Set up your academic year")}</h2>
+        <p class="text-sm text-base-content/70">
+          {gettext("Create the academic year to unlock classes and enrollment.")}
+        </p>
+      </div>
+
+      <.form
+        for={@year_form}
+        id="year-form"
+        phx-change="validate_year"
+        phx-submit="create_year"
+        class="space-y-3"
+      >
+        <div class="grid gap-3 sm:grid-cols-3">
+          <.input field={@year_form[:name]} label={gettext("Name")} />
+          <.input field={@year_form[:start_date]} type="date" label={gettext("Start date")} />
+          <.input field={@year_form[:end_date]} type="date" label={gettext("End date")} />
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+          {gettext("Create the academic year")}
+        </button>
+      </.form>
     </div>
     """
   end
