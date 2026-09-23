@@ -1,12 +1,10 @@
 defmodule TeacherAssistant.Accounts.Workspaces do
   alias TeacherAssistant.{Organization, Scope}
   alias TeacherAssistant.Accounts
-  alias TeacherAssistant.Curriculum
 
   def scope_for(user, workspace_id, context_id \\ nil)
 
   # No workspace chosen yet: default to the first school the user belongs to.
-  # Personal workspaces are paused (docs/audits/2026-09-23-school-focus/README.md §6).
   def scope_for(user, nil, context_id) do
     case Organization.list_workspaces_for(user) do
       [ws | _] -> scope_for(user, ws.id, context_id)
@@ -15,30 +13,9 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   end
 
   def scope_for(user, workspace_id, context_id) do
-    case Organization.get_personal_workspace(workspace_id) do
-      {:ok, %{kind: :personal} = ws} -> personal_scope(user, ws, context_id)
-      {:ok, %{kind: :school} = ws} -> school_scope(user, ws, context_id)
+    case Organization.get_workspace(workspace_id) do
+      {:ok, ws} -> school_scope(user, ws, context_id)
       _ -> {:error, :workspace_not_found}
-    end
-  end
-
-  defp personal_scope(user, ws, context_id) do
-    if ws.owner_user_id == user.id do
-      year = Organization.current_academic_year(ws)
-
-      {:ok,
-       %Scope{
-         current_user: user,
-         current_workspace: ws,
-         current_workspace_type: :personal_teacher,
-         current_role: :teacher,
-         current_roles: [:teacher],
-         current_membership: nil,
-         current_academic_year: year,
-         current_context: Curriculum.resolve_current_context(ws, year, context_id)
-       }}
-    else
-      {:error, :workspace_not_found}
     end
   end
 
@@ -57,7 +34,6 @@ defmodule TeacherAssistant.Accounts.Workspaces do
          %Scope{
            current_user: user,
            current_workspace: ws,
-           current_workspace_type: :school,
            current_role: List.first(membership.roles),
            current_roles: membership.roles,
            current_membership: membership,

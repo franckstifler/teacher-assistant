@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.SchoolLogoController do
 
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         :school <- scope.current_workspace_type,
+         %{} <- scope.current_workspace,
          true <- Permissions.member?(scope),
          {:ok, profile} <- Accounts.fetch_school_profile(scope.current_workspace),
          logo_path when is_binary(logo_path) <- profile.logo_path,

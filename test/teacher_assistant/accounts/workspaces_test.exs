@@ -15,7 +15,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
   test "scope_for resolves a school workspace via active membership", %{user: user} do
     {:ok, school} = Organization.create_school(user, %{name: "École Scope"})
     assert {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
-    assert scope.current_workspace_type == :school
+    assert scope.current_workspace.id == school.id
     assert :head in scope.current_roles
   end
 
@@ -88,7 +88,6 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       {:ok, school} = Organization.create_school(user, %{name: "École Défaut"})
       assert {:ok, scope} = Workspaces.scope_for(user, nil)
       assert scope.current_workspace.id == school.id
-      assert scope.current_workspace_type == :school
     end
 
     test "scope_for with nil workspace and no membership returns an error" do
@@ -114,5 +113,13 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       assert user |> Organization.list_workspaces_for() |> Enum.map(& &1.id) ==
                [first.id, second.id]
     end
+  end
+
+  test "a scope has no workspace type; membership decides everything" do
+    %{workspace: school, head_user: head} = TeacherFixtures.school_fixture()
+    {:ok, scope} = Workspaces.scope_for(head, school.id)
+    refute Map.has_key?(scope, :current_workspace_type)
+    assert scope.current_workspace.id == school.id
+    assert :head in scope.current_roles
   end
 end

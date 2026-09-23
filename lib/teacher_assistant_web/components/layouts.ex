@@ -69,7 +69,7 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
       |> assign(:units, units)
       |> assign(:workspaces, workspaces)
-      |> assign(:in_school?, current_scope && current_scope.current_workspace_type == :school)
+      |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
       |> assign(
         :is_head?,
         current_scope && TeacherAssistant.Accounts.Permissions.head?(current_scope)
@@ -147,7 +147,7 @@ defmodule TeacherAssistantWeb.Layouts do
                       class="flex items-center justify-between gap-2"
                     >
                       <span>{ws.name}</span>
-                      <span :if={ws.kind == :school} class="badge badge-sm badge-primary">
+                      <span class="badge badge-sm badge-primary">
                         {gettext("École")}
                       </span>
                     </.link>
@@ -368,7 +368,6 @@ defmodule TeacherAssistantWeb.Layouts do
   defp context_label(_), do: Gettext.gettext(TeacherAssistantWeb.Gettext, "Select a class")
 
   defp workspace_name(%{current_workspace: %{name: name}}), do: name
-  defp workspace_name(%{current_user: %{} = _user}), do: gettext("Personal workspace")
   defp workspace_name(_), do: nil
 
   defp role_label(%{current_role: role}) when not is_nil(role) do
@@ -379,9 +378,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
   defp role_label(_), do: nil
 
-  defp workspace_type_label(%{current_workspace_type: :personal_teacher}), do: gettext("Personal")
-  defp workspace_type_label(%{current_workspace_type: :school}), do: gettext("School")
-  defp workspace_type_label(_), do: gettext("No workspace")
+  defp workspace_type_label(_), do: gettext("School")
 
   @doc """
   Shows the flash group with standard titles and content.

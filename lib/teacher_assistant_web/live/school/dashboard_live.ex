@@ -11,21 +11,21 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     scope = socket.assigns.current_scope
 
     cond do
-      scope.current_workspace_type == :school and plain_teacher?(scope) ->
+      scope.current_workspace != nil and plain_teacher?(scope) ->
         # Members who neither administer the school nor master a class get
         # their teaching hub, not an admin dashboard they cannot act on.
         {:ok, push_navigate(socket, to: ~p"/school/courses")}
 
-      scope.current_workspace_type == :school ->
+      scope.current_workspace != nil ->
         {:ok,
          socket
          |> assign(:scope, scope)
          |> load_stats()}
 
       true ->
-        # A stale personal workspace id (or a deactivated membership) can leave
-        # the resolved scope non-school even though the user has a real school
-        # — send them there instead of prompting to create a new one.
+        # A stale workspace id (or a deactivated membership) can leave the
+        # resolved scope without a workspace even though the user has a real
+        # school — send them there instead of prompting to create a new one.
         case Organization.list_workspaces_for(scope.current_user) do
           [first | _] -> {:ok, push_navigate(socket, to: ~p"/workspaces/select/#{first.id}")}
           [] -> {:ok, push_navigate(socket, to: ~p"/schools/new")}

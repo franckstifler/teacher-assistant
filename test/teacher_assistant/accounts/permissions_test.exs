@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Accounts.PermissionsTest do
   defp scope(uid, roles) do
     %Scope{
       current_user: %{id: uid},
-      current_workspace_type: :school,
+      current_workspace: %{},
       current_roles: roles
     }
   end
@@ -38,8 +38,8 @@ defmodule TeacherAssistant.Accounts.PermissionsTest do
   end
 
   test "head? and member? read the school roles" do
-    head = %Scope{current_workspace_type: :school, current_roles: [:head, :teacher]}
-    plain = %Scope{current_workspace_type: :school, current_roles: [:teacher]}
+    head = %Scope{current_workspace: %{}, current_roles: [:head, :teacher]}
+    plain = %Scope{current_workspace: %{}, current_roles: [:teacher], current_membership: %{}}
 
     assert Permissions.head?(head)
     refute Permissions.head?(plain)
@@ -50,14 +50,14 @@ defmodule TeacherAssistant.Accounts.PermissionsTest do
   test "admin?/1 is true for head and vice_principal, false otherwise" do
     alias TeacherAssistant.Accounts.Permissions
     alias TeacherAssistant.Scope
-    assert Permissions.admin?(%Scope{current_workspace_type: :school, current_roles: [:head]})
+    assert Permissions.admin?(%Scope{current_workspace: %{}, current_roles: [:head]})
 
     assert Permissions.admin?(%Scope{
-             current_workspace_type: :school,
+             current_workspace: %{},
              current_roles: [:vice_principal]
            })
 
-    refute Permissions.admin?(%Scope{current_workspace_type: :school, current_roles: [:teacher]})
+    refute Permissions.admin?(%Scope{current_workspace: %{}, current_roles: [:teacher]})
 
     refute Permissions.admin?(nil)
   end

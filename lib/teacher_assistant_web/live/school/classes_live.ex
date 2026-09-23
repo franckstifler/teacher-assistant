@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if scope.current_workspace_type != :school do
+    if scope.current_workspace == nil do
       {:ok, push_navigate(socket, to: ~p"/school")}
     else
       profile = Accounts.fetch_school_profile(scope.current_workspace)

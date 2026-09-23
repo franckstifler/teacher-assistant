@@ -33,15 +33,9 @@ defmodule TeacherAssistant.Academics.Workspace do
     defaults [
       :read,
       :destroy,
-      create: [:name, :kind, :owner_user_id],
+      create: [:name],
       update: [:name]
     ]
-
-    read :for_owner do
-      argument :owner_user_id, :uuid, allow_nil?: false
-      get? true
-      filter expr(owner_user_id == ^arg(:owner_user_id))
-    end
 
     # School creation as a single transactional create: the workspace row is
     # inserted, then its profile, its :head membership and the seeded Subject
@@ -51,8 +45,6 @@ defmodule TeacherAssistant.Academics.Workspace do
       accept [:name]
       argument :owner_user_id, :uuid, allow_nil?: false
       argument :profile, :map, default: %{}
-
-      change set_attribute(:kind, :school)
 
       change after_action(fn changeset, workspace, _context ->
                owner_user_id = Ash.Changeset.get_argument(changeset, :owner_user_id)
@@ -85,28 +77,13 @@ defmodule TeacherAssistant.Academics.Workspace do
     uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true
 
-    attribute :kind, TeacherAssistant.Accounts.WorkspaceKind,
-      allow_nil?: false,
-      default: :personal,
-      public?: true
-
     timestamps()
   end
 
   relationships do
-    belongs_to :owner_user, TeacherAssistant.Accounts.User do
-      source_attribute :owner_user_id
-      allow_nil? true
-      public? true
-    end
-
     has_many :school_memberships, TeacherAssistant.Accounts.SchoolMembership do
       destination_attribute :workspace_id
     end
-  end
-
-  identities do
-    identity :unique_owner_user, [:owner_user_id]
   end
 
   # --- create_school orchestration helpers (moved from Accounts.Schools) ---

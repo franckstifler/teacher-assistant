@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
     scope = socket.assigns.current_scope
 
     cond do
-      scope.current_workspace_type != :school ->
+      scope.current_workspace == nil ->
         {:ok, push_navigate(socket, to: ~p"/school")}
 
       not Permissions.admin?(scope) ->

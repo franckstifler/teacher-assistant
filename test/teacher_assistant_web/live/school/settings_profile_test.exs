@@ -44,7 +44,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
     setup %{conn: conn, actor: user} do
       {:ok, school} =
         Workspace
-        |> Ash.Changeset.for_create(:create, %{name: "Bare School", kind: :school})
+        |> Ash.Changeset.for_create(:create, %{name: "Bare School"})
         |> Ash.create(authorize?: false)
 
       {:ok, _membership} =

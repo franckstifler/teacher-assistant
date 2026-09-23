@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
 
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         :school <- scope.current_workspace_type,
+         %{} <- scope.current_workspace,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       timetable = Timetabling.class_timetable(cg)
@@ -40,7 +40,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
 
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         :school <- scope.current_workspace_type do
+         %{} <- scope.current_workspace do
       conn
       |> put_layout(false)
       |> put_root_layout(false)

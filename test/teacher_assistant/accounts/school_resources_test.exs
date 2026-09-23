@@ -9,7 +9,7 @@ defmodule TeacherAssistant.Accounts.SchoolResourcesTest do
 
     {:ok, school} =
       Workspace
-      |> Ash.Changeset.for_create(:create, %{name: "Lycée de Test", kind: :school})
+      |> Ash.Changeset.for_create(:create, %{name: "Lycée de Test"})
       |> Ash.create(authorize?: false)
 
     %{user: user, school: school}

@@ -596,14 +596,11 @@ defmodule TeacherAssistant.Curriculum do
   @doc """
   Fetches a teaching context the current user may open in the teacher workspace.
 
-  In a **personal** workspace, ownership of the (owner-only) workspace is the
-  guarantee — every context in it belongs to the sole teacher. In a **school**
-  workspace the workspace is shared by all staff, so the user must be the
-  *assigned* teacher of the context (`teacher_user_id`); otherwise a colleague
-  could open another teacher's roster and marks by id.
+  The workspace is shared by all staff, so the user must be the *assigned*
+  teacher of the context (`teacher_user_id`); otherwise a colleague could open
+  another teacher's roster and marks by id.
   """
   def fetch_assigned_teaching_context(id, %Scope{
-        current_workspace_type: :school,
         current_workspace: %Workspace{id: ws_id},
         current_user: %User{id: user_id}
       }) do
@@ -620,9 +617,6 @@ defmodule TeacherAssistant.Curriculum do
     end
   end
 
-  def fetch_assigned_teaching_context(id, %Scope{current_workspace: %Workspace{} = ws}),
-    do: fetch_owned_teaching_context(id, ws)
-
   def fetch_assigned_teaching_context(_id, %Scope{}), do: {:error, :not_found}
 
   def link_class_group(%TeachingContext{} = ctx, %ClassGroup{id: cg_id}) do
@@ -632,10 +626,9 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   @doc """
-  Scope-aware context listing for the class switcher: under personal scope,
-  the workspace's own teaching contexts; under school scope, only the
-  contexts assigned to the current user (via `list_assignments_for_user/3`).
-  Returns `[]` when there is no current academic year.
+  Scope-aware context listing for the class switcher: the contexts assigned
+  to the current user (via `list_assignments_for_user/3`). Returns `[]` when
+  there is no current academic year.
   """
   def list_contexts_for_scope(%Scope{
         current_workspace: ws,

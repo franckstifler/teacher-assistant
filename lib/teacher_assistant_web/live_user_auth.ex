@@ -46,7 +46,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   def on_mount(:require_teaching_scope, _params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if scope && scope.current_workspace_type == :school && is_nil(scope.current_context) do
+    if scope && scope.current_workspace && is_nil(scope.current_context) do
       {:halt, Phoenix.LiveView.push_navigate(socket, to: ~p"/school")}
     else
       {:cont, socket}
@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     scope = socket.assigns.current_scope
 
     cond do
-      scope == nil or scope.current_workspace_type != :school ->
+      scope == nil or scope.current_workspace == nil ->
         {:cont, socket}
 
       socket.view == TeacherAssistantWeb.Onboarding.SetupWizardLive ->

@@ -23,7 +23,7 @@ defmodule TeacherAssistant.Organization do
   resources do
     resource Workspace do
       define :rename_school, action: :update, args: [:name]
-      define :get_personal_workspace, action: :read, get_by: [:id]
+      define :get_workspace, action: :read, get_by: [:id]
     end
 
     resource AcademicYear do
@@ -58,7 +58,6 @@ defmodule TeacherAssistant.Organization do
 
   @doc """
   Every school the user is an active member of, in membership order.
-  Personal workspaces are paused and never listed.
   """
   def list_workspaces_for(%User{} = user) do
     SchoolMembership

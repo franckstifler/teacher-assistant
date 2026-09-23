@@ -6,7 +6,6 @@ defmodule TeacherAssistant.Scope do
   defstruct [
     :current_user,
     :current_workspace,
-    :current_workspace_type,
     :current_role,
     :current_roles,
     :current_membership,
@@ -15,9 +14,6 @@ defmodule TeacherAssistant.Scope do
     :locale,
     :school_verification_status
   ]
-
-  def personal_context?(%__MODULE__{current_workspace_type: :personal_teacher}), do: true
-  def personal_context?(_scope), do: false
 
   def school_verified?(%__MODULE__{school_verification_status: :verified}), do: true
   def school_verified?(_scope), do: false
@@ -29,14 +25,14 @@ defmodule TeacherAssistant.Scope do
 
   def academic_year_ready?(_), do: false
 
-  def setup_complete?(%__MODULE__{current_workspace_type: :school} = scope) do
+  def setup_complete?(%__MODULE__{current_workspace: %{}} = scope) do
     year = scope.current_academic_year
 
     year != nil and
       TeacherAssistant.Enrollment.list_class_groups(scope.current_workspace, year) != []
   end
 
-  def setup_complete?(_), do: true
+  def setup_complete?(%__MODULE__{current_workspace: nil}), do: true
 
   defimpl Ash.Scope.ToOpts do
     def get_actor(%{current_user: current_user}), do: {:ok, current_user}

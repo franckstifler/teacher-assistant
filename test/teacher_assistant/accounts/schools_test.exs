@@ -11,7 +11,6 @@ defmodule TeacherAssistant.Accounts.SchoolsTest do
 
   test "create_school makes the creator a Head", %{head: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Bilingue"})
-    assert school.kind == :school
     assert {:ok, m} = Accounts.fetch_school_membership(school, head)
     assert :head in m.roles
   end
@@ -20,7 +19,6 @@ defmodule TeacherAssistant.Accounts.SchoolsTest do
     {:ok, school} = Organization.create_school(head, %{name: "École A"})
     ids = Organization.list_workspaces_for(head) |> Enum.map(& &1.id)
     assert ids == [school.id]
-    refute Enum.any?(Organization.list_workspaces_for(head), &(&1.kind == :personal))
   end
 
   test "a non-member is rejected", %{head: head, other: other} do

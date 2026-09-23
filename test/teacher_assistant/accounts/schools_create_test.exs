@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
   use TeacherAssistant.DataCase, async: true
-  require Ash.Query
   alias TeacherAssistant.Accounts.{SchoolProfile, SchoolMembership}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -42,11 +41,10 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
 
   test "is atomic: an invalid profile field leaves no workspace, profile or membership" do
     user = TeacherFixtures.user_fixture()
-    before_ws = Workspace |> Ash.Query.filter(kind == :school) |> Ash.count!(authorize?: false)
+    before_ws = Workspace |> Ash.count!(authorize?: false)
     assert {:error, _} = Organization.create_school(user, Map.put(@attrs, :school_type, :bogus))
 
-    assert Workspace |> Ash.Query.filter(kind == :school) |> Ash.count!(authorize?: false) ==
-             before_ws
+    assert Workspace |> Ash.count!(authorize?: false) == before_ws
 
     assert SchoolProfile |> Ash.count!(authorize?: false) == 0
     assert SchoolMembership |> Ash.count!(authorize?: false) == 0

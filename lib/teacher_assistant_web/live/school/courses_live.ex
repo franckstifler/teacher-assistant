@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if scope.current_workspace_type == :school do
+    if scope.current_workspace != nil do
       today = Date.utc_today()
       units = Curriculum.list_units_for_scope(scope)
 

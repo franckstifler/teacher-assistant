@@ -10,27 +10,27 @@ defmodule TeacherAssistant.Accounts.Permissions do
   alias TeacherAssistant.Scope
   alias TeacherAssistant.Academics.ClassGroup
 
-  def member?(%Scope{current_workspace_type: :school}), do: true
+  def member?(%Scope{current_membership: %{}}), do: true
   def member?(_), do: false
 
-  def head?(%Scope{current_workspace_type: :school, current_roles: roles}),
+  def head?(%Scope{current_workspace: %{}, current_roles: roles}),
     do: :head in (roles || [])
 
   def head?(_), do: false
 
-  def bursar?(%Scope{current_workspace_type: :school, current_roles: roles}),
+  def bursar?(%Scope{current_workspace: %{}, current_roles: roles}),
     do: :bursar in (roles || [])
 
   def bursar?(_), do: false
 
-  def admin?(%Scope{current_workspace_type: :school, current_roles: roles}) do
+  def admin?(%Scope{current_workspace: %{}, current_roles: roles}) do
     r = roles || []
     :head in r or :vice_principal in r
   end
 
   def admin?(_), do: false
 
-  def discipline_master?(%Scope{current_workspace_type: :school, current_roles: roles}),
+  def discipline_master?(%Scope{current_workspace: %{}, current_roles: roles}),
     do: :discipline_master in (roles || [])
 
   def discipline_master?(_), do: false
@@ -40,7 +40,7 @@ defmodule TeacherAssistant.Accounts.Permissions do
   def fees_manager?(scope), do: admin?(scope) or bursar?(scope)
 
   def form_master?(
-        %Scope{current_workspace_type: :school, current_user: %{id: uid}},
+        %Scope{current_workspace: %{}, current_user: %{id: uid}},
         %ClassGroup{form_master_user_id: fm_id}
       ),
       do: not is_nil(fm_id) and fm_id == uid
@@ -52,11 +52,8 @@ defmodule TeacherAssistant.Accounts.Permissions do
 
   @doc """
   Whether operating actions (recording marks, recording attendance, printing
-  bulletins) are allowed for this scope. Personal workspaces are always
-  allowed; a school workspace is only allowed once its `SchoolProfile` has
-  been verified (P2.10 — operate-gate).
+  bulletins) are allowed for this scope: only once the workspace's
+  `SchoolProfile` has been verified (P2.10 — operate-gate).
   """
-  def operating_allowed?(scope) do
-    scope.current_workspace_type != :school or TeacherAssistant.Scope.school_verified?(scope)
-  end
+  def operating_allowed?(scope), do: TeacherAssistant.Scope.school_verified?(scope)
 end

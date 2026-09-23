@@ -36,7 +36,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
     with %{} = user <- user,
          {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         :school <- scope.current_workspace_type,
+         %{} <- scope.current_workspace,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg),
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},

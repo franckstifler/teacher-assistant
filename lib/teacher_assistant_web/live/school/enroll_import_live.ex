@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with :school <- scope.current_workspace_type,
+    with %{} <- scope.current_workspace,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin?(scope) do
       {:ok,
