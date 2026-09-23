@@ -81,7 +81,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     assert html =~ "vide" or html =~ "empty" or html =~ "aucun" or html =~ "Aucun"
   end
 
-  test "a non-school scope is redirected to /teacher", %{} do
+  test "a non-school scope is redirected to /school", %{} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     conn =
@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
       |> Phoenix.ConnTest.init_test_session(%{})
       |> Plug.Conn.put_session(:user_id, other.id)
 
-    assert {:error, {:live_redirect, %{to: "/teacher"}}} =
+    assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/school/timetable/me")
   end
 end

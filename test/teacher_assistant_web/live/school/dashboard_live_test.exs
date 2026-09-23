@@ -19,7 +19,9 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
        %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "École Guard"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
-    assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/teacher/setup")
+
+    assert {:error, {:live_redirect, %{to: "/school"}}} =
+             live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
   end
 
   test "dashboard shows structure stats", %{conn: conn, actor: user} do

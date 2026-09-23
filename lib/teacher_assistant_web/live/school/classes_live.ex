@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace_type != :school do
-      {:ok, push_navigate(socket, to: ~p"/teacher")}
+      {:ok, push_navigate(socket, to: ~p"/school")}
     else
       profile = Accounts.fetch_school_profile(scope.current_workspace)
 

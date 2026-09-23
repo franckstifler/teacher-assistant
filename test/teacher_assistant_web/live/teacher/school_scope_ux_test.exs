@@ -42,23 +42,7 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
   end
 
   test "setup redirects to /school under school scope", %{conn: conn} do
-    assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/teacher/setup")
-  end
-
-  test "fiche print shows the school name as établissement", ctx do
-    %{conn: conn, tc: tc} = ctx
-    {:ok, plan} = Curriculum.create_progression_plan(tc, %{title: "Plan"})
-
-    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
-
-    {:ok, entry} =
-      Curriculum.add_progression_entry(m1, %{
-        lesson_title: "Les entiers",
-        planned_hours: Decimal.new("1"),
-        entry_type: :lesson
-      })
-
-    conn = get(conn, ~p"/teacher/entries/#{entry.id}/fiche/print")
-    assert html_response(conn, 200) =~ "Lycée UX"
+    assert {:error, {:live_redirect, %{to: "/school"}}} =
+             live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
   end
 end

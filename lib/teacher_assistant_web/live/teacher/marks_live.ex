@@ -18,7 +18,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         mount_solo(ctx, params, socket, ws)
 
       _ ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+        {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
@@ -46,12 +46,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:sibling_scores, sibling_scores(ctx, seq))
        |> assign(:new_assessment_form, solo_assessment_form(ctx.id, seq))}
     else
-      # true => context owned but has no class group (go set up the roster); anything else => not found / not owned
+      # true => context owned but has no class group (go to the roster); anything else => not found / not owned
       true ->
         {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx.id}/roster")}
 
       _ ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+        {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
@@ -85,7 +85,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:new_assessment_form, assessment_form())}
 
       _ ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+        {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 

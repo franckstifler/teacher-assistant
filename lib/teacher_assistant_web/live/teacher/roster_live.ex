@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
          {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope) do
       {:ok, load(socket, ws, ctx) |> assign(:read_only?, read_only?)}
     else
-      _ -> {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+      _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 

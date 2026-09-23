@@ -34,9 +34,10 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
   test "the class switcher shows one row for a combined course, not one per class", %{
     conn: conn,
-    course: course
+    course: course,
+    tc_a: tc_a
   } do
-    {:ok, view, _html} = live(conn, ~p"/teacher")
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_a.id}/roster")
 
     # exactly one switcher row for the whole course, labelled with the course label
     assert has_element?(view, "#class-switcher", course.label)

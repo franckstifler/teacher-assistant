@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        |> assign(:invite_form, invite_form())
        |> reload_members()}
     else
-      {:ok, push_navigate(socket, to: ~p"/teacher")}
+      {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 

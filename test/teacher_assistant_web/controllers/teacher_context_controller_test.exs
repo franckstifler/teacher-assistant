@@ -25,8 +25,13 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
   end
 
   test "selecting a valid class stores it and honors return_to", %{conn: conn, ctx: ctx} do
-    conn = get(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=/teacher/log")
-    assert redirected_to(conn) == "/teacher/log"
+    conn =
+      get(
+        conn,
+        "/teacher/select-context/#{ctx.id}?return_to=/teacher/contexts/#{ctx.id}/roster"
+      )
+
+    assert redirected_to(conn) == "/teacher/contexts/#{ctx.id}/roster"
     assert get_session(conn, :context_id) == ctx.id
   end
 
@@ -41,12 +46,17 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
 
   test "rejects a foreign id without writing the session", %{conn: conn} do
     conn = get(conn, ~p"/teacher/select-context/#{Ecto.UUID.generate()}?return_to=/teacher/log")
-    assert redirected_to(conn) == "/teacher/setup"
+    assert redirected_to(conn) == "/school"
     assert get_session(conn, :context_id) == nil
   end
 
   test "ignores a non-local return_to", %{conn: conn, ctx: ctx} do
     conn = get(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=https://evil.example/x")
-    assert redirected_to(conn) == "/teacher"
+    assert redirected_to(conn) == "/school"
+  end
+
+  test "a paused personal return_to falls back to /school", %{conn: conn, ctx: ctx} do
+    conn = get(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=/teacher/log")
+    assert redirected_to(conn) == "/school"
   end
 end

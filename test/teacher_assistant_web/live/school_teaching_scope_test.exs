@@ -23,19 +23,15 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
     %{conn: conn, school: school, year: year, cg: cg, user: user}
   end
 
-  test "a member without assignments is bounced from /teacher to /school", %{conn: conn} do
-    assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/teacher")
+  test "a member without assignments is bounced from teaching pages to /school", %{conn: conn} do
+    assert {:error, {:live_redirect, %{to: "/school"}}} =
+             live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
   end
 
-  test "an assigned teacher reaches /teacher under school scope", ctx do
+  test "an assigned teacher reaches the roster under school scope", ctx do
     %{conn: conn, cg: cg, user: user} = ctx
-    {:ok, _tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
-    assert {:ok, _view, html} = live(conn, ~p"/teacher")
+    {:ok, tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+    assert {:ok, _view, html} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
     assert html =~ "Maths"
-  end
-
-  test "personal scope still reaches /teacher", %{conn: conn, workspace: personal} do
-    conn = Plug.Conn.put_session(conn, :workspace_id, personal.id)
-    assert {:ok, _view, _html} = live(conn, ~p"/teacher")
   end
 end

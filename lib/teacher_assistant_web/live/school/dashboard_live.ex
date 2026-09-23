@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
        |> assign(:scope, scope)
        |> load_stats()}
     else
-      {:ok, push_navigate(socket, to: ~p"/teacher")}
+      {:ok, push_navigate(socket, to: ~p"/schools/new")}
     end
   end
 

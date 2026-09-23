@@ -14,13 +14,14 @@ defmodule TeacherAssistantWeb.TeacherContextController do
         |> redirect(to: rewrite_return_to(return_to, context_id))
 
       _ ->
-        redirect(conn, to: ~p"/teacher/setup")
+        redirect(conn, to: ~p"/school")
     end
   end
 
-  # only local /teacher paths are allowed; anything else defaults to the dashboard
-  defp safe_return_to("/teacher" <> _ = path), do: path
-  defp safe_return_to(_), do: "/teacher"
+  # only local teaching/school paths are allowed; anything else defaults to the school dashboard
+  defp safe_return_to("/teacher/contexts/" <> _ = path), do: path
+  defp safe_return_to("/school" <> _ = path), do: path
+  defp safe_return_to(_), do: "/school"
 
   # if the path targets a specific class, swap its id segment to the newly selected class
   defp rewrite_return_to(path, id),

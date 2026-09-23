@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace_type != :school do
-      {:ok, push_navigate(socket, to: ~p"/teacher")}
+      {:ok, push_navigate(socket, to: ~p"/school")}
     else
       {:ok,
        assign(socket,

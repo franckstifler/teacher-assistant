@@ -31,7 +31,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
       {:error, :not_found} ->
         conn
         |> put_flash(:error, gettext("Cette invitation est introuvable ou a expiré."))
-        |> redirect(to: ~p"/teacher")
+        |> redirect(to: ~p"/school")
     end
   end
 
@@ -48,7 +48,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
       {:error, reason} ->
         conn
         |> put_flash(:error, error_message(reason))
-        |> redirect(to: ~p"/teacher")
+        |> redirect(to: ~p"/school")
     end
   end
 

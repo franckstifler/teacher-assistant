@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
         {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx_id}/roster")}
 
       _ ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/setup")}
+        {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 

@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
       Accounts.invite_member(school, head, %{email: "someone@example.com", roles: [:teacher]})
 
     conn = post(conn, ~p"/schools/invitations/#{inv.token}/accept")
-    assert redirected_to(conn) == "/teacher"
+    assert redirected_to(conn) == "/school"
     refute match?({:ok, _}, Accounts.fetch_school_membership(school, conn.assigns.current_user))
   end
 

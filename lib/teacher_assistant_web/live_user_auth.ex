@@ -75,7 +75,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     socket = assign_scope(socket, session)
 
     if socket.assigns.current_user do
-      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/teacher")}
+      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/school")}
     else
       {:cont, socket}
     end

@@ -7,6 +7,6 @@ defmodule TeacherAssistantWeb.LocaleController do
 
     conn
     |> put_session(:locale, locale)
-    |> redirect(to: ~p"/teacher")
+    |> redirect(to: ~p"/school")
   end
 end

@@ -4,10 +4,12 @@ defmodule TeacherAssistantWeb.WorkspaceSwitcherTest do
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
-  test "the switcher lists the personal workspace and member schools", %{conn: conn, actor: user} do
-    {:ok, _school} = Organization.create_school(user, %{name: "École Deux"})
-    {:ok, _view, html} = live(conn, ~p"/teacher")
-    assert html =~ "École Deux"
-    assert html =~ "id=\"workspace-switcher\""
+  test "the switcher lists member schools only", %{conn: conn, actor: user, workspace: _personal} do
+    {:ok, school} = Organization.create_school(user, %{name: "École Deux"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    {:ok, view, _html} = live(conn, ~p"/school")
+    assert has_element?(view, "#workspace-switcher")
+    assert has_element?(view, "#workspace-switcher-item-#{school.id}", "École Deux")
   end
 end
