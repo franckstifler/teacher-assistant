@@ -33,8 +33,12 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     end
   end
 
+  # A member with no management responsibility at all: not an admin, not a
+  # conduct or fees manager, not a form master. Everyone else needs the
+  # dashboard's class list and setup checklist.
   defp plain_teacher?(scope) do
-    not Permissions.admin?(scope) and form_master_classes(scope) == []
+    not Permissions.admin?(scope) and not Permissions.conduct_manager?(scope) and
+      not Permissions.fees_manager?(scope) and form_master_classes(scope) == []
   end
 
   defp form_master_classes(%{current_academic_year: nil}), do: []
@@ -134,9 +138,6 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
           />
           <.stat label={gettext("Teachers")} value={Integer.to_string(@teachers_count)} />
         </div>
-
-        <%!-- "Mes classes" — the classes this head teacher also form-masters
-             (mockup: the "Classes & élèves" list, trimmed to real fields) --%>
         <div :if={@my_units != []} id="dashboard-my-courses" class="ta-leaf space-y-2">
           <h2 class="ta-eyebrow">{gettext("Mes cours")}</h2>
           <p class="text-sm text-base-content/70">
@@ -149,6 +150,8 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
           </.link>
         </div>
 
+        <%!-- "Mes classes" — the classes this head teacher also form-masters
+             (mockup: the "Classes & élèves" list, trimmed to real fields) --%>
         <div :if={@my_classes != []} id="my-classes" class="ta-leaf space-y-2">
           <div class="flex items-center justify-between gap-3">
             <h2 class="ta-eyebrow">{gettext("Mes classes")}</h2>

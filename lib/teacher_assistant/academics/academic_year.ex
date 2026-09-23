@@ -68,6 +68,11 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     end
   end
 
+  validations do
+    validate compare(:end_date, greater_than: :start_date),
+      message: "must be after the start date"
+  end
+
   attributes do
     uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true

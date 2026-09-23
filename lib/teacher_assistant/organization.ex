@@ -123,11 +123,15 @@ defmodule TeacherAssistant.Organization do
   end
 
   @doc """
-  Seeds a year's default calendar (3 terms, their séquences) from
+  Seeds a year's default calendar (3 terms, their séquences) — idempotent, no-op once séquences exist — from
   `Reference.default_calendar_preset/2` applied to the year's own dates. Not wrapped in a shared transaction
   (same as before the move) — each Term/Sequence create is its own action call.
   """
   def build_default_calendar(%AcademicYear{} = year) do
+    if list_sequences(year) == [], do: do_build_default_calendar(year), else: :ok
+  end
+
+  defp do_build_default_calendar(year) do
     preset =
       TeacherAssistant.Academics.Reference.default_calendar_preset(year.start_date, year.end_date)
 

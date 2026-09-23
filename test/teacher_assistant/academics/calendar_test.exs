@@ -81,6 +81,31 @@ defmodule TeacherAssistant.Academics.CalendarTemplateTest do
     assert List.last(seqs).end_date == ~D[2028-06-09]
   end
 
+  test "the template refuses a span too short for six séquences" do
+    assert_raise ArgumentError, fn ->
+      Reference.default_calendar_preset(~D[2027-09-06], ~D[2027-09-08])
+    end
+  end
+
+  test "an academic year whose end precedes its start is rejected" do
+    ws = TeacherFixtures.workspace_fixture()
+
+    assert {:error, %Ash.Error.Invalid{}} =
+             Organization.create_academic_year(ws, %{
+               name: "Broken",
+               start_date: ~D[2026-09-01],
+               end_date: ~D[2025-07-05],
+               active: true
+             })
+  end
+
+  test "build_default_calendar is idempotent" do
+    year = year_fixture(~D[2027-09-06], ~D[2028-07-28])
+    :ok = Organization.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(year)
+    assert length(Organization.list_sequences(year)) == 6
+  end
+
   test "a year that starts in January still gets six ordered séquences" do
     year = year_fixture(~D[2027-01-11], ~D[2027-11-26])
     :ok = Organization.build_default_calendar(year)

@@ -234,6 +234,20 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       assert entry.teaching_context_id == tc_other.id
     end
 
+    test "a colleague's placed slot beats the signed-in teacher's own assignment", %{
+      school: school,
+      cg: cg,
+      period: period,
+      date: date,
+      other: other
+    } do
+      {:ok, _tc_other} = Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
+
+      # `period` on `date` is the head's Maths slot (placed in the top-level setup).
+      assert {:error, {:live_redirect, %{to: "/school"}}} =
+               live(conn_for(school, other), att_path(cg, period, date))
+    end
+
     test "a member with no assignment and no slot is redirected", %{
       school: school,
       cg: cg,

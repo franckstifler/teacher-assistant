@@ -9,23 +9,26 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
 
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Academics.CombinedCourse
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace_type == :school do
+      today = Date.utc_today()
       units = Curriculum.list_units_for_scope(scope)
 
-      first_lesson =
-        scope.current_workspace
-        |> Attendance.list_periods()
-        |> Enum.find(&(&1.kind == :lesson))
+      lessons =
+        scope.current_workspace |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+      own_slots = Timetabling.teacher_timetable(scope.current_workspace, scope.current_user)
+      ctx = %{today: today, day: day_of_week(today), lessons: lessons, own_slots: own_slots}
 
       {:ok,
        socket
-       |> assign(:courses, Enum.map(units, &course_row(&1, first_lesson)))
-       |> assign(:today, Date.utc_today())}
+       |> assign(:courses, Enum.map(units, &course_row(&1, ctx)))
+       |> assign(:today, today)}
     else
       {:ok, push_navigate(socket, to: ~p"/school")}
     end
@@ -33,31 +36,59 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
 
   # One row per unit. A combined course lists every member class; the marks
   # and roster pages take any member context id (they resolve the course).
-  defp course_row({:course, %CombinedCourse{} = course} = unit, first_lesson) do
+  defp course_row({:course, %CombinedCourse{} = course}, ctx) do
     contexts = course.id |> Curriculum.contexts_of_course!() |> Ash.load!(:class_group)
     representative = List.first(contexts)
 
     %{
-      id: Curriculum.unit_select_id(unit),
+      id: "combined-#{course.id}",
       label: course.label,
       subject: course.subject,
       classes: Enum.map(contexts, & &1.class_group),
       context_id: representative.id,
       attendance_class_id: representative.class_group_id,
-      first_lesson: first_lesson
+      roll_call_period: roll_call_period(representative.class_group, ctx)
     }
   end
 
-  defp course_row({:solo, ctx} = unit, first_lesson) do
+  defp course_row({:solo, tc} = unit, ctx) do
     %{
-      id: Curriculum.unit_select_id(unit),
+      id: tc.id,
       label: Curriculum.unit_label(unit),
-      subject: ctx.subject,
-      classes: [ctx.class_group],
-      context_id: ctx.id,
-      attendance_class_id: ctx.class_group_id,
-      first_lesson: first_lesson
+      subject: nil,
+      classes: [tc.class_group],
+      context_id: tc.id,
+      attendance_class_id: tc.class_group_id,
+      roll_call_period: roll_call_period(tc.class_group, ctx)
     }
+  end
+
+  # Today's roll call target for a class: the teacher's own slot on today's
+  # weekday when the timetable has one, otherwise the first lesson period the
+  # class has nothing placed on (assignment-based roll call), otherwise the
+  # first lesson period.
+  defp roll_call_period(_class_group, %{lessons: []}), do: nil
+  defp roll_call_period(_class_group, %{day: nil, lessons: [first | _]}), do: first
+
+  defp roll_call_period(class_group, %{day: day, lessons: lessons, own_slots: own_slots}) do
+    own =
+      Enum.find(lessons, fn p ->
+        match?(%{class_group_id: id} when id == class_group.id, Map.get(own_slots, {day, p.id}))
+      end)
+
+    own || first_free_lesson(class_group, day, lessons) || List.first(lessons)
+  end
+
+  defp first_free_lesson(class_group, day, lessons) do
+    %{slots: grid} = Timetabling.class_timetable(class_group)
+    Enum.find(lessons, &(not Map.has_key?(grid, {day, &1.id})))
+  end
+
+  defp day_of_week(date) do
+    case Date.day_of_week(date) do
+      7 -> nil
+      n -> Enum.at([:monday, :tuesday, :wednesday, :thursday, :friday, :saturday], n - 1)
+    end
   end
 
   def render(assigns) do
@@ -83,7 +114,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
             <div class="flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="text-base font-semibold ta-display">{course.label}</h2>
               <p class="text-sm text-base-content/70">
-                {course.subject} ·
+                <span :if={course.subject}>{course.subject} · </span>
                 <span :for={cg <- course.classes} class="badge badge-ghost badge-sm mr-1">
                   {cg.label}
                 </span>
@@ -109,9 +140,9 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 <.icon name="hero-trophy" class="size-4" /> {gettext("Résultats")}
               </.link>
               <.link
-                :if={course.first_lesson}
+                :if={course.roll_call_period}
                 navigate={
-                  ~p"/school/classes/#{course.attendance_class_id}/attendance/#{course.first_lesson.id}?date=#{Date.to_iso8601(@today)}"
+                  ~p"/school/classes/#{course.attendance_class_id}/attendance/#{course.roll_call_period.id}?date=#{Date.to_iso8601(@today)}"
                 }
                 class="btn btn-ghost btn-sm gap-2"
               >

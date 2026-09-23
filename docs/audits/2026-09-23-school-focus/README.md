@@ -75,9 +75,9 @@ edit any colleague's plan (`Curriculum.fetch_owned_plan/2` checks workspace only
 ### Gaps blocking "create school, set subjects/classes/teachers; teachers do roll call and marks"
 | # | Gap | Evidence | Severity |
 |---|---|---|---|
-| G1 | **School year has no terms/séquences** | wizard `create_year` and Settings submit `AcademicYear.:create_for_workspace` (no calendar); only `teacher/setup_live.ex:44` calls `build_default_calendar` | Blocking |
-| G2 | Roll call requires periods **and** a placed timetable slot; wizard never calls `Attendance.build_default_periods/1`; `/school/periods` reachable only from Settings | Blocking for roll call |
-| G3 | No `/school/*` marks route, no "Notes" nav item, no "my assignments" on dashboard; `MarksLive` fallbacks push to `/teacher/setup` which bounces to `/school` (silent loop) | High |
+| G1 | ~~School year has no terms/séquences~~ **Closed 2026-09-23** (`feat/school-calendar-courses`: proportional calendar template built on year creation) | wizard `create_year` and Settings submit `AcademicYear.:create_for_workspace` (no calendar); only `teacher/setup_live.ex:44` calls `build_default_calendar` | Blocking |
+| G2 | ~~Roll call requires a placed slot~~ **Closed 2026-09-23** (periods seeded at school creation; assignment-based roll call). Was: requires periods **and** a placed timetable slot; wizard never calls `Attendance.build_default_periods/1`; `/school/periods` reachable only from Settings | Blocking for roll call |
+| G3 | ~~No teacher entry point~~ **Closed 2026-09-23** (`/school/courses` hub, "Mes cours" rail item, plain-teacher landing). Was: no `/school/*` marks route, no "Notes" nav item, no "my assignments" on dashboard; `MarksLive` fallbacks push to `/teacher/setup` which bounces to `/school` (silent loop) | High |
 | G4 | Operate gate (marks/attendance/print) needs a platform `:admin` to verify; no in-product promotion (`User.:promote_to_admin` unused) | High for onboarding |
 | G5 | Config thin: no terms/séquences UI, mention thresholds hard-coded (`marks.ex:15-16`), no year edit/delete/archive | Medium |
 | G6 | Roles coarse; `:hod`, `:guidance_counsellor`, `:librarian` grant nothing; plain teachers see members page and wizard | Medium |

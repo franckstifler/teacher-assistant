@@ -191,6 +191,27 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </div>
 
           <div
+            :if={@active_year && @active_sequences == []}
+            id={"year-no-calendar-#{@active_year.id}"}
+            class="rounded-box border border-warning/40 bg-warning/10 p-4 text-sm"
+          >
+            <p>
+              {gettext("L'année %{name} n'a pas encore de trimestres ni de séquences.",
+                name: @active_year.name
+              )}
+            </p>
+            <button
+              id={"generate-calendar-#{@active_year.id}"}
+              type="button"
+              class="btn btn-primary btn-sm mt-2"
+              phx-click="generate_calendar"
+              phx-value-id={@active_year.id}
+            >
+              {gettext("Générer le calendrier")}
+            </button>
+          </div>
+
+          <div
             :if={@active_year && @active_sequences != []}
             id={"year-calendar-#{@active_year.id}"}
             class="rounded-box border border-base-300 bg-base-100 p-4"
@@ -215,7 +236,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                   </span>
                   {gettext("Séquence %{n}", n: seq.number)}
                 </span>
-                <span class="ta-num text-base-content/70">{seq.start_date} → {seq.end_date}</span>
+                <span class="ta-num text-base-content/70">
+                  {Calendar.strftime(seq.start_date, "%d/%m/%Y")} → {Calendar.strftime(
+                    seq.end_date,
+                    "%d/%m/%Y"
+                  )}
+                </span>
               </li>
             </ul>
           </div>
@@ -398,6 +424,19 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("validate_year", %{"year" => params}, socket) do
     {:noreply,
      assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
+  end
+
+  def handle_event("generate_calendar", %{"id" => id}, socket) do
+    scope = socket.assigns.scope
+
+    with true <- Permissions.admin?(scope),
+         {:ok, year} <- Organization.get_academic_year(id),
+         true <- year.workspace_id == scope.current_workspace.id,
+         :ok <- Organization.build_default_calendar(year) do
+      {:noreply, socket |> load_years() |> put_flash(:info, gettext("Calendrier généré."))}
+    else
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("create_year", %{"year" => params}, socket) do

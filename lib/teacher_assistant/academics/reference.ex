@@ -57,6 +57,12 @@ defmodule TeacherAssistant.Academics.Reference do
   """
   def default_calendar_preset(%Date{} = start_date, %Date{} = end_date) do
     total_days = Date.diff(end_date, start_date) + 1
+
+    if total_days < 6 do
+      raise ArgumentError,
+            "an academic year needs at least 6 days for six séquences, got #{total_days}"
+    end
+
     total_weight = Enum.sum(@sequence_weights)
 
     {sequences, _next_start} =
@@ -91,7 +97,7 @@ defmodule TeacherAssistant.Academics.Reference do
     %{terms: terms}
   end
 
-  @doc "The 2025-2026 reference calendar (`default_calendar_preset/2` on the official year)."
+  @doc "`default_calendar_preset/2` spread over the 2025-2026 reference year (proportional, not the official dates)."
   def default_calendar_preset, do: default_calendar_preset(~D[2025-09-08], ~D[2026-07-31])
 
   @doc "Standard Cameroonian bell schedule: 8 lessons + mid-morning/lunch breaks (docs/domain)."

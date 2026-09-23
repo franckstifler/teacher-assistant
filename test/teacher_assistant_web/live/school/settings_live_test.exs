@@ -53,6 +53,25 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert length(Organization.list_sequences(year)) == 6
   end
 
+  test "an active year without a calendar offers to generate it", %{conn: conn, school: school} do
+    {:ok, bare} =
+      Organization.create_academic_year(school, %{
+        name: "2031-2032",
+        start_date: ~D[2031-09-01],
+        end_date: ~D[2032-06-26],
+        active: true
+      })
+
+    # The active year needs a class or the setup gate sends us to the wizard.
+    {:ok, _} = Enrollment.create_class_group(school, bare, %{label: "6e Z", level: "6ème"})
+
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+    assert has_element?(view, "#generate-calendar-#{bare.id}")
+    view |> element("#generate-calendar-#{bare.id}") |> render_click()
+    assert length(Organization.list_sequences(bare)) == 6
+    assert has_element?(view, "#year-calendar-#{bare.id}")
+  end
+
   test "settings lists the active year's séquences", %{conn: conn, school: school} do
     year = Organization.current_academic_year(school)
     {:ok, view, _} = live(conn, ~p"/school/settings")

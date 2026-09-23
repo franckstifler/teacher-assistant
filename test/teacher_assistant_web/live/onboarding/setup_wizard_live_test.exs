@@ -112,6 +112,22 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     assert TeacherAssistant.Attendance.list_periods(ws) != []
   end
 
+  test "a year whose end precedes its start is refused and the wizard stays on the year step", %{
+    conn: conn,
+    ws: ws
+  } do
+    {:ok, view, _} = live(conn, ~p"/school/setup")
+
+    view
+    |> form("#year-form", %{
+      "year" => %{"name" => "Bad", "start_date" => "2026-09-01", "end_date" => "2025-07-05"}
+    })
+    |> render_submit()
+
+    assert TeacherAssistant.Organization.current_academic_year(ws) == nil
+    assert has_element?(view, "#year-form")
+  end
+
   describe "classes step" do
     setup %{conn: conn, ws: ws} do
       {:ok, view, _} = live(conn, ~p"/school/setup")
