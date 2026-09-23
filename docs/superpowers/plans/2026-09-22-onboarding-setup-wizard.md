@@ -34,6 +34,8 @@ Inside `Layouts.app`, a centered container with a 4-step progress header above a
 
 `wizard_progress/1` renders four labelled markers (Identity · Academic year · Classes · Invite team); a step is `:done` (check), `:current` (accent), or `:upcoming` (muted). Numbers use `.ta-num`, labels `.ta-eyebrow`. Keep it a simple flex row with a connecting hairline (`border-base-300`); no external component required.
 
+**Mockup fidelity (see `.superpowers/sdd/2026-09-22-onboarding-setup-wizard/mockup-layout-notes.md`):** the `Onboarding` mockup uses a **two-column** layout — left: the step's form card; right: a persistent **"Récapitulatif" checklist aside** (one row per domain: Identité/Année/Classes/Équipe(/Vérification), done-vs-todo) plus a dashed **"Bon à savoir" tip** card. Task 1 built a single-column scaffold; **Task 7** upgrades the shell to this two-column form-card + Récapitulatif aside (in Tableau tokens). The functional step tasks (3–5) build the left-column form-card content; per-step field/copy structure follows the mockup notes.
+
 ## File Structure
 
 **Create**
@@ -378,6 +380,25 @@ end
 - [ ] **Step 5: Commit** — `refactor: drop unreachable dashboard setup gates (wizard owns setup)`
 
 ---
+
+## Task 7: Mockup layout — two-column shell + Récapitulatif aside
+
+**Files:**
+- Modify: `lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex`
+- Test: `test/teacher_assistant_web/live/onboarding/setup_wizard_live_test.exs`
+
+**Interfaces:**
+- Consumes: the four data signals (`scope.current_academic_year`, `Enrollment.list_class_groups/2`, `Accounts.fetch_school_profile/1`, staff count / pending invites) and `scope.school_verification_status`.
+- Produces: the wizard render wrapped in a two-column grid — left = the current step's form card (the panels from Tasks 3–5, unchanged in content), right = a persistent `recap_aside/1` (Récapitulatif checklist: Identité/Année/Classes/Équipe/Vérification with done/todo state) + a "Bon à savoir" tip card.
+
+**Reference:** `.superpowers/sdd/2026-09-22-onboarding-setup-wizard/mockup-layout-notes.md` for the aside's rows, copy, and arrangement. Render in Tableau tokens (`.ta-board`/`.ta-leaf`/`.ta-eyebrow`), NOT the mockup's paper palette. Keep it responsive: two columns on `lg`, single column (aside below) on mobile.
+
+- [ ] **Step 1: Write the failing test** — assert the wizard renders the Récapitulatif aside with the four checklist rows and their done/todo state for a given data setup (e.g. year present → Année done; no classes → Classes todo).
+- [ ] **Step 2: Run it, verify it fails.**
+- [ ] **Step 3: Implement `recap_aside/1`** — the checklist card (rows derived from the same signals `setup_complete?`/the dashboard checklist use; `MembershipStatus`/label not needed here) + the "Bon à savoir" tip card.
+- [ ] **Step 4: Wrap the render** — replace the single-column `#setup-wizard` container with a `lg:grid-cols-[minmax(0,1fr)_18rem]` grid: progress header spans the top, left column holds the `.ta-board` step panel, right column holds `recap_aside/1`. Panels' inner content is unchanged.
+- [ ] **Step 5: Run tests, verify pass;** then `mix test`.
+- [ ] **Step 6: Commit** — `feat: wizard two-column layout + Récapitulatif aside (mockup)`
 
 ## Self-review notes
 
