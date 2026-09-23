@@ -41,9 +41,4 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
 
     assert Attendance.list_periods(other_school) != []
   end
-
-  test "list_periods returns [] for a workspace without periods" do
-    ws = TeacherFixtures.workspace_fixture()
-    assert Attendance.list_periods(ws) == []
-  end
 end

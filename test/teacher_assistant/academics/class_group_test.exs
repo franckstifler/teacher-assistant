@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.ClassGroupTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -35,7 +35,7 @@ defmodule TeacherAssistant.Academics.ClassGroupTest do
 
   test "fetch_owned_class_group refuses another workspace's group", %{ws: ws, year: year} do
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    other = TeacherFixtures.workspace_fixture()
+    %{workspace: other} = TeacherFixtures.school_fixture()
     assert {:error, :not_found} = Enrollment.fetch_owned_class_group(cg.id, other)
     assert {:ok, %{id: id}} = Enrollment.fetch_owned_class_group(cg.id, ws)
     assert id == cg.id

@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.CalendarTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -38,7 +38,7 @@ defmodule TeacherAssistant.Academics.CalendarTemplateTest do
   alias TeacherAssistant.TeacherFixtures
 
   defp year_fixture(start_date, end_date) do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -88,7 +88,7 @@ defmodule TeacherAssistant.Academics.CalendarTemplateTest do
   end
 
   test "an academic year whose end precedes its start is rejected" do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     assert {:error, %Ash.Error.Invalid{}} =
              Organization.create_academic_year(ws, %{

@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.AcademicYearTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
     %{ws: ws}
   end
 

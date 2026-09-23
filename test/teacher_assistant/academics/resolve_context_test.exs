@@ -1,37 +1,27 @@
 defmodule TeacherAssistant.Academics.ResolveContextTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
   alias TeacherAssistant.Curriculum
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, maths} =
-      Curriculum.create_teaching_context(ws, year, %{
+    maths =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "Maths",
         level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
-    {:ok, pct} =
-      Curriculum.create_teaching_context(ws, year, %{
+    pct =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "PCT",
         level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
-    %{ws: ws, year: year, maths: maths, pct: pct}
+    %{ws: ws, head: head, year: year, maths: maths, pct: pct}
   end
 
   test "returns the requested context when valid", %{ws: ws, year: year, pct: pct} do
@@ -47,22 +37,14 @@ defmodule TeacherAssistant.Academics.ResolveContextTest do
     assert Curriculum.resolve_current_context(ws, year, nil).id == maths.id
     assert Curriculum.resolve_current_context(ws, year, Ecto.UUID.generate()).id == maths.id
 
-    other = TeacherFixtures.workspace_fixture()
+    %{workspace: other, head_user: other_head, year: oyear} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, oyear} =
-      Organization.create_academic_year(other, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, foreign} =
-      Curriculum.create_teaching_context(other, oyear, %{
+    foreign =
+      TeacherFixtures.assigned_context_fixture(other, oyear, %{
         subject: "Maths",
         level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: other_head
       })
 
     assert Curriculum.resolve_current_context(ws, year, foreign.id).id == maths.id
@@ -70,15 +52,7 @@ defmodule TeacherAssistant.Academics.ResolveContextTest do
 
   test "returns nil when there is no active year or no contexts", %{ws: ws} do
     assert Curriculum.resolve_current_context(ws, nil, nil) == nil
-    empty = TeacherFixtures.workspace_fixture()
-
-    {:ok, y} =
-      Organization.create_academic_year(empty, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
+    %{workspace: empty, year: y} = TeacherFixtures.setup_complete_school_fixture()
 
     assert Curriculum.resolve_current_context(empty, y, nil) == nil
   end

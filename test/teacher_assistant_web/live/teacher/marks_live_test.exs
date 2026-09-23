@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
-  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
@@ -120,24 +119,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
     assert has_element?(view, "#mark-input-#{s1.id}[phx-debounce]")
-  end
-
-  test "context without class group redirects to roster", %{conn: conn, ws: ws, actor: head} do
-    year = Organization.current_academic_year(ws)
-
-    {:ok, ctx2} =
-      Curriculum.create_teaching_context(ws, year, %{
-        subject: "PCT",
-        level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4,
-        teacher_user_id: head.id
-      })
-
-    assert {:error, {:live_redirect, %{to: to}}} =
-             live(conn, ~p"/teacher/contexts/#{ctx2.id}/marks")
-
-    assert to =~ "/roster"
   end
 
   test "unknown teaching context redirects to /school", %{conn: conn} do

@@ -372,13 +372,11 @@ defmodule TeacherAssistant.Curriculum do
   def list_units_for_scope(%TeacherAssistant.Scope{
         current_workspace: ws,
         current_academic_year: year,
-        current_workspace_type: type,
         current_user: user
       }) do
     cond do
       is_nil(ws) or is_nil(year) -> []
-      type == :school -> list_units_for_user(ws, year, user)
-      true -> Enum.map(list_teaching_contexts(ws, year), &{:solo, &1})
+      true -> list_units_for_user(ws, year, user)
     end
   end
 
@@ -579,21 +577,10 @@ defmodule TeacherAssistant.Curriculum do
 
   # --- Teaching contexts ----------------------------------------------------
 
-  def create_teaching_context(%Workspace{} = ws, %AcademicYear{} = year, attrs) do
-    attrs = attrs |> Map.put(:workspace_id, ws.id) |> Map.put(:academic_year_id, year.id)
-    TeachingContext |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
-  end
-
   def update_teaching_context(id, %Workspace{} = ws, attrs) do
     with {:ok, ctx} <- fetch_owned_teaching_context(id, ws) do
       ctx |> Ash.Changeset.for_update(:update, attrs) |> Ash.update()
     end
-  end
-
-  def list_teaching_contexts(%Workspace{id: ws_id}, %AcademicYear{id: year_id}) do
-    TeachingContext
-    |> Ash.Query.for_read(:for_workspace_year, %{workspace_id: ws_id, academic_year_id: year_id})
-    |> Ash.read!()
   end
 
   def fetch_owned_teaching_context(id, %Workspace{id: ws_id}) do
@@ -653,13 +640,11 @@ defmodule TeacherAssistant.Curriculum do
   def list_contexts_for_scope(%Scope{
         current_workspace: ws,
         current_academic_year: year,
-        current_workspace_type: type,
         current_user: user
       }) do
     cond do
       is_nil(ws) or is_nil(year) -> []
-      type == :school -> list_assignments_for_user(ws, year, user)
-      true -> list_teaching_contexts(ws, year)
+      true -> list_assignments_for_user(ws, year, user)
     end
   end
 
@@ -697,8 +682,15 @@ defmodule TeacherAssistant.Curriculum do
   """
   def resolve_current_context(_ws, nil, _context_id), do: nil
 
-  def resolve_current_context(%Workspace{} = ws, %AcademicYear{} = year, context_id) do
-    contexts = list_teaching_contexts(ws, year)
+  def resolve_current_context(%Workspace{id: ws_id}, %AcademicYear{id: year_id}, context_id) do
+    contexts =
+      TeachingContext
+      |> Ash.Query.for_read(:for_workspace_year, %{
+        workspace_id: ws_id,
+        academic_year_id: year_id
+      })
+      |> Ash.read!()
+
     Enum.find(contexts, fn c -> c.id == context_id end) || List.first(contexts)
   end
 

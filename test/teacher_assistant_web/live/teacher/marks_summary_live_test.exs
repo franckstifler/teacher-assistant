@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
-  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
@@ -115,24 +114,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert row =~ "Awa"
     assert row =~ "14"
     assert row =~ "Bien"
-  end
-
-  test "context without class group redirects to roster", %{conn: conn, ws: ws, actor: head} do
-    year = Organization.current_academic_year(ws)
-
-    {:ok, ctx_no_roster} =
-      Curriculum.create_teaching_context(ws, year, %{
-        subject: "PCT",
-        level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4,
-        teacher_user_id: head.id
-      })
-
-    assert {:error, {:live_redirect, %{to: to}}} =
-             live(conn, ~p"/teacher/contexts/#{ctx_no_roster.id}/marks/summary")
-
-    assert to =~ "/roster"
   end
 
   test "unknown teaching context redirects to setup", %{conn: conn} do

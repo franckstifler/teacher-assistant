@@ -1,27 +1,17 @@
 defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    user = TeacherFixtures.user_fixture()
-    ws = Organization.ensure_personal_workspace!(user)
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
+    ctx =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "Maths",
         level: "6ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
     %{ws: ws, ctx: ctx}
@@ -116,22 +106,14 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   end
 
   test "rejects a teaching context owned by another workspace", %{ws: ws} do
-    other_ws = Organization.ensure_personal_workspace!(TeacherFixtures.user_fixture())
+    %{workspace: other_ws, head_user: other_head, year: other_year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, other_year} =
-      Organization.create_academic_year(other_ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, other_ctx} =
-      Curriculum.create_teaching_context(other_ws, other_year, %{
+    other_ctx =
+      TeacherFixtures.assigned_context_fixture(other_ws, other_year, %{
         subject: "Physics",
         level: "6ème",
-        subsystem: :francophone,
-        weekly_hours: 3
+        teacher: other_head
       })
 
     assert {:error, :not_found} =

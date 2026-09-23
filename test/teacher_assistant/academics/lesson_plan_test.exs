@@ -2,31 +2,22 @@ defmodule TeacherAssistant.Academics.LessonPlanTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    user = TeacherFixtures.user_fixture()
-    ws = Organization.ensure_personal_workspace!(user)
-
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
-        subject: "Maths",
-        level: "6ème",
-        subsystem: :francophone,
-        weekly_hours: 4
-      })
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, ctx} = Curriculum.link_class_group(ctx, cg)
+
+    ctx =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
+        subject: "Maths",
+        level: "6ème",
+        teacher: head,
+        class_group: cg
+      })
+
     {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, _} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
     {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
@@ -49,11 +40,11 @@ defmodule TeacherAssistant.Academics.LessonPlanTest do
     assert ctx_bundle.entry.id == entry.id
     assert ctx_bundle.ctx.subject == "Maths"
     assert ctx_bundle.effectif == 2
-    assert ctx_bundle.year.name == "2025-2026"
+    assert ctx_bundle.year.name == "Année de référence"
   end
 
   test "fetch_owned_entry_with_context rejects a foreign entry (IDOR)", %{entry: entry} do
-    other = Organization.ensure_personal_workspace!(TeacherFixtures.user_fixture())
+    %{workspace: other} = TeacherFixtures.school_fixture()
     assert {:error, _} = Curriculum.fetch_owned_entry_with_context(entry.id, other)
   end
 

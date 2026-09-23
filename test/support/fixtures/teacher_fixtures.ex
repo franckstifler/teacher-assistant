@@ -14,8 +14,6 @@ defmodule TeacherAssistant.TeacherFixtures do
     user
   end
 
-  def workspace_fixture(user \\ user_fixture()), do: Organization.ensure_personal_workspace!(user)
-
   def admin_user_fixture(attrs \\ %{}) do
     user = user_fixture(attrs)
     {:ok, admin} = Accounts.promote_to_admin(user)
@@ -120,7 +118,7 @@ defmodule TeacherAssistant.TeacherFixtures do
 
   @doc """
   A teaching context on `workspace`/`year` for a real member teacher and a real
-  class group (replaces the personal `create_teaching_context`).
+  class group, via `Curriculum.assign_teacher/3`.
   """
   def assigned_context_fixture(workspace, year, attrs \\ %{}) do
     head =

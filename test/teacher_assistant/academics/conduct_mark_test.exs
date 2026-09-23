@@ -10,7 +10,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{

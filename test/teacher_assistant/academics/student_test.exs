@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.StudentTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -38,7 +38,7 @@ defmodule TeacherAssistant.Academics.StudentTest do
 
   test "fetch_owned_student refuses another workspace", %{ws: ws, cg: cg} do
     {:ok, s} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    other = TeacherFixtures.workspace_fixture()
+    %{workspace: other} = TeacherFixtures.school_fixture()
     assert {:error, :not_found} = Enrollment.fetch_owned_student(s.id, other)
     assert {:ok, %{id: id}} = Enrollment.fetch_owned_student(s.id, ws)
     assert id == s.id

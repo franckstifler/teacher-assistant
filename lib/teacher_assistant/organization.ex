@@ -67,38 +67,6 @@ defmodule TeacherAssistant.Organization do
     |> Enum.map(& &1.workspace)
   end
 
-  # --- Personal workspace ---------------------------------------------------
-
-  @doc """
-  The current user's own (`:personal`) workspace, creating it on first use.
-  Idempotent per user (`Workspace`'s `unique_owner_user` identity).
-  """
-  def ensure_personal_workspace!(%User{} = user) do
-    case personal_workspace_for_user(user) do
-      {:ok, ws} ->
-        ws
-
-      {:error, :not_found} ->
-        Workspace
-        |> Ash.Changeset.for_create(:create, %{
-          name: "Personal workspace",
-          kind: :personal,
-          owner_user_id: user.id
-        })
-        |> Ash.create!()
-    end
-  end
-
-  defp personal_workspace_for_user(%User{id: user_id}) do
-    Workspace
-    |> Ash.Query.for_read(:for_owner, %{owner_user_id: user_id})
-    |> Ash.read_one()
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      result -> result
-    end
-  end
-
   # --- Academic calendar (AcademicYear / Term / Sequence) -------------------
 
   def create_academic_year(%Workspace{} = ws, attrs) do

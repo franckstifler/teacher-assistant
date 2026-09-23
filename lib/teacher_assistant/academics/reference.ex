@@ -97,9 +97,6 @@ defmodule TeacherAssistant.Academics.Reference do
     %{terms: terms}
   end
 
-  @doc "`default_calendar_preset/2` spread over the 2025-2026 reference year (proportional, not the official dates)."
-  def default_calendar_preset, do: default_calendar_preset(~D[2025-09-08], ~D[2026-07-31])
-
   @doc "Standard Cameroonian bell schedule: 8 lessons + mid-morning/lunch breaks (docs/domain)."
   def default_periods_preset do
     [

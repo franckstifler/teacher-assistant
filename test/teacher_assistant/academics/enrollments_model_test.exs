@@ -5,8 +5,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsModelTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    user = TeacherFixtures.user_fixture()
-    ws = Organization.ensure_personal_workspace!(user)
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -77,7 +76,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsModelTest do
 
   test "fetch_owned_student scopes by workspace", %{cg: cg} do
     {:ok, s} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    other = Organization.ensure_personal_workspace!(TeacherFixtures.user_fixture())
+    %{workspace: other} = TeacherFixtures.school_fixture()
     assert {:ok, _} = Enrollment.fetch_owned_student(s.id, %{other | id: s.workspace_id})
     assert {:error, :not_found} = Enrollment.fetch_owned_student(s.id, other)
   end

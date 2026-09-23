@@ -5,8 +5,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    user = TeacherFixtures.user_fixture()
-    ws = Organization.ensure_personal_workspace!(user)
+    %{workspace: ws} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{

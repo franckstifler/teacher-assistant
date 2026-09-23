@@ -24,7 +24,7 @@ defmodule TeacherAssistant.Academics.ReferenceTest do
   end
 
   test "default calendar preset has 3 terms and 6 sequences" do
-    preset = Reference.default_calendar_preset()
+    preset = Reference.default_calendar_preset(~D[2025-09-08], ~D[2026-07-31])
     assert length(preset.terms) == 3
     seqs = Enum.flat_map(preset.terms, & &1.sequences)
     assert length(seqs) == 6

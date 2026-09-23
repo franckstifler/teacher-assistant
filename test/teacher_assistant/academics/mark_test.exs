@@ -4,28 +4,18 @@ defmodule TeacherAssistant.Academics.MarkTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
-  alias TeacherAssistant.Curriculum
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    Organization.build_default_calendar(year)
     seq = Organization.list_sequences(year) |> List.first()
 
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
+    ctx =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "Maths",
         level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})

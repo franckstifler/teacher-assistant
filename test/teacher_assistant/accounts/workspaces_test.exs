@@ -9,40 +9,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
   setup do
     user = TeacherFixtures.user_fixture()
-    ws = Organization.ensure_personal_workspace!(user)
-
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
-        subject: "Maths",
-        level: "3ème",
-        subsystem: :francophone,
-        weekly_hours: 4
-      })
-
-    %{user: user, ws: ws, ctx: ctx}
-  end
-
-  test "scope_for/3 resolves current_context from a valid id", %{user: user, ws: ws, ctx: ctx} do
-    {:ok, scope} = Workspaces.scope_for(user, ws.id, ctx.id)
-    assert scope.current_context.id == ctx.id
-  end
-
-  test "scope_for/3 defaults current_context when id is nil", %{user: user, ws: ws, ctx: ctx} do
-    {:ok, scope} = Workspaces.scope_for(user, ws.id, nil)
-    assert scope.current_context.id == ctx.id
-  end
-
-  test "scope_for/2 still works (context nil)", %{user: user, ws: ws} do
-    {:ok, scope} = Workspaces.scope_for(user, ws.id)
-    assert scope.current_workspace.id == ws.id
+    %{user: user}
   end
 
   test "scope_for resolves a school workspace via active membership", %{user: user} do
@@ -80,7 +47,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       %{user: user, school: school, year: year, cg: cg} = ctx
 
       {:ok, tc} =
-        TeacherAssistant.Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+        Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
 
       {:ok, scope} = Workspaces.scope_for(user, school.id)
       assert scope.current_academic_year.id == year.id
@@ -106,10 +73,10 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
       {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
-      {:ok, mine} = TeacherAssistant.Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+      {:ok, mine} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
 
       {:ok, theirs} =
-        TeacherAssistant.Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
+        Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
 
       {:ok, scope} = Workspaces.scope_for(user, school.id, theirs.id)
       assert scope.current_context.id == mine.id

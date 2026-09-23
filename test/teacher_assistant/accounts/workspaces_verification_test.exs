@@ -30,12 +30,4 @@ defmodule TeacherAssistant.Accounts.WorkspacesVerificationTest do
     assert scope2.school_verification_status == :verified
     assert Scope.school_verified?(scope2)
   end
-
-  test "personal scope has no verification" do
-    user = TeacherFixtures.user_fixture()
-    ws = TeacherAssistant.Organization.ensure_personal_workspace!(user)
-    {:ok, scope} = Workspaces.scope_for(user, ws.id)
-    assert scope.school_verification_status == nil
-    refute Scope.school_verified?(scope)
-  end
 end

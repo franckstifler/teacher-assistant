@@ -10,13 +10,6 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     repo TeacherAssistant.Repo
 
     custom_indexes do
-      index [:workspace_id, :academic_year_id, :subject, :level, :serie],
-        unique: true,
-        nulls_distinct: false,
-        where: "teacher_user_id IS NULL",
-        name: "teaching_contexts_unique_personal_context",
-        message: "a context for this subject and level already exists"
-
       index [:workspace_id, :academic_year_id, :class_group_id, :subject],
         unique: true,
         where: "teacher_user_id IS NOT NULL",
@@ -71,7 +64,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     end
 
     # Every context of a workspace in an academic year, subject-sorted. Backs
-    # `Curriculum.list_teaching_contexts/2`.
+    # `Curriculum.resolve_current_context/3`.
     read :for_workspace_year do
       argument :workspace_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false

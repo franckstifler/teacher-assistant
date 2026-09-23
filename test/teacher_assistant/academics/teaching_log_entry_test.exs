@@ -1,26 +1,17 @@
 defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    ws = TeacherFixtures.workspace_fixture()
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
+    ctx =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "Maths",
         level: "6ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
     {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})

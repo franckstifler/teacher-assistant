@@ -1,27 +1,17 @@
 defmodule TeacherAssistant.Academics.LessonStepTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    user = TeacherFixtures.user_fixture()
-    ws = Organization.ensure_personal_workspace!(user)
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, year} =
-      Organization.create_academic_year(ws, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, ctx} =
-      Curriculum.create_teaching_context(ws, year, %{
+    ctx =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "Maths",
         level: "6ème",
-        subsystem: :francophone,
-        weekly_hours: 4
+        teacher: head
       })
 
     {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
@@ -36,7 +26,7 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
       })
 
     {:ok, lp} = Curriculum.ensure_lesson_plan(entry, ctx)
-    %{ws: ws, lp: lp}
+    %{ws: ws, head: head, year: year, lp: lp}
   end
 
   test "add appends steps in order", %{lp: lp} do
@@ -72,17 +62,19 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
     assert Curriculum.list_lesson_steps!(lp.id) == []
   end
 
-  test "fetch_owned_lesson_step rejects a step from another plan", %{lp: lp, ws: ws} do
+  test "fetch_owned_lesson_step rejects a step from another plan", %{
+    lp: lp,
+    ws: ws,
+    head: head,
+    year: year
+  } do
     {:ok, s} = Curriculum.add_lesson_step(lp, %{etape: "X"})
 
-    {:ok, year} = {:ok, Organization.current_academic_year(ws)}
-
-    {:ok, ctx2} =
-      Curriculum.create_teaching_context(ws, year, %{
+    ctx2 =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
         subject: "PCT",
         level: "6ème",
-        subsystem: :francophone,
-        weekly_hours: 2
+        teacher: head
       })
 
     {:ok, plan2} = Curriculum.create_progression_plan(ctx2, %{title: "P2"})
