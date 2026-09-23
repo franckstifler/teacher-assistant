@@ -36,6 +36,7 @@ defmodule TeacherAssistant.Assessment do
       attrs
       |> Map.put(:teaching_context_id, ctx.id)
       |> Map.put(:sequence_id, seq_id)
+      |> Map.put(:workspace_id, ctx.workspace_id)
 
     Assessment |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
   end

@@ -8,20 +8,33 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
   postgres do
     table "progression_modules"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :progression_plan, index?: true
+      reference :sequence, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:title, :position, :progression_plan_id, :credit_hours, :sequence_id],
+      create: [
+        :title,
+        :position,
+        :progression_plan_id,
+        :credit_hours,
+        :sequence_id,
+        :workspace_id
+      ],
       update: [:title, :position, :credit_hours, :sequence_id]
     ]
 
     # System-only: creates the undeletable default bucket. `default?` is never
     # publicly accepted, so a teacher can never mint a second bucket.
     create :create_default_bucket do
-      accept [:title, :position, :progression_plan_id]
+      accept [:title, :position, :progression_plan_id, :workspace_id]
       change set_attribute(:default?, true)
     end
 
@@ -77,6 +90,12 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     belongs_to :sequence, TeacherAssistant.Academics.Sequence do
       source_attribute :sequence_id
       allow_nil? true
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
       public? true
     end
   end

@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Academics.Subject do
   postgres do
     table "subjects"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do

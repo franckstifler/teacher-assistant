@@ -9,13 +9,19 @@ defmodule TeacherAssistant.Academics.Mark do
   postgres do
     table "marks"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :assessment, index?: true
+      reference :student, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:score, :assessment_id, :student_id],
+      create: [:score, :assessment_id, :student_id, :workspace_id],
       update: [:score]
     ]
 
@@ -104,6 +110,12 @@ defmodule TeacherAssistant.Academics.Mark do
       allow_nil? false
       public? true
     end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
+      public? true
+    end
   end
 
   identities do
@@ -123,6 +135,8 @@ defmodule TeacherAssistant.Academics.Mark do
       |> Ash.read!()
       |> Map.new(fn mark -> {mark.student_id, mark} end)
 
+    %{workspace_id: workspace_id} = Ash.get!(TeacherAssistant.Academics.Assessment, assessment_id)
+
     Enum.reduce_while(entries, {:ok, []}, fn entry, {:ok, acc} ->
       result =
         case Map.get(existing, entry.student_id) do
@@ -131,7 +145,8 @@ defmodule TeacherAssistant.Academics.Mark do
             |> Ash.Changeset.for_create(:create, %{
               assessment_id: assessment_id,
               student_id: entry.student_id,
-              score: Map.get(entry, :score)
+              score: Map.get(entry, :score),
+              workspace_id: workspace_id
             })
             |> Ash.create(return_notifications?: true)
 

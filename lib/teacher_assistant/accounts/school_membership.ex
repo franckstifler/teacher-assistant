@@ -8,6 +8,11 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
   postgres do
     table "school_memberships"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+      reference :user, index?: true
+    end
   end
 
   actions do

@@ -107,7 +107,8 @@ defmodule TeacherAssistant.Organization do
         Term
         |> Ash.Changeset.for_create(:create, %{
           position: term_spec.position,
-          academic_year_id: year.id
+          academic_year_id: year.id,
+          workspace_id: year.workspace_id
         })
         |> Ash.create()
 
@@ -115,11 +116,10 @@ defmodule TeacherAssistant.Organization do
         Sequence
         |> Ash.Changeset.for_create(
           :create,
-          Map.put(
-            Map.take(s, [:number, :position_in_term, :start_date, :end_date, :integration_week]),
-            :term_id,
-            term.id
-          )
+          s
+          |> Map.take([:number, :position_in_term, :start_date, :end_date, :integration_week])
+          |> Map.put(:term_id, term.id)
+          |> Map.put(:workspace_id, term.workspace_id)
         )
         |> Ash.create!()
       end)

@@ -8,10 +8,20 @@ defmodule TeacherAssistant.Academics.Term do
   postgres do
     table "terms"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :academic_year, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
-    defaults [:read, :destroy, create: [:position, :academic_year_id], update: [:position]]
+    defaults [
+      :read,
+      :destroy,
+      create: [:position, :academic_year_id, :workspace_id],
+      update: [:position]
+    ]
 
     read :for_academic_year do
       argument :academic_year_id, :uuid, allow_nil?: false
@@ -35,6 +45,12 @@ defmodule TeacherAssistant.Academics.Term do
   relationships do
     belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear do
       source_attribute :academic_year_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

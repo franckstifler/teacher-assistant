@@ -24,8 +24,10 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     repo TeacherAssistant.Repo
 
     references do
-      reference :enrollment, on_delete: :delete
-      reference :period, on_delete: :delete
+      reference :enrollment, on_delete: :delete, index?: true
+      reference :period, on_delete: :delete, index?: true
+      reference :teaching_context, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 
@@ -217,7 +219,6 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     attribute :justified, :boolean, allow_nil?: false, default: false, public?: true
     attribute :justification_note, :string, allow_nil?: true, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
-    attribute :workspace_id, :uuid, allow_nil?: false, public?: true
 
     timestamps()
   end
@@ -238,6 +239,12 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     belongs_to :teaching_context, TeacherAssistant.Academics.TeachingContext do
       source_attribute :teaching_context_id
       allow_nil? true
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
       public? true
     end
   end

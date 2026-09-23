@@ -8,6 +8,13 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
   postgres do
     table "progression_entries"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :progression_plan, index?: true
+      reference :sequence, index?: true
+      reference :progression_module, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
@@ -26,7 +33,8 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
         :competence_visee,
         :progression_plan_id,
         :sequence_id,
-        :completed?
+        :completed?,
+        :workspace_id
       ],
       update: [
         :progression_module_id,
@@ -111,6 +119,12 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
 
     belongs_to :progression_module, TeacherAssistant.Academics.ProgressionModule do
       source_attribute :progression_module_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

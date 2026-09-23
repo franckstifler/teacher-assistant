@@ -10,7 +10,10 @@ defmodule TeacherAssistant.Academics.Enrollment do
     repo TeacherAssistant.Repo
 
     references do
-      reference :student, on_delete: :delete
+      reference :student, on_delete: :delete, index?: true
+      reference :class_group, index?: true
+      reference :academic_year, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 

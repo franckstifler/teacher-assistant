@@ -14,13 +14,27 @@ defmodule TeacherAssistant.Academics.Assessment do
   postgres do
     table "assessments"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :teaching_context, index?: true
+      reference :sequence, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:label, :weight, :max_score, :given_on, :teaching_context_id, :sequence_id],
+      create: [
+        :label,
+        :weight,
+        :max_score,
+        :given_on,
+        :teaching_context_id,
+        :sequence_id,
+        :workspace_id
+      ],
       update: [:label, :weight, :max_score, :given_on]
     ]
 
@@ -129,6 +143,12 @@ defmodule TeacherAssistant.Academics.Assessment do
       public? true
     end
 
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
+      public? true
+    end
+
     has_many :marks, TeacherAssistant.Academics.Mark
   end
 
@@ -211,7 +231,8 @@ defmodule TeacherAssistant.Academics.Assessment do
     |> Ash.Changeset.for_create(:create, %{
       label: label,
       teaching_context_id: ctx.id,
-      sequence_id: seq.id
+      sequence_id: seq.id,
+      workspace_id: ctx.workspace_id
     })
     |> Ash.create()
   end

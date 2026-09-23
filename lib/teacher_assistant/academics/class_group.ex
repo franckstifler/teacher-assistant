@@ -10,7 +10,9 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     repo TeacherAssistant.Repo
 
     references do
-      reference :form_master, on_delete: :nilify
+      reference :form_master, on_delete: :nilify, index?: true
+      reference :academic_year, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 

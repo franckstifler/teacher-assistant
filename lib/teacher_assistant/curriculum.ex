@@ -535,7 +535,8 @@ defmodule TeacherAssistant.Curriculum do
       progression_entry_id: entry.id,
       titre: entry.lesson_title,
       competence_attendue: entry.competence_visee,
-      duration_minutes: duration
+      duration_minutes: duration,
+      workspace_id: entry.workspace_id
     }
 
     LessonPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
@@ -557,6 +558,7 @@ defmodule TeacherAssistant.Curriculum do
       attrs
       |> Map.put(:lesson_plan_id, lp.id)
       |> Map.put_new(:position, next)
+      |> Map.put(:workspace_id, lp.workspace_id)
 
     LessonStep |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
   end
@@ -737,7 +739,12 @@ defmodule TeacherAssistant.Curriculum do
           ProgressionModule
           |> Ash.Changeset.for_create(
             if(m.default?, do: :create_default_bucket, else: :create),
-            %{title: m.title, position: m.position, progression_plan_id: copy.id}
+            %{
+              title: m.title,
+              position: m.position,
+              progression_plan_id: copy.id,
+              workspace_id: copy.workspace_id
+            }
           )
           |> Ash.create()
 
@@ -767,7 +774,8 @@ defmodule TeacherAssistant.Curriculum do
             completed?: e.completed?,
             progression_plan_id: copy.id,
             progression_module_id: new_m.id,
-            sequence_id: e.sequence_id
+            sequence_id: e.sequence_id,
+            workspace_id: copy.workspace_id
           })
           |> Ash.create!()
         end
@@ -777,7 +785,7 @@ defmodule TeacherAssistant.Curriculum do
     end
   end
 
-  def ensure_default_module(%ProgressionPlan{id: plan_id}) do
+  def ensure_default_module(%ProgressionPlan{id: plan_id} = plan) do
     ProgressionModule
     |> Ash.Query.filter(progression_plan_id == ^plan_id and default? == true)
     |> Ash.read_one()
@@ -792,19 +800,24 @@ defmodule TeacherAssistant.Curriculum do
         |> Ash.Changeset.for_create(:create_default_bucket, %{
           title: "Général",
           position: pos,
-          progression_plan_id: plan_id
+          progression_plan_id: plan_id,
+          workspace_id: plan.workspace_id
         })
         |> Ash.create()
     end
   end
 
-  def create_module(%ProgressionPlan{id: plan_id}, attrs) do
+  def create_module(%ProgressionPlan{id: plan_id} = plan, attrs) do
     pos = module_count(plan_id) + 1
 
     ProgressionModule
     |> Ash.Changeset.for_create(
       :create,
-      Map.merge(attrs, %{position: pos, progression_plan_id: plan_id})
+      Map.merge(attrs, %{
+        position: pos,
+        progression_plan_id: plan_id,
+        workspace_id: plan.workspace_id
+      })
     )
     |> Ash.create()
   end
@@ -853,7 +866,12 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   def add_progression_entry(
-        %ProgressionModule{id: module_id, progression_plan_id: plan_id, sequence_id: module_seq},
+        %ProgressionModule{
+          id: module_id,
+          progression_plan_id: plan_id,
+          sequence_id: module_seq,
+          workspace_id: workspace_id
+        },
         attrs
       ) do
     pos = entry_count(module_id) + 1
@@ -864,6 +882,7 @@ defmodule TeacherAssistant.Curriculum do
       |> Map.put(:progression_module_id, module_id)
       |> Map.put(:position, pos)
       |> Map.put_new(:sequence_id, module_seq)
+      |> Map.put(:workspace_id, workspace_id)
 
     ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
   end

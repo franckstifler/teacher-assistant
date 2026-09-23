@@ -8,6 +8,11 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
   postgres do
     table "school_invitations"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+      reference :invited_by_user, index?: true
+    end
   end
 
   actions do

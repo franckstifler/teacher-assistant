@@ -8,6 +8,11 @@ defmodule TeacherAssistant.Academics.LessonPlan do
   postgres do
     table "lesson_plans"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :progression_entry, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
@@ -23,7 +28,8 @@ defmodule TeacherAssistant.Academics.LessonPlan do
         :situation_probleme,
         :objectifs,
         :supports,
-        :prerequis
+        :prerequis,
+        :workspace_id
       ],
       update: [
         :lesson_date,
@@ -72,6 +78,12 @@ defmodule TeacherAssistant.Academics.LessonPlan do
     end
 
     has_many :lesson_steps, TeacherAssistant.Academics.LessonStep
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
+      public? true
+    end
   end
 
   identities do

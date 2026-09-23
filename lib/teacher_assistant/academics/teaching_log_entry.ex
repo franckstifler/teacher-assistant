@@ -8,6 +8,11 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
   postgres do
     table "teaching_log_entries"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+      reference :progression_entry, index?: true
+    end
   end
 
   actions do

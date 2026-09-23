@@ -10,6 +10,10 @@ defmodule TeacherAssistant.Academics.AcademicYear do
   postgres do
     table "academic_years"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do

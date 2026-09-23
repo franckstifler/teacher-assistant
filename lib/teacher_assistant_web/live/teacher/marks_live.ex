@@ -44,7 +44,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:scores, existing_scores(assessment))
        |> assign(:unsaved, %{})
        |> assign(:sibling_scores, sibling_scores(ctx, seq))
-       |> assign(:new_assessment_form, solo_assessment_form(ctx.id, seq))}
+       |> assign(:new_assessment_form, solo_assessment_form(ctx, seq))}
     else
       # true => context owned but has no class group (go to the roster); anything else => not found / not owned
       true ->
@@ -208,16 +208,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # changes (see `handle_params/3`). Falls back to the plain scaffold when
   # there's no séquence yet; the toolbar form itself is only rendered when
   # `@seq` is present, so that scaffold is never actually submitted.
-  defp solo_assessment_form(_ctx_id, nil), do: assessment_form()
+  defp solo_assessment_form(_ctx, nil), do: assessment_form()
 
-  defp solo_assessment_form(ctx_id, seq) do
+  defp solo_assessment_form(ctx, seq) do
     TeacherAssistant.Academics.Assessment
     |> AshPhoenix.Form.for_create(:create,
       as: "assessment",
       prepare_source: fn changeset ->
         changeset
-        |> Ash.Changeset.change_attribute(:teaching_context_id, ctx_id)
+        |> Ash.Changeset.change_attribute(:teaching_context_id, ctx.id)
         |> Ash.Changeset.change_attribute(:sequence_id, seq.id)
+        |> Ash.Changeset.change_attribute(:workspace_id, ctx.workspace_id)
       end
     )
     |> to_form()
@@ -404,7 +405,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:unsaved, unsaved)
          |> assign(:scores, restore_scores(assessment, unsaved))
          |> assign(:sibling_scores, sibling_scores(socket.assigns.ctx, seq))
-         |> assign(:new_assessment_form, solo_assessment_form(socket.assigns.ctx.id, seq))}
+         |> assign(:new_assessment_form, solo_assessment_form(socket.assigns.ctx, seq))}
     end
   end
 

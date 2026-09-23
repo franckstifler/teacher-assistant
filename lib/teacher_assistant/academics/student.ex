@@ -16,6 +16,10 @@ defmodule TeacherAssistant.Academics.Student do
         name: "students_unique_matricule_index",
         message: "matricule already used in this workspace"
     end
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do

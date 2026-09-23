@@ -8,13 +8,26 @@ defmodule TeacherAssistant.Academics.Sequence do
   postgres do
     table "sequences"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :term, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:number, :position_in_term, :start_date, :end_date, :integration_week, :term_id],
+      create: [
+        :number,
+        :position_in_term,
+        :start_date,
+        :end_date,
+        :integration_week,
+        :term_id,
+        :workspace_id
+      ],
       update: [:number, :position_in_term, :start_date, :end_date, :integration_week]
     ]
 
@@ -44,6 +57,12 @@ defmodule TeacherAssistant.Academics.Sequence do
   relationships do
     belongs_to :term, TeacherAssistant.Academics.Term do
       source_attribute :term_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

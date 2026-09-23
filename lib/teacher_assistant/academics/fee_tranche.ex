@@ -10,7 +10,8 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     repo TeacherAssistant.Repo
 
     references do
-      reference :class_group, on_delete: :delete
+      reference :class_group, on_delete: :delete, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 
@@ -56,7 +57,6 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     attribute :amount, :integer, allow_nil?: false, public?: true
     attribute :due_date, :date, allow_nil?: false, public?: true
     attribute :position, :integer, allow_nil?: false, public?: true
-    attribute :workspace_id, :uuid, allow_nil?: false, public?: true
 
     timestamps()
   end
@@ -64,6 +64,12 @@ defmodule TeacherAssistant.Academics.FeeTranche do
   relationships do
     belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
       source_attribute :class_group_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

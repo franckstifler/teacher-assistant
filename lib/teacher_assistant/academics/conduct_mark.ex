@@ -10,8 +10,9 @@ defmodule TeacherAssistant.Academics.ConductMark do
     repo TeacherAssistant.Repo
 
     references do
-      reference :enrollment, on_delete: :delete
-      reference :sequence, on_delete: :delete
+      reference :enrollment, on_delete: :delete, index?: true
+      reference :sequence, on_delete: :delete, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 
@@ -63,7 +64,6 @@ defmodule TeacherAssistant.Academics.ConductMark do
 
     attribute :value, :decimal, allow_nil?: false, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
-    attribute :workspace_id, :uuid, allow_nil?: false, public?: true
 
     timestamps()
   end
@@ -77,6 +77,12 @@ defmodule TeacherAssistant.Academics.ConductMark do
 
     belongs_to :sequence, TeacherAssistant.Academics.Sequence do
       source_attribute :sequence_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

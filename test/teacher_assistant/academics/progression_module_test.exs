@@ -35,7 +35,8 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "M1",
         position: 1,
-        progression_plan_id: plan.id
+        progression_plan_id: plan.id,
+        workspace_id: plan.workspace_id
       })
       |> Ash.create(authorize?: false)
 

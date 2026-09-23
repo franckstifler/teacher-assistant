@@ -12,6 +12,12 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
   postgres do
     table "combined_courses"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :workspace, on_delete: :delete, index?: true
+      reference :academic_year, index?: true
+      reference :teacher, index?: true
+    end
   end
 
   actions do

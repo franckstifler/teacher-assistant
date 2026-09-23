@@ -10,8 +10,10 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     repo TeacherAssistant.Repo
 
     references do
-      reference :class_group, on_delete: :delete
-      reference :teaching_context, on_delete: :delete
+      reference :class_group, on_delete: :delete, index?: true
+      reference :teaching_context, on_delete: :delete, index?: true
+      reference :period, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 
@@ -167,8 +169,6 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
       allow_nil?: false,
       public?: true
 
-    attribute :workspace_id, :uuid, allow_nil?: false, public?: true
-
     timestamps()
   end
 
@@ -187,6 +187,12 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
     belongs_to :period, TeacherAssistant.Academics.Period do
       source_attribute :period_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

@@ -18,7 +18,11 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     end
 
     references do
-      reference :combined_course, on_delete: :nilify
+      reference :combined_course, on_delete: :nilify, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+      reference :academic_year, index?: true
+      reference :class_group, index?: true
+      reference :teacher, index?: true
     end
   end
 

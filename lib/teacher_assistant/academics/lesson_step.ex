@@ -10,6 +10,11 @@ defmodule TeacherAssistant.Academics.LessonStep do
   postgres do
     table "lesson_steps"
     repo TeacherAssistant.Repo
+
+    references do
+      reference :lesson_plan, index?: true
+      reference :workspace, on_delete: :delete, index?: true
+    end
   end
 
   actions do
@@ -23,7 +28,8 @@ defmodule TeacherAssistant.Academics.LessonStep do
         :duration_minutes,
         :contenus,
         :supports,
-        :activites
+        :activites,
+        :workspace_id
       ],
       update: [:position, :etape, :duration_minutes, :contenus, :supports, :activites]
     ]
@@ -106,6 +112,12 @@ defmodule TeacherAssistant.Academics.LessonStep do
   relationships do
     belongs_to :lesson_plan, TeacherAssistant.Academics.LessonPlan do
       source_attribute :lesson_plan_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
       allow_nil? false
       public? true
     end

@@ -14,7 +14,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     repo TeacherAssistant.Repo
 
     references do
-      reference :combined_course, on_delete: :nilify
+      reference :combined_course, on_delete: :nilify, index?: true
+      reference :teaching_context, index?: true
+      reference :academic_year, index?: true
+      reference :workspace, on_delete: :delete, index?: true
     end
   end
 
@@ -161,6 +164,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
                     |> Map.put(:progression_plan_id, plan.id)
                     |> Map.put(:progression_module_id, module.id)
                     |> Map.put(:position, entry_pos)
+                    |> Map.put(:workspace_id, plan.workspace_id)
 
                   case ProgressionEntry
                        |> Ash.Changeset.for_create(:create, entry_attrs)
@@ -320,7 +324,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     |> Ash.Changeset.for_create(:create_default_bucket, %{
       title: "Général",
       position: pos,
-      progression_plan_id: plan.id
+      progression_plan_id: plan.id,
+      workspace_id: plan.workspace_id
     })
     |> Ash.create()
   end
@@ -330,7 +335,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     |> Ash.Changeset.for_create(:create, %{
       title: title,
       position: pos,
-      progression_plan_id: plan.id
+      progression_plan_id: plan.id,
+      workspace_id: plan.workspace_id
     })
     |> Ash.create()
   end
