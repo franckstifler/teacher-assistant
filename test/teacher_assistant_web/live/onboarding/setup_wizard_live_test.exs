@@ -45,6 +45,28 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     assert html =~ "Académique" or html =~ "Année"
   end
 
+  describe "recap aside" do
+    test "fresh school: Identité done, Année/Classes/Équipe/Vérification todo", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/school/setup")
+
+      assert html =~ ~s(id="recap-identity" data-state="done")
+      assert html =~ ~s(id="recap-year" data-state="todo")
+      assert html =~ ~s(id="recap-classes" data-state="todo")
+      assert html =~ ~s(id="recap-team" data-state="todo")
+      assert html =~ ~s(id="recap-verification" data-state="todo")
+    end
+
+    test "setup-complete school: Année and Classes are done", %{conn: conn} do
+      %{workspace: ws, head_user: head} = setup_complete_school_fixture()
+      conn = conn |> log_in_user(head) |> put_session(:workspace_id, ws.id)
+
+      {:ok, _view, html} = live(conn, ~p"/school/setup")
+
+      assert html =~ ~s(id="recap-year" data-state="done")
+      assert html =~ ~s(id="recap-classes" data-state="done")
+    end
+  end
+
   test "creating the academic year seeds classes and advances to the classes step", %{
     conn: conn,
     ws: ws

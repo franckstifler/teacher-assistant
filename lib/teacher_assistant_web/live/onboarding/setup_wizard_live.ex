@@ -32,7 +32,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
        class_streams: class_streams_for(ws),
        class_form: class_form(),
        invite_form: invite_form(),
-       profile: fetch_profile(ws)
+       profile: fetch_profile(ws),
+       staff_count: ws |> Accounts.list_members() |> length()
      )
      |> assign_classes(year)
      |> assign_invitations()}
@@ -49,7 +50,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section id="setup-wizard" class="mx-auto max-w-3xl space-y-6">
+      <section id="setup-wizard" class="mx-auto max-w-5xl space-y-6">
         <.page_header
           eyebrow={gettext("Get started")}
           title={gettext("Set up your school")}
@@ -57,22 +58,134 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
         <.wizard_progress step={@step} />
 
-        <div class="ta-board space-y-5 p-5 sm:p-6">
-          <%= case @step do %>
-            <% :year -> %>
-              <.year_panel {assigns} />
-            <% :classes -> %>
-              <.classes_panel {assigns} />
-            <% :invite -> %>
-              <.invite_panel {assigns} />
-            <% _ -> %>
-              <.identity_panel {assigns} />
-          <% end %>
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <div class="ta-board space-y-5 p-5 sm:p-6">
+            <%= case @step do %>
+              <% :year -> %>
+                <.year_panel {assigns} />
+              <% :classes -> %>
+                <.classes_panel {assigns} />
+              <% :invite -> %>
+                <.invite_panel {assigns} />
+              <% _ -> %>
+                <.identity_panel {assigns} />
+            <% end %>
+          </div>
+
+          <.recap_aside
+            profile={@profile}
+            year={@year}
+            classes={@classes}
+            invitations={@invitations}
+            staff_count={@staff_count}
+            verification_status={@current_scope.school_verification_status}
+            tip={tip_for_step(@step)}
+          />
         </div>
       </section>
     </Layouts.app>
     """
   end
+
+  # Persistent right-column aside (mockup: Récapitulatif + "Bon à savoir" tip
+  # card) — the checklist rows mirror the SAME four signals
+  # `DashboardLive`'s `#setup-checklist` derives (profile / year / classes /
+  # staff), plus a fifth row for verification, which the dashboard shows as a
+  # separate callout rather than a checklist row. No data is invented: every
+  # row reads a real assign already computed in `mount/3` or the domain
+  # calls it wraps.
+  attr :profile, :any, required: true
+  attr :year, :any, required: true
+  attr :classes, :list, required: true
+  attr :invitations, :list, required: true
+  attr :staff_count, :integer, required: true
+  attr :verification_status, :atom, default: nil
+  attr :tip, :string, required: true
+
+  defp recap_aside(assigns) do
+    rows = [
+      {:identity, gettext("Identité"), assigns.profile != nil,
+       if(assigns.profile,
+         do: assigns.profile.short_name || gettext("à compléter"),
+         else: gettext("à remplir")
+       )},
+      {:year, gettext("Année scolaire"), assigns.year != nil,
+       if(assigns.year, do: assigns.year.name, else: "—")},
+      {:classes, gettext("Classes"), assigns.classes != [],
+       if(assigns.classes != [],
+         do:
+           ngettext("%{count} classe", "%{count} classes", length(assigns.classes),
+             count: length(assigns.classes)
+           ),
+         else: "—"
+       )},
+      {:team, gettext("Équipe"), assigns.invitations != [] or assigns.staff_count > 1,
+       ngettext("%{count} invitation", "%{count} invitations", length(assigns.invitations),
+         count: length(assigns.invitations)
+       )},
+      {:verification, gettext("Vérification"), assigns.verification_status == :verified,
+       if(assigns.verification_status == :verified,
+         do: gettext("vérifié"),
+         else: gettext("après envoi")
+       )}
+    ]
+
+    assigns = assign(assigns, :rows, rows)
+
+    ~H"""
+    <aside id="wizard-recap" class="space-y-4">
+      <div class="ta-leaf space-y-2">
+        <h2 class="ta-eyebrow">{gettext("Récapitulatif")}</h2>
+        <ul class="divide-y divide-base-300/70 text-sm">
+          <li
+            :for={{key, label, done?, value} <- @rows}
+            id={"recap-#{key}"}
+            data-state={if done?, do: "done", else: "todo"}
+            class="flex items-center justify-between gap-2 py-1.5 first:pt-0 last:pb-0"
+          >
+            <span class="flex items-center gap-2">
+              <.icon
+                name={if done?, do: "hero-check-circle", else: "hero-minus-circle"}
+                class={"size-4 shrink-0 " <> if(done?, do: "text-primary", else: "text-base-content/40")}
+              />
+              {label}
+            </span>
+            <span class="ta-num shrink-0 text-xs text-base-content/60">{value}</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="space-y-1 rounded-lg border border-dashed border-[color:var(--ta-rail-line)] p-4">
+        <h3 class="ta-eyebrow">{gettext("Bon à savoir")}</h3>
+        <p class="text-sm text-base-content/70">{@tip}</p>
+      </div>
+    </aside>
+    """
+  end
+
+  defp tip_for_step(:year),
+    do:
+      gettext(
+        "Les dates des séquences déterminent les fenêtres de saisie des notes et le calcul des bulletins. Elles restent modifiables toute l'année."
+      )
+
+  defp tip_for_step(:classes),
+    do:
+      gettext(
+        "Vous pourrez dédoubler une classe (2de A, 2de B…), changer les coefficients et importer vos listes d'élèves depuis les paramètres."
+      )
+
+  defp tip_for_step(:invite),
+    do:
+      gettext(
+        "Les enseignants n'ont accès qu'à leurs classes. Les censeurs voient la discipline et la saisie ; l'intendant voit les frais."
+      )
+
+  defp tip_for_step(_identity),
+    do:
+      gettext(
+        "Le nom doit être celui de l'arrêté d'ouverture. Vous pourrez ajouter le logo et le cachet plus tard, dans les paramètres."
+      )
 
   attr :step, :atom, required: true
 
