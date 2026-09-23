@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée des Périodes"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, user: user}
   end

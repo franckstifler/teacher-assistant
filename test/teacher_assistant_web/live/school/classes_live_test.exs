@@ -18,6 +18,12 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
         active: true
       })
 
+    # At least one class so the :require_school_setup gate lets these tests
+    # (which mostly exercise class management once setup is already done)
+    # reach /school/classes.
+    {:ok, _seed_cg} =
+      Enrollment.create_class_group(school, year, %{label: "Seed", level: "6ème"})
+
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, year: year, user: user}
   end
@@ -77,19 +83,27 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/classes")
     refute has_element?(view, "#class-form")
 
+    before_labels = school |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+
     render_hook(view, "create_class", %{"class_group" => %{"label" => "X", "level" => "6ème"}})
-    assert Enrollment.list_class_groups(school, year) == []
+
+    after_labels = school |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+    assert after_labels == before_labels
+    refute "X" in after_labels
   end
 
-  test "no active year shows the setup gate", %{conn: conn, actor: user} do
+  # These two tests used to exercise ClassesLive's own inline "no active
+  # year" empty state. The `:require_school_setup` on_mount gate now
+  # intercepts a school with no active year + class before this LiveView
+  # even mounts, redirecting to the wizard instead (regardless of member
+  # role) — so they now assert on that redirect.
+  test "no active year redirects to the setup wizard", %{conn: conn, actor: user} do
     {:ok, school2} = Organization.create_school(user, %{name: "Lycée SansAnnée"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school2.id)
-    {:ok, view, html} = live(conn, ~p"/school/classes")
-    assert html =~ "année" or html =~ "year"
-    assert has_element?(view, ~s(#school-classes a[href="/school/settings"]))
+    assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school/classes")
   end
 
-  test "a plain teacher member sees the no-year gate without a settings link", %{
+  test "a plain teacher member without an active year is also redirected to the setup wizard", %{
     conn: _conn,
     actor: head
   } do
@@ -107,8 +121,6 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
       |> Plug.Conn.put_session(:user_id, other.id)
       |> Plug.Conn.put_session(:workspace_id, school2.id)
 
-    {:ok, view, html} = live(conn, ~p"/school/classes")
-    assert html =~ "année" or html =~ "year"
-    refute has_element?(view, ~s(#school-classes a[href="/school/settings"]))
+    assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school/classes")
   end
 end

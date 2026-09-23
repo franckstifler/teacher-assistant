@@ -29,6 +29,15 @@ defmodule TeacherAssistant.Scope do
 
   def academic_year_ready?(_), do: false
 
+  def setup_complete?(%__MODULE__{current_workspace_type: :school} = scope) do
+    year = scope.current_academic_year
+
+    year != nil and
+      TeacherAssistant.Enrollment.list_class_groups(scope.current_workspace, year) != []
+  end
+
+  def setup_complete?(_), do: true
+
   defimpl Ash.Scope.ToOpts do
     def get_actor(%{current_user: current_user}), do: {:ok, current_user}
     def get_tenant(_), do: :error

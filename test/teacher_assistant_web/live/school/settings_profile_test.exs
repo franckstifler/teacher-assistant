@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
   alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Accounts.{SchoolMembership}
   alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -11,6 +12,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
   describe "with a school profile" do
     setup %{conn: conn, actor: user} do
       {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
+      TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
       conn = get(conn, ~p"/workspaces/select/#{school.id}")
       %{conn: conn, school: school}
     end
@@ -53,6 +55,20 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
           roles: [:head]
         })
         |> Ash.create(authorize?: false)
+
+      # This workspace has no SchoolProfile row (that's the point of this
+      # describe block), so `TeacherFixtures.complete_school_setup!/1` can't
+      # be used (it seeds classes from the profile's school-type template).
+      # Create the year + class directly to satisfy the setup-complete gate.
+      {:ok, year} =
+        Organization.create_academic_year(school, %{
+          name: "2025-2026",
+          start_date: ~D[2025-09-08],
+          end_date: ~D[2026-07-31],
+          active: true
+        })
+
+      {:ok, _cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
 
       conn =
         conn

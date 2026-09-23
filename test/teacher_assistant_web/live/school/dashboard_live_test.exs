@@ -7,6 +7,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   test "a member sees the school shell after selecting the school", %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Central"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#school-dashboard")
@@ -42,16 +43,20 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     assert html =~ "6e A" or html =~ "1"
   end
 
-  test "dashboard without a year prompts to create one", %{conn: conn, actor: user} do
+  # These two tests used to exercise DashboardLive's own inline "no active
+  # year" empty state. The `:require_school_setup` on_mount gate now
+  # intercepts a school with no active year + class before this LiveView
+  # even mounts, redirecting to the wizard instead — so they now assert on
+  # the gate's redirect, which is the current form of "prompts to create
+  # one" for an incomplete school (regardless of member role).
+  test "dashboard without a year redirects to the setup wizard", %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "École SansAnnée"})
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
-    {:ok, view, html} = live(conn, ~p"/school")
-    assert html =~ "année" or html =~ "year"
-    assert has_element?(view, ~s(#school-dashboard a[href="/school/settings"]))
+    assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school")
   end
 
-  test "a plain teacher member sees the no-year gate without a settings link", %{
+  test "a plain teacher member without an active year is also redirected to the setup wizard", %{
     conn: _conn,
     actor: head
   } do
@@ -69,9 +74,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       |> Plug.Conn.put_session(:user_id, other.id)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    {:ok, view, html} = live(conn, ~p"/school")
-    assert html =~ "année" or html =~ "year"
-    refute has_element?(view, ~s(#school-dashboard a[href="/school/settings"]))
+    assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school")
   end
 
   describe "Mes classes section" do
@@ -109,6 +112,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   describe "verification banner" do
     setup %{conn: conn, actor: head} do
       {:ok, school} = Organization.create_school(head, %{name: "Lycée Vérif"})
+      TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
       conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
       %{conn: conn, school: school, head: head}
     end
