@@ -74,7 +74,7 @@ defmodule TeacherAssistantWeb.Layouts do
         current_scope && TeacherAssistant.Accounts.Permissions.admin?(current_scope)
       )
       |> assign(:current_context, current_scope && current_scope.current_context)
-      |> assign(:current_path, assigns[:current_path] || "/teacher")
+      |> assign(:current_path, assigns[:current_path])
 
     ~H"""
     <%= if @current_user do %>
@@ -180,56 +180,13 @@ defmodule TeacherAssistantWeb.Layouts do
                   id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
                 >
                   <.link href={
-                    ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path}"
+                    ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path || "/school"}"
                   }>
                     {TeacherAssistant.Curriculum.unit_label(u)}
                   </.link>
                 </li>
               </ul>
             </div>
-
-            <.link
-              :if={@units == [] && !@in_school?}
-              id="class-switcher"
-              navigate={"/teacher/setup"}
-              class="flex w-full items-center gap-2 rounded-lg border border-dashed border-[color:var(--ta-rail-line)] px-2.5 py-2 text-sm font-semibold text-[color:var(--ta-rail-muted)]"
-            >
-              <.icon name="hero-plus" class="size-4 flex-none" />
-              {gettext("Set up a class")}
-            </.link>
-
-            <nav
-              :if={!@in_school?}
-              id="main-nav"
-              class="flex flex-col gap-0.5"
-              aria-label={gettext("Main navigation")}
-            >
-              <p class="ta-rail__label px-1.5 pb-1">{gettext("Teaching")}</p>
-              <.rail_link
-                id="nav-dashboard"
-                href="/teacher"
-                icon="hero-squares-2x2"
-                current_path={@current_path}
-              >
-                {gettext("Dashboard")}
-              </.rail_link>
-              <.rail_link
-                id="nav-log"
-                href="/teacher/log"
-                icon="hero-pencil-square"
-                current_path={@current_path}
-              >
-                {gettext("Log")}
-              </.rail_link>
-              <.rail_link
-                id="nav-import"
-                href="/teacher/import"
-                icon="hero-arrow-up-tray"
-                current_path={@current_path}
-              >
-                {gettext("Import")}
-              </.rail_link>
-            </nav>
 
             <nav
               :if={@in_school?}

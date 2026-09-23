@@ -143,4 +143,15 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     conn = Phoenix.ConnTest.build_conn() |> log_in_user(user)
     assert {:error, {:live_redirect, %{to: "/schools/new"}}} = live(conn, ~p"/school")
   end
+
+  test "the shell shows no personal navigation", %{conn: conn, actor: user} do
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée Nav"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    {:ok, view, _html} = live(conn, ~p"/school")
+    assert has_element?(view, "#school-nav")
+    refute has_element?(view, "#main-nav")
+    refute has_element?(view, "a[href='/teacher/setup']")
+    refute has_element?(view, "a[href='/teacher']")
+  end
 end
