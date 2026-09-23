@@ -121,6 +121,7 @@ defmodule TeacherAssistantWeb.Router do
         {TeacherAssistantWeb.LiveUserAuth, :require_school_setup}
       ] do
       live "/school", School.DashboardLive, :index
+      live "/school/courses", School.CoursesLive, :index
       live "/school/classes", School.ClassesLive, :index
       live "/school/classes/:id", School.ClassLive, :show
       live "/school/classes/:id/results", School.ResultsLive, :index

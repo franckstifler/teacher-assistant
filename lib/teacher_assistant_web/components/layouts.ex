@@ -204,6 +204,15 @@ defmodule TeacherAssistantWeb.Layouts do
                 {gettext("Dashboard")}
               </.rail_link>
               <.rail_link
+                :if={@units != []}
+                id="nav-school-courses"
+                href={~p"/school/courses"}
+                icon="hero-academic-cap"
+                current_path={@current_path}
+              >
+                {gettext("Mes cours")}
+              </.rail_link>
+              <.rail_link
                 id="nav-school-classes"
                 href={~p"/school/classes"}
                 icon="hero-rectangle-group"

@@ -5,25 +5,47 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Accounts.Permissions
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if scope.current_workspace_type == :school do
-      {:ok,
-       socket
-       |> assign(:scope, scope)
-       |> load_stats()}
-    else
-      # A stale personal workspace id (or a deactivated membership) can leave
-      # the resolved scope non-school even though the user has a real school
-      # — send them there instead of prompting to create a new one.
-      case Organization.list_workspaces_for(scope.current_user) do
-        [first | _] -> {:ok, push_navigate(socket, to: ~p"/workspaces/select/#{first.id}")}
-        [] -> {:ok, push_navigate(socket, to: ~p"/schools/new")}
-      end
+    cond do
+      scope.current_workspace_type == :school and plain_teacher?(scope) ->
+        # Members who neither administer the school nor master a class get
+        # their teaching hub, not an admin dashboard they cannot act on.
+        {:ok, push_navigate(socket, to: ~p"/school/courses")}
+
+      scope.current_workspace_type == :school ->
+        {:ok,
+         socket
+         |> assign(:scope, scope)
+         |> load_stats()}
+
+      true ->
+        # A stale personal workspace id (or a deactivated membership) can leave
+        # the resolved scope non-school even though the user has a real school
+        # — send them there instead of prompting to create a new one.
+        case Organization.list_workspaces_for(scope.current_user) do
+          [first | _] -> {:ok, push_navigate(socket, to: ~p"/workspaces/select/#{first.id}")}
+          [] -> {:ok, push_navigate(socket, to: ~p"/schools/new")}
+        end
     end
   end
+
+  defp plain_teacher?(scope) do
+    not Permissions.admin?(scope) and form_master_classes(scope) == []
+  end
+
+  defp form_master_classes(%{current_academic_year: nil}), do: []
+
+  defp form_master_classes(scope),
+    do:
+      Enrollment.list_form_master_classes(
+        scope.current_workspace,
+        scope.current_user,
+        scope.current_academic_year
+      )
 
   def render(assigns) do
     ~H"""
@@ -115,6 +137,18 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
         <%!-- "Mes classes" — the classes this head teacher also form-masters
              (mockup: the "Classes & élèves" list, trimmed to real fields) --%>
+        <div :if={@my_units != []} id="dashboard-my-courses" class="ta-leaf space-y-2">
+          <h2 class="ta-eyebrow">{gettext("Mes cours")}</h2>
+          <p class="text-sm text-base-content/70">
+            {ngettext("%{count} cours attribué", "%{count} cours attribués", length(@my_units),
+              count: length(@my_units)
+            )}
+          </p>
+          <.link navigate={~p"/school/courses"} class="btn btn-primary btn-sm gap-2">
+            <.icon name="hero-academic-cap" class="size-4" /> {gettext("Ouvrir mes cours")}
+          </.link>
+        </div>
+
         <div :if={@my_classes != []} id="my-classes" class="ta-leaf space-y-2">
           <div class="flex items-center justify-between gap-3">
             <h2 class="ta-eyebrow">{gettext("Mes classes")}</h2>
@@ -183,6 +217,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     |> assign(:students_count, students_count)
     |> assign(:teachers_count, teachers_count)
     |> assign(:my_classes, my_classes)
+    |> assign(:my_units, Curriculum.list_units_for_scope(scope))
     |> assign(:profile_complete?, profile_complete?)
     |> assign(:staff_count, staff_count)
   end
