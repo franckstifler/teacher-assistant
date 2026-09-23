@@ -1,5 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
+  @moduletag :teacher_personal
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment

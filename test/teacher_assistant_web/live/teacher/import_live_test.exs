@@ -1,5 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
   use TeacherAssistantWeb.ConnCase, async: false
+  @moduletag :teacher_personal
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization

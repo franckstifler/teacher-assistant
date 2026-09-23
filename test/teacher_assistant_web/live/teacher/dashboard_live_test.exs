@@ -1,5 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
+  @moduletag :teacher_personal
   import Phoenix.LiveViewTest
 
   test "redirects to sign-in when logged out", %{conn: conn} do

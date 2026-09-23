@@ -1,5 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
+  @moduletag :teacher_personal
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures

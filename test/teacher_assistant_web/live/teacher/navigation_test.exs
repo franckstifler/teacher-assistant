@@ -1,5 +1,6 @@
 defmodule TeacherAssistantWeb.Teacher.NavigationTest do
   use TeacherAssistantWeb.ConnCase, async: true
+  @moduletag :teacher_personal
   import Phoenix.LiveViewTest
   setup :register_and_log_in_user
 

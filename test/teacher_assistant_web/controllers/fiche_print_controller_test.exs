@@ -1,5 +1,6 @@
 defmodule TeacherAssistantWeb.FichePrintControllerTest do
   use TeacherAssistantWeb.ConnCase, async: true
+  @moduletag :teacher_personal
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user

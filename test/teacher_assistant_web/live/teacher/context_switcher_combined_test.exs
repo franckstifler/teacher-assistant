@@ -52,6 +52,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     assert has_element?(view, "#class-switcher-item-#{representative_id}", course.label)
   end
 
+  @tag :teacher_personal
   test "dashboard shows exactly one coverage KPI for a combined course over two classes", %{
     conn: conn,
     ws: ws,
