@@ -13,6 +13,12 @@ defmodule TeacherAssistant.Academics.Payment do
       reference :enrollment, on_delete: :delete, index?: true
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    check_constraints do
+      check_constraint :amount, "payments_amount_positive_check",
+        check: "amount > 0",
+        message: "must be positive"
+    end
   end
 
   actions do

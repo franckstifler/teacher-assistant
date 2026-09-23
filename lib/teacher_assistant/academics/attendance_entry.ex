@@ -23,6 +23,11 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     table "attendance_entries"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      index [:enrollment_id, :date]
+      index [:workspace_id, :date]
+    end
+
     references do
       reference :enrollment, on_delete: :delete, index?: true
       reference :period, on_delete: :delete, index?: true

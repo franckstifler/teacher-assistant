@@ -9,6 +9,10 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     table "timetable_slots"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      index [:workspace_id, :teaching_context_id]
+    end
+
     references do
       reference :class_group, on_delete: :delete, index?: true
       reference :teaching_context, on_delete: :delete, index?: true

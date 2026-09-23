@@ -14,6 +14,12 @@ defmodule TeacherAssistant.Academics.ConductMark do
       reference :sequence, on_delete: :delete, index?: true
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    check_constraints do
+      check_constraint :value, "conduct_marks_value_in_range_check",
+        check: "value >= 0 AND value <= 20",
+        message: "must be between 0 and 20"
+    end
   end
 
   actions do

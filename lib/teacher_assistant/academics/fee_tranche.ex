@@ -13,6 +13,16 @@ defmodule TeacherAssistant.Academics.FeeTranche do
       reference :class_group, on_delete: :delete, index?: true
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    # >= 0, not > 0: `Fees.add_tranche/2`'s own `validate_amount/1` guard
+    # already treats a zero-amount tranche as valid (see
+    # `FeeTrancheTest."amount accepts 0"`) — this is the DB-level backstop
+    # for that same rule, not a stricter one.
+    check_constraints do
+      check_constraint :amount, "fee_tranches_amount_non_negative_check",
+        check: "amount >= 0",
+        message: "must not be negative"
+    end
   end
 
   actions do

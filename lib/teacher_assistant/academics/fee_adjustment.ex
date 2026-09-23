@@ -13,6 +13,12 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
       reference :enrollment, on_delete: :delete, index?: true
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    check_constraints do
+      check_constraint :amount, "fee_adjustments_amount_non_zero_check",
+        check: "amount <> 0",
+        message: "must not be zero"
+    end
   end
 
   actions do

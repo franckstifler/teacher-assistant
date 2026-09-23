@@ -13,6 +13,12 @@ defmodule TeacherAssistant.Academics.Sequence do
       reference :term, index?: true
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    check_constraints do
+      check_constraint :end_date, "sequences_dates_ordered_check",
+        check: "end_date >= start_date",
+        message: "must not be before the start date"
+    end
   end
 
   actions do

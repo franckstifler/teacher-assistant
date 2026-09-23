@@ -9,6 +9,10 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
     table "progression_entries"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      index [:progression_module_id, :position]
+    end
+
     references do
       reference :progression_plan, index?: true
       reference :sequence, index?: true

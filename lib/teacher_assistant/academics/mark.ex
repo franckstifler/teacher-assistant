@@ -15,15 +15,28 @@ defmodule TeacherAssistant.Academics.Mark do
       reference :student, index?: true
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    check_constraints do
+      check_constraint :score, "marks_score_non_negative_check",
+        check: "score IS NULL OR score >= 0",
+        message: "must not be negative"
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:score, :assessment_id, :student_id, :workspace_id],
-      update: [:score]
+      create: [:score, :assessment_id, :student_id, :workspace_id]
     ]
+
+    # Not atomic: `ScoreWithinMax` fetches the assessment with `Ash.get!/2`,
+    # which the atomic-update upgrade path cannot express as a single SQL
+    # expression.
+    update :update do
+      accept [:score]
+      require_atomic? false
+    end
 
     read :for_assessment do
       argument :assessment_id, :uuid, allow_nil?: false
@@ -81,6 +94,10 @@ defmodule TeacherAssistant.Academics.Mark do
     policy always() do
       authorize_if always()
     end
+  end
+
+  validations do
+    validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []}, on: [:create, :update]
   end
 
   # Broadcasts a create/update on `marks:assessment:<assessment_id>`, the topic
