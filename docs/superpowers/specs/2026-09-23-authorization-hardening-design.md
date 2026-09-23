@@ -179,9 +179,15 @@ not strip the LiveView checks. Two layers, one definition:
 
 - Remove the lone `authorize?: false` at `accounts.ex:89` (`update_member_status`) so the new
   head-only `SchoolMembership` policy governs it — consistent with its sibling `update_member_roles`.
-- Every context write must thread the actor (most already do via the scope's `Ash.Scope.ToOpts`,
-  which supplies `actor = current_user`). A write that omits it will **fail closed** once its
-  domain's policy goes live — which is how the gaps are found and fixed.
+- **Plumb the actor through every write.** This is the load-bearing work of C, not an incidental
+  fix. **All nine domains are `authorize :when_requested`, and no context write currently threads an
+  actor** — every write is a bare `Ash.create/update/destroy`, and LiveViews call context functions
+  with plain structs, never the scope. Under `:when_requested`, an actor-less write **bypasses
+  authorization entirely** — so flipping a resource's policy from allow-all to real is *non-breaking
+  but inert* until the write is given an actor. Making the policies bite therefore requires threading
+  `scope` (→ `actor: scope.current_user, authorize?: true`) through each write context function and
+  updating each LiveView/wizard/controller call site to pass it. Roughly 40 write functions across
+  the 9 domains and ~15 call-site files.
 
 **Rollout — domain by domain, fail-closed, suite-gated** (not a big-bang flip):
 
@@ -210,10 +216,18 @@ migrating 33 tests. That is the suite doing its job, not a regression.
 
 ## Risks
 
-- **Missing actor on a context write** → the action fails closed after its domain flips. Mitigated
-  by the domain-by-domain rollout and the green-suite gate; each surfaces exactly where.
+- **A write we forget to plumb stays a silent hole, not a breakage.** Because all domains are
+  `authorize :when_requested`, an un-plumbed (actor-less) write bypasses its new policy silently — it
+  keeps working *unenforced*. So the danger is under-coverage, not a red suite. Mitigation: each
+  domain task's boundary tests must include a **negative** case that calls the real context function
+  as an unauthorized actor and asserts `{:error, Ash.Error.Forbidden}` — proving the actor is
+  actually threaded, not just that a policy exists. A task whose write still bypasses fails that test.
 - **Workspace resolution for a deep resource is wrong/absent** → the check fails closed (denies).
   Mitigated by isolated resolver tests in the foundation task and per-domain boundary tests.
+- **Nullable FKs on the deep chains** (`AttendanceEntry.teaching_context_id`,
+  `TeachingContext.class_group_id`/`teacher_user_id`, `TeachingLogEntry.progression_entry_id`) — the
+  ownership/resolver checks must treat a nil as "not owned / resolve via the direct `workspace_id`,"
+  never fail-closed on the nil alone. Pinned by explicit nil-case tests.
 - **Marks ownership tightening** changes behavior: a member who could reach the marks action for a
   context they are not assigned to is now denied. This is the intended hardening, called out so it
   is not mistaken for a regression.
