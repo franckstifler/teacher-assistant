@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
@@ -13,7 +12,6 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
       {:ok,
        socket
        |> assign(:scope, scope)
-       |> assign(:admin?, Permissions.admin?(scope))
        |> load_stats()}
     else
       {:ok, push_navigate(socket, to: ~p"/teacher")}
@@ -83,52 +81,20 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
           </ul>
         </div>
 
-        <%= cond do %>
-          <% @year == nil -> %>
-            <.setup_gate
-              icon="hero-calendar"
-              eyebrow={gettext("Get started")}
-              title={gettext("No active academic year")}
-              message={
-                if @admin?,
-                  do: gettext("Set up an academic year before managing your school."),
-                  else: gettext("L'année scolaire n'a pas encore été créée.")
-              }
-            >
-              <:action>
-                <.link :if={@admin?} navigate={~p"/school/settings"} class="btn btn-primary">
-                  {gettext("Go to settings")}
-                </.link>
-              </:action>
-            </.setup_gate>
-          <% @classes == [] -> %>
-            <.setup_gate
-              icon="hero-rectangle-group"
-              eyebrow={gettext("Get started")}
-              title={gettext("No classes yet")}
-              message={gettext("Create your first class to start enrolling students.")}
-            >
-              <:action>
-                <.link navigate={~p"/school/classes"} class="btn btn-primary">
-                  {gettext("Go to classes")}
-                </.link>
-              </:action>
-            </.setup_gate>
-          <% true -> %>
-            <%!-- KPI strip (mockup: the row of stat cards) — Classes/Students/
-                 Teachers are the only school-wide numbers this LiveView actually
-                 computes; a programme-coverage or fees KPI is not (yet) wired
-                 to any query, so it's omitted rather than invented. --%>
-            <div id="dashboard-stats" class="grid grid-cols-3 gap-2 sm:gap-3">
-              <.stat label={gettext("Classes")} value={Integer.to_string(@classes_count)} />
-              <.stat
-                label={gettext("Students")}
-                value={Integer.to_string(@students_count)}
-                tone={:primary}
-              />
-              <.stat label={gettext("Teachers")} value={Integer.to_string(@teachers_count)} />
-            </div>
-        <% end %>
+        <%!-- KPI strip (mockup: the row of stat cards) — Classes/Students/
+             Teachers are the only school-wide numbers this LiveView actually
+             computes; a programme-coverage or fees KPI is not (yet) wired
+             to any query, so it's omitted rather than invented.
+
+             The `:require_school_setup` on_mount gate redirects to
+             /school/setup before this LiveView mounts unless the school
+             already has an active year and at least one class, so the
+             KPI strip is always reachable here. --%>
+        <div id="dashboard-stats" class="grid grid-cols-3 gap-2 sm:gap-3">
+          <.stat label={gettext("Classes")} value={Integer.to_string(@classes_count)} />
+          <.stat label={gettext("Students")} value={Integer.to_string(@students_count)} tone={:primary} />
+          <.stat label={gettext("Teachers")} value={Integer.to_string(@teachers_count)} />
+        </div>
 
         <%!-- "Mes classes" — the classes this head teacher also form-masters
              (mockup: the "Classes & élèves" list, trimmed to real fields) --%>
