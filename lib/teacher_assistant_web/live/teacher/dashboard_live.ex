@@ -97,7 +97,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
               <span class="ta-num inline-flex items-center rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-xs font-semibold text-base-content/70">
                 {@year.name}
               </span>
-              <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm gap-2">
+              <.link navigate="/teacher/import" class="btn btn-outline btn-sm gap-2">
                 <.icon name="hero-arrow-up-tray" class="size-4" />
                 {gettext("Import a fiche")}
               </.link>
@@ -177,7 +177,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
 
                 <div class="flex flex-wrap items-center gap-2">
                   <.link
-                    navigate={~p"/teacher/plans/#{kpi.plan.id}"}
+                    navigate={"/teacher/plans/#{kpi.plan.id}"}
                     class="inline-flex w-fit items-center gap-1 text-sm font-semibold text-primary hover:underline"
                   >
                     {gettext("Open plan")}
@@ -208,7 +208,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
                   </.link>
                   <.link
                     id={"kpi-coverage-#{kpi.plan.id}"}
-                    navigate={~p"/teacher/plans/#{kpi.plan.id}/coverage"}
+                    navigate={"/teacher/plans/#{kpi.plan.id}/coverage"}
                     class="btn btn-ghost btn-xs"
                   >
                     {gettext("Coverage")}
@@ -219,10 +219,10 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
               <div :if={@kpis == []} class="col-span-full">
                 <.empty_state icon="hero-document-text" title={gettext("No progression plan yet.")}>
                   <:action>
-                    <.link navigate={~p"/teacher/setup"} class="btn btn-primary btn-sm">
+                    <.link navigate="/teacher/setup" class="btn btn-primary btn-sm">
                       {gettext("Set one up")}
                     </.link>
-                    <.link navigate={~p"/teacher/import"} class="btn btn-outline btn-sm">
+                    <.link navigate="/teacher/import" class="btn btn-outline btn-sm">
                       {gettext("Import a fiche (PDF)")}
                     </.link>
                   </:action>
@@ -240,7 +240,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
             message={gettext("Set up your academic year to get started.")}
           >
             <:action>
-              <.link navigate={~p"/teacher/setup"} class="btn btn-primary">
+              <.link navigate="/teacher/setup" class="btn btn-primary">
                 {gettext("Start setup")}
               </.link>
             </:action>

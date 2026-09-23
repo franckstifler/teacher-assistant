@@ -1,6 +1,5 @@
 defmodule TeacherAssistantWeb.WorkspaceController do
   use TeacherAssistantWeb, :controller
-  alias TeacherAssistant.Organization
 
   alias TeacherAssistant.Accounts.Workspaces
 
@@ -19,19 +18,6 @@ defmodule TeacherAssistantWeb.WorkspaceController do
         |> delete_session(:workspace_id)
         |> put_flash(:error, gettext("Workspace not found or access denied"))
         |> redirect(to: ~p"/school")
-    end
-  end
-
-  def create(conn, %{"school" => %{"name" => name}}) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
-
-    case name && String.trim(name) != "" &&
-           Organization.create_school(user, %{name: name}) do
-      {:ok, school} ->
-        conn |> put_session(:workspace_id, school.id) |> redirect(to: ~p"/school")
-
-      _ ->
-        conn |> put_flash(:error, gettext("Enter a school name")) |> redirect(to: ~p"/teacher")
     end
   end
 

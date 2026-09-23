@@ -48,7 +48,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
           <p class="text-base-content/70">
             {gettext("Add a subject and class first, then you can import a fiche for it.")}
           </p>
-          <.link navigate={~p"/teacher/setup"} class="btn btn-primary btn-sm">
+          <.link navigate="/teacher/setup" class="btn btn-primary btn-sm">
             {gettext("Go to setup")}
           </.link>
         </div>
@@ -329,7 +329,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
             {:noreply,
              socket
              |> put_flash(:info, gettext("Plan imported."))
-             |> push_navigate(to: ~p"/teacher/plans/#{plan.id}")}
+             |> push_navigate(to: "/teacher/plans/#{plan.id}")}
 
           {:error, _reason} ->
             {:noreply,

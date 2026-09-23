@@ -21,6 +21,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupGateTest do
     assert {:ok, _view, _html} = live(conn, ~p"/school/setup")
   end
 
+  @tag :teacher_personal
   test "a teacher (personal) scope is never gated", %{conn: conn} do
     user = user_fixture()
     conn = log_in_user(conn, user)

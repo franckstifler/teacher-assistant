@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.FichePrintController do
         etablissement: etablissement(scope)
       )
     else
-      _ -> redirect(conn, to: ~p"/teacher")
+      _ -> redirect(conn, to: "/teacher")
     end
   end
 

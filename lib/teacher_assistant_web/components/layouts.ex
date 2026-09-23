@@ -191,7 +191,7 @@ defmodule TeacherAssistantWeb.Layouts do
             <.link
               :if={@units == [] && !@in_school?}
               id="class-switcher"
-              navigate={~p"/teacher/setup"}
+              navigate={"/teacher/setup"}
               class="flex w-full items-center gap-2 rounded-lg border border-dashed border-[color:var(--ta-rail-line)] px-2.5 py-2 text-sm font-semibold text-[color:var(--ta-rail-muted)]"
             >
               <.icon name="hero-plus" class="size-4 flex-none" />
@@ -207,7 +207,7 @@ defmodule TeacherAssistantWeb.Layouts do
               <p class="ta-rail__label px-1.5 pb-1">{gettext("Teaching")}</p>
               <.rail_link
                 id="nav-dashboard"
-                href={~p"/teacher"}
+                href="/teacher"
                 icon="hero-squares-2x2"
                 current_path={@current_path}
               >
@@ -215,7 +215,7 @@ defmodule TeacherAssistantWeb.Layouts do
               </.rail_link>
               <.rail_link
                 id="nav-log"
-                href={~p"/teacher/log"}
+                href="/teacher/log"
                 icon="hero-pencil-square"
                 current_path={@current_path}
               >
@@ -223,7 +223,7 @@ defmodule TeacherAssistantWeb.Layouts do
               </.rail_link>
               <.rail_link
                 id="nav-import"
-                href={~p"/teacher/import"}
+                href="/teacher/import"
                 icon="hero-arrow-up-tray"
                 current_path={@current_path}
               >

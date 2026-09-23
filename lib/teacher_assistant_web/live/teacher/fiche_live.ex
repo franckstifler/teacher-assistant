@@ -19,7 +19,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         {:ok,
          socket
          |> put_flash(:error, gettext("Plan not found"))
-         |> push_navigate(to: ~p"/teacher")}
+         |> push_navigate(to: "/teacher")}
     end
   end
 
@@ -101,7 +101,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
 
   def handle_event("duplicate-plan", _params, socket) do
     case Curriculum.duplicate_progression_plan(socket.assigns.plan, %{}) do
-      {:ok, copy} -> {:noreply, push_navigate(socket, to: ~p"/teacher/plans/#{copy.id}")}
+      {:ok, copy} -> {:noreply, push_navigate(socket, to: "/teacher/plans/#{copy.id}")}
       {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not duplicate plan"))}
     end
   end
@@ -565,7 +565,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
                 <div class="flex items-center gap-1">
                   <.link
                     id={"entry-prepare-#{e.id}"}
-                    navigate={~p"/teacher/entries/#{e.id}/fiche"}
+                    navigate={"/teacher/entries/#{e.id}/fiche"}
                     class="btn btn-ghost btn-xs gap-1"
                   >
                     <.icon name="hero-document-text" class="size-3.5" />

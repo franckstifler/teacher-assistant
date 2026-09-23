@@ -35,7 +35,7 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLive do
         {:ok,
          socket
          |> put_flash(:error, gettext("Plan not found"))
-         |> push_navigate(to: ~p"/teacher")}
+         |> push_navigate(to: "/teacher")}
     end
   end
 

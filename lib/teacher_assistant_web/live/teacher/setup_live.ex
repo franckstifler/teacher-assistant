@@ -53,7 +53,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLive do
              target_lesson_count: parse_int(p["target_lesson_count"])
            }) do
       {:noreply,
-       socket |> put_flash(:info, gettext("Setup complete")) |> push_navigate(to: ~p"/teacher")}
+       socket |> put_flash(:info, gettext("Setup complete")) |> push_navigate(to: "/teacher")}
     else
       error ->
         {:noreply,

@@ -18,7 +18,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
          |> assign(:header_form, header_form(lesson_plan))}
 
       _ ->
-        {:ok, push_navigate(socket, to: ~p"/teacher")}
+        {:ok, push_navigate(socket, to: "/teacher")}
     end
   end
 
@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
           <:actions>
             <.link
               id="fiche-print-link"
-              href={~p"/teacher/entries/#{@ctx_bundle.entry.id}/fiche/print"}
+              href={"/teacher/entries/#{@ctx_bundle.entry.id}/fiche/print"}
               target="_blank"
               class="btn btn-outline btn-sm gap-2"
             >
