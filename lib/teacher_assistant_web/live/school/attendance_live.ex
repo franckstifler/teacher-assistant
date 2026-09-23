@@ -20,8 +20,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          {:ok, period} <- fetch_period(period_id, scope.current_workspace),
          {:ok, slot_or_nil} <- resolve_slot(cg, date, period.id),
-         true <- authorized?(scope, slot_or_nil) do
-      course = combined_course_for(slot_or_nil)
+         teaching_context = resolve_teaching_context(scope, cg, slot_or_nil),
+         true <- authorized?(scope, teaching_context) do
+      course = combined_course_for(teaching_context)
 
       socket =
         socket
@@ -30,6 +31,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
           period: period,
           date: date,
           slot: slot_or_nil,
+          teaching_context: teaching_context,
           statuses: @statuses,
           course: course
         )
@@ -46,16 +48,32 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
-  # Combined mode: the resolved slot's teaching context belongs to a
+  # The teaching context this roll call is recorded under: the placed
+  # timetable slot's when one exists, otherwise the signed-in teacher's own
+  # assignment on the class (assignment-based roll call, Increment 2). `nil`
+  # when neither applies (a conduct manager can still record without one).
+  defp resolve_teaching_context(_scope, _cg, %TimetableSlot{teaching_context: ctx}), do: ctx
+
+  defp resolve_teaching_context(scope, cg, nil) do
+    case {scope.current_workspace, scope.current_academic_year} do
+      {%{} = ws, %{} = year} ->
+        ws
+        |> Curriculum.list_assignments_for_user(year, scope.current_user)
+        |> Enum.find(&(&1.class_group_id == cg.id))
+
+      _ ->
+        nil
+    end
+  end
+
+  # Combined mode: the resolved teaching context belongs to a
   # `CombinedCourse` — the attendance session then covers the union of every
   # member class's roster (see `load_combined_roll/1`), while recording still
   # writes each `AttendanceEntry` to the student's own class exactly as
   # before (`Attendance.record_combined_period/5`). Falls back to solo mode
-  # (returns `nil`) when there's no slot, no teaching context, or the course
-  # can't be resolved.
-  defp combined_course_for(%TimetableSlot{
-         teaching_context: %TeachingContext{combined_course_id: course_id}
-       })
+  # (returns `nil`) when there's no teaching context or the course can't be
+  # resolved.
+  defp combined_course_for(%TeachingContext{combined_course_id: course_id})
        when not is_nil(course_id) do
     case Curriculum.get_course(course_id) do
       {:ok, course} -> course
@@ -63,7 +81,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
-  defp combined_course_for(_slot_or_nil), do: nil
+  defp combined_course_for(_ctx_or_nil), do: nil
 
   defp parse_date(nil), do: Date.utc_today()
 
@@ -91,14 +109,16 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
-  defp authorized?(scope, slot) do
-    owns_slot?(scope, slot) or Permissions.conduct_manager?(scope)
+  # Owning the slot or holding the assignment both resolve to "this teaching
+  # context is mine"; conduct managers may record any class.
+  defp authorized?(scope, teaching_context) do
+    owns_context?(scope, teaching_context) or Permissions.conduct_manager?(scope)
   end
 
-  defp owns_slot?(_scope, nil), do: false
+  defp owns_context?(_scope, nil), do: false
 
-  defp owns_slot?(scope, slot),
-    do: slot.teaching_context.teacher_user_id == scope.current_user.id
+  defp owns_context?(scope, %TeachingContext{teacher_user_id: teacher_id}),
+    do: teacher_id == scope.current_user.id
 
   # Roll starts with every student PRESENT (the cahier d'appel default); the
   # teacher only taps the absent/late few. `taken?` records whether the roll has
@@ -164,7 +184,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
            gettext("École en attente de vérification — enregistrement indisponible.")
          )}
 
-      authorized?(scope, socket.assigns.slot) ->
+      authorized?(scope, socket.assigns.teaching_context) ->
         marks =
           Enum.map(socket.assigns.students, fn s ->
             {s.enrollment_id, Map.fetch!(socket.assigns.roll, s.enrollment_id)}
@@ -194,12 +214,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   end
 
   defp record_marks(socket, marks, user_id) do
-    teaching_context = socket.assigns.slot && socket.assigns.slot.teaching_context
-
     Attendance.record_period(
       socket.assigns.cg,
       socket.assigns.period,
-      teaching_context,
+      socket.assigns.teaching_context,
       socket.assigns.date,
       marks,
       user_id

@@ -188,6 +188,64 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
              live(conn_for(school, other), att_path(cg, period, date))
   end
 
+  describe "assignment-based roll call (no timetable slot)" do
+    setup %{school: school, cg: cg, head: head} do
+      other = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      {:ok, inv} =
+        Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+
+      {:ok, _} = Accounts.accept_invitation(inv.token, other)
+
+      # A lesson period with no slot placed on any day.
+      free_period =
+        school |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)) |> Enum.at(1)
+
+      %{other: other, free_period: free_period}
+    end
+
+    test "an assigned teacher can record the roll on a period with no slot", %{
+      school: school,
+      cg: cg,
+      date: date,
+      other: other,
+      free_period: free_period,
+      enrollment: enrollment
+    } do
+      {:ok, tc_other} = Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
+
+      {:ok, view, _html} = live(conn_for(school, other), att_path(cg, free_period, date))
+      assert has_element?(view, "#class-attendance")
+
+      view
+      |> element("#att-#{enrollment.id}-absent")
+      |> render_click()
+
+      view |> element("#record-roll") |> render_click()
+
+      require Ash.Query
+
+      [entry] =
+        TeacherAssistant.Academics.AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^enrollment.id and period_id == ^free_period.id)
+        |> Ash.read!()
+
+      assert entry.status == :absent
+      assert entry.teaching_context_id == tc_other.id
+    end
+
+    test "a member with no assignment and no slot is redirected", %{
+      school: school,
+      cg: cg,
+      date: date,
+      other: other,
+      free_period: free_period
+    } do
+      assert {:error, {:live_redirect, %{to: "/school"}}} =
+               live(conn_for(school, other), att_path(cg, free_period, date))
+    end
+  end
+
   test "cross-school class id redirects to /school/classes", %{
     conn: conn,
     period: period,
