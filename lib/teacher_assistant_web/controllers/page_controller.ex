@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.PageController do
   so what differs is where you land afterwards. A signed-in user goes straight
   to school creation; a visitor is sent to register with `/schools/new` stored
   as the post-auth destination, so they arrive at school setup instead of the
-  default teacher dashboard.
+  default school dashboard.
   """
   def start_school(conn, _params) do
     if conn.assigns[:current_user] do

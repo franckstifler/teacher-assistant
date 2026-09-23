@@ -38,7 +38,6 @@ defmodule TeacherAssistantWeb.Router do
     get "/teacher/select-context/:id", TeacherContextController, :select
 
     if Application.compile_env(:teacher_assistant, :teacher_personal_routes, false) do
-      post "/workspaces", WorkspaceController, :create
       get "/teacher/entries/:entry_id/fiche/print", FichePrintController, :show
     end
 

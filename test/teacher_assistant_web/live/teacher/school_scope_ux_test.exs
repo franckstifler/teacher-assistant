@@ -41,7 +41,7 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
            |> length() == 1
   end
 
-  test "setup redirects to /school under school scope", %{conn: conn} do
+  test "an unknown roster redirects to /school under school scope", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
   end

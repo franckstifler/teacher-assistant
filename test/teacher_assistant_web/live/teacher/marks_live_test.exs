@@ -145,7 +145,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert to =~ "/roster"
   end
 
-  test "unknown teaching context redirects to setup", %{conn: conn} do
+  test "unknown teaching context redirects to /school", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/marks")
   end

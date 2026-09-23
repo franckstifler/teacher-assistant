@@ -62,4 +62,23 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
     assert html =~ "Choisissez un nouveau mot de passe"
     assert html =~ "Mot de passe"
   end
+
+  test "a signed-in user visiting /sign-in is redirected to /school", %{conn: conn} do
+    user = TeacherAssistant.TeacherFixtures.user_fixture()
+    conn = log_in_user(conn, user)
+
+    assert {:error, {:redirect, %{to: "/school"}}} = live(conn, ~p"/sign-in")
+  end
+
+  test "AuthController.success/4 with no return_to redirects to /school", %{conn: conn} do
+    user = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    conn =
+      conn
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Phoenix.Controller.fetch_flash([])
+      |> TeacherAssistantWeb.AuthController.success({:password, :reset}, user, nil)
+
+    assert redirected_to(conn) == "/school"
+  end
 end

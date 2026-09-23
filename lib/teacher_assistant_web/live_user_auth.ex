@@ -1,6 +1,6 @@
 defmodule TeacherAssistantWeb.LiveUserAuth do
   @moduledoc """
-  LiveView authentication and personal workspace scope assignment.
+  LiveView authentication and workspace scope assignment.
   """
 
   import Phoenix.Component

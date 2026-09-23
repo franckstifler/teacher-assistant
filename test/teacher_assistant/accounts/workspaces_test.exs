@@ -134,5 +134,18 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       ids = user |> Organization.list_workspaces_for() |> Enum.map(& &1.id)
       assert ids == [school.id]
     end
+
+    test "scope_for(user, nil) and list_workspaces_for are stable across several schools", %{
+      user: user
+    } do
+      {:ok, first} = Organization.create_school(user, %{name: "École Première"})
+      {:ok, second} = Organization.create_school(user, %{name: "École Seconde"})
+
+      assert {:ok, scope} = Workspaces.scope_for(user, nil)
+      assert scope.current_workspace.id == first.id
+
+      assert user |> Organization.list_workspaces_for() |> Enum.map(& &1.id) ==
+               [first.id, second.id]
+    end
   end
 end

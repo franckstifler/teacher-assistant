@@ -27,7 +27,7 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
     read :active_for_user do
       argument :user_id, :uuid, allow_nil?: false
       filter expr(user_id == ^arg(:user_id) and active == true)
-      prepare build(load: [:workspace])
+      prepare build(load: [:workspace], sort: [inserted_at: :asc])
     end
 
     read :for_workspace_and_user do

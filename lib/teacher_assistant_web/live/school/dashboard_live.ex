@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Organization
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -14,7 +15,13 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
        |> assign(:scope, scope)
        |> load_stats()}
     else
-      {:ok, push_navigate(socket, to: ~p"/schools/new")}
+      # A stale personal workspace id (or a deactivated membership) can leave
+      # the resolved scope non-school even though the user has a real school
+      # — send them there instead of prompting to create a new one.
+      case Organization.list_workspaces_for(scope.current_user) do
+        [first | _] -> {:ok, push_navigate(socket, to: ~p"/workspaces/select/#{first.id}")}
+        [] -> {:ok, push_navigate(socket, to: ~p"/schools/new")}
+      end
     end
   end
 

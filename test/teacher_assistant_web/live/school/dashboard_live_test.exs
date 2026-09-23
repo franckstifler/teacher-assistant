@@ -138,10 +138,27 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     assert {:error, {:live_redirect, %{to: "/schools/new"}}} = live(conn, ~p"/school")
   end
 
+  test "a member with a stale session workspace is sent to their first school", %{
+    conn: conn,
+    actor: user
+  } do
+    # session still carries the personal workspace id from register_and_log_in_user,
+    # so the resolved scope is non-school even though the user has a real school.
+    {:ok, school} = Organization.create_school(user, %{name: "Lycée Retrouvé"})
+    expected_to = "/workspaces/select/#{school.id}"
+
+    assert {:error, {:live_redirect, %{to: ^expected_to}}} = live(conn, ~p"/school")
+  end
+
   test "a user with no workspace in session and no school is sent to /schools/new" do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
     conn = Phoenix.ConnTest.build_conn() |> log_in_user(user)
     assert {:error, {:live_redirect, %{to: "/schools/new"}}} = live(conn, ~p"/school")
+  end
+
+  test "a logged-out visitor on /school is sent to /sign-in" do
+    conn = Phoenix.ConnTest.build_conn()
+    assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, ~p"/school")
   end
 
   test "the shell shows no personal navigation", %{conn: conn, actor: user} do
