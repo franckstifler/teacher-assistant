@@ -14,6 +14,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     actor: user
   } do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Membres"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
@@ -32,6 +33,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
   test "a non-head member does not see the invite form", %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Gate"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
@@ -48,6 +50,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
   test "invite form includes the employment-type options", %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Emploi"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
@@ -59,6 +62,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
   test "head can set a member's employment type", %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Statut"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
@@ -90,6 +94,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
   test "non-head cannot change employment type", %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Statut Gate"})
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =

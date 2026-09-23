@@ -2,11 +2,16 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
+    # Setup-complete (active year + a class) so /school/settings isn't gated
+    # to the wizard. Tests below that exercise year creation/activation add
+    # their own additional years on top of this one.
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school}
   end
@@ -44,6 +49,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
         active: true
       })
 
+    # y1 is now the workspace's active year (it superseded the base
+    # fixture's), so give it a class too or the setup-complete gate blocks
+    # this request.
+    {:ok, _cg} = Enrollment.create_class_group(school, y1, %{label: "6e A", level: "6ème"})
+
     {:ok, y2} =
       Organization.create_academic_year(school, %{
         name: "2025-2026",
@@ -80,11 +90,13 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
     refute has_element?(view, "#year-form")
 
+    years_before = Organization.list_academic_years(school)
+
     render_hook(view, "create_year", %{
       "year" => %{"name" => "2025-2026", "start_date" => "2025-09-08", "end_date" => "2026-07-31"}
     })
 
-    assert Organization.list_academic_years(school) == []
+    assert Organization.list_academic_years(school) == years_before
   end
 
   test "a vice_principal member sees the Settings nav link and can manage years", %{
@@ -244,13 +256,18 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     school: school
   } do
     # Create first year directly with active: true
-    {:ok, _y1} =
+    {:ok, y1} =
       Organization.create_academic_year(school, %{
         name: "2024-2025",
         start_date: ~D[2024-09-09],
         end_date: ~D[2025-07-31],
         active: true
       })
+
+    # y1 is now the workspace's active year (it superseded the base
+    # fixture's), so give it a class too or the setup-complete gate blocks
+    # this request.
+    {:ok, _cg} = Enrollment.create_class_group(school, y1, %{label: "6e A", level: "6ème"})
 
     {:ok, view, _} = live(conn, ~p"/school/settings")
 

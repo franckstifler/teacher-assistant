@@ -100,7 +100,10 @@ defmodule TeacherAssistantWeb.Router do
 
     ash_authentication_live_session :school_workspace,
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
-      on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
+      on_mount: [
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_school_setup}
+      ] do
       live "/school", School.DashboardLive, :index
       live "/school/classes", School.ClassesLive, :index
       live "/school/classes/:id", School.ClassLive, :show
