@@ -25,6 +25,6 @@ defmodule TeacherAssistantWeb.Onboarding.SetupGateTest do
   test "a teacher (personal) scope is never gated", %{conn: conn} do
     user = user_fixture()
     conn = log_in_user(conn, user)
-    assert {:ok, _view, _html} = live(conn, ~p"/teacher")
+    assert {:ok, _view, _html} = live(conn, "/teacher")
   end
 end

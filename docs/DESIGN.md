@@ -137,14 +137,13 @@ Setup screens should replace crashes and unclear redirects.
 
 ## Workspace-Specific UX
 
-### Personal Teacher Workspace
+### Personal Teacher Workspace (paused)
 
-The personal workspace should feel private and pedagogic.
-
-- Show teacher tools only.
-- Use copy such as "Private pedagogic tools, attendance, and marks."
-- Do not show official school report cards, student access controls, or school configuration.
-- Missing academic year should route to the guided setup gate.
+Paused on 2026-09-23; the shell no longer renders the personal navigation and `/teacher/*`
+personal routes are compiled out (`teacher_personal_routes: false`). The only `/teacher/*`
+pages that remain are the per-class roster, marks and results of a school assignment, reached
+through the class switcher. If the personal workspace returns, it should be modelled as a
+school-of-one, not a second workspace shape.
 
 ### School Workspace
 

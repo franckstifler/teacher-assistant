@@ -43,7 +43,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   end
 
   test "renders the cartouche and prefilled header", %{conn: conn, entry: entry} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    {:ok, view, _html} = live(conn, "/teacher/entries/#{entry.id}/fiche")
 
     assert has_element?(view, "#lesson-plan")
     # derived cartouche
@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   end
 
   test "autosaves a header field on blur", %{conn: conn, entry: entry} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    {:ok, view, _html} = live(conn, "/teacher/entries/#{entry.id}/fiche")
 
     view
     |> element("#fiche-header-form")
@@ -72,7 +72,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   end
 
   test "autosave forms debounce on blur (no per-keystroke writes)", %{conn: conn, entry: entry} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    {:ok, view, _html} = live(conn, "/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
     html = render(view)
@@ -85,11 +85,11 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
 
   test "unknown entry redirects to /teacher", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: "/teacher"}}} =
-             live(conn, ~p"/teacher/entries/#{Ecto.UUID.generate()}/fiche")
+             live(conn, "/teacher/entries/#{Ecto.UUID.generate()}/fiche")
   end
 
   test "adds, edits, reorders and deletes steps", %{conn: conn, entry: entry} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    {:ok, view, _html} = live(conn, "/teacher/entries/#{entry.id}/fiche")
 
     # empty state first
     assert render(view) =~ "Aucune étape"
@@ -117,7 +117,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
   end
 
   test "shows the running-duration check", %{conn: conn, entry: entry} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    {:ok, view, _html} = live(conn, "/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
     lp = Curriculum.get_lesson_plan_for_entry(entry.id)
@@ -138,7 +138,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLiveTest do
     entry: entry
   } do
     # entry planned_hours = 1 => lesson plan duration_minutes = 60
-    {:ok, view, _html} = live(conn, ~p"/teacher/entries/#{entry.id}/fiche")
+    {:ok, view, _html} = live(conn, "/teacher/entries/#{entry.id}/fiche")
     view |> element("#step-add") |> render_click()
 
     lp = Curriculum.get_lesson_plan_for_entry(entry.id)

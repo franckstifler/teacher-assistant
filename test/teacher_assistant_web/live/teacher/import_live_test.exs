@@ -30,20 +30,20 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
 
   test "shows the upload form when a teaching context exists", %{conn: conn, workspace: ws} do
     seed_year_and_context(ws)
-    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+    {:ok, view, _html} = live(conn, "/teacher/import")
     assert has_element?(view, "#import-upload-form")
     assert has_element?(view, "#import-context-select")
   end
 
   test "gates to setup when there is no teaching context", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+    {:ok, view, _html} = live(conn, "/teacher/import")
     assert has_element?(view, "#import-context-gate")
     refute has_element?(view, "#import-upload-form")
   end
 
   test "shows the three-step stepper on the upload stage", %{conn: conn, workspace: ws} do
     seed_year_and_context(ws)
-    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+    {:ok, view, _html} = live(conn, "/teacher/import")
 
     assert has_element?(view, "#import-stepper")
     html = render(element(view, "#import-stepper"))
@@ -68,7 +68,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       Application.delete_env(:teacher_assistant, :fiche_extractor_stub_text)
     end)
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+    {:ok, view, _html} = live(conn, "/teacher/import")
 
     pdf = %{name: "fiche.pdf", content: "%PDF-1.4 stub", type: "application/pdf"}
     input = file_input(view, "#import-upload-form", :fiche, [pdf])
@@ -104,7 +104,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       Application.delete_env(:teacher_assistant, :fiche_extractor_stub_text)
     end)
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+    {:ok, view, _html} = live(conn, "/teacher/import")
 
     pdf = %{name: "fiche.pdf", content: "%PDF-1.4 stub", type: "application/pdf"}
     input = file_input(view, "#import-upload-form", :fiche, [pdf])
@@ -136,7 +136,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLiveTest do
       Application.delete_env(:teacher_assistant, :fiche_extractor_stub_text)
     end)
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/import")
+    {:ok, view, _html} = live(conn, "/teacher/import")
 
     input =
       file_input(view, "#import-upload-form", :fiche, [

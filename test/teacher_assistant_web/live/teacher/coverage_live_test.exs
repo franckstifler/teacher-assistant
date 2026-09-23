@@ -77,18 +77,18 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
     {:ok, other_plan} = Curriculum.create_progression_plan(ctx, %{title: "Other Plan"})
 
     assert {:error, {:live_redirect, %{to: "/teacher"}}} =
-             live(conn, ~p"/teacher/plans/#{other_plan.id}/coverage")
+             live(conn, "/teacher/plans/#{other_plan.id}/coverage")
   end
 
   test "shows 50% coverage and one uncovered entry", %{conn: conn, plan: plan} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}/coverage")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}/coverage")
     assert has_element?(view, "#coverage-summary")
     assert render(view) =~ "50%"
     assert has_element?(view, "#uncovered-entries")
   end
 
   test "shows per-séquence breakdown with hours", %{conn: conn, plan: plan} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}/coverage")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}/coverage")
 
     assert has_element?(view, "#coverage-by-sequence")
     # entries in this setup carry no séquence -> the "Sans séquence" row with hours
@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.Teacher.CoverageLiveTest do
   end
 
   test "uncovered rows show covered/planned hours", %{conn: conn, plan: plan} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}/coverage")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}/coverage")
 
     assert render(element(view, "#uncovered-entries")) =~ "0h / 2h"
   end

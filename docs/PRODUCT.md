@@ -18,9 +18,11 @@ coverage, school roles and councils, fees and fee-based access. See [`docs/domai
 
 ## Principles
 
-- **Teacher-first, then school.** A teacher is the atomic unit; teacher↔school is many-to-many
-  (moonlighting is normal given the teacher shortage). We ship a complete independent-teacher
-  product first, then add the school layer teachers opt into. Bottom-up adoption is the on-ramp.
+- **School-first (since 2026-09-23).** The school workspace is the product: identity, staff and
+  roles, classes, subjects, timetables, roll call, marks and report cards. The independent-teacher
+  workspace (personal progression plans, fiche import, lesson plans, teaching log, coverage) is
+  **paused**, kept in the codebase behind `teacher_personal_routes: false`. Teacher↔school stays
+  many-to-many; a teacher works inside the schools that invited them.
 - **Mobile-first.** Most teachers work from phones, over intermittent connectivity. Every flow is
   designed for a few taps on a small screen first.
 - **Bilingual by law, not by translation.** Francophone (French model) and Anglophone (British
@@ -50,6 +52,10 @@ coverage, school roles and councils, fees and fee-based access. See [`docs/domai
 ## Phased roadmap
 
 The build is sequenced so each phase ships a usable product. Detailed specs are written per phase.
+
+> **Status 2026-09-23:** Phase 1 (independent teacher) is paused, not removed. Phase 2 (school)
+> is the active track. Fees and fee-based access are deferred inside Phase 2. Audit and roadmap:
+> [`docs/audits/2026-09-23-school-focus/`](audits/2026-09-23-school-focus/README.md).
 
 ### Phase 1 — Independent teacher (in progress)
 - ✅ **v1 — Progression & Coverage (shipped).** *(spec:

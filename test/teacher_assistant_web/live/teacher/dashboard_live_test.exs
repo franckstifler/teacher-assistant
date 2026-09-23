@@ -4,14 +4,14 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
   import Phoenix.LiveViewTest
 
   test "redirects to sign-in when logged out", %{conn: conn} do
-    assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, ~p"/teacher")
+    assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, "/teacher")
   end
 
   describe "authenticated" do
     setup :register_and_log_in_user
 
     test "shows setup gate when no academic year", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/teacher")
+      {:ok, _view, html} = live(conn, "/teacher")
       assert html =~ "id=\"academic-year-setup-gate\""
     end
 
@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       {:ok, _plan} =
         TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
-      {:ok, view, _html} = live(conn, ~p"/teacher")
+      {:ok, view, _html} = live(conn, "/teacher")
       assert has_element?(view, "#coverage-kpis")
     end
 
@@ -63,7 +63,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       {:ok, _plan} =
         TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
-      {:ok, view, _html} = live(conn, ~p"/teacher")
+      {:ok, view, _html} = live(conn, "/teacher")
 
       assert has_element?(
                view,
@@ -101,7 +101,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLiveTest do
       {:ok, plan} =
         TeacherAssistant.Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
 
-      {:ok, view, _html} = live(conn, ~p"/teacher")
+      {:ok, view, _html} = live(conn, "/teacher")
 
       assert has_element?(view, "#dashboard-stats")
       assert render(element(view, "#dashboard-stats")) =~ "Classes"

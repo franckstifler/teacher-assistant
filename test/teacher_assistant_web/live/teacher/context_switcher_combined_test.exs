@@ -64,7 +64,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
       |> Curriculum.list_progression_plans!()
       |> Enum.filter(&(&1.combined_course_id == course.id))
 
-    {:ok, view, _html} = live(conn, ~p"/teacher")
+    {:ok, view, _html} = live(conn, "/teacher")
 
     assert has_element?(view, "#kpi-#{plan.id}")
 

@@ -53,11 +53,11 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     {:ok, other_plan} = Curriculum.create_progression_plan(ctx, %{title: "Other Plan"})
 
     assert {:error, {:live_redirect, %{to: "/teacher"}}} =
-             live(conn, ~p"/teacher/plans/#{other_plan.id}")
+             live(conn, "/teacher/plans/#{other_plan.id}")
   end
 
   test "add a module then a lesson into it", %{conn: conn, plan: plan} do
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     view |> form("#add-module-form", %{module: %{title: "Algorithmique"}}) |> render_submit()
     assert render(view) =~ "Algorithmique"
@@ -80,7 +80,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     {:ok, _} =
       Curriculum.add_progression_entry(m, %{lesson_title: "Orpheline", entry_type: :lesson})
 
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     view |> element("#module-delete-#{m.id}") |> render_click()
 
@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
         entry_type: :lesson
       })
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}")
 
     assert has_element?(view, "#fiche-hours-total")
     total = render(element(view, "#fiche-hours-total"))
@@ -120,7 +120,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
         entry_type: :lesson
       })
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}")
 
     # prepare link present, not-yet-prepared (no indicator)
     assert has_element?(view, "#entry-prepare-#{entry.id}")
@@ -130,14 +130,14 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     {:ok, ctx} = TeacherAssistant.Curriculum.get_teaching_context(plan.teaching_context_id)
     {:ok, _lp} = TeacherAssistant.Curriculum.ensure_lesson_plan(entry, ctx)
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}")
     assert has_element?(view, "#entry-prepared-#{entry.id}")
   end
 
   test "rename module inline updates the title", %{conn: conn, plan: plan} do
     {:ok, m} = Curriculum.create_module(plan, %{title: "Ancien titre"})
 
-    {:ok, view, _html} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _html} = live(conn, "/teacher/plans/#{plan.id}")
 
     view
     |> form("#rename-module-form-#{m.id}", %{"module_id" => m.id, "title" => "Nouveau titre"})
@@ -157,7 +157,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     {:ok, a} = Curriculum.add_progression_entry(m1, %{lesson_title: "A", entry_type: :lesson})
     {:ok, c} = Curriculum.add_progression_entry(m2, %{lesson_title: "C", entry_type: :lesson})
 
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     render_hook(view, "apply-layout", %{
       "layout" => [
@@ -192,14 +192,14 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
         entry_type: :lesson
       })
 
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
     html = render(view)
     assert html =~ "50"
     assert html =~ "quota-header"
   end
 
   test "save-targets persists context targets", %{conn: conn, plan: plan} do
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     view
     |> form("#targets-form", %{
@@ -214,7 +214,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
 
   test "save-module-credit persists a module credit", %{conn: conn, plan: plan, workspace: ws} do
     {:ok, m} = Curriculum.create_module(plan, %{title: "M1"})
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     view
     |> form("#module-credit-form-#{m.id}", %{credit_hours: "11", module_id: m.id})
@@ -226,7 +226,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
 
   test "default module bucket has no credit editor form", %{conn: conn, plan: plan} do
     {:ok, bucket} = Curriculum.ensure_default_module(plan)
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     refute has_element?(view, "#module-credit-form-#{bucket.id}")
   end
@@ -234,7 +234,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
   test "toggle-complete marks a lesson done", %{conn: conn, plan: plan} do
     {:ok, m} = Curriculum.create_module(plan, %{title: "M1"})
     {:ok, e} = Curriculum.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
     view |> element("#entry-complete-#{e.id}") |> render_click()
     {:ok, e} = Curriculum.get_progression_entry(e.id)
     assert e.completed? == true
@@ -248,7 +248,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLiveTest do
     [seq | _] = Organization.list_sequences(year)
     {:ok, m} = Curriculum.create_module(plan, %{title: "M1"})
     {:ok, e} = Curriculum.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
-    {:ok, view, _} = live(conn, ~p"/teacher/plans/#{plan.id}")
+    {:ok, view, _} = live(conn, "/teacher/plans/#{plan.id}")
 
     view
     |> form("#seq-form-#{m.id}", %{module_id: m.id, sequence_id: seq.id})

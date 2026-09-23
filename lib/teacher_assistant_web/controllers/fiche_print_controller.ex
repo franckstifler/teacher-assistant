@@ -1,4 +1,10 @@
 defmodule TeacherAssistantWeb.FichePrintController do
+  @moduledoc """
+  PAUSED (teacher-personal surface). Not routed unless
+  `config :teacher_assistant, teacher_personal_routes: true`.
+  See docs/audits/2026-09-23-school-focus/README.md §6.
+  """
+
   use TeacherAssistantWeb, :controller
 
   alias TeacherAssistant.Accounts.Workspaces

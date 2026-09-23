@@ -39,7 +39,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   end
 
   test "logging a lesson records it", %{conn: conn, plan: plan, entry: entry} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+    {:ok, view, _html} = live(conn, "/teacher/log")
 
     view
     |> form("#log-form",
@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   end
 
   test "hours field shows its default value", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+    {:ok, view, _html} = live(conn, "/teacher/log")
     assert view |> element("#log-form input[name='log[hours]']") |> render() =~ ~s(value="1")
   end
 
@@ -65,7 +65,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
     conn: conn,
     entry: entry
   } do
-    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+    {:ok, view, _html} = live(conn, "/teacher/log")
 
     view
     |> form("#log-form",
@@ -84,7 +84,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
   end
 
   test "invalid hours shows an inline error on change", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/log")
+    {:ok, view, _html} = live(conn, "/teacher/log")
 
     html =
       view
@@ -159,7 +159,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLiveTest do
       conn: conn,
       course_entry: course_entry
     } do
-      {:ok, view, _html} = live(conn, ~p"/teacher/log")
+      {:ok, view, _html} = live(conn, "/teacher/log")
 
       html = render(view)
 

@@ -30,7 +30,7 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
     conn: conn,
     ctx: ctx
   } do
-    {:ok, view, _html} = live(conn, ~p"/teacher")
+    {:ok, view, _html} = live(conn, "/teacher")
     assert has_element?(view, "#class-switcher", "Maths")
     assert has_element?(view, "#class-switcher-item-#{ctx.id}")
     assert has_element?(view, "#per-class-nav")
@@ -42,7 +42,7 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
     conn: conn,
     ctx: ctx
   } do
-    {:ok, view, _html} = live(conn, ~p"/teacher")
+    {:ok, view, _html} = live(conn, "/teacher")
 
     assert has_element?(
              view,
@@ -58,7 +58,7 @@ defmodule TeacherAssistantWeb.Teacher.ShellTest do
     for c <- Curriculum.list_teaching_contexts(ws, Organization.current_academic_year(ws)),
         do: Ash.destroy!(c, authorize?: false)
 
-    {:ok, view, _html} = live(conn, ~p"/teacher")
+    {:ok, view, _html} = live(conn, "/teacher")
 
     assert has_element?(view, "#class-switcher", "Set up a class") or
              has_element?(view, "#class-switcher", "Configurer")

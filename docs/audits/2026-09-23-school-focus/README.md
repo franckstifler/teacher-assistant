@@ -141,7 +141,7 @@ Full detail with `file:line` in reports A and B. Ranked by impact for a multi-sc
 | 13 | Hand-written migration importing app code (`20260811220000_backfill_progression_modules.exs`); stale `personal_workspaces` snapshot | ASH-26, ASH-27 |
 | 14 | `User.:create` accepts `hashed_password` and `role`; no field policy on `hashed_password` | ASH-16, ASH-33 |
 
-## 6. Pause plan (proposal, not yet executed)
+## 6. Pause plan (executed 2026-09-23, plan: docs/superpowers/plans/2026-09-23-school-focus-pause.md)
 
 **Mechanism:** router-level removal behind `Application.compile_env(:teacher_assistant,
 :teacher_personal_routes, false)` (same pattern as `:dev_routes`), not deletion (≈2,500 lines and

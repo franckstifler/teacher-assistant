@@ -38,7 +38,7 @@ defmodule TeacherAssistantWeb.FichePrintControllerTest do
   end
 
   test "renders the printable fiche with header and steps", %{conn: conn, entry: entry} do
-    conn = get(conn, ~p"/teacher/entries/#{entry.id}/fiche/print")
+    conn = get(conn, "/teacher/entries/#{entry.id}/fiche/print")
     html = html_response(conn, 200)
 
     assert html =~ "Les entiers"
@@ -52,7 +52,7 @@ defmodule TeacherAssistantWeb.FichePrintControllerTest do
   end
 
   test "a foreign entry redirects to /teacher", %{conn: conn} do
-    conn = get(conn, ~p"/teacher/entries/#{Ecto.UUID.generate()}/fiche/print")
+    conn = get(conn, "/teacher/entries/#{Ecto.UUID.generate()}/fiche/print")
     assert redirected_to(conn) == "/teacher"
   end
 end

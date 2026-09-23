@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.Teacher.NavigationTest do
   setup :register_and_log_in_user
 
   test "authenticated nav shows dashboard and log links", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/teacher")
+    {:ok, view, _html} = live(conn, "/teacher")
     assert has_element?(view, "#main-nav")
     assert has_element?(view, "#nav-log")
     assert has_element?(view, "#locale-switch")

@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
     conn: conn,
     workspace: ws
   } do
-    {:ok, view, _html} = live(conn, ~p"/teacher/setup")
+    {:ok, view, _html} = live(conn, "/teacher/setup")
 
     view
     |> form("#setup-form",
@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
   end
 
   test "setup persists annual hours and count targets", %{conn: conn, workspace: ws} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/setup")
+    {:ok, view, _html} = live(conn, "/teacher/setup")
 
     view
     |> form("#setup-form",
@@ -60,7 +60,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
   end
 
   test "shows stepper and helper text", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/setup")
+    {:ok, view, _html} = live(conn, "/teacher/setup")
 
     assert has_element?(view, "#setup-stepper")
     assert has_element?(view, "#setup-help-subsystem")
@@ -68,7 +68,7 @@ defmodule TeacherAssistantWeb.Teacher.SetupLiveTest do
   end
 
   test "failed setup surfaces the reason and preserves input", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/setup")
+    {:ok, view, _html} = live(conn, "/teacher/setup")
 
     html =
       view
