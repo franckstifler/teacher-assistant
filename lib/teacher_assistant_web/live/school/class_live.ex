@@ -30,8 +30,6 @@ defmodule TeacherAssistantWeb.School.ClassLive do
            Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          discipline_link?:
            Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
-         fees_link?:
-           Permissions.fees_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
          search_results: [],
          q: "",
          subject_options: subject_options
@@ -95,15 +93,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             <.icon name="hero-shield-exclamation" class="size-4" />
             {gettext("Discipline")}
           </.link>
-          <.link
-            :if={@fees_link?}
-            navigate={~p"/school/classes/#{@cg.id}/fees"}
-            id="go-to-fees"
-            class="btn btn-ghost btn-sm gap-2"
-          >
-            <.icon name="hero-banknotes" class="size-4" />
-            {gettext("Frais")}
-          </.link>
+          <%!-- Fees link removed: bursar features are deferred (docs/audits/2026-09-23-school-focus/README.md §2). Route /school/classes/:id/fees stays. --%>
         </div>
 
         <div class="overflow-x-auto">

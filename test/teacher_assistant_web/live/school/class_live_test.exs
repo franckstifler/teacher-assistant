@@ -130,6 +130,11 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
              live(conn, ~p"/school/classes/#{cg.id}")
   end
 
+  test "the class page has no fees link (fees deferred)", %{conn: conn, cg: cg} do
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}")
+    refute has_element?(view, "#go-to-fees")
+  end
+
   describe "assignments panel" do
     test "assign form lists catalog subjects", %{conn: conn, school: school, cg: cg} do
       # "Musique" is not part of the school's seeded starter catalog, so
