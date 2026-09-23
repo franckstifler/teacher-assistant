@@ -24,6 +24,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   end
 
   test "empty state: seeding populates the list", %{conn: conn, school: school} do
+    # Schools are created with the default schedule; clear it to reach the empty state.
+    Enum.each(Attendance.list_periods(school), &Attendance.delete_period/1)
     assert Attendance.list_periods(school) == []
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")

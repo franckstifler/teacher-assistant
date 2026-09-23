@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.{Attendance, Enrollment, Organization}
   alias TeacherAssistant.Academics.{AcademicYear, Seeding, SchoolTemplates}
   alias TeacherAssistant.Accounts
 
@@ -250,6 +250,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     if Permissions.admin?(scope) do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
+          :ok = Organization.build_default_calendar(year)
+          :ok = Attendance.build_default_periods(ws)
           Seeding.seed_starter_classes(ws, year)
 
           # Deliberately land on the `:classes` step rather than re-deriving

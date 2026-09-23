@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.Workspace do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  alias TeacherAssistant.Academics.{SchoolTemplates, Subject}
+  alias TeacherAssistant.Academics.{Period, Reference, SchoolTemplates, Subject}
   alias TeacherAssistant.Accounts.{SchoolMembership, SchoolProfile}
 
   @profile_keys [
@@ -67,7 +67,8 @@ defmodule TeacherAssistant.Academics.Workspace do
                         workspace,
                         Map.get(profile_attrs, :school_type),
                         Map.get(profile_attrs, :subsystem)
-                      ) do
+                      ),
+                    :ok <- seed_periods(workspace) do
                  {:ok, workspace}
                end
              end)
@@ -140,6 +141,19 @@ defmodule TeacherAssistant.Academics.Workspace do
       roles: [:head]
     })
     |> Ash.create()
+  end
+
+  # The default bell schedule, so roll call works from day one (Increment 2).
+  defp seed_periods(workspace) do
+    Reference.default_periods_preset()
+    |> Enum.reduce_while(:ok, fn attrs, :ok ->
+      params = Map.put(attrs, :workspace_id, workspace.id)
+
+      case Period |> Ash.Changeset.for_create(:create, params) |> Ash.create() do
+        {:ok, _} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp seed_catalog(workspace, type, subsystem) do

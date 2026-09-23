@@ -45,6 +45,7 @@ defmodule TeacherAssistant.TeacherFixtures do
         active: true
       })
 
+    :ok = Organization.build_default_calendar(year)
     {:ok, _count} = TeacherAssistant.Academics.Seeding.seed_starter_classes(workspace, year)
 
     year

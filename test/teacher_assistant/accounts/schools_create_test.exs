@@ -27,6 +27,19 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
     assert :head in membership.roles
   end
 
+  test "create_school seeds the default bell schedule" do
+    user = TeacherFixtures.user_fixture()
+    {:ok, school} = Organization.create_school(user, @attrs)
+    periods = TeacherAssistant.Attendance.list_periods(school)
+    assert periods != []
+    assert Enum.any?(periods, &(&1.kind == :lesson))
+  end
+
+  test "setup_complete_school_fixture builds the year's calendar" do
+    %{workspace: _school, year: year} = TeacherFixtures.setup_complete_school_fixture()
+    assert length(Organization.list_sequences(year)) == 6
+  end
+
   test "is atomic: an invalid profile field leaves no workspace, profile or membership" do
     user = TeacherFixtures.user_fixture()
     before_ws = Workspace |> Ash.Query.filter(kind == :school) |> Ash.count!(authorize?: false)

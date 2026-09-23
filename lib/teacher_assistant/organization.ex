@@ -124,11 +124,12 @@ defmodule TeacherAssistant.Organization do
 
   @doc """
   Seeds a year's default calendar (3 terms, their séquences) from
-  `Reference.default_calendar_preset/0`. Not wrapped in a shared transaction
+  `Reference.default_calendar_preset/2` applied to the year's own dates. Not wrapped in a shared transaction
   (same as before the move) — each Term/Sequence create is its own action call.
   """
   def build_default_calendar(%AcademicYear{} = year) do
-    preset = TeacherAssistant.Academics.Reference.default_calendar_preset()
+    preset =
+      TeacherAssistant.Academics.Reference.default_calendar_preset(year.start_date, year.end_date)
 
     Enum.each(preset.terms, fn term_spec ->
       {:ok, term} =

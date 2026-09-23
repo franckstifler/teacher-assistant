@@ -40,6 +40,26 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert render(view) =~ "2025-2026"
   end
 
+  test "creating a year from settings builds its calendar", %{conn: conn, school: school} do
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#year-form", %{
+      "year" => %{"name" => "2030-2031", "start_date" => "2030-09-02", "end_date" => "2031-06-27"}
+    })
+    |> render_submit()
+
+    year = Organization.list_academic_years(school) |> Enum.find(&(&1.name == "2030-2031"))
+    assert length(Organization.list_sequences(year)) == 6
+  end
+
+  test "settings lists the active year's séquences", %{conn: conn, school: school} do
+    year = Organization.current_academic_year(school)
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+    assert has_element?(view, "#year-calendar-#{year.id}")
+    assert has_element?(view, "#year-calendar-#{year.id} li", "Séquence 6")
+  end
+
   test "activating a year deactivates the previous one", %{conn: conn, school: school} do
     {:ok, y1} =
       Organization.create_academic_year(school, %{

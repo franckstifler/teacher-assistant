@@ -30,3 +30,64 @@ defmodule TeacherAssistant.Academics.CalendarTest do
     assert seq.number == 1
   end
 end
+
+defmodule TeacherAssistant.Academics.CalendarTemplateTest do
+  use TeacherAssistant.DataCase, async: true
+  alias TeacherAssistant.Organization
+  alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.TeacherFixtures
+
+  defp year_fixture(start_date, end_date) do
+    ws = TeacherFixtures.workspace_fixture()
+
+    {:ok, year} =
+      Organization.create_academic_year(ws, %{
+        name: "#{start_date.year}-#{end_date.year}",
+        start_date: start_date,
+        end_date: end_date,
+        active: true
+      })
+
+    year
+  end
+
+  test "the preset anchors dates on the year's own start year, not 2025" do
+    preset = Reference.default_calendar_preset(~D[2027-09-06], ~D[2028-07-28])
+    [t1 | _] = preset.terms
+    [s1 | _] = t1.sequences
+    assert s1.start_date.year == 2027
+    last = preset.terms |> List.last() |> Map.fetch!(:sequences) |> List.last()
+    assert last.end_date.year == 2028
+  end
+
+  test "build_default_calendar keeps every séquence inside the year" do
+    year = year_fixture(~D[2027-09-06], ~D[2028-07-28])
+    :ok = Organization.build_default_calendar(year)
+    seqs = Organization.list_sequences(year)
+    assert length(seqs) == 6
+
+    for s <- seqs do
+      assert Date.compare(s.start_date, year.start_date) != :lt
+      assert Date.compare(s.end_date, year.end_date) != :gt
+      assert Date.compare(s.start_date, s.end_date) == :lt
+    end
+  end
+
+  test "the first séquence starts on the year's start date and the last ends on its end date" do
+    year = year_fixture(~D[2027-09-13], ~D[2028-06-09])
+    :ok = Organization.build_default_calendar(year)
+    seqs = Organization.list_sequences(year)
+    assert List.first(seqs).start_date == ~D[2027-09-13]
+    assert List.last(seqs).end_date == ~D[2028-06-09]
+  end
+
+  test "a year that starts in January still gets six ordered séquences" do
+    year = year_fixture(~D[2027-01-11], ~D[2027-11-26])
+    :ok = Organization.build_default_calendar(year)
+    seqs = Organization.list_sequences(year)
+    assert Enum.map(seqs, & &1.number) == [1, 2, 3, 4, 5, 6]
+    starts = Enum.map(seqs, & &1.start_date)
+    assert starts == Enum.sort(starts, Date)
+    assert List.last(seqs).end_date == ~D[2027-11-26]
+  end
+end

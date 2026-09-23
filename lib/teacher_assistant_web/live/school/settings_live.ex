@@ -190,6 +190,36 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             </table>
           </div>
 
+          <div
+            :if={@active_year && @active_sequences != []}
+            id={"year-calendar-#{@active_year.id}"}
+            class="rounded-box border border-base-300 bg-base-100 p-4"
+          >
+            <h3 class="text-sm font-semibold">
+              {gettext("Trimestres et séquences")} · {@active_year.name}
+            </h3>
+            <p class="mt-1 text-xs text-base-content/70">
+              {gettext(
+                "Calendrier généré à la création de l'année. Les dates seront modifiables prochainement."
+              )}
+            </p>
+            <ul class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
+              <li
+                :for={seq <- @active_sequences}
+                id={"sequence-#{seq.id}"}
+                class="flex justify-between gap-3"
+              >
+                <span>
+                  <span class="text-base-content/60">
+                    {gettext("Trimestre %{n}", n: div(seq.number - 1, 2) + 1)} ·
+                  </span>
+                  {gettext("Séquence %{n}", n: seq.number)}
+                </span>
+                <span class="ta-num text-base-content/70">{seq.start_date} → {seq.end_date}</span>
+              </li>
+            </ul>
+          </div>
+
           <.empty_state
             :if={@years == []}
             icon="hero-calendar"
@@ -376,6 +406,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     if Permissions.admin?(scope) do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
+          :ok = Organization.build_default_calendar(year)
+          :ok = TeacherAssistant.Attendance.build_default_periods(scope.current_workspace)
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
 
           socket = load_years(socket)
@@ -587,7 +619,16 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   defp load_years(socket) do
     scope = socket.assigns.scope
-    assign(socket, :years, Organization.list_academic_years(scope.current_workspace))
+    years = Organization.list_academic_years(scope.current_workspace)
+    active_year = Enum.find(years, & &1.active)
+
+    socket
+    |> assign(:years, years)
+    |> assign(:active_year, active_year)
+    |> assign(
+      :active_sequences,
+      if(active_year, do: Organization.list_sequences(active_year), else: [])
+    )
   end
 
   defp load_profile(socket) do

@@ -92,6 +92,26 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     assert html =~ "wizard-panel-classes"
   end
 
+  test "creating the academic year builds its calendar and the default periods", %{
+    conn: conn,
+    ws: ws
+  } do
+    {:ok, view, _} = live(conn, ~p"/school/setup")
+
+    view
+    |> form("#year-form", %{
+      "year" => %{"name" => "2026-2027", "start_date" => "2026-09-01", "end_date" => "2027-07-05"}
+    })
+    |> render_submit()
+
+    year = TeacherAssistant.Organization.current_academic_year(ws)
+    seqs = TeacherAssistant.Organization.list_sequences(year)
+    assert length(seqs) == 6
+    assert List.first(seqs).start_date == ~D[2026-09-01]
+    assert List.last(seqs).end_date == ~D[2027-07-05]
+    assert TeacherAssistant.Attendance.list_periods(ws) != []
+  end
+
   describe "classes step" do
     setup %{conn: conn, ws: ws} do
       {:ok, view, _} = live(conn, ~p"/school/setup")

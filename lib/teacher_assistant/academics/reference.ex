@@ -43,70 +43,56 @@ defmodule TeacherAssistant.Academics.Reference do
 
   def entry_type_keys, do: Enum.map(entry_types(), & &1.key)
 
-  @doc "Official 2025-2026 grid (docs/domain/01 §6). Dates are editable in the wizard."
-  def default_calendar_preset do
-    %{
-      terms: [
-        %{
-          position: 1,
-          sequences: [
-            %{
-              number: 1,
-              position_in_term: 1,
-              start_date: ~D[2025-09-08],
-              end_date: ~D[2025-10-24],
-              integration_week: false
-            },
-            %{
-              number: 2,
-              position_in_term: 2,
-              start_date: ~D[2025-10-27],
-              end_date: ~D[2025-11-28],
-              integration_week: true
-            }
-          ]
-        },
-        %{
-          position: 2,
-          sequences: [
-            %{
-              number: 3,
-              position_in_term: 1,
-              start_date: ~D[2025-12-01],
-              end_date: ~D[2026-01-30],
-              integration_week: false
-            },
-            %{
-              number: 4,
-              position_in_term: 2,
-              start_date: ~D[2026-02-02],
-              end_date: ~D[2026-03-06],
-              integration_week: true
-            }
-          ]
-        },
-        %{
-          position: 3,
-          sequences: [
-            %{
-              number: 5,
-              position_in_term: 1,
-              start_date: ~D[2026-03-09],
-              end_date: ~D[2026-04-30],
-              integration_week: false
-            },
-            %{
-              number: 6,
-              position_in_term: 2,
-              start_date: ~D[2026-05-04],
-              end_date: ~D[2026-06-12],
-              integration_week: true
-            }
-          ]
+  # Relative weight of each séquence in the official grid (docs/domain/01 §6):
+  # the span from a séquence's first day to the next séquence's first day,
+  # 2025-2026 reference year. Term 1 = S1+S2, term 2 = S3+S4, term 3 = S5+S6.
+  @sequence_weights [49, 35, 63, 35, 56, 40]
+  @integration_weeks [false, true, false, true, false, true]
+
+  @doc """
+  The default academic calendar for a year running from `start_date` to
+  `end_date`: 3 terms × 2 séquences, consecutive (no gaps, so every in-year
+  date belongs to exactly one séquence), sized proportionally to the official
+  grid. The first séquence starts on `start_date`, the last ends on `end_date`.
+  """
+  def default_calendar_preset(%Date{} = start_date, %Date{} = end_date) do
+    total_days = Date.diff(end_date, start_date) + 1
+    total_weight = Enum.sum(@sequence_weights)
+
+    {sequences, _next_start} =
+      @sequence_weights
+      |> Enum.with_index(1)
+      |> Enum.map_reduce(start_date, fn {weight, number}, seq_start ->
+        seq_end =
+          if number == 6 do
+            end_date
+          else
+            days = max(div(total_days * weight, total_weight), 1)
+            Date.add(seq_start, days - 1)
+          end
+
+        seq = %{
+          number: number,
+          position_in_term: rem(number - 1, 2) + 1,
+          start_date: seq_start,
+          end_date: seq_end,
+          integration_week: Enum.at(@integration_weeks, number - 1)
         }
-      ]
-    }
+
+        {seq, Date.add(seq_end, 1)}
+      end)
+
+    terms =
+      sequences
+      |> Enum.chunk_every(2)
+      |> Enum.with_index(1)
+      |> Enum.map(fn {seqs, position} -> %{position: position, sequences: seqs} end)
+
+    %{terms: terms}
   end
+
+  @doc "The 2025-2026 reference calendar (`default_calendar_preset/2` on the official year)."
+  def default_calendar_preset, do: default_calendar_preset(~D[2025-09-08], ~D[2026-07-31])
 
   @doc "Standard Cameroonian bell schedule: 8 lessons + mid-morning/lunch breaks (docs/domain)."
   def default_periods_preset do

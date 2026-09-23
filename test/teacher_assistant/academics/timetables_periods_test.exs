@@ -35,10 +35,15 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
     assert length(Attendance.list_periods(school)) == count_after_first
   end
 
-  test "list_periods returns [] for an unseeded workspace" do
+  test "a new school is created with the default bell schedule" do
     user = TeacherFixtures.user_fixture()
     {:ok, other_school} = Organization.create_school(user, %{name: "Other School"})
 
-    assert Attendance.list_periods(other_school) == []
+    assert Attendance.list_periods(other_school) != []
+  end
+
+  test "list_periods returns [] for a workspace without periods" do
+    ws = TeacherFixtures.workspace_fixture()
+    assert Attendance.list_periods(ws) == []
   end
 end
