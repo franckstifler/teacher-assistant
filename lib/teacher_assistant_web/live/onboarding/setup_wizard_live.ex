@@ -276,45 +276,56 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   end
 
   def handle_event("add_class", %{"class_group" => params}, socket) do
+    scope = socket.assigns.current_scope
     %{ws: ws, year: year} = socket.assigns
-    attrs = class_attrs(params)
 
-    case Enrollment.create_class_group(ws, year, attrs) do
-      {:ok, _class_group} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Class created."))
-         |> assign(:class_form, class_form())
-         |> assign_classes(year)}
+    if Permissions.admin?(scope) do
+      attrs = class_attrs(params)
 
-      {:error, _error} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create the class."))}
+      case Enrollment.create_class_group(ws, year, attrs) do
+        {:ok, _class_group} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Class created."))
+           |> assign(:class_form, class_form())
+           |> assign_classes(year)}
+
+        {:error, _error} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not create the class."))}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
   def handle_event("delete_class", %{"id" => id}, socket) do
+    scope = socket.assigns.current_scope
     %{classes: classes, year: year} = socket.assigns
 
-    case Enum.find(classes, &(&1.id == id)) do
-      nil ->
-        {:noreply, socket}
+    if Permissions.admin?(scope) do
+      case Enum.find(classes, &(&1.id == id)) do
+        nil ->
+          {:noreply, socket}
 
-      class_group ->
-        case Enrollment.delete_class_group(class_group) do
-          :ok ->
-            {:noreply,
-             socket
-             |> put_flash(:info, gettext("Class deleted."))
-             |> assign_classes(year)}
+        class_group ->
+          case Enrollment.delete_class_group(class_group) do
+            :ok ->
+              {:noreply,
+               socket
+               |> put_flash(:info, gettext("Class deleted."))
+               |> assign_classes(year)}
 
-          {:error, :has_data} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               gettext("This class has students or teachers — remove them first.")
-             )}
-        end
+            {:error, :has_data} ->
+              {:noreply,
+               put_flash(
+                 socket,
+                 :error,
+                 gettext("This class has students or teachers — remove them first.")
+               )}
+          end
+      end
+    else
+      {:noreply, socket}
     end
   end
 

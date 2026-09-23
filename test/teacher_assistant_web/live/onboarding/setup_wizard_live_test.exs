@@ -191,4 +191,52 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
       assert html =~ "des élèves ou des enseignants"
     end
   end
+
+  describe "classes step authorization (non-head member)" do
+    setup do
+      %{workspace: ws, head_user: head, year: year} = setup_complete_school_fixture()
+      other = user_fixture(%{})
+
+      TeacherAssistant.TeacherFixtures.membership_fixture(ws, %{user: other, roles: [:teacher]})
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> log_in_user(other)
+        |> put_session(:workspace_id, ws.id)
+
+      %{conn: conn, ws: ws, head: head, other: other, year: year}
+    end
+
+    test "a non-head member cannot add a class via a forged event", %{
+      conn: conn,
+      ws: ws,
+      year: year
+    } do
+      {:ok, view, _html} = live(conn, ~p"/school/setup")
+
+      before_labels = ws |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+
+      render_hook(view, "add_class", %{
+        "class_group" => %{"label" => "Forged", "level" => "6e"}
+      })
+
+      after_labels = ws |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+      assert after_labels == before_labels
+      refute "Forged" in after_labels
+    end
+
+    test "a non-head member cannot delete a class via a forged event", %{
+      conn: conn,
+      ws: ws,
+      year: year
+    } do
+      {:ok, view, _html} = live(conn, ~p"/school/setup")
+
+      [class_group | _] = Enrollment.list_class_groups(ws, year)
+
+      render_hook(view, "delete_class", %{"id" => class_group.id})
+
+      assert Enum.any?(Enrollment.list_class_groups(ws, year), &(&1.id == class_group.id))
+    end
+  end
 end
