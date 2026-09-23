@@ -10,10 +10,6 @@ import Config
 config :cinder, default_theme: "modern"
 config :ash_oban, pro?: false
 
-# Teacher-personal surfaces are paused; see docs/audits/2026-09-23-school-focus/README.md §6.
-# Flip to `true` in a config file to re-enable the /teacher/* personal routes.
-config :teacher_assistant, teacher_personal_routes: false
-
 config :teacher_assistant, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,

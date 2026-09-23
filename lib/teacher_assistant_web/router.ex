@@ -37,10 +37,6 @@ defmodule TeacherAssistantWeb.Router do
     get "/workspaces/select/:id", WorkspaceController, :select
     get "/teacher/select-context/:id", TeacherContextController, :select
 
-    if Application.compile_env(:teacher_assistant, :teacher_personal_routes, false) do
-      get "/teacher/entries/:entry_id/fiche/print", FichePrintController, :show
-    end
-
     get "/school/classes/:id/students/:enrollment_id/bulletin/print",
         BulletinPrintController,
         :show
@@ -83,9 +79,6 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
-    # School teachers' marks surface. Every teacher page that is NOT about an
-    # assigned class (dashboard, personal setup, fiche, import, log, coverage,
-    # lesson plans) is teacher-personal and paused behind the compile flag.
     ash_authentication_live_session :teaching,
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
@@ -95,23 +88,6 @@ defmodule TeacherAssistantWeb.Router do
       live "/teacher/contexts/:id/roster", Teacher.RosterLive, :index
       live "/teacher/contexts/:id/marks", Teacher.MarksLive, :index
       live "/teacher/contexts/:id/marks/summary", Teacher.MarksSummaryLive, :index
-    end
-
-    if Application.compile_env(:teacher_assistant, :teacher_personal_routes, false) do
-      ash_authentication_live_session :teacher_workspace,
-        session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
-        on_mount: [
-          {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
-          {TeacherAssistantWeb.LiveUserAuth, :require_teaching_scope}
-        ] do
-        live "/teacher", Teacher.DashboardLive, :index
-        live "/teacher/setup", Teacher.SetupLive, :index
-        live "/teacher/import", Teacher.ImportLive, :new
-        live "/teacher/log", Teacher.LogLive, :index
-        live "/teacher/plans/:id", Teacher.FicheLive, :show
-        live "/teacher/plans/:id/coverage", Teacher.CoverageLive, :show
-        live "/teacher/entries/:entry_id/fiche", Teacher.LessonPlanLive, :edit
-      end
     end
 
     ash_authentication_live_session :school_workspace,

@@ -20,11 +20,4 @@ defmodule TeacherAssistantWeb.Onboarding.SetupGateTest do
     conn = conn |> log_in_user(head) |> put_session(:workspace_id, ws.id)
     assert {:ok, _view, _html} = live(conn, ~p"/school/setup")
   end
-
-  @tag :teacher_personal
-  test "a teacher (personal) scope is never gated", %{conn: conn} do
-    user = user_fixture()
-    conn = log_in_user(conn, user)
-    assert {:ok, _view, _html} = live(conn, "/teacher")
-  end
 end

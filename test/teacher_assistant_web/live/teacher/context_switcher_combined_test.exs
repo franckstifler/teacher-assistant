@@ -52,27 +52,4 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     representative_id = Curriculum.unit_select_id({:course, course})
     assert has_element?(view, "#class-switcher-item-#{representative_id}", course.label)
   end
-
-  @tag :teacher_personal
-  test "dashboard shows exactly one coverage KPI for a combined course over two classes", %{
-    conn: conn,
-    ws: ws,
-    course: course
-  } do
-    [plan] =
-      ws.id
-      |> Curriculum.list_progression_plans!()
-      |> Enum.filter(&(&1.combined_course_id == course.id))
-
-    {:ok, view, _html} = live(conn, "/teacher")
-
-    assert has_element?(view, "#kpi-#{plan.id}")
-
-    kpi_ids =
-      view
-      |> render()
-      |> then(&Regex.scan(~r/id="kpi-(?!roster-|coverage-)([^"]+)"/, &1))
-
-    assert length(kpi_ids) == 1
-  end
 end

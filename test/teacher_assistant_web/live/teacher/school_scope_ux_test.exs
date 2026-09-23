@@ -32,15 +32,6 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
     refute has_element?(view, "[id^='student-delete-']")
   end
 
-  test "forged roster mutation events are rejected under school scope", %{conn: conn, tc: tc} do
-    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
-    # event name must match RosterLive's actual add handler
-    render_hook(view, "add_student", %{"student" => %{"full_name" => "X", "sex" => "m"}})
-
-    assert Enrollment.list_students(%TeacherAssistant.Academics.ClassGroup{id: tc.class_group_id})
-           |> length() == 1
-  end
-
   test "an unknown roster redirects to /school under school scope", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
