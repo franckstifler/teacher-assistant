@@ -33,6 +33,7 @@ defmodule TeacherAssistantWeb.Router do
         TeacherAssistantWeb.AuthOverrides,
         Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
       ]
+
     get "/workspaces/select/:id", WorkspaceController, :select
     post "/workspaces", WorkspaceController, :create
     get "/teacher/select-context/:id", TeacherContextController, :select

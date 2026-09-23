@@ -270,7 +270,8 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
     <div class="ta-leaf">
       <p class="ta-eyebrow">{@label}</p>
       <p class={["ta-num mt-1 text-2xl font-semibold leading-none", ratio_accent(@ratio)]}>
-        {@value}<span :if={@target} class="text-base font-normal text-base-content/55">
+        {@value}
+        <span :if={@target} class="text-base font-normal text-base-content/55">
           / {@target}{@suffix}
         </span>
         <span
@@ -288,8 +289,7 @@ defmodule TeacherAssistantWeb.Teacher.FicheLive do
         ]}
         value={ratio_pct(@ratio) || 0}
         max="100"
-      >
-      </progress>
+      ></progress>
     </div>
     """
   end

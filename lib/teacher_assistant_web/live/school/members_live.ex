@@ -41,6 +41,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                 <td>
                   <form
                     :if={@head?}
+                    id={"roles-#{m.id}"}
                     phx-change="set_roles"
                     phx-value-id={m.id}
                     class="flex flex-wrap gap-2"

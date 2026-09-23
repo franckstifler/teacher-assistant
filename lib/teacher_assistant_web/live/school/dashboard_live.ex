@@ -50,7 +50,10 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         <div id="setup-checklist" class="ta-leaf space-y-2">
           <h2 class="ta-eyebrow">{gettext("Mise en route")}</h2>
           <ul class="divide-y divide-base-300/70 text-sm">
-            <li id="setup-checklist-profile" class="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
+            <li
+              id="setup-checklist-profile"
+              class="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0"
+            >
               <.icon
                 name={if @profile_complete?, do: "hero-check-circle", else: "hero-x-circle"}
                 class={"size-4 shrink-0 " <> if(@profile_complete?, do: "text-primary", else: "text-base-content/40")}
@@ -64,7 +67,10 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
               />
               {gettext("Année scolaire")}
             </li>
-            <li id="setup-checklist-classes" class="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
+            <li
+              id="setup-checklist-classes"
+              class="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0"
+            >
               <.icon
                 name={if @classes != [], do: "hero-check-circle", else: "hero-x-circle"}
                 class={"size-4 shrink-0 " <> if(@classes != [], do: "text-primary", else: "text-base-content/40")}
@@ -92,7 +98,11 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
              KPI strip is always reachable here. --%>
         <div id="dashboard-stats" class="grid grid-cols-3 gap-2 sm:gap-3">
           <.stat label={gettext("Classes")} value={Integer.to_string(@classes_count)} />
-          <.stat label={gettext("Students")} value={Integer.to_string(@students_count)} tone={:primary} />
+          <.stat
+            label={gettext("Students")}
+            value={Integer.to_string(@students_count)}
+            tone={:primary}
+          />
           <.stat label={gettext("Teachers")} value={Integer.to_string(@teachers_count)} />
         </div>
 

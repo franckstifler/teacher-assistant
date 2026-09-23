@@ -104,8 +104,7 @@ defmodule TeacherAssistantWeb.Layouts do
         </div>
 
         <div class="drawer-side z-40">
-          <label for="app-drawer" aria-label={gettext("Close navigation")} class="drawer-overlay">
-          </label>
+          <label for="app-drawer" aria-label={gettext("Close navigation")} class="drawer-overlay"></label>
           <aside
             class="ta-rail flex min-h-screen w-64 flex-col gap-4 p-3"
             aria-label={gettext("Sidebar")}

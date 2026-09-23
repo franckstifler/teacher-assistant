@@ -10,6 +10,7 @@ defmodule TeacherAssistant.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      usage_rules: usage_rules(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       consolidate_protocols: Mix.env() != :dev
@@ -23,6 +24,28 @@ defmodule TeacherAssistant.MixProject do
     [
       mod: {TeacherAssistant.Application, []},
       extra_applications: [:logger, :runtime_tools]
+    ]
+  end
+
+  defp usage_rules do
+    [
+      file: "AGENTS.md",
+      usage_rules: ["usage_rules:all"],
+      skills: [
+        location: ".claude/skills",
+        build: [
+          "ash-framework": [
+            description:
+              "Use this skill when working with Ash Framework or any of its extensions. Always consult this when making any domain changes, features or fixes.",
+            usage_rules: [:ash, ~r/^ash_/]
+          ],
+          "phoenix-framework": [
+            description:
+              "Use this skill when working with Phoenix Framework. Consult this when working with the web layer, controllers, views, liveviews etc.",
+            usage_rules: [:phoenix, ~r/^phoenix_/]
+          ]
+        ]
+      ]
     ]
   end
 
@@ -41,11 +64,12 @@ defmodule TeacherAssistant.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:usage_rules, "~> 1.0", only: [:dev]},
       {:cinder, "~> 0.14"},
       {:picosat_elixir, "~> 0.2"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:oban, "~> 2.22"},
-      {:live_debugger, "~> 0.4", only: [:dev]},
+      {:live_debugger, "~> 1.0", only: [:dev]},
       {:ash_archival, "~> 2.0"},
       {:ash_state_machine, "~> 0.2"},
       {:oban_web, "~> 2.0"},
@@ -62,9 +86,9 @@ defmodule TeacherAssistant.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.1.0"},
+      {:phoenix_live_view, "~> 1.2"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:heroicons,
@@ -80,7 +104,7 @@ defmodule TeacherAssistant.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3"},
       {:bandit, "~> 1.5"}
       # {:live_select, "~> 1.7"}
     ]

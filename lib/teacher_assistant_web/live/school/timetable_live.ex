@@ -179,7 +179,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                   <td :for={day <- @days} id={"cell-#{day}-#{period.id}"}>
                     <% slot = @slots[{day, period.id}] %>
                     <%= if @admin? do %>
-                      <form phx-change="place">
+                      <form id={"place-#{day}-#{period.id}"} phx-change="place">
                         <input type="hidden" name="day" value={day} />
                         <input type="hidden" name="period_id" value={period.id} />
                         <select

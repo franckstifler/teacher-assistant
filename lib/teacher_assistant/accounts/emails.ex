@@ -28,7 +28,9 @@ defmodule TeacherAssistant.Accounts.Emails do
     |> to(to_string(user.email))
     |> subject(gettext("Réinitialisation de votre mot de passe"))
     |> text_body(gettext("Réinitialisez votre mot de passe ici : %{url}", url: reset_url))
-    |> html_body(gettext("<p><a href=\"%{url}\">Réinitialiser mon mot de passe</a></p>", url: reset_url))
+    |> html_body(
+      gettext("<p><a href=\"%{url}\">Réinitialiser mon mot de passe</a></p>", url: reset_url)
+    )
   end
 
   def magic_link(user, magic_url) do

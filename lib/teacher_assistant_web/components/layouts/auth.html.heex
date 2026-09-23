@@ -173,7 +173,11 @@
         Tout l'établissement sur un seul tableau.
       </h2>
       <div class="mt-6 flex flex-col gap-3">
-        <span :for={point <- @auth_points} class="flex items-center gap-3" style="font-size: 0.88rem; color: #C9D3CF">
+        <span
+          :for={point <- @auth_points}
+          class="flex items-center gap-3"
+          style="font-size: 0.88rem; color: #C9D3CF"
+        >
           <span
             class="grid size-6 flex-none place-items-center rounded-full"
             style="background: #24332F; color: #8FC9B4"
@@ -191,7 +195,10 @@
   </aside>
 
   <%!-- form column --%>
-  <main class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-10" style="background: #FFFFFF">
+  <main
+    class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-10"
+    style="background: #FFFFFF"
+  >
     <div class="w-full max-w-sm">
       <p
         class="ta-mono"
@@ -202,7 +209,10 @@
       <h1 style="margin: 0.4rem 0 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; color: #1E2A2B">
         {@auth_copy.title}
       </h1>
-      <p :if={@auth_copy.sub} style="margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.55; color: #5A6668">
+      <p
+        :if={@auth_copy.sub}
+        style="margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.55; color: #5A6668"
+      >
         {@auth_copy.sub}
       </p>
 

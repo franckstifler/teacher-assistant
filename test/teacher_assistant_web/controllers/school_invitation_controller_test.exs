@@ -32,7 +32,9 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
   describe "show/2 — signed-out visitor" do
     test "is offered register + sign-in and return_to is set", %{conn: _conn} do
       %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
-      {:ok, inv} = Accounts.invite_member(ws, head, %{email: "new@example.com", roles: [:teacher]})
+
+      {:ok, inv} =
+        Accounts.invite_member(ws, head, %{email: "new@example.com", roles: [:teacher]})
 
       conn =
         build_conn()

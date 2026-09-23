@@ -235,6 +235,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
                 <td class="block md:table-cell md:px-2 md:py-1" colspan="6">
                   <.form
                     for={step_form(s)}
+                    id={"step-#{s.id}"}
                     phx-change="save_step"
                     phx-value-id={s.id}
                     phx-debounce="blur"

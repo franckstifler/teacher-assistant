@@ -23,7 +23,9 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/setup")
 
       view
-      |> form("#invite-form", %{"invite" => %{"email" => "prof@example.com", "roles" => ["teacher"]}})
+      |> form("#invite-form", %{
+        "invite" => %{"email" => "prof@example.com", "roles" => ["teacher"]}
+      })
       |> render_submit()
 
       assert_email_sent(fn e -> assert {_, "prof@example.com"} = hd(e.to) end)
@@ -80,7 +82,11 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     |> render_submit()
 
     assert TeacherAssistant.Organization.current_academic_year(ws) != nil
-    assert Enrollment.list_class_groups(ws, TeacherAssistant.Organization.current_academic_year(ws)) != []
+
+    assert Enrollment.list_class_groups(
+             ws,
+             TeacherAssistant.Organization.current_academic_year(ws)
+           ) != []
 
     html = render(view)
     assert html =~ "wizard-panel-classes"

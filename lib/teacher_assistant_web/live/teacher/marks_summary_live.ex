@@ -208,8 +208,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
                       <span
                         class="block h-full rounded-full bg-primary"
                         style={"width: #{bar_width(@summary.per_student[s.id].average)}"}
-                      >
-                      </span>
+                      ></span>
                     </span>
                   </span>
                 </td>

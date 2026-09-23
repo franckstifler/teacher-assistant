@@ -534,7 +534,9 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
         <p class="ta-eyebrow">{gettext("Classes")}</p>
         <h2 class="text-lg font-semibold">{gettext("Review your classes")}</h2>
         <p class="text-sm text-base-content/70">
-          {gettext("We've suggested starter classes below — edit them, then add at least one to continue.")}
+          {gettext(
+            "We've suggested starter classes below — edit them, then add at least one to continue."
+          )}
         </p>
       </div>
 
