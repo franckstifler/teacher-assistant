@@ -242,7 +242,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   # lands on the student's own class via `record_combined_period/5`.
   def render(%{course: %CombinedCourse{}} = assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="class-attendance" class="mx-auto max-w-2xl space-y-4">
         <.page_header
           eyebrow={gettext("École")}
@@ -279,7 +279,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="class-attendance" class="mx-auto max-w-2xl space-y-4">
         <.page_header
           eyebrow={gettext("École")}

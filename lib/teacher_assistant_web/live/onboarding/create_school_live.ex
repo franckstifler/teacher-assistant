@@ -91,7 +91,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
     assigns = assign(assigns, :summary, build_summary(assigns.form))
 
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="create-school" class="mx-auto max-w-4xl space-y-6">
         <.page_header
           eyebrow={gettext("Get started")}

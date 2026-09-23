@@ -141,7 +141,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-roster" class="mx-auto max-w-2xl space-y-5">
         <.page_header eyebrow={gettext("Roster")} title={"#{@ctx.subject} · #{@ctx.level}"} />
 

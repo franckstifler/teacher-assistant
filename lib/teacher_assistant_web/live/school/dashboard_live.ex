@@ -49,7 +49,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-dashboard" class="flex flex-col gap-6">
         <.page_header eyebrow={gettext("École")} title={@current_scope.current_workspace.name}>
           <:actions :if={@year}>

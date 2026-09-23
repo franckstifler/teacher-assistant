@@ -47,4 +47,19 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
              "#class-switcher-item-#{tc.id} a[href*='/teacher/select-context/#{tc.id}']"
            )
   end
+
+  test "the rail marks the current page as active", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/courses")
+    assert has_element?(view, "#nav-school-courses[aria-current='page']")
+    refute has_element?(view, "#nav-school-classes[aria-current='page']")
+  end
+
+  test "the switcher return_to carries the page the teacher is on", %{conn: conn, tc: tc} do
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
+
+    assert has_element?(
+             view,
+             "#class-switcher-item-#{tc.id} a[href*='return_to=%2Fteacher%2Fcontexts%2F']"
+           )
+  end
 end

@@ -62,7 +62,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="courses" class="mx-auto max-w-3xl space-y-4">
         <.page_header eyebrow={gettext("Enseignement")} title={gettext("Mes cours")} />
 

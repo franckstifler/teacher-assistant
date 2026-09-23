@@ -108,7 +108,7 @@ defmodule TeacherAssistantWeb.Teacher.LessonPlanLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="lesson-plan" class="mx-auto max-w-3xl space-y-5">
         <.page_header
           eyebrow={gettext("Fiche de préparation")}

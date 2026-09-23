@@ -95,7 +95,7 @@ defmodule TeacherAssistantWeb.Teacher.DashboardLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <%= if @year do %>
         <section id="teacher-dashboard" class="flex flex-col gap-6">
           <.page_header eyebrow={gettext("My space")} title={gettext("Teacher dashboard")}>

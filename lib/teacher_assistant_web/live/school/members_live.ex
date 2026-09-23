@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-members" class="space-y-6">
         <.page_header eyebrow={gettext("École")} title={gettext("Membres")} />
 

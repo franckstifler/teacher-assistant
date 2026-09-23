@@ -100,7 +100,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-marks-summary" class="mx-auto max-w-2xl space-y-4">
         <.page_header eyebrow={gettext("Séquence results")} title={"#{@ctx.subject} · #{@ctx.level}"}>
           <:actions>

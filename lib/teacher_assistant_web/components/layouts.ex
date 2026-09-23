@@ -32,6 +32,11 @@ defmodule TeacherAssistantWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :current_path, :string,
+    default: nil,
+    doc:
+      "the request path (set by `LiveUserAuth`'s handle_params hook); drives the active rail link and the class-switcher return_to"
+
   slot :inner_block, required: true
 
   def app(assigns) do

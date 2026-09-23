@@ -115,7 +115,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="bulletin" class="mx-auto max-w-3xl space-y-6">
         <.page_header eyebrow={gettext("Bulletin de notes")} title={@student.full_name}>
           <:actions>

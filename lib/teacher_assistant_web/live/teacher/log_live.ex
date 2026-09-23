@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.Teacher.LogLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-log" class="mx-auto max-w-md space-y-5">
         <.page_header
           eyebrow={gettext("Cahier de textes")}

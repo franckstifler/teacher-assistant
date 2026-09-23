@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.Teacher.ImportLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="fiche-import" class="mx-auto max-w-2xl space-y-6">
         <.page_header
           eyebrow={gettext("Import a fiche")}
