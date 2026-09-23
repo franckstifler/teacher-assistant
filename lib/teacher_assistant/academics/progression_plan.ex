@@ -270,8 +270,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     uuid_v7_primary_key :id
     attribute :title, :string, allow_nil?: false, public?: true
 
-    attribute :status, :atom,
-      constraints: [one_of: [:draft, :active]],
+    attribute :status, TeacherAssistant.Academics.ProgressionPlanStatus,
       default: :draft,
       public?: true
 

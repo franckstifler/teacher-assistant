@@ -68,8 +68,7 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
     attribute :content_taught, :string, allow_nil?: false, public?: true
     attribute :hours, :decimal, default: Decimal.new("1"), public?: true
 
-    attribute :status, :atom,
-      constraints: [one_of: [:done, :partial]],
+    attribute :status, TeacherAssistant.Academics.TeachingLogStatus,
       default: :done,
       allow_nil?: false,
       public?: true

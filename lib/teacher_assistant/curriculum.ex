@@ -579,12 +579,6 @@ defmodule TeacherAssistant.Curriculum do
 
   # --- Teaching contexts ----------------------------------------------------
 
-  def update_teaching_context(id, %Workspace{} = ws, attrs) do
-    with {:ok, ctx} <- fetch_owned_teaching_context(id, ws) do
-      ctx |> Ash.Changeset.for_update(:update, attrs) |> Ash.update()
-    end
-  end
-
   def fetch_owned_teaching_context(id, %Workspace{id: ws_id}) do
     TeachingContext
     |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})

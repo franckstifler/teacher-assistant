@@ -37,9 +37,6 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :subsystem,
         :weekly_hours,
         :coefficient,
-        :annual_hours,
-        :target_module_count,
-        :target_lesson_count,
         :workspace_id,
         :academic_year_id,
         :teacher_user_id,
@@ -52,9 +49,6 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :subsystem,
         :weekly_hours,
         :coefficient,
-        :annual_hours,
-        :target_module_count,
-        :target_lesson_count,
         :class_group_id,
         :teacher_user_id,
         :combined_course_id
@@ -169,11 +163,6 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       default: Decimal.new(1),
       public?: true
 
-    attribute :annual_hours, :decimal, allow_nil?: true, public?: true
-    attribute :target_module_count, :integer, allow_nil?: true, public?: true
-    attribute :target_lesson_count, :integer, allow_nil?: true, public?: true
-    attribute :combined_course_id, :uuid, allow_nil?: true, public?: true
-
     timestamps()
   end
 
@@ -192,19 +181,18 @@ defmodule TeacherAssistant.Academics.TeachingContext do
 
     belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
       source_attribute :class_group_id
-      allow_nil? true
+      allow_nil? false
       public? true
     end
 
     belongs_to :teacher, TeacherAssistant.Accounts.User do
       source_attribute :teacher_user_id
-      allow_nil? true
+      allow_nil? false
       public? true
     end
 
     belongs_to :combined_course, TeacherAssistant.Academics.CombinedCourse do
       source_attribute :combined_course_id
-      define_attribute? false
       allow_nil? true
       public? true
     end

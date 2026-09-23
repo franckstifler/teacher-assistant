@@ -83,18 +83,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
     attribute :lesson_title, :string, allow_nil?: false, public?: true
     attribute :planned_hours, :decimal, default: Decimal.new("1"), public?: true
 
-    attribute :entry_type, :atom,
-      constraints: [
-        one_of: [
-          :lesson,
-          :integration,
-          :evaluation,
-          :revision,
-          :correction,
-          :remediation,
-          :holiday
-        ]
-      ],
+    attribute :entry_type, TeacherAssistant.Academics.ProgressionEntryType,
       allow_nil?: false,
       default: :lesson,
       public?: true

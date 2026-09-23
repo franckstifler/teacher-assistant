@@ -75,8 +75,6 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       default: :francophone,
       public?: true
 
-    attribute :form_master_user_id, :uuid, allow_nil?: true, public?: true
-
     timestamps()
   end
 
@@ -95,7 +93,6 @@ defmodule TeacherAssistant.Academics.ClassGroup do
 
     belongs_to :form_master, TeacherAssistant.Accounts.User do
       source_attribute :form_master_user_id
-      define_attribute? false
       allow_nil? true
       public? true
     end

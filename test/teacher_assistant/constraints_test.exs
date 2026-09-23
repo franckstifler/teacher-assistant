@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.ConstraintsTest do
   use TeacherAssistant.DataCase, async: true
   alias TeacherAssistant.{Assessment, Discipline, Fees, Organization}
+
   alias TeacherAssistant.Academics.{
     AcademicYear,
     ConductMark,
@@ -14,7 +15,9 @@ defmodule TeacherAssistant.ConstraintsTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year} = TeacherFixtures.setup_complete_school_fixture()
+    %{workspace: ws, head_user: head, year: year} =
+      TeacherFixtures.setup_complete_school_fixture()
+
     tc = TeacherFixtures.assigned_context_fixture(ws, year, %{teacher: head})
     {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(tc.class_group_id, ws)
     {:ok, _} = TeacherAssistant.Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})

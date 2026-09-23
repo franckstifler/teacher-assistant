@@ -30,4 +30,14 @@ defmodule TeacherAssistant.Accounts.SchoolEnumsTest do
       for v <- type.values(), do: assert(is_binary(type.label(v)) and type.label(v) != "")
     end
   end
+
+  test "form master is a class fact, not a role" do
+    refute :form_master in TeacherAssistant.Accounts.SchoolRole.values()
+  end
+
+  test "progression and log statuses are enums" do
+    assert TeacherAssistant.Academics.ProgressionPlanStatus.values() != []
+    assert TeacherAssistant.Academics.ProgressionEntryType.values() != []
+    assert TeacherAssistant.Academics.TeachingLogStatus.values() != []
+  end
 end

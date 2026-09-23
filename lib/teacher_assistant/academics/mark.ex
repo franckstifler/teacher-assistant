@@ -96,10 +96,6 @@ defmodule TeacherAssistant.Academics.Mark do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []}, on: [:create, :update]
-  end
-
   # Broadcasts a create/update on `marks:assessment:<assessment_id>`, the topic
   # a marks screen subscribes to for live updates on that assessment's marks.
   pub_sub do
@@ -107,6 +103,10 @@ defmodule TeacherAssistant.Academics.Mark do
     prefix "marks"
     publish_all :create, ["assessment", :assessment_id]
     publish_all :update, ["assessment", :assessment_id]
+  end
+
+  validations do
+    validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []}, on: [:create, :update]
   end
 
   attributes do

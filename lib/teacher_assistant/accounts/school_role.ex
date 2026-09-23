@@ -8,7 +8,6 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
       :discipline_master,
       :bursar,
       :hod,
-      :form_master,
       :teacher,
       :guidance_counsellor,
       :librarian
@@ -21,7 +20,6 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
   def label(:discipline_master), do: gettext("Surveillant général")
   def label(:bursar), do: gettext("Intendant")
   def label(:hod), do: gettext("Animateur pédagogique")
-  def label(:form_master), do: gettext("Professeur principal")
   def label(:teacher), do: gettext("Enseignant")
   def label(:guidance_counsellor), do: gettext("Conseiller d'orientation")
   def label(:librarian), do: gettext("Documentaliste")
