@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Migrations are generated only.** Every schema task runs `mix ash.codegen --dev` after its resource edits, then `mix ash.reset` (dev-only data) and `mix test`. Task 7 squashes the dev migrations with `mix ash.codegen schema_pass`. Never hand-edit a migration; `mix ash.codegen --check` must be clean at every commit.
+- **Migrations are generated only and NAMED.** Every task that changes the schema runs `mix ash.codegen <task_slug>` (never `--dev`: `mix ash.codegen --check` fails while a `_dev` migration exists), then `mix ash.reset` (dev-only data) and `mix test`; `mix ash.codegen --check` must be clean at every commit. There is no squash. **Turning on `multitenancy` IS a schema change in AshPostgres 2.13**: it rewrites every identity and custom index of the resource with `workspace_id` prepended (except `all_tenants?` ones), so every Phase 2 domain task generates `mix ash.codegen <domain>_tenancy` and commits that migration. Never hand-edit a migration.
 - Multitenancy block, verbatim, on every tenant-owned resource: `multitenancy do\n  strategy :attribute\n  attribute :workspace_id\nend`. `SchoolMembership` and `SchoolInvitation` add `global? true`. `Workspace`, `SchoolProfile`, `User`, `Token` never get the block.
 - Tenant values are workspace ids (`workspace.id`, a UUID string). Set with `Ash.Query.set_tenant/2`, `Ash.Changeset.set_tenant/2`, or `tenant:` on code-interface calls. Inside a resource action hook use `changeset.tenant` / `query.tenant`; inside `Workspace.:create_school`'s after_action use `workspace.id`.
 - `accept [:workspace_id]` (and `:workspace_id` in `defaults create: [...]`) is removed from every create when its resource becomes multitenant; Ash sets the attribute from the tenant.
@@ -804,7 +804,7 @@ Every task in this phase follows the same recipe for its resources:
 1. add the `multitenancy` block; delete `:workspace_id` from every `accept`/`defaults create:` list of the resource;
 2. every domain function (and every hook inside the resource's own actions) that reads or writes the resource sets the tenant from the data it has: `Ash.Query.set_tenant(query, ws.id)` / `Ash.Changeset.set_tenant(changeset, ws.id)` / `tenant: ws.id` on code-interface calls, where `ws.id` is the workspace id of the `%Workspace{}` or of the child struct's `.workspace_id`;
 3. remove the manual `workspace_id == ^arg(:workspace_id)` filters and the `workspace_id:` arguments that only existed for tenancy (keep arguments that are not tenancy, e.g. `academic_year_id`, `teacher_user_id`);
-4. append isolation rows for the resources to `test/teacher_assistant/tenancy_isolation_test.exs` and run the whole suite.
+4. run `mix ash.codegen <domain>_tenancy` (the flip rewrites identities/custom indexes; commit the named migration), `mix ash.reset`, then append isolation rows for the resources to `test/teacher_assistant/tenancy_isolation_test.exs` and run the whole suite; `mix ash.codegen --check` clean.
 
 ### Task 8: Scope tenant, isolation harness, Organization domain
 
@@ -909,7 +909,7 @@ Expected: FAIL — `Ash.get(..., tenant: b.id)` still returns the row (no multit
 
 `lib/teacher_assistant/scope.ex`: `def get_tenant(%{current_workspace: %{id: id}}), do: {:ok, id}` and `def get_tenant(_), do: :error`.
 
-`academic_year.ex`, `term.ex`, `sequence.ex`: add the multitenancy block; remove `:workspace_id` from `accept`/`defaults create:` (Term and Sequence got it in Task 5; AcademicYear had it). `AcademicYear.:activate`'s `deactivate_others/2` hook: the query it builds gets `Ash.Query.set_tenant(changeset.tenant)` and the updates it issues `Ash.Changeset.set_tenant(changeset.tenant)`; in `:create_for_workspace`'s after_action use `changeset.tenant` likewise.
+`academic_year.ex`, `term.ex`, `sequence.ex`: add the multitenancy block; remove `:workspace_id` from `accept`/`defaults create:` (Term and Sequence got it in Task 5; AcademicYear had it). `AcademicYear`'s two `before_action` hooks — `deactivate_others/2` (in `:activate`) and `deactivate_all_active/1` (in `:create_for_workspace`) — build queries with `Ash.Query.set_tenant(changeset.tenant)` and updates with `Ash.Changeset.set_tenant(changeset.tenant)`. Drop the now-vacuous `where: "teacher_user_id IS NOT NULL"` on `teaching_contexts_unique_school_assignment` in Task 10's migration.
 
 `organization.ex`: `create_academic_year(ws, attrs)` → `Ash.Changeset.for_create(:create_for_workspace, attrs) |> Ash.Changeset.set_tenant(ws.id)`; `list_academic_years/1`, `current_academic_year/1` → `Ash.Query.set_tenant(ws_id)` and drop the `workspace_id` argument from `:for_workspace` / `:active_for_workspace` (they become plain reads with `sort`, or keep the read names with no argument); `get_academic_year/1` (unscoped `get_by: [:id]` define) is replaced by `get_academic_year(id, %Workspace{id: ws_id})` → `Ash.get(AcademicYear, id, tenant: ws_id)` — update its callers (`settings_live.ex` `activate_year`/`generate_calendar`, which already check the workspace by hand: delete that manual check); `build_default_calendar/1` sets `tenant: year.workspace_id` on the Term and Sequence creates and drops `workspace_id:` from their params; `list_terms/1`, `list_sequences/1`, `current_sequence/2`, `period_date_range/1` → `set_tenant(year.workspace_id)`; `activate_academic_year/1` → `set_tenant(year.workspace_id)`.
 
@@ -918,7 +918,7 @@ Expected: FAIL — `Ash.get(..., tenant: b.id)` still returns the row (no multit
 - [ ] **Step 4: Verify**
 
 Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures; check clean (multitenancy adds no schema).
+Expected: 0 failures; the named `*_organization_tenancy.exs` migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 
@@ -977,8 +977,8 @@ Add the multitenancy block to the three resources; remove `:workspace_id` from `
 
 - [ ] **Step 4: Verify**
 
-Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures.
+Run: `mix ash.codegen <domain>_tenancy && mix ash.reset && mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
+Expected: 0 failures; the named tenancy migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 
@@ -1047,8 +1047,8 @@ Resources: multitenancy block on all nine; remove `:workspace_id` from accepts/d
 
 - [ ] **Step 4: Verify**
 
-Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures.
+Run: `mix ash.codegen <domain>_tenancy && mix ash.reset && mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
+Expected: 0 failures; the named tenancy migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 
@@ -1104,8 +1104,8 @@ Multitenancy block on both; remove the `:workspace_id` accepts added in Task 5. 
 
 - [ ] **Step 4: Verify**
 
-Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures.
+Run: `mix ash.codegen <domain>_tenancy && mix ash.reset && mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
+Expected: 0 failures; the named tenancy migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 
@@ -1163,8 +1163,8 @@ Multitenancy block on both; `period.ex:17` and `attendance_entry.ex:56-71` drop 
 
 - [ ] **Step 4: Verify**
 
-Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures.
+Run: `mix ash.codegen <domain>_tenancy && mix ash.reset && mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
+Expected: 0 failures; the named tenancy migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 
@@ -1207,8 +1207,8 @@ Multitenancy block; drop `:workspace_id` from `defaults update:` (`:22-23`, the 
 
 - [ ] **Step 4: Verify**
 
-Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures.
+Run: `mix ash.codegen <domain>_tenancy && mix ash.reset && mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
+Expected: 0 failures; the named tenancy migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 
@@ -1282,8 +1282,8 @@ Multitenancy block on the five; drop `:workspace_id` from `conduct_mark.ex:22,27
 
 - [ ] **Step 4: Verify**
 
-Run: `mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
-Expected: 0 failures.
+Run: `mix ash.codegen <domain>_tenancy && mix ash.reset && mix compile --warnings-as-errors && mix test 2>&1 | tail -2 && mix ash.codegen --check`
+Expected: 0 failures; the named tenancy migration committed; check clean.
 
 - [ ] **Step 5: Commit**
 

@@ -38,7 +38,7 @@ Make the school the tenant at the data layer:
 - `index?: true` on every `belongs_to` reference in every resource (today none are indexed).
 - `custom_indexes`: `AttendanceEntry [:enrollment_id, :date]`, `AttendanceEntry [:workspace_id, :date]`, `ProgressionEntry [:progression_plan_id, :position]` (or the module id if entries hang off modules — the plan verifies the actual FK), `TimetableSlot [:workspace_id, :teaching_context_id]`.
 - One active year per workspace: `custom_indexes` unique partial index on `AcademicYear [:workspace_id] where: "active"`; the `:activate` action keeps deactivating siblings first.
-- `check_constraints` (AshPostgres): `Mark.score >= 0` (the `score <= max_score` rule needs the assessment row, so it stays a resource validation on `Mark`, added in the same task), `Payment.amount > 0`, `FeeTranche.amount > 0`, `FeeAdjustment.amount <> 0`, `ConductMark.value between 0 and 20`, `Sequence end_date >= start_date`, `AcademicYear end_date > start_date` (mirrors the resource validation added on 2026-09-23).
+- `check_constraints` (AshPostgres): `Mark.score >= 0` (the `score <= max_score` rule needs the assessment row, so it stays a resource validation on `Mark`, added in the same task), `Payment.amount > 0`, `FeeTranche.amount >= 0` (a zero tranche is allowed by the domain and pinned by a test; decided 2026-09-24), `FeeAdjustment.amount <> 0`, `ConductMark.value between 0 and 20`, `Sequence end_date >= start_date`, `AcademicYear end_date > start_date` (mirrors the resource validation added on 2026-09-23).
 
 ### 3.3 Nullable pivots and duplicates
 
@@ -59,7 +59,7 @@ Make the school the tenant at the data layer:
 
 ### 3.6 Migrations
 
-Generated only (`mix ash.codegen --dev` then `mix ash.codegen <name>` to squash the dev migrations at the end of the phase). Dev databases are reset (`mix ash.reset`). The stale `priv/resource_snapshots/repo/personal_workspaces/` directory is deleted. No hand-written migration.
+Generated only, one NAMED migration per task (`mix ash.codegen <slug>`; `--dev` is not used because `--check` fails while dev migrations exist; no squash). Phase 2's multitenancy flips also generate migrations (identities and custom indexes are rewritten with the tenant column). Dev databases are reset (`mix ash.reset`). The stale `priv/resource_snapshots/repo/personal_workspaces/` directory is deleted. No hand-written migration.
 
 ## 4. Phase 2 — Tenancy
 
