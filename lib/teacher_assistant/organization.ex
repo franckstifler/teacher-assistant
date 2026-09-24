@@ -54,6 +54,10 @@ defmodule TeacherAssistant.Organization do
 
   @doc """
   Every school the user is an active member of, in membership order.
+
+  Runs with no tenant: `SchoolMembership` is a `global? true` multitenant
+  resource so this read (needed before any tenant is chosen) works across
+  every school.
   """
   def list_workspaces_for(%User{} = user) do
     SchoolMembership

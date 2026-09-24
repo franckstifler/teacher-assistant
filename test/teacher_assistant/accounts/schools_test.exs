@@ -42,10 +42,10 @@ defmodule TeacherAssistant.Accounts.SchoolsTest do
     {:ok, other_membership} =
       SchoolMembership
       |> Ash.Changeset.for_create(:create, %{
-        workspace_id: school.id,
         user_id: other.id,
         roles: [:head]
       })
+      |> Ash.Changeset.set_tenant(school.id)
       |> Ash.create(authorize?: false)
 
     {:ok, m} = Accounts.fetch_school_membership(school, head)

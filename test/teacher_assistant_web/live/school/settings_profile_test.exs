@@ -50,10 +50,10 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       {:ok, _membership} =
         SchoolMembership
         |> Ash.Changeset.for_create(:create, %{
-          workspace_id: school.id,
           user_id: user.id,
           roles: [:head]
         })
+        |> Ash.Changeset.set_tenant(school.id)
         |> Ash.create(authorize?: false)
 
       # This workspace has no SchoolProfile row (that's the point of this

@@ -19,31 +19,32 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
     defaults [
       :read,
       :destroy,
-      create: [:workspace_id, :user_id, :roles, :status, :active],
+      create: [:user_id, :roles, :status, :active],
       update: [:roles, :status, :active]
     ]
 
+    # Tenant scoping (attribute multitenancy) already restricts this to the
+    # given workspace; no `workspace_id` argument is needed any more.
     read :active_for_workspace do
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(workspace_id == ^arg(:workspace_id) and active == true)
+      filter expr(active == true)
       prepare build(load: [:user], sort: [inserted_at: :asc])
     end
 
+    # Global read (no tenant): a user's schools must be listable before a
+    # tenant is chosen.
     read :active_for_user do
       argument :user_id, :uuid, allow_nil?: false
       filter expr(user_id == ^arg(:user_id) and active == true)
       prepare build(load: [:workspace], sort: [inserted_at: :asc])
     end
 
+    # Tenant scoping (attribute multitenancy) already restricts this to the
+    # given workspace; no `workspace_id` argument is needed any more.
     read :for_workspace_and_user do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :user_id, :uuid, allow_nil?: false
       get? true
 
-      filter expr(
-               workspace_id == ^arg(:workspace_id) and user_id == ^arg(:user_id) and
-                 active == true
-             )
+      filter expr(user_id == ^arg(:user_id) and active == true)
     end
 
     update :deactivate do
@@ -55,6 +56,12 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
+    global? true
   end
 
   attributes do

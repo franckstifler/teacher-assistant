@@ -20,8 +20,8 @@ coverage, school roles and councils, fees and fee-based access. See [`docs/domai
 
 - **School-first (since 2026-09-23).** The school workspace is the product: identity, staff and
   roles, classes, subjects, timetables, roll call, marks and report cards. The independent-teacher
-  workspace (personal progression plans, fiche import, lesson plans, teaching log, coverage) is
-  **paused**, kept in the codebase behind `teacher_personal_routes: false`. Teacher↔school stays
+  workspace (personal progression plans, fiche import, lesson plans, teaching log, coverage)
+  was removed on 2026-09-23; a future teacher mode would be a school-of-one. Teacher↔school stays
   many-to-many; a teacher works inside the schools that invited them.
 - **Mobile-first.** Most teachers work from phones, over intermittent connectivity. Every flow is
   designed for a few taps on a small screen first.

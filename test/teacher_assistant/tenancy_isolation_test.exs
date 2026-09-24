@@ -7,6 +7,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   use TeacherAssistant.DataCase, async: true
   require Ash.Query
   alias TeacherAssistant.Academics, as: A
+  alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership}
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
@@ -140,6 +141,22 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(A.Period, school, _ctx),
     do: school |> TeacherAssistant.Attendance.list_periods() |> List.first()
+
+  defp row_for(SchoolMembership, school, _ctx),
+    do: TeacherAssistant.Accounts.list_members(school) |> List.first()
+
+  defp row_for(SchoolInvitation, school, _ctx) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
+    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+
+    {:ok, inv} =
+      TeacherAssistant.Accounts.invite_member(school, head, %{
+        email: "iso-#{System.unique_integer([:positive])}@example.com",
+        roles: [:teacher]
+      })
+
+    inv
+  end
 
   defp row_for(A.AttendanceEntry, school, ctx) do
     e = row_for(A.Enrollment, school, ctx)
@@ -276,6 +293,20 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.Payment,
     A.FeeAdjustment
   ]
+
+  # Global multitenant resources (`global? true`): readable under any tenant
+  # they belong to, invisible under a different tenant, and still readable
+  # with no tenant at all (the whole point of `global?`).
+  @global [SchoolMembership, SchoolInvitation]
+
+  test "a global resource is invisible under a different tenant but readable without one", ctx do
+    for resource <- @global do
+      row = row_for(resource, ctx.a, ctx)
+      assert row, "#{inspect(resource)}: no row created"
+      assert {:error, %Ash.Error.Invalid{}} = Ash.get(resource, row.id, tenant: ctx.b.id)
+      assert {:ok, _} = Ash.get(resource, row.id)
+    end
+  end
 
   test "a row of school A is not readable under school B", ctx do
     for resource <- @flipped do

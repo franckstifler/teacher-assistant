@@ -109,4 +109,29 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
     {:ok, m2} = Accounts.update_member_status(m, :titulaire)
     assert m2.status == :titulaire
   end
+
+  test "an invitation is found by token without a tenant and accepted into its school" do
+    %{workspace: school, head_user: head} = TeacherFixtures.school_fixture()
+    other = TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+
+    # Compared by id, not pinned as `^school`: `accept_invitation` returns
+    # `inv.workspace`, loaded via the `:by_token` read's relationship load,
+    # which carries extra (harmless) `__metadata__` (e.g. a keyset entry)
+    # that a freshly `create`d struct doesn't — so the two aren't `==`, only
+    # the same row.
+    assert {:ok, joined} = Accounts.accept_invitation(inv.token, other)
+    assert joined.id == school.id
+    assert {:ok, m} = Accounts.fetch_school_membership(school, other)
+    assert m.workspace_id == school.id
+  end
+
+  test "a user's schools are listed without a tenant" do
+    %{workspace: s1, head_user: head} = TeacherFixtures.school_fixture()
+    %{workspace: s2} = TeacherFixtures.school_fixture(%{head_user: head})
+    ids = head |> Organization.list_workspaces_for() |> Enum.map(& &1.id)
+    assert Enum.sort(ids) == Enum.sort([s1.id, s2.id])
+  end
 end

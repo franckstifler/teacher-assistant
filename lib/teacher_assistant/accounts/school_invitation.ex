@@ -20,7 +20,6 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
       :read,
       :destroy,
       create: [
-        :workspace_id,
         :email,
         :roles,
         :invited_by_user_id,
@@ -32,6 +31,8 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
       update: [:status]
     ]
 
+    # Global read (no tenant): an invitation must be findable by its token
+    # before a tenant is chosen (the accept flow).
     read :by_token do
       argument :token, :string, allow_nil?: false
       get? true
@@ -39,9 +40,10 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
       prepare build(load: [:workspace])
     end
 
+    # Tenant scoping (attribute multitenancy) already restricts this to the
+    # given workspace; no `workspace_id` argument is needed any more.
     read :pending_for_workspace do
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(workspace_id == ^arg(:workspace_id) and status == :pending)
+      filter expr(status == :pending)
       prepare build(sort: [inserted_at: :asc])
     end
 
@@ -54,6 +56,12 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
+    global? true
   end
 
   attributes do
@@ -93,6 +101,6 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
   end
 
   identities do
-    identity :unique_token, [:token]
+    identity :unique_token, [:token], all_tenants?: true
   end
 end

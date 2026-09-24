@@ -110,13 +110,11 @@ defmodule TeacherAssistant.Academics.Workspace do
     |> Ash.create()
   end
 
-  # `SchoolMembership` isn't multitenant yet (Task 15), but setting the tenant
-  # here is harmless — Ash ignores a tenant on a non-multitenant resource —
-  # and keeps this call site ready for when it flips.
+  # `SchoolMembership` is multitenant (attribute strategy); `workspace_id` is
+  # no longer an acceptable create attribute, it's derived from the tenant.
   defp create_head_membership(workspace, owner_user_id) do
     SchoolMembership
     |> Ash.Changeset.for_create(:create, %{
-      workspace_id: workspace.id,
       user_id: owner_user_id,
       roles: [:head]
     })

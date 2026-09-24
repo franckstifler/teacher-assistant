@@ -57,7 +57,8 @@ defmodule TeacherAssistant.Accounts do
 
   def fetch_school_membership(%Workspace{id: ws_id}, %User{id: user_id}) do
     SchoolMembership
-    |> Ash.Query.for_read(:for_workspace_and_user, %{workspace_id: ws_id, user_id: user_id})
+    |> Ash.Query.for_read(:for_workspace_and_user, %{user_id: user_id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_a_member}
@@ -68,7 +69,8 @@ defmodule TeacherAssistant.Accounts do
 
   def list_members(%Workspace{id: ws_id}) do
     SchoolMembership
-    |> Ash.Query.for_read(:active_for_workspace, %{workspace_id: ws_id})
+    |> Ash.Query.for_read(:active_for_workspace)
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
@@ -83,7 +85,7 @@ defmodule TeacherAssistant.Accounts do
   def update_member_status(%SchoolMembership{} = m, status) do
     m
     |> Ash.Changeset.for_update(:update, %{status: status})
-    |> Ash.update(authorize?: false)
+    |> Ash.update()
   end
 
   def deactivate_member(%SchoolMembership{} = m) do
@@ -119,7 +121,6 @@ defmodule TeacherAssistant.Accounts do
       {:ok, invitation} =
         SchoolInvitation
         |> Ash.Changeset.for_create(:create, %{
-          workspace_id: school.id,
           email: email,
           roles: roles,
           membership_status: membership_status,
@@ -127,6 +128,7 @@ defmodule TeacherAssistant.Accounts do
           token: gen_token(),
           expires_at: DateTime.add(DateTime.utc_now(), 14, :day) |> DateTime.truncate(:second)
         })
+        |> Ash.Changeset.set_tenant(school.id)
         |> Ash.create()
 
       SendSchoolInvitationEmail.send(
@@ -152,7 +154,8 @@ defmodule TeacherAssistant.Accounts do
 
   def list_pending_invitations(%Workspace{id: ws_id}) do
     SchoolInvitation
-    |> Ash.Query.for_read(:pending_for_workspace, %{workspace_id: ws_id})
+    |> Ash.Query.for_read(:pending_for_workspace)
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
@@ -168,11 +171,11 @@ defmodule TeacherAssistant.Accounts do
           {:ok, _m} =
             SchoolMembership
             |> Ash.Changeset.for_create(:create, %{
-              workspace_id: inv.workspace_id,
               user_id: user.id,
               roles: inv.roles,
               status: inv.membership_status
             })
+            |> Ash.Changeset.set_tenant(inv.workspace_id)
             |> Ash.create()
 
           {:ok, _} =

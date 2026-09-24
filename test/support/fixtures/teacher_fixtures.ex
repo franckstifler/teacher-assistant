@@ -66,12 +66,12 @@ defmodule TeacherAssistant.TeacherFixtures do
     {:ok, m} =
       Accounts.SchoolMembership
       |> Ash.Changeset.for_create(:create, %{
-        workspace_id: workspace.id,
         user_id: user.id,
         roles: roles,
         status: attrs[:status],
         active: true
       })
+      |> Ash.Changeset.set_tenant(workspace.id)
       |> Ash.create(authorize?: false)
 
     m

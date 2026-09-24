@@ -222,19 +222,19 @@ Field/constraint gaps:
 
 | Resource | Gap | Priority |
 |---|---|---|
-| `Student` | no `birth_date`, `birth_place`, `guardian_name`, `guardian_phone` (bulletin header per `docs/domain/04 §4`) | Now |
-| `AcademicYear` | no "one active year per workspace" constraint → partial unique index on `[:workspace_id]` where `active` | Now |
-| `TeachingContext` | add `subject_id` beside the denormalised string; `combined_course_id` declared twice (attribute + `belongs_to`); personal quota fields (`annual_hours`, `target_module_count`, `target_lesson_count`) become dead weight after the pause | Schema pass |
-| `ClassGroup` | `form_master_user_id` declared twice; `:form_master` also exists as a `SchoolRole` value → keep the FK on the class, drop the role value | Schema pass |
+| `Student` | no `birth_date`, `birth_place`, `guardian_name`, `guardian_phone` (bulletin header per `docs/domain/04 §4`) | Done |
+| `AcademicYear` | no "one active year per workspace" constraint → partial unique index on `[:workspace_id]` where `active` | Done |
+| `TeachingContext` | add `subject_id` beside the denormalised string; `combined_course_id` declared twice (attribute + `belongs_to`); personal quota fields (`annual_hours`, `target_module_count`, `target_lesson_count`) become dead weight after the pause | Done |
+| `ClassGroup` | `form_master_user_id` declared twice; `:form_master` also exists as a `SchoolRole` value → keep the FK on the class, drop the role value | Done |
 | `Workspace` | `kind`, `owner_user_id`, `unique_owner_user` retire with the pause; a school is identified by `SchoolProfile` | Pause |
 | `Mark` | nil score doubles as "absent"; explicit `absent` boolean later | Later |
 | `Term` | position only; label derived in UI (fine). Wizard never creates terms (gap G1) | G1 fix |
 | `Subject` | `default_coefficient` is per school; série/level-dependent coefficients need a `(subject, level, serie)` table in the grading-config increment. Per-class coefficient on `TeachingContext` covers today | Later |
 | `SchoolMembership` | `:hod` needs a department/subject link to mean anything | Later |
-| all | no `check_constraints` anywhere (score in 0..max_score, positive amounts, ordered sequence dates) | Schema pass |
+| all | no `check_constraints` anywhere (score in 0..max_score, positive amounts, ordered sequence dates) | Done |
 | `SchoolProfile`, `SchoolInvitation`, `Period`, `Sequence`, `Enrollment`, `AttendanceEntry`, `TimetableSlot` | fine as they are | — |
 
-## 10. Multitenancy design
+## 10. Multitenancy design (executed 2026-09-23, plan: docs/superpowers/plans/2026-09-23-schema-pass-multitenancy.md)
 
 **Mental model:** the **school is the tenant**. The **academic year is not a tenant**; it is an
 operational partition *inside* the tenant (`Scope.current_academic_year`), selected by explicit
