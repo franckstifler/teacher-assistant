@@ -105,7 +105,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     view |> element("#year-activate-#{y2.id}") |> render_click()
 
     assert Organization.current_academic_year(school).id == y2.id
-    assert {:ok, %{active: false}} = Organization.get_academic_year(y1.id)
+    assert {:ok, %{active: false}} = Organization.get_academic_year(y1.id, school)
   end
 
   test "a plain teacher member cannot create years (forged event)", %{

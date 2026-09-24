@@ -38,7 +38,7 @@ defmodule TeacherAssistant.Academics.AcademicYearTest do
         active: true
       })
 
-    {:ok, y1_reloaded} = Organization.get_academic_year(y1.id)
+    {:ok, y1_reloaded} = Organization.get_academic_year(y1.id, ws)
     refute y1_reloaded.active
   end
 end

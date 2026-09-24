@@ -31,8 +31,7 @@ defmodule TeacherAssistant.Academics.Sequence do
         :start_date,
         :end_date,
         :integration_week,
-        :term_id,
-        :workspace_id
+        :term_id
       ],
       update: [:number, :position_in_term, :start_date, :end_date, :integration_week]
     ]
@@ -48,6 +47,11 @@ defmodule TeacherAssistant.Academics.Sequence do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

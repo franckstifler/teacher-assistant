@@ -36,6 +36,7 @@ defmodule TeacherAssistant.Scope do
 
   defimpl Ash.Scope.ToOpts do
     def get_actor(%{current_user: current_user}), do: {:ok, current_user}
+    def get_tenant(%{current_workspace: %{id: id}}), do: {:ok, id}
     def get_tenant(_), do: :error
     def get_context(%{locale: locale}), do: {:ok, %{shared: %{locale: locale}}}
     def get_tracer(_), do: :error

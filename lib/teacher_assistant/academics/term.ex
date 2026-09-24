@@ -19,7 +19,7 @@ defmodule TeacherAssistant.Academics.Term do
     defaults [
       :read,
       :destroy,
-      create: [:position, :academic_year_id, :workspace_id],
+      create: [:position, :academic_year_id],
       update: [:position]
     ]
 
@@ -34,6 +34,11 @@ defmodule TeacherAssistant.Academics.Term do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

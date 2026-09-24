@@ -22,7 +22,10 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
 
   defp seed_sequence(plan) do
     {:ok, ay} =
-      Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, authorize?: false)
+      Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id,
+        authorize?: false,
+        tenant: plan.workspace_id
+      )
 
     :ok = Organization.build_default_calendar(ay)
     [seq | _] = Organization.list_sequences(ay)

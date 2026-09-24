@@ -56,6 +56,12 @@ defmodule TeacherAssistant.SchemaTest do
     assert missing == []
   end
 
+  # A column counts as indexed if it appears anywhere in an index's column
+  # list, not only in the leading position. Attribute multitenancy prepends
+  # the tenant column (`workspace_id`) to every index/identity AshPostgres
+  # generates for a multitenant resource, so e.g. `terms`' FK index on
+  # `academic_year_id` is now `(workspace_id, academic_year_id)` — still a
+  # real index covering that column, just no longer leading.
   defp indexed?(table, column) do
     %{rows: rows} =
       Ecto.Adapters.SQL.query!(
@@ -64,7 +70,14 @@ defmodule TeacherAssistant.SchemaTest do
         [table]
       )
 
-    Enum.any?(rows, fn [def] -> String.contains?(def, "(#{column}") end)
+    Enum.any?(rows, fn [def] -> to_string(column) in index_columns(def) end)
+  end
+
+  defp index_columns(indexdef) do
+    case Regex.run(~r/\(([^)]*)\)/, indexdef) do
+      [_, cols] -> cols |> String.split(",") |> Enum.map(&String.trim/1)
+      _ -> []
+    end
   end
 
   test "every :workspace reference cascades on delete" do

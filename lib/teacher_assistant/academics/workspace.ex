@@ -110,6 +110,9 @@ defmodule TeacherAssistant.Academics.Workspace do
     |> Ash.create()
   end
 
+  # `SchoolMembership` isn't multitenant yet (Task 15), but setting the tenant
+  # here is harmless — Ash ignores a tenant on a non-multitenant resource —
+  # and keeps this call site ready for when it flips.
   defp create_head_membership(workspace, owner_user_id) do
     SchoolMembership
     |> Ash.Changeset.for_create(:create, %{
@@ -117,22 +120,28 @@ defmodule TeacherAssistant.Academics.Workspace do
       user_id: owner_user_id,
       roles: [:head]
     })
+    |> Ash.Changeset.set_tenant(workspace.id)
     |> Ash.create()
   end
 
   # The default bell schedule, so roll call works from day one (Increment 2).
+  # `Period` isn't multitenant yet (Task 12) — see the tenant note above.
   defp seed_periods(workspace) do
     Reference.default_periods_preset()
     |> Enum.reduce_while(:ok, fn attrs, :ok ->
       params = Map.put(attrs, :workspace_id, workspace.id)
 
-      case Period |> Ash.Changeset.for_create(:create, params) |> Ash.create() do
+      case Period
+           |> Ash.Changeset.for_create(:create, params)
+           |> Ash.Changeset.set_tenant(workspace.id)
+           |> Ash.create() do
         {:ok, _} -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
   end
 
+  # `Subject` isn't multitenant yet (Task 10) — see the tenant note above.
   defp seed_catalog(workspace, type, subsystem) do
     SchoolTemplates.subjects_for(type, subsystem)
     |> Enum.with_index()
@@ -142,7 +151,10 @@ defmodule TeacherAssistant.Academics.Workspace do
         |> Map.put(:workspace_id, workspace.id)
         |> Map.put(:position, i)
 
-      case Subject |> Ash.Changeset.for_create(:create, params) |> Ash.create() do
+      case Subject
+           |> Ash.Changeset.for_create(:create, params)
+           |> Ash.Changeset.set_tenant(workspace.id)
+           |> Ash.create() do
         {:ok, _} -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end

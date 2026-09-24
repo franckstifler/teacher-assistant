@@ -105,4 +105,20 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
     assert updated.verified_by_user_id == op.id
     assert updated.short_name == "Y"
   end
+
+  test "create_school seeds catalog, periods and head membership under the new tenant" do
+    user = TeacherFixtures.user_fixture()
+    {:ok, school} = Organization.create_school(user, @attrs)
+
+    for {resource, list} <- [
+          {TeacherAssistant.Academics.Subject, TeacherAssistant.Curriculum.list_subjects(school)},
+          {TeacherAssistant.Academics.Period, TeacherAssistant.Attendance.list_periods(school)}
+        ] do
+      assert list != [], inspect(resource)
+      assert Enum.all?(list, &(&1.workspace_id == school.id))
+    end
+
+    assert {:ok, %{workspace_id: wid}} = Accounts.fetch_school_membership(school, user)
+    assert wid == school.id
+  end
 end

@@ -197,7 +197,7 @@ defmodule TeacherAssistant.Discipline do
 
   # Resolves a `Term`'s séquences, re-fetching (with them loaded) if needed.
   defp resolve_term_sequences(%Term{sequences: %Ash.NotLoaded{}} = term) do
-    %AcademicYear{id: term.academic_year_id}
+    %AcademicYear{id: term.academic_year_id, workspace_id: term.workspace_id}
     |> Organization.list_terms()
     |> Enum.find(&(&1.id == term.id))
     |> then(fn t -> if t, do: t.sequences, else: [] end)

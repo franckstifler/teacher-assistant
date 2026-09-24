@@ -34,9 +34,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                  name: "Doublon",
                  start_date: ~D[2030-09-01],
                  end_date: ~D[2031-06-30],
-                 active: true,
-                 workspace_id: ws.id
+                 active: true
                })
+               |> Ash.Changeset.set_tenant(ws.id)
                |> Ash.create()
     end
 
@@ -52,7 +52,7 @@ defmodule TeacherAssistant.ConstraintsTest do
                  active: true
                })
 
-      {:ok, reloaded} = Organization.get_academic_year(year.id)
+      {:ok, reloaded} = Organization.get_academic_year(year.id, ws)
       assert reloaded.active
     end
 
@@ -84,7 +84,7 @@ defmodule TeacherAssistant.ConstraintsTest do
                })
 
       assert y2.active
-      {:ok, reloaded} = Organization.get_academic_year(year.id)
+      {:ok, reloaded} = Organization.get_academic_year(year.id, ws)
       refute reloaded.active
     end
 
@@ -280,9 +280,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                  position_in_term: 1,
                  start_date: ~D[2030-09-10],
                  end_date: ~D[2030-09-01],
-                 term_id: term.id,
-                 workspace_id: ws.id
+                 term_id: term.id
                })
+               |> Ash.Changeset.set_tenant(ws.id)
                |> Ash.create()
     end
   end

@@ -26,11 +26,7 @@ defmodule TeacherAssistant.Organization do
       define :get_workspace, action: :read, get_by: [:id]
     end
 
-    resource AcademicYear do
-      define :get_academic_year, action: :read, get_by: [:id]
-      define :activate_academic_year, action: :activate
-    end
-
+    resource AcademicYear
     resource Term
     resource Sequence
   end
@@ -69,24 +65,47 @@ defmodule TeacherAssistant.Organization do
   # --- Academic calendar (AcademicYear / Term / Sequence) -------------------
 
   def create_academic_year(%Workspace{} = ws, attrs) do
-    attrs = attrs |> Map.put(:workspace_id, ws.id) |> Map.put_new(:active, true)
+    attrs = Map.put_new(attrs, :active, true)
 
     AcademicYear
     |> Ash.Changeset.for_create(:create_for_workspace, attrs)
+    |> Ash.Changeset.set_tenant(ws.id)
     |> Ash.create()
   end
 
   def list_academic_years(%Workspace{id: ws_id}) do
     AcademicYear
-    |> Ash.Query.for_read(:for_workspace, %{workspace_id: ws_id})
+    |> Ash.Query.for_read(:for_workspace)
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
   def current_academic_year(%Workspace{id: ws_id}) do
     AcademicYear
-    |> Ash.Query.for_read(:active_for_workspace, %{workspace_id: ws_id})
+    |> Ash.Query.for_read(:active_for_workspace)
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
     |> List.first()
+  end
+
+  @doc """
+  Fetches an academic year by id, scoped to `ws`'s tenant (IDOR guard):
+  a year that belongs to a different workspace is invisible, same as any
+  other cross-tenant read.
+  """
+  def get_academic_year(id, %Workspace{id: ws_id}) do
+    Ash.get(AcademicYear, id, tenant: ws_id)
+  end
+
+  @doc """
+  Activates `year` and deactivates every other active year of the same
+  workspace (see `AcademicYear`'s `:activate` action).
+  """
+  def activate_academic_year(%AcademicYear{} = year) do
+    year
+    |> Ash.Changeset.for_update(:activate)
+    |> Ash.Changeset.set_tenant(year.workspace_id)
+    |> Ash.update()
   end
 
   @doc """
@@ -107,9 +126,9 @@ defmodule TeacherAssistant.Organization do
         Term
         |> Ash.Changeset.for_create(:create, %{
           position: term_spec.position,
-          academic_year_id: year.id,
-          workspace_id: year.workspace_id
+          academic_year_id: year.id
         })
+        |> Ash.Changeset.set_tenant(year.workspace_id)
         |> Ash.create()
 
       Enum.each(term_spec.sequences, fn s ->
@@ -119,8 +138,8 @@ defmodule TeacherAssistant.Organization do
           s
           |> Map.take([:number, :position_in_term, :start_date, :end_date, :integration_week])
           |> Map.put(:term_id, term.id)
-          |> Map.put(:workspace_id, term.workspace_id)
         )
+        |> Ash.Changeset.set_tenant(year.workspace_id)
         |> Ash.create!()
       end)
     end)
@@ -128,15 +147,17 @@ defmodule TeacherAssistant.Organization do
     :ok
   end
 
-  def list_sequences(%AcademicYear{id: year_id}) do
+  def list_sequences(%AcademicYear{id: year_id, workspace_id: ws_id}) do
     Sequence
     |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
-  def list_terms(%AcademicYear{id: year_id}) do
+  def list_terms(%AcademicYear{id: year_id, workspace_id: ws_id}) do
     Term
     |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 

@@ -443,18 +443,19 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     |> to_form()
   end
 
-  # `workspace_id` and `active` are server-controlled (never user input), so
-  # they're set on the changeset at build time via `prepare_source` — same
-  # pattern as `School.SettingsLive.year_form/2`. Only the first year of a
-  # workspace is created active.
+  # `AcademicYear` is tenant-scoped to the workspace (attribute multitenancy);
+  # `workspace_id` is no longer an acceptable create attribute, it's derived
+  # from the form's `tenant:`. `active` is still server-controlled (never
+  # user input), set on the changeset at build time via `prepare_source` —
+  # same pattern as `School.SettingsLive.year_form/2`. Only the first year of
+  # a workspace is created active.
   defp year_form(workspace_id, active?) do
     AcademicYear
     |> AshPhoenix.Form.for_create(:create_for_workspace,
       as: "year",
+      tenant: workspace_id,
       prepare_source: fn changeset ->
-        changeset
-        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
-        |> Ash.Changeset.change_attribute(:active, active?)
+        Ash.Changeset.change_attribute(changeset, :active, active?)
       end
     )
     |> to_form()

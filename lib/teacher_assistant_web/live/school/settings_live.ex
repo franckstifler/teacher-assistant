@@ -430,8 +430,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     with true <- Permissions.admin?(scope),
-         {:ok, year} <- Organization.get_academic_year(id),
-         true <- year.workspace_id == scope.current_workspace.id,
+         {:ok, year} <- Organization.get_academic_year(id, scope.current_workspace),
          :ok <- Organization.build_default_calendar(year) do
       {:noreply, socket |> load_years() |> put_flash(:info, gettext("Calendrier généré."))}
     else
@@ -474,8 +473,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     with true <- Permissions.admin?(scope),
-         {:ok, year} <- Organization.get_academic_year(id),
-         true <- year.workspace_id == scope.current_workspace.id,
+         {:ok, year} <- Organization.get_academic_year(id, scope.current_workspace),
          {:ok, _} <- Organization.activate_academic_year(year) do
       {:noreply,
        socket
@@ -693,10 +691,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     workspace |> AshPhoenix.Form.for_update(:update, as: "school") |> to_form()
   end
 
-  # `workspace_id` and `active` are server-controlled (never user input), so
-  # they're set on the changeset at build time via `prepare_source` — not
-  # merged into the submitted params at submit time. Only the first year of a
-  # workspace is created active (the `:create_for_workspace` action
+  # `AcademicYear` is tenant-scoped to the workspace (attribute multitenancy);
+  # `workspace_id` is no longer an acceptable create attribute, it's derived
+  # from the form's `tenant:`. `active` is still server-controlled (never
+  # user input), set on the changeset at build time via `prepare_source` —
+  # not merged into the submitted params at submit time. Only the first year
+  # of a workspace is created active (the `:create_for_workspace` action
   # deactivates any other active year), so `active?` is a *live* value: it
   # flips from `true` to `false` the moment the first year exists. Callers
   # must rebuild the form — via this helper — on mount and again right after
@@ -705,10 +705,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     AcademicYear
     |> AshPhoenix.Form.for_create(:create_for_workspace,
       as: "year",
+      tenant: workspace_id,
       prepare_source: fn changeset ->
-        changeset
-        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
-        |> Ash.Changeset.change_attribute(:active, active?)
+        Ash.Changeset.change_attribute(changeset, :active, active?)
       end
     )
     |> to_form()
