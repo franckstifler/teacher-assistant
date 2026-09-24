@@ -25,7 +25,6 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
         :reason,
         :duration_days,
         :issued_by_user_id,
-        :workspace_id,
         :enrollment_id
       ],
       update: [
@@ -68,6 +67,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

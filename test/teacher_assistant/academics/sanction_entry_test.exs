@@ -41,7 +41,6 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
       reason: "Bavardage répété",
       duration_days: nil,
       issued_by_user_id: ctx.head.id,
-      workspace_id: ctx.ws.id,
       enrollment_id: ctx.enrollment.id
     }
     |> Map.merge(overrides)
@@ -51,6 +50,7 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
     assert {:ok, %SanctionEntry{} = entry} =
              SanctionEntry
              |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert entry.type == :avertissement
@@ -64,6 +64,7 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
     assert {:error, %Ash.Error.Invalid{}} =
              SanctionEntry
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{type: :suspension}))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
   end
 
@@ -71,29 +72,33 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
     {:ok, entry} =
       SanctionEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
 
-    assert {:error, %Ash.Error.Invalid{}} = Ash.get(SanctionEntry, entry.id, authorize?: false)
+    assert {:error, %Ash.Error.Invalid{}} =
+             Ash.get(SanctionEntry, entry.id, tenant: ctx.ws.id, authorize?: false)
   end
 
   test "two entries of the same type for one enrollment both persist", ctx do
     {:ok, entry1} =
       SanctionEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     {:ok, entry2} =
       SanctionEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     assert entry1.id != entry2.id
 
     assert SanctionEntry
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(authorize?: false)
+           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
            |> length() == 2
   end
 end

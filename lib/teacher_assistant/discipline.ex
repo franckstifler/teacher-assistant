@@ -97,9 +97,9 @@ defmodule TeacherAssistant.Discipline do
         reason: attrs[:reason] || attrs["reason"],
         duration_days: duration_days,
         issued_by_user_id: issued_by_user_id,
-        workspace_id: e.workspace_id,
         enrollment_id: e.id
       })
+      |> Ash.Changeset.set_tenant(e.workspace_id)
       |> Ash.create()
       |> case do
         {:ok, sanction} -> {:ok, sanction}
@@ -123,10 +123,10 @@ defmodule TeacherAssistant.Discipline do
       |> Ash.Changeset.for_create(:set, %{
         value: decimal_value,
         recorded_by_user_id: recorded_by_user_id,
-        workspace_id: e.workspace_id,
         enrollment_id: e.id,
         sequence_id: sequence.id
       })
+      |> Ash.Changeset.set_tenant(e.workspace_id)
       |> Ash.create()
       |> case do
         {:ok, mark} -> {:ok, mark}
@@ -149,11 +149,14 @@ defmodule TeacherAssistant.Discipline do
   end
 
   @doc "Deletes the conduct mark for `enrollment` on `sequence`, if any."
-  def clear_conduct_mark(%Enrollment{id: id}, %Sequence{id: sequence_id} = _sequence) do
-    marks = conduct_mark_for_enrollment_sequence!(id, sequence_id)
+  def clear_conduct_mark(
+        %Enrollment{id: id, workspace_id: ws_id},
+        %Sequence{id: sequence_id} = _sequence
+      ) do
+    marks = conduct_mark_for_enrollment_sequence!(id, sequence_id, tenant: ws_id)
 
     try do
-      Enum.each(marks, &Ash.destroy!/1)
+      Enum.each(marks, &Ash.destroy!(&1, tenant: ws_id))
       {:ok, length(marks)}
     rescue
       _ -> {:error, :conduct_mark_failed}
@@ -166,8 +169,11 @@ defmodule TeacherAssistant.Discipline do
   trimester/year. Never a raw sum — mean of present values only, skipping
   missing séquences. `nil` when none present.
   """
-  def note_de_conduite(%Enrollment{id: id}, {:sequence, %Sequence{} = sequence}) do
-    case conduct_mark_for_enrollment_sequence!(id, sequence.id) do
+  def note_de_conduite(
+        %Enrollment{id: id, workspace_id: ws_id},
+        {:sequence, %Sequence{} = sequence}
+      ) do
+    case conduct_mark_for_enrollment_sequence!(id, sequence.id, tenant: ws_id) do
       [mark | _] -> mark.value
       [] -> nil
     end
@@ -181,11 +187,11 @@ defmodule TeacherAssistant.Discipline do
     mean_conduct_marks(e, Organization.list_sequences(year))
   end
 
-  defp mean_conduct_marks(%Enrollment{id: id}, sequences) do
+  defp mean_conduct_marks(%Enrollment{id: id, workspace_id: ws_id}, sequences) do
     sequence_ids = Enum.map(sequences, & &1.id)
 
     id
-    |> conduct_marks_for_enrollment_sequences!(sequence_ids)
+    |> conduct_marks_for_enrollment_sequences!(sequence_ids, tenant: ws_id)
     |> Enum.map(& &1.value)
     |> mean_of_values()
   end
@@ -258,7 +264,7 @@ defmodule TeacherAssistant.Discipline do
     conduct_values_by_enrollment =
       period_tuple
       |> period_sequence_ids()
-      |> batch_conduct_values(enrollment_ids)
+      |> batch_conduct_values(enrollment_ids, class_group.workspace_id)
 
     Map.new(roster, fn %{enrollment: enrollment} ->
       entries = Map.get(entries_by_enrollment, enrollment.id, [])
@@ -278,12 +284,12 @@ defmodule TeacherAssistant.Discipline do
 
   # Single batched read of ConductMark for the whole roster, scoped to the
   # période's séquence ids. Returns %{enrollment_id => [value, ...]}.
-  defp batch_conduct_values([], _enrollment_ids), do: %{}
-  defp batch_conduct_values(_sequence_ids, []), do: %{}
+  defp batch_conduct_values([], _enrollment_ids, _ws_id), do: %{}
+  defp batch_conduct_values(_sequence_ids, [], _ws_id), do: %{}
 
-  defp batch_conduct_values(sequence_ids, enrollment_ids) do
+  defp batch_conduct_values(sequence_ids, enrollment_ids, ws_id) do
     enrollment_ids
-    |> conduct_marks_for_enrollments_sequences!(sequence_ids)
+    |> conduct_marks_for_enrollments_sequences!(sequence_ids, tenant: ws_id)
     |> Enum.group_by(& &1.enrollment_id, & &1.value)
   end
 end

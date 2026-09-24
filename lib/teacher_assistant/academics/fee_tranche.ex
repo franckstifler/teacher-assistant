@@ -34,7 +34,6 @@ defmodule TeacherAssistant.Academics.FeeTranche do
         :amount,
         :due_date,
         :position,
-        :workspace_id,
         :class_group_id
       ],
       update: [
@@ -58,6 +57,11 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

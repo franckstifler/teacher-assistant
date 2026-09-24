@@ -313,7 +313,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
       all =
         FeeAdjustment
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
-        |> Ash.read!(authorize?: false)
+        |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
 
       assert length(all) == 1
       assert hd(all).amount == 8_000
@@ -334,7 +334,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
       assert FeeAdjustment
              |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
-             |> Ash.read!(authorize?: false) == []
+             |> Ash.read!(tenant: ctx.ws.id, authorize?: false) == []
     end
 
     test "returns {:ok, 0} when no adjustment exists", ctx do

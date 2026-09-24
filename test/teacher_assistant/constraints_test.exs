@@ -200,9 +200,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                  amount: -1,
                  due_date: ~D[2030-10-01],
                  position: 0,
-                 workspace_id: cg.workspace_id,
                  class_group_id: cg.id
                })
+               |> Ash.Changeset.set_tenant(cg.workspace_id)
                |> Ash.create()
     end
 
@@ -219,9 +219,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                  paid_on: ~D[2030-10-01],
                  method: :cash,
                  recorded_by_user_id: head.id,
-                 workspace_id: e.workspace_id,
                  enrollment_id: e.id
                })
+               |> Ash.Changeset.set_tenant(e.workspace_id)
                |> Ash.create()
     end
 
@@ -235,9 +235,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                  amount: 0,
                  reason: "erreur",
                  recorded_by_user_id: head.id,
-                 workspace_id: e.workspace_id,
                  enrollment_id: e.id
                })
+               |> Ash.Changeset.set_tenant(e.workspace_id)
                |> Ash.create()
 
       # Also reachable through the domain function, whose own guard only
@@ -258,10 +258,10 @@ defmodule TeacherAssistant.ConstraintsTest do
                |> Ash.Changeset.for_create(:create, %{
                  value: Decimal.new(21),
                  recorded_by_user_id: head.id,
-                 workspace_id: e.workspace_id,
                  enrollment_id: e.id,
                  sequence_id: seq.id
                })
+               |> Ash.Changeset.set_tenant(e.workspace_id)
                |> Ash.create()
     end
   end

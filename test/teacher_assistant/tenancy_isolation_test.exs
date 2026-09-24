@@ -177,6 +177,64 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     slot
   end
 
+  defp row_for(A.SanctionEntry, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+
+    {:ok, s} =
+      TeacherAssistant.Discipline.add_sanction(
+        e,
+        %{type: :avertissement, date: ~D[2030-10-07], reason: "Iso"},
+        nil
+      )
+
+    s
+  end
+
+  defp row_for(A.ConductMark, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+
+    seq =
+      school
+      |> Organization.current_academic_year()
+      |> Organization.list_sequences()
+      |> List.first()
+
+    {:ok, m} = TeacherAssistant.Discipline.set_conduct_mark(e, seq, 15, nil)
+    m
+  end
+
+  defp row_for(A.FeeTranche, school, ctx) do
+    cg = row_for(A.ClassGroup, school, ctx)
+
+    {:ok, t} =
+      TeacherAssistant.Fees.add_tranche(cg, %{
+        label: "T1",
+        amount: 10_000,
+        due_date: ~D[2030-10-01]
+      })
+
+    t
+  end
+
+  defp row_for(A.Payment, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+
+    {:ok, p} =
+      TeacherAssistant.Fees.record_payment(
+        e,
+        %{amount: 5_000, method: :cash, paid_on: ~D[2030-10-02]},
+        nil
+      )
+
+    p
+  end
+
+  defp row_for(A.FeeAdjustment, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+    {:ok, adj} = TeacherAssistant.Fees.set_adjustment(e, %{amount: 1_000, reason: "Iso"}, nil)
+    adj
+  end
+
   defp row_for(A.TeachingLogEntry, school, ctx) do
     entry = row_for(A.ProgressionEntry, school, ctx)
 
@@ -211,7 +269,12 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.Mark,
     A.Period,
     A.AttendanceEntry,
-    A.TimetableSlot
+    A.TimetableSlot,
+    A.SanctionEntry,
+    A.ConductMark,
+    A.FeeTranche,
+    A.Payment,
+    A.FeeAdjustment
   ]
 
   test "a row of school A is not readable under school B", ctx do
@@ -265,5 +328,20 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert {:error, :not_found} =
              TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, b)
+  end
+
+  test "a payment cannot be recorded against school A's enrollment from school B's data",
+       %{a: a, b: b} = ctx do
+    e = row_for(A.Enrollment, a, ctx)
+    assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_enrollment(e.id, b)
+
+    assert {:ok, _} =
+             TeacherAssistant.Fees.record_payment(
+               e,
+               %{amount: 1_000, method: :cash, paid_on: ~D[2030-10-03]},
+               nil
+             )
+
+    assert TeacherAssistant.Fees.list_payments(e) |> Enum.all?(&(&1.workspace_id == a.id))
   end
 end

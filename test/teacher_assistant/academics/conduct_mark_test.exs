@@ -34,7 +34,6 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     %{
       value: Decimal.new(18),
       recorded_by_user_id: nil,
-      workspace_id: ctx.ws.id,
       enrollment_id: ctx.enrollment.id,
       sequence_id: ctx.seq.id
     }
@@ -45,6 +44,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     assert {:ok, %ConductMark{} = mark} =
              ConductMark
              |> Ash.Changeset.for_create(:set, base_attrs(ctx))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert Decimal.equal?(mark.value, Decimal.new(18))
@@ -57,11 +57,13 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     {:ok, mark1} =
       ConductMark
       |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(18)}))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     assert {:ok, mark2} =
              ConductMark
              |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(12)}))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert mark2.id == mark1.id
@@ -69,7 +71,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
 
     assert ConductMark
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(authorize?: false)
+           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
            |> length() == 1
   end
 
@@ -77,21 +79,25 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     {:ok, mark} =
       ConductMark
       |> Ash.Changeset.for_create(:set, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
 
-    assert {:error, %Ash.Error.Invalid{}} = Ash.get(ConductMark, mark.id, authorize?: false)
+    assert {:error, %Ash.Error.Invalid{}} =
+             Ash.get(ConductMark, mark.id, tenant: ctx.ws.id, authorize?: false)
   end
 
   test "deleting the sequence cascades to delete its marks", ctx do
     {:ok, mark} =
       ConductMark
       |> Ash.Changeset.for_create(:set, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     :ok = Ash.destroy!(ctx.seq, authorize?: false)
 
-    assert {:error, %Ash.Error.Invalid{}} = Ash.get(ConductMark, mark.id, authorize?: false)
+    assert {:error, %Ash.Error.Invalid{}} =
+             Ash.get(ConductMark, mark.id, tenant: ctx.ws.id, authorize?: false)
   end
 end

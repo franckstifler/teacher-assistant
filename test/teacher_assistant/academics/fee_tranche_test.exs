@@ -34,7 +34,6 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
       amount: 25_000,
       due_date: ~D[2025-10-15],
       position: 1,
-      workspace_id: ctx.ws.id,
       class_group_id: ctx.cg.id
     }
     |> Map.merge(overrides)
@@ -44,6 +43,7 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
     assert {:ok, %FeeTranche{} = tranche} =
              FeeTranche
              |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert tranche.label == "1ère tranche"
@@ -57,6 +57,7 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
     assert {:ok, %FeeTranche{} = tranche} =
              FeeTranche
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{amount: 0}))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert tranche.amount == 0
@@ -66,6 +67,7 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
     assert {:ok, %FeeTranche{} = tranche} =
              FeeTranche
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{amount: 1_000_000_000}))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert tranche.amount == 1_000_000_000
@@ -75,10 +77,12 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
     {:ok, tranche} =
       FeeTranche
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     :ok = Ash.destroy!(ctx.cg, authorize?: false)
 
-    assert {:error, %Ash.Error.Invalid{}} = Ash.get(FeeTranche, tranche.id, authorize?: false)
+    assert {:error, %Ash.Error.Invalid{}} =
+             Ash.get(FeeTranche, tranche.id, tenant: ctx.ws.id, authorize?: false)
   end
 end

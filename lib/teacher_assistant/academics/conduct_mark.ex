@@ -26,12 +26,12 @@ defmodule TeacherAssistant.Academics.ConductMark do
     defaults [
       :read,
       :destroy,
-      create: [:value, :recorded_by_user_id, :workspace_id, :enrollment_id, :sequence_id],
+      create: [:value, :recorded_by_user_id, :enrollment_id, :sequence_id],
       update: [:value, :recorded_by_user_id]
     ]
 
     create :set do
-      accept [:value, :recorded_by_user_id, :workspace_id, :enrollment_id, :sequence_id]
+      accept [:value, :recorded_by_user_id, :enrollment_id, :sequence_id]
 
       upsert? true
       upsert_identity :unique_conduct_mark
@@ -63,6 +63,11 @@ defmodule TeacherAssistant.Academics.ConductMark do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

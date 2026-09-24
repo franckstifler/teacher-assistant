@@ -42,7 +42,6 @@ defmodule TeacherAssistant.Academics.PaymentTest do
       reference: "REC-0001",
       note: "Première tranche",
       recorded_by_user_id: ctx.head.id,
-      workspace_id: ctx.ws.id,
       enrollment_id: ctx.enrollment.id
     }
     |> Map.merge(overrides)
@@ -52,6 +51,7 @@ defmodule TeacherAssistant.Academics.PaymentTest do
     assert {:ok, %Payment{} = payment} =
              Payment
              |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert payment.amount == 25_000
@@ -65,6 +65,7 @@ defmodule TeacherAssistant.Academics.PaymentTest do
     assert {:error, %Ash.Error.Invalid{}} =
              Payment
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{method: :cheque}))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
   end
 
@@ -72,29 +73,33 @@ defmodule TeacherAssistant.Academics.PaymentTest do
     {:ok, payment} =
       Payment
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
 
-    assert {:error, %Ash.Error.Invalid{}} = Ash.get(Payment, payment.id, authorize?: false)
+    assert {:error, %Ash.Error.Invalid{}} =
+             Ash.get(Payment, payment.id, tenant: ctx.ws.id, authorize?: false)
   end
 
   test "two payments for one enrollment both persist", ctx do
     {:ok, payment1} =
       Payment
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     {:ok, payment2} =
       Payment
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     assert payment1.id != payment2.id
 
     assert Payment
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(authorize?: false)
+           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
            |> length() == 2
   end
 end

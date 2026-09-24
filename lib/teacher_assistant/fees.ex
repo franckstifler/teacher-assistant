@@ -55,7 +55,8 @@ defmodule TeacherAssistant.Fees do
   @doc """
   Lists `FeeTranche`s for `class_group`, ordered by `position` ascending.
   """
-  def list_tranches(%ClassGroup{id: cg_id}), do: list_tranches_for_class_group_id!(cg_id)
+  def list_tranches(%ClassGroup{id: cg_id, workspace_id: ws_id}),
+    do: list_tranches_for_class_group_id!(cg_id, tenant: ws_id)
 
   @doc """
   Adds a fee tranche to `class_group`. `attrs` carries `label`, `amount`
@@ -75,9 +76,9 @@ defmodule TeacherAssistant.Fees do
         amount: amount,
         due_date: attrs[:due_date] || attrs["due_date"],
         position: position,
-        workspace_id: class_group.workspace_id,
         class_group_id: class_group.id
       })
+      |> Ash.Changeset.set_tenant(class_group.workspace_id)
       |> Ash.create()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
@@ -135,9 +136,9 @@ defmodule TeacherAssistant.Fees do
         reference: attrs[:reference] || attrs["reference"],
         note: attrs[:note] || attrs["note"],
         recorded_by_user_id: recorded_by_user_id,
-        workspace_id: e.workspace_id,
         enrollment_id: e.id
       })
+      |> Ash.Changeset.set_tenant(e.workspace_id)
       |> Ash.create()
       |> case do
         {:ok, payment} -> {:ok, payment}
@@ -157,7 +158,8 @@ defmodule TeacherAssistant.Fees do
   Lists `Payment`s for `enrollment`, newest first
   (`paid_on` desc, then `inserted_at` desc).
   """
-  def list_payments(%Enrollment{id: id}), do: list_payments_for_enrollment_id!(id)
+  def list_payments(%Enrollment{id: id, workspace_id: ws_id}),
+    do: list_payments_for_enrollment_id!(id, tenant: ws_id)
 
   # --- Adjustments ---------------------------------------------------------
 
@@ -176,9 +178,9 @@ defmodule TeacherAssistant.Fees do
         amount: amount,
         reason: attrs[:reason] || attrs["reason"],
         recorded_by_user_id: recorded_by_user_id,
-        workspace_id: e.workspace_id,
         enrollment_id: e.id
       })
+      |> Ash.Changeset.set_tenant(e.workspace_id)
       |> Ash.create()
       |> case do
         {:ok, adjustment} -> {:ok, adjustment}
@@ -188,11 +190,11 @@ defmodule TeacherAssistant.Fees do
   end
 
   @doc "Deletes the fee adjustment for `enrollment`, if any."
-  def clear_adjustment(%Enrollment{id: id}) do
-    adjustments = list_adjustments_for_enrollment_id!(id)
+  def clear_adjustment(%Enrollment{id: id, workspace_id: ws_id}) do
+    adjustments = list_adjustments_for_enrollment_id!(id, tenant: ws_id)
 
     try do
-      Enum.each(adjustments, &Ash.destroy!/1)
+      Enum.each(adjustments, &Ash.destroy!(&1, tenant: ws_id))
       {:ok, length(adjustments)}
     rescue
       _ -> {:error, :adjustment_failed}
@@ -207,15 +209,17 @@ defmodule TeacherAssistant.Fees do
   that student's adjustment amount (0 when none).
   """
   def student_balance(%Enrollment{} = e, on_date \\ Date.utc_today()) do
-    tranches = list_tranches(%ClassGroup{id: e.class_group_id})
+    tranches =
+      list_tranches(%ClassGroup{id: e.class_group_id, workspace_id: e.workspace_id})
+
     payments = list_payments(e)
-    adjustment_amount = adjustment_amount_for(e.id)
+    adjustment_amount = adjustment_amount_for(e.id, e.workspace_id)
 
     FeeBalance.compute(tranches, payments, adjustment_amount, on_date)
   end
 
-  defp adjustment_amount_for(enrollment_id) do
-    case list_adjustments_for_enrollment_id!(enrollment_id) do
+  defp adjustment_amount_for(enrollment_id, ws_id) do
+    case list_adjustments_for_enrollment_id!(enrollment_id, tenant: ws_id) do
       [adjustment | _] -> adjustment.amount
       [] -> 0
     end
@@ -230,6 +234,7 @@ defmodule TeacherAssistant.Fees do
   def class_balances(%ClassGroup{} = class_group, on_date \\ Date.utc_today()) do
     roster = TeacherAssistant.Enrollment.list_roster(class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
+    ws_id = class_group.workspace_id
 
     tranches = list_tranches(class_group)
 
@@ -238,7 +243,7 @@ defmodule TeacherAssistant.Fees do
         %{}
       else
         enrollment_ids
-        |> list_payments_for_enrollment_ids!()
+        |> list_payments_for_enrollment_ids!(tenant: ws_id)
         |> Enum.group_by(& &1.enrollment_id)
       end
 
@@ -247,7 +252,7 @@ defmodule TeacherAssistant.Fees do
         %{}
       else
         enrollment_ids
-        |> list_adjustments_for_enrollment_ids!()
+        |> list_adjustments_for_enrollment_ids!(tenant: ws_id)
         |> Map.new(&{&1.enrollment_id, &1.amount})
       end
 

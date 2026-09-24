@@ -25,12 +25,12 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
     defaults [
       :read,
       :destroy,
-      create: [:amount, :reason, :recorded_by_user_id, :workspace_id, :enrollment_id],
+      create: [:amount, :reason, :recorded_by_user_id, :enrollment_id],
       update: [:amount, :reason, :recorded_by_user_id]
     ]
 
     create :set do
-      accept [:amount, :reason, :recorded_by_user_id, :workspace_id, :enrollment_id]
+      accept [:amount, :reason, :recorded_by_user_id, :enrollment_id]
 
       upsert? true
       upsert_identity :unique_adjustment
@@ -53,6 +53,11 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

@@ -32,7 +32,6 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
       amount: 5_000,
       reason: "Bourse partielle",
       recorded_by_user_id: nil,
-      workspace_id: ctx.ws.id,
       enrollment_id: ctx.enrollment.id
     }
     |> Map.merge(overrides)
@@ -42,6 +41,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     assert {:ok, %FeeAdjustment{} = adj} =
              FeeAdjustment
              |> Ash.Changeset.for_create(:set, base_attrs(ctx))
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert adj.amount == 5_000
@@ -54,6 +54,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     {:ok, adj1} =
       FeeAdjustment
       |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{amount: 5_000}))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     assert {:ok, adj2} =
@@ -62,6 +63,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
                :set,
                base_attrs(ctx, %{amount: 8_000, reason: "Bourse totale"})
              )
+             |> Ash.Changeset.set_tenant(ctx.ws.id)
              |> Ash.create(authorize?: false)
 
     assert adj2.id == adj1.id
@@ -70,7 +72,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
 
     assert FeeAdjustment
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(authorize?: false)
+           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
            |> length() == 1
   end
 
@@ -78,10 +80,12 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     {:ok, adj} =
       FeeAdjustment
       |> Ash.Changeset.for_create(:set, base_attrs(ctx))
+      |> Ash.Changeset.set_tenant(ctx.ws.id)
       |> Ash.create(authorize?: false)
 
     :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
 
-    assert {:error, %Ash.Error.Invalid{}} = Ash.get(FeeAdjustment, adj.id, authorize?: false)
+    assert {:error, %Ash.Error.Invalid{}} =
+             Ash.get(FeeAdjustment, adj.id, tenant: ctx.ws.id, authorize?: false)
   end
 end

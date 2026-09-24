@@ -283,7 +283,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       all =
         ConductMark
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and sequence_id == ^ctx.seq1.id)
-        |> Ash.read!(authorize?: false)
+        |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
 
       assert length(all) == 1
       assert Decimal.equal?(hd(all).value, Decimal.new(18))
