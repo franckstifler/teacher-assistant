@@ -104,14 +104,14 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
         |> Ash.Query.filter(
           enrollment_id == ^ctx.enr_maco.id and date == ^ctx.date and period_id == ^ctx.period.id
         )
-        |> Ash.read_one!(authorize?: false)
+        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
 
       entry_menu =
         AttendanceEntry
         |> Ash.Query.filter(
           enrollment_id == ^ctx.enr_menu.id and date == ^ctx.date and period_id == ^ctx.period.id
         )
-        |> Ash.read_one!(authorize?: false)
+        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
 
       assert entry_maco.status == :present
       assert entry_maco.teaching_context_id == ctx.tc_maco.id
@@ -139,12 +139,12 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_maco.id)
-               |> Ash.read!(authorize?: false)
+               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
 
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
-               |> Ash.read!(authorize?: false)
+               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
     end
 
     test "a genuine DB-level failure in the second group rolls back the first group's already-written entry",
@@ -163,12 +163,10 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
       groups = [
         %{
-          workspace_id: ctx.maco.workspace_id,
           teaching_context_id: ctx.tc_maco.id,
           marks: [%{enrollment_id: ctx.enr_maco.id, status: :present}]
         },
         %{
-          workspace_id: ctx.menu.workspace_id,
           teaching_context_id: bogus_teaching_context_id,
           marks: [%{enrollment_id: ctx.enr_menu.id, status: :absent}]
         }
@@ -176,23 +174,27 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
       assert {:error, _reason} =
                AttendanceEntry
-               |> Ash.ActionInput.for_action(:record_combined_period, %{
-                 period_id: ctx.period.id,
-                 date: ctx.date,
-                 recorded_by_user_id: ctx.head.id,
-                 groups: groups
-               })
+               |> Ash.ActionInput.for_action(
+                 :record_combined_period,
+                 %{
+                   period_id: ctx.period.id,
+                   date: ctx.date,
+                   recorded_by_user_id: ctx.head.id,
+                   groups: groups
+                 },
+                 tenant: ctx.ws.id
+               )
                |> Ash.run_action()
 
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_maco.id)
-               |> Ash.read!(authorize?: false)
+               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
 
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
-               |> Ash.read!(authorize?: false)
+               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
     end
   end
 end

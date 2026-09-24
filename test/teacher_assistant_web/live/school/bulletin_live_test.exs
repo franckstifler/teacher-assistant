@@ -130,7 +130,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
         cg.workspace_id
       )
 
-    {:ok, _} = Attendance.justify_day(enr.id, date, "Certificat médical")
+    {:ok, _} = Attendance.justify_day(enr, date, "Certificat médical")
 
     {:ok, _} =
       Attendance.record_period(
@@ -158,12 +158,12 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
       )
 
     expected_justified_hours =
-      Attendance.student_conduct(enr.id, {:sequence, seq}).justified_hours
+      Attendance.student_conduct(enr, {:sequence, seq}).justified_hours
       |> Decimal.round(2)
       |> Decimal.to_string()
 
     expected_unjustified_hours =
-      Attendance.student_conduct(enr.id, {:sequence, seq}).unjustified_hours
+      Attendance.student_conduct(enr, {:sequence, seq}).unjustified_hours
       |> Decimal.round(2)
       |> Decimal.to_string()
 

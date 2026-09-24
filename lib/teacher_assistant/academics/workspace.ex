@@ -125,14 +125,14 @@ defmodule TeacherAssistant.Academics.Workspace do
   end
 
   # The default bell schedule, so roll call works from day one (Increment 2).
-  # `Period` isn't multitenant yet (Task 12) — see the tenant note above.
+  # `Period` is multitenant (attribute strategy); the tenant is set below
+  # instead of a `workspace_id` param, which is no longer an acceptable
+  # create attribute.
   defp seed_periods(workspace) do
     Reference.default_periods_preset()
     |> Enum.reduce_while(:ok, fn attrs, :ok ->
-      params = Map.put(attrs, :workspace_id, workspace.id)
-
       case Period
-           |> Ash.Changeset.for_create(:create, params)
+           |> Ash.Changeset.for_create(:create, attrs)
            |> Ash.Changeset.set_tenant(workspace.id)
            |> Ash.create() do
         {:ok, _} -> {:cont, :ok}

@@ -152,7 +152,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert AttendanceEntry
              |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
-             |> Ash.read!(authorize?: false)
+             |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
              |> length() == 1
     end
 
@@ -259,12 +259,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       entry1 =
         AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(authorize?: false)
+        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
 
       entry2 =
         AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment2.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(authorize?: false)
+        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
 
       assert entry1.justified == true
       assert entry1.justification_note == "Sick note"
@@ -272,30 +272,6 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       # non-absent entry untouched
       assert entry2.justified == false
       assert entry2.justification_note == nil
-    end
-
-    test "justify_day accepts a bare enrollment_id", ctx do
-      marks = [{ctx.enrollment1.id, :absent}]
-
-      assert {:ok, 1} =
-               Attendance.record_period(
-                 ctx.cg,
-                 ctx.period,
-                 ctx.tc,
-                 ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
-               )
-
-      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1.id, ~D[2025-09-15], "Note")
-
-      entry1 =
-        AttendanceEntry
-        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(authorize?: false)
-
-      assert entry1.justified == true
-      assert entry1.justification_note == "Note"
     end
 
     test "justify_day does not touch absent entries on other dates", ctx do
@@ -326,14 +302,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: ctx.enrollment1.id,
           period_id: ctx.period.id,
           teaching_context_id: ctx.tc.id,
-          recorded_by_user_id: ctx.head.id,
-          workspace_id: ctx.ws.id
+          recorded_by_user_id: ctx.head.id
         })
+        |> Ash.Changeset.set_tenant(ctx.ws.id)
         |> Ash.create(authorize?: false)
 
       assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Note")
 
-      other_day_entry = Ash.get!(AttendanceEntry, other_day_entry.id, authorize?: false)
+      other_day_entry =
+        Ash.get!(AttendanceEntry, other_day_entry.id, tenant: ctx.ws.id, authorize?: false)
+
       assert other_day_entry.justified == false
       assert other_day_entry.justification_note == nil
     end
@@ -357,7 +335,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       entry1 =
         AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(authorize?: false)
+        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
 
       assert entry1.justified == false
       assert entry1.justification_note == nil
@@ -391,9 +369,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment1.id,
           period_id: period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       {:ok, _} =
@@ -404,9 +382,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment1.id,
           period_id: ctx.other_period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       # Outside the séquence: must be excluded entirely.
@@ -419,9 +397,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment1.id,
           period_id: period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       totals = Attendance.student_conduct(enrollment1, {:sequence, seq1})
@@ -435,34 +413,6 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       assert Decimal.equal?(totals.justified_hours, expected_hours)
       assert Decimal.equal?(totals.unjustified_hours, Decimal.new(0))
       assert totals.retards == 1
-    end
-
-    test "student_conduct accepts a bare enrollment_id", ctx do
-      %{seq1: seq1, period: period, tc: tc, enrollment1: enrollment1, ws: ws, head: head} = ctx
-
-      {:ok, _} =
-        AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: seq1.start_date,
-          status: :absent,
-          justified: false,
-          enrollment_id: enrollment1.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
-        })
-        |> Ash.create(authorize?: false)
-
-      totals = Attendance.student_conduct(enrollment1.id, {:sequence, seq1})
-
-      expected_hours =
-        Decimal.div(
-          Decimal.new(Time.diff(period.end_time, period.start_time, :minute)),
-          Decimal.new(60)
-        )
-
-      assert Decimal.equal?(totals.unjustified_hours, expected_hours)
     end
 
     test "trimester total covers both of its séquences", ctx do
@@ -479,9 +429,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment1.id,
           period_id: period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       {:ok, _} =
@@ -493,9 +443,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment1.id,
           period_id: period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       totals = Attendance.student_conduct(enrollment1, {:trimester, term1})
@@ -552,9 +502,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment1.id,
           period_id: period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       {:ok, _} =
@@ -565,9 +515,9 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           enrollment_id: enrollment2.id,
           period_id: period.id,
           teaching_context_id: tc.id,
-          recorded_by_user_id: head.id,
-          workspace_id: ws.id
+          recorded_by_user_id: head.id
         })
+        |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
       results = Attendance.class_conduct(cg, {:sequence, seq1})

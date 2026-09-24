@@ -46,7 +46,6 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         :justified,
         :justification_note,
         :recorded_by_user_id,
-        :workspace_id,
         :enrollment_id,
         :period_id,
         :teaching_context_id
@@ -67,7 +66,6 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         :justification_note,
         :teaching_context_id,
         :recorded_by_user_id,
-        :workspace_id,
         :enrollment_id,
         :date,
         :period_id
@@ -145,7 +143,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
       run fn input, _ctx ->
         %{class_group: cg, period: period, date: date} = input.arguments
-        {:ok, period_roll(cg, period, date)}
+        {:ok, period_roll(cg, period, date, input.tenant)}
       end
     end
 
@@ -167,15 +165,16 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
       run fn input, _ctx ->
         %{course: course, period: period, date: date} = input.arguments
-        {:ok, combined_roll(course, period, date)}
+        {:ok, combined_roll(course, period, date, input.tenant)}
       end
     end
 
     # Writes one combined attendance session: `groups` (pre-validated and
     # pre-routed by `TeacherAssistant.Attendance.record_combined_period/5` —
-    # each entry already carries its own class's `workspace_id`/
-    # `teaching_context_id`, the server-derived per-class routing) are written
-    # via the same `:record` upsert (identity `[:enrollment_id, :date,
+    # each entry already carries its own class's `teaching_context_id`, the
+    # server-derived per-class routing; every member class of a combined
+    # course shares the same workspace, so `input.tenant` covers every group)
+    # are written via the same `:record` upsert (identity `[:enrollment_id, :date,
     # :period_id]`) used by a solo roll. `transaction? true` wraps every
     # group's writes in one DB transaction, so a write failure in ANY class
     # rolls back every class's marks — no partial commit across a combined
@@ -195,9 +194,11 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         %{period_id: period_id, date: date, recorded_by_user_id: uid, groups: groups} =
           input.arguments
 
+        tenant = input.tenant
+
         groups
         |> Enum.reduce_while({:ok, 0}, fn group, {:ok, acc} ->
-          case create_group_entries(group, period_id, date, uid) do
+          case create_group_entries(group, period_id, date, uid, tenant) do
             {:ok, count} -> {:cont, {:ok, acc + count}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -210,6 +211,11 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
@@ -261,7 +267,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   # --- Roll composition (private engine behind :period_roll /
   # :combined_period_roll) ----------------------------------------------------
 
-  defp period_roll(%ClassGroup{} = class_group, %Period{id: period_id}, %Date{} = date) do
+  defp period_roll(%ClassGroup{} = class_group, %Period{id: period_id}, %Date{} = date, tenant) do
     teaching_context =
       case slot_for(class_group, date, period_id) do
         {:ok, %TimetableSlot{teaching_context: %TeachingContext{} = tc}} -> tc
@@ -275,6 +281,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         date: date,
         class_group_id: class_group.id
       })
+      |> Ash.Query.set_tenant(tenant)
       |> Ash.read!()
       |> Map.new(&{&1.enrollment_id, &1.status})
 
@@ -292,15 +299,15 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     %{students: students, teaching_context: teaching_context}
   end
 
-  defp combined_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date) do
+  defp combined_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date, tenant) do
     course.id
-    |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
+    |> Curriculum.contexts_of_course!(tenant: tenant)
     # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
-    |> Ash.load!(:class_group, tenant: course.workspace_id)
+    |> Ash.load!(:class_group, tenant: tenant)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->
       ctx.class_group
-      |> period_roll(period, date)
+      |> period_roll(period, date, tenant)
       |> Map.put(:class_group, ctx.class_group)
     end)
     |> Enum.sort_by(&String.downcase(&1.class_group.label))
@@ -344,17 +351,19 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   # --- Combined-write engine (private, behind :record_combined_period) -------
 
   # Creates one `AttendanceEntry` per mark in `group` (upsert via `:record`,
-  # identity `[:enrollment_id, :date, :period_id]`). `group` carries its own
-  # `workspace_id`/`teaching_context_id` — the per-class routing computed by
-  # `TeacherAssistant.Attendance.record_combined_period/5` before this action
-  # ever runs. Returns `{:ok, count}`, or the first `{:error, reason}` hit
-  # (halting the batch — the caller's `transaction? true` rolls back whatever
-  # earlier groups already wrote).
+  # identity `[:enrollment_id, :date, :period_id]`), tenant-scoped to `tenant`
+  # (the action's `input.tenant`, shared by every member class of the combined
+  # course). `group` carries its own `teaching_context_id` — the per-class
+  # routing computed by `TeacherAssistant.Attendance.record_combined_period/5`
+  # before this action ever runs. Returns `{:ok, count}`, or the first
+  # `{:error, reason}` hit (halting the batch — the caller's `transaction?
+  # true` rolls back whatever earlier groups already wrote).
   defp create_group_entries(
-         %{workspace_id: ws_id, teaching_context_id: tc_id, marks: marks},
+         %{teaching_context_id: tc_id, marks: marks},
          period_id,
          date,
-         recorded_by_user_id
+         recorded_by_user_id,
+         tenant
        ) do
     results =
       Enum.map(marks, fn %{enrollment_id: enrollment_id, status: status} ->
@@ -365,9 +374,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
           enrollment_id: enrollment_id,
           period_id: period_id,
           teaching_context_id: tc_id,
-          recorded_by_user_id: recorded_by_user_id,
-          workspace_id: ws_id
+          recorded_by_user_id: recorded_by_user_id
         })
+        |> Ash.Changeset.set_tenant(tenant)
         |> Ash.create()
       end)
 

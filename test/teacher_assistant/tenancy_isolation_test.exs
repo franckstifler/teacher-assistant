@@ -138,6 +138,30 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     a |> TeacherAssistant.Assessment.list_marks() |> List.first()
   end
 
+  defp row_for(A.Period, school, _ctx),
+    do: school |> TeacherAssistant.Attendance.list_periods() |> List.first()
+
+  defp row_for(A.AttendanceEntry, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(e.class_group_id, school)
+    p = row_for(A.Period, school, ctx)
+
+    {:ok, _} =
+      TeacherAssistant.Attendance.record_period(
+        cg,
+        p,
+        nil,
+        ~D[2030-10-07],
+        [{e.id, :absent}],
+        nil
+      )
+
+    A.AttendanceEntry
+    |> Ash.Query.filter(enrollment_id == ^e.id)
+    |> Ash.read!(tenant: school.id)
+    |> List.first()
+  end
+
   defp row_for(A.TeachingLogEntry, school, ctx) do
     entry = row_for(A.ProgressionEntry, school, ctx)
 
@@ -169,7 +193,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.LessonStep,
     A.TeachingLogEntry,
     A.Assessment,
-    A.Mark
+    A.Mark,
+    A.Period,
+    A.AttendanceEntry
   ]
 
   test "a row of school A is not readable under school B", ctx do
@@ -210,5 +236,18 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     cg = row_for(A.ClassGroup, a, ctx)
     assert {:ok, _} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, a)
     assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, b)
+  end
+
+  test "justifying an absence of school A's student from school B's scope is not found",
+       %{
+         a: a,
+         b: b
+       } = ctx do
+    entry = row_for(A.AttendanceEntry, a, ctx)
+    {:ok, e} = TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, a)
+    assert {:ok, _} = TeacherAssistant.Attendance.justify_day(e, entry.date, "ok")
+
+    assert {:error, :not_found} =
+             TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, b)
   end
 end

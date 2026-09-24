@@ -45,7 +45,13 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
               <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
                 <td colspan="6">
                   <.form
-                    for={AshPhoenix.Form.for_update(period, :update, as: "period") |> to_form()}
+                    for={
+                      AshPhoenix.Form.for_update(period, :update,
+                        as: "period",
+                        tenant: period.workspace_id
+                      )
+                      |> to_form()
+                    }
                     id={"period-form-#{period.id}"}
                     phx-submit="update_period"
                     class="grid items-end gap-2 sm:grid-cols-6"
@@ -137,7 +143,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           {:noreply, socket}
 
         period ->
-          form = AshPhoenix.Form.for_update(period, :update, as: "period")
+          form =
+            AshPhoenix.Form.for_update(period, :update, as: "period", tenant: period.workspace_id)
 
           case AshPhoenix.Form.submit(form, params: normalize_period_params(params)) do
             {:ok, _period} ->

@@ -18,15 +18,13 @@ defmodule TeacherAssistant.Academics.Period do
     defaults [
       :read,
       :destroy,
-      create: [:position, :label, :start_time, :end_time, :kind, :workspace_id],
+      create: [:position, :label, :start_time, :end_time, :kind],
       update: [:position, :label, :start_time, :end_time, :kind]
     ]
 
+    # Tenant scoping (attribute multitenancy) already restricts this to the
+    # given workspace; no `workspace_id` argument is needed any more.
     read :for_workspace do
-      argument :workspace_id, :uuid, allow_nil?: false
-
-      filter expr(workspace_id == ^arg(:workspace_id))
-
       prepare build(sort: [position: :asc])
     end
   end
@@ -35,6 +33,11 @@ defmodule TeacherAssistant.Academics.Period do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
