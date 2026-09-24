@@ -211,6 +211,7 @@ defmodule TeacherAssistant.Curriculum do
     has_assessments =
       Assessment
       |> Ash.Query.filter(teaching_context_id == ^id)
+      |> Ash.Query.set_tenant(ws_id)
       |> Ash.read!() != []
 
     if has_plans or has_assessments do

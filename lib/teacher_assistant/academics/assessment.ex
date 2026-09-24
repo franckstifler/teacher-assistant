@@ -32,8 +32,7 @@ defmodule TeacherAssistant.Academics.Assessment do
         :max_score,
         :given_on,
         :teaching_context_id,
-        :sequence_id,
-        :workspace_id
+        :sequence_id
       ],
       update: [:label, :weight, :max_score, :given_on]
     ]
@@ -72,7 +71,7 @@ defmodule TeacherAssistant.Academics.Assessment do
         constraints: [instance_of: TeacherAssistant.Academics.Sequence]
 
       run fn input, _ctx ->
-        {:ok, combined_for(input.arguments.course, input.arguments.sequence)}
+        {:ok, combined_for(input.arguments.course, input.arguments.sequence, input.tenant)}
       end
     end
 
@@ -102,11 +101,12 @@ defmodule TeacherAssistant.Academics.Assessment do
 
       run fn input, _ctx ->
         %{course: course, sequence: seq, label: label} = input.arguments
+        tenant = input.tenant
 
-        contexts = course_member_contexts(course)
+        contexts = course_member_contexts(course, tenant)
 
         Enum.reduce_while(contexts, {:ok, []}, fn ctx, {:ok, acc} ->
-          case create_assessment(ctx, seq, label) do
+          case create_assessment(ctx, seq, label, tenant) do
             {:ok, assessment} -> {:cont, {:ok, acc ++ [assessment]}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -119,6 +119,11 @@ defmodule TeacherAssistant.Academics.Assessment do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
@@ -155,23 +160,23 @@ defmodule TeacherAssistant.Academics.Assessment do
   # --- Combined-assessment helpers -------------------------------------------
 
   # Member contexts of a course that have a class group, in class-label order.
-  defp course_member_contexts(course) do
+  defp course_member_contexts(course, tenant) do
     course.id
-    |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
+    |> Curriculum.contexts_of_course!(tenant: tenant)
     # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
-    |> Ash.load!(:class_group, tenant: course.workspace_id)
+    |> Ash.load!(:class_group, tenant: tenant)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.sort_by(&String.downcase(&1.class_group.label))
   end
 
-  defp combined_for(course, seq) do
-    case course_member_contexts(course) do
+  defp combined_for(course, seq, tenant) do
+    case course_member_contexts(course, tenant) do
       [] ->
         []
 
       [primary | rest] = contexts ->
         by_context_id =
-          Map.new(contexts, fn ctx -> {ctx.id, assessments_for(ctx.id, seq.id)} end)
+          Map.new(contexts, fn ctx -> {ctx.id, assessments_for(ctx.id, seq.id, tenant)} end)
 
         primary_labels = Enum.map(by_context_id[primary.id], & &1.label)
 
@@ -183,16 +188,16 @@ defmodule TeacherAssistant.Academics.Assessment do
           |> Enum.reject(&(&1 in primary_labels))
 
         (primary_labels ++ extra_labels)
-        |> Enum.map(&build_combined_entry(&1, contexts, primary, by_context_id, seq))
+        |> Enum.map(&build_combined_entry(&1, contexts, primary, by_context_id, seq, tenant))
     end
   end
 
-  defp build_combined_entry(label, contexts, primary, by_context_id, seq) do
+  defp build_combined_entry(label, contexts, primary, by_context_id, seq, tenant) do
     by_class_group_id =
       Map.new(contexts, fn ctx ->
         assessment =
           Enum.find(by_context_id[ctx.id], &(&1.label == label)) ||
-            backfill_assessment!(ctx, seq, label)
+            backfill_assessment!(ctx, seq, label, tenant)
 
         {ctx.class_group_id, assessment}
       end)
@@ -208,8 +213,8 @@ defmodule TeacherAssistant.Academics.Assessment do
     }
   end
 
-  defp backfill_assessment!(ctx, seq, label) do
-    case create_assessment(ctx, seq, label) do
+  defp backfill_assessment!(ctx, seq, label, tenant) do
+    case create_assessment(ctx, seq, label, tenant) do
       {:ok, assessment} ->
         assessment
 
@@ -218,23 +223,24 @@ defmodule TeacherAssistant.Academics.Assessment do
     end
   end
 
-  defp assessments_for(teaching_context_id, sequence_id) do
+  defp assessments_for(teaching_context_id, sequence_id, tenant) do
     __MODULE__
     |> Ash.Query.for_read(:for_context_and_sequence, %{
       teaching_context_id: teaching_context_id,
       sequence_id: sequence_id
     })
+    |> Ash.Query.set_tenant(tenant)
     |> Ash.read!()
   end
 
-  defp create_assessment(ctx, seq, label) do
+  defp create_assessment(ctx, seq, label, tenant) do
     __MODULE__
     |> Ash.Changeset.for_create(:create, %{
       label: label,
       teaching_context_id: ctx.id,
-      sequence_id: seq.id,
-      workspace_id: ctx.workspace_id
+      sequence_id: seq.id
     })
+    |> Ash.Changeset.set_tenant(tenant)
     |> Ash.create()
   end
 end

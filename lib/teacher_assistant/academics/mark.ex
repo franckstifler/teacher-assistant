@@ -27,10 +27,10 @@ defmodule TeacherAssistant.Academics.Mark do
     defaults [
       :read,
       :destroy,
-      create: [:score, :assessment_id, :student_id, :workspace_id]
+      create: [:score, :assessment_id, :student_id]
     ]
 
-    # Not atomic: `ScoreWithinMax` fetches the assessment with `Ash.get!/2`,
+    # Not atomic: `ScoreWithinMax` fetches the assessment with `Ash.get/2`,
     # which the atomic-update upgrade path cannot express as a single SQL
     # expression.
     update :update do
@@ -74,10 +74,12 @@ defmodule TeacherAssistant.Academics.Mark do
       transaction? true
 
       run fn input, _ctx ->
+        tenant = input.tenant
+
         input.arguments.marks
         |> Enum.group_by(& &1.assessment_id)
         |> Enum.reduce_while({:ok, []}, fn {assessment_id, entries}, {:ok, acc} ->
-          case upsert_group(assessment_id, entries) do
+          case upsert_group(assessment_id, entries, tenant) do
             {:ok, notifications} -> {:cont, {:ok, acc ++ notifications}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -106,7 +108,20 @@ defmodule TeacherAssistant.Academics.Mark do
   end
 
   validations do
-    validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []}, on: [:create, :update]
+    # `before_action?: true`: the validation fetches the `Assessment` scoped
+    # to `changeset.tenant`, but on `:create` the tenant is set via
+    # `Ash.Changeset.set_tenant/2` *after* `for_create/2` builds the
+    # changeset — plain (non-`before_action?`) validations run at build time,
+    # before that `set_tenant` call ever happens. Running it in a
+    # before_action hook defers it to commit time, once the tenant is final.
+    validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []},
+      on: [:create, :update],
+      before_action?: true
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
@@ -145,14 +160,13 @@ defmodule TeacherAssistant.Academics.Mark do
   # back the whole transaction. Deliberately without its own transaction — the
   # `:upsert_all` action wraps every group in one shared transaction, so a
   # failure here rolls back every group's writes, not just this one's.
-  defp upsert_group(assessment_id, entries) do
+  defp upsert_group(assessment_id, entries, tenant) do
     existing =
       __MODULE__
       |> Ash.Query.for_read(:for_assessment, %{assessment_id: assessment_id})
+      |> Ash.Query.set_tenant(tenant)
       |> Ash.read!()
       |> Map.new(fn mark -> {mark.student_id, mark} end)
-
-    %{workspace_id: workspace_id} = Ash.get!(TeacherAssistant.Academics.Assessment, assessment_id)
 
     Enum.reduce_while(entries, {:ok, []}, fn entry, {:ok, acc} ->
       result =
@@ -162,14 +176,15 @@ defmodule TeacherAssistant.Academics.Mark do
             |> Ash.Changeset.for_create(:create, %{
               assessment_id: assessment_id,
               student_id: entry.student_id,
-              score: Map.get(entry, :score),
-              workspace_id: workspace_id
+              score: Map.get(entry, :score)
             })
+            |> Ash.Changeset.set_tenant(tenant)
             |> Ash.create(return_notifications?: true)
 
           %__MODULE__{} = mark ->
             mark
             |> Ash.Changeset.for_update(:update, %{score: Map.get(entry, :score)})
+            |> Ash.Changeset.set_tenant(tenant)
             |> Ash.update(return_notifications?: true)
         end
 

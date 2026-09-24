@@ -137,9 +137,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                |> Ash.Changeset.for_create(:create, %{
                  assessment_id: a.id,
                  student_id: s.id,
-                 score: Decimal.new("21"),
-                 workspace_id: a.workspace_id
+                 score: Decimal.new("21")
                })
+               |> Ash.Changeset.set_tenant(a.workspace_id)
                |> Ash.create()
     end
 
@@ -153,9 +153,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                |> Ash.Changeset.for_create(:create, %{
                  assessment_id: a.id,
                  student_id: s.id,
-                 score: Decimal.new("-1"),
-                 workspace_id: a.workspace_id
+                 score: Decimal.new("-1")
                })
+               |> Ash.Changeset.set_tenant(a.workspace_id)
                |> Ash.create()
     end
 
@@ -168,9 +168,9 @@ defmodule TeacherAssistant.ConstraintsTest do
         |> Ash.Changeset.for_create(:create, %{
           assessment_id: a.id,
           student_id: s.id,
-          score: Decimal.new("10"),
-          workspace_id: a.workspace_id
+          score: Decimal.new("10")
         })
+        |> Ash.Changeset.set_tenant(a.workspace_id)
         |> Ash.create()
 
       assert {:error, _} =

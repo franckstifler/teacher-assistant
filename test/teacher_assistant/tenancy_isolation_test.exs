@@ -112,6 +112,32 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     step
   end
 
+  defp row_for(A.Assessment, school, ctx) do
+    tc = row_for(A.TeachingContext, school, ctx)
+
+    seq =
+      school
+      |> Organization.current_academic_year()
+      |> Organization.list_sequences()
+      |> List.first()
+
+    {:ok, a} = TeacherAssistant.Assessment.create_assessment(tc, seq, %{label: "Iso"})
+    a
+  end
+
+  defp row_for(A.Mark, school, ctx) do
+    a = row_for(A.Assessment, school, ctx)
+    {:ok, tc} = TeacherAssistant.Curriculum.get_teaching_context(a.teaching_context_id, school)
+    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(tc.class_group_id, school)
+    {:ok, _} = TeacherAssistant.Enrollment.add_student(cg, %{full_name: "Marked", sex: :f})
+    [%{student: s} | _] = TeacherAssistant.Enrollment.list_roster(cg)
+
+    :ok =
+      TeacherAssistant.Assessment.upsert_marks(a, [%{student_id: s.id, score: Decimal.new("12")}])
+
+    a |> TeacherAssistant.Assessment.list_marks() |> List.first()
+  end
+
   defp row_for(A.TeachingLogEntry, school, ctx) do
     entry = row_for(A.ProgressionEntry, school, ctx)
 
@@ -141,7 +167,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.ProgressionEntry,
     A.LessonPlan,
     A.LessonStep,
-    A.TeachingLogEntry
+    A.TeachingLogEntry,
+    A.Assessment,
+    A.Mark
   ]
 
   test "a row of school A is not readable under school B", ctx do

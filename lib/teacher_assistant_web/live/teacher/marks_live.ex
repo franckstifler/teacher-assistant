@@ -76,7 +76,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:selected, selected)
          |> assign(:scores, combined_existing_scores(selected))
          |> assign(:unsaved, %{})
-         |> assign(:new_assessment_form, assessment_form())}
+         |> assign(:new_assessment_form, assessment_form(ws.id))}
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/school")}
@@ -188,31 +188,33 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # `Assessment.create_combined_assessment/3` directly (it never calls
   # `AshPhoenix.Form.submit/2` on this form), so no `prepare_source` is
   # needed here.
-  defp assessment_form do
+  defp assessment_form(workspace_id) do
     TeacherAssistant.Academics.Assessment
-    |> AshPhoenix.Form.for_create(:create, as: "assessment")
+    |> AshPhoenix.Form.for_create(:create, as: "assessment", tenant: workspace_id)
     |> to_form()
   end
 
   # Solo mode: the "new assessment" toolbar form, with the server-controlled
   # context/sequence ids set on the changeset at build time via
-  # `prepare_source` (never merged into the submitted params). `seq` is a
-  # *live* value — the operator can switch séquence via the "seq" selector —
-  # so callers must rebuild this form on mount and again whenever `seq`
-  # changes (see `handle_params/3`). Falls back to the plain scaffold when
-  # there's no séquence yet; the toolbar form itself is only rendered when
-  # `@seq` is present, so that scaffold is never actually submitted.
-  defp solo_assessment_form(_ctx, nil), do: assessment_form()
+  # `prepare_source` (never merged into the submitted params). `workspace_id`
+  # is no longer an acceptable create attribute — it's derived from the
+  # form's `tenant:`. `seq` is a *live* value — the operator can switch
+  # séquence via the "seq" selector — so callers must rebuild this form on
+  # mount and again whenever `seq` changes (see `handle_params/3`). Falls
+  # back to the plain scaffold when there's no séquence yet; the toolbar
+  # form itself is only rendered when `@seq` is present, so that scaffold is
+  # never actually submitted.
+  defp solo_assessment_form(ctx, nil), do: assessment_form(ctx.workspace_id)
 
   defp solo_assessment_form(ctx, seq) do
     TeacherAssistant.Academics.Assessment
     |> AshPhoenix.Form.for_create(:create,
       as: "assessment",
+      tenant: ctx.workspace_id,
       prepare_source: fn changeset ->
         changeset
         |> Ash.Changeset.change_attribute(:teaching_context_id, ctx.id)
         |> Ash.Changeset.change_attribute(:sequence_id, seq.id)
-        |> Ash.Changeset.change_attribute(:workspace_id, ctx.workspace_id)
       end
     )
     |> to_form()
