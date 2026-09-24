@@ -162,6 +162,21 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     |> List.first()
   end
 
+  defp row_for(A.TimetableSlot, school, ctx) do
+    tc = row_for(A.TeachingContext, school, ctx)
+    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(tc.class_group_id, school)
+    p = row_for(A.Period, school, ctx)
+
+    {:ok, slot} =
+      TeacherAssistant.Timetabling.place_slot(cg, %{
+        day: :monday,
+        period_id: p.id,
+        teaching_context_id: tc.id
+      })
+
+    slot
+  end
+
   defp row_for(A.TeachingLogEntry, school, ctx) do
     entry = row_for(A.ProgressionEntry, school, ctx)
 
@@ -195,7 +210,8 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.Assessment,
     A.Mark,
     A.Period,
-    A.AttendanceEntry
+    A.AttendanceEntry,
+    A.TimetableSlot
   ]
 
   test "a row of school A is not readable under school B", ctx do

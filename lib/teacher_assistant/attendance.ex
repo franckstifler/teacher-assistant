@@ -71,7 +71,8 @@ defmodule TeacherAssistant.Attendance do
   `Curriculum.remove_assignment/1` "has data" guard).
   """
   def delete_period(%Period{id: id, workspace_id: ws_id} = period) do
-    has_slots = TeacherAssistant.Timetabling.list_for_period!(id) != []
+    # `TimetableSlot` is now multitenant — pass the tenant.
+    has_slots = TeacherAssistant.Timetabling.list_for_period!(id, tenant: ws_id) != []
 
     if has_slots do
       {:error, :has_slots}

@@ -25,8 +25,8 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     defaults [
       :read,
       :destroy,
-      create: [:class_group_id, :teaching_context_id, :period_id, :day, :workspace_id],
-      update: [:class_group_id, :teaching_context_id, :period_id, :day, :workspace_id]
+      create: [:class_group_id, :teaching_context_id, :period_id, :day],
+      update: [:class_group_id, :teaching_context_id, :period_id, :day]
     ]
 
     # Places (or replaces) the occupant of one (class_group, day, period)
@@ -34,7 +34,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     # cell keeps its id and only `teaching_context_id` changes — mirrors the
     # old `upsert_slot/4`'s read-then-branch, without the extra read.
     create :place do
-      accept [:class_group_id, :teaching_context_id, :period_id, :day, :workspace_id]
+      accept [:class_group_id, :teaching_context_id, :period_id, :day]
 
       upsert? true
       upsert_identity :unique_cell
@@ -50,13 +50,9 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     end
 
     read :for_workspace_teacher do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :teacher_user_id, :uuid, allow_nil?: false
 
-      filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 teaching_context.teacher_user_id == ^arg(:teacher_user_id)
-             )
+      filter expr(teaching_context.teacher_user_id == ^arg(:teacher_user_id))
 
       prepare build(load: [:class_group, teaching_context: :teacher])
     end
@@ -79,14 +75,13 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     end
 
     read :for_clash_check do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :day, TeacherAssistant.Academics.DayOfWeek, allow_nil?: false
       argument :period_id, :uuid, allow_nil?: false
       argument :teacher_user_id, :uuid, allow_nil?: false
       argument :exclude_class_group_ids, {:array, :uuid}, allow_nil?: false, default: []
 
       filter expr(
-               workspace_id == ^arg(:workspace_id) and day == ^arg(:day) and
+               day == ^arg(:day) and
                  period_id == ^arg(:period_id) and
                  class_group_id not in ^arg(:exclude_class_group_ids) and
                  teaching_context.teacher_user_id == ^arg(:teacher_user_id)
@@ -95,7 +90,8 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
     # Places a `TimetableSlot` for every member class of a combined course at
     # the same `day`/`period_id`, one call per member (`placements`, each
-    # `%{class_group_id, teaching_context_id, workspace_id}`). `transaction?
+    # `%{class_group_id, teaching_context_id}`; every member class shares the
+    # same workspace, so `input.tenant` covers every placement). `transaction?
     # true` wraps every member's upsert in one DB transaction, so a failure
     # for any member rolls back every member already placed in this call —
     # no partial commit across a combined course's classes. The teacher-clash
@@ -114,10 +110,11 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       run fn input, _ctx ->
         %{day: day, period_id: period_id, placements: placements} = input.arguments
+        tenant = input.tenant
 
         placements
         |> Enum.reduce_while({:ok, []}, fn placement, {:ok, acc} ->
-          case place_one(placement, day, period_id) do
+          case place_one(placement, day, period_id, tenant) do
             {:ok, slot} -> {:cont, {:ok, [slot | acc]}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -143,6 +140,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       run fn input, _ctx ->
         %{day: day, period_id: period_id, class_group_ids: class_group_ids} = input.arguments
+        tenant = input.tenant
 
         Enum.each(class_group_ids, fn class_group_id ->
           __MODULE__
@@ -151,8 +149,9 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
             day: day,
             period_id: period_id
           })
+          |> Ash.Query.set_tenant(tenant)
           |> Ash.read!()
-          |> Enum.each(&Ash.destroy!/1)
+          |> Enum.each(&Ash.destroy!(&1, tenant: tenant))
         end)
 
         {:ok, :ok}
@@ -164,6 +163,11 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
@@ -207,18 +211,19 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
   end
 
   defp place_one(
-         %{class_group_id: cg_id, teaching_context_id: tc_id, workspace_id: ws_id},
+         %{class_group_id: cg_id, teaching_context_id: tc_id},
          day,
-         period_id
+         period_id,
+         tenant
        ) do
     __MODULE__
     |> Ash.Changeset.for_create(:place, %{
       class_group_id: cg_id,
       teaching_context_id: tc_id,
       period_id: period_id,
-      day: day,
-      workspace_id: ws_id
+      day: day
     })
+    |> Ash.Changeset.set_tenant(tenant)
     |> Ash.create()
   end
 end

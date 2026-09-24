@@ -135,7 +135,8 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   defp list_slots_for_cell(ws, day, period_id) do
     TimetableSlot
-    |> Ash.Query.filter(workspace_id == ^ws.id and day == ^day and period_id == ^period_id)
+    |> Ash.Query.filter(day == ^day and period_id == ^period_id)
+    |> Ash.Query.set_tenant(ws.id)
     |> Ash.read!(authorize?: false)
   end
 end

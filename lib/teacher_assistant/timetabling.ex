@@ -17,14 +17,14 @@ defmodule TeacherAssistant.Timetabling do
 
       define :list_for_teacher,
         action: :for_workspace_teacher,
-        args: [:workspace_id, :teacher_user_id]
+        args: [:teacher_user_id]
 
       define :list_for_cell, action: :for_cell, args: [:class_group_id, :day, :period_id]
       define :list_for_period, action: :for_period, args: [:period_id]
 
       define :list_for_clash_check,
         action: :for_clash_check,
-        args: [:workspace_id, :day, :period_id, :teacher_user_id, :exclude_class_group_ids]
+        args: [:day, :period_id, :teacher_user_id, :exclude_class_group_ids]
     end
   end
 
@@ -75,10 +75,10 @@ defmodule TeacherAssistant.Timetabling do
   Clears the (day, period) cell of a class's timetable, if occupied. Always
   returns `:ok`.
   """
-  def clear_slot(%ClassGroup{id: cg_id}, day, period_id) do
+  def clear_slot(%ClassGroup{id: cg_id, workspace_id: ws_id}, day, period_id) do
     cg_id
-    |> list_for_cell!(day, period_id)
-    |> Enum.each(&Ash.destroy!/1)
+    |> list_for_cell!(day, period_id, tenant: ws_id)
+    |> Enum.each(&Ash.destroy!(&1, tenant: ws_id))
 
     :ok
   end
@@ -118,17 +118,20 @@ defmodule TeacherAssistant.Timetabling do
             Enum.map(contexts, fn tc ->
               %{
                 class_group_id: tc.class_group_id,
-                teaching_context_id: tc.id,
-                workspace_id: tc.class_group.workspace_id
+                teaching_context_id: tc.id
               }
             end)
 
           TimetableSlot
-          |> Ash.ActionInput.for_action(:place_combined, %{
-            day: day,
-            period_id: period_id,
-            placements: placements
-          })
+          |> Ash.ActionInput.for_action(
+            :place_combined,
+            %{
+              day: day,
+              period_id: period_id,
+              placements: placements
+            },
+            tenant: course.workspace_id
+          )
           |> Ash.run_action()
         end
     end
@@ -146,11 +149,15 @@ defmodule TeacherAssistant.Timetabling do
       |> Enum.map(& &1.class_group_id)
 
     TimetableSlot
-    |> Ash.ActionInput.for_action(:clear_combined, %{
-      day: day,
-      period_id: period_id,
-      class_group_ids: class_group_ids
-    })
+    |> Ash.ActionInput.for_action(
+      :clear_combined,
+      %{
+        day: day,
+        period_id: period_id,
+        class_group_ids: class_group_ids
+      },
+      tenant: course.workspace_id
+    )
     |> Ash.run_action!()
 
     :ok
@@ -205,9 +212,9 @@ defmodule TeacherAssistant.Timetabling do
   class each cell belongs to.
   """
   def teacher_timetable(%Workspace{id: ws_id}, %User{id: user_id}) do
-    ws_id
-    # `:for_workspace_teacher` loads the now-multitenant `:class_group` — pass the tenant.
-    |> list_for_teacher!(user_id, tenant: ws_id)
+    user_id
+    # `TimetableSlot` is now multitenant — pass the tenant.
+    |> list_for_teacher!(tenant: ws_id)
     |> Map.new(fn slot ->
       {{slot.day, slot.period_id}, slot_view(slot, slot.class_group.label)}
     end)
@@ -248,9 +255,9 @@ defmodule TeacherAssistant.Timetabling do
        ) do
     excluded_ids = [cg_id | exempt_class_group_ids]
 
-    ws_id
-    # `:for_clash_check` joins the now-multitenant `teaching_context` — pass the tenant.
-    |> list_for_clash_check!(day, period_id, teacher_user_id, excluded_ids, tenant: ws_id)
+    day
+    # `TimetableSlot` is now multitenant — pass the tenant.
+    |> list_for_clash_check!(period_id, teacher_user_id, excluded_ids, tenant: ws_id)
     |> List.first()
     |> case do
       nil ->
@@ -273,9 +280,9 @@ defmodule TeacherAssistant.Timetabling do
       class_group_id: cg_id,
       teaching_context_id: teaching_context_id,
       period_id: period_id,
-      day: day,
-      workspace_id: ws_id
+      day: day
     })
+    |> Ash.Changeset.set_tenant(ws_id)
     |> Ash.create()
   end
 end

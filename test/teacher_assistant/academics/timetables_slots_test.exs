@@ -162,9 +162,8 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     require Ash.Query
 
     TimetableSlot
-    |> Ash.Query.filter(
-      workspace_id == ^cg.workspace_id and day == ^day and period_id == ^period_id
-    )
+    |> Ash.Query.filter(day == ^day and period_id == ^period_id)
+    |> Ash.Query.set_tenant(cg.workspace_id)
     |> Ash.read!(authorize?: false)
   end
 end
