@@ -14,6 +14,11 @@ defmodule TeacherAssistant.Tenancy do
   Until that DB-level guard exists, every domain function that receives more
   than one tenant-owned struct (or a raw id naming one) and writes must call
   `same_workspace/1` before writing.
+
+  `require_tenant/1` is the read-side counterpart for `global? true`
+  resources (`SchoolMembership`, `SchoolInvitation`): Ash lets every action
+  of a global resource run without a tenant, so a tenant-scoped read on one
+  must refuse a missing tenant explicitly or it silently spans every school.
   """
 
   @doc """
@@ -37,4 +42,23 @@ defmodule TeacherAssistant.Tenancy do
       _ -> {:error, :workspace_mismatch}
     end
   end
+
+  @doc """
+  `Ash.Query.before_action/2` hook: adds `Ash.Error.Invalid.TenantRequired`
+  to `query` when no tenant is set.
+
+  Registered from a read action's `prepare` as
+  `prepare fn q, _ -> Ash.Query.before_action(q, &Tenancy.require_tenant/1) end`
+  rather than run inline: callers set the tenant with a separate
+  `Ash.Query.set_tenant/2` *after* `for_read/3` returns, and a plain `prepare`
+  runs inside `for_read/3`, before that call, so it would always see `nil`.
+  """
+  def require_tenant(%Ash.Query{tenant: nil} = query) do
+    Ash.Query.add_error(
+      query,
+      Ash.Error.Invalid.TenantRequired.exception(resource: query.resource)
+    )
+  end
+
+  def require_tenant(%Ash.Query{} = query), do: query
 end

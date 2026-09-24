@@ -42,16 +42,17 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
 
     # Tenant scoping (attribute multitenancy) already restricts this to the
     # given workspace; no `workspace_id` argument is needed any more. This
-    # resource stays `global? true` (`:by_token` needs that), so `:enforce`
-    # alone would not stop a missing tenant from silently reading pending
-    # invitations across every workspace — `require_tenant/1` raises
-    # `Ash.Error.Invalid` instead (mirrors `SchoolMembership`'s
-    # `:active_for_workspace`).
+    # resource is `global? true` (`:by_token` needs that), so nothing stops a
+    # missing tenant from silently reading pending invitations across every
+    # workspace — `Tenancy.require_tenant/1` rejects it instead (mirrors
+    # `SchoolMembership.:active_for_workspace`).
     read :pending_for_workspace do
-      multitenancy :enforce
       filter expr(status == :pending)
       prepare build(sort: [inserted_at: :asc])
-      prepare fn query, _context -> Ash.Query.before_action(query, &require_tenant/1) end
+
+      prepare fn query, _context ->
+        Ash.Query.before_action(query, &TeacherAssistant.Tenancy.require_tenant/1)
+      end
     end
 
     update :revoke do
@@ -109,19 +110,5 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
 
   identities do
     identity :unique_token, [:token], all_tenants?: true
-  end
-
-  # See `TeacherAssistant.Accounts.SchoolMembership.require_tenant/1` — same
-  # rationale, duplicated rather than shared because it's a two-line private
-  # helper on a resource module, not worth a cross-resource dependency.
-  defp require_tenant(query) do
-    if query.tenant do
-      query
-    else
-      Ash.Query.add_error(
-        query,
-        Ash.Error.Invalid.TenantRequired.exception(resource: query.resource)
-      )
-    end
   end
 end
