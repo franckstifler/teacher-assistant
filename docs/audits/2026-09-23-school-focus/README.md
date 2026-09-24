@@ -231,6 +231,7 @@ Field/constraint gaps:
 | `Term` | position only; label derived in UI (fine). Wizard never creates terms (gap G1) | G1 fix |
 | `Subject` | `default_coefficient` is per school; série/level-dependent coefficients need a `(subject, level, serie)` table in the grading-config increment. Per-class coefficient on `TeachingContext` covers today | Later |
 | `SchoolMembership` | `:hod` needs a department/subject link to mean anything | Later |
+| `FeeTranche`/`FeeAdjustment` | `validate_amount` lets `0` through to the DB constraint; a discount (negative adjustment) is impossible today | Later |
 | all | no `check_constraints` anywhere (score in 0..max_score, positive amounts, ordered sequence dates) | Done |
 | `SchoolProfile`, `SchoolInvitation`, `Period`, `Sequence`, `Enrollment`, `AttendanceEntry`, `TimetableSlot` | fine as they are | — |
 
@@ -296,3 +297,8 @@ layer passes; the "one active year per workspace" partial unique index guards th
 
 Already noted before this section: README §4 "Tenancy", §7 step 4, report A ASH-10/ASH-19/ASH-24,
 report D §3 and risks #2/#5.
+
+Follow-up (authorization increment): tie foreign keys to the tenant at the DB level with
+`reference ..., match_with: [workspace_id: :workspace_id]` (needs a unique `(id, workspace_id)`
+per parent); until then the domain guards (`TeacherAssistant.Tenancy.same_workspace/1`) are the
+only cross-tenant write check.

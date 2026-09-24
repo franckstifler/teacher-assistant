@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Curriculum do
     ProgressionEntry,
     ProgressionModule,
     ProgressionPlan,
+    Sequence,
     Subject,
     TeachingContext,
     TeachingLogEntry,
@@ -23,6 +24,7 @@ defmodule TeacherAssistant.Curriculum do
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Scope
+  alias TeacherAssistant.Tenancy
 
   resources do
     resource Subject do
@@ -313,16 +315,9 @@ defmodule TeacherAssistant.Curriculum do
 
   # `CombinedCourse.:combine`'s `run/3` trusts any member's `workspace_id` as
   # the tenant for its `:class_group` load (see the comment there) — this
-  # makes that trust real instead of assumed.
-  defp validate_same_workspace(contexts) do
-    contexts
-    |> Enum.map(& &1.workspace_id)
-    |> Enum.uniq()
-    |> case do
-      [_single] -> :ok
-      _ -> {:error, :workspace_mismatch}
-    end
-  end
+  # makes that trust real instead of assumed. Delegates to the shared
+  # `TeacherAssistant.Tenancy.same_workspace/1` guard.
+  defp validate_same_workspace(contexts), do: Tenancy.same_workspace(contexts)
 
   defp validate_same_teacher(contexts) do
     contexts
@@ -878,10 +873,18 @@ defmodule TeacherAssistant.Curriculum do
       |> Ash.Changeset.set_tenant(e.workspace_id)
       |> Ash.update()
 
+  @doc """
+  Sets `sequence_id` on `m` and cascades it to every entry currently in the
+  module. `sequence_id` must name a `Sequence` in `m`'s own workspace — a
+  foreign or non-existent id is rejected with `{:error, :invalid}` before
+  anything is written (see `TeacherAssistant.Tenancy` for why: nothing at the
+  DB layer ties this foreign key's value to `m`'s tenant).
+  """
   def assign_module_sequence(%ProgressionModule{} = m, sequence_id) do
     tenant = m.workspace_id
 
-    with {:ok, m} <-
+    with {:ok, %Sequence{}} <- fetch_owned_sequence(sequence_id, tenant),
+         {:ok, m} <-
            m
            |> Ash.Changeset.for_update(:update, %{sequence_id: sequence_id})
            |> Ash.Changeset.set_tenant(tenant)
@@ -890,6 +893,16 @@ defmodule TeacherAssistant.Curriculum do
       |> Enum.each(fn e -> update_progression_entry(e, %{sequence_id: sequence_id}) end)
 
       {:ok, m}
+    end
+  end
+
+  # `sequence_id` must name a `Sequence` in `tenant` — a foreign or
+  # non-existent id is normalized to `{:error, :invalid}` (never a bare
+  # `Ash.get/2` miss) before any write is attempted.
+  defp fetch_owned_sequence(sequence_id, tenant) do
+    case Ash.get(Sequence, sequence_id, tenant: tenant) do
+      {:ok, seq} -> {:ok, seq}
+      _ -> {:error, :invalid}
     end
   end
 
@@ -1002,11 +1015,29 @@ defmodule TeacherAssistant.Curriculum do
 
   # --- Teaching log ---------------------------------------------------------
 
+  @doc """
+  Logs teaching for `ws`. `attrs[:progression_entry_id]` must name a
+  `ProgressionEntry` in `ws` — a foreign or non-existent id is rejected with
+  `{:error, :invalid}` before anything is written (same rationale as
+  `assign_module_sequence/2`: this foreign key isn't tied to the tenant at
+  the DB layer yet).
+  """
   def log_teaching(%Workspace{id: ws_id}, attrs) do
-    TeachingLogEntry
-    |> Ash.Changeset.for_create(:create, attrs)
-    |> Ash.Changeset.set_tenant(ws_id)
-    |> Ash.create()
+    entry_id = attrs[:progression_entry_id] || attrs["progression_entry_id"]
+
+    with {:ok, %ProgressionEntry{}} <- fetch_owned_progression_entry(entry_id, ws_id) do
+      TeachingLogEntry
+      |> Ash.Changeset.for_create(:create, attrs)
+      |> Ash.Changeset.set_tenant(ws_id)
+      |> Ash.create()
+    end
+  end
+
+  defp fetch_owned_progression_entry(entry_id, ws_id) do
+    case Ash.get(ProgressionEntry, entry_id, tenant: ws_id) do
+      {:ok, entry} -> {:ok, entry}
+      _ -> {:error, :invalid}
+    end
   end
 
   # --- Progression module/entry counts (private) ----------------------------

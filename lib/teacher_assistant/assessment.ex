@@ -20,6 +20,8 @@ defmodule TeacherAssistant.Assessment do
     Workspace
   }
 
+  alias TeacherAssistant.Tenancy
+
   resources do
     resource Assessment
     resource Mark
@@ -31,16 +33,18 @@ defmodule TeacherAssistant.Assessment do
 
   # --- Assessments -----------------------------------------------------------
 
-  def create_assessment(%TeachingContext{} = ctx, %Sequence{id: seq_id}, attrs) do
-    attrs =
-      attrs
-      |> Map.put(:teaching_context_id, ctx.id)
-      |> Map.put(:sequence_id, seq_id)
+  def create_assessment(%TeachingContext{} = ctx, %Sequence{id: seq_id} = seq, attrs) do
+    with :ok <- Tenancy.same_workspace([ctx, seq]) do
+      attrs =
+        attrs
+        |> Map.put(:teaching_context_id, ctx.id)
+        |> Map.put(:sequence_id, seq_id)
 
-    Assessment
-    |> Ash.Changeset.for_create(:create, attrs)
-    |> Ash.Changeset.set_tenant(ctx.workspace_id)
-    |> Ash.create()
+      Assessment
+      |> Ash.Changeset.for_create(:create, attrs)
+      |> Ash.Changeset.set_tenant(ctx.workspace_id)
+      |> Ash.create()
+    end
   end
 
   def list_assessments(%TeachingContext{id: ctx_id, workspace_id: ws_id}, %Sequence{id: seq_id}) do
@@ -76,12 +80,14 @@ defmodule TeacherAssistant.Assessment do
   `{:error, reason}`.
   """
   def create_combined_assessment(%CombinedCourse{} = course, %Sequence{} = seq, attrs) do
-    label = Map.get(attrs, :label) || Map.get(attrs, "label")
-    args = %{course: course, sequence: seq, label: label}
+    with :ok <- Tenancy.same_workspace([course, seq]) do
+      label = Map.get(attrs, :label) || Map.get(attrs, "label")
+      args = %{course: course, sequence: seq, label: label}
 
-    Assessment
-    |> Ash.ActionInput.for_action(:create_combined, args, tenant: course.workspace_id)
-    |> Ash.run_action()
+      Assessment
+      |> Ash.ActionInput.for_action(:create_combined, args, tenant: course.workspace_id)
+      |> Ash.run_action()
+    end
   end
 
   def fetch_owned_assessment(id, %Workspace{id: ws_id}) do

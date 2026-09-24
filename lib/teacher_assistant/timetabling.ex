@@ -6,6 +6,7 @@ defmodule TeacherAssistant.Timetabling do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Academics.Workspace
@@ -58,7 +59,8 @@ defmodule TeacherAssistant.Timetabling do
     exempt_class_group_ids = Map.get(attrs, :exempt_class_group_ids, [])
 
     with {:ok, %TeachingContext{class_group_id: cg_id} = tc} when cg_id == cg.id <-
-           Ash.get(TeachingContext, teaching_context_id, tenant: cg.workspace_id) do
+           Ash.get(TeachingContext, teaching_context_id, tenant: cg.workspace_id),
+         {:ok, %Period{}} <- Ash.get(Period, period_id, tenant: cg.workspace_id) do
       case teacher_clash(cg, day, period_id, tc.teacher_user_id, exempt_class_group_ids) do
         {:clash, class_label} ->
           {:error, {:teacher_clash, class_label}}
@@ -72,15 +74,20 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   @doc """
-  Clears the (day, period) cell of a class's timetable, if occupied. Always
-  returns `:ok`.
+  Clears the (day, period) cell of a class's timetable, if occupied. Returns
+  `:ok`, or `{:error, :invalid}` when `period_id` doesn't name a `Period` in
+  the class's own workspace.
   """
   def clear_slot(%ClassGroup{id: cg_id, workspace_id: ws_id}, day, period_id) do
-    cg_id
-    |> list_for_cell!(day, period_id, tenant: ws_id)
-    |> Enum.each(&Ash.destroy!(&1, tenant: ws_id))
+    with {:ok, %Period{}} <- Ash.get(Period, period_id, tenant: ws_id) do
+      cg_id
+      |> list_for_cell!(day, period_id, tenant: ws_id)
+      |> Enum.each(&Ash.destroy!(&1, tenant: ws_id))
 
-    :ok
+      :ok
+    else
+      _ -> {:error, :invalid}
+    end
   end
 
   @doc """
@@ -106,61 +113,70 @@ defmodule TeacherAssistant.Timetabling do
       # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
       |> Ash.load!(:class_group, tenant: course.workspace_id)
 
-    case contexts do
-      [] ->
-        {:error, :invalid}
+    with {:ok, %Period{}} <- Ash.get(Period, period_id, tenant: course.workspace_id) do
+      case contexts do
+        [] ->
+          {:error, :invalid}
 
-      _ ->
-        member_class_ids = Enum.map(contexts, & &1.class_group_id)
+        _ ->
+          member_class_ids = Enum.map(contexts, & &1.class_group_id)
 
-        with :ok <- validate_no_clash(contexts, day, period_id, member_class_ids) do
-          placements =
-            Enum.map(contexts, fn tc ->
+          with :ok <- validate_no_clash(contexts, day, period_id, member_class_ids) do
+            placements =
+              Enum.map(contexts, fn tc ->
+                %{
+                  class_group_id: tc.class_group_id,
+                  teaching_context_id: tc.id
+                }
+              end)
+
+            TimetableSlot
+            |> Ash.ActionInput.for_action(
+              :place_combined,
               %{
-                class_group_id: tc.class_group_id,
-                teaching_context_id: tc.id
-              }
-            end)
-
-          TimetableSlot
-          |> Ash.ActionInput.for_action(
-            :place_combined,
-            %{
-              day: day,
-              period_id: period_id,
-              placements: placements
-            },
-            tenant: course.workspace_id
-          )
-          |> Ash.run_action()
-        end
+                day: day,
+                period_id: period_id,
+                placements: placements
+              },
+              tenant: course.workspace_id
+            )
+            |> Ash.run_action()
+          end
+      end
+    else
+      _ -> {:error, :invalid}
     end
   end
 
   @doc """
   Clears the (day, period) cell for EVERY member class of a `CombinedCourse`.
-  Mirrors `clear_slot/3` per member class. Always returns `:ok` (idempotent —
-  clearing an already-empty cell is a no-op).
+  Mirrors `clear_slot/3` per member class. Returns `:ok` (idempotent —
+  clearing an already-empty cell is a no-op), or `{:error, :invalid}` when
+  `period_id` doesn't name a `Period` in the course's own workspace.
   """
   def clear_combined_slot(%CombinedCourse{} = course, day, period_id) do
-    class_group_ids =
-      course.id
-      |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
-      |> Enum.map(& &1.class_group_id)
+    with {:ok, %Period{}} <- Ash.get(Period, period_id, tenant: course.workspace_id) do
+      class_group_ids =
+        course.id
+        |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
+        |> Enum.map(& &1.class_group_id)
 
-    TimetableSlot
-    |> Ash.ActionInput.for_action(
-      :clear_combined,
-      %{
-        day: day,
-        period_id: period_id,
-        class_group_ids: class_group_ids
-      },
-      tenant: course.workspace_id
-    )
-    |> Ash.run_action!()
+      TimetableSlot
+      |> Ash.ActionInput.for_action(
+        :clear_combined,
+        %{
+          day: day,
+          period_id: period_id,
+          class_group_ids: class_group_ids
+        },
+        tenant: course.workspace_id
+      )
+      |> Ash.run_action!()
 
-    :ok
+      :ok
+    else
+      _ -> {:error, :invalid}
+    end
   end
 
   @doc """

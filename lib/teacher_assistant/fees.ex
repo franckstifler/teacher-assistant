@@ -101,6 +101,7 @@ defmodule TeacherAssistant.Fees do
 
       tranche
       |> Ash.Changeset.for_update(:update, update_attrs)
+      |> Ash.Changeset.set_tenant(tranche.workspace_id)
       |> Ash.update()
       |> case do
         {:ok, tranche} -> {:ok, tranche}

@@ -40,6 +40,7 @@ defmodule TeacherAssistant.Academics.FormMasterContextTest do
   test "list_form_master_classes excludes classes of other form masters", ctx do
     %{user: user, school: school, year: year, cg: cg, cg2: cg2} = ctx
     other = TeacherAssistant.TeacherFixtures.user_fixture()
+    TeacherAssistant.TeacherFixtures.membership_fixture(school, %{user: other})
     {:ok, _} = Enrollment.set_form_master(cg, user.id)
     {:ok, _} = Enrollment.set_form_master(cg2, other.id)
     assert Enum.map(Enrollment.list_form_master_classes(school, user, year), & &1.id) == [cg.id]

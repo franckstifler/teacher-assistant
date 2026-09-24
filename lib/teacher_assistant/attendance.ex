@@ -18,6 +18,7 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Tenancy
 
   resources do
     resource Period do
@@ -204,28 +205,30 @@ defmodule TeacherAssistant.Attendance do
         recorded_by_user_id
       )
       when is_list(marks) do
-    groups = combined_period_roll(course, period, date)
+    with :ok <- Tenancy.same_workspace([course, period]) do
+      groups = combined_period_roll(course, period, date)
 
-    per_group_marks =
-      Enum.map(groups, fn %{class_group: cg, teaching_context: tc, students: students} ->
-        group_enrollment_ids = MapSet.new(students, & &1.enrollment_id)
+      per_group_marks =
+        Enum.map(groups, fn %{class_group: cg, teaching_context: tc, students: students} ->
+          group_enrollment_ids = MapSet.new(students, & &1.enrollment_id)
 
-        group_marks =
-          Enum.filter(marks, fn {enrollment_id, _status} ->
-            MapSet.member?(group_enrollment_ids, enrollment_id)
-          end)
+          group_marks =
+            Enum.filter(marks, fn {enrollment_id, _status} ->
+              MapSet.member?(group_enrollment_ids, enrollment_id)
+            end)
 
-        {cg, tc, group_marks}
-      end)
+          {cg, tc, group_marks}
+        end)
 
-    with :ok <- validate_group_marks(per_group_marks) do
-      run_record_combined_period(
-        per_group_marks,
-        period,
-        date,
-        recorded_by_user_id,
-        course.workspace_id
-      )
+      with :ok <- validate_group_marks(per_group_marks) do
+        run_record_combined_period(
+          per_group_marks,
+          period,
+          date,
+          recorded_by_user_id,
+          course.workspace_id
+        )
+      end
     end
   end
 
@@ -287,7 +290,7 @@ defmodule TeacherAssistant.Attendance do
   """
   def record_period(
         %ClassGroup{workspace_id: ws_id} = class_group,
-        %Period{id: period_id},
+        %Period{id: period_id} = period,
         teaching_context,
         %Date{} = date,
         marks,
@@ -301,7 +304,11 @@ defmodule TeacherAssistant.Attendance do
       |> TeacherAssistant.Enrollment.list_roster()
       |> MapSet.new(& &1.enrollment.id)
 
-    with :ok <- validate_marks(marks, valid_enrollment_ids) do
+    with :ok <-
+           Tenancy.same_workspace(
+             record_period_guard_subjects(class_group, period, teaching_context)
+           ),
+         :ok <- validate_marks(marks, valid_enrollment_ids) do
       results =
         Enum.map(marks, fn {enrollment_id, status} ->
           AttendanceEntry
@@ -324,13 +331,23 @@ defmodule TeacherAssistant.Attendance do
     end
   end
 
+  # `class_group` and `period` are always checked; `teaching_context` joins
+  # the check only when present — it may legitimately be `nil` (unassigned
+  # slot), and a struct built in memory without a persisted `workspace_id`
+  # (never a real cross-tenant value) is left out by
+  # `Tenancy.same_workspace/1` itself.
+  defp record_period_guard_subjects(class_group, period, nil), do: [class_group, period]
+
+  defp record_period_guard_subjects(class_group, period, %TeachingContext{} = tc),
+    do: [class_group, period, tc]
+
   @doc """
   Builds the class register for `class_group` on `date`: every lesson period
   (breaks excluded) and every roster student with a `cells` map keyed by
   period_id, reflecting that day's attendance marks (`nil` where unmarked).
   """
   def class_register(%ClassGroup{workspace_id: ws_id} = class_group, %Date{} = date) do
-    workspace = Ash.get!(TeacherAssistant.Academics.Workspace, ws_id)
+    workspace = %Workspace{id: ws_id}
 
     periods =
       workspace

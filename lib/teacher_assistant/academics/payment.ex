@@ -9,6 +9,13 @@ defmodule TeacherAssistant.Academics.Payment do
     table "payments"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # FK-leading index for delete-time FK checks — the tenancy migration
+      # replaced this with `(workspace_id, enrollment_id)`. `all_tenants?:
+      # true` keeps this plain (no automatic `workspace_id` prefix).
+      index [:enrollment_id], all_tenants?: true
+    end
+
     references do
       reference :enrollment, on_delete: :delete, index?: true
       reference :workspace, on_delete: :delete, index?: true

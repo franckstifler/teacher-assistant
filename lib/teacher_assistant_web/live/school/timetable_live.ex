@@ -99,15 +99,24 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   # class (`Timetabling.clear_combined_slot/3`); otherwise it clears only this
   # class's cell, exactly as before.
   defp clear_cell(socket, day_atom, period_id) do
-    case combined_course_at(socket.assigns.assignments, socket.assigns.slots, day_atom, period_id) do
-      %CombinedCourse{} = course ->
-        :ok = Timetabling.clear_combined_slot(course, day_atom, period_id)
+    result =
+      case combined_course_at(
+             socket.assigns.assignments,
+             socket.assigns.slots,
+             day_atom,
+             period_id
+           ) do
+        %CombinedCourse{} = course ->
+          Timetabling.clear_combined_slot(course, day_atom, period_id)
 
-      nil ->
-        :ok = Timetabling.clear_slot(socket.assigns.cg, day_atom, period_id)
+        nil ->
+          Timetabling.clear_slot(socket.assigns.cg, day_atom, period_id)
+      end
+
+    case result do
+      :ok -> {:noreply, load_timetable(socket)}
+      {:error, _reason} -> {:noreply, socket}
     end
-
-    {:noreply, load_timetable(socket)}
   end
 
   defp combined_course_at(assignments, slots, day_atom, period_id) do

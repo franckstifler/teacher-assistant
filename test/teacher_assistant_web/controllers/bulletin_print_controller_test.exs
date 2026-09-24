@@ -75,7 +75,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     cg: cg,
     seq: seq,
     roster: roster,
-    school: school
+    school: school,
+    head: head
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
 
@@ -94,10 +95,10 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     date = seq.start_date
 
     {:ok, _} =
-      Attendance.record_period(cg, period1, tc, date, [{enr.id, :absent}], cg.workspace_id)
+      Attendance.record_period(cg, period1, tc, date, [{enr.id, :absent}], head.id)
 
     {:ok, _} = Attendance.justify_day(enr, date, "Certificat médical")
-    {:ok, _} = Attendance.record_period(cg, period2, tc, date, [{enr.id, :late}], cg.workspace_id)
+    {:ok, _} = Attendance.record_period(cg, period2, tc, date, [{enr.id, :late}], head.id)
 
     conn =
       get(

@@ -26,6 +26,14 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     custom_indexes do
       index [:enrollment_id, :date]
       index [:workspace_id, :date]
+      # FK-leading indexes for delete-time FK checks (deleting an Enrollment
+      # or a Period must find referencing rows without a workspace_id to
+      # scope by) — the tenancy migration replaced these with
+      # `(workspace_id, enrollment_id)` / `(workspace_id, period_id)`.
+      # `all_tenants?: true` keeps these two genuinely plain (no automatic
+      # `workspace_id` prefix).
+      index [:enrollment_id], all_tenants?: true
+      index [:period_id], all_tenants?: true
     end
 
     references do

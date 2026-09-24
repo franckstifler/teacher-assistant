@@ -10,6 +10,15 @@ defmodule TeacherAssistant.Academics.Mark do
     table "marks"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # FK-leading indexes for delete-time FK checks — the tenancy migration
+      # replaced these with `(workspace_id, student_id)` / `(workspace_id,
+      # assessment_id)`. `all_tenants?: true` keeps these plain (no automatic
+      # `workspace_id` prefix).
+      index [:student_id], all_tenants?: true
+      index [:assessment_id], all_tenants?: true
+    end
+
     references do
       reference :assessment, index?: true
       reference :student, index?: true

@@ -348,7 +348,8 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, b)
   end
 
-  test "justifying an absence of school A's student from school B's scope is not found",
+  test "justifying an absence of school A's student from school B's scope is not found, " <>
+         "and recording attendance against school B's period is rejected (F1)",
        %{
          a: a,
          b: b
@@ -359,9 +360,18 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert {:error, :not_found} =
              TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, b)
+
+    # M7 / F1: the write guard actually rejects a cross-workspace combination
+    # (a's class group paired with b's period), not merely an IDOR miss.
+    cg_a = row_for(A.ClassGroup, a, ctx)
+    period_b = row_for(A.Period, b, ctx)
+
+    assert {:error, :workspace_mismatch} =
+             TeacherAssistant.Attendance.record_period(cg_a, period_b, nil, entry.date, [], nil)
   end
 
-  test "a payment cannot be recorded against school A's enrollment from school B's data",
+  test "a payment can be recorded for school A's own enrollment (school B cannot see it), " <>
+         "and recording a conduct mark against school B's sequence is rejected (F1)",
        %{a: a, b: b} = ctx do
     e = row_for(A.Enrollment, a, ctx)
     assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_enrollment(e.id, b)
@@ -374,5 +384,28 @@ defmodule TeacherAssistant.TenancyIsolationTest do
              )
 
     assert TeacherAssistant.Fees.list_payments(e) |> Enum.all?(&(&1.workspace_id == a.id))
+
+    # M7 / F1: the write guard actually rejects a cross-workspace combination
+    # (a's enrollment paired with b's sequence), not merely an IDOR miss.
+    seq_b =
+      b |> Organization.current_academic_year() |> Organization.list_sequences() |> List.first()
+
+    assert {:error, :workspace_mismatch} =
+             TeacherAssistant.Discipline.set_conduct_mark(e, seq_b, 15, nil)
+  end
+
+  test "SchoolMembership :active_for_workspace requires a tenant while :active_for_user does not (F3)",
+       %{a: a} do
+    assert_raise Ash.Error.Invalid, fn ->
+      SchoolMembership |> Ash.Query.for_read(:active_for_workspace) |> Ash.read!()
+    end
+
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(a)
+    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+
+    assert {:ok, _memberships} =
+             SchoolMembership
+             |> Ash.Query.for_read(:active_for_user, %{user_id: head.id})
+             |> Ash.read()
   end
 end

@@ -5,6 +5,9 @@ defmodule TeacherAssistant.Enrollment do
 
   alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Student, Workspace}
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Accounts.User
+  alias TeacherAssistant.Tenancy
 
   resources do
     resource ClassGroup do
@@ -27,15 +30,19 @@ defmodule TeacherAssistant.Enrollment do
   # --- ClassGroup ------------------------------------------------------------
 
   def create_class_group(%Workspace{} = ws, %AcademicYear{} = year, attrs) do
-    attrs =
-      attrs
-      |> Map.put(:academic_year_id, year.id)
-      |> Map.put_new(:subsystem, :francophone)
+    if year.workspace_id != ws.id do
+      {:error, :workspace_mismatch}
+    else
+      attrs =
+        attrs
+        |> Map.put(:academic_year_id, year.id)
+        |> Map.put_new(:subsystem, :francophone)
 
-    ClassGroup
-    |> Ash.Changeset.for_create(:create, attrs)
-    |> Ash.Changeset.set_tenant(ws.id)
-    |> Ash.create()
+      ClassGroup
+      |> Ash.Changeset.for_create(:create, attrs)
+      |> Ash.Changeset.set_tenant(ws.id)
+      |> Ash.create()
+    end
   end
 
   def list_class_groups(%Workspace{id: ws_id}, %AcademicYear{id: year_id}) do
@@ -82,11 +89,27 @@ defmodule TeacherAssistant.Enrollment do
     end
   end
 
-  def set_form_master(%ClassGroup{} = cg, user_id) do
+  @doc """
+  Sets (or clears, with `user_id: nil`) `cg`'s form master. A non-`nil`
+  `user_id` must name an active `SchoolMembership` in `cg`'s own workspace —
+  `User` isn't multitenant, so this is the tenant check for it (mirrors
+  `Curriculum.assign_teacher/3`'s `assignable_ws/2`).
+  """
+  def set_form_master(%ClassGroup{} = cg, nil) do
     cg
-    |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id})
+    |> Ash.Changeset.for_update(:update, %{form_master_user_id: nil})
     |> Ash.Changeset.set_tenant(cg.workspace_id)
     |> Ash.update()
+  end
+
+  def set_form_master(%ClassGroup{} = cg, user_id) do
+    with {:ok, _membership} <-
+           Accounts.fetch_school_membership(%Workspace{id: cg.workspace_id}, %User{id: user_id}) do
+      cg
+      |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id})
+      |> Ash.Changeset.set_tenant(cg.workspace_id)
+      |> Ash.update()
+    end
   end
 
   def form_master(%ClassGroup{form_master_user_id: nil}), do: nil
@@ -232,19 +255,25 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   def enroll_existing(%ClassGroup{} = cg, %Student{} = student, attrs \\ %{}) do
-    Enrollment
-    |> Ash.Changeset.for_create(
-      :create,
-      Map.merge(attrs, %{
-        student_id: student.id,
-        class_group_id: cg.id,
-        academic_year_id: cg.academic_year_id,
-        status: :reinscription
-      })
-    )
-    |> Ash.Changeset.set_tenant(cg.workspace_id)
-    |> Ash.create()
-    |> case do
+    with :ok <- Tenancy.same_workspace([cg, student]) do
+      Enrollment
+      |> Ash.Changeset.for_create(
+        :create,
+        Map.merge(attrs, %{
+          student_id: student.id,
+          class_group_id: cg.id,
+          academic_year_id: cg.academic_year_id,
+          status: :reinscription
+        })
+      )
+      |> Ash.Changeset.set_tenant(cg.workspace_id)
+      |> Ash.create()
+      |> handle_enroll_existing_result()
+    end
+  end
+
+  defp handle_enroll_existing_result(result) do
+    case result do
       {:ok, e} ->
         {:ok, e}
 
@@ -254,10 +283,12 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   def transfer(%Enrollment{} = e, %ClassGroup{} = cg) do
-    if cg.academic_year_id == e.academic_year_id do
-      update_enrollment(e, %{class_group_id: cg.id}, tenant: e.workspace_id)
-    else
-      {:error, :different_year}
+    with :ok <- Tenancy.same_workspace([e, cg]) do
+      if cg.academic_year_id == e.academic_year_id do
+        update_enrollment(e, %{class_group_id: cg.id}, tenant: e.workspace_id)
+      else
+        {:error, :different_year}
+      end
     end
   end
 
