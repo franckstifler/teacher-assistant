@@ -103,6 +103,7 @@ defmodule TeacherAssistant.Timetabling do
     contexts =
       course.id
       |> Curriculum.contexts_of_course!()
+      # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
       |> Ash.load!(:class_group, tenant: course.workspace_id)
 
     case contexts do
@@ -204,6 +205,7 @@ defmodule TeacherAssistant.Timetabling do
   """
   def teacher_timetable(%Workspace{id: ws_id}, %User{id: user_id}) do
     ws_id
+    # `:for_workspace_teacher` loads the now-multitenant `:class_group` — pass the tenant.
     |> list_for_teacher!(user_id, tenant: ws_id)
     |> Map.new(fn slot ->
       {{slot.day, slot.period_id}, slot_view(slot, slot.class_group.label)}

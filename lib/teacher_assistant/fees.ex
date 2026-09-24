@@ -4,10 +4,10 @@ defmodule TeacherAssistant.Fees do
   use Ash.Domain, otp_app: :teacher_assistant
 
   alias TeacherAssistant.Academics.ClassGroup
-  # `TeacherAssistant.Academics.Enrollment` is the resource struct (used for
-  # the `enrollment_id/1` pattern match below); the domain
-  # `TeacherAssistant.Enrollment` is always referenced fully qualified so the
-  # two never collide under one bare `Enrollment` alias.
+  # `TeacherAssistant.Academics.Enrollment` is the resource struct every
+  # function below pattern-matches on; the domain `TeacherAssistant.Enrollment`
+  # is always referenced fully qualified so the two never collide under one
+  # bare `Enrollment` alias.
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.FeeAdjustment
   alias TeacherAssistant.Academics.FeeBalance
@@ -115,19 +115,18 @@ defmodule TeacherAssistant.Fees do
   # --- Payments ----------------------------------------------------------
 
   @doc """
-  Records a payment for `enrollment` (struct or bare id). `attrs` carries
+  Records a payment for `enrollment`. `attrs` carries
   `amount` (integer FCFA), `paid_on`, `method` (atom), optional `reference`,
   optional `note`. Rejects `amount <= 0` with `{:error, :invalid_amount}`
   and a `method` outside the enum whitelist with `{:error, :invalid_method}`.
   `workspace_id` is taken from the enrollment.
   """
-  def record_payment(enrollment, attrs, recorded_by_user_id) do
+  def record_payment(%Enrollment{} = e, attrs, recorded_by_user_id) do
     amount = attrs[:amount] || attrs["amount"]
     method = attrs[:method] || attrs["method"]
 
     with :ok <- validate_positive_amount(amount),
-         :ok <- validate_method(method),
-         {:ok, %Enrollment{} = e} <- fetch_enrollment(enrollment) do
+         :ok <- validate_method(method) do
       Payment
       |> Ash.Changeset.for_create(:create, %{
         amount: amount,
@@ -155,27 +154,23 @@ defmodule TeacherAssistant.Fees do
   end
 
   @doc """
-  Lists `Payment`s for `enrollment` (struct or bare id), newest first
+  Lists `Payment`s for `enrollment`, newest first
   (`paid_on` desc, then `inserted_at` desc).
   """
-  def list_payments(enrollment) do
-    id = enrollment_id(enrollment)
-    list_payments_for_enrollment_id!(id)
-  end
+  def list_payments(%Enrollment{id: id}), do: list_payments_for_enrollment_id!(id)
 
   # --- Adjustments ---------------------------------------------------------
 
   @doc """
-  Upserts the fee adjustment for `enrollment` (struct or bare id) to `attrs`
+  Upserts the fee adjustment for `enrollment` to `attrs`
   (`amount`, `reason`), recorded by `recorded_by_user_id`. Rejects a
   negative `amount` with `{:error, :invalid_amount}`. `workspace_id` is
   taken from the enrollment.
   """
-  def set_adjustment(enrollment, attrs, recorded_by_user_id) do
+  def set_adjustment(%Enrollment{} = e, attrs, recorded_by_user_id) do
     amount = attrs[:amount] || attrs["amount"]
 
-    with :ok <- validate_amount(amount),
-         {:ok, %Enrollment{} = e} <- fetch_enrollment(enrollment) do
+    with :ok <- validate_amount(amount) do
       FeeAdjustment
       |> Ash.Changeset.for_create(:set, %{
         amount: amount,
@@ -192,9 +187,8 @@ defmodule TeacherAssistant.Fees do
     end
   end
 
-  @doc "Deletes the fee adjustment for `enrollment` (struct or bare id), if any."
-  def clear_adjustment(enrollment) do
-    id = enrollment_id(enrollment)
+  @doc "Deletes the fee adjustment for `enrollment`, if any."
+  def clear_adjustment(%Enrollment{id: id}) do
     adjustments = list_adjustments_for_enrollment_id!(id)
 
     try do
@@ -208,13 +202,11 @@ defmodule TeacherAssistant.Fees do
   # --- Balances --------------------------------------------------------------
 
   @doc """
-  Returns the `FeeBalance.compute/4` map for `enrollment` (struct or bare
-  id) as of `on_date`: tranches from the enrollment's class group, that
-  student's payments, and that student's adjustment amount (0 when none).
+  Returns the `FeeBalance.compute/4` map for `enrollment` as of `on_date`:
+  tranches from the enrollment's class group, that student's payments, and
+  that student's adjustment amount (0 when none).
   """
-  def student_balance(enrollment, on_date \\ Date.utc_today()) do
-    {:ok, %Enrollment{} = e} = fetch_enrollment(enrollment)
-
+  def student_balance(%Enrollment{} = e, on_date \\ Date.utc_today()) do
     tranches = list_tranches(%ClassGroup{id: e.class_group_id})
     payments = list_payments(e)
     adjustment_amount = adjustment_amount_for(e.id)
@@ -267,25 +259,5 @@ defmodule TeacherAssistant.Fees do
 
       {enrollment.id, balance}
     end)
-  end
-
-  defp enrollment_id(%Enrollment{id: id}), do: id
-  defp enrollment_id(id) when is_binary(id), do: id
-
-  defp fetch_enrollment(%Enrollment{} = e), do: {:ok, e}
-
-  # `Enrollment` is multitenant (attribute strategy): a plain `Ash.get/2` with
-  # no tenant always raises/errors, and this bare-id path has no workspace in
-  # scope. The row's `workspace_id` column still physically exists, so a
-  # tenant-blind `Repo.get/2` (same escape hatch already used elsewhere for
-  # operations Ash can't express) discovers the tenant first; the actual read
-  # then goes through Ash, correctly scoped.
-  defp fetch_enrollment(id) when is_binary(id) do
-    with %{workspace_id: ws_id} <- TeacherAssistant.Repo.get(Enrollment, id),
-         {:ok, e} <- Ash.get(Enrollment, id, tenant: ws_id) do
-      {:ok, e}
-    else
-      _ -> {:error, :not_found}
-    end
   end
 end

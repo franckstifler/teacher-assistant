@@ -40,6 +40,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
     contexts =
       course.id
       |> Curriculum.contexts_of_course!()
+      # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
       |> Ash.load!(:class_group, tenant: course.workspace_id)
 
     representative = List.first(contexts)

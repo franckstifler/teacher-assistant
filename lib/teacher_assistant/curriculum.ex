@@ -287,6 +287,7 @@ defmodule TeacherAssistant.Curriculum do
   """
   def combine_course(contexts) when is_list(contexts) do
     with :ok <- validate_count(contexts),
+         :ok <- validate_same_workspace(contexts),
          :ok <- validate_same_teacher(contexts),
          :ok <- validate_same_subject(contexts),
          :ok <- validate_not_already_combined(contexts) do
@@ -298,6 +299,19 @@ defmodule TeacherAssistant.Curriculum do
 
   defp validate_count(contexts) when length(contexts) >= 2, do: :ok
   defp validate_count(_contexts), do: {:error, :need_two}
+
+  # `CombinedCourse.:combine`'s `run/3` trusts any member's `workspace_id` as
+  # the tenant for its `:class_group` load (see the comment there) — this
+  # makes that trust real instead of assumed.
+  defp validate_same_workspace(contexts) do
+    contexts
+    |> Enum.map(& &1.workspace_id)
+    |> Enum.uniq()
+    |> case do
+      [_single] -> :ok
+      _ -> {:error, :workspace_mismatch}
+    end
+  end
 
   defp validate_same_teacher(contexts) do
     contexts
@@ -397,6 +411,7 @@ defmodule TeacherAssistant.Curriculum do
   def list_union_students(%CombinedCourse{id: id, workspace_id: ws_id}) do
     id
     |> contexts_of_course!()
+    # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
     |> Ash.load!(:class_group, tenant: ws_id)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->

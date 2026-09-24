@@ -4,10 +4,10 @@ defmodule TeacherAssistant.Discipline do
   alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.ConductMark
-  # `TeacherAssistant.Academics.Enrollment` is the resource struct (used for
-  # the `enrollment_id/1` pattern match below); the domain
-  # `TeacherAssistant.Enrollment` is always referenced fully qualified so the
-  # two never collide under one bare `Enrollment` alias.
+  # `TeacherAssistant.Academics.Enrollment` is the resource struct every
+  # function below pattern-matches on; the domain `TeacherAssistant.Enrollment`
+  # is always referenced fully qualified so the two never collide under one
+  # bare `Enrollment` alias.
   alias TeacherAssistant.Academics.Enrollment
   alias TeacherAssistant.Academics.SanctionEntry
   alias TeacherAssistant.Academics.Sequence
@@ -67,33 +67,26 @@ defmodule TeacherAssistant.Discipline do
     end
   end
 
-  def list_sanctions(enrollment, period_tuple) do
-    case fetch_enrollment(enrollment) do
-      {:ok, %Enrollment{} = e} ->
-        case Organization.period_date_range(period_tuple) do
-          nil ->
-            []
-
-          {first, last} ->
-            list_sanctions_for_enrollment_in_range!(e.id, first, last, tenant: e.workspace_id)
-        end
-
-      _ ->
+  def list_sanctions(%Enrollment{} = e, period_tuple) do
+    case Organization.period_date_range(period_tuple) do
+      nil ->
         []
+
+      {first, last} ->
+        list_sanctions_for_enrollment_in_range!(e.id, first, last, tenant: e.workspace_id)
     end
   end
 
   @doc """
-  Records a sanction for `enrollment` (struct or bare id). `attrs` carries
+  Records a sanction for `enrollment`. `attrs` carries
   `type` (atom), `date`, optional `reason`, optional `duration_days`.
   Rejects an invalid `type` with `{:error, :invalid_type}`. `duration_days`
   is persisted only for `:exclusion_temporaire`, forced to `nil` otherwise.
   """
-  def add_sanction(enrollment, attrs, issued_by_user_id) do
+  def add_sanction(%Enrollment{} = e, attrs, issued_by_user_id) do
     type = attrs[:type] || attrs["type"]
 
-    with :ok <- validate_type(type),
-         {:ok, %Enrollment{} = e} <- fetch_enrollment(enrollment) do
+    with :ok <- validate_type(type) do
       duration_days =
         if type == :exclusion_temporaire, do: attrs[:duration_days] || attrs["duration_days"]
 
@@ -124,9 +117,8 @@ defmodule TeacherAssistant.Discipline do
   to `value` (0..20), recorded by `recorded_by_user_id`. Rejects an
   out-of-bounds value with `{:error, :invalid_value}`.
   """
-  def set_conduct_mark(enrollment, %Sequence{} = sequence, value, recorded_by_user_id) do
-    with {:ok, decimal_value} <- to_bounded_decimal(value),
-         {:ok, %Enrollment{} = e} <- fetch_enrollment(enrollment) do
+  def set_conduct_mark(%Enrollment{} = e, %Sequence{} = sequence, value, recorded_by_user_id) do
+    with {:ok, decimal_value} <- to_bounded_decimal(value) do
       ConductMark
       |> Ash.Changeset.for_create(:set, %{
         value: decimal_value,
@@ -157,8 +149,7 @@ defmodule TeacherAssistant.Discipline do
   end
 
   @doc "Deletes the conduct mark for `enrollment` on `sequence`, if any."
-  def clear_conduct_mark(enrollment, %Sequence{id: sequence_id} = _sequence) do
-    id = enrollment_id(enrollment)
+  def clear_conduct_mark(%Enrollment{id: id}, %Sequence{id: sequence_id} = _sequence) do
     marks = conduct_mark_for_enrollment_sequence!(id, sequence_id)
 
     try do
@@ -175,25 +166,22 @@ defmodule TeacherAssistant.Discipline do
   trimester/year. Never a raw sum — mean of present values only, skipping
   missing séquences. `nil` when none present.
   """
-  def note_de_conduite(enrollment, {:sequence, %Sequence{} = sequence}) do
-    id = enrollment_id(enrollment)
-
+  def note_de_conduite(%Enrollment{id: id}, {:sequence, %Sequence{} = sequence}) do
     case conduct_mark_for_enrollment_sequence!(id, sequence.id) do
       [mark | _] -> mark.value
       [] -> nil
     end
   end
 
-  def note_de_conduite(enrollment, {:trimester, %Term{} = term}) do
-    mean_conduct_marks(enrollment, resolve_term_sequences(term))
+  def note_de_conduite(%Enrollment{} = e, {:trimester, %Term{} = term}) do
+    mean_conduct_marks(e, resolve_term_sequences(term))
   end
 
-  def note_de_conduite(enrollment, {:annual, %AcademicYear{} = year}) do
-    mean_conduct_marks(enrollment, Organization.list_sequences(year))
+  def note_de_conduite(%Enrollment{} = e, {:annual, %AcademicYear{} = year}) do
+    mean_conduct_marks(e, Organization.list_sequences(year))
   end
 
-  defp mean_conduct_marks(enrollment, sequences) do
-    id = enrollment_id(enrollment)
+  defp mean_conduct_marks(%Enrollment{id: id}, sequences) do
     sequence_ids = Enum.map(sequences, & &1.id)
 
     id
@@ -242,14 +230,14 @@ defmodule TeacherAssistant.Discipline do
   over `period_tuple`: `sanctions` is the in-range non-consigne ladder
   (newest first), `consignes_count` counts in-range `:consigne` entries.
   """
-  def discipline_summary(enrollment, period_tuple) do
-    entries = list_sanctions(enrollment, period_tuple)
+  def discipline_summary(%Enrollment{} = e, period_tuple) do
+    entries = list_sanctions(e, period_tuple)
     {consignes, sanctions} = Enum.split_with(entries, &(&1.type == :consigne))
 
     %{
       sanctions: sanctions,
       consignes_count: length(consignes),
-      note_de_conduite: note_de_conduite(enrollment, period_tuple)
+      note_de_conduite: note_de_conduite(e, period_tuple)
     }
   end
 
@@ -297,25 +285,5 @@ defmodule TeacherAssistant.Discipline do
     enrollment_ids
     |> conduct_marks_for_enrollments_sequences!(sequence_ids)
     |> Enum.group_by(& &1.enrollment_id, & &1.value)
-  end
-
-  defp enrollment_id(%Enrollment{id: id}), do: id
-  defp enrollment_id(id) when is_binary(id), do: id
-
-  defp fetch_enrollment(%Enrollment{} = e), do: {:ok, e}
-
-  # `Enrollment` is multitenant (attribute strategy): a plain `Ash.get/2` with
-  # no tenant always raises/errors, and this bare-id path has no workspace in
-  # scope. The row's `workspace_id` column still physically exists, so a
-  # tenant-blind `Repo.get/2` (same escape hatch already used elsewhere for
-  # operations Ash can't express) discovers the tenant first; the actual read
-  # then goes through Ash, correctly scoped.
-  defp fetch_enrollment(id) when is_binary(id) do
-    with %{workspace_id: ws_id} <- TeacherAssistant.Repo.get(Enrollment, id),
-         {:ok, e} <- Ash.get(Enrollment, id, tenant: ws_id) do
-      {:ok, e}
-    else
-      _ -> {:error, :not_found}
-    end
   end
 end

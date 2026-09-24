@@ -295,6 +295,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   defp combined_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date) do
     course.id
     |> Curriculum.contexts_of_course!()
+    # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
     |> Ash.load!(:class_group, tenant: course.workspace_id)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->

@@ -405,15 +405,6 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
       assert balance.total_due == 6_000
     end
-
-    test "accepts a bare enrollment id", ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
-
-      balance = Fees.student_balance(ctx.enrollment1.id, ~D[2025-10-01])
-
-      assert balance.total_due == 10_000
-    end
   end
 
   describe "class_balances/2" do
