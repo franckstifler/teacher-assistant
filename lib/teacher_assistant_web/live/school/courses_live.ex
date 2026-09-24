@@ -37,7 +37,11 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   # One row per unit. A combined course lists every member class; the marks
   # and roster pages take any member context id (they resolve the course).
   defp course_row({:course, %CombinedCourse{} = course}, ctx) do
-    contexts = course.id |> Curriculum.contexts_of_course!() |> Ash.load!(:class_group)
+    contexts =
+      course.id
+      |> Curriculum.contexts_of_course!()
+      |> Ash.load!(:class_group, tenant: course.workspace_id)
+
     representative = List.first(contexts)
 
     %{

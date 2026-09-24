@@ -274,10 +274,18 @@ defmodule TeacherAssistant.Fees do
 
   defp fetch_enrollment(%Enrollment{} = e), do: {:ok, e}
 
+  # `Enrollment` is multitenant (attribute strategy): a plain `Ash.get/2` with
+  # no tenant always raises/errors, and this bare-id path has no workspace in
+  # scope. The row's `workspace_id` column still physically exists, so a
+  # tenant-blind `Repo.get/2` (same escape hatch already used elsewhere for
+  # operations Ash can't express) discovers the tenant first; the actual read
+  # then goes through Ash, correctly scoped.
   defp fetch_enrollment(id) when is_binary(id) do
-    case Ash.get(Enrollment, id) do
-      {:ok, e} -> {:ok, e}
-      {:error, _error} -> {:error, :not_found}
+    with %{workspace_id: ws_id} <- TeacherAssistant.Repo.get(Enrollment, id),
+         {:ok, e} <- Ash.get(Enrollment, id, tenant: ws_id) do
+      {:ok, e}
+    else
+      _ -> {:error, :not_found}
     end
   end
 end

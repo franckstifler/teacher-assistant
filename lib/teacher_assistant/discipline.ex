@@ -60,19 +60,26 @@ defmodule TeacherAssistant.Discipline do
   `Organization.period_date_range/1`), newest first, with the enrollment's
   student loaded. Returns `[]` when the range is `nil`.
   """
-  def list_sanctions(%ClassGroup{id: cg_id}, period_tuple) do
+  def list_sanctions(%ClassGroup{id: cg_id, workspace_id: ws_id}, period_tuple) do
     case Organization.period_date_range(period_tuple) do
       nil -> []
-      {first, last} -> list_sanctions_for_class_in_range!(cg_id, first, last)
+      {first, last} -> list_sanctions_for_class_in_range!(cg_id, first, last, tenant: ws_id)
     end
   end
 
   def list_sanctions(enrollment, period_tuple) do
-    id = enrollment_id(enrollment)
+    case fetch_enrollment(enrollment) do
+      {:ok, %Enrollment{} = e} ->
+        case Organization.period_date_range(period_tuple) do
+          nil ->
+            []
 
-    case Organization.period_date_range(period_tuple) do
-      nil -> []
-      {first, last} -> list_sanctions_for_enrollment_in_range!(id, first, last)
+          {first, last} ->
+            list_sanctions_for_enrollment_in_range!(e.id, first, last, tenant: e.workspace_id)
+        end
+
+      _ ->
+        []
     end
   end
 
@@ -297,10 +304,18 @@ defmodule TeacherAssistant.Discipline do
 
   defp fetch_enrollment(%Enrollment{} = e), do: {:ok, e}
 
+  # `Enrollment` is multitenant (attribute strategy): a plain `Ash.get/2` with
+  # no tenant always raises/errors, and this bare-id path has no workspace in
+  # scope. The row's `workspace_id` column still physically exists, so a
+  # tenant-blind `Repo.get/2` (same escape hatch already used elsewhere for
+  # operations Ash can't express) discovers the tenant first; the actual read
+  # then goes through Ash, correctly scoped.
   defp fetch_enrollment(id) when is_binary(id) do
-    case Ash.get(Enrollment, id) do
-      {:ok, e} -> {:ok, e}
-      {:error, _error} -> {:error, :not_found}
+    with %{workspace_id: ws_id} <- TeacherAssistant.Repo.get(Enrollment, id),
+         {:ok, e} <- Ash.get(Enrollment, id, tenant: ws_id) do
+      {:ok, e}
+    else
+      _ -> {:error, :not_found}
     end
   end
 end

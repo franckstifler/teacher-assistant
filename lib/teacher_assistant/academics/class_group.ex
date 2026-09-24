@@ -20,37 +20,30 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     defaults [
       :read,
       :destroy,
-      create: [:label, :level, :serie, :subsystem, :workspace_id, :academic_year_id],
+      create: [:label, :level, :serie, :subsystem, :academic_year_id],
       update: [:label, :level, :serie, :subsystem, :form_master_user_id]
     ]
 
     read :for_workspace_and_year do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false
 
-      filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 academic_year_id == ^arg(:academic_year_id)
-             )
+      filter expr(academic_year_id == ^arg(:academic_year_id))
 
       prepare build(sort: [label: :asc])
     end
 
     read :owned do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
       get? true
-      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+      filter expr(id == ^arg(:id))
     end
 
     read :for_form_master do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false
       argument :form_master_user_id, :uuid, allow_nil?: false
 
       filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 academic_year_id == ^arg(:academic_year_id) and
+               academic_year_id == ^arg(:academic_year_id) and
                  form_master_user_id == ^arg(:form_master_user_id)
              )
 
@@ -62,6 +55,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

@@ -49,7 +49,11 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
         # context in particular may arrive here without it preloaded (e.g. from
         # `Curriculum.list_assignments_for_class/1`, which only loads `:teacher`
         # and `:combined_course`). Load it here rather than trusting the caller.
-        contexts = Ash.load!(input.arguments.contexts, :class_group)
+        # `:class_group` is multitenant — every member belongs to the same
+        # workspace (validated by `Curriculum.combine_course/1` before this
+        # action runs), so any member's `workspace_id` is the right tenant.
+        [%{workspace_id: ws_id} | _] = input.arguments.contexts
+        contexts = Ash.load!(input.arguments.contexts, :class_group, tenant: ws_id)
         [first | _] = contexts
 
         with {:ok, course} <- create_course(first, build_label(contexts)),

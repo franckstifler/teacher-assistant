@@ -1,6 +1,5 @@
 defmodule TeacherAssistant.Academics.Seeding do
   @moduledoc "One-time starter classes for a school's first academic year (spec §3)."
-  require Ash.Query
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, SchoolTemplates, Workspace}
@@ -24,12 +23,7 @@ defmodule TeacherAssistant.Academics.Seeding do
 
   defp has_any_class?(%Workspace{id: ws_id}) do
     ClassGroup
-    |> Ash.Query.filter(workspace_id == ^ws_id)
-    |> Ash.Query.limit(1)
-    |> Ash.read!()
-    |> case do
-      [] -> false
-      _ -> true
-    end
+    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.exists?()
   end
 end

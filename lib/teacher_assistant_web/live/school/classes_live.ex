@@ -218,10 +218,9 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     ClassGroup
     |> AshPhoenix.Form.for_create(:create,
       as: "class_group",
+      tenant: workspace_id,
       prepare_source: fn changeset ->
-        changeset
-        |> Ash.Changeset.change_attribute(:workspace_id, workspace_id)
-        |> Ash.Changeset.change_attribute(:academic_year_id, year && year.id)
+        Ash.Changeset.change_attribute(changeset, :academic_year_id, year && year.id)
       end
     )
     |> to_form()

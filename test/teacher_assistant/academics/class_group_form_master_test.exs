@@ -70,7 +70,12 @@ defmodule TeacherAssistant.Academics.ClassGroupFormMasterTest do
 
     {:ok, _} = TeacherAssistant.Repo.delete(user)
 
-    {:ok, reloaded} = Ash.get(TeacherAssistant.Academics.ClassGroup, cg.id, authorize?: false)
+    {:ok, reloaded} =
+      Ash.get(TeacherAssistant.Academics.ClassGroup, cg.id,
+        tenant: cg.workspace_id,
+        authorize?: false
+      )
+
     assert reloaded.form_master_user_id == nil
   end
 end

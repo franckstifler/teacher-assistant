@@ -26,31 +26,24 @@ defmodule TeacherAssistant.Academics.Student do
     defaults [
       :read,
       :destroy,
-      create: [:full_name, :sex, :matricule, :workspace_id],
+      create: [:full_name, :sex, :matricule],
       update: [:full_name, :sex, :matricule]
     ]
 
     read :owned do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
-      get? true
-      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+      filter expr(id == ^arg(:id))
     end
 
     read :by_matricule do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :matricule, :string, allow_nil?: false
-      filter expr(workspace_id == ^arg(:workspace_id) and matricule == ^arg(:matricule))
+      filter expr(matricule == ^arg(:matricule))
     end
 
     read :search_by_name do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :query, :string, allow_nil?: false
 
-      filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 contains(string_downcase(full_name), ^arg(:query))
-             )
+      filter expr(contains(string_downcase(full_name), ^arg(:query)))
 
       prepare build(sort: [full_name: :asc], limit: 10)
     end
@@ -60,6 +53,11 @@ defmodule TeacherAssistant.Academics.Student do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

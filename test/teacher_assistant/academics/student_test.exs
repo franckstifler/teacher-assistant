@@ -53,7 +53,8 @@ defmodule TeacherAssistant.Academics.StudentTest do
 
     students =
       TeacherAssistant.Academics.Student
-      |> Ash.Query.filter(workspace_id == ^ws.id and full_name == "Orphan")
+      |> Ash.Query.filter(full_name == "Orphan")
+      |> Ash.Query.set_tenant(ws.id)
       |> Ash.read!(authorize?: false)
 
     assert students == []

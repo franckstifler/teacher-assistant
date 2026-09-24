@@ -233,6 +233,10 @@ defmodule TeacherAssistant.Curriculum do
       teacher_user_id: ctx.teacher_user_id,
       exclude_id: ctx.id
     })
+    # `TeachingContext` isn't multitenant itself, but this read's `prepare`
+    # loads the (now multitenant) `:class_group` relationship, which needs a
+    # tenant to resolve — Ash propagates the query's tenant to the load.
+    |> Ash.Query.set_tenant(ctx.workspace_id)
     |> Ash.read!()
   end
 
@@ -245,6 +249,8 @@ defmodule TeacherAssistant.Curriculum do
       academic_year_id: year_id,
       teacher_user_id: user_id
     })
+    # See the comment in `combinable_siblings/1`: this read loads `:class_group`.
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
@@ -388,10 +394,10 @@ defmodule TeacherAssistant.Curriculum do
   combined marks page; it never merges rosters across classes into one flat
   list. Skips a member context with no `class_group` yet.
   """
-  def list_union_students(%CombinedCourse{id: id}) do
+  def list_union_students(%CombinedCourse{id: id, workspace_id: ws_id}) do
     id
     |> contexts_of_course!()
-    |> Ash.load!(:class_group)
+    |> Ash.load!(:class_group, tenant: ws_id)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->
       %{

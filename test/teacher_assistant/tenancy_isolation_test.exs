@@ -30,7 +30,28 @@ defmodule TeacherAssistant.TenancyIsolationTest do
       |> Organization.list_sequences()
       |> List.first()
 
-  @flipped [A.AcademicYear, A.Term, A.Sequence]
+  defp row_for(A.ClassGroup, school, _ctx),
+    do:
+      school
+      |> Organization.current_academic_year()
+      |> then(&TeacherAssistant.Enrollment.list_class_groups(school, &1))
+      |> List.first()
+
+  defp row_for(A.Student, school, ctx), do: row_for(A.Enrollment, school, ctx).student
+
+  defp row_for(A.Enrollment, school, ctx) do
+    cg = row_for(A.ClassGroup, school, ctx)
+
+    {:ok, _} =
+      TeacherAssistant.Enrollment.add_student(cg, %{
+        full_name: "Iso #{System.unique_integer([:positive])}",
+        sex: :m
+      })
+
+    cg |> TeacherAssistant.Enrollment.list_roster() |> List.first() |> Map.fetch!(:enrollment)
+  end
+
+  @flipped [A.AcademicYear, A.Term, A.Sequence, A.ClassGroup, A.Student, A.Enrollment]
 
   test "a row of school A is not readable under school B", ctx do
     for resource <- @flipped do
@@ -64,5 +85,11 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
     {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(head, a.id)
     assert Ash.Scope.ToOpts.get_tenant(scope) == {:ok, a.id}
+  end
+
+  test "a class group of school A cannot be fetched as owned by school B", %{a: a, b: b} = ctx do
+    cg = row_for(A.ClassGroup, a, ctx)
+    assert {:ok, _} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, a)
+    assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, b)
   end
 end

@@ -55,9 +55,9 @@ defmodule TeacherAssistant.Academics.EnrollmentsModelTest do
              |> Ash.Changeset.for_create(:create, %{
                student_id: s.id,
                class_group_id: cg2.id,
-               academic_year_id: year.id,
-               workspace_id: ws.id
+               academic_year_id: year.id
              })
+             |> Ash.Changeset.set_tenant(ws.id)
              |> Ash.create(authorize?: false)
   end
 

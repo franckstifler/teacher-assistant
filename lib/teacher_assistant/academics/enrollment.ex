@@ -26,8 +26,7 @@ defmodule TeacherAssistant.Academics.Enrollment do
         :repeater,
         :student_id,
         :class_group_id,
-        :academic_year_id,
-        :workspace_id
+        :academic_year_id
       ],
       update: [:status, :repeater, :class_group_id]
     ]
@@ -54,7 +53,6 @@ defmodule TeacherAssistant.Academics.Enrollment do
     action :enroll_new, :map do
       argument :class_group_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :repeater, :boolean, allow_nil?: false, default: false
 
       argument :status, TeacherAssistant.Academics.EnrollmentStatus,
@@ -68,11 +66,11 @@ defmodule TeacherAssistant.Academics.Enrollment do
 
       run fn input, _ctx ->
         args = input.arguments
-        student_attrs = Map.put(args.student_attrs, :workspace_id, args.workspace_id)
 
         with {:ok, student} <-
                TeacherAssistant.Academics.Student
-               |> Ash.Changeset.for_create(:create, student_attrs)
+               |> Ash.Changeset.for_create(:create, args.student_attrs)
+               |> Ash.Changeset.set_tenant(input.tenant)
                |> Ash.create(),
              {:ok, enrollment} <-
                __MODULE__
@@ -80,10 +78,10 @@ defmodule TeacherAssistant.Academics.Enrollment do
                  student_id: student.id,
                  class_group_id: args.class_group_id,
                  academic_year_id: args.academic_year_id,
-                 workspace_id: args.workspace_id,
                  repeater: args.repeater,
                  status: args.status
                })
+               |> Ash.Changeset.set_tenant(input.tenant)
                |> Ash.create() do
           {:ok, %{student: student, enrollment: enrollment}}
         end
@@ -95,6 +93,11 @@ defmodule TeacherAssistant.Academics.Enrollment do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
