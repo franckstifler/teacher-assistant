@@ -184,39 +184,10 @@
   "base_filter": null,
   "check_constraints": [],
   "create_table_options": null,
-  "custom_indexes": [
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "workspace_id",
-        "teaching_context_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "workspace_id"
-        },
-        {
-          "type": "atom",
-          "value": "teaching_context_id"
-        }
-      ],
-      "include": null,
-      "include_base_filter?": true,
-      "message": null,
-      "name": null,
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    }
-  ],
+  "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "EED399779999B496D0B290CCFF9693CC564A9BF318939314E01D6239CCD59114",
+  "hash": "AE5E61FF74A60D747D65E7B9688C182D0F5B55F552DA0942F9AC6094C9864078",
   "identities": [
     {
       "all_tenants?": false,
