@@ -93,4 +93,31 @@ defmodule TeacherAssistant.Accounts.PermissionsTest do
     assert Permissions.fees_manager?(bursar)
     refute Permissions.fees_manager?(plain)
   end
+
+  test "role checks are false outside a school (no current_workspace)" do
+    refute Permissions.head?(%Scope{current_workspace: nil, current_roles: [:head]})
+    refute Permissions.admin?(%Scope{current_workspace: nil, current_roles: [:head]})
+    refute Permissions.bursar?(%Scope{current_workspace: nil, current_roles: [:head]})
+
+    refute Permissions.discipline_master?(%Scope{
+             current_workspace: nil,
+             current_roles: [:head]
+           })
+
+    refute Permissions.form_master?(
+             %Scope{current_workspace: nil, current_user: %{id: "u1"}},
+             %ClassGroup{form_master_user_id: "u1"}
+           )
+
+    refute Permissions.member?(%Scope{current_workspace: %{}, current_membership: nil})
+  end
+
+  test "operating_allowed?/1 requires a verified school regardless of workspace presence" do
+    refute Permissions.operating_allowed?(%Scope{current_workspace: nil})
+
+    assert Permissions.operating_allowed?(%Scope{
+             current_workspace: %{},
+             school_verification_status: :verified
+           })
+  end
 end

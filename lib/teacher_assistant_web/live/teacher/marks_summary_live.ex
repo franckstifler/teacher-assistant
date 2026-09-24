@@ -13,7 +13,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     ws = scope.current_workspace
 
     with {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope),
-         false <- is_nil(ctx.class_group_id),
          {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
@@ -28,12 +27,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
        |> assign(:students, students)
        |> assign_summary()}
     else
-      # true => context owned but has no class group (go set up the roster); anything else => not found / not owned
-      true ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx_id}/roster")}
-
-      _ ->
-        {:ok, push_navigate(socket, to: ~p"/school")}
+      _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 

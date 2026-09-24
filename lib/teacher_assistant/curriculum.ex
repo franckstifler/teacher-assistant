@@ -615,28 +615,6 @@ defmodule TeacherAssistant.Curriculum do
 
   def fetch_assigned_teaching_context(_id, %Scope{}), do: {:error, :not_found}
 
-  def link_class_group(%TeachingContext{} = ctx, %ClassGroup{id: cg_id}) do
-    ctx
-    |> Ash.Changeset.for_update(:update, %{class_group_id: cg_id})
-    |> Ash.update()
-  end
-
-  @doc """
-  Scope-aware context listing for the class switcher: the contexts assigned
-  to the current user (via `list_assignments_for_user/3`). Returns `[]` when
-  there is no current academic year.
-  """
-  def list_contexts_for_scope(%Scope{
-        current_workspace: ws,
-        current_academic_year: year,
-        current_user: user
-      }) do
-    cond do
-      is_nil(ws) or is_nil(year) -> []
-      true -> list_assignments_for_user(ws, year, user)
-    end
-  end
-
   @doc """
   Display label for a teaching unit as shown in the class switcher: the
   course label for `{:course, _}`, or the usual context label for
@@ -662,26 +640,6 @@ defmodule TeacherAssistant.Curriculum do
        do: "#{subject} — #{label}"
 
   defp teaching_context_label(%{level: level, subject: subject}), do: "#{level} · #{subject}"
-
-  @doc """
-  Resolves the active TeachingContext for the shell's class switcher.
-  Owner + active-year scoped: only the workspace's own contexts are searched, so a
-  foreign/invalid/stale id simply falls back to the first (alphabetical) context.
-  Returns nil when there is no active year or no contexts.
-  """
-  def resolve_current_context(_ws, nil, _context_id), do: nil
-
-  def resolve_current_context(%Workspace{id: ws_id}, %AcademicYear{id: year_id}, context_id) do
-    contexts =
-      TeachingContext
-      |> Ash.Query.for_read(:for_workspace_year, %{
-        workspace_id: ws_id,
-        academic_year_id: year_id
-      })
-      |> Ash.read!()
-
-    Enum.find(contexts, fn c -> c.id == context_id end) || List.first(contexts)
-  end
 
   # --- Progression plans (writes) -------------------------------------------
 

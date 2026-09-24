@@ -23,8 +23,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   defp mount_solo(ctx, params, socket, ws) do
-    with false <- is_nil(ctx.class_group_id),
-         {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"])
@@ -46,12 +45,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:sibling_scores, sibling_scores(ctx, seq))
        |> assign(:new_assessment_form, solo_assessment_form(ctx, seq))}
     else
-      # true => context owned but has no class group (go to the roster); anything else => not found / not owned
-      true ->
-        {:ok, push_navigate(socket, to: ~p"/teacher/contexts/#{ctx.id}/roster")}
-
-      _ ->
-        {:ok, push_navigate(socket, to: ~p"/school")}
+      _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 

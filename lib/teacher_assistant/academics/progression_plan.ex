@@ -275,7 +275,6 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       public?: true
 
     attribute :template, :boolean, allow_nil?: false, default: false, public?: true
-    attribute :combined_course_id, :uuid, allow_nil?: true, public?: true
     timestamps()
   end
 
@@ -288,7 +287,6 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
 
     belongs_to :combined_course, TeacherAssistant.Academics.CombinedCourse do
       source_attribute :combined_course_id
-      define_attribute? false
       allow_nil? true
       public? true
     end

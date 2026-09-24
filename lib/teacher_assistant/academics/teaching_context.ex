@@ -12,7 +12,6 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     custom_indexes do
       index [:workspace_id, :academic_year_id, :class_group_id, :subject],
         unique: true,
-        where: "teacher_user_id IS NOT NULL",
         name: "teaching_contexts_unique_school_assignment",
         message: "this class already has a teacher for this subject"
     end
@@ -57,22 +56,8 @@ defmodule TeacherAssistant.Academics.TeachingContext do
 
     read :for_class_group do
       argument :class_group_id, :uuid, allow_nil?: false
-      filter expr(class_group_id == ^arg(:class_group_id) and not is_nil(teacher_user_id))
+      filter expr(class_group_id == ^arg(:class_group_id))
       prepare build(load: [:teacher, :combined_course], sort: [subject: :asc])
-    end
-
-    # Every context of a workspace in an academic year, subject-sorted. Backs
-    # `Curriculum.resolve_current_context/3`.
-    read :for_workspace_year do
-      argument :workspace_id, :uuid, allow_nil?: false
-      argument :academic_year_id, :uuid, allow_nil?: false
-
-      filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 academic_year_id == ^arg(:academic_year_id)
-             )
-
-      prepare build(sort: [subject: :asc])
     end
 
     # Owner-scoped single-context lookup (IDOR guard): the context must belong
@@ -131,8 +116,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
                  subject == ^arg(:subject) and
                  teacher_user_id == ^arg(:teacher_user_id) and
                  is_nil(combined_course_id) and
-                 id != ^arg(:exclude_id) and
-                 not is_nil(class_group_id)
+                 id != ^arg(:exclude_id)
              )
 
       prepare build(load: [:class_group], sort: [subject: :asc])

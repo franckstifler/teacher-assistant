@@ -108,7 +108,6 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
     uuid_v7_primary_key :id
     attribute :subject, :string, allow_nil?: false, public?: true
     attribute :label, :string, allow_nil?: false, public?: true
-    attribute :teacher_user_id, :uuid, allow_nil?: false, public?: true
     timestamps()
   end
 
@@ -127,7 +126,6 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
 
     belongs_to :teacher, TeacherAssistant.Accounts.User do
       source_attribute :teacher_user_id
-      define_attribute? false
       allow_nil? false
       public? true
     end

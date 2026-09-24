@@ -122,8 +122,9 @@ defmodule TeacherAssistant.Academics.AcademicYear do
   end
 
   # Deactivates every other active year of `workspace_id`, keeping `keep_id`
-  # untouched. Best-effort (not wrapped in its own transaction), same as the
-  # original `Academics.deactivate_other_years/2`.
+  # untouched. Runs inside the `:activate` action's own transaction (the
+  # before_action hook that calls this executes within it), so a failure here
+  # rolls back the whole activation.
   defp deactivate_others(workspace_id, keep_id) do
     __MODULE__
     |> Ash.Query.filter(workspace_id == ^workspace_id and id != ^keep_id and active == true)

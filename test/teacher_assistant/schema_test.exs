@@ -64,8 +64,18 @@ defmodule TeacherAssistant.SchemaTest do
         [table]
       )
 
-    Enum.any?(rows, fn [def] ->
-      String.contains?(def, "(#{column}") or String.contains?(def, "(#{column},")
-    end)
+    Enum.any?(rows, fn [def] -> String.contains?(def, "(#{column}") end)
+  end
+
+  test "every :workspace reference cascades on delete" do
+    missing =
+      for resource <- @tenant_owned,
+          reference <- AshPostgres.DataLayer.Info.references(resource),
+          reference.relationship == :workspace,
+          reference.on_delete != :delete do
+        {resource, reference.on_delete}
+      end
+
+    assert missing == []
   end
 end

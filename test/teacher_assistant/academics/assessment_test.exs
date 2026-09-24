@@ -4,7 +4,6 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
-  alias TeacherAssistant.Curriculum
 
   setup do
     %{workspace: ws, head_user: head, year: year} =
@@ -20,11 +19,21 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
       })
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    %{ws: ws, ctx: ctx, cg: cg, seq: seq}
+    %{ws: ws, year: year, ctx: ctx, cg: cg, seq: seq}
   end
 
-  test "links a class group to a teaching context", %{ctx: ctx, cg: cg} do
-    {:ok, ctx2} = Curriculum.link_class_group(ctx, cg)
+  test "creates a context already assigned to the given class group", %{
+    ws: ws,
+    year: year,
+    cg: cg
+  } do
+    ctx2 =
+      TeacherFixtures.assigned_context_fixture(ws, year, %{
+        subject: "Physique",
+        level: "3ème",
+        class_group: cg
+      })
+
     assert ctx2.class_group_id == cg.id
   end
 

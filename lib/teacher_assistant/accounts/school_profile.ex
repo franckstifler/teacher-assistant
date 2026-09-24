@@ -10,7 +10,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     repo TeacherAssistant.Repo
 
     references do
-      reference :workspace, on_delete: :delete
+      reference :workspace, on_delete: :delete, index?: true
+      reference :owner_user, index?: true
     end
   end
 

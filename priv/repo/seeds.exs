@@ -12,7 +12,9 @@
 
 if Mix.env() == :dev do
   require Ash.Query
-  alias TeacherAssistant.{Accounts, Academics, Curriculum}
+  alias TeacherAssistant.{Accounts, Organization}
+  alias TeacherAssistant.Academics.Seeding
+
   email = "demo@example.com"
 
   user =
@@ -39,47 +41,42 @@ if Mix.env() == :dev do
       admin
     end
 
-  ws = Academics.ensure_personal_workspace!(user)
+  # Create or fetch the demo school workspace (head membership is created for
+  # us by `create_school`, along with its profile and seeded subject catalog).
+  ws =
+    case Organization.list_workspaces_for(user) do
+      [existing | _] ->
+        existing
 
-  # Create or fetch academic year
+      [] ->
+        {:ok, workspace} =
+          Organization.create_school(user, %{name: "Lycée de démonstration"})
+
+        workspace
+    end
+
+  # Create or fetch the active academic year.
   year =
-    case Academics.create_academic_year(ws, %{
-           name: "2025-2026",
-           start_date: ~D[2025-09-08],
-           end_date: ~D[2026-07-31],
-           active: true
-         }) do
-      {:ok, y} -> y
-      _ -> ws |> Academics.list_academic_years() |> Enum.find(&(&1.name == "2025-2026"))
+    case Organization.current_academic_year(ws) do
+      nil ->
+        {:ok, y} =
+          Organization.create_academic_year(ws, %{
+            name: "2025-2026",
+            start_date: ~D[2025-09-08],
+            end_date: ~D[2026-07-31],
+            active: true
+          })
+
+        y
+
+      existing ->
+        existing
     end
 
-  # Build default calendar only if year has no sequences
-  if year && Academics.list_sequences(year) == [] do
-    Academics.build_default_calendar(year)
-  end
+  # Seed the year's default calendar (idempotent, no-op once séquences exist).
+  Organization.build_default_calendar(year)
 
-  # Create or fetch teaching context
-  ctx =
-    if year do
-      existing =
-        ws
-        |> Academics.list_teaching_contexts(year)
-        |> Enum.find(&(&1.subject == "Mathématiques" && &1.level == "6ème"))
-
-      existing ||
-        case Academics.create_teaching_context(ws, year, %{
-               subject: "Mathématiques",
-               level: "6ème",
-               subsystem: :francophone,
-               weekly_hours: 4
-             }) do
-          {:ok, c} -> c
-          _ -> nil
-        end
-    end
-
-  # Create progression plan only if none exist
-  if ctx && Curriculum.list_progression_plans!(ws.id) == [] do
-    Academics.create_progression_plan(ctx, %{title: "Mathématiques 6ème 2025-2026"})
-  end
+  # Seed the starter class groups for the school's type/subsystem (idempotent,
+  # no-op once the school already has class groups).
+  Seeding.seed_starter_classes(ws, year)
 end

@@ -46,11 +46,11 @@ defmodule TeacherAssistant.Academics.Enrollment do
     end
 
     # Atomically creates a Student and its first Enrollment (the "new
-    # student" path shared by the personal add_student/2 and the school
-    # enroll_new/2 flows). `transaction? true` wraps the whole run in a DB
-    # transaction (Ash starts it before `run` executes, per touches_resources
-    # below) — an Enrollment insert failure (e.g. the unique_enrollment_per_year
-    # identity) rolls back the just-created Student too, no orphan row.
+    # student" path shared by the add_student/2 and enroll_new/2 flows).
+    # `transaction? true` wraps the whole run in a DB transaction (Ash starts
+    # it before `run` executes, per touches_resources below) — an Enrollment
+    # insert failure (e.g. the unique_enrollment_per_year identity) rolls
+    # back the just-created Student too, no orphan row.
     action :enroll_new, :map do
       argument :class_group_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false

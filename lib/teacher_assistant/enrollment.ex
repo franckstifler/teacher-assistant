@@ -68,7 +68,7 @@ defmodule TeacherAssistant.Enrollment do
 
     has_assignments =
       TeachingContext
-      |> Ash.Query.filter(class_group_id == ^id and not is_nil(teacher_user_id))
+      |> Ash.Query.filter(class_group_id == ^id)
       |> Ash.read!() != []
 
     if has_enrollments or has_assignments do
@@ -166,9 +166,9 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   @doc """
-  Creates a `Student` and its first (`:inscription`) `Enrollment` atomically
-  (personal-roster path). Returns `{:ok, student}` — the `Enrollment` created
-  alongside it is only reachable via `list_roster/1`.
+  Creates a `Student` and its first (`:inscription`) `Enrollment` atomically.
+  Returns `{:ok, student}` — the `Enrollment` created alongside it is only
+  reachable via `list_roster/1`.
   """
   def add_student(%ClassGroup{} = cg, attrs) do
     case do_enroll_new(cg, attrs) do

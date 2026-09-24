@@ -140,7 +140,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     # the session workspace_id points at a school the user does not belong to
     # (a stale/foreign reference), so the resolved scope is non-school even
     # though the user has a real school of their own.
-    {:ok, other_head} = {:ok, TeacherAssistant.TeacherFixtures.user_fixture()}
+    other_head = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, other_school} = Organization.create_school(other_head, %{name: "École Étrangère"})
     conn = Plug.Conn.put_session(conn, :workspace_id, other_school.id)
     expected_to = "/workspaces/select/#{home_school.id}"

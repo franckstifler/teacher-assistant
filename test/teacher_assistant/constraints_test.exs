@@ -28,7 +28,7 @@ defmodule TeacherAssistant.ConstraintsTest do
 
   describe "academic_years: one active year per workspace" do
     test "only one active academic year per workspace at the database level", %{ws: ws} do
-      assert {:error, _} =
+      assert {:error, %Ash.Error.Invalid{}} =
                AcademicYear
                |> Ash.Changeset.for_create(:create, %{
                  name: "Doublon",
@@ -38,6 +38,22 @@ defmodule TeacherAssistant.ConstraintsTest do
                  workspace_id: ws.id
                })
                |> Ash.create()
+    end
+
+    test "a create with active: true that fails (duplicate name) leaves the previous year active",
+         %{ws: ws, year: year} do
+      assert year.active
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Organization.create_academic_year(ws, %{
+                 name: year.name,
+                 start_date: ~D[2031-09-01],
+                 end_date: ~D[2032-06-30],
+                 active: true
+               })
+
+      {:ok, reloaded} = Organization.get_academic_year(year.id)
+      assert reloaded.active
     end
 
     test "activate still works because it deactivates siblings first", %{ws: ws} do
