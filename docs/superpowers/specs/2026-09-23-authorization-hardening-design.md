@@ -1,5 +1,7 @@
 # Authorization hardening (Increment C) — design
 
+> **SUPERSEDED (2026-09-24)** by `docs/superpowers/specs/2026-09-24-authorization-design.md`. Written before the schema pass and multitenancy; do not execute.
+
 **Date:** 2026-09-23
 **Status:** approved for planning
 **Increment:** C — Permissions & authorization hardening

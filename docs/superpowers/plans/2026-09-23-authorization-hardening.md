@@ -1,5 +1,7 @@
 # Authorization Hardening (Increment C) Implementation Plan
 
+> **SUPERSEDED (2026-09-24)** by `docs/superpowers/specs/2026-09-24-authorization-design.md`. Written before the schema pass and multitenancy; do not execute.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move write authorization from the presentation layer into enforced Ash resource policies, driven by one shared role-set definition, and plumb the acting scope through every context write so those policies actually bite.
