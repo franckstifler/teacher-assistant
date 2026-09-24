@@ -55,7 +55,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # backed by one real `Assessment` per member context — a student's score
   # always lands on their own class's context's assessment.
   defp mount_combined(ctx, course_id, params, socket, ws) do
-    case Curriculum.get_course(course_id) do
+    case Curriculum.get_course(course_id, ws) do
       {:ok, course} ->
         year = Organization.current_academic_year(ws)
         sequences = if year, do: Organization.list_sequences(year), else: []

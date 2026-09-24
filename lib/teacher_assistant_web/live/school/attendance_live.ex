@@ -73,9 +73,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   # before (`Attendance.record_combined_period/5`). Falls back to solo mode
   # (returns `nil`) when there's no teaching context or the course can't be
   # resolved.
-  defp combined_course_for(%TeachingContext{combined_course_id: course_id})
+  defp combined_course_for(%TeachingContext{combined_course_id: course_id} = ctx)
        when not is_nil(course_id) do
-    case Curriculum.get_course(course_id) do
+    case Curriculum.get_course(course_id, ctx) do
       {:ok, course} -> course
       _ -> nil
     end

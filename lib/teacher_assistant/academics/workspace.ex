@@ -141,15 +141,14 @@ defmodule TeacherAssistant.Academics.Workspace do
     end)
   end
 
-  # `Subject` isn't multitenant yet (Task 10) — see the tenant note above.
+  # `Subject` is multitenant (attribute strategy); the tenant is set below
+  # instead of a `workspace_id` param, which is no longer an acceptable
+  # create attribute.
   defp seed_catalog(workspace, type, subsystem) do
     SchoolTemplates.subjects_for(type, subsystem)
     |> Enum.with_index()
     |> Enum.reduce_while(:ok, fn {attrs, i}, :ok ->
-      params =
-        attrs
-        |> Map.put(:workspace_id, workspace.id)
-        |> Map.put(:position, i)
+      params = Map.put(attrs, :position, i)
 
       case Subject
            |> Ash.Changeset.for_create(:create, params)

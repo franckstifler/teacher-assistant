@@ -39,8 +39,8 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   defp course_row({:course, %CombinedCourse{} = course}, ctx) do
     contexts =
       course.id
-      |> Curriculum.contexts_of_course!()
-      # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
+      |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
+      # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
       |> Ash.load!(:class_group, tenant: course.workspace_id)
 
     representative = List.first(contexts)

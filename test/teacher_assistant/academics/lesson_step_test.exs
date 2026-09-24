@@ -35,31 +35,40 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
 
     assert s1.position == 1
     assert s2.position == 2
-    assert Enum.map(Curriculum.list_lesson_steps!(lp.id), & &1.etape) == ["Découverte", "Analyse"]
+
+    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id), & &1.etape) ==
+             ["Découverte", "Analyse"]
   end
 
   test "move down then up swaps order and no-ops at the ends", %{lp: lp} do
     {:ok, s1} = Curriculum.add_lesson_step(lp, %{etape: "A"})
     {:ok, s2} = Curriculum.add_lesson_step(lp, %{etape: "B"})
 
-    {:ok, _} = Curriculum.move_lesson_step(s1, :down)
-    assert Enum.map(Curriculum.list_lesson_steps!(lp.id), & &1.etape) == ["B", "A"]
+    {:ok, _} = Curriculum.move_lesson_step(s1, :down, tenant: s1.workspace_id)
+
+    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id), & &1.etape) ==
+             ["B", "A"]
 
     # s2 is now first; moving it up is a no-op-free swap back
-    [first, _second] = Curriculum.list_lesson_steps!(lp.id)
-    {:ok, _} = Curriculum.move_lesson_step(first, :up)
-    assert Enum.map(Curriculum.list_lesson_steps!(lp.id), & &1.etape) == ["B", "A"]
+    [first, _second] = Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id)
+    {:ok, _} = Curriculum.move_lesson_step(first, :up, tenant: first.workspace_id)
+
+    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id), & &1.etape) ==
+             ["B", "A"]
 
     _ = s2
   end
 
   test "update and delete a step", %{lp: lp} do
     {:ok, s} = Curriculum.add_lesson_step(lp, %{etape: "X"})
-    {:ok, s} = Curriculum.update_lesson_step(s, %{contenus: "les nombres"})
+
+    {:ok, s} =
+      Curriculum.update_lesson_step(s, %{contenus: "les nombres"}, tenant: s.workspace_id)
+
     assert s.contenus == "les nombres"
 
-    :ok = Curriculum.delete_lesson_step(s)
-    assert Curriculum.list_lesson_steps!(lp.id) == []
+    :ok = Curriculum.delete_lesson_step(s, tenant: s.workspace_id)
+    assert Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id) == []
   end
 
   test "fetch_owned_lesson_step rejects a step from another plan", %{

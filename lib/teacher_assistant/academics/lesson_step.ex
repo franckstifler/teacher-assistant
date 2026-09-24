@@ -28,8 +28,7 @@ defmodule TeacherAssistant.Academics.LessonStep do
         :duration_minutes,
         :contenus,
         :supports,
-        :activites,
-        :workspace_id
+        :activites
       ],
       update: [:position, :etape, :duration_minutes, :contenus, :supports, :activites]
     ]
@@ -62,11 +61,13 @@ defmodule TeacherAssistant.Academics.LessonStep do
       change fn changeset, _context ->
         step = changeset.data
         direction = Ash.Changeset.get_argument(changeset, :direction)
+        tenant = changeset.tenant
 
         siblings =
           __MODULE__
           |> Ash.Query.filter(lesson_plan_id == ^step.lesson_plan_id)
           |> Ash.Query.sort(position: :asc)
+          |> Ash.Query.set_tenant(tenant)
           |> Ash.read!()
 
         idx = Enum.find_index(siblings, &(&1.id == step.id))
@@ -82,6 +83,7 @@ defmodule TeacherAssistant.Academics.LessonStep do
           |> Ash.Changeset.after_action(fn _changeset, updated_step ->
             case other
                  |> Ash.Changeset.for_update(:update, %{position: step.position})
+                 |> Ash.Changeset.set_tenant(tenant)
                  |> Ash.update() do
               {:ok, _other} -> {:ok, updated_step}
               {:error, error} -> {:error, error}
@@ -96,6 +98,11 @@ defmodule TeacherAssistant.Academics.LessonStep do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

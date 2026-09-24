@@ -37,7 +37,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
 
     assert e1.position == 1
     assert e2.position == 2
-    assert length(Curriculum.list_progression_entries!(plan.id)) == 2
+    assert length(Curriculum.list_progression_entries!(plan.id, tenant: plan.workspace_id)) == 2
   end
 
   test "entry defaults completed? to false and accepts it on update", %{plan: plan} do
@@ -46,7 +46,10 @@ defmodule TeacherAssistant.Academics.ProgressionEntryTest do
     assert e.completed? == false
 
     {:ok, e} =
-      e |> Ash.Changeset.for_update(:update, %{completed?: true}) |> Ash.update(authorize?: false)
+      e
+      |> Ash.Changeset.for_update(:update, %{completed?: true})
+      |> Ash.Changeset.set_tenant(e.workspace_id)
+      |> Ash.update(authorize?: false)
 
     assert e.completed? == true
   end

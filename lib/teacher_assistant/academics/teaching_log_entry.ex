@@ -26,7 +26,6 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
         :status,
         :homework,
         :note,
-        :workspace_id,
         :progression_entry_id
       ],
       update: [:date, :content_taught, :hours, :status, :homework, :note, :progression_entry_id]
@@ -42,12 +41,12 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
       prepare build(sort: [date: :desc])
     end
 
-    # The `limit` most recent log entries of a workspace. Mirrors the old
+    # The `limit` most recent log entries of a workspace. Tenant scoping
+    # (attribute multitenancy) already restricts this to the given workspace;
+    # no `workspace_id` argument is needed any more. Mirrors the old
     # `Academics.list_recent_logs/2`.
     read :recent do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :limit, :integer, allow_nil?: false, default: 10
-      filter expr(workspace_id == ^arg(:workspace_id))
       prepare build(sort: [date: :desc])
 
       prepare fn query, _context ->
@@ -60,6 +59,11 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

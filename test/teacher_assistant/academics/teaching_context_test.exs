@@ -47,9 +47,9 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
              |> Ash.Changeset.for_create(:create, %{
                subject: "Maths",
                level: "3ème",
-               workspace_id: ws.id,
                academic_year_id: year.id
              })
+             |> Ash.Changeset.set_tenant(ws.id)
              |> Ash.create()
   end
 end

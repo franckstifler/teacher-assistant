@@ -63,12 +63,17 @@ defmodule TeacherAssistant.Academics.LessonPlanTest do
   end
 
   test "get_lesson_plan_for_entry returns nil before creation", %{entry: entry} do
-    assert Curriculum.get_lesson_plan_for_entry(entry.id) == nil
+    assert Curriculum.get_lesson_plan_for_entry(entry.id, entry.workspace_id) == nil
   end
 
   test "update_lesson_plan persists a single field", %{entry: entry, ctx: ctx} do
     {:ok, lp} = Curriculum.ensure_lesson_plan(entry, ctx)
-    {:ok, lp} = Curriculum.update_lesson_plan(lp, %{situation_probleme: "Au marché…"})
+
+    {:ok, lp} =
+      Curriculum.update_lesson_plan(lp, %{situation_probleme: "Au marché…"},
+        tenant: lp.workspace_id
+      )
+
     assert lp.situation_probleme == "Au marché…"
   end
 

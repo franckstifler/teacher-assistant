@@ -39,7 +39,7 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
              })
 
     assert log.status == :done
-    assert [listed] = Curriculum.list_logs_for_plan!(plan.id)
+    assert [listed] = Curriculum.list_logs_for_plan!(plan.id, tenant: plan.workspace_id)
     assert listed.id == log.id
   end
 end

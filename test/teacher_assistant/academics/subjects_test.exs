@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Academics.SubjectsTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
-    Enum.each(Curriculum.list_subjects(ws), &Curriculum.delete_subject/1)
+    Enum.each(Curriculum.list_subjects(ws), &Curriculum.delete_subject(&1, tenant: ws.id))
     %{ws: ws}
   end
 
@@ -38,9 +38,9 @@ defmodule TeacherAssistant.Academics.SubjectsTest do
 
   test "deactivate and delete", %{ws: ws} do
     {:ok, s} = Curriculum.create_subject(ws, %{name: "EPS"})
-    {:ok, s} = Curriculum.deactivate_subject(s)
+    {:ok, s} = Curriculum.deactivate_subject(s, tenant: s.workspace_id)
     refute s.active?
-    assert :ok = Curriculum.delete_subject(s)
+    assert :ok = Curriculum.delete_subject(s, tenant: s.workspace_id)
     assert Curriculum.list_subjects(ws) == []
   end
 end

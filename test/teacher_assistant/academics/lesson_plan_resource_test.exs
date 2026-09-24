@@ -34,9 +34,9 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
       LessonPlan
       |> Ash.Changeset.for_create(:create, %{
         progression_entry_id: entry.id,
-        titre: "Les entiers",
-        workspace_id: entry.workspace_id
+        titre: "Les entiers"
       })
+      |> Ash.Changeset.set_tenant(entry.workspace_id)
       |> Ash.create(authorize?: false)
 
     assert lp.progression_entry_id == entry.id
@@ -46,28 +46,22 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
   test "the entry↔plan link is 1:1 (unique)", %{entry: entry} do
     {:ok, _} =
       LessonPlan
-      |> Ash.Changeset.for_create(:create, %{
-        progression_entry_id: entry.id,
-        workspace_id: entry.workspace_id
-      })
+      |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
+      |> Ash.Changeset.set_tenant(entry.workspace_id)
       |> Ash.create(authorize?: false)
 
     assert {:error, _} =
              LessonPlan
-             |> Ash.Changeset.for_create(:create, %{
-               progression_entry_id: entry.id,
-               workspace_id: entry.workspace_id
-             })
+             |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
+             |> Ash.Changeset.set_tenant(entry.workspace_id)
              |> Ash.create(authorize?: false)
   end
 
   test "steps persist against a lesson plan", %{entry: entry} do
     {:ok, lp} =
       LessonPlan
-      |> Ash.Changeset.for_create(:create, %{
-        progression_entry_id: entry.id,
-        workspace_id: entry.workspace_id
-      })
+      |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
+      |> Ash.Changeset.set_tenant(entry.workspace_id)
       |> Ash.create(authorize?: false)
 
     {:ok, step} =
@@ -75,9 +69,9 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
       |> Ash.Changeset.for_create(:create, %{
         lesson_plan_id: lp.id,
         position: 1,
-        etape: "Découverte",
-        workspace_id: lp.workspace_id
+        etape: "Découverte"
       })
+      |> Ash.Changeset.set_tenant(lp.workspace_id)
       |> Ash.create(authorize?: false)
 
     assert step.position == 1

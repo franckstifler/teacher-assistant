@@ -105,10 +105,12 @@ defmodule TeacherAssistant.Attendance do
 
   Returns `{:error, :no_slot}` for Sundays or when no slot is placed.
   """
-  def slot_for(%ClassGroup{id: cg_id}, %Date{} = date, period_id) do
+  def slot_for(%ClassGroup{id: cg_id, workspace_id: ws_id}, %Date{} = date, period_id) do
     with {:ok, day} <- day_of_week(date) do
       TimetableSlot
       |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
+      # `:teaching_context` is now multitenant — Ash needs a tenant to resolve the load.
+      |> Ash.Query.set_tenant(ws_id)
       |> Ash.Query.load(:teaching_context)
       |> Ash.read_one!()
       |> case do

@@ -51,7 +51,98 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     cg |> TeacherAssistant.Enrollment.list_roster() |> List.first() |> Map.fetch!(:enrollment)
   end
 
-  @flipped [A.AcademicYear, A.Term, A.Sequence, A.ClassGroup, A.Student, A.Enrollment]
+  defp row_for(A.Subject, school, _ctx),
+    do: school |> TeacherAssistant.Curriculum.list_subjects() |> List.first()
+
+  defp row_for(A.TeachingContext, school, _ctx),
+    do:
+      TeacherFixtures.assigned_context_fixture(school, Organization.current_academic_year(school))
+
+  defp row_for(A.CombinedCourse, school, _ctx) do
+    year = Organization.current_academic_year(school)
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
+    {:ok, teacher} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+
+    tc1 =
+      TeacherFixtures.assigned_context_fixture(school, year, %{teacher: teacher, subject: "Maths"})
+
+    tc2 =
+      TeacherFixtures.assigned_context_fixture(school, year, %{teacher: teacher, subject: "Maths"})
+
+    {:ok, course} = TeacherAssistant.Curriculum.combine_course([tc1, tc2])
+    course
+  end
+
+  defp row_for(A.ProgressionPlan, school, ctx) do
+    course = row_for(A.CombinedCourse, school, ctx)
+
+    TeacherAssistant.Curriculum.list_progression_plans!(tenant: school.id)
+    |> Enum.find(&(&1.combined_course_id == course.id))
+  end
+
+  defp row_for(A.ProgressionModule, school, ctx) do
+    plan = row_for(A.ProgressionPlan, school, ctx)
+    {:ok, m} = TeacherAssistant.Curriculum.create_module(plan, %{title: "Iso"})
+    m
+  end
+
+  defp row_for(A.ProgressionEntry, school, ctx) do
+    m = row_for(A.ProgressionModule, school, ctx)
+
+    {:ok, e} =
+      TeacherAssistant.Curriculum.add_progression_entry(m, %{
+        lesson_title: "Iso",
+        planned_hours: Decimal.new(1),
+        entry_type: :lesson
+      })
+
+    e
+  end
+
+  defp row_for(A.LessonPlan, school, ctx) do
+    entry = row_for(A.ProgressionEntry, school, ctx)
+    tc = row_for(A.TeachingContext, school, ctx)
+    {:ok, lp} = TeacherAssistant.Curriculum.ensure_lesson_plan(entry, tc)
+    lp
+  end
+
+  defp row_for(A.LessonStep, school, ctx) do
+    lp = row_for(A.LessonPlan, school, ctx)
+    {:ok, step} = TeacherAssistant.Curriculum.add_lesson_step(lp, %{etape: "Iso"})
+    step
+  end
+
+  defp row_for(A.TeachingLogEntry, school, ctx) do
+    entry = row_for(A.ProgressionEntry, school, ctx)
+
+    {:ok, log} =
+      TeacherAssistant.Curriculum.log_teaching(school, %{
+        progression_entry_id: entry.id,
+        date: Date.utc_today(),
+        content_taught: "Iso",
+        hours: Decimal.new(1)
+      })
+
+    log
+  end
+
+  @flipped [
+    A.AcademicYear,
+    A.Term,
+    A.Sequence,
+    A.ClassGroup,
+    A.Student,
+    A.Enrollment,
+    A.Subject,
+    A.TeachingContext,
+    A.CombinedCourse,
+    A.ProgressionPlan,
+    A.ProgressionModule,
+    A.ProgressionEntry,
+    A.LessonPlan,
+    A.LessonStep,
+    A.TeachingLogEntry
+  ]
 
   test "a row of school A is not readable under school B", ctx do
     for resource <- @flipped do

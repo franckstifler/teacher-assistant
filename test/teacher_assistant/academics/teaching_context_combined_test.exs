@@ -26,10 +26,10 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
       |> Ash.Changeset.for_create(:create, %{
         subject: "Mathématiques",
         label: "Maths · 1A MACO+MENU",
-        workspace_id: ws.id,
         academic_year_id: year.id,
         teacher_user_id: head.id
       })
+      |> Ash.Changeset.set_tenant(ws.id)
       |> Ash.create(authorize?: false)
 
     %{head: head, ws: ws, year: year, cg: cg, tc: tc, course: course}
@@ -43,6 +43,7 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
     {:ok, updated} =
       tc
       |> Ash.Changeset.for_update(:update, %{combined_course_id: course.id})
+      |> Ash.Changeset.set_tenant(tc.workspace_id)
       |> Ash.update(authorize?: false)
 
     assert updated.combined_course_id == course.id

@@ -31,8 +31,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
         :template,
         :teaching_context_id,
         :combined_course_id,
-        :academic_year_id,
-        :workspace_id
+        :academic_year_id
       ],
       update: [:title, :status, :template]
     ]
@@ -43,14 +42,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     # `CombinedCourse` surfaces exactly one coverage KPI instead of one per
     # member class. A course plan has no `teaching_context_id`; a lone-context
     # plan's `teaching_context.combined_course_id` is nil — either keeps it.
+    # Tenant scoping (attribute multitenancy) already restricts this to the
+    # given workspace; no `workspace_id` argument is needed any more.
     read :unit_plans do
-      argument :workspace_id, :uuid, allow_nil?: false
-
-      filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 (is_nil(teaching_context_id) or is_nil(teaching_context.combined_course_id))
-             )
-
+      filter expr(is_nil(teaching_context_id) or is_nil(teaching_context.combined_course_id))
       prepare build(sort: [inserted_at: :desc])
     end
 
@@ -58,17 +53,14 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     # pre-combine plan — teacher-facing call sites should prefer
     # `:unit_plans`). Mirrors the old `Academics.list_progression_plans/1`.
     read :for_workspace do
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(workspace_id == ^arg(:workspace_id))
       prepare build(sort: [inserted_at: :desc])
     end
 
-    # Owner-scoped single-plan lookup (IDOR guard): the plan must belong to
-    # the given workspace. Backs `Curriculum.fetch_owned_plan/2`.
+    # Owner-scoped single-plan lookup (IDOR guard): tenant scoping already
+    # restricts this to the given workspace. Backs `Curriculum.fetch_owned_plan/2`.
     read :owned do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+      filter expr(id == ^arg(:id))
     end
 
     # Creates a plan owned by a `CombinedCourse` rather than a lone
@@ -88,7 +80,6 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
 
         changeset
         |> Ash.Changeset.force_change_attribute(:combined_course_id, course.id)
-        |> Ash.Changeset.force_change_attribute(:workspace_id, course.workspace_id)
         |> then(fn changeset ->
           if Ash.Changeset.changing_attribute?(changeset, :academic_year_id) do
             changeset
@@ -129,6 +120,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       run fn input, _ctx ->
         ctx = input.arguments.teaching_context
         rows = input.arguments.rows
+        tenant = input.tenant
 
         with {:ok, plan} <-
                __MODULE__
@@ -136,9 +128,9 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
                  title: input.arguments.title,
                  status: :draft,
                  teaching_context_id: ctx.id,
-                 academic_year_id: ctx.academic_year_id,
-                 workspace_id: ctx.workspace_id
+                 academic_year_id: ctx.academic_year_id
                })
+               |> Ash.Changeset.set_tenant(tenant)
                |> Ash.create() do
           groups = TeacherAssistant.Academics.ModuleGrouping.group(index_rows(rows))
           rows_by_index = rows |> Enum.with_index() |> Map.new(fn {r, i} -> {i, r} end)
@@ -146,7 +138,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
           groups
           |> Enum.with_index(1)
           |> Enum.reduce_while(:ok, fn {%{key: key, entry_ids: row_indexes}, mod_pos}, :ok ->
-            case create_import_module(plan, key, mod_pos) do
+            case create_import_module(plan, key, mod_pos, tenant) do
               {:ok, module} ->
                 row_indexes
                 |> Enum.with_index(1)
@@ -164,10 +156,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
                     |> Map.put(:progression_plan_id, plan.id)
                     |> Map.put(:progression_module_id, module.id)
                     |> Map.put(:position, entry_pos)
-                    |> Map.put(:workspace_id, plan.workspace_id)
 
                   case ProgressionEntry
                        |> Ash.Changeset.for_create(:create, entry_attrs)
+                       |> Ash.Changeset.set_tenant(tenant)
                        |> Ash.create() do
                     {:ok, _entry} -> {:cont, :ok}
                     {:error, reason} -> {:halt, {:error, reason}}
@@ -206,16 +198,19 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
       run fn input, _ctx ->
         plan_id = input.arguments.plan.id
         layout = input.arguments.layout
+        tenant = input.tenant
 
         module_by_id =
           ProgressionModule
           |> Ash.Query.filter(progression_plan_id == ^plan_id)
+          |> Ash.Query.set_tenant(tenant)
           |> Ash.read!()
           |> Map.new(&{&1.id, &1})
 
         entry_by_id =
           ProgressionEntry
           |> Ash.Query.filter(progression_plan_id == ^plan_id)
+          |> Ash.Query.set_tenant(tenant)
           |> Ash.read!()
           |> Map.new(&{&1.id, &1})
 
@@ -224,6 +219,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
         |> Enum.reduce_while(:ok, fn {%{"module_id" => mid, "entry_ids" => eids}, mpos}, :ok ->
           case module_by_id[mid]
                |> Ash.Changeset.for_update(:update, %{position: mpos})
+               |> Ash.Changeset.set_tenant(tenant)
                |> Ash.update() do
             {:ok, _module} ->
               eids
@@ -234,6 +230,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
                        progression_module_id: mid,
                        position: epos
                      })
+                     |> Ash.Changeset.set_tenant(tenant)
                      |> Ash.update() do
                   {:ok, _entry} -> {:cont, :ok}
                   {:error, reason} -> {:halt, {:error, reason}}
@@ -264,6 +261,11 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
 
   validations do
     validate TeacherAssistant.Academics.ProgressionPlan.ExactlyOneOwner, on: [:create]
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
@@ -316,25 +318,25 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     |> Enum.map(fn {r, i} -> %{id: i, module: Map.get(r, :module), position: i} end)
   end
 
-  defp create_import_module(plan, :default, pos) do
+  defp create_import_module(plan, :default, pos, tenant) do
     ProgressionModule
     |> Ash.Changeset.for_create(:create_default_bucket, %{
       title: "Général",
       position: pos,
-      progression_plan_id: plan.id,
-      workspace_id: plan.workspace_id
+      progression_plan_id: plan.id
     })
+    |> Ash.Changeset.set_tenant(tenant)
     |> Ash.create()
   end
 
-  defp create_import_module(plan, title, pos) when is_binary(title) do
+  defp create_import_module(plan, title, pos, tenant) when is_binary(title) do
     ProgressionModule
     |> Ash.Changeset.for_create(:create, %{
       title: title,
       position: pos,
-      progression_plan_id: plan.id,
-      workspace_id: plan.workspace_id
+      progression_plan_id: plan.id
     })
+    |> Ash.Changeset.set_tenant(tenant)
     |> Ash.create()
   end
 end

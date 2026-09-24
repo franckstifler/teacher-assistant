@@ -289,7 +289,13 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 <tr :for={s <- @subjects} id={"subject-row-#{s.id}"}>
                   <td colspan="5">
                     <.form
-                      for={AshPhoenix.Form.for_update(s, :update, as: "subject_edit") |> to_form()}
+                      for={
+                        AshPhoenix.Form.for_update(s, :update,
+                          as: "subject_edit",
+                          tenant: s.workspace_id
+                        )
+                        |> to_form()
+                      }
                       id={"subject-edit-form-#{s.id}"}
                       phx-submit="update_subject"
                       class="grid items-end gap-2 sm:grid-cols-6"
@@ -515,7 +521,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
     if Permissions.admin?(scope) do
       subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
-      if subject, do: Curriculum.delete_subject(subject)
+      if subject, do: Curriculum.delete_subject(subject, tenant: subject.workspace_id)
       {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
     else
       {:noreply, socket}
@@ -529,7 +535,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     with true <- Permissions.admin?(scope),
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
          {:ok, coefficient} <- Curriculum.parse_coefficient(params["default_coefficient"]) do
-      form = AshPhoenix.Form.for_update(subject, :update, as: "subject_edit")
+      form =
+        AshPhoenix.Form.for_update(subject, :update,
+          as: "subject_edit",
+          tenant: subject.workspace_id
+        )
 
       # `name` trims at the Subject type level (same as create and the seeder),
       # so no per-handler trim is needed here — that asymmetry is now gone.
@@ -559,7 +569,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
       result =
         if subject.active?,
-          do: Curriculum.deactivate_subject(subject),
+          do: Curriculum.deactivate_subject(subject, tenant: subject.workspace_id),
           else: Curriculum.update_subject(subject, %{active?: true})
 
       case result do
@@ -713,18 +723,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     |> to_form()
   end
 
-  # `workspace_id` is server-controlled, set on the changeset at build time
-  # via `prepare_source`. It's stable for the life of this LiveView (renaming
-  # the school doesn't change its id), so no mid-session rebuild is needed
-  # beyond the fresh scaffold assigned after each successful create.
+  # `Subject` is tenant-scoped to the workspace (attribute multitenancy);
+  # `workspace_id` is no longer an acceptable create attribute, it's derived
+  # from the form's `tenant:`. It's stable for the life of this LiveView
+  # (renaming the school doesn't change its id), so no mid-session rebuild is
+  # needed beyond the fresh scaffold assigned after each successful create.
   defp subject_form(workspace_id) do
     Subject
-    |> AshPhoenix.Form.for_create(:create,
-      as: "subject",
-      prepare_source: fn changeset ->
-        Ash.Changeset.change_attribute(changeset, :workspace_id, workspace_id)
-      end
-    )
+    |> AshPhoenix.Form.for_create(:create, as: "subject", tenant: workspace_id)
     |> to_form()
   end
 end

@@ -21,7 +21,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
   test "create and list a progression plan", %{ws: ws, ctx: ctx} do
     assert {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème 2025-2026"})
     assert plan.status == :draft
-    assert [listed] = Curriculum.list_progression_plans!(ws.id)
+    assert [listed] = Curriculum.list_progression_plans!(tenant: ws.id)
     assert listed.id == plan.id
   end
 
@@ -46,8 +46,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
 
     {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
 
-    original_entries = Curriculum.list_progression_entries!(plan.id)
-    copied_entries = Curriculum.list_progression_entries!(copy.id)
+    original_entries = Curriculum.list_progression_entries!(plan.id, tenant: plan.workspace_id)
+    copied_entries = Curriculum.list_progression_entries!(copy.id, tenant: copy.workspace_id)
 
     assert length(copied_entries) == 2
 
@@ -57,7 +57,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
       refute MapSet.member?(original_ids, ce.id)
     end
 
-    [c1, c2] = copied_entries |> Ash.load!(:progression_module, authorize?: false)
+    [c1, c2] =
+      copied_entries
+      |> Ash.load!(:progression_module, authorize?: false, tenant: copy.workspace_id)
+
     assert c1.progression_module.title == "M1"
     assert c1.lesson_title == e1.lesson_title
     assert c1.position == e1.position
@@ -89,7 +92,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
 
     [copied_module] =
-      Curriculum.list_progression_modules!(copy.id) |> Enum.filter(&(!&1.default?))
+      Curriculum.list_progression_modules!(copy.id, tenant: copy.workspace_id)
+      |> Enum.filter(&(!&1.default?))
 
     assert copied_module.sequence_id == seq.id
     assert [copied_entry] = copied_module.entries

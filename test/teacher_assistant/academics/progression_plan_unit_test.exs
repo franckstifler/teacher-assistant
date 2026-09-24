@@ -19,17 +19,19 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
       |> Ash.Changeset.for_create(:create, %{
         subject: "Maths",
         label: "Maths · combined",
-        workspace_id: ws.id,
         academic_year_id: year.id,
         teacher_user_id: head.id
       })
+      |> Ash.Changeset.set_tenant(ws.id)
       |> Ash.create(authorize?: false)
 
     %{ws: ws, year: year, ctx: ctx, course: course}
   end
 
   test "a plan can belong to a combined course", %{course: course} do
-    {:ok, plan} = Curriculum.create_course_plan(course, %{title: "Maths"})
+    {:ok, plan} =
+      Curriculum.create_course_plan(course, %{title: "Maths"}, tenant: course.workspace_id)
+
     assert plan.combined_course_id == course.id
     assert is_nil(plan.teaching_context_id)
     assert plan.workspace_id == course.workspace_id
@@ -45,7 +47,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
   test "create_course_plan defaults title and academic_year_id from the course", %{
     course: course
   } do
-    {:ok, plan} = Curriculum.create_course_plan(course, %{})
+    {:ok, plan} = Curriculum.create_course_plan(course, %{}, tenant: course.workspace_id)
     assert plan.title == course.subject
     assert plan.academic_year_id == course.academic_year_id
   end
@@ -59,9 +61,9 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
                ProgressionPlan
                |> Ash.Changeset.for_create(:create, %{
                  title: "Orphan",
-                 academic_year_id: year.id,
-                 workspace_id: ws.id
+                 academic_year_id: year.id
                })
+               |> Ash.Changeset.set_tenant(ws.id)
                |> Ash.create(authorize?: false)
 
       assert error_on_field?(error, :teaching_context_id)
@@ -78,10 +80,10 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
                |> Ash.Changeset.for_create(:create, %{
                  title: "Double owner",
                  academic_year_id: year.id,
-                 workspace_id: ws.id,
                  teaching_context_id: ctx.id,
                  combined_course_id: course.id
                })
+               |> Ash.Changeset.set_tenant(ws.id)
                |> Ash.create(authorize?: false)
 
       assert error_on_field?(error, :teaching_context_id)
@@ -89,7 +91,11 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
 
     test "create succeeds when exactly one owner FK is set", %{ctx: ctx, course: course} do
       assert {:ok, _plan} = Curriculum.create_progression_plan(ctx, %{title: "Solo"})
-      assert {:ok, _plan} = Curriculum.create_course_plan(course, %{title: "Combined"})
+
+      assert {:ok, _plan} =
+               Curriculum.create_course_plan(course, %{title: "Combined"},
+                 tenant: course.workspace_id
+               )
     end
 
     defp error_on_field?(%{errors: errors}, field) do

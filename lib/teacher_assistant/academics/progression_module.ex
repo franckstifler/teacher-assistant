@@ -25,8 +25,7 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
         :position,
         :progression_plan_id,
         :credit_hours,
-        :sequence_id,
-        :workspace_id
+        :sequence_id
       ],
       update: [:title, :position, :credit_hours, :sequence_id]
     ]
@@ -34,7 +33,7 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     # System-only: creates the undeletable default bucket. `default?` is never
     # publicly accepted, so a teacher can never mint a second bucket.
     create :create_default_bucket do
-      accept [:title, :position, :progression_plan_id, :workspace_id]
+      accept [:title, :position, :progression_plan_id]
       change set_attribute(:default?, true)
     end
 
@@ -54,12 +53,12 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
       end
     end
 
-    # Owner-scoped single-module lookup (IDOR guard): the module's plan must
-    # belong to the given workspace. Backs `Curriculum.fetch_owned_module/2`.
+    # Owner-scoped single-module lookup (IDOR guard): tenant scoping
+    # (attribute multitenancy) already restricts this to the given workspace.
+    # Backs `Curriculum.fetch_owned_module/2`.
     read :owned do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(id == ^arg(:id) and progression_plan.workspace_id == ^arg(:workspace_id))
+      filter expr(id == ^arg(:id))
     end
   end
 
@@ -67,6 +66,11 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

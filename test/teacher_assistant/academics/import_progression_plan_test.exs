@@ -48,7 +48,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
     assert plan.title == "Imported"
     assert plan.status == :draft
-    entries = Curriculum.list_progression_entries!(plan.id)
+    entries = Curriculum.list_progression_entries!(plan.id, tenant: ws.id)
     assert Enum.map(entries, & &1.lesson_title) == ["Les entiers", "Évaluation"]
     assert Enum.map(entries, & &1.position) == [1, 2]
     assert Enum.at(entries, 1).entry_type == :evaluation
@@ -75,7 +75,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
                bad
              )
 
-    assert Curriculum.list_progression_plans!(ws.id) == []
+    assert Curriculum.list_progression_plans!(tenant: ws.id) == []
   end
 
   test "import creates modules from row order and links entries", %{ws: ws, ctx: ctx} do
@@ -94,7 +94,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     {:ok, plan} =
       Curriculum.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
 
-    mods = Curriculum.list_progression_modules!(plan.id)
+    mods = Curriculum.list_progression_modules!(plan.id, tenant: ws.id)
     assert Enum.map(mods, & &1.title) == ["M1", "Général", "M2"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["L1", "L2"]
 

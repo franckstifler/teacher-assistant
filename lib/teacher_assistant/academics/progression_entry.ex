@@ -37,8 +37,7 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
         :competence_visee,
         :progression_plan_id,
         :sequence_id,
-        :completed?,
-        :workspace_id
+        :completed?
       ],
       update: [
         :progression_module_id,
@@ -63,12 +62,12 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
       prepare build(sort: [position: :asc], load: [:progression_module])
     end
 
-    # Owner-scoped single-entry lookup (IDOR guard): the entry's plan must
-    # belong to the given workspace. Backs `Curriculum.fetch_owned_entry/2`.
+    # Owner-scoped single-entry lookup (IDOR guard): tenant scoping (attribute
+    # multitenancy) already restricts this to the given workspace. Backs
+    # `Curriculum.fetch_owned_entry/2`.
     read :owned do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(id == ^arg(:id) and progression_plan.workspace_id == ^arg(:workspace_id))
+      filter expr(id == ^arg(:id))
     end
   end
 
@@ -76,6 +75,11 @@ defmodule TeacherAssistant.Academics.ProgressionEntry do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

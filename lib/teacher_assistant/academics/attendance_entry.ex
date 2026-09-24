@@ -294,8 +294,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
   defp combined_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date) do
     course.id
-    |> Curriculum.contexts_of_course!()
-    # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
+    |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
+    # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
     |> Ash.load!(:class_group, tenant: course.workspace_id)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->
@@ -314,10 +314,12 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   # which a Ash generic action cannot guarantee (a bare atom error returned
   # from an action's `run` gets normalized into an `Ash.Error.Unknown`), so it
   # is never routed through an action boundary.
-  defp slot_for(%ClassGroup{id: cg_id}, %Date{} = date, period_id) do
+  defp slot_for(%ClassGroup{id: cg_id, workspace_id: ws_id}, %Date{} = date, period_id) do
     with {:ok, day} <- day_of_week(date) do
       TimetableSlot
       |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
+      # `:teaching_context` is now multitenant — Ash needs a tenant to resolve the load.
+      |> Ash.Query.set_tenant(ws_id)
       |> Ash.Query.load(:teaching_context)
       |> Ash.read_one!()
       |> case do

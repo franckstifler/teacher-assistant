@@ -27,10 +27,10 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
       |> Ash.Changeset.for_create(:create, %{
         subject: "Mathématiques",
         label: "Maths · 1A MACO+MENU",
-        workspace_id: ws.id,
         academic_year_id: year.id,
         teacher_user_id: head.id
       })
+      |> Ash.Changeset.set_tenant(ws.id)
       |> Ash.create(authorize?: false)
 
     assert c.subject == "Mathématiques"

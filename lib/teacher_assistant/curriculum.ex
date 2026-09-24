@@ -32,23 +32,18 @@ defmodule TeacherAssistant.Curriculum do
 
     resource TeachingContext do
       define :contexts_of_course, action: :for_combined_course, args: [:combined_course_id]
-      define :get_teaching_context, action: :read, get_by: [:id]
     end
 
-    resource CombinedCourse do
-      define :get_course, action: :read, get_by: [:id]
-    end
+    resource CombinedCourse
 
     resource ProgressionPlan do
-      define :unit_plans, action: :unit_plans, args: [:workspace_id]
+      define :unit_plans, action: :unit_plans
       define :create_course_plan, action: :for_course, args: [:course]
-      define :list_progression_plans, action: :for_workspace, args: [:workspace_id]
-      define :get_progression_plan, action: :read, get_by: [:id]
+      define :list_progression_plans, action: :for_workspace
     end
 
     resource ProgressionEntry do
       define :list_progression_entries, action: :for_plan, args: [:progression_plan_id]
-      define :get_progression_entry, action: :read, get_by: [:id]
     end
 
     resource ProgressionModule do
@@ -57,7 +52,7 @@ defmodule TeacherAssistant.Curriculum do
 
     resource TeachingLogEntry do
       define :list_logs_for_plan, action: :for_plan, args: [:progression_plan_id]
-      define :list_recent_logs, action: :recent, args: [:workspace_id, :limit]
+      define :list_recent_logs, action: :recent, args: [:limit]
     end
 
     resource LessonPlan do
@@ -76,18 +71,28 @@ defmodule TeacherAssistant.Curriculum do
     authorize :when_requested
   end
 
+  # Every one of `get_teaching_context/2`, `get_course/2`,
+  # `get_progression_plan/2` and `get_progression_entry/2` accepts either the
+  # owning `%Workspace{}` or any parent struct that already carries a
+  # `workspace_id` (a plan, module, entry, context, course...) so a caller
+  # holding one of those never needs to fetch the workspace separately.
+  defp tenant_of(%Workspace{id: id}), do: id
+  defp tenant_of(%{workspace_id: id}), do: id
+
   # --- Subject catalog -------------------------------------------------------
 
   @doc "The per-school subject catalog (see the 2026-09-17 spec, §1)."
   def list_subjects(%Workspace{id: ws_id}) do
     Subject
-    |> Ash.Query.for_read(:for_workspace, %{workspace_id: ws_id})
+    |> Ash.Query.for_read(:for_workspace)
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
   def create_subject(%Workspace{id: ws_id}, attrs) do
     Subject
-    |> Ash.Changeset.for_create(:create, Map.put(attrs, :workspace_id, ws_id))
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.Changeset.set_tenant(ws_id)
     |> Ash.create()
     |> case do
       {:ok, s} ->
@@ -101,6 +106,7 @@ defmodule TeacherAssistant.Curriculum do
   def update_subject(%Subject{} = s, attrs) do
     s
     |> Ash.Changeset.for_update(:update, attrs)
+    |> Ash.Changeset.set_tenant(s.workspace_id)
     |> Ash.update()
     |> case do
       {:ok, s} ->
@@ -143,9 +149,9 @@ defmodule TeacherAssistant.Curriculum do
         subsystem: cg.subsystem,
         class_group_id: cg.id,
         teacher_user_id: teacher.id,
-        workspace_id: cg.workspace_id,
         academic_year_id: cg.academic_year_id
       })
+      |> Ash.Changeset.set_tenant(cg.workspace_id)
       |> Ash.create()
       |> case do
         {:ok, tc} ->
@@ -161,6 +167,7 @@ defmodule TeacherAssistant.Curriculum do
     with :ok <- assignable_ws(tc.workspace_id, teacher) do
       tc
       |> Ash.Changeset.for_update(:update, %{teacher_user_id: teacher.id})
+      |> Ash.Changeset.set_tenant(tc.workspace_id)
       |> Ash.update()
     end
   end
@@ -170,6 +177,7 @@ defmodule TeacherAssistant.Curriculum do
       {:ok, dec} ->
         tc
         |> Ash.Changeset.for_update(:update, %{coefficient: dec})
+        |> Ash.Changeset.set_tenant(tc.workspace_id)
         |> Ash.update()
 
       :error ->
@@ -193,10 +201,11 @@ defmodule TeacherAssistant.Curriculum do
 
   def parse_coefficient(_), do: :error
 
-  def remove_assignment(%TeachingContext{id: id} = tc) do
+  def remove_assignment(%TeachingContext{id: id, workspace_id: ws_id} = tc) do
     has_plans =
       ProgressionPlan
       |> Ash.Query.filter(teaching_context_id == ^id)
+      |> Ash.Query.set_tenant(ws_id)
       |> Ash.read!() != []
 
     has_assessments =
@@ -207,14 +216,15 @@ defmodule TeacherAssistant.Curriculum do
     if has_plans or has_assessments do
       {:error, :has_data}
     else
-      Ash.destroy!(tc)
+      Ash.destroy!(tc, tenant: ws_id)
       :ok
     end
   end
 
-  def list_assignments_for_class(%ClassGroup{id: cg_id}) do
+  def list_assignments_for_class(%ClassGroup{id: cg_id, workspace_id: ws_id}) do
     TeachingContext
     |> Ash.Query.for_read(:for_class_group, %{class_group_id: cg_id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read!()
   end
 
@@ -227,15 +237,14 @@ defmodule TeacherAssistant.Curriculum do
   def combinable_siblings(%TeachingContext{} = ctx) do
     TeachingContext
     |> Ash.Query.for_read(:combinable_siblings, %{
-      workspace_id: ctx.workspace_id,
       academic_year_id: ctx.academic_year_id,
       subject: ctx.subject,
       teacher_user_id: ctx.teacher_user_id,
       exclude_id: ctx.id
     })
-    # `TeachingContext` isn't multitenant itself, but this read's `prepare`
-    # loads the (now multitenant) `:class_group` relationship, which needs a
-    # tenant to resolve — Ash propagates the query's tenant to the load.
+    # `TeachingContext` is multitenant, and this read's `prepare` also loads
+    # the (multitenant) `:class_group` relationship — Ash propagates the
+    # query's tenant to the load.
     |> Ash.Query.set_tenant(ctx.workspace_id)
     |> Ash.read!()
   end
@@ -245,7 +254,6 @@ defmodule TeacherAssistant.Curriculum do
       }) do
     TeachingContext
     |> Ash.Query.for_read(:for_workspace_year_teacher, %{
-      workspace_id: ws_id,
       academic_year_id: year_id,
       teacher_user_id: user_id
     })
@@ -291,8 +299,10 @@ defmodule TeacherAssistant.Curriculum do
          :ok <- validate_same_teacher(contexts),
          :ok <- validate_same_subject(contexts),
          :ok <- validate_not_already_combined(contexts) do
+      tenant = contexts |> List.first() |> Map.fetch!(:workspace_id)
+
       CombinedCourse
-      |> Ash.ActionInput.for_action(:combine, %{contexts: contexts})
+      |> Ash.ActionInput.for_action(:combine, %{contexts: contexts}, tenant: tenant)
       |> Ash.run_action()
     end
   end
@@ -348,11 +358,18 @@ defmodule TeacherAssistant.Curriculum do
   """
   def split_course(%CombinedCourse{} = course) do
     CombinedCourse
-    |> Ash.ActionInput.for_action(:split, %{course: course})
+    |> Ash.ActionInput.for_action(:split, %{course: course}, tenant: course.workspace_id)
     |> Ash.run_action!()
 
     :ok
   end
+
+  @doc """
+  Fetches a `CombinedCourse` by id, tenant-scoped to `owner`'s workspace — a
+  `%Workspace{}`, or any parent struct that already carries a `workspace_id`.
+  Replaces the old unscoped `get_by: [:id]` code interface.
+  """
+  def get_course(id, owner), do: Ash.get(CombinedCourse, id, tenant: tenant_of(owner))
 
   @doc """
   Lists the teaching units assigned to `user` in `ws`/`year`: each is either
@@ -373,7 +390,7 @@ defmodule TeacherAssistant.Curriculum do
             if MapSet.member?(seen, course_id) do
               {units, seen}
             else
-              {:ok, course} = get_course(course_id)
+              {:ok, course} = get_course(course_id, ws)
               {[{:course, course} | units], MapSet.put(seen, course_id)}
             end
         end
@@ -410,8 +427,8 @@ defmodule TeacherAssistant.Curriculum do
   """
   def list_union_students(%CombinedCourse{id: id, workspace_id: ws_id}) do
     id
-    |> contexts_of_course!()
-    # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
+    |> contexts_of_course!(tenant: ws_id)
+    # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
     |> Ash.load!(:class_group, tenant: ws_id)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->
@@ -433,13 +450,21 @@ defmodule TeacherAssistant.Curriculum do
   """
   def fetch_owned_plan(id, %Workspace{id: ws_id}) do
     ProgressionPlan
-    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.Query.for_read(:owned, %{id: id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
       result -> result
     end
   end
+
+  @doc """
+  Fetches a `ProgressionPlan` by id, tenant-scoped to `owner`'s workspace — a
+  `%Workspace{}`, or any parent struct that already carries a `workspace_id`.
+  Replaces the old unscoped `get_by: [:id]` code interface.
+  """
+  def get_progression_plan(id, owner), do: Ash.get(ProgressionPlan, id, tenant: tenant_of(owner))
 
   # --- Progression entries ------------------------------------------------
 
@@ -449,13 +474,22 @@ defmodule TeacherAssistant.Curriculum do
   """
   def fetch_owned_entry(id, %Workspace{id: ws_id}) do
     ProgressionEntry
-    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.Query.for_read(:owned, %{id: id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
       result -> result
     end
   end
+
+  @doc """
+  Fetches a `ProgressionEntry` by id, tenant-scoped to `owner`'s workspace — a
+  `%Workspace{}`, or any parent struct that already carries a `workspace_id`.
+  Replaces the old unscoped `get_by: [:id]` code interface.
+  """
+  def get_progression_entry(id, owner),
+    do: Ash.get(ProgressionEntry, id, tenant: tenant_of(owner))
 
   @doc """
   The "prepare a lesson" cartouche bundle for a progression entry: the
@@ -468,7 +502,8 @@ defmodule TeacherAssistant.Curriculum do
     with {:ok, entry} <- fetch_owned_entry(entry_id, ws),
          {:ok, plan} <- fetch_owned_plan(entry.progression_plan_id, ws),
          {:ok, ctx} <- fetch_owned_teaching_context(plan.teaching_context_id, ws) do
-      entry = Ash.load!(entry, :progression_module)
+      # `:progression_module` is also multitenant — pass the tenant to the load.
+      entry = Ash.load!(entry, :progression_module, tenant: ws.id)
       class_group = load_owned_class_group(ctx.class_group_id, ws)
       effectif = if class_group, do: length(Enrollment.list_students(class_group)), else: 0
 
@@ -501,7 +536,8 @@ defmodule TeacherAssistant.Curriculum do
   """
   def fetch_owned_module(id, %Workspace{id: ws_id}) do
     ProgressionModule
-    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.Query.for_read(:owned, %{id: id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -512,11 +548,13 @@ defmodule TeacherAssistant.Curriculum do
   # --- Lesson plans & steps -------------------------------------------------
 
   @doc """
-  The (at most one) `LessonPlan` for a progression entry, or `nil`.
+  The (at most one) `LessonPlan` for a progression entry, or `nil`. `tenant`
+  is the owning workspace's id.
   """
-  def get_lesson_plan_for_entry(entry_id) do
+  def get_lesson_plan_for_entry(entry_id, tenant) do
     LessonPlan
     |> Ash.Query.for_read(:for_entry, %{progression_entry_id: entry_id})
+    |> Ash.Query.set_tenant(tenant)
     |> Ash.read_one!()
   end
 
@@ -527,7 +565,7 @@ defmodule TeacherAssistant.Curriculum do
   this re-fetches the winner rather than erroring or duplicating.
   """
   def ensure_lesson_plan(%ProgressionEntry{} = entry, %TeachingContext{} = _ctx) do
-    case get_lesson_plan_for_entry(entry.id) do
+    case get_lesson_plan_for_entry(entry.id, entry.workspace_id) do
       %LessonPlan{} = lp ->
         {:ok, lp}
 
@@ -537,7 +575,7 @@ defmodule TeacherAssistant.Curriculum do
             {:ok, lp}
 
           {:error, error} ->
-            case get_lesson_plan_for_entry(entry.id) do
+            case get_lesson_plan_for_entry(entry.id, entry.workspace_id) do
               %LessonPlan{} = lp -> {:ok, lp}
               nil -> {:error, error}
             end
@@ -556,11 +594,13 @@ defmodule TeacherAssistant.Curriculum do
       progression_entry_id: entry.id,
       titre: entry.lesson_title,
       competence_attendue: entry.competence_visee,
-      duration_minutes: duration,
-      workspace_id: entry.workspace_id
+      duration_minutes: duration
     }
 
-    LessonPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+    LessonPlan
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.Changeset.set_tenant(entry.workspace_id)
+    |> Ash.create()
   end
 
   @doc """
@@ -570,7 +610,7 @@ defmodule TeacherAssistant.Curriculum do
   def add_lesson_step(%LessonPlan{} = lp, attrs \\ %{}) do
     next =
       lp.id
-      |> list_lesson_steps!()
+      |> list_lesson_steps!(tenant: lp.workspace_id)
       |> Enum.map(& &1.position)
       |> Enum.max(fn -> 0 end)
       |> Kernel.+(1)
@@ -579,18 +619,21 @@ defmodule TeacherAssistant.Curriculum do
       attrs
       |> Map.put(:lesson_plan_id, lp.id)
       |> Map.put_new(:position, next)
-      |> Map.put(:workspace_id, lp.workspace_id)
 
-    LessonStep |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+    LessonStep
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.Changeset.set_tenant(lp.workspace_id)
+    |> Ash.create()
   end
 
   @doc """
   Owner-scoped single-step lookup (IDOR guard): `id` must name a step of
   `lp`.
   """
-  def fetch_owned_lesson_step(id, %LessonPlan{id: lp_id}) do
+  def fetch_owned_lesson_step(id, %LessonPlan{id: lp_id, workspace_id: ws_id}) do
     LessonStep
     |> Ash.Query.for_read(:owned, %{id: id, lesson_plan_id: lp_id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -602,7 +645,8 @@ defmodule TeacherAssistant.Curriculum do
 
   def fetch_owned_teaching_context(id, %Workspace{id: ws_id}) do
     TeachingContext
-    |> Ash.Query.for_read(:owned, %{id: id, workspace_id: ws_id})
+    |> Ash.Query.for_read(:owned, %{id: id})
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -624,9 +668,9 @@ defmodule TeacherAssistant.Curriculum do
     TeachingContext
     |> Ash.Query.for_read(:assigned_in_school, %{
       id: id,
-      workspace_id: ws_id,
       teacher_user_id: user_id
     })
+    |> Ash.Query.set_tenant(ws_id)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -635,6 +679,14 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   def fetch_assigned_teaching_context(_id, %Scope{}), do: {:error, :not_found}
+
+  @doc """
+  Fetches a `TeachingContext` by id, tenant-scoped to `owner`'s workspace — a
+  `%Workspace{}`, or any parent struct that already carries a `workspace_id`
+  (a plan, module, entry, course...). Replaces the old unscoped
+  `get_by: [:id]` code interface: every lookup must now name a workspace.
+  """
+  def get_teaching_context(id, owner), do: Ash.get(TeachingContext, id, tenant: tenant_of(owner))
 
   @doc """
   Display label for a teaching unit as shown in the class switcher: the
@@ -651,7 +703,10 @@ defmodule TeacherAssistant.Curriculum do
   own id for `{:solo, _}`.
   """
   def unit_select_id({:course, %CombinedCourse{} = course}) do
-    course.id |> contexts_of_course!() |> List.first() |> Map.fetch!(:id)
+    course.id
+    |> contexts_of_course!(tenant: course.workspace_id)
+    |> List.first()
+    |> Map.fetch!(:id)
   end
 
   def unit_select_id({:solo, %TeachingContext{id: id}}), do: id
@@ -669,9 +724,11 @@ defmodule TeacherAssistant.Curriculum do
       attrs
       |> Map.put(:teaching_context_id, ctx.id)
       |> Map.put(:academic_year_id, ctx.academic_year_id)
-      |> Map.put(:workspace_id, ctx.workspace_id)
 
-    ProgressionPlan |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+    ProgressionPlan
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.Changeset.set_tenant(ctx.workspace_id)
+    |> Ash.create()
   end
 
   @doc """
@@ -684,30 +741,36 @@ defmodule TeacherAssistant.Curriculum do
   def import_progression_plan(%Workspace{} = ws, %{teaching_context_id: ctx_id} = attrs, rows) do
     with {:ok, ctx} <- fetch_owned_teaching_context(ctx_id, ws) do
       ProgressionPlan
-      |> Ash.ActionInput.for_action(:import, %{
-        teaching_context: ctx,
-        title: attrs.title,
-        rows: rows
-      })
+      |> Ash.ActionInput.for_action(
+        :import,
+        %{
+          teaching_context: ctx,
+          title: attrs.title,
+          rows: rows
+        },
+        tenant: ws.id
+      )
       |> Ash.run_action()
     end
   end
 
   def duplicate_progression_plan(%ProgressionPlan{} = plan, overrides) do
+    tenant = plan.workspace_id
+
     attrs = %{
       title: Map.get(overrides, :title, plan.title <> " (copy)"),
       status: :draft,
       template: Map.get(overrides, :template, false),
       teaching_context_id: plan.teaching_context_id,
-      academic_year_id: plan.academic_year_id,
-      workspace_id: plan.workspace_id
+      academic_year_id: plan.academic_year_id
     }
 
     with {:ok, copy} <-
            ProgressionPlan
            |> Ash.Changeset.for_create(:create, attrs)
+           |> Ash.Changeset.set_tenant(tenant)
            |> Ash.create() do
-      for m <- list_progression_modules!(plan.id) do
+      for m <- list_progression_modules!(plan.id, tenant: tenant) do
         {:ok, new_m} =
           ProgressionModule
           |> Ash.Changeset.for_create(
@@ -715,10 +778,10 @@ defmodule TeacherAssistant.Curriculum do
             %{
               title: m.title,
               position: m.position,
-              progression_plan_id: copy.id,
-              workspace_id: copy.workspace_id
+              progression_plan_id: copy.id
             }
           )
+          |> Ash.Changeset.set_tenant(tenant)
           |> Ash.create()
 
         new_m =
@@ -726,6 +789,7 @@ defmodule TeacherAssistant.Curriculum do
             {:ok, nm} =
               new_m
               |> Ash.Changeset.for_update(:update, %{sequence_id: m.sequence_id})
+              |> Ash.Changeset.set_tenant(tenant)
               |> Ash.update()
 
             nm
@@ -747,9 +811,9 @@ defmodule TeacherAssistant.Curriculum do
             completed?: e.completed?,
             progression_plan_id: copy.id,
             progression_module_id: new_m.id,
-            sequence_id: e.sequence_id,
-            workspace_id: copy.workspace_id
+            sequence_id: e.sequence_id
           })
+          |> Ash.Changeset.set_tenant(tenant)
           |> Ash.create!()
         end
       end
@@ -759,57 +823,69 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   def ensure_default_module(%ProgressionPlan{id: plan_id} = plan) do
+    tenant = plan.workspace_id
+
     ProgressionModule
     |> Ash.Query.filter(progression_plan_id == ^plan_id and default? == true)
+    |> Ash.Query.set_tenant(tenant)
     |> Ash.read_one()
     |> case do
       {:ok, %ProgressionModule{} = m} ->
         {:ok, m}
 
       {:ok, nil} ->
-        pos = module_count(plan_id) + 1
+        pos = module_count(plan_id, tenant) + 1
 
         ProgressionModule
         |> Ash.Changeset.for_create(:create_default_bucket, %{
           title: "Général",
           position: pos,
-          progression_plan_id: plan_id,
-          workspace_id: plan.workspace_id
+          progression_plan_id: plan_id
         })
+        |> Ash.Changeset.set_tenant(tenant)
         |> Ash.create()
     end
   end
 
   def create_module(%ProgressionPlan{id: plan_id} = plan, attrs) do
-    pos = module_count(plan_id) + 1
+    tenant = plan.workspace_id
+    pos = module_count(plan_id, tenant) + 1
 
     ProgressionModule
     |> Ash.Changeset.for_create(
       :create,
       Map.merge(attrs, %{
         position: pos,
-        progression_plan_id: plan_id,
-        workspace_id: plan.workspace_id
+        progression_plan_id: plan_id
       })
     )
+    |> Ash.Changeset.set_tenant(tenant)
     |> Ash.create()
   end
 
   def rename_module(%ProgressionModule{} = m, title),
-    do: m |> Ash.Changeset.for_update(:update, %{title: title}) |> Ash.update()
+    do:
+      m
+      |> Ash.Changeset.for_update(:update, %{title: title})
+      |> Ash.Changeset.set_tenant(m.workspace_id)
+      |> Ash.update()
 
   def set_entry_completed(%ProgressionEntry{} = e, completed?) when is_boolean(completed?),
     do:
       e
       |> Ash.Changeset.for_update(:update, %{completed?: completed?})
+      |> Ash.Changeset.set_tenant(e.workspace_id)
       |> Ash.update()
 
   def assign_module_sequence(%ProgressionModule{} = m, sequence_id) do
+    tenant = m.workspace_id
+
     with {:ok, m} <-
            m
            |> Ash.Changeset.for_update(:update, %{sequence_id: sequence_id})
+           |> Ash.Changeset.set_tenant(tenant)
            |> Ash.update() do
-      entries_in_module(m.id)
+      entries_in_module(m.id, tenant)
       |> Enum.each(fn e -> update_progression_entry(e, %{sequence_id: sequence_id}) end)
 
       {:ok, m}
@@ -820,22 +896,24 @@ defmodule TeacherAssistant.Curriculum do
     do:
       m
       |> Ash.Changeset.for_update(:update, %{credit_hours: credit})
+      |> Ash.Changeset.set_tenant(m.workspace_id)
       |> Ash.update()
 
   def delete_module(%ProgressionModule{default?: true}), do: {:error, :default_bucket}
 
   def delete_module(%ProgressionModule{} = m) do
-    {:ok, plan} = get_progression_plan(m.progression_plan_id)
+    tenant = m.workspace_id
+    {:ok, plan} = get_progression_plan(m.progression_plan_id, m)
     {:ok, bucket} = ensure_default_module(plan)
-    base = entry_count(bucket.id)
+    base = entry_count(bucket.id, tenant)
 
-    entries_in_module(m.id)
+    entries_in_module(m.id, tenant)
     |> Enum.with_index(base + 1)
     |> Enum.each(fn {e, pos} ->
       update_progression_entry(e, %{progression_module_id: bucket.id, position: pos})
     end)
 
-    Ash.destroy(m)
+    Ash.destroy(m, tenant: tenant)
   end
 
   def add_progression_entry(
@@ -847,7 +925,7 @@ defmodule TeacherAssistant.Curriculum do
         },
         attrs
       ) do
-    pos = entry_count(module_id) + 1
+    pos = entry_count(module_id, workspace_id) + 1
 
     attrs =
       attrs
@@ -855,15 +933,22 @@ defmodule TeacherAssistant.Curriculum do
       |> Map.put(:progression_module_id, module_id)
       |> Map.put(:position, pos)
       |> Map.put_new(:sequence_id, module_seq)
-      |> Map.put(:workspace_id, workspace_id)
 
-    ProgressionEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+    ProgressionEntry
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.Changeset.set_tenant(workspace_id)
+    |> Ash.create()
   end
 
   def update_progression_entry(%ProgressionEntry{} = e, attrs),
-    do: e |> Ash.Changeset.for_update(:update, attrs) |> Ash.update()
+    do:
+      e
+      |> Ash.Changeset.for_update(:update, attrs)
+      |> Ash.Changeset.set_tenant(e.workspace_id)
+      |> Ash.update()
 
-  def delete_progression_entry(%ProgressionEntry{} = e), do: Ash.destroy(e)
+  def delete_progression_entry(%ProgressionEntry{} = e),
+    do: Ash.destroy(e, tenant: e.workspace_id)
 
   @doc """
   Applies a validated drag-and-drop layout to a plan (module reorder + entry
@@ -873,14 +958,18 @@ defmodule TeacherAssistant.Curriculum do
   the action boundary).
   """
   def apply_layout(%ProgressionPlan{id: plan_id} = plan, layout) when is_list(layout) do
+    tenant = plan.workspace_id
+
     current_modules =
       ProgressionModule
       |> Ash.Query.filter(progression_plan_id == ^plan_id)
+      |> Ash.Query.set_tenant(tenant)
       |> Ash.read!()
 
     current_entries =
       ProgressionEntry
       |> Ash.Query.filter(progression_plan_id == ^plan_id)
+      |> Ash.Query.set_tenant(tenant)
       |> Ash.read!()
 
     layout_module_ids = Enum.map(layout, & &1["module_id"])
@@ -895,44 +984,51 @@ defmodule TeacherAssistant.Curriculum do
 
       true ->
         ProgressionPlan
-        |> Ash.ActionInput.for_action(:apply_layout, %{plan: plan, layout: layout})
+        |> Ash.ActionInput.for_action(:apply_layout, %{plan: plan, layout: layout},
+          tenant: tenant
+        )
         |> Ash.run_action()
     end
   end
 
   defp id_set_matches?(a, b), do: MapSet.new(a) == MapSet.new(b) and length(a) == length(b)
 
-  def coverage_for_plan(%ProgressionPlan{id: plan_id}) do
-    entries = list_progression_entries!(plan_id)
-    logs = list_logs_for_plan!(plan_id)
+  def coverage_for_plan(%ProgressionPlan{id: plan_id} = plan) do
+    entries = list_progression_entries!(plan_id, tenant: plan.workspace_id)
+    logs = list_logs_for_plan!(plan_id, tenant: plan.workspace_id)
     TeacherAssistant.Academics.Coverage.summarize(entries, logs)
   end
 
   # --- Teaching log ---------------------------------------------------------
 
   def log_teaching(%Workspace{id: ws_id}, attrs) do
-    attrs = Map.put(attrs, :workspace_id, ws_id)
-    TeachingLogEntry |> Ash.Changeset.for_create(:create, attrs) |> Ash.create()
+    TeachingLogEntry
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.Changeset.set_tenant(ws_id)
+    |> Ash.create()
   end
 
   # --- Progression module/entry counts (private) ----------------------------
 
-  defp module_count(plan_id) do
+  defp module_count(plan_id, tenant) do
     ProgressionModule
     |> Ash.Query.filter(progression_plan_id == ^plan_id)
+    |> Ash.Query.set_tenant(tenant)
     |> Ash.count!()
   end
 
-  defp entry_count(module_id) do
+  defp entry_count(module_id, tenant) do
     ProgressionEntry
     |> Ash.Query.filter(progression_module_id == ^module_id)
+    |> Ash.Query.set_tenant(tenant)
     |> Ash.count!()
   end
 
-  defp entries_in_module(module_id) do
+  defp entries_in_module(module_id, tenant) do
     ProgressionEntry
     |> Ash.Query.filter(progression_module_id == ^module_id)
     |> Ash.Query.sort(position: :asc)
+    |> Ash.Query.set_tenant(tenant)
     |> Ash.read!()
   end
 end

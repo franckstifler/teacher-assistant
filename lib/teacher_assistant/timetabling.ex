@@ -58,7 +58,7 @@ defmodule TeacherAssistant.Timetabling do
     exempt_class_group_ids = Map.get(attrs, :exempt_class_group_ids, [])
 
     with {:ok, %TeachingContext{class_group_id: cg_id} = tc} when cg_id == cg.id <-
-           Ash.get(TeachingContext, teaching_context_id) do
+           Ash.get(TeachingContext, teaching_context_id, tenant: cg.workspace_id) do
       case teacher_clash(cg, day, period_id, tc.teacher_user_id, exempt_class_group_ids) do
         {:clash, class_label} ->
           {:error, {:teacher_clash, class_label}}
@@ -102,8 +102,8 @@ defmodule TeacherAssistant.Timetabling do
   def place_combined_slot(%CombinedCourse{} = course, day, period_id) do
     contexts =
       course.id
-      |> Curriculum.contexts_of_course!()
-      # `:class_group` is now multitenant — Ash needs a tenant to resolve the load.
+      |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
+      # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
       |> Ash.load!(:class_group, tenant: course.workspace_id)
 
     case contexts do
@@ -142,7 +142,7 @@ defmodule TeacherAssistant.Timetabling do
   def clear_combined_slot(%CombinedCourse{} = course, day, period_id) do
     class_group_ids =
       course.id
-      |> Curriculum.contexts_of_course!()
+      |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
       |> Enum.map(& &1.class_group_id)
 
     TimetableSlot
@@ -166,7 +166,8 @@ defmodule TeacherAssistant.Timetabling do
   assignments included), with `status` in `[:under, :exact, :over]`.
   """
   def class_timetable(%ClassGroup{id: cg_id} = cg) do
-    slots = list_for_class!(cg_id)
+    # `:for_class` loads the now-multitenant `:teaching_context` — pass the tenant.
+    slots = list_for_class!(cg_id, tenant: cg.workspace_id)
 
     slot_views =
       Map.new(slots, fn slot ->
@@ -248,7 +249,8 @@ defmodule TeacherAssistant.Timetabling do
     excluded_ids = [cg_id | exempt_class_group_ids]
 
     ws_id
-    |> list_for_clash_check!(day, period_id, teacher_user_id, excluded_ids)
+    # `:for_clash_check` joins the now-multitenant `teaching_context` — pass the tenant.
+    |> list_for_clash_check!(day, period_id, teacher_user_id, excluded_ids, tenant: ws_id)
     |> List.first()
     |> case do
       nil ->

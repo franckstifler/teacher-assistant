@@ -38,9 +38,9 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "M1",
         position: 1,
-        progression_plan_id: plan.id,
-        workspace_id: plan.workspace_id
+        progression_plan_id: plan.id
       })
+      |> Ash.Changeset.set_tenant(plan.workspace_id)
       |> Ash.create(authorize?: false)
 
     assert m.title == "M1"
@@ -63,7 +63,11 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, bucket} = Curriculum.ensure_default_module(plan)
 
     assert :ok = Curriculum.delete_module(m)
-    [reloaded] = Curriculum.list_progression_modules!(plan.id) |> Enum.filter(& &1.default?)
+
+    [reloaded] =
+      Curriculum.list_progression_modules!(plan.id, tenant: plan.workspace_id)
+      |> Enum.filter(& &1.default?)
+
     assert reloaded.id == bucket.id
     assert length(reloaded.entries) == 1
     assert {:error, :default_bucket} = Curriculum.delete_module(bucket)
@@ -73,7 +77,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
     {:ok, m2} = Curriculum.create_module(plan, %{title: "M2"})
     {:ok, _} = Curriculum.add_progression_entry(m1, %{lesson_title: "L1", entry_type: :lesson})
-    mods = Curriculum.list_progression_modules!(plan.id)
+    mods = Curriculum.list_progression_modules!(plan.id, tenant: plan.workspace_id)
     assert Enum.map(mods, & &1.title) == ["M1", "M2"]
     assert [%{lesson_title: "L1"}] = hd(mods).entries
     assert m2.id in Enum.map(mods, & &1.id)
@@ -85,6 +89,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, m} =
       m
       |> Ash.Changeset.for_update(:update, %{credit_hours: Decimal.new("11")})
+      |> Ash.Changeset.set_tenant(m.workspace_id)
       |> Ash.update(authorize?: false)
 
     assert Decimal.equal?(m.credit_hours, Decimal.new("11"))
@@ -109,7 +114,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     {:ok, e1} = Curriculum.add_progression_entry(m, %{lesson_title: "L1", entry_type: :lesson})
     {:ok, m} = Curriculum.assign_module_sequence(m, seq.id)
     assert m.sequence_id == seq.id
-    {:ok, e1} = Curriculum.get_progression_entry(e1.id)
+    {:ok, e1} = Curriculum.get_progression_entry(e1.id, plan)
     assert e1.sequence_id == seq.id
   end
 

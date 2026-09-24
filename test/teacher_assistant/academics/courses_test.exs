@@ -47,10 +47,12 @@ defmodule TeacherAssistant.Academics.CoursesTest do
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
     assert Enum.sort([tc_maco.id, tc_menu.id]) ==
-             Enum.sort(Enum.map(Curriculum.contexts_of_course!(course.id), & &1.id))
+             Enum.sort(
+               Enum.map(Curriculum.contexts_of_course!(course.id, tenant: ws.id), & &1.id)
+             )
 
     assert [_plan] =
-             Curriculum.list_progression_plans!(ws.id)
+             Curriculum.list_progression_plans!(tenant: ws.id)
              |> Enum.filter(&(&1.combined_course_id == course.id))
   end
 
@@ -86,7 +88,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
       Enrollment.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
 
     {:ok, tc_third} = Curriculum.assign_teacher(cg_third, head, %{subject: "Mathématiques"})
-    tc_maco = Curriculum.get_teaching_context(tc_maco.id) |> elem(1)
+    tc_maco = Curriculum.get_teaching_context(tc_maco.id, ctx.ws) |> elem(1)
 
     assert {:error, :already_combined} = Curriculum.combine_course([tc_maco, tc_third])
     refute cg_maco == nil
@@ -103,20 +105,20 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
       assert :ok = Curriculum.split_course(course)
 
-      assert Curriculum.get_teaching_context(tc_maco.id)
+      assert Curriculum.get_teaching_context(tc_maco.id, ws)
              |> elem(1)
              |> Map.get(:combined_course_id) ==
                nil
 
-      assert Curriculum.get_teaching_context(tc_menu.id)
+      assert Curriculum.get_teaching_context(tc_menu.id, ws)
              |> elem(1)
              |> Map.get(:combined_course_id) ==
                nil
 
-      assert {:error, _} = Curriculum.get_course(course.id)
+      assert {:error, _} = Curriculum.get_course(course.id, ws)
 
       assert [] =
-               Curriculum.list_progression_plans!(ws.id)
+               Curriculum.list_progression_plans!(tenant: ws.id)
                |> Enum.filter(&(&1.combined_course_id == course.id))
     end
   end
@@ -152,7 +154,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    unit_plans = Curriculum.unit_plans!(ws.id)
+    unit_plans = Curriculum.unit_plans!(tenant: ws.id)
 
     assert length(unit_plans) == 2
     assert Enum.count(unit_plans, &(&1.combined_course_id == course.id)) == 1

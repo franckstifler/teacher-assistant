@@ -632,7 +632,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          course_id when not is_nil(course_id) <- tc.combined_course_id,
-         {:ok, course} <- Curriculum.get_course(course_id) do
+         {:ok, course} <- Curriculum.get_course(course_id, tc) do
       :ok = Curriculum.split_course(course)
 
       {:noreply,

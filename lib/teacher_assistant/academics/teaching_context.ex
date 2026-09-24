@@ -36,7 +36,6 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         :subsystem,
         :weekly_hours,
         :coefficient,
-        :workspace_id,
         :academic_year_id,
         :teacher_user_id,
         :class_group_id
@@ -60,28 +59,23 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       prepare build(load: [:teacher, :combined_course], sort: [subject: :asc])
     end
 
-    # Owner-scoped single-context lookup (IDOR guard): the context must belong
-    # to the given workspace. Backs `Curriculum.fetch_owned_teaching_context/2`.
+    # Owner-scoped single-context lookup (IDOR guard): tenant scoping
+    # (attribute multitenancy) already restricts this to the given workspace.
+    # Backs `Curriculum.fetch_owned_teaching_context/2`.
     read :owned do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(id == ^arg(:id) and workspace_id == ^arg(:workspace_id))
+      filter expr(id == ^arg(:id))
     end
 
-    # School-scoped single-context lookup: the context must belong to the
-    # workspace AND be assigned to the given teacher (a colleague may not open
-    # another teacher's roster by id). Backs the school clause of
-    # `Curriculum.fetch_assigned_teaching_context/2`.
+    # School-scoped single-context lookup: tenant scoping already restricts
+    # this to the workspace; the context must additionally be assigned to the
+    # given teacher (a colleague may not open another teacher's roster by
+    # id). Backs the school clause of `Curriculum.fetch_assigned_teaching_context/2`.
     read :assigned_in_school do
       argument :id, :uuid, allow_nil?: false
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :teacher_user_id, :uuid, allow_nil?: false
 
-      filter expr(
-               id == ^arg(:id) and
-                 workspace_id == ^arg(:workspace_id) and
-                 teacher_user_id == ^arg(:teacher_user_id)
-             )
+      filter expr(id == ^arg(:id) and teacher_user_id == ^arg(:teacher_user_id))
     end
 
     read :for_combined_course do
@@ -90,13 +84,11 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     end
 
     read :for_workspace_year_teacher do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false
       argument :teacher_user_id, :uuid, allow_nil?: false
 
       filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 academic_year_id == ^arg(:academic_year_id) and
+               academic_year_id == ^arg(:academic_year_id) and
                  teacher_user_id == ^arg(:teacher_user_id)
              )
 
@@ -104,15 +96,13 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     end
 
     read :combinable_siblings do
-      argument :workspace_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false
       argument :subject, :string, allow_nil?: false
       argument :teacher_user_id, :uuid, allow_nil?: true
       argument :exclude_id, :uuid, allow_nil?: false
 
       filter expr(
-               workspace_id == ^arg(:workspace_id) and
-                 academic_year_id == ^arg(:academic_year_id) and
+               academic_year_id == ^arg(:academic_year_id) and
                  subject == ^arg(:subject) and
                  teacher_user_id == ^arg(:teacher_user_id) and
                  is_nil(combined_course_id) and
@@ -127,6 +117,11 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

@@ -18,13 +18,13 @@ defmodule TeacherAssistant.Academics.Subject do
     defaults [
       :read,
       :destroy,
-      create: [:name, :code, :default_coefficient, :category, :position, :active?, :workspace_id],
+      create: [:name, :code, :default_coefficient, :category, :position, :active?],
       update: [:name, :code, :default_coefficient, :category, :position, :active?]
     ]
 
+    # Tenant scoping (attribute multitenancy) already restricts this to the
+    # given workspace; no `workspace_id` argument is needed any more.
     read :for_workspace do
-      argument :workspace_id, :uuid, allow_nil?: false
-      filter expr(workspace_id == ^arg(:workspace_id))
       prepare build(sort: [:position, :name])
     end
 
@@ -38,6 +38,11 @@ defmodule TeacherAssistant.Academics.Subject do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do

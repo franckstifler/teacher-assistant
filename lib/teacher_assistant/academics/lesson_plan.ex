@@ -28,8 +28,7 @@ defmodule TeacherAssistant.Academics.LessonPlan do
         :situation_probleme,
         :objectifs,
         :supports,
-        :prerequis,
-        :workspace_id
+        :prerequis
       ],
       update: [
         :lesson_date,
@@ -55,6 +54,11 @@ defmodule TeacherAssistant.Academics.LessonPlan do
     policy always() do
       authorize_if always()
     end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
   end
 
   attributes do
