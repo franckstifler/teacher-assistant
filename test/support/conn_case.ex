@@ -28,6 +28,7 @@ defmodule TeacherAssistantWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import TeacherAssistantWeb.ConnCase
+      import TeacherAssistant.DataCase, only: [school_scope: 2, assert_forbidden: 1]
     end
   end
 
@@ -44,11 +45,15 @@ defmodule TeacherAssistantWeb.ConnCase do
 
   @doc """
   Logs in a fresh user as the head of a fresh, setup-complete school and puts
-  the school in the session. `workspace` is the school; `year` its active year.
+  the school in the session. The school is verified unless the test is tagged
+  `@tag verified: false`. Returns `workspace`, `actor` (the head), `year` and
+  the head's `scope`.
   """
-  def register_and_log_in_user(%{conn: conn}) do
-    %{workspace: school, head_user: head, year: year} =
-      TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+  def register_and_log_in_user(%{conn: conn} = context) do
+    %{workspace: school, head_user: head, year: year, scope: scope} =
+      TeacherAssistant.TeacherFixtures.setup_complete_school_fixture(%{
+        verified: Map.get(context, :verified, true)
+      })
 
     conn =
       conn
@@ -56,7 +61,7 @@ defmodule TeacherAssistantWeb.ConnCase do
       |> Plug.Conn.put_session(:user_id, head.id)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    {:ok, conn: conn, workspace: school, actor: head, year: year}
+    {:ok, conn: conn, workspace: school, actor: head, year: year, scope: scope}
   end
 
   def update_nested_form(view, form_selector, trigger_element, position \\ "end") do

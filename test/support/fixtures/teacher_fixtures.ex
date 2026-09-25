@@ -1,5 +1,6 @@
 defmodule TeacherAssistant.TeacherFixtures do
-  alias TeacherAssistant.{Accounts, Organization}
+  alias TeacherAssistant.{Accounts, Organization, Scope}
+  import TeacherAssistant.DataCase, only: [school_scope: 2]
 
   def user_fixture(attrs \\ %{}) do
     email = Map.get(attrs, :email, "teacher-#{System.unique_integer([:positive])}@example.com")
@@ -20,21 +21,19 @@ defmodule TeacherAssistant.TeacherFixtures do
     admin
   end
 
+  @doc "A new school created by `attrs[:head_user]` (or a fresh user), with the head's scope."
   def school_fixture(attrs \\ %{}) do
     user = attrs[:head_user] || user_fixture()
     name = attrs[:name] || "Lycée #{System.unique_integer([:positive])}"
     {:ok, workspace} = Organization.create_school(user, %{name: name})
-    %{workspace: workspace, head_user: user}
+    %{workspace: workspace, head_user: user, scope: school_scope(user, workspace)}
   end
 
   @doc """
-  Creates an active academic year for `workspace` and seeds its starter
-  classes, so `TeacherAssistant.Scope.setup_complete?/1` is true for it.
-  Requires `workspace` to already have a `SchoolProfile` (as
-  `Organization.create_school/2` sets up) — `Seeding.seed_starter_classes/2`
-  reads it to pick the class template.
+  Creates an active academic year for the scope's school, builds its default
+  calendar and seeds its starter classes, so `Scope.setup_complete?/1` is true.
   """
-  def complete_school_setup!(workspace, attrs \\ %{}) do
+  def complete_school_setup!(%Scope{current_workspace: workspace}, attrs \\ %{}) do
     {:ok, year} =
       Organization.create_academic_year(workspace, %{
         name: attrs[:name] || "Année de référence",
@@ -49,17 +48,27 @@ defmodule TeacherAssistant.TeacherFixtures do
     year
   end
 
-  @doc """
-  A school whose setup is already complete (active academic year + at least
-  one class group), so it never hits the `:require_school_setup` gate.
-  """
-  def setup_complete_school_fixture(attrs \\ %{}) do
-    %{workspace: ws, head_user: head} = school_fixture(attrs)
-    year = complete_school_setup!(ws)
-    %{workspace: ws, head_user: head, year: year}
+  @doc "Verifies the scope's school as a fresh operator (the only role allowed to)."
+  def verify_school!(%Scope{current_workspace: workspace}) do
+    operator = admin_user_fixture()
+    {:ok, profile} = Accounts.fetch_school_profile(workspace)
+    {:ok, _} = Accounts.verify_school(profile, operator.id)
+    :ok
   end
 
-  def membership_fixture(workspace, attrs \\ %{}) do
+  @doc """
+  A school whose setup is complete (active year + classes) and, unless
+  `attrs[:verified]` is `false`, verified — ready to operate. `scope` is the
+  head's scope, built after setup so it carries the year and the status.
+  """
+  def setup_complete_school_fixture(attrs \\ %{}) do
+    %{workspace: ws, head_user: head, scope: scope} = school_fixture(attrs)
+    year = complete_school_setup!(scope)
+    if Map.get(attrs, :verified, true), do: verify_school!(scope)
+    %{workspace: ws, head_user: head, year: year, scope: school_scope(head, ws)}
+  end
+
+  def membership_fixture(%Scope{current_workspace: workspace}, attrs \\ %{}) do
     user = attrs[:user] || user_fixture()
     roles = attrs[:roles] || [:teacher]
 
@@ -77,12 +86,22 @@ defmodule TeacherAssistant.TeacherFixtures do
     m
   end
 
+  @doc "A fresh member of the scope's school with `attrs[:roles]` (default `[:teacher]`); returns their scope."
+  def member_scope_fixture(%Scope{current_workspace: workspace} = scope, attrs \\ %{}) do
+    user = attrs[:user] || user_fixture()
+    membership_fixture(scope, Map.put(attrs, :user, user))
+    school_scope(user, workspace)
+  end
+
   @doc """
-  Invites, accepts and assigns a plain `:teacher` member to a class of
-  `school`. When `attrs[:teacher]` is already a member of `workspace`, the
-  existing membership is reused instead of inviting them again.
+  Invites, accepts and assigns a plain `:teacher` member to a class of the
+  scope's school (the scope acts as the inviting head). Reuses an existing
+  membership when `attrs[:teacher]` already belongs to the school.
   """
-  def school_teacher_fixture(workspace, head, attrs \\ %{}) do
+  def school_teacher_fixture(
+        %Scope{current_workspace: workspace, current_user: head},
+        attrs \\ %{}
+      ) do
     teacher = attrs[:teacher] || user_fixture()
 
     membership =
@@ -113,21 +132,24 @@ defmodule TeacherAssistant.TeacherFixtures do
         subject: attrs[:subject] || "Maths"
       })
 
-    %{teacher: teacher, membership: membership, class_group: class_group, teaching_context: tc}
+    %{
+      teacher: teacher,
+      membership: membership,
+      class_group: class_group,
+      teaching_context: tc,
+      scope: school_scope(teacher, workspace)
+    }
   end
 
   @doc """
-  A teaching context on `workspace`/`year` for a real member teacher and a real
-  class group, via `Curriculum.assign_teacher/3`.
+  A teaching context on the scope's school and `year` for a real member
+  teacher and a real class group, via `Curriculum.assign_teacher/3`.
   """
-  def assigned_context_fixture(workspace, year, attrs \\ %{}) do
-    head =
-      case Accounts.fetch_school_profile(workspace) do
-        {:ok, profile} ->
-          {:ok, u} = Accounts.get_user(profile.owner_user_id)
-          u
-      end
-
+  def assigned_context_fixture(
+        %Scope{current_workspace: workspace, current_user: head},
+        year,
+        attrs \\ %{}
+      ) do
     teacher = attrs[:teacher] || member_teacher(workspace, head)
     class_group = attrs[:class_group] || new_class_group(workspace, year, attrs)
 

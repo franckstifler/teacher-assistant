@@ -11,9 +11,9 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
   end
 
   describe "with a linked class group" do
-    setup %{workspace: ws, year: year, actor: head} do
+    setup %{workspace: ws, year: year, actor: head, scope: scope} do
       tc =
-        TeacherFixtures.assigned_context_fixture(ws, year, %{
+        TeacherFixtures.assigned_context_fixture(scope, year, %{
           subject: "Maths",
           level: "3ème",
           teacher: head
@@ -37,12 +37,12 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
 
     test "empty roster shows a strong empty state", %{
       conn: conn,
-      workspace: ws,
       year: year,
-      actor: head
+      actor: head,
+      scope: scope
     } do
       ctx2 =
-        TeacherFixtures.assigned_context_fixture(ws, year, %{
+        TeacherFixtures.assigned_context_fixture(scope, year, %{
           subject: "PCT",
           level: "3ème",
           teacher: head

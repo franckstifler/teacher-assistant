@@ -8,14 +8,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
 
-  setup %{workspace: ws, year: year, actor: head} do
+  setup %{workspace: ws, year: year, actor: head, scope: scope} do
     {:ok, p} = Accounts.fetch_school_profile(ws)
     {:ok, _} = Accounts.verify_school(p, head.id)
 
     seq = Organization.list_sequences(year) |> List.first()
 
     ctx =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "3ème",
         teacher: head

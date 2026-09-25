@@ -4,11 +4,11 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year} =
+    %{workspace: ws, head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     ctx =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "6ème",
         teacher: head
@@ -106,11 +106,11 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
   end
 
   test "rejects a teaching context owned by another workspace", %{ws: ws} do
-    %{workspace: other_ws, head_user: other_head, year: other_year} =
+    %{head_user: other_head, year: other_year, scope: other_scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     other_ctx =
-      TeacherFixtures.assigned_context_fixture(other_ws, other_year, %{
+      TeacherFixtures.assigned_context_fixture(other_scope, other_year, %{
         subject: "Physics",
         level: "6ème",
         teacher: other_head

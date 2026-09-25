@@ -5,13 +5,13 @@ defmodule TeacherAssistant.Academics.LessonPlanTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year} =
+    %{workspace: ws, head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
 
     ctx =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "6ème",
         teacher: head,

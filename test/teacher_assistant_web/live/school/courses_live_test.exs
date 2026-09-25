@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Cours"})
-    year = TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+    year = TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "3e M2", level: "3ème"})
 
     teacher = TeacherAssistant.TeacherFixtures.user_fixture()

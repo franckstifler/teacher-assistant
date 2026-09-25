@@ -236,10 +236,12 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
 
   describe "classes step authorization (non-head member)" do
     setup do
-      %{workspace: ws, head_user: head, year: year} = setup_complete_school_fixture()
+      %{workspace: ws, head_user: head, year: year, scope: scope} =
+        setup_complete_school_fixture()
+
       other = user_fixture(%{})
 
-      TeacherAssistant.TeacherFixtures.membership_fixture(ws, %{user: other, roles: [:teacher]})
+      TeacherAssistant.TeacherFixtures.membership_fixture(scope, %{user: other, roles: [:teacher]})
 
       conn =
         Phoenix.ConnTest.build_conn()

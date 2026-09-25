@@ -3,9 +3,9 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
 
-  setup %{workspace: school, year: year, actor: head} do
+  setup %{workspace: school, year: year, actor: head, scope: scope} do
     ctx =
-      TeacherFixtures.assigned_context_fixture(school, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "3ème",
         teacher: head

@@ -17,6 +17,13 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     %{a: a, b: b, year_a: year_a}
   end
 
+  # The school's head's scope — for fixtures that now need a `%Scope{}`.
+  defp scope_of(school) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
+    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    school_scope(head, school)
+  end
+
   # One clause per resource; returns a row created under `school`.
   defp row_for(A.AcademicYear, school, _ctx), do: Organization.current_academic_year(school)
 
@@ -57,18 +64,22 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(A.TeachingContext, school, _ctx),
     do:
-      TeacherFixtures.assigned_context_fixture(school, Organization.current_academic_year(school))
+      TeacherFixtures.assigned_context_fixture(
+        scope_of(school),
+        Organization.current_academic_year(school)
+      )
 
   defp row_for(A.CombinedCourse, school, _ctx) do
     year = Organization.current_academic_year(school)
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
     {:ok, teacher} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    scope = school_scope(teacher, school)
 
     tc1 =
-      TeacherFixtures.assigned_context_fixture(school, year, %{teacher: teacher, subject: "Maths"})
+      TeacherFixtures.assigned_context_fixture(scope, year, %{teacher: teacher, subject: "Maths"})
 
     tc2 =
-      TeacherFixtures.assigned_context_fixture(school, year, %{teacher: teacher, subject: "Maths"})
+      TeacherFixtures.assigned_context_fixture(scope, year, %{teacher: teacher, subject: "Maths"})
 
     {:ok, course} = TeacherAssistant.Curriculum.combine_course([tc1, tc2])
     course

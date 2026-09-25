@@ -4,14 +4,14 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year} =
+    %{workspace: ws, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     ctx =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "6ème",
-        teacher: head
+        teacher: scope.current_user
       })
 
     {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})

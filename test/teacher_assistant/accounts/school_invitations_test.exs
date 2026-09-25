@@ -104,8 +104,8 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
   end
 
   test "update_member_status changes a member's employment type" do
-    %{workspace: ws} = TeacherFixtures.school_fixture()
-    m = TeacherFixtures.membership_fixture(ws, roles: [:teacher])
+    %{scope: scope} = TeacherFixtures.school_fixture()
+    m = TeacherFixtures.membership_fixture(scope, roles: [:teacher])
     {:ok, m2} = Accounts.update_member_status(m, :titulaire)
     assert m2.status == :titulaire
   end

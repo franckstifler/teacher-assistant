@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   test "a member sees the school shell after selecting the school", %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Central"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#school-dashboard")
@@ -114,7 +114,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   describe "verification banner" do
     setup %{conn: conn, actor: head} do
       {:ok, school} = Organization.create_school(head, %{name: "Lycée Vérif"})
-      TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+      TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
       conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
       %{conn: conn, school: school, head: head}
     end
@@ -161,7 +161,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   test "the shell shows no personal navigation", %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Nav"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#school-nav")

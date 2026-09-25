@@ -6,24 +6,36 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
   alias TeacherAssistant.Curriculum
 
   setup do
-    %{workspace: ws, head_user: head, year: year} =
+    %{workspace: ws, head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    %{head: head, ws: ws, year: year, cg: cg}
+    %{head: head, ws: ws, year: year, cg: cg, scope: scope}
   end
 
-  test "two teachers can hold the same subject/level on different classes", %{ws: ws, year: year} do
-    ctx1 = TeacherFixtures.assigned_context_fixture(ws, year, %{subject: "Maths", level: "6ème"})
-    ctx2 = TeacherFixtures.assigned_context_fixture(ws, year, %{subject: "Maths", level: "6ème"})
+  test "two teachers can hold the same subject/level on different classes", %{
+    year: year,
+    scope: scope
+  } do
+    ctx1 =
+      TeacherFixtures.assigned_context_fixture(scope, year, %{subject: "Maths", level: "6ème"})
+
+    ctx2 =
+      TeacherFixtures.assigned_context_fixture(scope, year, %{subject: "Maths", level: "6ème"})
 
     assert ctx1.class_group_id != ctx2.class_group_id
     assert ctx1.teacher_user_id != ctx2.teacher_user_id
   end
 
-  test "one teacher per subject per class", %{ws: ws, year: year, cg: cg, head: head} do
+  test "one teacher per subject per class", %{
+    ws: ws,
+    year: year,
+    cg: cg,
+    head: head,
+    scope: scope
+  } do
     _ctx1 =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         class_group: cg,
         teacher: head,
         subject: "Maths"

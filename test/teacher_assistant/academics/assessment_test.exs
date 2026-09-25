@@ -6,29 +6,29 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year} =
+    %{workspace: ws, head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     seq = Organization.list_sequences(year) |> List.first()
 
     ctx =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "3ème",
         teacher: head
       })
 
     {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    %{ws: ws, year: year, ctx: ctx, cg: cg, seq: seq}
+    %{ws: ws, year: year, ctx: ctx, cg: cg, seq: seq, scope: scope}
   end
 
   test "creates a context already assigned to the given class group", %{
-    ws: ws,
     year: year,
-    cg: cg
+    cg: cg,
+    scope: scope
   } do
     ctx2 =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Physique",
         level: "3ème",
         class_group: cg

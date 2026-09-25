@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     # Setup-complete (active year + a class) so /school/settings isn't gated
     # to the wizard. Tests below that exercise year creation/activation add
     # their own additional years on top of this one.
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school}
   end

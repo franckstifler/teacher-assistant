@@ -38,6 +38,22 @@ defmodule TeacherAssistant.DataCase do
   end
 
   @doc """
+  The real `Workspaces.scope_for/3` scope of `user` in `workspace` — the scope a
+  signed-in member gets. Raises when `user` is not an active member.
+  """
+  def school_scope(user, %{id: workspace_id}) do
+    {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, workspace_id)
+    scope
+  end
+
+  @doc "Asserts `result` is `{:error, %Ash.Error.Forbidden{}}`."
+  def assert_forbidden({:error, %Ash.Error.Forbidden{}}), do: :ok
+
+  def assert_forbidden(other),
+    do:
+      ExUnit.Assertions.flunk("expected {:error, %Ash.Error.Forbidden{}}, got: #{inspect(other)}")
+
+  @doc """
   A helper that transforms changeset errors into a map of messages.
 
       assert {:error, changeset} = Accounts.create_user(%{password: "short"})

@@ -4,11 +4,11 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year} =
+    %{workspace: ws, head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     ctx =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "Maths",
         level: "6ème",
         teacher: head
@@ -26,7 +26,7 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
       })
 
     {:ok, lp} = Curriculum.ensure_lesson_plan(entry, ctx)
-    %{ws: ws, head: head, year: year, lp: lp}
+    %{ws: ws, head: head, year: year, lp: lp, scope: scope}
   end
 
   test "add appends steps in order", %{lp: lp} do
@@ -73,14 +73,14 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
 
   test "fetch_owned_lesson_step rejects a step from another plan", %{
     lp: lp,
-    ws: ws,
     head: head,
-    year: year
+    year: year,
+    scope: scope
   } do
     {:ok, s} = Curriculum.add_lesson_step(lp, %{etape: "X"})
 
     ctx2 =
-      TeacherFixtures.assigned_context_fixture(ws, year, %{
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
         subject: "PCT",
         level: "6ème",
         teacher: head
