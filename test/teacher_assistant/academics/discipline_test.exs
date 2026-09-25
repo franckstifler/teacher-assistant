@@ -23,17 +23,17 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg_other} = Enrollment.create_class_group(ws, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg_other} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
 
-    {:ok, _student1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Bilal", sex: :m})
-    {:ok, _other_student} = Enrollment.add_student(cg_other, %{full_name: "Zara", sex: :f})
+    {:ok, _student1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student2} = Enrollment.add_student(scope, cg, %{full_name: "Bilal", sex: :m})
+    {:ok, _other_student} = Enrollment.add_student(scope, cg_other, %{full_name: "Zara", sex: :f})
 
-    roster = Enrollment.list_roster(cg)
+    roster = Enrollment.list_roster(scope, cg)
     [%{enrollment: enrollment1}, %{enrollment: enrollment2}] = roster
 
-    other_roster = Enrollment.list_roster(cg_other)
+    other_roster = Enrollment.list_roster(scope, cg_other)
     [%{enrollment: other_enrollment}] = other_roster
 
     :ok = Organization.build_default_calendar(year)

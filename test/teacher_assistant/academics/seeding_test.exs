@@ -24,19 +24,19 @@ defmodule TeacherAssistant.Academics.SeedingTest do
         active: true
       })
 
-    %{ws: ws, year: year}
+    %{ws: ws, year: year, scope: school_scope(head, ws)}
   end
 
-  test "seeds starter classes from the template", %{ws: ws, year: year} do
-    {:ok, n} = Seeding.seed_starter_classes(ws, year)
+  test "seeds starter classes from the template", %{year: year, scope: scope} do
+    {:ok, n} = Seeding.seed_starter_classes(scope, year)
     assert n > 0
-    labels = ws |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+    labels = scope |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
     assert "6ème" in labels
     assert "2nde C" in labels
   end
 
-  test "is idempotent once classes exist", %{ws: ws, year: year} do
-    {:ok, _} = Seeding.seed_starter_classes(ws, year)
-    assert {:ok, 0} = Seeding.seed_starter_classes(ws, year)
+  test "is idempotent once classes exist", %{ws: _ws, year: year, scope: scope} do
+    {:ok, _} = Seeding.seed_starter_classes(scope, year)
+    assert {:ok, 0} = Seeding.seed_starter_classes(scope, year)
   end
 end

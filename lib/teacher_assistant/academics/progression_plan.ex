@@ -136,20 +136,22 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         ctx = input.arguments.teaching_context
         rows = input.arguments.rows
-        tenant = input.tenant
 
         with {:ok, plan} <-
                __MODULE__
-               |> Ash.Changeset.for_create(:create, %{
-                 title: input.arguments.title,
-                 status: :draft,
-                 teaching_context_id: ctx.id,
-                 academic_year_id: ctx.academic_year_id
-               })
-               |> Ash.Changeset.set_tenant(tenant)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   title: input.arguments.title,
+                   status: :draft,
+                   teaching_context_id: ctx.id,
+                   academic_year_id: ctx.academic_year_id
+                 },
+                 scope: scope
+               )
                |> Ash.create() do
           groups = TeacherAssistant.Academics.ModuleGrouping.group(index_rows(rows))
           rows_by_index = rows |> Enum.with_index() |> Map.new(fn {r, i} -> {i, r} end)
@@ -157,7 +159,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
           groups
           |> Enum.with_index(1)
           |> Enum.reduce_while(:ok, fn {%{key: key, entry_ids: row_indexes}, mod_pos}, :ok ->
-            case create_import_module(plan, key, mod_pos, tenant) do
+            case create_import_module(plan, key, mod_pos, scope) do
               {:ok, module} ->
                 row_indexes
                 |> Enum.with_index(1)
@@ -177,8 +179,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
                     |> Map.put(:position, entry_pos)
 
                   case ProgressionEntry
-                       |> Ash.Changeset.for_create(:create, entry_attrs)
-                       |> Ash.Changeset.set_tenant(tenant)
+                       |> Ash.Changeset.for_create(:create, entry_attrs, scope: scope)
                        |> Ash.create() do
                     {:ok, _entry} -> {:cont, :ok}
                     {:error, reason} -> {:halt, {:error, reason}}
@@ -206,7 +207,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     # renumbering module positions and moving/renumbering entries, all in one
     # transaction (`transaction? true`). Layout validation (the id-sets must
     # match the plan's modules/entries exactly) lives in
-    # `Curriculum.apply_layout/2`, which returns `{:error, :invalid_layout}`
+    # `Curriculum.apply_layout/3`, which returns `{:error, :invalid_layout}`
     # before invoking this action.
     action :apply_layout, :atom do
       argument :plan, :struct, allow_nil?: false, constraints: [instance_of: __MODULE__]
@@ -214,42 +215,41 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         plan_id = input.arguments.plan.id
         layout = input.arguments.layout
-        tenant = input.tenant
 
         module_by_id =
           ProgressionModule
           |> Ash.Query.filter(progression_plan_id == ^plan_id)
-          |> Ash.Query.set_tenant(tenant)
-          |> Ash.read!()
+          |> Ash.read!(scope: scope)
           |> Map.new(&{&1.id, &1})
 
         entry_by_id =
           ProgressionEntry
           |> Ash.Query.filter(progression_plan_id == ^plan_id)
-          |> Ash.Query.set_tenant(tenant)
-          |> Ash.read!()
+          |> Ash.read!(scope: scope)
           |> Map.new(&{&1.id, &1})
 
         layout
         |> Enum.with_index(1)
         |> Enum.reduce_while(:ok, fn {%{"module_id" => mid, "entry_ids" => eids}, mpos}, :ok ->
           case module_by_id[mid]
-               |> Ash.Changeset.for_update(:update, %{position: mpos})
-               |> Ash.Changeset.set_tenant(tenant)
+               |> Ash.Changeset.for_update(:update, %{position: mpos}, scope: scope)
                |> Ash.update() do
             {:ok, _module} ->
               eids
               |> Enum.with_index(1)
               |> Enum.reduce_while(:ok, fn {eid, epos}, :ok ->
                 case entry_by_id[eid]
-                     |> Ash.Changeset.for_update(:update, %{
-                       progression_module_id: mid,
-                       position: epos
-                     })
-                     |> Ash.Changeset.set_tenant(tenant)
+                     |> Ash.Changeset.for_update(
+                       :update,
+                       %{
+                         progression_module_id: mid,
+                         position: epos
+                       },
+                       scope: scope
+                     )
                      |> Ash.update() do
                   {:ok, _entry} -> {:cont, :ok}
                   {:error, reason} -> {:halt, {:error, reason}}
@@ -337,25 +337,31 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     |> Enum.map(fn {r, i} -> %{id: i, module: Map.get(r, :module), position: i} end)
   end
 
-  defp create_import_module(plan, :default, pos, tenant) do
+  defp create_import_module(plan, :default, pos, scope) do
     ProgressionModule
-    |> Ash.Changeset.for_create(:create_default_bucket, %{
-      title: "Général",
-      position: pos,
-      progression_plan_id: plan.id
-    })
-    |> Ash.Changeset.set_tenant(tenant)
+    |> Ash.Changeset.for_create(
+      :create_default_bucket,
+      %{
+        title: "Général",
+        position: pos,
+        progression_plan_id: plan.id
+      },
+      scope: scope
+    )
     |> Ash.create()
   end
 
-  defp create_import_module(plan, title, pos, tenant) when is_binary(title) do
+  defp create_import_module(plan, title, pos, scope) when is_binary(title) do
     ProgressionModule
-    |> Ash.Changeset.for_create(:create, %{
-      title: title,
-      position: pos,
-      progression_plan_id: plan.id
-    })
-    |> Ash.Changeset.set_tenant(tenant)
+    |> Ash.Changeset.for_create(
+      :create,
+      %{
+        title: title,
+        position: pos,
+        progression_plan_id: plan.id
+      },
+      scope: scope
+    )
     |> Ash.create()
   end
 end

@@ -8,16 +8,16 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     ws = scope.current_workspace
 
     with true <- not is_nil(ws),
-         {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope),
-         {:ok, class_group} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
-      {:ok, load(socket, ws, ctx, class_group)}
+         {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(scope, ctx_id),
+         {:ok, class_group} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
+      {:ok, load(socket, scope, ws, ctx, class_group)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  defp load(socket, ws, ctx, class_group) do
-    students = Enrollment.list_students(class_group)
+  defp load(socket, scope, ws, ctx, class_group) do
+    students = Enrollment.list_students(scope, class_group)
 
     socket
     |> assign(:ws, ws)

@@ -18,7 +18,8 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} =
+      Enrollment.create_class_group(school_scope(head, ws), year, %{label: "6e A", level: "6ème"})
 
     %{
       ws: ws,

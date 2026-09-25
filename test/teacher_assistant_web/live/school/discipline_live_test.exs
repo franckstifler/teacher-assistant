@@ -22,10 +22,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
 
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     sequence = Organization.current_sequence(year, ~D[2025-09-08])
 
@@ -240,7 +240,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -292,6 +292,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+    other_scope = school_scope(other, os)
 
     {:ok, oy} =
       Organization.create_academic_year(os, %{
@@ -301,7 +302,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/discipline")

@@ -9,6 +9,7 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -18,7 +19,7 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
         active: true
       })
 
-    %{head: head, ws: ws, year: year}
+    %{head: head, ws: ws, year: year, scope: scope}
   end
 
   test "creates a combined course", %{head: head, ws: ws, year: year} do
@@ -40,13 +41,15 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
   test "Curriculum.combine_course/1 rejects contexts from two different schools", %{
     head: head,
     ws: ws,
-    year: year
+    year: year,
+    scope: scope
   } do
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "1ère A", level: "1ère"})
-    {:ok, tc_a} = Curriculum.assign_teacher(cg, head, %{subject: "Mathématiques"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "1ère A", level: "1ère"})
+    {:ok, tc_a} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
 
     other_head = TeacherFixtures.user_fixture()
     {:ok, other_ws} = Organization.create_school(other_head, %{name: "Autre lycée"})
+    other_scope = school_scope(other_head, other_ws)
 
     {:ok, other_year} =
       Organization.create_academic_year(other_ws, %{
@@ -57,11 +60,12 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
       })
 
     {:ok, other_cg} =
-      Enrollment.create_class_group(other_ws, other_year, %{label: "1ère A", level: "1ère"})
+      Enrollment.create_class_group(other_scope, other_year, %{label: "1ère A", level: "1ère"})
 
-    {:ok, tc_b} = Curriculum.assign_teacher(other_cg, other_head, %{subject: "Mathématiques"})
+    {:ok, tc_b} =
+      Curriculum.assign_teacher(other_scope, other_cg, other_head, %{subject: "Mathématiques"})
 
-    assert {:error, _} = Curriculum.combine_course([tc_a, tc_b])
+    assert {:error, _} = Curriculum.combine_course(scope, [tc_a, tc_b])
 
     assert CombinedCourse
            |> Ash.Query.for_read(:read)

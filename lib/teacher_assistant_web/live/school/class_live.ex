@@ -13,10 +13,10 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     scope = socket.assigns.current_scope
 
     with %{} <- scope.current_workspace,
-         {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       subject_options =
-        scope.current_workspace
+        scope
         |> Curriculum.list_subjects()
         |> Enum.filter(& &1.active?)
 
@@ -375,30 +375,31 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   defp load_roster(socket) do
     scope = socket.assigns.current_scope
     cg = socket.assigns.cg
-    assignments = Curriculum.list_assignments_for_class(cg)
+    assignments = Curriculum.list_assignments_for_class(scope, cg)
 
     assign(socket,
-      roster: Enrollment.list_roster(cg),
+      roster: Enrollment.list_roster(scope, cg),
       other_classes:
-        Enrollment.list_class_groups(scope.current_workspace, scope.current_academic_year)
+        Enrollment.list_class_groups(scope, scope.current_academic_year)
         |> Enum.reject(&(&1.id == cg.id)),
       assignments: assignments,
-      combinable_siblings: combinable_siblings_by_context(assignments, socket.assigns[:admin?]),
+      combinable_siblings:
+        combinable_siblings_by_context(scope, assignments, socket.assigns[:admin?]),
       members: Accounts.list_members(scope.current_workspace)
     )
   end
 
-  defp combinable_siblings_by_context(assignments, true) do
+  defp combinable_siblings_by_context(scope, assignments, true) do
     assignments
     |> Enum.reject(& &1.combined_course_id)
-    |> Map.new(&{&1.id, Curriculum.combinable_siblings(&1)})
+    |> Map.new(&{&1.id, Curriculum.combinable_siblings(scope, &1)})
   end
 
-  defp combinable_siblings_by_context(_assignments, _admin?), do: %{}
+  defp combinable_siblings_by_context(_scope, _assignments, _admin?), do: %{}
 
   def handle_event("enroll_new", %{"student" => params}, socket) do
     with true <- socket.assigns.manage? do
-      case Enrollment.enroll_new(socket.assigns.cg, %{
+      case Enrollment.enroll_new(socket.assigns.current_scope, socket.assigns.cg, %{
              full_name: params["full_name"],
              sex: parse_sex(params["sex"]),
              matricule: presence(params["matricule"]),
@@ -426,7 +427,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("search", %{"q" => q}, socket) do
     results =
       if socket.assigns.manage?,
-        do: Enrollment.search_students(socket.assigns.current_scope.current_workspace, q),
+        do: Enrollment.search_students(socket.assigns.current_scope, q),
         else: []
 
     {:noreply, assign(socket, search_results: results, q: q)}
@@ -435,7 +436,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("enroll_existing", %{"student-id" => sid}, socket) do
     with true <- socket.assigns.manage?,
          %{} = student <- Enum.find(socket.assigns.search_results, &(&1.id == sid)) do
-      case Enrollment.enroll_existing(socket.assigns.cg, student) do
+      case Enrollment.enroll_existing(socket.assigns.current_scope, socket.assigns.cg, student) do
         {:ok, _} ->
           {:noreply,
            socket
@@ -457,7 +458,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          true <- cgid != "",
          %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)),
          %{} = target <- Enum.find(socket.assigns.other_classes, &(&1.id == cgid)),
-         {:ok, _} <- Enrollment.transfer(e, target) do
+         {:ok, _} <- Enrollment.transfer(socket.assigns.current_scope, e, target) do
       {:noreply, socket |> put_flash(:info, gettext("Student transferred.")) |> load_roster()}
     else
       _ -> {:noreply, socket}
@@ -467,7 +468,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("withdraw", %{"enrollment-id" => eid}, socket) do
     with true <- socket.assigns.manage?,
          %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)) do
-      :ok = Enrollment.withdraw(e)
+      :ok = Enrollment.withdraw(socket.assigns.current_scope, e)
       {:noreply, socket |> put_flash(:info, gettext("Enrollment removed.")) |> load_roster()}
     else
       _ -> {:noreply, socket}
@@ -485,11 +486,16 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           s -> s.default_coefficient
         end
 
-      case Curriculum.assign_teacher(socket.assigns.cg, member.user, %{
-             subject: params["subject"],
-             weekly_hours: parse_hours(params["weekly_hours"]),
-             coefficient: coef
-           }) do
+      case Curriculum.assign_teacher(
+             socket.assigns.current_scope,
+             socket.assigns.cg,
+             member.user,
+             %{
+               subject: params["subject"],
+               weekly_hours: parse_hours(params["weekly_hours"]),
+               coefficient: coef
+             }
+           ) do
         {:ok, _} ->
           {:noreply, socket |> put_flash(:info, gettext("Teacher assigned.")) |> load_roster()}
 
@@ -512,7 +518,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("unassign", %{"context-id" => cid}, socket) do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
-      case Curriculum.remove_assignment(tc) do
+      case Curriculum.remove_assignment(socket.assigns.current_scope, tc) do
         :ok ->
           {:noreply, socket |> put_flash(:info, gettext("Assignment removed.")) |> load_roster()}
 
@@ -532,7 +538,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("set_coefficient", %{"context-id" => cid, "coefficient" => value}, socket) do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
-         {:ok, _} <- Curriculum.set_assignment_coefficient(tc, value) do
+         {:ok, _} <-
+           Curriculum.set_assignment_coefficient(socket.assigns.current_scope, tc, value) do
       {:noreply, socket |> put_flash(:info, gettext("Coefficient updated.")) |> load_roster()}
     else
       {:error, :invalid_coefficient} ->
@@ -547,7 +554,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == uid)),
-         {:ok, _} <- Curriculum.reassign_teacher(tc, member.user) do
+         {:ok, _} <- Curriculum.reassign_teacher(socket.assigns.current_scope, tc, member.user) do
       {:noreply, socket |> put_flash(:info, gettext("Teacher reassigned.")) |> load_roster()}
     else
       _ -> {:noreply, socket}
@@ -561,13 +568,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
       case target do
         :clear ->
-          {:ok, cg} = Enrollment.set_form_master(socket.assigns.cg, nil)
+          {:ok, cg} =
+            Enrollment.set_form_master(socket.assigns.current_scope, socket.assigns.cg, nil)
 
           {:noreply,
            socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master cleared."))}
 
         %{user_id: user_id} ->
-          {:ok, cg} = Enrollment.set_form_master(socket.assigns.cg, user_id)
+          {:ok, cg} =
+            Enrollment.set_form_master(socket.assigns.current_scope, socket.assigns.cg, user_id)
 
           {:noreply,
            socket |> assign(cg: cg) |> put_flash(:info, gettext("Form master assigned."))}
@@ -590,7 +599,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         |> Map.get(cid, [])
         |> Enum.filter(&(&1.id in sibling_ids))
 
-      case Curriculum.combine_course([tc | siblings]) do
+      case Curriculum.combine_course(socket.assigns.current_scope, [tc | siblings]) do
         {:ok, _course} ->
           {:noreply,
            socket
@@ -632,8 +641,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with true <- socket.assigns.admin?,
          %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          course_id when not is_nil(course_id) <- tc.combined_course_id,
-         {:ok, course} <- Curriculum.get_course(course_id, tc) do
-      :ok = Curriculum.split_course(course)
+         {:ok, course} <- Curriculum.get_course(socket.assigns.current_scope, course_id) do
+      :ok = Curriculum.split_course(socket.assigns.current_scope, course)
 
       {:noreply,
        socket

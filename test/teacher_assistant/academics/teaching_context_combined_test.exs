@@ -18,8 +18,11 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "1A", level: "1ère"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Mathématiques"})
+    {:ok, cg} =
+      Enrollment.create_class_group(school_scope(head, ws), year, %{label: "1A", level: "1ère"})
+
+    {:ok, tc} =
+      Curriculum.assign_teacher(school_scope(head, ws), cg, head, %{subject: "Mathématiques"})
 
     {:ok, course} =
       CombinedCourse

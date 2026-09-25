@@ -68,7 +68,11 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
           active: true
         })
 
-      {:ok, _cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+      {:ok, _cg} =
+        Enrollment.create_class_group(school_scope(user, school), year, %{
+          label: "6e A",
+          level: "6ème"
+        })
 
       conn =
         conn

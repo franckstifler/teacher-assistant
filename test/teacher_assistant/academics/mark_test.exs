@@ -6,7 +6,7 @@ defmodule TeacherAssistant.Academics.MarkTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws, head_user: head, year: year, scope: scope} =
+    %{head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     seq = Organization.list_sequences(year) |> List.first()
@@ -18,9 +18,9 @@ defmodule TeacherAssistant.Academics.MarkTest do
         teacher: head
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
+    {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, s2} = Enrollment.add_student(scope, cg, %{full_name: "Beba", sex: :m})
     {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
     %{ctx: ctx, seq: seq, a: a, s1: s1, s2: s2, scope: scope}
   end

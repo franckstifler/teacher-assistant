@@ -24,8 +24,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
     :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
@@ -40,8 +40,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _count} =
       Attendance.record_period(scope, cg, period, tc, date, [{enrollment.id, :absent}])
@@ -131,10 +131,11 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     conn: conn,
     cg: cg,
     head: head,
-    date: date
+    date: date,
+    scope: scope
   } do
     other_date = Date.add(date, 7)
-    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Zinedine Bello", sex: :m})
+    {:ok, _student2} = Enrollment.add_student(scope, cg, %{full_name: "Zinedine Bello", sex: :m})
     _ = head
 
     {:ok, view, html} =
@@ -164,7 +165,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -210,6 +211,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
   test "cross-school class id redirects to /school/classes", %{conn: conn, date: date} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+    other_scope = school_scope(other, os)
 
     {:ok, oy} =
       Organization.create_academic_year(os, %{
@@ -219,7 +221,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/register?date=#{Date.to_iso8601(date)}")

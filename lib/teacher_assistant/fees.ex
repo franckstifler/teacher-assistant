@@ -241,7 +241,7 @@ defmodule TeacherAssistant.Fees do
   adjustment.
   """
   def class_balances(%Scope{} = scope, %ClassGroup{} = class_group, on_date \\ Date.utc_today()) do
-    roster = TeacherAssistant.Enrollment.list_roster(class_group)
+    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     tranches = list_tranches(scope, class_group)

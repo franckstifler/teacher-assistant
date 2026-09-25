@@ -109,11 +109,11 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
   test "create_school seeds catalog, periods and head membership under the new tenant" do
     user = TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(user, @attrs)
+    scope = school_scope(user, school)
 
     for {resource, list} <- [
-          {TeacherAssistant.Academics.Subject, TeacherAssistant.Curriculum.list_subjects(school)},
-          {TeacherAssistant.Academics.Period,
-           TeacherAssistant.Attendance.list_periods(school_scope(user, school))}
+          {TeacherAssistant.Academics.Subject, TeacherAssistant.Curriculum.list_subjects(scope)},
+          {TeacherAssistant.Academics.Period, TeacherAssistant.Attendance.list_periods(scope)}
         ] do
       assert list != [], inspect(resource)
       assert Enum.all?(list, &(&1.workspace_id == school.id))

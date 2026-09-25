@@ -203,8 +203,8 @@ defmodule TeacherAssistant.Timetabling do
       end)
 
     tally =
-      cg
-      |> Curriculum.list_assignments_for_class()
+      scope
+      |> Curriculum.list_assignments_for_class(cg)
       |> Enum.map(fn tc ->
         placed = Map.get(placed_by_tc, tc.id, 0)
         required = tc.weekly_hours

@@ -21,8 +21,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
         teacher: head
       })
 
-    {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.class_group_id, ws)
-    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.fetch_owned_class_group(scope, ctx.class_group_id)
+    {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
     %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1, cg: cg, scope: scope}
   end
@@ -130,8 +130,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     ctx: ctx,
     seq: seq,
     a: a,
-    s1: s1,
-    scope: scope
+    s1: s1
   } do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
@@ -149,8 +148,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     ctx: ctx,
     seq: seq,
     a: a,
-    s1: s1,
-    scope: scope
+    s1: s1
   } do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
@@ -164,9 +162,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     seq: seq,
     a: a,
     s1: s1,
-    cg: cg
+    cg: cg,
+    scope: scope
   } do
-    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, s2} = Enrollment.add_student(scope, cg, %{full_name: "Beba", sex: :m})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")

@@ -10,7 +10,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws} = TeacherFixtures.school_fixture()
+    %{workspace: ws, scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -23,9 +23,9 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     Organization.build_default_calendar(year)
     seq = Organization.list_sequences(year) |> List.first()
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     %{ws: ws, seq: seq, enrollment: enrollment}
   end

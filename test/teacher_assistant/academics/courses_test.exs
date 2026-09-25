@@ -10,6 +10,7 @@ defmodule TeacherAssistant.Academics.CoursesTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -20,18 +21,19 @@ defmodule TeacherAssistant.Academics.CoursesTest do
       })
 
     {:ok, cg_maco} =
-      Enrollment.create_class_group(ws, year, %{label: "1ère A MACO", level: "1ère"})
+      Enrollment.create_class_group(scope, year, %{label: "1ère A MACO", level: "1ère"})
 
     {:ok, cg_menu} =
-      Enrollment.create_class_group(ws, year, %{label: "1ère A MENU", level: "1ère"})
+      Enrollment.create_class_group(scope, year, %{label: "1ère A MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Curriculum.assign_teacher(cg_maco, head, %{subject: "Mathématiques"})
-    {:ok, tc_menu} = Curriculum.assign_teacher(cg_menu, head, %{subject: "Mathématiques"})
-    {:ok, tc_french} = Curriculum.assign_teacher(cg_maco, head, %{subject: "Français"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(scope, cg_maco, head, %{subject: "Mathématiques"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(scope, cg_menu, head, %{subject: "Mathématiques"})
+    {:ok, tc_french} = Curriculum.assign_teacher(scope, cg_maco, head, %{subject: "Français"})
 
     %{
       head: head,
       ws: ws,
+      scope: scope,
       year: year,
       cg_maco: cg_maco,
       cg_menu: cg_menu,
@@ -42,94 +44,101 @@ defmodule TeacherAssistant.Academics.CoursesTest do
   end
 
   test "combine links contexts and creates one shared plan", ctx do
-    %{tc_maco: tc_maco, tc_menu: tc_menu, ws: ws} = ctx
+    %{tc_maco: tc_maco, tc_menu: tc_menu, scope: scope} = ctx
 
-    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
     assert Enum.sort([tc_maco.id, tc_menu.id]) ==
-             Enum.sort(
-               Enum.map(Curriculum.contexts_of_course!(course.id, tenant: ws.id), & &1.id)
-             )
+             Enum.sort(Enum.map(Curriculum.contexts_of_course!(course.id, scope: scope), & &1.id))
 
     assert [_plan] =
-             Curriculum.list_progression_plans!(tenant: ws.id)
+             Curriculum.list_progression_plans!(scope: scope)
              |> Enum.filter(&(&1.combined_course_id == course.id))
   end
 
   test "combine builds the label from real class labels, not the bare level", ctx do
-    %{tc_maco: tc_maco, tc_menu: tc_menu} = ctx
-    # tc_maco/tc_menu come straight from Curriculum.assign_teacher/3 — neither has
-    # :class_group preloaded. combine/1 must load it itself, otherwise both
+    %{tc_maco: tc_maco, tc_menu: tc_menu, scope: scope} = ctx
+    # tc_maco/tc_menu come straight from Curriculum.assign_teacher/4 — neither has
+    # :class_group preloaded. combine/2 must load it itself, otherwise both
     # contexts (same level "1ère") collapse to a single bare-level label.
-    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
     assert course.label == "Mathématiques · 1ère A MACO+1ère A MENU"
   end
 
   test "combine rejects mismatched subject/teacher and <2", ctx do
-    %{tc_maco: tc_maco, tc_french: tc_french, cg_menu: cg_menu} = ctx
+    %{tc_maco: tc_maco, tc_french: tc_french, cg_menu: cg_menu, scope: scope} = ctx
 
-    assert {:error, :need_two} = Curriculum.combine_course([tc_maco])
-    assert {:error, :subject_mismatch} = Curriculum.combine_course([tc_maco, tc_french])
+    assert {:error, :need_two} = Curriculum.combine_course(scope, [tc_maco])
+    assert {:error, :subject_mismatch} = Curriculum.combine_course(scope, [tc_maco, tc_french])
 
     other = TeacherFixtures.user_fixture()
     {:ok, _} = add_active_member(ctx.ws, ctx.head, other)
-    {:ok, tc_other} = Curriculum.assign_teacher(cg_menu, other, %{subject: "Français"})
+    {:ok, tc_other} = Curriculum.assign_teacher(scope, cg_menu, other, %{subject: "Français"})
 
-    assert {:error, :teacher_mismatch} = Curriculum.combine_course([tc_french, tc_other])
+    assert {:error, :teacher_mismatch} = Curriculum.combine_course(scope, [tc_french, tc_other])
   end
 
   test "combine rejects a context already in a course", ctx do
-    %{tc_maco: tc_maco, tc_menu: tc_menu, cg_maco: cg_maco, head: head} = ctx
+    %{tc_maco: tc_maco, tc_menu: tc_menu, cg_maco: cg_maco, head: head, scope: scope} = ctx
 
-    {:ok, _course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, _course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
     {:ok, cg_third} =
-      Enrollment.create_class_group(ctx.ws, ctx.year, %{label: "1ère B", level: "1ère"})
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "1ère B", level: "1ère"})
 
-    {:ok, tc_third} = Curriculum.assign_teacher(cg_third, head, %{subject: "Mathématiques"})
-    tc_maco = Curriculum.get_teaching_context(tc_maco.id, ctx.ws) |> elem(1)
+    {:ok, tc_third} =
+      Curriculum.assign_teacher(scope, cg_third, head, %{subject: "Mathématiques"})
 
-    assert {:error, :already_combined} = Curriculum.combine_course([tc_maco, tc_third])
+    tc_maco = Curriculum.get_teaching_context(scope, tc_maco.id) |> elem(1)
+
+    assert {:error, :already_combined} = Curriculum.combine_course(scope, [tc_maco, tc_third])
     refute cg_maco == nil
   end
 
   describe "split" do
     setup ctx do
-      {:ok, course} = Curriculum.combine_course([ctx.tc_maco, ctx.tc_menu])
+      {:ok, course} = Curriculum.combine_course(ctx.scope, [ctx.tc_maco, ctx.tc_menu])
       %{course: course}
     end
 
     test "split unlinks contexts and removes the course and its plan", ctx do
-      %{course: course, tc_maco: tc_maco, tc_menu: tc_menu, ws: ws} = ctx
+      %{course: course, tc_maco: tc_maco, tc_menu: tc_menu, scope: scope} = ctx
 
-      assert :ok = Curriculum.split_course(course)
+      assert :ok = Curriculum.split_course(scope, course)
 
-      assert Curriculum.get_teaching_context(tc_maco.id, ws)
+      assert Curriculum.get_teaching_context(scope, tc_maco.id)
              |> elem(1)
              |> Map.get(:combined_course_id) ==
                nil
 
-      assert Curriculum.get_teaching_context(tc_menu.id, ws)
+      assert Curriculum.get_teaching_context(scope, tc_menu.id)
              |> elem(1)
              |> Map.get(:combined_course_id) ==
                nil
 
-      assert {:error, _} = Curriculum.get_course(course.id, ws)
+      assert {:error, _} = Curriculum.get_course(scope, course.id)
 
       assert [] =
-               Curriculum.list_progression_plans!(tenant: ws.id)
+               Curriculum.list_progression_plans!(scope: scope)
                |> Enum.filter(&(&1.combined_course_id == course.id))
     end
   end
 
   test "list_units collapses combined contexts into one entry", ctx do
-    %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, ws: ws, year: year, head: head} =
+    %{
+      tc_maco: tc_maco,
+      tc_menu: tc_menu,
+      tc_french: tc_french,
+      year: year,
+      head: head,
+      scope: scope
+    } =
       ctx
 
-    {:ok, _} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, _} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
-    units = Curriculum.list_units_for_user(ws, year, head)
+    units = Curriculum.list_units_for_user(scope, year, head)
 
     assert Enum.count(units, &match?({:course, _}, &1)) == 1
     assert Enum.count(units, &match?({:solo, _}, &1)) == 1
@@ -142,19 +151,20 @@ defmodule TeacherAssistant.Academics.CoursesTest do
   end
 
   test "unit_plans hides stale member-context plans after combining", ctx do
-    %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, ws: ws} = ctx
+    %{tc_maco: tc_maco, tc_menu: tc_menu, tc_french: tc_french, scope: scope} = ctx
 
     {:ok, _stale_maco_plan} =
-      Curriculum.create_progression_plan(tc_maco, %{title: "Maco (stale)"})
+      Curriculum.create_progression_plan(scope, tc_maco, %{title: "Maco (stale)"})
 
     {:ok, _stale_menu_plan} =
-      Curriculum.create_progression_plan(tc_menu, %{title: "Menu (stale)"})
+      Curriculum.create_progression_plan(scope, tc_menu, %{title: "Menu (stale)"})
 
-    {:ok, french_plan} = Curriculum.create_progression_plan(tc_french, %{title: "Français"})
+    {:ok, french_plan} =
+      Curriculum.create_progression_plan(scope, tc_french, %{title: "Français"})
 
-    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
-    unit_plans = Curriculum.unit_plans!(tenant: ws.id)
+    unit_plans = Curriculum.unit_plans!(scope: scope)
 
     assert length(unit_plans) == 2
     assert Enum.count(unit_plans, &(&1.combined_course_id == course.id)) == 1

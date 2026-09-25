@@ -21,16 +21,16 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
 
     {:ok, tc_maths} =
-      Curriculum.assign_teacher(cg, head, %{subject: "Maths", weekly_hours: 5})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", weekly_hours: 5})
 
     {:ok, tc_eps} =
-      Curriculum.assign_teacher(cg, head, %{subject: "EPS", weekly_hours: 2})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "EPS", weekly_hours: 2})
 
     {:ok, tc_svt} =
-      Curriculum.assign_teacher(cg, head, %{subject: "SVT", weekly_hours: 3})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "SVT", weekly_hours: 3})
 
     :ok = Attendance.build_default_periods(scope)
 
@@ -141,7 +141,6 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
     test "includes cells from all classes the teacher teaches in, with class_label", ctx do
       %{
         head: head,
-        school: school,
         year: year,
         cg: cg_a,
         tc_maths: tc_maths,
@@ -153,9 +152,10 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       [p1, p2 | _] = periods
 
       {:ok, cg_b} =
-        Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+        Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
 
-      {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Histoire", weekly_hours: 3})
+      {:ok, tc_b} =
+        Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Histoire", weekly_hours: 3})
 
       {:ok, _} =
         Timetabling.place_slot(scope, cg_a, %{

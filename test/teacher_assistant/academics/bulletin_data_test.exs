@@ -22,11 +22,11 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
 
     {:ok, tc} =
-      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
       Assessment.create_assessment(scope, tc, seq, %{
@@ -49,7 +49,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
   test "class_results computes a bulletin for the séquence", ctx do
     %{cg: cg, seq: seq, a: a, scope: scope} = ctx
-    [student] = Enrollment.list_students(cg)
+    [student] = Enrollment.list_students(scope, cg)
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
 
     r = Assessment.class_results(scope, cg, seq)
@@ -59,7 +59,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
   test "class_results is nil when the class has no subjects", ctx do
     {:ok, cg2} =
-      Enrollment.create_class_group(ctx.school, ctx.year, %{label: "6e B", level: "6ème"})
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e B", level: "6ème"})
 
     assert Assessment.class_results(ctx.scope, cg2, ctx.seq) == nil
   end

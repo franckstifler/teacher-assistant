@@ -15,6 +15,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Iso"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -24,17 +25,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
 
     # Teacher A owns the Maths context.
     teacher_a = member(school, head)
-    {:ok, tc_a} = Curriculum.assign_teacher(cg, teacher_a, %{subject: "Maths"})
+    {:ok, tc_a} = Curriculum.assign_teacher(scope, cg, teacher_a, %{subject: "Maths"})
 
     # Teacher B is a member who teaches a DIFFERENT subject (so B passes the
     # teaching-scope guard and reaches mount) but does NOT teach tc_a.
     teacher_b = member(school, head)
-    {:ok, _tc_b} = Curriculum.assign_teacher(cg, teacher_b, %{subject: "Français"})
+    {:ok, _tc_b} = Curriculum.assign_teacher(scope, cg, teacher_b, %{subject: "Français"})
 
     conn_b =
       conn |> log_in_user(teacher_b) |> Plug.Conn.put_session(:workspace_id, school.id)

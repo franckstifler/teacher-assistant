@@ -22,7 +22,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     :ok = Organization.build_default_calendar(year)
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -183,7 +183,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -241,8 +241,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     head: head,
     scope: scope
   } do
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkeng", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -280,8 +280,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     head: head,
     scope: scope
   } do
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Bella Fon", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Bella Fon", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -301,8 +301,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "a fees manager deletes a payment", %{school: school, cg: cg, head: head, scope: scope} do
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Chris Mbua", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -339,8 +339,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     head: head,
     scope: scope
   } do
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Dora Ateh", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -362,8 +362,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
   test "a form master sees balances read-only and forged payment/adjustment events are rejected",
        %{school: school, cg: cg, head: head, scope: scope} do
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Eyoh Bate", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -374,7 +374,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn = conn_for(school, fm)
 
@@ -408,8 +408,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     head: head,
     scope: scope
   } do
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Fon Ngu", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, _tranche} =
       Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
@@ -439,6 +439,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+    other_scope = school_scope(other, os)
 
     {:ok, oy} =
       Organization.create_academic_year(os, %{
@@ -448,7 +449,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/fees")

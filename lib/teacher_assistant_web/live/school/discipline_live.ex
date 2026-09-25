@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- authorized?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(year), else: []
@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          sequences: sequences,
          terms: terms,
          can_edit?: Permissions.conduct_manager?(scope),
-         roster: Enrollment.list_roster(cg),
+         roster: Enrollment.list_roster(scope, cg),
          sanction_types: @sanction_types
        )
        |> select_period(nil)}

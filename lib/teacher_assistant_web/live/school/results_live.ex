@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(year), else: []
@@ -19,7 +19,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
        socket
        |> assign(
          cg: cg,
-         form_master: Enrollment.form_master(cg),
+         form_master: Enrollment.form_master(scope, cg),
          year: year,
          sequences: sequences,
          terms: terms
@@ -54,7 +54,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           period
         )
 
-    roster = Enrollment.list_roster(socket.assigns.cg)
+    roster = Enrollment.list_roster(socket.assigns.current_scope, socket.assigns.cg)
 
     assign(socket,
       period: period,

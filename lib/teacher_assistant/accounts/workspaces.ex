@@ -20,6 +20,8 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   end
 
   defp school_scope(user, ws, context_id) do
+    base = %Scope{current_user: user, current_workspace: ws}
+
     case Accounts.fetch_school_membership(ws, user) do
       {:ok, membership} ->
         year = Organization.current_academic_year(ws)
@@ -38,7 +40,7 @@ defmodule TeacherAssistant.Accounts.Workspaces do
            current_roles: membership.roles,
            current_membership: membership,
            current_academic_year: year,
-           current_context: resolve_assigned_context(ws, year, user, context_id),
+           current_context: resolve_assigned_context(base, year, user, context_id),
            school_verification_status: status
          }}
 
@@ -47,10 +49,10 @@ defmodule TeacherAssistant.Accounts.Workspaces do
     end
   end
 
-  defp resolve_assigned_context(_ws, nil, _user, _context_id), do: nil
+  defp resolve_assigned_context(_scope, nil, _user, _context_id), do: nil
 
-  defp resolve_assigned_context(ws, year, user, context_id) do
-    contexts = TeacherAssistant.Curriculum.list_assignments_for_user(ws, year, user)
+  defp resolve_assigned_context(%Scope{} = scope, year, user, context_id) do
+    contexts = TeacherAssistant.Curriculum.list_assignments_for_user(scope, year, user)
     Enum.find(contexts, &(&1.id == context_id)) || List.first(contexts)
   end
 

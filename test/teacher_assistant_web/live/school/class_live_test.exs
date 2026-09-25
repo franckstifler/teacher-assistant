@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée D"})
+    scope = school_scope(user, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -18,19 +19,19 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg2} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg2} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, year: year, cg: cg, cg2: cg2, user: user}
+    %{conn: conn, school: school, year: year, cg: cg, cg2: cg2, user: user, scope: scope}
   end
 
-  test "shows the roster with status and repeater", %{conn: conn, cg: cg} do
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f, repeater: true})
+  test "shows the roster with status and repeater", %{conn: conn, cg: cg, scope: scope} do
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, repeater: true})
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}")
     assert html =~ "Awa"
   end
 
-  test "enrolls a new student (inscription)", %{conn: conn, cg: cg} do
+  test "enrolls a new student (inscription)", %{conn: conn, cg: cg, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
     view
@@ -39,11 +40,11 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     })
     |> render_submit()
 
-    assert [%{student: %{full_name: "Bi"}}] = Enrollment.list_roster(cg)
+    assert [%{student: %{full_name: "Bi"}}] = Enrollment.list_roster(scope, cg)
   end
 
-  test "duplicate matricule surfaces a friendly error", %{conn: conn, cg: cg} do
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
+  test "duplicate matricule surfaces a friendly error", %{conn: conn, cg: cg, scope: scope} do
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
     view
@@ -52,49 +53,50 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     })
     |> render_submit()
 
-    assert length(Enrollment.list_roster(cg)) == 1
+    assert length(Enrollment.list_roster(scope, cg)) == 1
     assert render(view) =~ "matricule"
   end
 
   test "search finds an existing student and re-enrolls (réinscription)", ctx do
-    %{conn: conn, cg: cg, cg2: cg2} = ctx
+    %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
 
     {:ok, %{student: s, enrollment: e}} =
-      Enrollment.enroll_new(cg, %{full_name: "Awa Zang", sex: :f, matricule: "M-1"})
+      Enrollment.enroll_new(scope, cg, %{full_name: "Awa Zang", sex: :f, matricule: "M-1"})
 
-    :ok = Enrollment.withdraw(e)
+    :ok = Enrollment.withdraw(scope, e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}")
     view |> element("#enroll-search") |> render_change(%{"q" => "M-1"})
     assert render(view) =~ "Awa Zang"
     view |> element("#search-enroll-#{s.id}") |> render_click()
 
-    assert [%{enrollment: %{status: :reinscription}}] = Enrollment.list_roster(cg2)
+    assert [%{enrollment: %{status: :reinscription}}] = Enrollment.list_roster(scope, cg2)
   end
 
   test "transfer moves a student to another class", ctx do
-    %{conn: conn, cg: cg, cg2: cg2} = ctx
-    {:ok, %{enrollment: e}} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
+    {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
     view
     |> element("#transfer-#{e.id}")
     |> render_change(%{"class_group_id" => cg2.id})
 
-    assert [] = Enrollment.list_roster(cg)
-    assert [_] = Enrollment.list_roster(cg2)
+    assert [] = Enrollment.list_roster(scope, cg)
+    assert [_] = Enrollment.list_roster(scope, cg2)
   end
 
-  test "withdraw removes the enrollment", %{conn: conn, cg: cg} do
-    {:ok, %{enrollment: e}} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+  test "withdraw removes the enrollment", %{conn: conn, cg: cg, scope: scope} do
+    {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
     view |> element("#withdraw-#{e.id}") |> render_click()
-    assert [] = Enrollment.list_roster(cg)
+    assert [] = Enrollment.list_roster(scope, cg)
   end
 
   test "cross-school class id is not found", %{conn: conn, actor: user} do
     other_head = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, other_school} = Organization.create_school(other_head, %{name: "Autre"})
+    other_scope = school_scope(other_head, other_school)
 
     {:ok, oy} =
       Organization.create_academic_year(other_school, %{
@@ -104,7 +106,9 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(other_school, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} =
+      Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
+
     _ = user
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
@@ -136,12 +140,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   end
 
   describe "assignments panel" do
-    test "assign form lists catalog subjects", %{conn: conn, school: school, cg: cg} do
+    test "assign form lists catalog subjects", %{conn: conn, cg: cg, scope: scope} do
       # "Musique" is not part of the school's seeded starter catalog, so
       # creating it here (rather than reusing a seeded subject) proves the
       # assign form reads live from the catalog.
       {:ok, _} =
-        TeacherAssistant.Curriculum.create_subject(school, %{
+        TeacherAssistant.Curriculum.create_subject(scope, %{
           name: "Musique",
           default_coefficient: Decimal.new(4)
         })
@@ -151,7 +155,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert html =~ "name=\"assignment[subject]\""
     end
 
-    test "assigns a teacher to a subject", %{conn: conn, cg: cg, user: head} do
+    test "assigns a teacher to a subject", %{conn: conn, cg: cg, user: head, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
@@ -164,15 +168,15 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       })
       |> render_submit()
 
-      assert [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+      assert [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
       assert tc.subject == "Mathématiques" and tc.teacher_user_id == head.id
     end
 
     test "duplicate subject on the class is rejected with a message", ctx do
-      %{conn: conn, cg: cg, user: head} = ctx
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
 
       {:ok, _} =
-        TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Mathématiques"})
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -186,29 +190,32 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       })
       |> render_submit()
 
-      assert length(TeacherAssistant.Curriculum.list_assignments_for_class(cg)) == 1
+      assert length(TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)) == 1
       assert render(view) =~ "Mathématiques"
     end
 
     test "unassign removes a data-free assignment; blocked with data", ctx do
-      %{conn: conn, cg: cg, user: head} = ctx
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, _} = TeacherAssistant.Curriculum.create_progression_plan(tc, %{title: "P"})
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+      {:ok, _} = TeacherAssistant.Curriculum.create_progression_plan(scope, tc, %{title: "P"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view |> element("#unassign-#{tc.id}") |> render_click()
-      assert [_] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+      assert [_] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
 
-      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Anglais"})
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Anglais"})
+
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       view |> element("#unassign-#{tc2.id}") |> render_click()
-      assert length(TeacherAssistant.Curriculum.list_assignments_for_class(cg)) == 1
+      assert length(TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)) == 1
     end
 
     test "assign defaults the coefficient from the chosen subject's catalog entry", %{
       conn: conn,
       cg: cg,
-      user: head
+      user: head,
+      scope: scope
     } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -223,25 +230,35 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> render_submit()
 
       # "Mathématiques" is seeded with default_coefficient 4 (SchoolTemplates).
-      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
       assert Decimal.equal?(tc.coefficient, Decimal.new(4))
     end
 
-    test "editing a coefficient inline persists it", %{conn: conn, cg: cg, user: head} do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+    test "editing a coefficient inline persists it", %{
+      conn: conn,
+      cg: cg,
+      user: head,
+      scope: scope
+    } do
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
       view
       |> element("#coefficient-#{tc.id}")
       |> render_change(%{"coefficient" => "3"})
 
-      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
       assert Decimal.equal?(tc.coefficient, Decimal.new(3))
     end
 
     test "a non-admin non-form-master cannot reach the class to change a coefficient", ctx do
-      %{school: school, cg: cg, user: head} = ctx
-      {:ok, _tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      %{school: school, cg: cg, user: head, scope: scope} = ctx
+
+      {:ok, _tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
@@ -268,10 +285,14 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       conn: conn,
       cg: cg,
       cg2: cg2,
-      user: head
+      user: head,
+      scope: scope
     } do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -279,8 +300,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> element("#teach-together-#{tc.id}")
       |> render_submit(%{"sibling-ids" => [tc2.id]})
 
-      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id, tc)
-      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(tc2.id, tc2)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc2.id)
 
       assert reloaded_tc.combined_course_id
       assert reloaded_tc.combined_course_id == reloaded_tc2.combined_course_id
@@ -290,16 +311,21 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       conn: conn,
       cg: cg,
       cg2: cg2,
-      user: head
+      user: head,
+      scope: scope
     } do
       # cg is "6e A" and cg2 is "6e B" — same level ("6ème"), distinct class
       # labels. The initiating context (cg) arrives here from
-      # Curriculum.list_assignments_for_class/1, which does NOT preload :class_group —
-      # this pins that Curriculum.combine_course/1 loads it itself rather than
+      # Curriculum.list_assignments_for_class/2, which does NOT preload :class_group —
+      # this pins that Curriculum.combine_course/2 loads it itself rather than
       # collapsing to a degenerate "Maths · 6ème" label.
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
+
+      {:ok, course} = TeacherAssistant.Curriculum.combine_course(scope, [tc, tc2])
 
       assert course.label == "Maths · 6e A+6e B"
 
@@ -312,17 +338,22 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       conn: conn,
       cg: cg,
       cg2: cg2,
-      user: head
+      user: head,
+      scope: scope
     } do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, _course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
+
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course(scope, [tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       view |> element("#split-#{tc.id}") |> render_click()
 
-      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id, tc)
-      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(tc2.id, tc2)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc2.id)
       assert reloaded_tc.combined_course_id == nil
       assert reloaded_tc2.combined_course_id == nil
     end
@@ -331,12 +362,14 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       conn: conn,
       cg: cg,
       cg2: cg2,
-      user: head
+      user: head,
+      scope: scope
     } do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
       {:ok, _other_subject_tc} =
-        TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Anglais"})
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Anglais"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -349,8 +382,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     test "admin assigns then clears the form master", %{
       conn: conn,
       cg: cg,
-      school: school,
-      user: head
+      user: head,
+      scope: scope
     } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
@@ -358,26 +391,26 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> element("#form-master-form")
       |> render_change(%{"user_id" => head.id})
 
-      assert TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, school)
+      assert TeacherAssistant.Enrollment.fetch_owned_class_group(scope, cg.id)
              |> elem(1)
              |> Map.get(:form_master_user_id) == head.id
 
       view |> element("#form-master-form") |> render_change(%{"user_id" => ""})
 
-      assert TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, school)
+      assert TeacherAssistant.Enrollment.fetch_owned_class_group(scope, cg.id)
              |> elem(1)
              |> Map.get(:form_master_user_id) == nil
     end
 
     test "a non-admin cannot set the form master (forged event)", ctx do
-      %{school: school, cg: cg, user: head} = ctx
+      %{school: school, cg: cg, user: head, scope: scope} = ctx
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
         Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
 
       {:ok, _} = Accounts.accept_invitation(inv.token, other)
-      {:ok, _} = TeacherAssistant.Enrollment.set_form_master(cg, other.id)
+      {:ok, _} = TeacherAssistant.Enrollment.set_form_master(scope, cg, other.id)
 
       conn =
         Phoenix.ConnTest.build_conn()
@@ -388,7 +421,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "set_form_master", %{"user_id" => head.id})
 
-      assert TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, school)
+      assert TeacherAssistant.Enrollment.fetch_owned_class_group(scope, cg.id)
              |> elem(1)
              |> Map.get(:form_master_user_id) == other.id
     end
@@ -396,14 +429,14 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   describe "form master access" do
     setup ctx do
-      %{school: school, cg: cg, user: head} = ctx
+      %{school: school, cg: cg, user: head, scope: scope} = ctx
       fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
         Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
       {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-      {:ok, _} = TeacherAssistant.Enrollment.set_form_master(cg, fm.id)
+      {:ok, _} = TeacherAssistant.Enrollment.set_form_master(scope, cg, fm.id)
 
       conn =
         Phoenix.ConnTest.build_conn()
@@ -414,7 +447,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       %{fm_conn: conn, fm: fm}
     end
 
-    test "form master reaches the class and can enroll", %{fm_conn: conn, cg: cg} do
+    test "form master reaches the class and can enroll", %{fm_conn: conn, cg: cg, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       assert has_element?(view, "#enroll-form")
 
@@ -422,7 +455,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> form("#enroll-form", %{"student" => %{"full_name" => "Zoe", "sex" => "f"}})
       |> render_submit()
 
-      assert Enum.any?(Enrollment.list_roster(cg), &(&1.student.full_name == "Zoe"))
+      assert Enum.any?(Enrollment.list_roster(scope, cg), &(&1.student.full_name == "Zoe"))
     end
 
     test "form master sees no assignments/form-master controls", %{fm_conn: conn, cg: cg} do
@@ -431,21 +464,29 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       refute has_element?(view, "#form-master-form")
     end
 
-    test "form master cannot assign a teacher (forged event)", %{fm_conn: conn, cg: cg, fm: fm} do
+    test "form master cannot assign a teacher (forged event)", %{
+      fm_conn: conn,
+      cg: cg,
+      fm: fm,
+      scope: scope
+    } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "assign", %{"assignment" => %{"user_id" => fm.id, "subject" => "X"}})
-      assert TeacherAssistant.Curriculum.list_assignments_for_class(cg) == []
+      assert TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg) == []
     end
 
     test "form master cannot change a coefficient (forged event)", %{
       fm_conn: conn,
       cg: cg,
-      user: head
+      user: head,
+      scope: scope
     } do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
-      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
       assert Decimal.equal?(tc.coefficient, Decimal.new(1))
     end
 
@@ -454,11 +495,11 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       cg: cg,
       fm: fm,
       user: head,
-      school: school
+      scope: scope
     } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "set_form_master", %{"user_id" => head.id})
-      {:ok, reloaded} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, school)
+      {:ok, reloaded} = TeacherAssistant.Enrollment.fetch_owned_class_group(scope, cg.id)
       assert reloaded.form_master_user_id == fm.id
     end
 
@@ -466,15 +507,19 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       fm_conn: conn,
       cg: cg,
       cg2: cg2,
-      user: head
+      user: head,
+      scope: scope
     } do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "teach_together", %{"context-id" => tc.id, "sibling-ids" => [tc2.id]})
 
-      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id, tc)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc.id)
       assert reloaded_tc.combined_course_id == nil
     end
 
@@ -482,21 +527,26 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       fm_conn: conn,
       cg: cg,
       cg2: cg2,
-      user: head
+      user: head,
+      scope: scope
     } do
-      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-      {:ok, tc2} = TeacherAssistant.Curriculum.assign_teacher(cg2, head, %{subject: "Maths"})
-      {:ok, _course} = TeacherAssistant.Curriculum.combine_course([tc, tc2])
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
+
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course(scope, [tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "split_course", %{"context-id" => tc.id})
 
-      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(tc.id, tc)
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc.id)
       assert reloaded_tc.combined_course_id != nil
     end
 
     test "a form master of another class is redirected", ctx do
-      %{school: school, cg2: cg2, fm_conn: conn} = ctx
+      %{cg2: cg2, fm_conn: conn} = ctx
       # fm is form master of cg, not cg2
       assert {:error, {:live_redirect, %{to: "/school"}}} =
                live(conn, ~p"/school/classes/#{cg2.id}")

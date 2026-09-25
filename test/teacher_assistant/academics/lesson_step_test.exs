@@ -14,61 +14,61 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
         teacher: head
       })
 
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Plan"})
 
-    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(scope, plan, %{title: "M1"})
 
     {:ok, entry} =
-      Curriculum.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(scope, m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
       })
 
-    {:ok, lp} = Curriculum.ensure_lesson_plan(entry, ctx)
+    {:ok, lp} = Curriculum.ensure_lesson_plan(scope, entry, ctx)
     %{ws: ws, head: head, year: year, lp: lp, scope: scope}
   end
 
-  test "add appends steps in order", %{lp: lp} do
-    {:ok, s1} = Curriculum.add_lesson_step(lp, %{etape: "Découverte"})
-    {:ok, s2} = Curriculum.add_lesson_step(lp, %{etape: "Analyse"})
+  test "add appends steps in order", %{lp: lp, scope: scope} do
+    {:ok, s1} = Curriculum.add_lesson_step(scope, lp, %{etape: "Découverte"})
+    {:ok, s2} = Curriculum.add_lesson_step(scope, lp, %{etape: "Analyse"})
 
     assert s1.position == 1
     assert s2.position == 2
 
-    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id), & &1.etape) ==
+    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, scope: scope), & &1.etape) ==
              ["Découverte", "Analyse"]
   end
 
-  test "move down then up swaps order and no-ops at the ends", %{lp: lp} do
-    {:ok, s1} = Curriculum.add_lesson_step(lp, %{etape: "A"})
-    {:ok, s2} = Curriculum.add_lesson_step(lp, %{etape: "B"})
+  test "move down then up swaps order and no-ops at the ends", %{lp: lp, scope: scope} do
+    {:ok, s1} = Curriculum.add_lesson_step(scope, lp, %{etape: "A"})
+    {:ok, s2} = Curriculum.add_lesson_step(scope, lp, %{etape: "B"})
 
-    {:ok, _} = Curriculum.move_lesson_step(s1, :down, tenant: s1.workspace_id)
+    {:ok, _} = Curriculum.move_lesson_step(s1, :down, scope: scope)
 
-    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id), & &1.etape) ==
+    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, scope: scope), & &1.etape) ==
              ["B", "A"]
 
     # s2 is now first; moving it up is a no-op-free swap back
-    [first, _second] = Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id)
-    {:ok, _} = Curriculum.move_lesson_step(first, :up, tenant: first.workspace_id)
+    [first, _second] = Curriculum.list_lesson_steps!(lp.id, scope: scope)
+    {:ok, _} = Curriculum.move_lesson_step(first, :up, scope: scope)
 
-    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id), & &1.etape) ==
+    assert Enum.map(Curriculum.list_lesson_steps!(lp.id, scope: scope), & &1.etape) ==
              ["B", "A"]
 
     _ = s2
   end
 
-  test "update and delete a step", %{lp: lp} do
-    {:ok, s} = Curriculum.add_lesson_step(lp, %{etape: "X"})
+  test "update and delete a step", %{lp: lp, scope: scope} do
+    {:ok, s} = Curriculum.add_lesson_step(scope, lp, %{etape: "X"})
 
     {:ok, s} =
-      Curriculum.update_lesson_step(s, %{contenus: "les nombres"}, tenant: s.workspace_id)
+      Curriculum.update_lesson_step(s, %{contenus: "les nombres"}, scope: scope)
 
     assert s.contenus == "les nombres"
 
-    :ok = Curriculum.delete_lesson_step(s, tenant: s.workspace_id)
-    assert Curriculum.list_lesson_steps!(lp.id, tenant: lp.workspace_id) == []
+    :ok = Curriculum.delete_lesson_step(s, scope: scope)
+    assert Curriculum.list_lesson_steps!(lp.id, scope: scope) == []
   end
 
   test "fetch_owned_lesson_step rejects a step from another plan", %{
@@ -77,7 +77,7 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
     year: year,
     scope: scope
   } do
-    {:ok, s} = Curriculum.add_lesson_step(lp, %{etape: "X"})
+    {:ok, s} = Curriculum.add_lesson_step(scope, lp, %{etape: "X"})
 
     ctx2 =
       TeacherFixtures.assigned_context_fixture(scope, year, %{
@@ -86,20 +86,20 @@ defmodule TeacherAssistant.Academics.LessonStepTest do
         teacher: head
       })
 
-    {:ok, plan2} = Curriculum.create_progression_plan(ctx2, %{title: "P2"})
+    {:ok, plan2} = Curriculum.create_progression_plan(scope, ctx2, %{title: "P2"})
 
-    {:ok, m} = Curriculum.create_module(plan2, %{title: "M"})
+    {:ok, m} = Curriculum.create_module(scope, plan2, %{title: "M"})
 
     {:ok, entry2} =
-      Curriculum.add_progression_entry(m, %{
+      Curriculum.add_progression_entry(scope, m, %{
         lesson_title: "L",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
       })
 
-    {:ok, other_lp} = Curriculum.ensure_lesson_plan(entry2, ctx2)
+    {:ok, other_lp} = Curriculum.ensure_lesson_plan(scope, entry2, ctx2)
 
-    assert {:error, :not_found} = Curriculum.fetch_owned_lesson_step(s.id, other_lp)
-    assert {:ok, _} = Curriculum.fetch_owned_lesson_step(s.id, lp)
+    assert {:error, :not_found} = Curriculum.fetch_owned_lesson_step(scope, s.id, other_lp)
+    assert {:ok, _} = Curriculum.fetch_owned_lesson_step(scope, s.id, lp)
   end
 end

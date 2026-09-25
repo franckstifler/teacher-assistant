@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
         teacher: head
       })
 
-    %{ws: ws, ctx: ctx}
+    %{ws: ws, scope: scope, ctx: ctx}
   end
 
   defp rows do
@@ -38,23 +38,23 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     ]
   end
 
-  test "creates a draft plan with entries in order", %{ws: ws, ctx: ctx} do
+  test "creates a draft plan with entries in order", %{scope: scope, ctx: ctx} do
     assert {:ok, plan} =
              Curriculum.import_progression_plan(
-               ws,
+               scope,
                %{teaching_context_id: ctx.id, title: "Imported"},
                rows()
              )
 
     assert plan.title == "Imported"
     assert plan.status == :draft
-    entries = Curriculum.list_progression_entries!(plan.id, tenant: ws.id)
+    entries = Curriculum.list_progression_entries!(plan.id, scope: scope)
     assert Enum.map(entries, & &1.lesson_title) == ["Les entiers", "Évaluation"]
     assert Enum.map(entries, & &1.position) == [1, 2]
     assert Enum.at(entries, 1).entry_type == :evaluation
   end
 
-  test "rolls back entirely when a row is invalid (no orphan plan)", %{ws: ws, ctx: ctx} do
+  test "rolls back entirely when a row is invalid (no orphan plan)", %{scope: scope, ctx: ctx} do
     bad =
       rows() ++
         [
@@ -70,15 +70,15 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
     assert {:error, _} =
              Curriculum.import_progression_plan(
-               ws,
+               scope,
                %{teaching_context_id: ctx.id, title: "Bad"},
                bad
              )
 
-    assert Curriculum.list_progression_plans!(tenant: ws.id) == []
+    assert Curriculum.list_progression_plans!(scope: scope) == []
   end
 
-  test "import creates modules from row order and links entries", %{ws: ws, ctx: ctx} do
+  test "import creates modules from row order and links entries", %{scope: scope, ctx: ctx} do
     rows = [
       %{module: "M1", lesson_title: "L1", planned_hours: Decimal.new("2"), entry_type: :lesson},
       %{module: "M1", lesson_title: "L2", planned_hours: Decimal.new("2"), entry_type: :lesson},
@@ -92,9 +92,9 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
     ]
 
     {:ok, plan} =
-      Curriculum.import_progression_plan(ws, %{title: "T", teaching_context_id: ctx.id}, rows)
+      Curriculum.import_progression_plan(scope, %{title: "T", teaching_context_id: ctx.id}, rows)
 
-    mods = Curriculum.list_progression_modules!(plan.id, tenant: ws.id)
+    mods = Curriculum.list_progression_modules!(plan.id, scope: scope)
     assert Enum.map(mods, & &1.title) == ["M1", "Général", "M2"]
     assert Enum.map(hd(mods).entries, & &1.lesson_title) == ["L1", "L2"]
 
@@ -105,7 +105,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
            )
   end
 
-  test "rejects a teaching context owned by another workspace", %{ws: ws} do
+  test "rejects a teaching context owned by another workspace", %{scope: scope} do
     %{head_user: other_head, year: other_year, scope: other_scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
@@ -118,7 +118,7 @@ defmodule TeacherAssistant.Academics.ImportProgressionPlanTest do
 
     assert {:error, :not_found} =
              Curriculum.import_progression_plan(
-               ws,
+               scope,
                %{teaching_context_id: other_ctx.id, title: "Nope"},
                rows()
              )

@@ -42,7 +42,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     do:
       school
       |> Organization.current_academic_year()
-      |> then(&TeacherAssistant.Enrollment.list_class_groups(school, &1))
+      |> then(&TeacherAssistant.Enrollment.list_class_groups(scope_of(school), &1))
       |> List.first()
 
   defp row_for(A.Student, school, ctx), do: row_for(A.Enrollment, school, ctx).student
@@ -51,16 +51,19 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     cg = row_for(A.ClassGroup, school, ctx)
 
     {:ok, _} =
-      TeacherAssistant.Enrollment.add_student(cg, %{
+      TeacherAssistant.Enrollment.add_student(scope_of(school), cg, %{
         full_name: "Iso #{System.unique_integer([:positive])}",
         sex: :m
       })
 
-    cg |> TeacherAssistant.Enrollment.list_roster() |> List.first() |> Map.fetch!(:enrollment)
+    cg
+    |> then(&TeacherAssistant.Enrollment.list_roster(scope_of(school), &1))
+    |> List.first()
+    |> Map.fetch!(:enrollment)
   end
 
   defp row_for(A.Subject, school, _ctx),
-    do: school |> TeacherAssistant.Curriculum.list_subjects() |> List.first()
+    do: school |> scope_of() |> TeacherAssistant.Curriculum.list_subjects() |> List.first()
 
   defp row_for(A.TeachingContext, school, _ctx),
     do:
@@ -81,20 +84,20 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     tc2 =
       TeacherFixtures.assigned_context_fixture(scope, year, %{teacher: teacher, subject: "Maths"})
 
-    {:ok, course} = TeacherAssistant.Curriculum.combine_course([tc1, tc2])
+    {:ok, course} = TeacherAssistant.Curriculum.combine_course(scope, [tc1, tc2])
     course
   end
 
   defp row_for(A.ProgressionPlan, school, ctx) do
     course = row_for(A.CombinedCourse, school, ctx)
 
-    TeacherAssistant.Curriculum.list_progression_plans!(tenant: school.id)
+    TeacherAssistant.Curriculum.list_progression_plans!(scope: scope_of(school))
     |> Enum.find(&(&1.combined_course_id == course.id))
   end
 
   defp row_for(A.ProgressionModule, school, ctx) do
     plan = row_for(A.ProgressionPlan, school, ctx)
-    {:ok, m} = TeacherAssistant.Curriculum.create_module(plan, %{title: "Iso"})
+    {:ok, m} = TeacherAssistant.Curriculum.create_module(scope_of(school), plan, %{title: "Iso"})
     m
   end
 
@@ -102,7 +105,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     m = row_for(A.ProgressionModule, school, ctx)
 
     {:ok, e} =
-      TeacherAssistant.Curriculum.add_progression_entry(m, %{
+      TeacherAssistant.Curriculum.add_progression_entry(scope_of(school), m, %{
         lesson_title: "Iso",
         planned_hours: Decimal.new(1),
         entry_type: :lesson
@@ -114,13 +117,16 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   defp row_for(A.LessonPlan, school, ctx) do
     entry = row_for(A.ProgressionEntry, school, ctx)
     tc = row_for(A.TeachingContext, school, ctx)
-    {:ok, lp} = TeacherAssistant.Curriculum.ensure_lesson_plan(entry, tc)
+    {:ok, lp} = TeacherAssistant.Curriculum.ensure_lesson_plan(scope_of(school), entry, tc)
     lp
   end
 
   defp row_for(A.LessonStep, school, ctx) do
     lp = row_for(A.LessonPlan, school, ctx)
-    {:ok, step} = TeacherAssistant.Curriculum.add_lesson_step(lp, %{etape: "Iso"})
+
+    {:ok, step} =
+      TeacherAssistant.Curriculum.add_lesson_step(scope_of(school), lp, %{etape: "Iso"})
+
     step
   end
 
@@ -141,10 +147,20 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(A.Mark, school, ctx) do
     a = row_for(A.Assessment, school, ctx)
-    {:ok, tc} = TeacherAssistant.Curriculum.get_teaching_context(a.teaching_context_id, school)
-    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(tc.class_group_id, school)
-    {:ok, _} = TeacherAssistant.Enrollment.add_student(cg, %{full_name: "Marked", sex: :f})
-    [%{student: s} | _] = TeacherAssistant.Enrollment.list_roster(cg)
+
+    {:ok, tc} =
+      TeacherAssistant.Curriculum.get_teaching_context(scope_of(school), a.teaching_context_id)
+
+    {:ok, cg} =
+      TeacherAssistant.Enrollment.fetch_owned_class_group(scope_of(school), tc.class_group_id)
+
+    {:ok, _} =
+      TeacherAssistant.Enrollment.add_student(scope_of(school), cg, %{
+        full_name: "Marked",
+        sex: :f
+      })
+
+    [%{student: s} | _] = TeacherAssistant.Enrollment.list_roster(scope_of(school), cg)
 
     :ok =
       TeacherAssistant.Assessment.upsert_marks(scope_of(school), a, [
@@ -175,7 +191,10 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(A.AttendanceEntry, school, ctx) do
     e = row_for(A.Enrollment, school, ctx)
-    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(e.class_group_id, school)
+
+    {:ok, cg} =
+      TeacherAssistant.Enrollment.fetch_owned_class_group(scope_of(school), e.class_group_id)
+
     p = row_for(A.Period, school, ctx)
 
     {:ok, _} =
@@ -196,7 +215,10 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(A.TimetableSlot, school, ctx) do
     tc = row_for(A.TeachingContext, school, ctx)
-    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(tc.class_group_id, school)
+
+    {:ok, cg} =
+      TeacherAssistant.Enrollment.fetch_owned_class_group(scope_of(school), tc.class_group_id)
+
     p = row_for(A.Period, school, ctx)
 
     {:ok, slot} =
@@ -274,7 +296,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     entry = row_for(A.ProgressionEntry, school, ctx)
 
     {:ok, log} =
-      TeacherAssistant.Curriculum.log_teaching(school, %{
+      TeacherAssistant.Curriculum.log_teaching(scope_of(school), %{
         progression_entry_id: entry.id,
         date: Date.utc_today(),
         content_taught: "Iso",
@@ -362,8 +384,10 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   test "a class group of school A cannot be fetched as owned by school B", %{a: a, b: b} = ctx do
     cg = row_for(A.ClassGroup, a, ctx)
-    assert {:ok, _} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, a)
-    assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_class_group(cg.id, b)
+    assert {:ok, _} = TeacherAssistant.Enrollment.fetch_owned_class_group(scope_of(a), cg.id)
+
+    assert {:error, :not_found} =
+             TeacherAssistant.Enrollment.fetch_owned_class_group(scope_of(b), cg.id)
   end
 
   test "justifying an absence of school A's student from school B's scope is not found, " <>
@@ -373,11 +397,14 @@ defmodule TeacherAssistant.TenancyIsolationTest do
          b: b
        } = ctx do
     entry = row_for(A.AttendanceEntry, a, ctx)
-    {:ok, e} = TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, a)
+
+    {:ok, e} =
+      TeacherAssistant.Enrollment.fetch_owned_enrollment(scope_of(a), entry.enrollment_id)
+
     assert {:ok, _} = TeacherAssistant.Attendance.justify_day(scope_of(a), e, entry.date, "ok")
 
     assert {:error, :not_found} =
-             TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, b)
+             TeacherAssistant.Enrollment.fetch_owned_enrollment(scope_of(b), entry.enrollment_id)
 
     # M7 / F1: the database rejects a cross-workspace combination
     # (a's class group paired with b's period) — nothing is written.
@@ -407,7 +434,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
          "and recording a conduct mark against school B's sequence is rejected (F1)",
        %{a: a, b: b} = ctx do
     e = row_for(A.Enrollment, a, ctx)
-    assert {:error, :not_found} = TeacherAssistant.Enrollment.fetch_owned_enrollment(e.id, b)
+
+    assert {:error, :not_found} =
+             TeacherAssistant.Enrollment.fetch_owned_enrollment(scope_of(b), e.id)
 
     assert {:ok, _} =
              TeacherAssistant.Fees.record_payment(

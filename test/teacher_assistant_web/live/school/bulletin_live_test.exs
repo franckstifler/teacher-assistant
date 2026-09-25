@@ -25,11 +25,13 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+
+    {:ok, _} =
+      Enrollment.add_student(scope, cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
 
     {:ok, tc} =
-      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
       Assessment.create_assessment(scope, tc, seq, %{
@@ -38,7 +40,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
         max_score: Decimal.new(20)
       })
 
-    [%{student: student, enrollment: enr}] = Enrollment.list_roster(cg)
+    [%{student: student, enrollment: enr}] = Enrollment.list_roster(scope, cg)
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head, scope: scope}
@@ -68,7 +70,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [term1 | _] = TeacherAssistant.Organization.list_terms(year)
     _ = seq
 
-    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
 
     {:ok, a2} =
       TeacherAssistant.Assessment.create_assessment(scope, tc, s2, %{
@@ -77,7 +79,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
         max_score: Decimal.new(20)
       })
 
-    [%{student: student}] = TeacherAssistant.Enrollment.list_roster(cg)
+    [%{student: student}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
     :ok =
       TeacherAssistant.Assessment.upsert_marks(scope, a2, [
@@ -98,7 +100,6 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     cg: cg,
     enr: enr,
     seq: seq,
-    school: school,
     scope: scope
   } do
     # Baseline: no attendance recorded yet.
@@ -109,7 +110,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
 
     :ok = Attendance.build_default_periods(scope)
-    [tc] = Curriculum.list_assignments_for_class(cg)
+    [tc] = Curriculum.list_assignments_for_class(scope, cg)
     periods = Attendance.list_periods(scope) |> Enum.filter(&(&1.kind == :lesson))
     [period1, period2 | _] = periods
 
@@ -234,16 +235,17 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     conn: conn,
     cg: cg,
     seq: seq,
-    school: school
+    school: school,
+    scope: scope
   } do
     {:ok, cg2} =
-      Enrollment.create_class_group(school, Organization.current_academic_year(school), %{
+      Enrollment.create_class_group(scope, Organization.current_academic_year(school), %{
         label: "6e B",
         level: "6ème"
       })
 
-    {:ok, _} = Enrollment.add_student(cg2, %{full_name: "Bob", sex: :m})
-    [%{enrollment: other_enr}] = Enrollment.list_roster(cg2)
+    {:ok, _} = Enrollment.add_student(scope, cg2, %{full_name: "Bob", sex: :m})
+    [%{enrollment: other_enr}] = Enrollment.list_roster(scope, cg2)
 
     assert {:error, {:live_redirect, %{}}} =
              live(

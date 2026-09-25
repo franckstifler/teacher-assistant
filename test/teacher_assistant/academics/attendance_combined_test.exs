@@ -24,19 +24,19 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
         active: true
       })
 
-    {:ok, maco} = Enrollment.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Enrollment.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
+    {:ok, maco} = Enrollment.create_class_group(scope, year, %{label: "1ère MACO", level: "1ère"})
+    {:ok, menu} = Enrollment.create_class_group(scope, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
-    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(scope, maco, head, %{subject: "Maths"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(scope, menu, head, %{subject: "Maths"})
 
-    {:ok, _s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, _s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, _s_maco} = Enrollment.add_student(scope, maco, %{full_name: "Awa", sex: :f})
+    {:ok, _s_menu} = Enrollment.add_student(scope, menu, %{full_name: "Beti", sex: :f})
 
-    [%{enrollment: enr_maco}] = Enrollment.list_roster(maco)
-    [%{enrollment: enr_menu}] = Enrollment.list_roster(menu)
+    [%{enrollment: enr_maco}] = Enrollment.list_roster(scope, maco)
+    [%{enrollment: enr_menu}] = Enrollment.list_roster(scope, menu)
 
-    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))

@@ -75,8 +75,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
       Timetabling.place_slot(scope, cg, %{

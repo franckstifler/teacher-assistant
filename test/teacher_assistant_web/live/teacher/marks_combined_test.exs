@@ -26,18 +26,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     seq = Organization.list_sequences(year) |> List.first()
 
     {:ok, maco} =
-      Enrollment.create_class_group(school, year, %{label: "1ère MACO", level: "1ère"})
+      Enrollment.create_class_group(scope, year, %{label: "1ère MACO", level: "1ère"})
 
     {:ok, menu} =
-      Enrollment.create_class_group(school, year, %{label: "1ère MENU", level: "1ère"})
+      Enrollment.create_class_group(scope, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Mathématiques"})
-    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Mathématiques"})
+    {:ok, tc_maco} = Curriculum.assign_teacher(scope, maco, head, %{subject: "Mathématiques"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(scope, menu, head, %{subject: "Mathématiques"})
 
-    {:ok, s_maco} = Enrollment.add_student(maco, %{full_name: "Awa", sex: :f})
-    {:ok, s_menu} = Enrollment.add_student(menu, %{full_name: "Beti", sex: :f})
+    {:ok, s_maco} = Enrollment.add_student(scope, maco, %{full_name: "Awa", sex: :f})
+    {:ok, s_menu} = Enrollment.add_student(scope, menu, %{full_name: "Beti", sex: :f})
 
-    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
     {:ok, profile} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(profile, head.id)

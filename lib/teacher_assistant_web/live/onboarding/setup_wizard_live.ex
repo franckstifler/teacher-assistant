@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     {:ok,
      socket
      |> assign(
-       step: initial_step(ws, year),
+       step: initial_step(scope, year),
        ws: ws,
        year: year,
        year_form: year_form(ws.id, year == nil),
@@ -39,10 +39,10 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
      |> assign_invitations()}
   end
 
-  defp initial_step(ws, year) do
+  defp initial_step(scope, year) do
     cond do
       year == nil -> :year
-      Enrollment.list_class_groups(ws, year) == [] -> :classes
+      Enrollment.list_class_groups(scope, year) == [] -> :classes
       true -> :invite
     end
   end
@@ -245,14 +245,13 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   def handle_event("create_year", %{"year" => params}, socket) do
     scope = socket.assigns.current_scope
-    ws = socket.assigns.ws
 
     if Permissions.admin?(scope) do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
           :ok = Organization.build_default_calendar(year)
           :ok = Attendance.build_default_periods(scope)
-          Seeding.seed_starter_classes(ws, year)
+          Seeding.seed_starter_classes(scope, year)
 
           # Deliberately land on the `:classes` step rather than re-deriving
           # via `initial_step/2` — seeding just populated classes, so the
@@ -279,12 +278,12 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   def handle_event("add_class", %{"class_group" => params}, socket) do
     scope = socket.assigns.current_scope
-    %{ws: ws, year: year} = socket.assigns
+    %{year: year} = socket.assigns
 
     if Permissions.admin?(scope) do
       attrs = class_attrs(params)
 
-      case Enrollment.create_class_group(ws, year, attrs) do
+      case Enrollment.create_class_group(scope, year, attrs) do
         {:ok, _class_group} ->
           {:noreply,
            socket
@@ -310,7 +309,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
           {:noreply, socket}
 
         class_group ->
-          case Enrollment.delete_class_group(class_group) do
+          case Enrollment.delete_class_group(scope, class_group) do
             :ok ->
               {:noreply,
                socket
@@ -373,7 +372,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   defp assign_classes(socket, nil), do: assign(socket, :classes, [])
 
   defp assign_classes(socket, year) do
-    assign(socket, :classes, Enrollment.list_class_groups(socket.assigns.ws, year))
+    assign(socket, :classes, Enrollment.list_class_groups(socket.assigns.current_scope, year))
   end
 
   defp assign_invitations(socket) do

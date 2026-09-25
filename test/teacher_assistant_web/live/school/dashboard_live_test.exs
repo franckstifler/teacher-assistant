@@ -28,6 +28,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     alias TeacherAssistant.Enrollment
 
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Stats"})
+    scope = school_scope(user, school)
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
     {:ok, year} =
@@ -38,8 +39,8 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
 
     {:ok, _view, html} = live(conn, ~p"/school")
     assert html =~ "6e A" or html =~ "1"
@@ -84,6 +85,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
     setup %{conn: conn, actor: head} do
       {:ok, school} = Organization.create_school(head, %{name: "Lycée Dash"})
+      scope = school_scope(head, school)
 
       {:ok, year} =
         Organization.create_academic_year(school, %{
@@ -93,13 +95,18 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
           active: true
         })
 
-      {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+      {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
       conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-      %{conn: conn, school: school, year: year, cg: cg, head: head}
+      %{conn: conn, school: school, year: year, cg: cg, head: head, scope: scope}
     end
 
-    test "shows Mes classes when the user is a form master", %{conn: conn, cg: cg, head: head} do
-      {:ok, _} = Enrollment.set_form_master(cg, head.id)
+    test "shows Mes classes when the user is a form master", %{
+      conn: conn,
+      cg: cg,
+      head: head,
+      scope: scope
+    } do
+      {:ok, _} = Enrollment.set_form_master(scope, cg, head.id)
       {:ok, _view, html} = live(conn, ~p"/school")
       assert html =~ "Mes classes"
       assert html =~ "6e A"

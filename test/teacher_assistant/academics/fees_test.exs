@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
     scope = school_scope(head, ws)
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -24,12 +25,13 @@ defmodule TeacherAssistant.Academics.FeesTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
 
-    {:ok, _student1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, _student2} = Enrollment.add_student(cg, %{full_name: "Bilal", sex: :m})
+    {:ok, _student1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student2} = Enrollment.add_student(scope, cg, %{full_name: "Bilal", sex: :m})
 
-    [%{enrollment: enrollment1}, %{enrollment: enrollment2}] = Enrollment.list_roster(cg)
+    [%{enrollment: enrollment1}, %{enrollment: enrollment2}] =
+      Enrollment.list_roster(scope, cg)
 
     %{
       ws: ws,

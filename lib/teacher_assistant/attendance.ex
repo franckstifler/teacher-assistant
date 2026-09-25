@@ -221,7 +221,7 @@ defmodule TeacherAssistant.Attendance do
         {cg, tc, group_marks}
       end)
 
-    with :ok <- validate_group_marks(per_group_marks) do
+    with :ok <- validate_group_marks(scope, per_group_marks) do
       run_record_combined_period(
         per_group_marks,
         period,
@@ -232,11 +232,11 @@ defmodule TeacherAssistant.Attendance do
     end
   end
 
-  defp validate_group_marks(per_group_marks) do
+  defp validate_group_marks(%Scope{} = scope, per_group_marks) do
     Enum.reduce_while(per_group_marks, :ok, fn {cg, _tc, group_marks}, :ok ->
       valid_enrollment_ids =
-        cg
-        |> TeacherAssistant.Enrollment.list_roster()
+        scope
+        |> TeacherAssistant.Enrollment.list_roster(cg)
         |> MapSet.new(& &1.enrollment.id)
 
       case validate_marks(group_marks, valid_enrollment_ids) do
@@ -300,8 +300,8 @@ defmodule TeacherAssistant.Attendance do
     teaching_context_id = teaching_context_id(teaching_context)
 
     valid_enrollment_ids =
-      class_group
-      |> TeacherAssistant.Enrollment.list_roster()
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
       |> MapSet.new(& &1.enrollment.id)
 
     with :ok <- validate_marks(marks, valid_enrollment_ids) do
@@ -350,8 +350,8 @@ defmodule TeacherAssistant.Attendance do
       |> Map.new(fn {enrollment_id, pairs} -> {enrollment_id, Map.new(pairs)} end)
 
     students =
-      class_group
-      |> TeacherAssistant.Enrollment.list_roster()
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
       |> Enum.map(fn %{student: student, enrollment: enrollment} ->
         marks = Map.get(cells_by_enrollment, enrollment.id, %{})
         cells = Map.new(period_ids, &{&1, Map.get(marks, &1)})
@@ -435,8 +435,8 @@ defmodule TeacherAssistant.Attendance do
   """
   def class_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple) do
     roster_enrollment_ids =
-      class_group
-      |> TeacherAssistant.Enrollment.list_roster()
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
       |> Enum.map(& &1.enrollment.id)
 
     zero_map = Map.new(roster_enrollment_ids, &{&1, @zero_totals})

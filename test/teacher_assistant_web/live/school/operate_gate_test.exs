@@ -21,6 +21,8 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
         town: "Yaoundé"
       })
 
+    scope = school_scope(head, school)
+
     {:ok, year} =
       Organization.create_academic_year(school, %{
         name: "2025-2026",
@@ -29,9 +31,8 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-    scope = school_scope(head, school)
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
@@ -42,7 +43,7 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
     %{

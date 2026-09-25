@@ -10,6 +10,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -19,13 +20,13 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
         active: true
       })
 
-    {:ok, cg_a} = Enrollment.create_class_group(school, year, %{label: "1ère A", level: "1ère"})
-    {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "1ère B", level: "1ère"})
+    {:ok, cg_a} = Enrollment.create_class_group(scope, year, %{label: "1ère A", level: "1ère"})
+    {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "1ère B", level: "1ère"})
 
-    {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head, %{subject: "Mathématiques"})
-    {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Mathématiques"})
+    {:ok, tc_a} = Curriculum.assign_teacher(scope, cg_a, head, %{subject: "Mathématiques"})
+    {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Mathématiques"})
 
-    {:ok, course} = Curriculum.combine_course([tc_a, tc_b])
+    {:ok, course} = Curriculum.combine_course(scope, [tc_a, tc_b])
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

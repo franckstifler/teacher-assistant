@@ -29,7 +29,7 @@ defmodule TeacherAssistant.Scope do
     year = scope.current_academic_year
 
     year != nil and
-      TeacherAssistant.Enrollment.list_class_groups(scope.current_workspace, year) != []
+      TeacherAssistant.Enrollment.list_class_groups(scope, year) != []
   end
 
   def setup_complete?(%__MODULE__{current_workspace: nil}), do: true

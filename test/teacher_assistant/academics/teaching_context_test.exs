@@ -9,7 +9,7 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
     %{workspace: ws, head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     %{head: head, ws: ws, year: year, cg: cg, scope: scope}
   end
 
@@ -48,7 +48,7 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
 
     {:ok, _} = Accounts.accept_invitation(inv.token, u2)
 
-    assert {:error, _} = Curriculum.assign_teacher(cg, u2, %{subject: "Maths"})
+    assert {:error, _} = Curriculum.assign_teacher(scope, cg, u2, %{subject: "Maths"})
   end
 
   test "a teaching context requires a teacher and a class group" do

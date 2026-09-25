@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Accounts.SchoolsCatalogSeedTest do
         subsystem: :francophone
       })
 
-    names = ws |> Curriculum.list_subjects() |> Enum.map(& &1.name)
+    names = ws |> then(&Curriculum.list_subjects(school_scope(head, &1))) |> Enum.map(& &1.name)
     assert "Mathématiques" in names
     assert "Français" in names
     assert length(names) >= 10
@@ -30,7 +30,7 @@ defmodule TeacherAssistant.Accounts.SchoolsCatalogSeedTest do
         subsystem: :francophone
       })
 
-    names = ws |> Curriculum.list_subjects() |> Enum.map(& &1.name)
+    names = ws |> then(&Curriculum.list_subjects(school_scope(head, &1))) |> Enum.map(& &1.name)
     assert "Atelier / Pratique" in names
   end
 end

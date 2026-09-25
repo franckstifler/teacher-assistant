@@ -44,12 +44,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   defp form_master_classes(%{current_academic_year: nil}), do: []
 
   defp form_master_classes(scope),
-    do:
-      Enrollment.list_form_master_classes(
-        scope.current_workspace,
-        scope.current_user,
-        scope.current_academic_year
-      )
+    do: Enrollment.list_form_master_classes(scope, scope.current_academic_year)
 
   def render(assigns) do
     ~H"""
@@ -185,24 +180,23 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     year = scope.current_academic_year
 
     classes =
-      if year, do: Enrollment.list_class_groups(scope.current_workspace, year), else: []
+      if year, do: Enrollment.list_class_groups(scope, year), else: []
 
     students_count =
       classes
-      |> Enum.map(&length(Enrollment.list_roster(&1)))
+      |> Enum.map(&length(Enrollment.list_roster(scope, &1)))
       |> Enum.sum()
 
     teachers_count =
       classes
-      |> Enum.flat_map(&Curriculum.list_assignments_for_class(&1))
+      |> Enum.flat_map(&Curriculum.list_assignments_for_class(scope, &1))
       |> Enum.map(& &1.teacher_user_id)
       |> Enum.uniq()
       |> length()
 
     my_classes =
       if year,
-        do:
-          Enrollment.list_form_master_classes(scope.current_workspace, scope.current_user, year),
+        do: Enrollment.list_form_master_classes(scope, year),
         else: []
 
     profile_complete? =

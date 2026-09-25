@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
   end
 
   describe "with a linked class group" do
-    setup %{workspace: ws, year: year, actor: head, scope: scope} do
+    setup %{year: year, actor: head, scope: scope} do
       tc =
         TeacherFixtures.assigned_context_fixture(scope, year, %{
           subject: "Maths",
@@ -19,9 +19,9 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
           teacher: head
         })
 
-      {:ok, cg} = Enrollment.fetch_owned_class_group(tc.class_group_id, ws)
-      {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-      {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
+      {:ok, cg} = Enrollment.fetch_owned_class_group(scope, tc.class_group_id)
+      {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+      {:ok, s2} = Enrollment.add_student(scope, cg, %{full_name: "Beba", sex: :m})
       %{ctx: tc, cg: cg, s1: s1, s2: s2}
     end
 

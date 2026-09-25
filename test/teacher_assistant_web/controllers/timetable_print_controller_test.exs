@@ -21,8 +21,8 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))

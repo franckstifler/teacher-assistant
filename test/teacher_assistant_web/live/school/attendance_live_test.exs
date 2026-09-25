@@ -22,8 +22,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
@@ -38,8 +38,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
         teaching_context_id: tc.id
       })
 
-    {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkolo", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkolo", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     {:ok, profile} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(profile, head.id)
@@ -78,8 +78,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     scope: scope,
     enrollment: enrollment
   } do
-    {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
-    other_enr = Enum.find(Enrollment.list_roster(cg), &(&1.student.id == other.id)).enrollment
+    {:ok, other} = Enrollment.add_student(scope, cg, %{full_name: "Beba Ndoumbe", sex: :m})
+
+    other_enr =
+      Enum.find(Enrollment.list_roster(scope, cg), &(&1.student.id == other.id)).enrollment
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
@@ -102,8 +104,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     scope: scope,
     enrollment: enrollment
   } do
-    {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
-    other_enr = Enum.find(Enrollment.list_roster(cg), &(&1.student.id == other.id)).enrollment
+    {:ok, other} = Enrollment.add_student(scope, cg, %{full_name: "Beba Ndoumbe", sex: :m})
+
+    other_enr =
+      Enum.find(Enrollment.list_roster(scope, cg), &(&1.student.id == other.id)).enrollment
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
@@ -195,7 +199,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   end
 
   describe "assignment-based roll call (no timetable slot)" do
-    setup %{school: school, cg: cg, head: head, scope: scope} do
+    setup %{school: school, head: head, scope: scope} do
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
@@ -216,9 +220,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       date: date,
       other: other,
       free_period: free_period,
-      enrollment: enrollment
+      enrollment: enrollment,
+      scope: scope
     } do
-      {:ok, tc_other} = Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
+      {:ok, tc_other} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
 
       {:ok, view, _html} = live(conn_for(school, other), att_path(cg, free_period, date))
       assert has_element?(view, "#class-attendance")
@@ -245,9 +250,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       cg: cg,
       period: period,
       date: date,
-      other: other
+      other: other,
+      scope: scope
     } do
-      {:ok, _tc_other} = Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
+      {:ok, _tc_other} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
 
       # `period` on `date` is the head's Maths slot (placed in the top-level setup).
       assert {:error, {:live_redirect, %{to: "/school"}}} =
@@ -273,6 +279,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+    other_scope = school_scope(other, os)
 
     {:ok, oy} =
       Organization.create_academic_year(os, %{
@@ -282,7 +289,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, att_path(ocg, period, date))

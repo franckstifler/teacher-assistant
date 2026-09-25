@@ -14,23 +14,23 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
         teacher: scope.current_user
       })
 
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Plan"})
 
-    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(scope, plan, %{title: "M1"})
 
     {:ok, entry} =
-      Curriculum.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(scope, m1, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson
       })
 
-    %{ws: ws, plan: plan, entry: entry}
+    %{ws: ws, scope: scope, plan: plan, entry: entry}
   end
 
-  test "log against a planned entry", %{ws: ws, plan: plan, entry: entry} do
+  test "log against a planned entry", %{scope: scope, plan: plan, entry: entry} do
     assert {:ok, log} =
-             Curriculum.log_teaching(ws, %{
+             Curriculum.log_teaching(scope, %{
                date: ~D[2025-09-15],
                content_taught: "Intro",
                hours: Decimal.new("2"),
@@ -39,7 +39,7 @@ defmodule TeacherAssistant.Academics.TeachingLogEntryTest do
              })
 
     assert log.status == :done
-    assert [listed] = Curriculum.list_logs_for_plan!(plan.id, tenant: plan.workspace_id)
+    assert [listed] = Curriculum.list_logs_for_plan!(plan.id, scope: scope)
     assert listed.id == log.id
   end
 end

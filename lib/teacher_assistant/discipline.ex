@@ -262,7 +262,7 @@ defmodule TeacherAssistant.Discipline do
   enrollments get `%{sanctions: [], consignes_count: 0, note_de_conduite: nil}`.
   """
   def class_discipline(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple) do
-    roster = TeacherAssistant.Enrollment.list_roster(class_group)
+    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     entries_by_enrollment =

@@ -21,9 +21,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
         teacher: head
       })
 
-    {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.class_group_id, ws)
-    {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
+    {:ok, cg} = Enrollment.fetch_owned_class_group(scope, ctx.class_group_id)
+    {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, s2} = Enrollment.add_student(scope, cg, %{full_name: "Beba", sex: :m})
     {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
 
     :ok =
@@ -32,7 +32,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
         %{student_id: s2.id, score: Decimal.new("8")}
       ])
 
-    %{ws: ws, ctx: ctx, seq: seq, cg: cg, s1: s1, s2: s2}
+    %{ws: ws, ctx: ctx, seq: seq, cg: cg, s1: s1, s2: s2, scope: scope}
   end
 
   test "shows class average and pass rate", %{conn: conn, ctx: ctx, seq: seq, s1: s1} do
@@ -53,9 +53,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     ctx: ctx,
     seq: seq,
     cg: cg,
-    s2: s2
+    s2: s2,
+    scope: scope
   } do
-    {:ok, ungraded} = Enrollment.add_student(cg, %{full_name: "Chantal", sex: :f})
+    {:ok, ungraded} = Enrollment.add_student(scope, cg, %{full_name: "Chantal", sex: :f})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
@@ -73,9 +74,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     conn: conn,
     ctx: ctx,
     seq: seq,
-    cg: cg
+    cg: cg,
+    scope: scope
   } do
-    {:ok, _ungraded} = Enrollment.add_student(cg, %{full_name: "Chantal", sex: :f})
+    {:ok, _ungraded} = Enrollment.add_student(scope, cg, %{full_name: "Chantal", sex: :f})
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")

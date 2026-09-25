@@ -39,7 +39,12 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
           active: true
         })
 
-      {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+      {:ok, cg} =
+        Enrollment.create_class_group(school_scope(user, school), year, %{
+          label: "6e A",
+          level: "6ème"
+        })
+
       %{school: school, year: year, cg: cg}
     end
 
@@ -47,7 +52,7 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       %{user: user, school: school, year: year, cg: cg} = ctx
 
       {:ok, tc} =
-        Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+        Curriculum.assign_teacher(school_scope(user, school), cg, user, %{subject: "Maths"})
 
       {:ok, scope} = Workspaces.scope_for(user, school.id)
       assert scope.current_academic_year.id == year.id
@@ -73,10 +78,11 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
       {:ok, _} = Accounts.accept_invitation(inv.token, other)
 
-      {:ok, mine} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+      {:ok, mine} =
+        Curriculum.assign_teacher(school_scope(user, school), cg, user, %{subject: "Maths"})
 
       {:ok, theirs} =
-        Curriculum.assign_teacher(cg, other, %{subject: "Anglais"})
+        Curriculum.assign_teacher(school_scope(user, school), cg, other, %{subject: "Anglais"})
 
       {:ok, scope} = Workspaces.scope_for(user, school.id, theirs.id)
       assert scope.current_context.id == mine.id

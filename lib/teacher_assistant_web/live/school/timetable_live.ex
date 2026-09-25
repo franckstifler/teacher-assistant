@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       {:ok,
        socket
@@ -22,7 +22,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
          cg: cg,
          admin?: Permissions.admin?(scope),
          periods: Attendance.list_periods(scope),
-         assignments: Curriculum.list_assignments_for_class(cg),
+         assignments: Curriculum.list_assignments_for_class(scope, cg),
          days: @days
        )
        |> load_timetable()}

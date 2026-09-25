@@ -5,9 +5,9 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
   alias TeacherAssistant.Enrollment
 
   setup %{conn: conn} do
-    %{workspace: ws, head_user: head} = school_fixture()
+    %{workspace: ws, head_user: head, scope: scope} = school_fixture()
     conn = conn |> log_in_user(head) |> put_session(:workspace_id, ws.id)
-    %{conn: conn, ws: ws, head: head}
+    %{conn: conn, ws: ws, head: head, scope: scope}
   end
 
   describe "invite step" do
@@ -71,7 +71,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
 
   test "creating the academic year seeds classes and advances to the classes step", %{
     conn: conn,
-    ws: ws
+    ws: ws,
+    scope: scope
   } do
     {:ok, view, _} = live(conn, ~p"/school/setup")
 
@@ -84,7 +85,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     assert TeacherAssistant.Organization.current_academic_year(ws) != nil
 
     assert Enrollment.list_class_groups(
-             ws,
+             scope,
              TeacherAssistant.Organization.current_academic_year(ws)
            ) != []
 
@@ -149,12 +150,14 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
 
     test "continue is disabled with zero classes and enabled after adding one", %{
       conn: conn,
-      ws: ws,
+      scope: scope,
       year: year
     } do
       # Seeding always leaves at least one starter class — delete them all to
       # exercise the empty branch.
-      ws |> Enrollment.list_class_groups(year) |> Enum.each(&Enrollment.delete_class_group/1)
+      scope
+      |> Enrollment.list_class_groups(year)
+      |> Enum.each(&Enrollment.delete_class_group(scope, &1))
 
       {:ok, view, html} = live(conn, ~p"/school/setup")
       assert html =~ ~s(id="wizard-panel-classes")
@@ -168,7 +171,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
       })
       |> render_submit()
 
-      assert Enrollment.list_class_groups(ws, year) != []
+      assert Enrollment.list_class_groups(scope, year) != []
 
       html = render(view)
       refute html =~ ~s(button[phx-click="continue_classes"] disabled)
@@ -189,7 +192,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     end
 
     test "deleting the last class blocks continue again", %{
-      ws: ws,
+      scope: scope,
       view: view,
       year: year
     } do
@@ -200,33 +203,33 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
       # delete that last one through the UI so the view's own handler (not a
       # fresh mount, which would re-derive the step past `:classes` once a
       # class exists) drives it to zero.
-      [class_group | rest] = Enrollment.list_class_groups(ws, year)
-      Enum.each(rest, &Enrollment.delete_class_group/1)
+      [class_group | rest] = Enrollment.list_class_groups(scope, year)
+      Enum.each(rest, &Enrollment.delete_class_group(scope, &1))
 
       view
       |> element(~s(button[phx-click="delete_class"][phx-value-id="#{class_group.id}"]))
       |> render_click()
 
-      assert Enrollment.list_class_groups(ws, year) == []
+      assert Enrollment.list_class_groups(scope, year) == []
 
       continue_button = element(view, ~s(button[phx-click="continue_classes"]))
       assert render(continue_button) =~ "disabled"
     end
 
     test "deleting a class with roster data shows a flash and does not crash", %{
-      ws: ws,
+      scope: scope,
       view: view,
       year: year
     } do
-      [class_group | _] = Enrollment.list_class_groups(ws, year)
+      [class_group | _] = Enrollment.list_class_groups(scope, year)
 
-      {:ok, _student} = Enrollment.add_student(class_group, %{full_name: "Awa", sex: :f})
+      {:ok, _student} = Enrollment.add_student(scope, class_group, %{full_name: "Awa", sex: :f})
 
       view
       |> element(~s(button[phx-click="delete_class"][phx-value-id="#{class_group.id}"]))
       |> render_click()
 
-      assert Enum.any?(Enrollment.list_class_groups(ws, year), &(&1.id == class_group.id))
+      assert Enum.any?(Enrollment.list_class_groups(scope, year), &(&1.id == class_group.id))
 
       html = render(view)
       # `d'abord` renders HTML-escaped (`d&#39;abord`), so match a
@@ -249,39 +252,39 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
         |> log_in_user(other)
         |> put_session(:workspace_id, ws.id)
 
-      %{conn: conn, ws: ws, head: head, other: other, year: year}
+      %{conn: conn, ws: ws, head: head, other: other, year: year, scope: scope}
     end
 
     test "a non-head member cannot add a class via a forged event", %{
       conn: conn,
-      ws: ws,
+      scope: scope,
       year: year
     } do
       {:ok, view, _html} = live(conn, ~p"/school/setup")
 
-      before_labels = ws |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+      before_labels = scope |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
 
       render_hook(view, "add_class", %{
         "class_group" => %{"label" => "Forged", "level" => "6e"}
       })
 
-      after_labels = ws |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+      after_labels = scope |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
       assert after_labels == before_labels
       refute "Forged" in after_labels
     end
 
     test "a non-head member cannot delete a class via a forged event", %{
       conn: conn,
-      ws: ws,
+      scope: scope,
       year: year
     } do
       {:ok, view, _html} = live(conn, ~p"/school/setup")
 
-      [class_group | _] = Enrollment.list_class_groups(ws, year)
+      [class_group | _] = Enrollment.list_class_groups(scope, year)
 
       render_hook(view, "delete_class", %{"id" => class_group.id})
 
-      assert Enum.any?(Enrollment.list_class_groups(ws, year), &(&1.id == class_group.id))
+      assert Enum.any?(Enrollment.list_class_groups(scope, year), &(&1.id == class_group.id))
     end
   end
 end

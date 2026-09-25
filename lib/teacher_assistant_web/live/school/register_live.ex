@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     scope = socket.assigns.current_scope
     date = parse_date(params["date"])
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- authorized?(scope, cg) do
       {:ok,
        socket

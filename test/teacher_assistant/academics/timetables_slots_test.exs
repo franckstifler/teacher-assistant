@@ -23,11 +23,11 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
         active: true
       })
 
-    {:ok, cg_a} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+    {:ok, cg_a} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
 
-    {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head, %{subject: "Maths"})
-    {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Maths"})
+    {:ok, tc_a} = Curriculum.assign_teacher(scope, cg_a, head, %{subject: "Maths"})
+    {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Maths"})
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
@@ -104,7 +104,7 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
 
     {:ok, _member} = Accounts.accept_invitation(inv.token, other_teacher)
 
-    {:ok, tc_other} = Curriculum.assign_teacher(cg_b, other_teacher, %{subject: "Anglais"})
+    {:ok, tc_other} = Curriculum.assign_teacher(scope, cg_b, other_teacher, %{subject: "Anglais"})
 
     {:ok, _slot_a} =
       Timetabling.place_slot(scope, cg_a, %{
@@ -123,7 +123,7 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
 
   test "replacing the same cell keeps a single slot and does not self-clash", ctx do
     %{cg_a: cg_a, tc_a: tc_a, period: period, scope: scope} = ctx
-    {:ok, tc_a2} = Curriculum.assign_teacher(cg_a, ctx.head, %{subject: "SVT"})
+    {:ok, tc_a2} = Curriculum.assign_teacher(scope, cg_a, ctx.head, %{subject: "SVT"})
 
     {:ok, slot1} =
       Timetabling.place_slot(scope, cg_a, %{

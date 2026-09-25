@@ -11,9 +11,10 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     # Setup-complete (active year + a class) so /school/settings isn't gated
     # to the wizard. Tests below that exercise year creation/activation add
     # their own additional years on top of this one.
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
+    scope = school_scope(user, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
-    %{conn: conn, school: school}
+    %{conn: conn, school: school, scope: scope}
   end
 
   test "head renames the school", %{conn: conn, school: school} do
@@ -53,7 +54,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert length(Organization.list_sequences(year)) == 6
   end
 
-  test "an active year without a calendar offers to generate it", %{conn: conn, school: school} do
+  test "an active year without a calendar offers to generate it", %{
+    conn: conn,
+    school: school,
+    scope: scope
+  } do
     {:ok, bare} =
       Organization.create_academic_year(school, %{
         name: "2031-2032",
@@ -63,7 +68,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
       })
 
     # The active year needs a class or the setup gate sends us to the wizard.
-    {:ok, _} = Enrollment.create_class_group(school, bare, %{label: "6e Z", level: "6ème"})
+    {:ok, _} = Enrollment.create_class_group(scope, bare, %{label: "6e Z", level: "6ème"})
 
     {:ok, view, _} = live(conn, ~p"/school/settings")
     assert has_element?(view, "#generate-calendar-#{bare.id}")
@@ -79,7 +84,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert has_element?(view, "#year-calendar-#{year.id} li", "Séquence 6")
   end
 
-  test "activating a year deactivates the previous one", %{conn: conn, school: school} do
+  test "activating a year deactivates the previous one", %{
+    conn: conn,
+    school: school,
+    scope: scope
+  } do
     {:ok, y1} =
       Organization.create_academic_year(school, %{
         name: "2024-2025",
@@ -91,7 +100,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     # y1 is now the workspace's active year (it superseded the base
     # fixture's), so give it a class too or the setup-complete gate blocks
     # this request.
-    {:ok, _cg} = Enrollment.create_class_group(school, y1, %{label: "6e A", level: "6ème"})
+    {:ok, _cg} = Enrollment.create_class_group(scope, y1, %{label: "6e A", level: "6ème"})
 
     {:ok, y2} =
       Organization.create_academic_year(school, %{
@@ -188,7 +197,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     refute render(view) =~ "Allemand"
   end
 
-  test "admin edits a subject's coefficient", %{conn: conn, school: school} do
+  test "admin edits a subject's coefficient", %{conn: conn, scope: scope} do
     alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
@@ -196,7 +205,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
     view
@@ -205,11 +214,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     )
     |> render_submit()
 
-    updated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
+    updated = Curriculum.list_subjects(scope) |> Enum.find(&(&1.id == subject.id))
     assert Decimal.equal?(updated.default_coefficient, Decimal.new("2.5"))
   end
 
-  test "admin deactivates and reactivates a subject", %{conn: conn, school: school} do
+  test "admin deactivates and reactivates a subject", %{conn: conn, scope: scope} do
     alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
@@ -217,23 +226,24 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
-    deactivated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
+    deactivated = Curriculum.list_subjects(scope) |> Enum.find(&(&1.id == subject.id))
     assert deactivated.active? == false
     assert render(view) =~ "Réactiver"
 
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
-    reactivated = Curriculum.list_subjects(school) |> Enum.find(&(&1.id == subject.id))
+    reactivated = Curriculum.list_subjects(scope) |> Enum.find(&(&1.id == subject.id))
     assert reactivated.active? == true
   end
 
   test "a plain teacher member cannot manage the subject catalog (forged events)", %{
     conn: conn,
     school: school,
-    actor: head
+    actor: head,
+    scope: scope
   } do
     alias TeacherAssistant.Curriculum
     {:ok, view, _html} = live(conn, ~p"/school/settings")
@@ -242,9 +252,9 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
     |> render_submit()
 
-    subject = Curriculum.list_subjects(school) |> Enum.find(&(&1.name == "Allemand"))
+    subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
-    catalog_size_before = length(Curriculum.list_subjects(school))
+    catalog_size_before = length(Curriculum.list_subjects(scope))
 
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -280,7 +290,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     render_hook(tview, "toggle_subject_active", %{"id" => subject.id})
     render_hook(tview, "delete_subject", %{"id" => subject.id})
 
-    subjects = Curriculum.list_subjects(school)
+    subjects = Curriculum.list_subjects(scope)
     assert length(subjects) == catalog_size_before
     refute Enum.any?(subjects, &(&1.name == "Forged"))
 
@@ -292,7 +302,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
   test "additional academic years created via form are inactive; only first is active", %{
     conn: conn,
-    school: school
+    school: school,
+    scope: scope
   } do
     # Create first year directly with active: true
     {:ok, y1} =
@@ -306,7 +317,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     # y1 is now the workspace's active year (it superseded the base
     # fixture's), so give it a class too or the setup-complete gate blocks
     # this request.
-    {:ok, _cg} = Enrollment.create_class_group(school, y1, %{label: "6e A", level: "6ème"})
+    {:ok, _cg} = Enrollment.create_class_group(scope, y1, %{label: "6e A", level: "6ème"})
 
     {:ok, view, _} = live(conn, ~p"/school/settings")
 

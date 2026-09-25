@@ -33,7 +33,7 @@ defmodule TeacherAssistant.TeacherFixtures do
   Creates an active academic year for the scope's school, builds its default
   calendar and seeds its starter classes, so `Scope.setup_complete?/1` is true.
   """
-  def complete_school_setup!(%Scope{current_workspace: workspace}, attrs \\ %{}) do
+  def complete_school_setup!(%Scope{current_workspace: workspace} = scope, attrs \\ %{}) do
     {:ok, year} =
       Organization.create_academic_year(workspace, %{
         name: attrs[:name] || "Année de référence",
@@ -43,7 +43,7 @@ defmodule TeacherAssistant.TeacherFixtures do
       })
 
     :ok = Organization.build_default_calendar(year)
-    {:ok, _count} = TeacherAssistant.Academics.Seeding.seed_starter_classes(workspace, year)
+    {:ok, _count} = TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
 
     year
   end
@@ -99,7 +99,7 @@ defmodule TeacherAssistant.TeacherFixtures do
   membership when `attrs[:teacher]` already belongs to the school.
   """
   def school_teacher_fixture(
-        %Scope{current_workspace: workspace, current_user: head},
+        %Scope{current_workspace: workspace, current_user: head} = scope,
         attrs \\ %{}
       ) do
     teacher = attrs[:teacher] || user_fixture()
@@ -125,10 +125,10 @@ defmodule TeacherAssistant.TeacherFixtures do
 
     class_group =
       attrs[:class_group] ||
-        TeacherAssistant.Enrollment.list_class_groups(workspace, year) |> List.first()
+        TeacherAssistant.Enrollment.list_class_groups(scope, year) |> List.first()
 
     {:ok, tc} =
-      TeacherAssistant.Curriculum.assign_teacher(class_group, teacher, %{
+      TeacherAssistant.Curriculum.assign_teacher(scope, class_group, teacher, %{
         subject: attrs[:subject] || "Maths"
       })
 
@@ -143,18 +143,18 @@ defmodule TeacherAssistant.TeacherFixtures do
 
   @doc """
   A teaching context on the scope's school and `year` for a real member
-  teacher and a real class group, via `Curriculum.assign_teacher/3`.
+  teacher and a real class group, via `Curriculum.assign_teacher/4`.
   """
   def assigned_context_fixture(
-        %Scope{current_workspace: workspace, current_user: head},
+        %Scope{current_workspace: workspace, current_user: head} = scope,
         year,
         attrs \\ %{}
       ) do
     teacher = attrs[:teacher] || member_teacher(workspace, head)
-    class_group = attrs[:class_group] || new_class_group(workspace, year, attrs)
+    class_group = attrs[:class_group] || new_class_group(scope, year, attrs)
 
     {:ok, tc} =
-      TeacherAssistant.Curriculum.assign_teacher(class_group, teacher, %{
+      TeacherAssistant.Curriculum.assign_teacher(scope, class_group, teacher, %{
         subject: attrs[:subject] || "Maths",
         coefficient: attrs[:coefficient] || Decimal.new(1)
       })
@@ -176,9 +176,9 @@ defmodule TeacherAssistant.TeacherFixtures do
     u
   end
 
-  defp new_class_group(workspace, year, attrs) do
+  defp new_class_group(%Scope{} = scope, year, attrs) do
     {:ok, cg} =
-      TeacherAssistant.Enrollment.create_class_group(workspace, year, %{
+      TeacherAssistant.Enrollment.create_class_group(scope, year, %{
         label: "#{attrs[:level] || "3ème"} #{System.unique_integer([:positive])}",
         level: attrs[:level] || "3ème",
         serie: attrs[:serie]

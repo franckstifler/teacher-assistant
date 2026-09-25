@@ -13,9 +13,9 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg),
-         roster = Enrollment.list_roster(cg),
+         roster = Enrollment.list_roster(scope, cg),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
       year = scope.current_academic_year

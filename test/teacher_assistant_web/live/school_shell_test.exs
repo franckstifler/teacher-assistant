@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Rail"})
+    scope = school_scope(user, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -18,8 +19,8 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, user, %{subject: "Maths"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, year: year, cg: cg, tc: tc, user: user}
   end

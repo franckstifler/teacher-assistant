@@ -25,12 +25,15 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Bob Eyong", sex: :m})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+
+    {:ok, _} =
+      Enrollment.add_student(scope, cg, %{full_name: "Awa Ngo", sex: :f, matricule: "M-1"})
+
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Bob Eyong", sex: :m})
 
     {:ok, tc} =
-      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
       Assessment.create_assessment(scope, tc, seq, %{
@@ -39,7 +42,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
         max_score: Decimal.new(20)
       })
 
-    roster = Enrollment.list_roster(cg)
+    roster = Enrollment.list_roster(scope, cg)
 
     for %{student: s} <- roster,
         do: Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new(14)}])
@@ -76,13 +79,12 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     cg: cg,
     seq: seq,
     roster: roster,
-    school: school,
     scope: scope
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
 
     :ok = Attendance.build_default_periods(scope)
-    [tc] = Curriculum.list_assignments_for_class(cg)
+    [tc] = Curriculum.list_assignments_for_class(scope, cg)
     [period1, period2 | _] = Attendance.list_periods(scope) |> Enum.filter(&(&1.kind == :lesson))
 
     {:ok, slot} =
@@ -190,7 +192,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     cg: cg,
     seq: seq,
     head: head,
-    school: school
+    school: school,
+    scope: scope
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -198,7 +201,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -210,8 +213,14 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert html_response(conn, 200) =~ "Awa Ngo"
   end
 
-  test "the bulletin names the form master when set", %{conn: conn, cg: cg, seq: seq, head: head} do
-    {:ok, _} = Enrollment.set_form_master(cg, head.id)
+  test "the bulletin names the form master when set", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    head: head,
+    scope: scope
+  } do
+    {:ok, _} = Enrollment.set_form_master(scope, cg, head.id)
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
     assert html_response(conn, 200) =~ to_string(head.email)
   end
@@ -228,7 +237,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     [term1 | _] = TeacherAssistant.Organization.list_terms(year)
     _ = seq
 
-    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
+    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
 
     {:ok, a2} =
       TeacherAssistant.Assessment.create_assessment(scope, tc, s2, %{
@@ -237,7 +246,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
         max_score: Decimal.new(20)
       })
 
-    for %{student: s} <- TeacherAssistant.Enrollment.list_roster(cg),
+    for %{student: s} <- TeacherAssistant.Enrollment.list_roster(scope, cg),
         do:
           TeacherAssistant.Assessment.upsert_marks(scope, a2, [
             %{student_id: s.id, score: Decimal.new(15)}
@@ -275,8 +284,12 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa Ngo", sex: :f})
+    unverified_scope = school_scope(head, school)
+
+    {:ok, cg} =
+      Enrollment.create_class_group(unverified_scope, year, %{label: "6e A", level: "6ème"})
+
+    {:ok, _} = Enrollment.add_student(unverified_scope, cg, %{full_name: "Awa Ngo", sex: :f})
 
     conn =
       conn

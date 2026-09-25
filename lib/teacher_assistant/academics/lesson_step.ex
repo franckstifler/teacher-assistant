@@ -62,17 +62,15 @@ defmodule TeacherAssistant.Academics.LessonStep do
       require_atomic? false
       argument :direction, :atom, constraints: [one_of: [:up, :down]], allow_nil?: false
 
-      change fn changeset, _context ->
+      change fn changeset, context ->
         step = changeset.data
         direction = Ash.Changeset.get_argument(changeset, :direction)
-        tenant = changeset.tenant
 
         siblings =
           __MODULE__
           |> Ash.Query.filter(lesson_plan_id == ^step.lesson_plan_id)
           |> Ash.Query.sort(position: :asc)
-          |> Ash.Query.set_tenant(tenant)
-          |> Ash.read!()
+          |> Ash.read!(scope: context)
 
         idx = Enum.find_index(siblings, &(&1.id == step.id))
         swap_idx = if direction == :up, do: idx && idx - 1, else: idx && idx + 1
@@ -86,8 +84,7 @@ defmodule TeacherAssistant.Academics.LessonStep do
           |> Ash.Changeset.change_attribute(:position, other.position)
           |> Ash.Changeset.after_action(fn _changeset, updated_step ->
             case other
-                 |> Ash.Changeset.for_update(:update, %{position: step.position})
-                 |> Ash.Changeset.set_tenant(tenant)
+                 |> Ash.Changeset.for_update(:update, %{position: step.position}, scope: context)
                  |> Ash.update() do
               {:ok, _other} -> {:ok, updated_step}
               {:error, error} -> {:error, error}

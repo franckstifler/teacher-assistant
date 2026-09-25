@@ -8,8 +8,9 @@ defmodule TeacherAssistant.Academics.SubjectTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, school)
 
-    Enum.each(Curriculum.list_subjects(school), &Curriculum.delete_subject(&1, tenant: school.id))
+    Enum.each(Curriculum.list_subjects(scope), &Curriculum.delete_subject(&1, scope: scope))
 
     %{ws: school}
   end

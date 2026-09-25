@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Cours"})
     scope = school_scope(head, school)
     year = TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "3e M2", level: "3ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
 
     teacher = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(teacher.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, teacher)
-    {:ok, tc} = Curriculum.assign_teacher(cg, teacher, %{subject: "Maths"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, teacher, %{subject: "Maths"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -81,7 +81,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     scope: scope
   } do
     [p1, p2 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
-    {:ok, tc_head} = Curriculum.assign_teacher(cg, head, %{subject: "Physique"})
+    {:ok, tc_head} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Physique"})
 
     case Date.day_of_week(Date.utc_today()) do
       7 ->
@@ -117,11 +117,12 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     year: year,
     teacher: teacher,
     cg: cg,
-    tc: tc
+    tc: tc,
+    scope: scope
   } do
-    {:ok, cg_b} = Enrollment.create_class_group(school, year, %{label: "3e M3", level: "3ème"})
-    {:ok, tc_b} = Curriculum.assign_teacher(cg_b, teacher, %{subject: "Maths"})
-    {:ok, course} = Curriculum.combine_course([tc, tc_b])
+    {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "3e M3", level: "3ème"})
+    {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, teacher, %{subject: "Maths"})
+    {:ok, course} = Curriculum.combine_course(scope, [tc, tc_b])
 
     {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
 
@@ -161,9 +162,10 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     test "a teacher who is also a form master keeps the dashboard", %{
       school: school,
       teacher: teacher,
-      cg: cg
+      cg: cg,
+      scope: scope
     } do
-      {:ok, _} = Enrollment.set_form_master(cg, teacher.id)
+      {:ok, _} = Enrollment.set_form_master(scope, cg, teacher.id)
       {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school")
       assert has_element?(view, "#school-dashboard")
       assert has_element?(view, "#dashboard-my-courses a[href='/school/courses']")
@@ -185,8 +187,13 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       end
     end
 
-    test "the head keeps the dashboard even when teaching", %{conn: conn, cg: cg, head: head} do
-      {:ok, _} = Curriculum.assign_teacher(cg, head, %{subject: "Physique"})
+    test "the head keeps the dashboard even when teaching", %{
+      conn: conn,
+      cg: cg,
+      head: head,
+      scope: scope
+    } do
+      {:ok, _} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Physique"})
       {:ok, view, _html} = live(conn, ~p"/school")
       assert has_element?(view, "#school-dashboard")
       assert has_element?(view, "#dashboard-my-courses a[href='/school/courses']")

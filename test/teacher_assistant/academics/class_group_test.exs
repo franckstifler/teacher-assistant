@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.ClassGroupTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws} = TeacherFixtures.school_fixture()
+    %{workspace: ws, scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -15,12 +15,12 @@ defmodule TeacherAssistant.Academics.ClassGroupTest do
         active: true
       })
 
-    %{ws: ws, year: year}
+    %{ws: ws, scope: scope, year: year}
   end
 
-  test "creates a class group scoped to workspace + year", %{ws: ws, year: year} do
+  test "creates a class group scoped to workspace + year", %{ws: ws, scope: scope, year: year} do
     {:ok, cg} =
-      Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème", serie: nil})
+      Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème", serie: nil})
 
     assert cg.label == "3e M2"
     assert cg.subsystem == :francophone
@@ -28,16 +28,16 @@ defmodule TeacherAssistant.Academics.ClassGroupTest do
     assert cg.academic_year_id == year.id
   end
 
-  test "lists class groups for the year", %{ws: ws, year: year} do
-    {:ok, _} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    assert [%{label: "3e M2"}] = Enrollment.list_class_groups(ws, year)
+  test "lists class groups for the year", %{scope: scope, year: year} do
+    {:ok, _} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
+    assert [%{label: "3e M2"}] = Enrollment.list_class_groups(scope, year)
   end
 
-  test "fetch_owned_class_group refuses another workspace's group", %{ws: ws, year: year} do
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
-    %{workspace: other} = TeacherFixtures.school_fixture()
-    assert {:error, :not_found} = Enrollment.fetch_owned_class_group(cg.id, other)
-    assert {:ok, %{id: id}} = Enrollment.fetch_owned_class_group(cg.id, ws)
+  test "fetch_owned_class_group refuses another workspace's group", %{scope: scope, year: year} do
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
+    %{scope: other_scope} = TeacherFixtures.school_fixture()
+    assert {:error, :not_found} = Enrollment.fetch_owned_class_group(other_scope, cg.id)
+    assert {:ok, %{id: id}} = Enrollment.fetch_owned_class_group(scope, cg.id)
     assert id == cg.id
   end
 end

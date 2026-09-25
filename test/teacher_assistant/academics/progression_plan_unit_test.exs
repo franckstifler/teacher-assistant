@@ -25,12 +25,12 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
       |> Ash.Changeset.set_tenant(ws.id)
       |> Ash.create(authorize?: false)
 
-    %{ws: ws, year: year, ctx: ctx, course: course}
+    %{ws: ws, year: year, scope: scope, ctx: ctx, course: course}
   end
 
-  test "a plan can belong to a combined course", %{course: course} do
+  test "a plan can belong to a combined course", %{course: course, scope: scope} do
     {:ok, plan} =
-      Curriculum.create_course_plan(course, %{title: "Maths"}, tenant: course.workspace_id)
+      Curriculum.create_course_plan(course, %{title: "Maths"}, scope: scope)
 
     assert plan.combined_course_id == course.id
     assert is_nil(plan.teaching_context_id)
@@ -38,16 +38,20 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
     assert plan.academic_year_id == course.academic_year_id
   end
 
-  test "a plan created from a teaching context has no combined_course_id", %{ctx: ctx} do
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème"})
+  test "a plan created from a teaching context has no combined_course_id", %{
+    ctx: ctx,
+    scope: scope
+  } do
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Maths 6ème"})
     assert plan.teaching_context_id == ctx.id
     assert is_nil(plan.combined_course_id)
   end
 
   test "create_course_plan defaults title and academic_year_id from the course", %{
-    course: course
+    course: course,
+    scope: scope
   } do
-    {:ok, plan} = Curriculum.create_course_plan(course, %{}, tenant: course.workspace_id)
+    {:ok, plan} = Curriculum.create_course_plan(course, %{}, scope: scope)
     assert plan.title == course.subject
     assert plan.academic_year_id == course.academic_year_id
   end
@@ -89,13 +93,15 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
       assert error_on_field?(error, :teaching_context_id)
     end
 
-    test "create succeeds when exactly one owner FK is set", %{ctx: ctx, course: course} do
-      assert {:ok, _plan} = Curriculum.create_progression_plan(ctx, %{title: "Solo"})
+    test "create succeeds when exactly one owner FK is set", %{
+      ctx: ctx,
+      course: course,
+      scope: scope
+    } do
+      assert {:ok, _plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Solo"})
 
       assert {:ok, _plan} =
-               Curriculum.create_course_plan(course, %{title: "Combined"},
-                 tenant: course.workspace_id
-               )
+               Curriculum.create_course_plan(course, %{title: "Combined"}, scope: scope)
     end
 
     defp error_on_field?(%{errors: errors}, field) do

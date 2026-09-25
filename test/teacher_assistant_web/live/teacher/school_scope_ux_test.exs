@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée UX"})
+    scope = school_scope(user, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -18,9 +19,9 @@ defmodule TeacherAssistantWeb.Teacher.SchoolScopeUxTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, user, %{subject: "Maths"})
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, year: year, cg: cg, tc: tc, user: user}
   end

@@ -64,7 +64,7 @@ defmodule TeacherAssistant.Academics.Enrollment do
     end
 
     # Atomically creates a Student and its first Enrollment (the "new
-    # student" path shared by the add_student/2 and enroll_new/2 flows).
+    # student" path shared by the add_student/3 and enroll_new/3 flows).
     # `transaction? true` wraps the whole run in a DB transaction (Ash starts
     # it before `run` executes, per touches_resources below) — an Enrollment
     # insert failure (e.g. the unique_enrollment_per_year identity) rolls
@@ -83,24 +83,26 @@ defmodule TeacherAssistant.Academics.Enrollment do
       touches_resources [TeacherAssistant.Academics.Student]
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         args = input.arguments
 
         with {:ok, student} <-
                TeacherAssistant.Academics.Student
-               |> Ash.Changeset.for_create(:create, args.student_attrs)
-               |> Ash.Changeset.set_tenant(input.tenant)
+               |> Ash.Changeset.for_create(:create, args.student_attrs, scope: scope)
                |> Ash.create(),
              {:ok, enrollment} <-
                __MODULE__
-               |> Ash.Changeset.for_create(:create, %{
-                 student_id: student.id,
-                 class_group_id: args.class_group_id,
-                 academic_year_id: args.academic_year_id,
-                 repeater: args.repeater,
-                 status: args.status
-               })
-               |> Ash.Changeset.set_tenant(input.tenant)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   student_id: student.id,
+                   class_group_id: args.class_group_id,
+                   academic_year_id: args.academic_year_id,
+                   repeater: args.repeater,
+                   status: args.status
+                 },
+                 scope: scope
+               )
                |> Ash.create() do
           {:ok, %{student: student, enrollment: enrollment}}
         end

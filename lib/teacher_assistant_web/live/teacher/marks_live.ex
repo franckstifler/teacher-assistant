@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
 
-    case Curriculum.fetch_assigned_teaching_context(ctx_id, scope) do
+    case Curriculum.fetch_assigned_teaching_context(scope, ctx_id) do
       {:ok, %{combined_course_id: course_id} = ctx} when not is_nil(course_id) ->
         mount_combined(ctx, course_id, params, socket, ws)
 
@@ -23,14 +23,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   defp mount_solo(ctx, params, socket, ws) do
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
+    with {:ok, cg} <-
+           Enrollment.fetch_owned_class_group(socket.assigns.current_scope, ctx.class_group_id) do
       scope = socket.assigns.current_scope
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"])
       assessments = if seq, do: Assessment.list_assessments(scope, ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
-      students = Enrollment.list_students(cg)
+      students = Enrollment.list_students(scope, cg)
 
       {:ok,
        socket
@@ -56,7 +57,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # backed by one real `Assessment` per member context — a student's score
   # always lands on their own class's context's assessment.
   defp mount_combined(ctx, course_id, params, socket, ws) do
-    case Curriculum.get_course(course_id, ws) do
+    case Curriculum.get_course(socket.assigns.current_scope, course_id) do
       {:ok, course} ->
         scope = socket.assigns.current_scope
         year = Organization.current_academic_year(ws)
@@ -64,7 +65,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         seq = pick(sequences, params["seq"])
         combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
         selected = pick(combined, params["assessment"])
-        groups = Curriculum.list_union_students(course)
+        groups = Curriculum.list_union_students(socket.assigns.current_scope, course)
 
         {:ok,
          socket

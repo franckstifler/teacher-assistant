@@ -22,8 +22,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
@@ -105,14 +105,13 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
          cg: cg,
          tc: tc,
          period: period,
-         school: school,
          year: year,
          head: head,
          scope: scope
        } do
-    {:ok, other_cg} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
-    {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
-    {:ok, _course} = Curriculum.combine_course([tc, other_tc])
+    {:ok, other_cg} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
+    {:ok, other_tc} = Curriculum.assign_teacher(scope, other_cg, head, %{subject: "Maths"})
+    {:ok, _course} = Curriculum.combine_course(scope, [tc, other_tc])
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/timetable")
 
@@ -143,15 +142,14 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     cg: cg,
     tc: tc,
     period: period,
-    school: school,
     year: year,
     head: head,
     scope: scope
   } do
     {:ok, other_cg} =
-      Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
+      Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
 
-    {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
+    {:ok, other_tc} = Curriculum.assign_teacher(scope, other_cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
       Timetabling.place_slot(scope, other_cg, %{
@@ -188,7 +186,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -233,6 +231,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+    other_scope = school_scope(other, os)
 
     {:ok, oy} =
       Organization.create_academic_year(os, %{
@@ -242,7 +241,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/timetable")

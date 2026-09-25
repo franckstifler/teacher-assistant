@@ -22,20 +22,24 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
     %{workspace: ws_b, head_user: head_b, year: year_b, scope: scope_b} =
       TeacherFixtures.setup_complete_school_fixture()
 
-    {:ok, cg_a} = Enrollment.create_class_group(ws_a, year_a, %{label: "6e A", level: "6ème"})
-    {:ok, cg_a2} = Enrollment.create_class_group(ws_a, year_a, %{label: "6e A2", level: "6ème"})
-    {:ok, cg_b} = Enrollment.create_class_group(ws_b, year_b, %{label: "6e B", level: "6ème"})
+    {:ok, cg_a} = Enrollment.create_class_group(scope_a, year_a, %{label: "6e A", level: "6ème"})
+
+    {:ok, cg_a2} =
+      Enrollment.create_class_group(scope_a, year_a, %{label: "6e A2", level: "6ème"})
+
+    {:ok, cg_b} = Enrollment.create_class_group(scope_b, year_b, %{label: "6e B", level: "6ème"})
 
     {:ok, %{student: student_a, enrollment: enrollment_a}} =
-      Enrollment.enroll_new(cg_a, %{full_name: "Awa A", sex: :f})
+      Enrollment.enroll_new(scope_a, cg_a, %{full_name: "Awa A", sex: :f})
 
-    {:ok, %{student: student_b}} = Enrollment.enroll_new(cg_b, %{full_name: "Bia B", sex: :f})
+    {:ok, %{student: student_b}} =
+      Enrollment.enroll_new(scope_b, cg_b, %{full_name: "Bia B", sex: :f})
 
-    {:ok, tc_a} = Curriculum.assign_teacher(cg_a, head_a, %{subject: "Maths"})
-    {:ok, tc_a2} = Curriculum.assign_teacher(cg_a2, head_a, %{subject: "Maths"})
-    {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head_b, %{subject: "Maths"})
+    {:ok, tc_a} = Curriculum.assign_teacher(scope_a, cg_a, head_a, %{subject: "Maths"})
+    {:ok, tc_a2} = Curriculum.assign_teacher(scope_a, cg_a2, head_a, %{subject: "Maths"})
+    {:ok, tc_b} = Curriculum.assign_teacher(scope_b, cg_b, head_b, %{subject: "Maths"})
 
-    {:ok, course_a} = Curriculum.combine_course([tc_a, tc_a2])
+    {:ok, course_a} = Curriculum.combine_course(scope_a, [tc_a, tc_a2])
 
     seq_a = year_a |> Organization.list_sequences() |> List.first()
     seq_b = year_b |> Organization.list_sequences() |> List.first()
@@ -43,14 +47,14 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
     period_a = Attendance.list_periods(scope_a) |> Enum.find(&(&1.kind == :lesson))
     period_b = Attendance.list_periods(scope_b) |> Enum.find(&(&1.kind == :lesson))
 
-    {:ok, plan_a} = Curriculum.create_progression_plan(tc_a, %{title: "Plan A"})
-    {:ok, module_a} = Curriculum.create_module(plan_a, %{title: "M1"})
+    {:ok, plan_a} = Curriculum.create_progression_plan(scope_a, tc_a, %{title: "Plan A"})
+    {:ok, module_a} = Curriculum.create_module(scope_a, plan_a, %{title: "M1"})
 
-    {:ok, plan_b} = Curriculum.create_progression_plan(tc_b, %{title: "Plan B"})
-    {:ok, module_b} = Curriculum.create_module(plan_b, %{title: "M1"})
+    {:ok, plan_b} = Curriculum.create_progression_plan(scope_b, tc_b, %{title: "Plan B"})
+    {:ok, module_b} = Curriculum.create_module(scope_b, plan_b, %{title: "M1"})
 
     {:ok, entry_b} =
-      Curriculum.add_progression_entry(module_b, %{
+      Curriculum.add_progression_entry(scope_b, module_b, %{
         lesson_title: "L1",
         planned_hours: Decimal.new("1"),
         entry_type: :lesson
@@ -115,35 +119,36 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Enrollment.enroll_existing rejects a class_group/student workspace mismatch", ctx do
-    assert {:error, _} = Enrollment.enroll_existing(ctx.cg_a, ctx.student_b)
+    assert {:error, _} = Enrollment.enroll_existing(ctx.scope_a, ctx.cg_a, ctx.student_b)
 
-    assert Enrollment.list_roster(ctx.cg_a) |> length() == 1
-    assert Enrollment.list_roster(ctx.cg_b) |> length() == 1
+    assert Enrollment.list_roster(ctx.scope_a, ctx.cg_a) |> length() == 1
+    assert Enrollment.list_roster(ctx.scope_b, ctx.cg_b) |> length() == 1
   end
 
   test "Enrollment.set_form_master requires an active membership in the class group's own workspace",
        ctx do
-    assert {:error, :not_a_member} = Enrollment.set_form_master(ctx.cg_a, ctx.head_b.id)
+    assert {:error, :not_a_member} =
+             Enrollment.set_form_master(ctx.scope_a, ctx.cg_a, ctx.head_b.id)
 
-    {:ok, reloaded} = Enrollment.fetch_owned_class_group(ctx.cg_a.id, ctx.ws_a)
+    {:ok, reloaded} = Enrollment.fetch_owned_class_group(ctx.scope_a, ctx.cg_a.id)
     assert reloaded.form_master_user_id == nil
   end
 
   test "Enrollment.create_class_group rejects a workspace/academic_year mismatch", ctx do
     assert {:error, _} =
-             Enrollment.create_class_group(ctx.ws_a, ctx.year_b, %{
+             Enrollment.create_class_group(ctx.scope_a, ctx.year_b, %{
                label: "Bogus",
                level: "6ème"
              })
 
-    refute Enrollment.list_class_groups(ctx.ws_a, ctx.year_a)
+    refute Enrollment.list_class_groups(ctx.scope_a, ctx.year_a)
            |> Enum.any?(&(&1.label == "Bogus"))
   end
 
   test "Enrollment.transfer rejects an enrollment/class_group workspace mismatch", ctx do
-    assert {:error, _} = Enrollment.transfer(ctx.enrollment_a, ctx.cg_b)
+    assert {:error, _} = Enrollment.transfer(ctx.scope_a, ctx.enrollment_a, ctx.cg_b)
 
-    {:ok, reloaded} = Enrollment.fetch_owned_enrollment(ctx.enrollment_a.id, ctx.ws_a)
+    {:ok, reloaded} = Enrollment.fetch_owned_enrollment(ctx.scope_a, ctx.enrollment_a.id)
     assert reloaded.class_group_id == ctx.cg_a.id
   end
 
@@ -216,22 +221,23 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Curriculum.assign_module_sequence rejects a foreign sequence_id", ctx do
-    assert {:error, :invalid} = Curriculum.assign_module_sequence(ctx.module_a, ctx.seq_b.id)
+    assert {:error, :invalid} =
+             Curriculum.assign_module_sequence(ctx.scope_a, ctx.module_a, ctx.seq_b.id)
 
-    {:ok, reloaded} = Curriculum.fetch_owned_module(ctx.module_a.id, ctx.ws_a)
+    {:ok, reloaded} = Curriculum.fetch_owned_module(ctx.scope_a, ctx.module_a.id)
     assert reloaded.sequence_id == nil
   end
 
   test "Curriculum.log_teaching rejects a foreign progression_entry_id", ctx do
     assert {:error, :invalid} =
-             Curriculum.log_teaching(ctx.ws_a, %{
+             Curriculum.log_teaching(ctx.scope_a, %{
                date: Date.utc_today(),
                content_taught: "Bogus",
                hours: Decimal.new("1"),
                progression_entry_id: ctx.entry_b.id
              })
 
-    assert Curriculum.list_logs_for_plan!(ctx.entry_b.progression_plan_id, tenant: ctx.ws_b.id) ==
+    assert Curriculum.list_logs_for_plan!(ctx.entry_b.progression_plan_id, scope: ctx.scope_b) ==
              []
   end
 

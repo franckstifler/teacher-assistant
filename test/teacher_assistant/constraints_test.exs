@@ -19,9 +19,9 @@ defmodule TeacherAssistant.ConstraintsTest do
       TeacherFixtures.setup_complete_school_fixture()
 
     tc = TeacherFixtures.assigned_context_fixture(scope, year, %{teacher: head})
-    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(tc.class_group_id, ws)
-    {:ok, _} = TeacherAssistant.Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    [%{enrollment: enrollment}] = TeacherAssistant.Enrollment.list_roster(cg)
+    {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(scope, tc.class_group_id)
+    {:ok, _} = TeacherAssistant.Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    [%{enrollment: enrollment}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
     seq = year |> Organization.list_sequences() |> List.first()
 
     %{
@@ -135,7 +135,7 @@ defmodule TeacherAssistant.ConstraintsTest do
       {:ok, a} =
         Assessment.create_assessment(scope, tc, seq, %{label: "D1", max_score: Decimal.new(20)})
 
-      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
+      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
       assert {:error, _} =
                Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new("21")}])
@@ -149,7 +149,7 @@ defmodule TeacherAssistant.ConstraintsTest do
       {:ok, a} =
         Assessment.create_assessment(scope, tc, seq, %{label: "D2", max_score: Decimal.new(20)})
 
-      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
+      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
       assert {:error, _} =
                Mark
@@ -167,7 +167,7 @@ defmodule TeacherAssistant.ConstraintsTest do
       {:ok, a} =
         Assessment.create_assessment(scope, tc, seq, %{label: "D3", max_score: Decimal.new(20)})
 
-      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
+      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
       assert {:error, _} =
                Mark
@@ -189,7 +189,7 @@ defmodule TeacherAssistant.ConstraintsTest do
       {:ok, a} =
         Assessment.create_assessment(scope, tc, seq, %{label: "D4", max_score: Decimal.new(20)})
 
-      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
+      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
       {:ok, mark} =
         Mark
@@ -210,7 +210,7 @@ defmodule TeacherAssistant.ConstraintsTest do
 
   describe "fees: tranche/payment/adjustment amount guards" do
     test "a negative fee tranche amount is rejected", %{cg: cg, scope: scope} do
-      # `Fees.add_tranche/2`'s own `validate_amount/1` guard allows a
+      # `Fees.add_tranche/3`'s own `validate_amount/1` guard allows a
       # zero-amount tranche (see `FeeTrancheTest."amount accepts 0"`) — the
       # DB-level `fee_tranches_amount_non_negative_check` mirrors that same
       # rule (>= 0), not a stricter one, so only a negative amount is

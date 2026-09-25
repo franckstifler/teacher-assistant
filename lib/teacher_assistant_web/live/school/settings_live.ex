@@ -22,8 +22,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:head?, Permissions.head?(scope))
         |> assign(:admin?, admin?)
         |> assign(:name_form, name_form(scope.current_workspace))
-        |> assign(:subjects, Curriculum.list_subjects(scope.current_workspace))
-        |> assign(:subject_form, subject_form(scope.current_workspace.id))
+        |> assign(:subjects, Curriculum.list_subjects(scope))
+        |> assign(:subject_form, subject_form(scope))
         |> allow_upload(:logo,
           accept: ~w(.png .jpg .jpeg),
           max_entries: 1,
@@ -292,7 +292,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                       for={
                         AshPhoenix.Form.for_update(s, :update,
                           as: "subject_edit",
-                          tenant: s.workspace_id
+                          scope: @scope
                         )
                         |> to_form()
                       }
@@ -452,7 +452,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         {:ok, year} ->
           :ok = Organization.build_default_calendar(year)
           :ok = TeacherAssistant.Attendance.build_default_periods(scope)
-          TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
+          TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
 
           socket = load_years(socket)
 
@@ -461,7 +461,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            |> put_flash(:info, gettext("Année scolaire créée."))
            |> assign(
              :year_form,
-             year_form(scope.current_workspace.id, socket.assigns.years == [])
+             year_form(year.workspace_id, socket.assigns.years == [])
            )}
 
         {:error, form} ->
@@ -497,15 +497,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   def handle_event("create_subject", %{"subject" => params}, socket) do
     scope = socket.assigns.scope
-    ws = scope.current_workspace
 
     if Permissions.admin?(scope) do
       case AshPhoenix.Form.submit(socket.assigns.subject_form, params: params) do
         {:ok, _} ->
           {:noreply,
            socket
-           |> assign(:subjects, Curriculum.list_subjects(ws))
-           |> assign(:subject_form, subject_form(ws.id))}
+           |> assign(:subjects, Curriculum.list_subjects(scope))
+           |> assign(:subject_form, subject_form(scope))}
 
         {:error, form} ->
           {:noreply, assign(socket, :subject_form, form)}
@@ -517,12 +516,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   def handle_event("delete_subject", %{"id" => id}, socket) do
     scope = socket.assigns.scope
-    ws = scope.current_workspace
 
     if Permissions.admin?(scope) do
       subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
-      if subject, do: Curriculum.delete_subject(subject, tenant: subject.workspace_id)
-      {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
+      if subject, do: Curriculum.delete_subject(subject, scope: scope)
+      {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
     else
       {:noreply, socket}
     end
@@ -530,7 +528,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   def handle_event("update_subject", %{"subject_id" => id, "subject_edit" => params}, socket) do
     scope = socket.assigns.scope
-    ws = scope.current_workspace
 
     with true <- Permissions.admin?(scope),
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
@@ -538,7 +535,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       form =
         AshPhoenix.Form.for_update(subject, :update,
           as: "subject_edit",
-          tenant: subject.workspace_id
+          scope: scope
         )
 
       # `name` trims at the Subject type level (same as create and the seeder),
@@ -549,7 +546,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         {:ok, _} ->
           {:noreply,
            socket
-           |> assign(:subjects, Curriculum.list_subjects(ws))
+           |> assign(:subjects, Curriculum.list_subjects(scope))
            |> put_flash(:info, gettext("Matière mise à jour."))}
 
         {:error, _form} ->
@@ -563,18 +560,17 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   def handle_event("toggle_subject_active", %{"id" => id}, socket) do
     scope = socket.assigns.scope
-    ws = scope.current_workspace
 
     with true <- Permissions.admin?(scope),
          %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
       result =
         if subject.active?,
-          do: Curriculum.deactivate_subject(subject, tenant: subject.workspace_id),
-          else: Curriculum.update_subject(subject, %{active?: true})
+          do: Curriculum.deactivate_subject(subject, scope: scope),
+          else: Curriculum.update_subject(scope, subject, %{active?: true})
 
       case result do
         {:ok, _} ->
-          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(ws))}
+          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
 
         _ ->
           {:noreply,
@@ -724,13 +720,13 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   end
 
   # `Subject` is tenant-scoped to the workspace (attribute multitenancy);
-  # `workspace_id` is no longer an acceptable create attribute, it's derived
-  # from the form's `tenant:`. It's stable for the life of this LiveView
-  # (renaming the school doesn't change its id), so no mid-session rebuild is
-  # needed beyond the fresh scaffold assigned after each successful create.
-  defp subject_form(workspace_id) do
+  # the id is derived from the form's `scope:`. It's stable for the life of
+  # this LiveView (renaming the school doesn't change its id), so no
+  # mid-session rebuild is needed beyond the fresh scaffold assigned after
+  # each successful create.
+  defp subject_form(scope) do
     Subject
-    |> AshPhoenix.Form.for_create(:create, as: "subject", tenant: workspace_id)
+    |> AshPhoenix.Form.for_create(:create, as: "subject", scope: scope)
     |> to_form()
   end
 end

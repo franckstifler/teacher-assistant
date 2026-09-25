@@ -17,12 +17,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     scope = socket.assigns.current_scope
     date = parse_date(params["date"])
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          {:ok, period} <- fetch_period(period_id, scope),
          {:ok, slot_or_nil} <- resolve_slot(scope, cg, date, period.id),
          teaching_context = resolve_teaching_context(scope, cg, slot_or_nil),
          true <- authorized?(scope, teaching_context) do
-      course = combined_course_for(teaching_context)
+      course = combined_course_for(scope, teaching_context)
 
       socket =
         socket
@@ -56,8 +56,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   defp resolve_teaching_context(scope, cg, nil) do
     case {scope.current_workspace, scope.current_academic_year} do
-      {%{} = ws, %{} = year} ->
-        ws
+      {%{} = _ws, %{} = year} ->
+        scope
         |> Curriculum.list_assignments_for_user(year, scope.current_user)
         |> Enum.find(&(&1.class_group_id == cg.id))
 
@@ -73,15 +73,15 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   # before (`Attendance.record_combined_period/5`). Falls back to solo mode
   # (returns `nil`) when there's no teaching context or the course can't be
   # resolved.
-  defp combined_course_for(%TeachingContext{combined_course_id: course_id} = ctx)
+  defp combined_course_for(scope, %TeachingContext{combined_course_id: course_id})
        when not is_nil(course_id) do
-    case Curriculum.get_course(course_id, ctx) do
+    case Curriculum.get_course(scope, course_id) do
       {:ok, course} -> course
       _ -> nil
     end
   end
 
-  defp combined_course_for(_ctx_or_nil), do: nil
+  defp combined_course_for(_scope, _ctx_or_nil), do: nil
 
   defp parse_date(nil), do: Date.utc_today()
 

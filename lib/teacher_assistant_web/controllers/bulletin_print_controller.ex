@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
     with_class(conn, id, params, fn scope, cg, period, results ->
-      roster = Enrollment.list_roster(cg)
+      roster = Enrollment.list_roster(scope, cg)
 
       case Enum.find(roster, &(&1.enrollment.id == eid)) do
         %{} = entry -> render_bulletins(conn, scope, cg, period, results, [entry])
@@ -22,8 +22,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   def class(conn, %{"id" => id} = params) do
     with_class(conn, id, params, fn scope, cg, period, results ->
       entries =
-        cg
-        |> Enrollment.list_roster()
+        scope
+        |> Enrollment.list_roster(cg)
         |> Enum.sort_by(&String.downcase(&1.student.full_name))
 
       render_bulletins(conn, scope, cg, period, results, entries)
@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   # Resolves scope + admin + class + period, then hands off to `fun`.
   defp with_class(conn, id, params, fun) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
-         {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg),
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
@@ -68,7 +68,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
         }
       end)
 
-    fm = Enrollment.form_master(cg)
+    fm = Enrollment.form_master(scope, cg)
 
     conn
     |> put_layout(false)

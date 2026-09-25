@@ -174,7 +174,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
     with true <- Permissions.admin?(scope),
          %{cg: cg} <- Enum.find(socket.assigns.classes, &(&1.cg.id == id)),
-         :ok <- Enrollment.delete_class_group(cg) do
+         :ok <- Enrollment.delete_class_group(scope, cg) do
       {:noreply, socket |> put_flash(:info, gettext("Class deleted.")) |> load_classes()}
     else
       {:error, :has_data} ->
@@ -196,9 +196,9 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
     classes =
       if year do
-        Enrollment.list_class_groups(scope.current_workspace, year)
+        Enrollment.list_class_groups(scope, year)
         |> Enum.map(fn cg ->
-          %{cg: cg, effectif: length(Enrollment.list_roster(cg))}
+          %{cg: cg, effectif: length(Enrollment.list_roster(scope, cg))}
         end)
       else
         []

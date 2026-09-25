@@ -55,22 +55,20 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         # `build_label/1` needs `:class_group` on every member — the initiating
         # context in particular may arrive here without it preloaded (e.g. from
-        # `Curriculum.list_assignments_for_class/1`, which only loads `:teacher`
+        # `Curriculum.list_assignments_for_class/2`, which only loads `:teacher`
         # and `:combined_course`). Load it here rather than trusting the caller.
         # `:class_group` is multitenant, and so is `TeachingContext` itself now
-        # — `Curriculum.combine_course/1` validates every member shares one
-        # workspace before this action runs and passes it as this action's
-        # tenant, so `input.tenant` is the right tenant for every nested
-        # query/changeset below.
-        contexts = Ash.load!(input.arguments.contexts, :class_group, tenant: input.tenant)
+        # — the domain passes its scope as this action's context, so `scope`
+        # is the right scope for every nested query/changeset below.
+        contexts = Ash.load!(input.arguments.contexts, :class_group, scope: scope)
         [first | _] = contexts
 
-        with {:ok, course} <- create_course(first, build_label(contexts), input.tenant),
-             :ok <- stamp_contexts(contexts, course.id, input.tenant),
-             {:ok, _plan} <- create_course_plan(course, input.tenant) do
+        with {:ok, course} <- create_course(first, build_label(contexts), scope),
+             :ok <- stamp_contexts(contexts, course.id, scope),
+             {:ok, _plan} <- create_course_plan(course, scope) do
           {:ok, course}
         end
       end
@@ -86,20 +84,17 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         course = input.arguments.course
         course_id = course.id
-        tenant = input.tenant
 
         TeachingContext
         |> Ash.Query.filter(combined_course_id == ^course_id)
-        |> Ash.Query.set_tenant(tenant)
-        |> Ash.read!()
+        |> Ash.read!(scope: scope)
         |> Enum.each(fn ctx ->
           {:ok, _ctx, notifications} =
             ctx
-            |> Ash.Changeset.for_update(:update, %{combined_course_id: nil})
-            |> Ash.Changeset.set_tenant(tenant)
+            |> Ash.Changeset.for_update(:update, %{combined_course_id: nil}, scope: scope)
             |> Ash.update(return_notifications?: true)
 
           Ash.Notifier.notify(notifications)
@@ -107,11 +102,10 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
 
         ProgressionPlan
         |> Ash.Query.filter(combined_course_id == ^course_id)
-        |> Ash.Query.set_tenant(tenant)
-        |> Ash.read!()
-        |> Enum.each(&Ash.destroy!(&1, tenant: tenant))
+        |> Ash.read!(scope: scope)
+        |> Enum.each(&Ash.destroy!(&1, scope: scope))
 
-        Ash.destroy!(course, tenant: tenant)
+        Ash.destroy!(course, scope: scope)
 
         :ok
       end
@@ -158,23 +152,25 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
 
   # --- Combine helpers -------------------------------------------------------
 
-  defp create_course(%TeachingContext{} = first, label, tenant) do
+  defp create_course(%TeachingContext{} = first, label, scope) do
     __MODULE__
-    |> Ash.Changeset.for_create(:create, %{
-      subject: first.subject,
-      label: label,
-      academic_year_id: first.academic_year_id,
-      teacher_user_id: first.teacher_user_id
-    })
-    |> Ash.Changeset.set_tenant(tenant)
+    |> Ash.Changeset.for_create(
+      :create,
+      %{
+        subject: first.subject,
+        label: label,
+        academic_year_id: first.academic_year_id,
+        teacher_user_id: first.teacher_user_id
+      },
+      scope: scope
+    )
     |> Ash.create()
   end
 
-  defp stamp_contexts(contexts, course_id, tenant) do
+  defp stamp_contexts(contexts, course_id, scope) do
     Enum.reduce_while(contexts, :ok, fn ctx, :ok ->
       ctx
-      |> Ash.Changeset.for_update(:update, %{combined_course_id: course_id})
-      |> Ash.Changeset.set_tenant(tenant)
+      |> Ash.Changeset.for_update(:update, %{combined_course_id: course_id}, scope: scope)
       |> Ash.update(return_notifications?: true)
       |> case do
         {:ok, _ctx, notifications} ->
@@ -189,14 +185,17 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
 
   # Mirrors `TeacherAssistant.Academics.create_course_plan/2` with empty attrs:
   # the course owns one plan titled after its subject.
-  defp create_course_plan(%__MODULE__{} = course, tenant) do
+  defp create_course_plan(%__MODULE__{} = course, scope) do
     ProgressionPlan
-    |> Ash.Changeset.for_create(:create, %{
-      title: course.subject,
-      combined_course_id: course.id,
-      academic_year_id: course.academic_year_id
-    })
-    |> Ash.Changeset.set_tenant(tenant)
+    |> Ash.Changeset.for_create(
+      :create,
+      %{
+        title: course.subject,
+        combined_course_id: course.id,
+        academic_year_id: course.academic_year_id
+      },
+      scope: scope
+    )
     |> Ash.create()
   end
 

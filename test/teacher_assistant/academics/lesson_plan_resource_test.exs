@@ -15,12 +15,12 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
         teacher: head
       })
 
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Plan"})
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Plan"})
 
-    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
+    {:ok, m1} = Curriculum.create_module(scope, plan, %{title: "M1"})
 
     {:ok, entry} =
-      Curriculum.add_progression_entry(m1, %{
+      Curriculum.add_progression_entry(scope, m1, %{
         lesson_title: "Les entiers",
         planned_hours: Decimal.new("2"),
         entry_type: :lesson

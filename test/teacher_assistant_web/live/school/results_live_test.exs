@@ -23,11 +23,11 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
 
     :ok = Organization.build_default_calendar(year)
     [seq | _] = Organization.list_sequences(year)
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
 
     {:ok, tc} =
-      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
       Assessment.create_assessment(scope, tc, seq, %{
@@ -36,10 +36,10 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         max_score: Decimal.new(20)
       })
 
-    [student] = Enrollment.list_students(cg)
+    [student] = Enrollment.list_students(scope, cg)
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, cg: cg, seq: seq, student: student, head: head}
+    %{conn: conn, school: school, cg: cg, seq: seq, student: student, head: head, scope: scope}
   end
 
   test "renders the ranked results with the moyenne générale", %{conn: conn, cg: cg} do
@@ -51,6 +51,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   test "cross-school class id redirects", %{conn: conn, head: head} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+    other_scope = school_scope(other, os)
 
     {:ok, oy} =
       Organization.create_academic_year(os, %{
@@ -60,7 +61,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         active: true
       })
 
-    {:ok, ocg} = Enrollment.create_class_group(os, oy, %{label: "6e Z", level: "6ème"})
+    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
     _ = head
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
@@ -89,7 +90,8 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     conn: conn,
     cg: cg,
     head: head,
-    school: school
+    school: school,
+    scope: scope
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -97,7 +99,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -134,7 +136,8 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     conn: conn,
     cg: cg,
     head: head,
-    school: school
+    school: school,
+    scope: scope
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -142,7 +145,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
 
     {:ok, _} = Accounts.accept_invitation(inv.token, fm)
-    {:ok, _} = Enrollment.set_form_master(cg, fm.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
     assert html =~ to_string(fm.email)

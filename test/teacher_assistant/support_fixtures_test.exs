@@ -33,16 +33,15 @@ defmodule TeacherAssistant.SupportFixturesTest do
   end
 
   test "assigned_context_fixture builds a context with a real teacher and class", %{
-    workspace: school,
-    year: year,
-    scope: scope
+    scope: scope,
+    year: year
   } do
     tc = TeacherFixtures.assigned_context_fixture(scope, year, %{subject: "SVT"})
     assert tc.subject == "SVT"
     assert tc.teacher_user_id
     assert tc.class_group_id
-    {:ok, cg} = Enrollment.fetch_owned_class_group(tc.class_group_id, school)
-    assert [_ | _] = Curriculum.list_assignments_for_class(cg)
+    {:ok, cg} = Enrollment.fetch_owned_class_group(scope, tc.class_group_id)
+    assert [_ | _] = Curriculum.list_assignments_for_class(scope, cg)
   end
 
   describe "scope-aware fixtures" do

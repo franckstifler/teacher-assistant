@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
 
   def class(conn, %{"id" => id} = _params) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
-         {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       timetable = Timetabling.class_timetable(scope, cg)
 

@@ -18,7 +18,7 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
         teacher: head
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "3e M2", level: "3ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
     %{ws: ws, year: year, ctx: ctx, cg: cg, seq: seq, scope: scope}
   end
 

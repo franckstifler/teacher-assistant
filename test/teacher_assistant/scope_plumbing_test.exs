@@ -7,9 +7,9 @@ defmodule TeacherAssistant.ScopePlumbingTest do
   alias TeacherAssistant.{Attendance, Discipline, Enrollment, Fees, Organization}
 
   setup do
-    %{workspace: ws, year: year, scope: head} = setup_complete_school_fixture()
-    [cg | _] = Enrollment.list_class_groups(ws, year)
-    {:ok, %{enrollment: e}} = Enrollment.enroll_new(cg, %{full_name: "Awa Ndi", sex: :f})
+    %{workspace: _ws, year: year, scope: head} = setup_complete_school_fixture()
+    [cg | _] = Enrollment.list_class_groups(head, year)
+    {:ok, %{enrollment: e}} = Enrollment.enroll_new(head, cg, %{full_name: "Awa Ndi", sex: :f})
     [seq | _] = Organization.list_sequences(year)
     %{head: head, e: e, seq: seq}
   end
@@ -28,7 +28,7 @@ defmodule TeacherAssistant.ScopePlumbingTest do
 
   test "Attendance attributes recorded entries to the scope's user", %{head: head, e: e} do
     [period | _] = Attendance.list_periods(head)
-    {:ok, cg} = Enrollment.fetch_owned_class_group(e.class_group_id, head.current_workspace)
+    {:ok, cg} = Enrollment.fetch_owned_class_group(head, e.class_group_id)
 
     assert {:ok, 1} =
              Attendance.record_period(head, cg, period, nil, ~D[2025-09-15], [
@@ -39,5 +39,12 @@ defmodule TeacherAssistant.ScopePlumbingTest do
       Attendance.for_period_date_class!(period.id, ~D[2025-09-15], cg.id, scope: head)
 
     assert entry.recorded_by_user_id == head.current_user.id
+  end
+
+  test "Enrollment and Curriculum take the scope first", %{head: head, e: e} do
+    {:ok, cg} = Enrollment.fetch_owned_class_group(head, e.class_group_id)
+    assert [%{enrollment: %{id: id}}] = Enrollment.list_roster(head, cg)
+    assert id == e.id
+    assert is_list(TeacherAssistant.Curriculum.list_subjects(head))
   end
 end

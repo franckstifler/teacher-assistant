@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée C"})
+    scope = school_scope(user, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -22,15 +23,15 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     # (which mostly exercise class management once setup is already done)
     # reach /school/classes.
     {:ok, _seed_cg} =
-      Enrollment.create_class_group(school, year, %{label: "Seed", level: "6ème"})
+      Enrollment.create_class_group(scope, year, %{label: "Seed", level: "6ème"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, year: year, user: user}
+    %{conn: conn, school: school, year: year, user: user, scope: scope}
   end
 
-  test "lists classes with effectif", %{conn: conn, school: school, year: year} do
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+  test "lists classes with effectif", %{conn: conn, scope: scope, year: year} do
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, _view, html} = live(conn, ~p"/school/classes")
     assert html =~ "6e A"
     assert html =~ "1"
@@ -57,16 +58,16 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   end
 
   test "delete is blocked when the class has enrollments", ctx do
-    %{conn: conn, school: school, year: year} = ctx
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.enroll_new(cg, %{full_name: "Awa", sex: :f})
+    %{conn: conn, scope: scope, year: year} = ctx
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes")
     view |> element("#class-delete-#{cg.id}") |> render_click()
     assert render(view) =~ "6e A"
   end
 
   test "a plain teacher member sees no admin controls and forged events are rejected", ctx do
-    %{conn: _conn, school: school, year: year, user: head} = ctx
+    %{conn: _conn, school: school, year: year, user: head, scope: scope} = ctx
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
@@ -83,11 +84,11 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/classes")
     refute has_element?(view, "#class-form")
 
-    before_labels = school |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+    before_labels = Enrollment.list_class_groups(scope, year) |> Enum.map(& &1.label)
 
     render_hook(view, "create_class", %{"class_group" => %{"label" => "X", "level" => "6ème"}})
 
-    after_labels = school |> Enrollment.list_class_groups(year) |> Enum.map(& &1.label)
+    after_labels = Enrollment.list_class_groups(scope, year) |> Enum.map(& &1.label)
     assert after_labels == before_labels
     refute "X" in after_labels
   end

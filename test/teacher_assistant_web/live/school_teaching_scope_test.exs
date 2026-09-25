@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée G"})
+    scope = school_scope(user, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -18,9 +19,9 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, year: year, cg: cg, user: user}
+    %{conn: conn, school: school, year: year, cg: cg, user: user, scope: scope}
   end
 
   test "a member without assignments is bounced from teaching pages to /school", %{conn: conn} do
@@ -29,8 +30,8 @@ defmodule TeacherAssistantWeb.SchoolTeachingScopeTest do
   end
 
   test "an assigned teacher reaches the roster under school scope", ctx do
-    %{conn: conn, cg: cg, user: user} = ctx
-    {:ok, tc} = Curriculum.assign_teacher(cg, user, %{subject: "Maths"})
+    %{conn: conn, cg: cg, user: user, scope: scope} = ctx
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, user, %{subject: "Maths"})
     assert {:ok, _view, html} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
     assert html =~ "Maths"
   end

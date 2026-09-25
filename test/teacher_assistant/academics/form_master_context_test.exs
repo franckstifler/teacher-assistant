@@ -15,36 +15,48 @@ defmodule TeacherAssistant.Academics.FormMasterContextTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, cg2} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
-    %{user: user, school: school, year: year, cg: cg, cg2: cg2}
+    {:ok, cg} =
+      Enrollment.create_class_group(school_scope(user, school), year, %{
+        label: "6e A",
+        level: "6ème"
+      })
+
+    {:ok, cg2} =
+      Enrollment.create_class_group(school_scope(user, school), year, %{
+        label: "6e B",
+        level: "6ème"
+      })
+
+    %{user: user, school: school, scope: school_scope(user, school), year: year, cg: cg, cg2: cg2}
   end
 
   test "set_form_master sets, resolves, and lists", ctx do
-    %{user: user, school: school, year: year, cg: cg} = ctx
-    {:ok, cg} = Enrollment.set_form_master(cg, user.id)
+    %{user: user, year: year, cg: cg, scope: scope} = ctx
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, user.id)
     assert cg.form_master_user_id == user.id
-    assert Enrollment.form_master(cg).id == user.id
+    assert Enrollment.form_master(scope, cg).id == user.id
 
-    classes = Enrollment.list_form_master_classes(school, user, year)
+    classes = Enrollment.list_form_master_classes(scope, year)
     assert Enum.map(classes, & &1.id) == [cg.id]
   end
 
-  test "set_form_master with nil clears it", %{user: user, cg: cg} do
-    {:ok, cg} = Enrollment.set_form_master(cg, user.id)
-    {:ok, cg} = Enrollment.set_form_master(cg, nil)
+  test "set_form_master with nil clears it", %{user: user, cg: cg, scope: scope} do
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, user.id)
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, nil)
     assert cg.form_master_user_id == nil
-    assert Enrollment.form_master(cg) == nil
+    assert Enrollment.form_master(scope, cg) == nil
   end
 
   test "list_form_master_classes excludes classes of other form masters", ctx do
-    %{user: user, school: school, year: year, cg: cg, cg2: cg2} = ctx
+    %{user: user, year: year, cg: cg, cg2: cg2, scope: scope} = ctx
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
-    TeacherAssistant.TeacherFixtures.membership_fixture(school_scope(user, school), %{user: other})
+    TeacherAssistant.TeacherFixtures.membership_fixture(school_scope(user, ctx.school), %{
+      user: other
+    })
 
-    {:ok, _} = Enrollment.set_form_master(cg, user.id)
-    {:ok, _} = Enrollment.set_form_master(cg2, other.id)
-    assert Enum.map(Enrollment.list_form_master_classes(school, user, year), & &1.id) == [cg.id]
+    {:ok, _} = Enrollment.set_form_master(scope, cg, user.id)
+    {:ok, _} = Enrollment.set_form_master(scope, cg2, other.id)
+    assert Enum.map(Enrollment.list_form_master_classes(scope, year), & &1.id) == [cg.id]
   end
 end

@@ -20,9 +20,11 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(ws, year, %{label: "6e A", level: "6ème"})
-    {:ok, student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
+    scope = school_scope(head, ws)
+
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, student} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
     %{
       ws: ws,

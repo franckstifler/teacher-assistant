@@ -234,8 +234,8 @@ defmodule TeacherAssistant.Assessment do
   the class (subject × class, assigned teacher), shaped for `Bulletins.compile/2`.
   """
   def class_subjects(%Scope{} = scope, %ClassGroup{} = cg, %Sequence{} = seq) do
-    cg
-    |> TeacherAssistant.Curriculum.list_assignments_for_class()
+    scope
+    |> TeacherAssistant.Curriculum.list_assignments_for_class(cg)
     |> Enum.map(fn tc ->
       assessments = list_assessments(scope, tc, seq)
 
@@ -265,8 +265,8 @@ defmodule TeacherAssistant.Assessment do
 
       subjects ->
         students =
-          cg
-          |> TeacherAssistant.Enrollment.list_students()
+          scope
+          |> TeacherAssistant.Enrollment.list_students(cg)
           |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
 
         Bulletins.compile(students, subjects)
@@ -305,8 +305,8 @@ defmodule TeacherAssistant.Assessment do
   # or :trimesters (per term, for annual).
   defp period_result(%Scope{} = scope, cg, seqs, component_kind) do
     students =
-      cg
-      |> TeacherAssistant.Enrollment.list_students()
+      scope
+      |> TeacherAssistant.Enrollment.list_students(cg)
       |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
 
     # per séquence: %{context_id => %{label, coefficient, per_student_avg}}

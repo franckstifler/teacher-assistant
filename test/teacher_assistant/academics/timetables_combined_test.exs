@@ -25,14 +25,16 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
         active: true
       })
 
-    {:ok, maco} = Enrollment.create_class_group(ws, year, %{label: "1ère MACO", level: "1ère"})
-    {:ok, menu} = Enrollment.create_class_group(ws, year, %{label: "1ère MENU", level: "1ère"})
-    {:ok, unrelated} = Enrollment.create_class_group(ws, year, %{label: "1ère C", level: "1ère"})
+    {:ok, maco} = Enrollment.create_class_group(scope, year, %{label: "1ère MACO", level: "1ère"})
+    {:ok, menu} = Enrollment.create_class_group(scope, year, %{label: "1ère MENU", level: "1ère"})
 
-    {:ok, tc_maco} = Curriculum.assign_teacher(maco, head, %{subject: "Maths"})
-    {:ok, tc_menu} = Curriculum.assign_teacher(menu, head, %{subject: "Maths"})
+    {:ok, unrelated} =
+      Enrollment.create_class_group(scope, year, %{label: "1ère C", level: "1ère"})
 
-    {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
+    {:ok, tc_maco} = Curriculum.assign_teacher(scope, maco, head, %{subject: "Maths"})
+    {:ok, tc_menu} = Curriculum.assign_teacher(scope, menu, head, %{subject: "Maths"})
+
+    {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
     :ok = Attendance.build_default_periods(scope)
     period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
@@ -81,7 +83,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
   test "a genuine clash between an unrelated class and the combined course's teacher is still rejected",
        ctx do
     {:ok, tc_unrelated} =
-      Curriculum.assign_teacher(ctx.unrelated, ctx.head, %{subject: "Physique"})
+      Curriculum.assign_teacher(ctx.scope, ctx.unrelated, ctx.head, %{subject: "Physique"})
 
     {:ok, _slot} =
       Timetabling.place_slot(ctx.scope, ctx.unrelated, %{
@@ -109,10 +111,10 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     {:ok, _member} = Accounts.accept_invitation(inv.token, other_teacher)
 
     {:ok, tc_other} =
-      Curriculum.assign_teacher(ctx.unrelated, other_teacher, %{subject: "Anglais"})
+      Curriculum.assign_teacher(ctx.scope, ctx.unrelated, other_teacher, %{subject: "Anglais"})
 
     {:ok, tc_unrelated_head} =
-      Curriculum.assign_teacher(ctx.unrelated, ctx.head, %{subject: "Physique"})
+      Curriculum.assign_teacher(ctx.scope, ctx.unrelated, ctx.head, %{subject: "Physique"})
 
     {:ok, _slot} =
       Timetabling.place_slot(ctx.scope, ctx.maco, %{

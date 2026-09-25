@@ -12,12 +12,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
 
-    with {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(ctx_id, scope),
-         {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
+    with {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(scope, ctx_id),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"]) || List.first(sequences)
-      students = Enrollment.list_students(cg)
+      students = Enrollment.list_students(scope, cg)
 
       {:ok,
        socket

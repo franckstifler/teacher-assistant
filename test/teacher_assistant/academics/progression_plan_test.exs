@@ -15,39 +15,41 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
         teacher: head
       })
 
-    %{ws: ws, year: year, ctx: ctx}
+    %{ws: ws, year: year, scope: scope, ctx: ctx}
   end
 
-  test "create and list a progression plan", %{ws: ws, ctx: ctx} do
-    assert {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Maths 6ème 2025-2026"})
+  test "create and list a progression plan", %{ctx: ctx, scope: scope} do
+    assert {:ok, plan} =
+             Curriculum.create_progression_plan(scope, ctx, %{title: "Maths 6ème 2025-2026"})
+
     assert plan.status == :draft
-    assert [listed] = Curriculum.list_progression_plans!(tenant: ws.id)
+    assert [listed] = Curriculum.list_progression_plans!(scope: scope)
     assert listed.id == plan.id
   end
 
-  test "duplicate creates a new plan record", %{ctx: ctx} do
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Original"})
-    {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
+  test "duplicate creates a new plan record", %{ctx: ctx, scope: scope} do
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Original"})
+    {:ok, copy} = Curriculum.duplicate_progression_plan(scope, plan, %{title: "Copy"})
     assert copy.id != plan.id
     assert copy.title == "Copy"
   end
 
-  test "duplicate copies progression entries onto the new plan", %{ctx: ctx} do
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Original"})
+  test "duplicate copies progression entries onto the new plan", %{ctx: ctx, scope: scope} do
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Original"})
 
-    {:ok, m1} = Curriculum.create_module(plan, %{title: "M1"})
-    {:ok, m2} = Curriculum.create_module(plan, %{title: "M2"})
+    {:ok, m1} = Curriculum.create_module(scope, plan, %{title: "M1"})
+    {:ok, m2} = Curriculum.create_module(scope, plan, %{title: "M2"})
 
     {:ok, e1} =
-      Curriculum.add_progression_entry(m1, %{lesson_title: "Lesson 1"})
+      Curriculum.add_progression_entry(scope, m1, %{lesson_title: "Lesson 1"})
 
     {:ok, e2} =
-      Curriculum.add_progression_entry(m2, %{lesson_title: "Lesson 2"})
+      Curriculum.add_progression_entry(scope, m2, %{lesson_title: "Lesson 2"})
 
-    {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
+    {:ok, copy} = Curriculum.duplicate_progression_plan(scope, plan, %{title: "Copy"})
 
-    original_entries = Curriculum.list_progression_entries!(plan.id, tenant: plan.workspace_id)
-    copied_entries = Curriculum.list_progression_entries!(copy.id, tenant: copy.workspace_id)
+    original_entries = Curriculum.list_progression_entries!(plan.id, scope: scope)
+    copied_entries = Curriculum.list_progression_entries!(copy.id, scope: scope)
 
     assert length(copied_entries) == 2
 
@@ -69,8 +71,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     assert c2.position == e2.position
   end
 
-  test "duplicate copies module sequence_id and entry completed? flag", %{ctx: ctx} do
-    {:ok, plan} = Curriculum.create_progression_plan(ctx, %{title: "Original"})
+  test "duplicate copies module sequence_id and entry completed? flag", %{ctx: ctx, scope: scope} do
+    {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Original"})
 
     {:ok, ay} =
       Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id,
@@ -81,18 +83,18 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     :ok = Organization.build_default_calendar(ay)
     [seq | _] = Organization.list_sequences(ay)
 
-    {:ok, m} = Curriculum.create_module(plan, %{title: "M1"})
-    {:ok, m} = Curriculum.assign_module_sequence(m, seq.id)
+    {:ok, m} = Curriculum.create_module(scope, plan, %{title: "M1"})
+    {:ok, m} = Curriculum.assign_module_sequence(scope, m, seq.id)
 
     {:ok, e} =
-      Curriculum.add_progression_entry(m, %{lesson_title: "Lesson 1", entry_type: :lesson})
+      Curriculum.add_progression_entry(scope, m, %{lesson_title: "Lesson 1", entry_type: :lesson})
 
-    {:ok, _e} = Curriculum.set_entry_completed(e, true)
+    {:ok, _e} = Curriculum.set_entry_completed(scope, e, true)
 
-    {:ok, copy} = Curriculum.duplicate_progression_plan(plan, %{title: "Copy"})
+    {:ok, copy} = Curriculum.duplicate_progression_plan(scope, plan, %{title: "Copy"})
 
     [copied_module] =
-      Curriculum.list_progression_modules!(copy.id, tenant: copy.workspace_id)
+      Curriculum.list_progression_modules!(copy.id, scope: scope)
       |> Enum.filter(&(!&1.default?))
 
     assert copied_module.sequence_id == seq.id

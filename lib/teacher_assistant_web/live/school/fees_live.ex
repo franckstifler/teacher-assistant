@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- authorized?(scope, cg) do
       {:ok,
        socket
@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          cg: cg,
          can_edit?: Permissions.fees_manager?(scope),
          editing_id: nil,
-         roster: Enrollment.list_roster(cg),
+         roster: Enrollment.list_roster(scope, cg),
          payment_methods: @payment_methods,
          viewing_history_id: nil,
          history_payments: []

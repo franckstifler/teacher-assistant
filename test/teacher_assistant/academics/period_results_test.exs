@@ -20,13 +20,13 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
     :ok = Organization.build_default_calendar(year)
     sequences = Organization.list_sequences(year)
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
 
     {:ok, tc} =
-      Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(1)})
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", coefficient: Decimal.new(1)})
 
-    [student] = Enrollment.list_students(cg)
+    [student] = Enrollment.list_students(scope, cg)
 
     # helper: give the student `score`/20 in séquence `seq` for Maths
     grade = fn seq, score ->
@@ -109,7 +109,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
       })
 
     :ok = Organization.build_default_calendar(y2)
-    {:ok, cg2} = Enrollment.create_class_group(school2, y2, %{label: "6e Z", level: "6ème"})
+    {:ok, cg2} = Enrollment.create_class_group(scope2, y2, %{label: "6e Z", level: "6ème"})
     assert Assessment.class_results_for_period(scope2, cg2, {:annual, y2}) == nil
   end
 

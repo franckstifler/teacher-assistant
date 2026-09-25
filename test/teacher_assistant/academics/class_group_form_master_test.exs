@@ -15,7 +15,12 @@ defmodule TeacherAssistant.Academics.ClassGroupFormMasterTest do
         active: true
       })
 
-    {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
+    {:ok, cg} =
+      Enrollment.create_class_group(school_scope(user, school), year, %{
+        label: "6e A",
+        level: "6ème"
+      })
+
     %{user: user, cg: cg}
   end
 
