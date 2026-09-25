@@ -15,6 +15,17 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
 
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
+  @doc """
+  The roles that count for an authority axis — the single definition used by
+  `TeacherAssistant.Accounts.Checks.SchoolRole` (policies) and navigation gates.
+  `:member` is any role; the membership itself must be active.
+  """
+  def axis(:member), do: values()
+  def axis(:admin), do: [:head, :vice_principal]
+  def axis(:head), do: [:head]
+  def axis(:conduct), do: [:head, :vice_principal, :discipline_master]
+  def axis(:fees), do: [:head, :vice_principal, :bursar]
+
   def label(:head), do: gettext("Chef d'établissement")
   def label(:vice_principal), do: gettext("Censeur")
   def label(:discipline_master), do: gettext("Surveillant général")
