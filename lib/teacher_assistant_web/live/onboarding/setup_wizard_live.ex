@@ -251,7 +251,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
           :ok = Organization.build_default_calendar(year)
-          :ok = Attendance.build_default_periods(ws)
+          :ok = Attendance.build_default_periods(scope)
           Seeding.seed_starter_classes(ws, year)
 
           # Deliberately land on the `:classes` step rather than re-deriving

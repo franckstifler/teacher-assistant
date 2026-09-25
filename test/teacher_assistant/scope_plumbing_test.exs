@@ -4,7 +4,7 @@ defmodule TeacherAssistant.ScopePlumbingTest do
 
   import TeacherAssistant.TeacherFixtures
 
-  alias TeacherAssistant.{Discipline, Enrollment, Fees, Organization}
+  alias TeacherAssistant.{Attendance, Discipline, Enrollment, Fees, Organization}
 
   setup do
     %{workspace: ws, year: year, scope: head} = setup_complete_school_fixture()
@@ -24,5 +24,20 @@ defmodule TeacherAssistant.ScopePlumbingTest do
       Fees.record_payment(head, e, %{amount: 5_000, paid_on: ~D[2025-10-01], method: :cash})
 
     assert p.recorded_by_user_id == head.current_user.id
+  end
+
+  test "Attendance attributes recorded entries to the scope's user", %{head: head, e: e} do
+    [period | _] = Attendance.list_periods(head)
+    {:ok, cg} = Enrollment.fetch_owned_class_group(e.class_group_id, head.current_workspace)
+
+    assert {:ok, 1} =
+             Attendance.record_period(head, cg, period, nil, ~D[2025-09-15], [
+               {e.id, :absent}
+             ])
+
+    [entry] =
+      Attendance.for_period_date_class!(period.id, ~D[2025-09-15], cg.id, scope: head)
+
+    assert entry.recorded_by_user_id == head.current_user.id
   end
 end

@@ -16,8 +16,8 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
-  alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Scope
 
   resources do
     resource Period do
@@ -57,11 +57,10 @@ defmodule TeacherAssistant.Attendance do
 
   # --- Periods -------------------------------------------------------------
 
-  @doc "Every period in `workspace`, sorted by position."
-  def list_periods(%Workspace{id: ws_id}) do
+  @doc "Every period in the scope's school, sorted by position."
+  def list_periods(%Scope{} = scope) do
     Period
-    |> Ash.Query.for_read(:for_workspace)
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:for_workspace, %{}, scope: scope)
     |> Ash.read!()
   end
 
@@ -70,29 +69,28 @@ defmodule TeacherAssistant.Attendance do
   case returns `{:error, :has_slots}` without deleting (mirrors the
   `Curriculum.remove_assignment/1` "has data" guard).
   """
-  def delete_period(%Period{id: id, workspace_id: ws_id} = period) do
-    # `TimetableSlot` is now multitenant — pass the tenant.
-    has_slots = TeacherAssistant.Timetabling.list_for_period!(id, tenant: ws_id) != []
+  def delete_period(%Scope{} = scope, %Period{id: id} = period) do
+    # `TimetableSlot` is now multitenant — pass the scope.
+    has_slots = TeacherAssistant.Timetabling.list_for_period!(id, scope: scope) != []
 
     if has_slots do
       {:error, :has_slots}
     else
-      Ash.destroy!(period, tenant: ws_id)
+      Ash.destroy!(period, scope: scope)
       :ok
     end
   end
 
   @doc """
-  Seeds `workspace`'s bell schedule from `Reference.default_periods_preset/0`,
+  Seeds the scope's school bell schedule from `Reference.default_periods_preset/0`,
   unless periods are already seeded. Idempotent.
   """
-  def build_default_periods(%Workspace{} = ws) do
-    case list_periods(ws) do
+  def build_default_periods(%Scope{} = scope) do
+    case list_periods(scope) do
       [] ->
         Enum.each(Reference.default_periods_preset(), fn preset ->
           Period
-          |> Ash.Changeset.for_create(:create, preset)
-          |> Ash.Changeset.set_tenant(ws.id)
+          |> Ash.Changeset.for_create(:create, preset, scope: scope)
           |> Ash.create!()
         end)
 
@@ -111,14 +109,13 @@ defmodule TeacherAssistant.Attendance do
 
   Returns `{:error, :no_slot}` for Sundays or when no slot is placed.
   """
-  def slot_for(%ClassGroup{id: cg_id, workspace_id: ws_id}, %Date{} = date, period_id) do
+  def slot_for(%Scope{} = scope, %ClassGroup{id: cg_id}, %Date{} = date, period_id) do
     with {:ok, day} <- day_of_week(date) do
       TimetableSlot
       |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
-      # `:teaching_context` is now multitenant — Ash needs a tenant to resolve the load.
-      |> Ash.Query.set_tenant(ws_id)
+      # `:teaching_context` is also multitenant — Ash needs a scope to resolve the load.
       |> Ash.Query.load(:teaching_context)
-      |> Ash.read_one!()
+      |> Ash.read_one!(scope: scope)
       |> case do
         nil -> {:error, :no_slot}
         %TimetableSlot{} = slot -> {:ok, slot}
@@ -133,7 +130,8 @@ defmodule TeacherAssistant.Attendance do
   `:period_roll` generic action.
   """
   def period_roll(
-        %ClassGroup{workspace_id: ws_id} = class_group,
+        %Scope{} = scope,
+        %ClassGroup{} = class_group,
         %Period{} = period,
         %Date{} = date
       ) do
@@ -146,7 +144,7 @@ defmodule TeacherAssistant.Attendance do
           period: period,
           date: date
         },
-        tenant: ws_id
+        scope: scope
       )
       |> Ash.run_action()
 
@@ -154,9 +152,9 @@ defmodule TeacherAssistant.Attendance do
   end
 
   @doc """
-  Builds the union roll for a `CombinedCourse`/`period`/`date`: `period_roll/3`
+  Builds the union roll for a `CombinedCourse`/`period`/`date`: `period_roll/4`
   run once per member class, concatenated as one group per class — each
-  group has the same shape `period_roll/3` returns (`:students`,
+  group has the same shape `period_roll/4` returns (`:students`,
   `:teaching_context`) plus its own `:class_group`. A combined attendance
   session shows every member class's roster in one screen; recording still
   writes each `AttendanceEntry` to the student's own class (see
@@ -167,7 +165,12 @@ defmodule TeacherAssistant.Attendance do
   `Curriculum.list_union_students/1`. Delegates to `AttendanceEntry`'s
   `:combined_period_roll` generic action.
   """
-  def combined_period_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date) do
+  def combined_period_roll(
+        %Scope{} = scope,
+        %CombinedCourse{} = course,
+        %Period{} = period,
+        %Date{} = date
+      ) do
     {:ok, groups} =
       AttendanceEntry
       |> Ash.ActionInput.for_action(
@@ -177,7 +180,7 @@ defmodule TeacherAssistant.Attendance do
           period: period,
           date: date
         },
-        tenant: course.workspace_id
+        scope: scope
       )
       |> Ash.run_action()
 
@@ -187,7 +190,7 @@ defmodule TeacherAssistant.Attendance do
   @doc """
   Records one combined attendance session: `marks` (`{enrollment_id, status}`
   pairs covering every member class's roster, as returned by
-  `combined_period_roll/3`) are routed to each enrollment's own class and
+  `combined_period_roll/4`) are routed to each enrollment's own class and
   written via the `AttendanceEntry` `:record_combined_period` action — one
   group per member class. Every mark is validated (roster membership + status)
   *before* the transactional action ever runs, so an invalid mark for any
@@ -197,14 +200,14 @@ defmodule TeacherAssistant.Attendance do
   combined-marks save. Returns `{:ok, total_count}` or `{:error, reason}`.
   """
   def record_combined_period(
+        %Scope{} = scope,
         %CombinedCourse{} = course,
         %Period{} = period,
         %Date{} = date,
-        marks,
-        recorded_by_user_id
+        marks
       )
       when is_list(marks) do
-    groups = combined_period_roll(course, period, date)
+    groups = combined_period_roll(scope, course, period, date)
 
     per_group_marks =
       Enum.map(groups, fn %{class_group: cg, teaching_context: tc, students: students} ->
@@ -223,8 +226,8 @@ defmodule TeacherAssistant.Attendance do
         per_group_marks,
         period,
         date,
-        recorded_by_user_id,
-        course.workspace_id
+        scope.current_user && scope.current_user.id,
+        scope
       )
     end
   end
@@ -248,7 +251,7 @@ defmodule TeacherAssistant.Attendance do
          %Period{id: period_id},
          date,
          recorded_by_user_id,
-         tenant
+         %Scope{} = scope
        ) do
     groups =
       Enum.map(per_group_marks, fn {_cg, tc, group_marks} ->
@@ -270,7 +273,7 @@ defmodule TeacherAssistant.Attendance do
         recorded_by_user_id: recorded_by_user_id,
         groups: groups
       },
-      tenant: tenant
+      scope: scope
     )
     |> Ash.run_action()
     |> case do
@@ -286,12 +289,12 @@ defmodule TeacherAssistant.Attendance do
   Marks omitted from the list are left untouched. Returns `{:ok, count}`.
   """
   def record_period(
-        %ClassGroup{workspace_id: ws_id} = class_group,
+        %Scope{} = scope,
+        %ClassGroup{} = class_group,
         %Period{id: period_id},
         teaching_context,
         %Date{} = date,
-        marks,
-        recorded_by_user_id
+        marks
       )
       when is_list(marks) do
     teaching_context_id = teaching_context_id(teaching_context)
@@ -305,15 +308,18 @@ defmodule TeacherAssistant.Attendance do
       results =
         Enum.map(marks, fn {enrollment_id, status} ->
           AttendanceEntry
-          |> Ash.Changeset.for_create(:record, %{
-            date: date,
-            status: status,
-            enrollment_id: enrollment_id,
-            period_id: period_id,
-            teaching_context_id: teaching_context_id,
-            recorded_by_user_id: recorded_by_user_id
-          })
-          |> Ash.Changeset.set_tenant(ws_id)
+          |> Ash.Changeset.for_create(
+            :record,
+            %{
+              date: date,
+              status: status,
+              enrollment_id: enrollment_id,
+              period_id: period_id,
+              teaching_context_id: teaching_context_id,
+              recorded_by_user_id: scope.current_user && scope.current_user.id
+            },
+            scope: scope
+          )
           |> Ash.create()
         end)
 
@@ -329,11 +335,9 @@ defmodule TeacherAssistant.Attendance do
   (breaks excluded) and every roster student with a `cells` map keyed by
   period_id, reflecting that day's attendance marks (`nil` where unmarked).
   """
-  def class_register(%ClassGroup{workspace_id: ws_id} = class_group, %Date{} = date) do
-    workspace = %Workspace{id: ws_id}
-
+  def class_register(%Scope{} = scope, %ClassGroup{} = class_group, %Date{} = date) do
     periods =
-      workspace
+      scope
       |> list_periods()
       |> Enum.filter(&(&1.kind == :lesson))
 
@@ -341,7 +345,7 @@ defmodule TeacherAssistant.Attendance do
 
     cells_by_enrollment =
       date
-      |> for_date_periods_class!(period_ids, class_group.id, tenant: ws_id)
+      |> for_date_periods_class!(period_ids, class_group.id, scope: scope)
       |> Enum.group_by(& &1.enrollment_id, &{&1.period_id, &1.status})
       |> Map.new(fn {enrollment_id, pairs} -> {enrollment_id, Map.new(pairs)} end)
 
@@ -368,31 +372,35 @@ defmodule TeacherAssistant.Attendance do
   `AttendanceEntry` for `enrollment` on `date`. Entries with another status,
   or on another date, are left untouched. Returns `{:ok, count}`.
   """
-  def justify_day(%Enrollment{} = enrollment, %Date{} = date, note) do
-    set_justification(enrollment, date, true, note)
+  def justify_day(%Scope{} = scope, %Enrollment{} = enrollment, %Date{} = date, note) do
+    set_justification(scope, enrollment, date, true, note)
   end
 
   @doc """
   Sets `justified: false` and clears `justification_note` on every `:absent`
   `AttendanceEntry` for `enrollment` on `date`. Returns `{:ok, count}`.
   """
-  def unjustify_day(%Enrollment{} = enrollment, %Date{} = date) do
-    set_justification(enrollment, date, false, nil)
+  def unjustify_day(%Scope{} = scope, %Enrollment{} = enrollment, %Date{} = date) do
+    set_justification(scope, enrollment, date, false, nil)
   end
 
   defp set_justification(
-         %Enrollment{id: id, workspace_id: ws_id},
+         %Scope{} = scope,
+         %Enrollment{id: id},
          %Date{} = date,
          justified,
          note
        ) do
-    entries = absences_for_day!(id, date, tenant: ws_id)
+    entries = absences_for_day!(id, date, scope: scope)
 
     results =
       Enum.map(entries, fn entry ->
         entry
-        |> Ash.Changeset.for_update(:update, %{justified: justified, justification_note: note})
-        |> Ash.Changeset.set_tenant(ws_id)
+        |> Ash.Changeset.for_update(
+          :update,
+          %{justified: justified, justification_note: note},
+          scope: scope
+        )
         |> Ash.update()
       end)
 
@@ -407,14 +415,14 @@ defmodule TeacherAssistant.Attendance do
   within `period_tuple`'s date range (see `Organization.period_date_range/1`).
   Returns zero totals when the range is `nil`.
   """
-  def student_conduct(%Enrollment{id: id, workspace_id: ws_id}, period_tuple) do
+  def student_conduct(%Scope{} = scope, %Enrollment{id: id}, period_tuple) do
     case Organization.period_date_range(period_tuple) do
       nil ->
         @zero_totals
 
       {first, last} ->
         id
-        |> for_enrollment_range!(first, last, tenant: ws_id)
+        |> for_enrollment_range!(first, last, scope: scope)
         |> Enum.map(&%{status: &1.status, justified: &1.justified, period: &1.period})
         |> Conduct.totals()
     end
@@ -425,7 +433,7 @@ defmodule TeacherAssistant.Attendance do
   roster enrollment of `class_group` within `period_tuple`'s date range, in
   one scoped read. Enrollments with no entries in range get zero totals.
   """
-  def class_conduct(%ClassGroup{workspace_id: ws_id} = class_group, period_tuple) do
+  def class_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple) do
     roster_enrollment_ids =
       class_group
       |> TeacherAssistant.Enrollment.list_roster()
@@ -440,7 +448,7 @@ defmodule TeacherAssistant.Attendance do
       {first, last} ->
         totals_by_enrollment =
           class_group.id
-          |> for_class_range!(first, last, tenant: ws_id)
+          |> for_class_range!(first, last, scope: scope)
           |> Enum.group_by(& &1.enrollment_id)
           |> Map.new(fn {enrollment_id, entries} ->
             totals =

@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -24,8 +25,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Attendance.build_default_periods(school)
-    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -36,7 +37,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
       cg: cg,
       tc: tc,
       period: period,
-      head: head
+      head: head,
+      scope: scope
     }
   end
 
@@ -57,7 +59,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     conn: conn,
     cg: cg,
     tc: tc,
-    period: period
+    period: period,
+    scope: scope
   } do
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/timetable")
 
@@ -68,13 +71,23 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
     assert html =~ "1/"
 
-    timetable = Timetabling.class_timetable(cg)
+    timetable = Timetabling.class_timetable(scope, cg)
     assert timetable.slots[{:monday, period.id}].teaching_context_id == tc.id
   end
 
-  test "admin clearing a cell removes the slot", %{conn: conn, cg: cg, tc: tc, period: period} do
+  test "admin clearing a cell removes the slot", %{
+    conn: conn,
+    cg: cg,
+    tc: tc,
+    period: period,
+    scope: scope
+  } do
     {:ok, _slot} =
-      Timetabling.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: period.id,
+        teaching_context_id: tc.id
+      })
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/timetable")
 
@@ -82,12 +95,21 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     |> form("#cell-monday-#{period.id} form", %{"teaching_context_id" => ""})
     |> render_change()
 
-    timetable = Timetabling.class_timetable(cg)
+    timetable = Timetabling.class_timetable(scope, cg)
     refute Map.has_key?(timetable.slots, {:monday, period.id})
   end
 
   test "placing a combined assignment fills the same cell for every member class, and clearing it clears both",
-       %{conn: conn, cg: cg, tc: tc, period: period, school: school, year: year, head: head} do
+       %{
+         conn: conn,
+         cg: cg,
+         tc: tc,
+         period: period,
+         school: school,
+         year: year,
+         head: head,
+         scope: scope
+       } do
     {:ok, other_cg} = Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
     {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
     {:ok, _course} = Curriculum.combine_course([tc, other_tc])
@@ -101,8 +123,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
     assert html =~ "combiné"
 
-    timetable = Timetabling.class_timetable(cg)
-    other_timetable = Timetabling.class_timetable(other_cg)
+    timetable = Timetabling.class_timetable(scope, cg)
+    other_timetable = Timetabling.class_timetable(scope, other_cg)
     assert timetable.slots[{:monday, period.id}].teaching_context_id == tc.id
     assert other_timetable.slots[{:monday, period.id}].teaching_context_id == other_tc.id
 
@@ -110,8 +132,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     |> form("#cell-monday-#{period.id} form", %{"teaching_context_id" => ""})
     |> render_change()
 
-    timetable = Timetabling.class_timetable(cg)
-    other_timetable = Timetabling.class_timetable(other_cg)
+    timetable = Timetabling.class_timetable(scope, cg)
+    other_timetable = Timetabling.class_timetable(scope, other_cg)
     refute Map.has_key?(timetable.slots, {:monday, period.id})
     refute Map.has_key?(other_timetable.slots, {:monday, period.id})
   end
@@ -123,7 +145,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     period: period,
     school: school,
     year: year,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, other_cg} =
       Enrollment.create_class_group(school, year, %{label: "6e B", level: "6ème"})
@@ -131,7 +154,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     {:ok, other_tc} = Curriculum.assign_teacher(other_cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
-      Timetabling.place_slot(other_cg, %{
+      Timetabling.place_slot(scope, other_cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: other_tc.id
@@ -146,7 +169,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
     assert html =~ "a déjà cours dans"
 
-    timetable = Timetabling.class_timetable(cg)
+    timetable = Timetabling.class_timetable(scope, cg)
     refute Map.has_key?(timetable.slots, {:monday, period.id})
   end
 
@@ -156,7 +179,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     tc: tc,
     period: period,
     school: school,
-    head: head
+    head: head,
+    scope: scope
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -184,7 +208,7 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
       "teaching_context_id" => tc.id
     })
 
-    timetable = Timetabling.class_timetable(cg)
+    timetable = Timetabling.class_timetable(scope, cg)
     refute Map.has_key?(timetable.slots, {:monday, period.id})
   end
 

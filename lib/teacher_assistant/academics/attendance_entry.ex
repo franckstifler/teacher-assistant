@@ -12,7 +12,6 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   # never aliased, always referenced fully qualified below, so a bare
   # `Attendance.<fn>` can never accidentally resolve here.
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Period
@@ -163,9 +162,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       argument :period, :struct, allow_nil?: false, constraints: [instance_of: Period]
       argument :date, :date, allow_nil?: false
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         %{class_group: cg, period: period, date: date} = input.arguments
-        {:ok, period_roll(cg, period, date, input.tenant)}
+        {:ok, period_roll(cg, period, date, scope)}
       end
     end
 
@@ -185,9 +184,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       argument :period, :struct, allow_nil?: false, constraints: [instance_of: Period]
       argument :date, :date, allow_nil?: false
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         %{course: course, period: period, date: date} = input.arguments
-        {:ok, combined_roll(course, period, date, input.tenant)}
+        {:ok, combined_roll(course, period, date, scope)}
       end
     end
 
@@ -195,15 +194,16 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     # pre-routed by `TeacherAssistant.Attendance.record_combined_period/5` —
     # each entry already carries its own class's `teaching_context_id`, the
     # server-derived per-class routing; every member class of a combined
-    # course shares the same workspace, so `input.tenant` covers every group)
-    # are written via the same `:record` upsert (identity `[:enrollment_id, :date,
-    # :period_id]`) used by a solo roll. `transaction? true` wraps every
-    # group's writes in one DB transaction, so a write failure in ANY class
-    # rolls back every class's marks — no partial commit across a combined
-    # course's member classes (mirrors `Mark.:upsert_all`, C7's record-once-
-    # combined pattern). Status/enrollment validation happens in the domain
-    # wrapper *before* this action is ever called, so a bad mark never opens a
-    # transaction at all — this action only ever sees already-valid writes.
+    # course shares the same workspace, so the action context's scope covers
+    # every group) are written via the same `:record` upsert (identity
+    # `[:enrollment_id, :date, :period_id]`) used by a solo roll. `transaction?
+    # true` wraps every group's writes in one DB transaction, so a write
+    # failure in ANY class rolls back every class's marks — no partial commit
+    # across a combined course's member classes (mirrors `Mark.:upsert_all`,
+    # C7's record-once-combined pattern). Status/enrollment validation happens
+    # in the domain wrapper *before* this action is ever called, so a bad mark
+    # never opens a transaction at all — this action only ever sees
+    # already-valid writes.
     action :record_combined_period, :integer do
       argument :period_id, :uuid, allow_nil?: false
       argument :date, :date, allow_nil?: false
@@ -212,15 +212,13 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         %{period_id: period_id, date: date, recorded_by_user_id: uid, groups: groups} =
           input.arguments
 
-        tenant = input.tenant
-
         groups
         |> Enum.reduce_while({:ok, 0}, fn group, {:ok, acc} ->
-          case create_group_entries(group, period_id, date, uid, tenant) do
+          case create_group_entries(group, period_id, date, uid, scope) do
             {:ok, count} -> {:cont, {:ok, acc + count}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -289,31 +287,34 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   # --- Roll composition (private engine behind :period_roll /
   # :combined_period_roll) ----------------------------------------------------
 
-  defp period_roll(%ClassGroup{} = class_group, %Period{id: period_id}, %Date{} = date, tenant) do
+  defp period_roll(%ClassGroup{} = class_group, %Period{id: period_id}, %Date{} = date, scope) do
     teaching_context =
-      case slot_for(class_group, date, period_id) do
+      case slot_for(class_group, date, period_id, scope) do
         {:ok, %TimetableSlot{teaching_context: %TeachingContext{} = tc}} -> tc
         _ -> nil
       end
 
     statuses =
       __MODULE__
-      |> Ash.Query.for_read(:for_period_date_class, %{
-        period_id: period_id,
-        date: date,
-        class_group_id: class_group.id
-      })
-      |> Ash.Query.set_tenant(tenant)
+      |> Ash.Query.for_read(
+        :for_period_date_class,
+        %{
+          period_id: period_id,
+          date: date,
+          class_group_id: class_group.id
+        }, scope: scope)
       |> Ash.read!()
       |> Map.new(&{&1.enrollment_id, &1.status})
 
     students =
-      class_group
-      |> Enrollment.list_roster()
-      |> Enum.map(fn %{student: student, enrollment: enrollment} ->
+      TeacherAssistant.Academics.Enrollment
+      |> Ash.Query.for_read(:for_class_group, %{class_group_id: class_group.id}, scope: scope)
+      |> Ash.read!()
+      |> Enum.sort_by(&String.downcase(&1.student.full_name))
+      |> Enum.map(fn enrollment ->
         %{
           enrollment_id: enrollment.id,
-          student_name: student.full_name,
+          student_name: enrollment.student.full_name,
           status: Map.get(statuses, enrollment.id)
         }
       end)
@@ -321,15 +322,15 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     %{students: students, teaching_context: teaching_context}
   end
 
-  defp combined_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date, tenant) do
+  defp combined_roll(%CombinedCourse{} = course, %Period{} = period, %Date{} = date, scope) do
     course.id
-    |> Curriculum.contexts_of_course!(tenant: tenant)
-    # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
-    |> Ash.load!(:class_group, tenant: tenant)
+    |> Curriculum.contexts_of_course!(scope: scope)
+    # `:class_group` is also multitenant — Ash needs a scope to resolve the load.
+    |> Ash.load!(:class_group, scope: scope)
     |> Enum.reject(&is_nil(&1.class_group))
     |> Enum.map(fn ctx ->
       ctx.class_group
-      |> period_roll(period, date, tenant)
+      |> period_roll(period, date, scope)
       |> Map.put(:class_group, ctx.class_group)
     end)
     |> Enum.sort_by(&String.downcase(&1.class_group.label))
@@ -337,20 +338,19 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
   # Resolves the placed `TimetableSlot` (with `teaching_context` loaded) for
   # `class_group` at `date`'s day-of-week/`period_id`. Purely internal to
-  # `period_roll/3` above — `TeacherAssistant.Attendance.slot_for/3` is the
+  # `period_roll/4` above — `TeacherAssistant.Attendance.slot_for/4` is the
   # public entry point for direct callers and duplicates this small query
   # deliberately: its `{:error, :no_slot}` return must survive untouched,
   # which a Ash generic action cannot guarantee (a bare atom error returned
   # from an action's `run` gets normalized into an `Ash.Error.Unknown`), so it
   # is never routed through an action boundary.
-  defp slot_for(%ClassGroup{id: cg_id, workspace_id: ws_id}, %Date{} = date, period_id) do
+  defp slot_for(%ClassGroup{id: cg_id}, %Date{} = date, period_id, scope) do
     with {:ok, day} <- day_of_week(date) do
       TimetableSlot
       |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
-      # `:teaching_context` is now multitenant — Ash needs a tenant to resolve the load.
-      |> Ash.Query.set_tenant(ws_id)
+      # `:teaching_context` is multitenant — Ash needs a scope to resolve the load.
       |> Ash.Query.load(:teaching_context)
-      |> Ash.read_one!()
+      |> Ash.read_one!(scope: scope)
       |> case do
         nil -> {:error, :no_slot}
         %TimetableSlot{} = slot -> {:ok, slot}
@@ -373,9 +373,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   # --- Combined-write engine (private, behind :record_combined_period) -------
 
   # Creates one `AttendanceEntry` per mark in `group` (upsert via `:record`,
-  # identity `[:enrollment_id, :date, :period_id]`), tenant-scoped to `tenant`
-  # (the action's `input.tenant`, shared by every member class of the combined
-  # course). `group` carries its own `teaching_context_id` — the per-class
+  # identity `[:enrollment_id, :date, :period_id]`), scoped to the action
+  # context's scope (shared by every member class of the combined course).
+  # `group` carries its own `teaching_context_id` — the per-class
   # routing computed by `TeacherAssistant.Attendance.record_combined_period/5`
   # before this action ever runs. Returns `{:ok, count}`, or the first
   # `{:error, reason}` hit (halting the batch — the caller's `transaction?
@@ -385,20 +385,23 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
          period_id,
          date,
          recorded_by_user_id,
-         tenant
+         scope
        ) do
     results =
       Enum.map(marks, fn %{enrollment_id: enrollment_id, status: status} ->
         __MODULE__
-        |> Ash.Changeset.for_create(:record, %{
-          date: date,
-          status: status,
-          enrollment_id: enrollment_id,
-          period_id: period_id,
-          teaching_context_id: tc_id,
-          recorded_by_user_id: recorded_by_user_id
-        })
-        |> Ash.Changeset.set_tenant(tenant)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: date,
+            status: status,
+            enrollment_id: enrollment_id,
+            period_id: period_id,
+            teaching_context_id: tc_id,
+            recorded_by_user_id: recorded_by_user_id
+          },
+          scope: scope
+        )
         |> Ash.create()
       end)
 

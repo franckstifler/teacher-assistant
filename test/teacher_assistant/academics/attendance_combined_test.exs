@@ -14,6 +14,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Combiné"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -37,8 +38,8 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    :ok = Attendance.build_default_periods(ws)
-    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     # 2025-09-08 is a Monday. Only MACO's slot is placed at this period: the
     # teacher can only be physically timetabled in one class at a time, so a
@@ -47,7 +48,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
     # therefore resolves with no teaching_context, which is a legitimate
     # state `period_roll/3` already handles.
     {:ok, _slot_maco} =
-      Timetabling.place_slot(maco, %{
+      Timetabling.place_slot(scope, maco, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_maco.id
@@ -55,6 +56,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
     %{
       head: head,
+      scope: scope,
       ws: ws,
       course: course,
       maco: maco,
@@ -68,9 +70,9 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
     }
   end
 
-  describe "combined_period_roll/3" do
+  describe "combined_period_roll/4" do
     test "returns students from both member classes, grouped by class", ctx do
-      groups = Attendance.combined_period_roll(ctx.course, ctx.period, ctx.date)
+      groups = Attendance.combined_period_roll(ctx.scope, ctx.course, ctx.period, ctx.date)
 
       assert length(groups) == 2
 
@@ -92,11 +94,11 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
       assert {:ok, 2} =
                Attendance.record_combined_period(
+                 ctx.scope,
                  ctx.course,
                  ctx.period,
                  ctx.date,
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
       entry_maco =
@@ -129,11 +131,11 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
 
       assert {:error, :invalid_status} =
                Attendance.record_combined_period(
+                 ctx.scope,
                  ctx.course,
                  ctx.period,
                  ctx.date,
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
       assert [] =
@@ -182,7 +184,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
                    recorded_by_user_id: ctx.head.id,
                    groups: groups
                  },
-                 tenant: ctx.ws.id
+                 scope: ctx.scope
                )
                |> Ash.run_action()
 

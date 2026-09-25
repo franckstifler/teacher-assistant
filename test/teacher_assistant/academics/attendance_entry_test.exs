@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -27,8 +28,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
     {:ok, student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
-    :ok = Attendance.build_default_periods(ws)
-    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     %{
       ws: ws,

@@ -451,7 +451,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
           :ok = Organization.build_default_calendar(year)
-          :ok = TeacherAssistant.Attendance.build_default_periods(scope.current_workspace)
+          :ok = TeacherAssistant.Attendance.build_default_periods(scope)
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope.current_workspace, year)
 
           socket = load_years(socket)

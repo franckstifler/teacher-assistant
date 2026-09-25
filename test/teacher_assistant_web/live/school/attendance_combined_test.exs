@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -39,14 +40,14 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
 
     {:ok, course} = Curriculum.combine_course([tc_maco, tc_menu])
 
-    :ok = Attendance.build_default_periods(school)
-    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday. Only MACO's slot is placed at this cell (see the note in
     # attendance_combined_test.exs) — navigating to MACO's own attendance
     # page is what puts this LiveView in combined mode.
     {:ok, _slot_maco} =
-      Timetabling.place_slot(maco, %{
+      Timetabling.place_slot(scope, maco, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc_maco.id
@@ -67,6 +68,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
       menu: menu,
       period: period,
       date: date,
+      scope: scope,
       enr_maco: enr_maco,
       enr_menu: enr_menu
     }
@@ -97,6 +99,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
          period: period,
          date: date,
          course: course,
+         scope: scope,
          enr_maco: enr_maco,
          enr_menu: enr_menu
        } do
@@ -105,7 +108,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
     view |> element("#att-#{enr_menu.id}-absent") |> render_click()
     view |> element("#record-roll") |> render_click()
 
-    groups = Attendance.combined_period_roll(course, period, date)
+    groups = Attendance.combined_period_roll(scope, course, period, date)
     all_students = Enum.flat_map(groups, & &1.students)
 
     assert Enum.find(all_students, &(&1.enrollment_id == enr_menu.id)).status == :absent

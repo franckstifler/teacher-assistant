@@ -11,8 +11,8 @@ defmodule TeacherAssistant.CompositeFkTest do
     b = setup_complete_school_fixture()
     [cg_a | _] = Enrollment.list_class_groups(a.workspace, a.year)
     {:ok, %{enrollment: e_a}} = Enrollment.enroll_new(cg_a, %{full_name: "Awa A", sex: :f})
-    [period_a | _] = Attendance.list_periods(a.workspace)
-    [period_b | _] = Attendance.list_periods(b.workspace)
+    [period_a | _] = Attendance.list_periods(a.scope)
+    [period_b | _] = Attendance.list_periods(b.scope)
     tc_b = assigned_context_fixture(b.scope, b.year)
     %{a: a, e_a: e_a, period_a: period_a, period_b: period_b, tc_b: tc_b}
   end

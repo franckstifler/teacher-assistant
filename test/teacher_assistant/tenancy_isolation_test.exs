@@ -155,7 +155,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   end
 
   defp row_for(A.Period, school, _ctx),
-    do: school |> TeacherAssistant.Attendance.list_periods() |> List.first()
+    do: school |> scope_of() |> TeacherAssistant.Attendance.list_periods() |> List.first()
 
   defp row_for(SchoolMembership, school, _ctx),
     do: TeacherAssistant.Accounts.list_members(school) |> List.first()
@@ -180,12 +180,12 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     {:ok, _} =
       TeacherAssistant.Attendance.record_period(
+        scope_of(school),
         cg,
         p,
         nil,
         ~D[2030-10-07],
-        [{e.id, :absent}],
-        nil
+        [{e.id, :absent}]
       )
 
     A.AttendanceEntry
@@ -200,7 +200,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     p = row_for(A.Period, school, ctx)
 
     {:ok, slot} =
-      TeacherAssistant.Timetabling.place_slot(cg, %{
+      TeacherAssistant.Timetabling.place_slot(scope_of(school), cg, %{
         day: :monday,
         period_id: p.id,
         teaching_context_id: tc.id
@@ -374,7 +374,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
        } = ctx do
     entry = row_for(A.AttendanceEntry, a, ctx)
     {:ok, e} = TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, a)
-    assert {:ok, _} = TeacherAssistant.Attendance.justify_day(e, entry.date, "ok")
+    assert {:ok, _} = TeacherAssistant.Attendance.justify_day(scope_of(a), e, entry.date, "ok")
 
     assert {:error, :not_found} =
              TeacherAssistant.Enrollment.fetch_owned_enrollment(entry.enrollment_id, b)
@@ -389,12 +389,12 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert {:error, _} =
              TeacherAssistant.Attendance.record_period(
+               scope_of(a),
                cg_a,
                period_b,
                nil,
                entry.date,
-               [{e.id, :present}],
-               nil
+               [{e.id, :present}]
              )
 
     assert A.AttendanceEntry

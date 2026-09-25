@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
-      timetable = Timetabling.class_timetable(cg)
+      timetable = Timetabling.class_timetable(scope, cg)
 
       conn
       |> put_layout(false)
@@ -22,7 +22,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
         title: cg.label,
         etablissement: scope.current_workspace.name,
         annee: scope.current_academic_year && scope.current_academic_year.name,
-        periods: Attendance.list_periods(scope.current_workspace),
+        periods: Attendance.list_periods(scope),
         grid: timetable.slots,
         days: @days
       )
@@ -41,8 +41,8 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
         title: to_string(scope.current_user.email),
         etablissement: scope.current_workspace.name,
         annee: scope.current_academic_year && scope.current_academic_year.name,
-        periods: Attendance.list_periods(scope.current_workspace),
-        grid: Timetabling.teacher_timetable(scope.current_workspace, scope.current_user),
+        periods: Attendance.list_periods(scope),
+        grid: Timetabling.teacher_timetable(scope, scope.current_user),
         days: @days
       )
     else

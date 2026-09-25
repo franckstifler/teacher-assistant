@@ -8,15 +8,16 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
   setup do
     user = TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(user, %{name: "Lycée Test"})
-    %{school: school}
+    %{school: school, scope: school_scope(user, school)}
   end
 
   test "build_default_periods seeds a sorted bell schedule with breaks and lessons", %{
-    school: school
+    school: _school,
+    scope: scope
   } do
-    assert :ok = Attendance.build_default_periods(school)
+    assert :ok = Attendance.build_default_periods(scope)
 
-    periods = Attendance.list_periods(school)
+    periods = Attendance.list_periods(scope)
     assert periods != []
     assert Enum.map(periods, & &1.position) == Enum.sort(Enum.map(periods, & &1.position))
 
@@ -27,18 +28,18 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
     assert Enum.count(periods, &(&1.kind == :lesson)) >= 5
   end
 
-  test "build_default_periods is idempotent", %{school: school} do
-    :ok = Attendance.build_default_periods(school)
-    count_after_first = length(Attendance.list_periods(school))
+  test "build_default_periods is idempotent", %{scope: scope} do
+    :ok = Attendance.build_default_periods(scope)
+    count_after_first = length(Attendance.list_periods(scope))
 
-    assert :ok = Attendance.build_default_periods(school)
-    assert length(Attendance.list_periods(school)) == count_after_first
+    assert :ok = Attendance.build_default_periods(scope)
+    assert length(Attendance.list_periods(scope)) == count_after_first
   end
 
   test "a new school is created with the default bell schedule" do
     user = TeacherFixtures.user_fixture()
     {:ok, other_school} = Organization.create_school(user, %{name: "Other School"})
 
-    assert Attendance.list_periods(other_school) != []
+    assert Attendance.list_periods(school_scope(user, other_school)) != []
   end
 end

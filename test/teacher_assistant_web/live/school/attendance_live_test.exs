@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -24,14 +25,14 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Attendance.build_default_periods(school)
-    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday, so the slot's day_of_week matches.
     date = ~D[2025-09-08]
 
     {:ok, _slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
@@ -54,6 +55,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       period: period,
       date: date,
       head: head,
+      scope: scope,
       enrollment: enrollment
     }
   end
@@ -73,6 +75,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     cg: cg,
     period: period,
     date: date,
+    scope: scope,
     enrollment: enrollment
   } do
     {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
@@ -86,7 +89,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     # record without touching anyone
     view |> element("#record-roll") |> render_click()
 
-    roll = Attendance.period_roll(cg, period, date)
+    roll = Attendance.period_roll(scope, cg, period, date)
     assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :present
     assert Enum.find(roll.students, &(&1.enrollment_id == other_enr.id)).status == :present
   end
@@ -96,6 +99,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     cg: cg,
     period: period,
     date: date,
+    scope: scope,
     enrollment: enrollment
   } do
     {:ok, other} = Enrollment.add_student(cg, %{full_name: "Beba Ndoumbe", sex: :m})
@@ -106,7 +110,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     view |> element("#att-#{enrollment.id}-absent") |> render_click()
     view |> element("#record-roll") |> render_click()
 
-    roll = Attendance.period_roll(cg, period, date)
+    roll = Attendance.period_roll(scope, cg, period, date)
     assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :absent
     assert Enum.find(roll.students, &(&1.enrollment_id == other_enr.id)).status == :present
   end
@@ -117,6 +121,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     period: period,
     date: date,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -134,7 +139,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     view |> element("#att-#{enrollment.id}-absent") |> render_click()
     view |> element("#record-roll") |> render_click()
 
-    roll = Attendance.period_roll(cg, period, date)
+    roll = Attendance.period_roll(scope, cg, period, date)
     assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :absent
   end
 
@@ -144,11 +149,11 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     period: period,
     date: date,
     tc: tc,
-    head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     {:ok, _} =
-      Attendance.record_period(cg, period, tc, date, [{enrollment.id, :present}], head.id)
+      Attendance.record_period(scope, cg, period, tc, date, [{enrollment.id, :present}])
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
     assert has_element?(view, "#roll-status", "enregistré")
@@ -159,6 +164,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     cg: cg,
     period: period,
     date: date,
+    scope: scope,
     enrollment: enrollment
   } do
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
@@ -166,7 +172,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     render_hook(view, "set", %{"enrollment_id" => enrollment.id, "status" => "on_fire"})
     view |> element("#record-roll") |> render_click()
 
-    roll = Attendance.period_roll(cg, period, date)
+    roll = Attendance.period_roll(scope, cg, period, date)
     assert Enum.find(roll.students, &(&1.enrollment_id == enrollment.id)).status == :present
   end
 
@@ -189,7 +195,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   end
 
   describe "assignment-based roll call (no timetable slot)" do
-    setup %{school: school, cg: cg, head: head} do
+    setup %{school: school, cg: cg, head: head, scope: scope} do
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
@@ -199,7 +205,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
 
       # A lesson period with no slot placed on any day.
       free_period =
-        school |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)) |> Enum.at(1)
+        scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)) |> Enum.at(1)
 
       %{other: other, free_period: free_period}
     end

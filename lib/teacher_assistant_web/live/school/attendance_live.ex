@@ -18,8 +18,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     date = parse_date(params["date"])
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
-         {:ok, period} <- fetch_period(period_id, scope.current_workspace),
-         {:ok, slot_or_nil} <- resolve_slot(cg, date, period.id),
+         {:ok, period} <- fetch_period(period_id, scope),
+         {:ok, slot_or_nil} <- resolve_slot(scope, cg, date, period.id),
          teaching_context = resolve_teaching_context(scope, cg, slot_or_nil),
          true <- authorized?(scope, teaching_context) do
       course = combined_course_for(teaching_context)
@@ -92,8 +92,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
-  defp fetch_period(period_id, workspace) do
-    workspace
+  defp fetch_period(period_id, scope) do
+    scope
     |> Attendance.list_periods()
     |> Enum.find(&(&1.id == period_id))
     |> case do
@@ -102,8 +102,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
-  defp resolve_slot(cg, date, period_id) do
-    case Attendance.slot_for(cg, date, period_id) do
+  defp resolve_slot(scope, cg, date, period_id) do
+    case Attendance.slot_for(scope, cg, date, period_id) do
       {:ok, slot} -> {:ok, slot}
       {:error, :no_slot} -> {:ok, nil}
     end
@@ -125,7 +125,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   # already been saved, so "all present" is distinguishable from "not yet done".
   defp load_roll(socket) do
     %{students: roster} =
-      Attendance.period_roll(socket.assigns.cg, socket.assigns.period, socket.assigns.date)
+      Attendance.period_roll(
+        socket.assigns.current_scope,
+        socket.assigns.cg,
+        socket.assigns.period,
+        socket.assigns.date
+      )
 
     taken? = Enum.any?(roster, &(&1.status != nil))
     roll = Map.new(roster, fn s -> {s.enrollment_id, s.status || :present} end)
@@ -138,11 +143,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   # Combined mode: same roll shape as `load_roll/1` (a flat `students` list
   # plus an `enrollment_id => status` `roll` map, so `set`/`record` work
-  # unchanged), but sourced from `combined_period_roll/3` and keeping the
+  # unchanged), but sourced from `combined_period_roll/4` and keeping the
   # per-class `groups` around for the grouped render.
   defp load_combined_roll(socket) do
     groups =
       Attendance.combined_period_roll(
+        socket.assigns.current_scope,
         socket.assigns.course,
         socket.assigns.period,
         socket.assigns.date
@@ -190,7 +196,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
             {s.enrollment_id, Map.fetch!(socket.assigns.roll, s.enrollment_id)}
           end)
 
-        case record_marks(socket, marks, scope.current_user.id) do
+        case record_marks(socket, marks, scope) do
           {:ok, _count} ->
             {:noreply, socket |> put_flash(:info, gettext("Appel enregistré")) |> reload_roll()}
 
@@ -203,24 +209,24 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
-  defp record_marks(%{assigns: %{course: %CombinedCourse{} = course}} = socket, marks, user_id) do
+  defp record_marks(%{assigns: %{course: %CombinedCourse{} = course}} = socket, marks, scope) do
     Attendance.record_combined_period(
+      scope,
       course,
       socket.assigns.period,
       socket.assigns.date,
-      marks,
-      user_id
+      marks
     )
   end
 
-  defp record_marks(socket, marks, user_id) do
+  defp record_marks(socket, marks, scope) do
     Attendance.record_period(
+      scope,
       socket.assigns.cg,
       socket.assigns.period,
       socket.assigns.teaching_context,
       socket.assigns.date,
-      marks,
-      user_id
+      marks
     )
   end
 

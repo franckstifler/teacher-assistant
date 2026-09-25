@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
        |> assign(
          cg: cg,
          admin?: Permissions.admin?(scope),
-         periods: Attendance.list_periods(scope.current_workspace),
+         periods: Attendance.list_periods(scope),
          assignments: Curriculum.list_assignments_for_class(cg),
          days: @days
        )
@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   end
 
   defp load_timetable(socket) do
-    timetable = Timetabling.class_timetable(socket.assigns.cg)
+    timetable = Timetabling.class_timetable(socket.assigns.current_scope, socket.assigns.cg)
     assign(socket, slots: timetable.slots, tally: timetable.tally)
   end
 
@@ -61,12 +61,17 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   end
 
   # A member of a `CombinedCourse` places the same delivery into EVERY member
-  # class's cell at once (`Timetabling.place_combined_slot/3`) — a combined
+  # class's cell at once (`Timetabling.place_combined_slot/4`) — a combined
   # course is deliberately one teacher in several classes at once, so this is
   # not a clash. A solo assignment keeps placing only this class's cell,
   # exactly as before.
   defp place_cell(socket, %{combined_course: %CombinedCourse{} = course}, day_atom, period_id) do
-    case Timetabling.place_combined_slot(course, day_atom, period_id) do
+    case Timetabling.place_combined_slot(
+           socket.assigns.current_scope,
+           course,
+           day_atom,
+           period_id
+         ) do
       {:ok, _slots} ->
         {:noreply, load_timetable(socket)}
 
@@ -79,7 +84,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   end
 
   defp place_cell(socket, assignment, day_atom, period_id) do
-    case Timetabling.place_slot(socket.assigns.cg, %{
+    case Timetabling.place_slot(socket.assigns.current_scope, socket.assigns.cg, %{
            day: day_atom,
            period_id: period_id,
            teaching_context_id: assignment.id
@@ -96,9 +101,11 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   end
 
   # Clearing a cell that holds a combined slot clears it for every member
-  # class (`Timetabling.clear_combined_slot/3`); otherwise it clears only this
+  # class (`Timetabling.clear_combined_slot/4`); otherwise it clears only this
   # class's cell, exactly as before.
   defp clear_cell(socket, day_atom, period_id) do
+    scope = socket.assigns.current_scope
+
     result =
       case combined_course_at(
              socket.assigns.assignments,
@@ -107,10 +114,10 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
              period_id
            ) do
         %CombinedCourse{} = course ->
-          Timetabling.clear_combined_slot(course, day_atom, period_id)
+          Timetabling.clear_combined_slot(scope, course, day_atom, period_id)
 
         nil ->
-          Timetabling.clear_slot(socket.assigns.cg, day_atom, period_id)
+          Timetabling.clear_slot(scope, socket.assigns.cg, day_atom, period_id)
       end
 
     case result do

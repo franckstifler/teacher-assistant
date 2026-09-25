@@ -54,7 +54,9 @@ defmodule TeacherAssistant.Assessment do
       %{
         teaching_context_id: ctx_id,
         sequence_id: seq_id
-      }, scope: scope)
+      },
+      scope: scope
+    )
     |> Ash.read!()
   end
 
@@ -181,7 +183,9 @@ defmodule TeacherAssistant.Assessment do
         %{
           teaching_context_id: ctx_id,
           sequence_id: seq_id
-        }, scope: scope)
+        },
+        scope: scope
+      )
       |> Ash.read!()
       |> Enum.map(& &1.id)
 
@@ -222,7 +226,7 @@ defmodule TeacherAssistant.Assessment do
   # (per-subject averages, coefficient weighting, ranking, distinctions) lives
   # in the pure, deterministic `Academics.Marks` / `Academics.Bulletins`
   # modules and is reused verbatim so the numbers never drift. This mirrors the
-  # `Attendance.class_conduct/2` / `Discipline.class_discipline/2` shape: a thin
+  # `Attendance.class_conduct/3` / `Discipline.class_discipline/3` shape: a thin
   # domain function over authorized reads + a pure computation module.
 
   @doc """

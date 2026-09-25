@@ -31,7 +31,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
       results = period && Assessment.class_results_for_period(scope, cg, period)
       data = results && results.per_student[student.id]
-      conduct = period && Attendance.student_conduct(enrollment, period)
+      conduct = period && Attendance.student_conduct(scope, enrollment, period)
       discipline = period && Discipline.discipline_summary(scope, enrollment, period)
 
       {:ok,
@@ -79,7 +79,13 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
           period
         )
 
-    conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
+    conduct =
+      period &&
+        Attendance.student_conduct(
+          socket.assigns.current_scope,
+          socket.assigns.enrollment,
+          period
+        )
 
     discipline =
       period &&

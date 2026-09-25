@@ -98,7 +98,8 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     cg: cg,
     enr: enr,
     seq: seq,
-    school: school
+    school: school,
+    scope: scope
   } do
     # Baseline: no attendance recorded yet.
     {:ok, _view, baseline_html} =
@@ -107,14 +108,14 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert baseline_html =~ "Moyenne générale"
     [_, baseline_moyenne] = Regex.run(~r/Moyenne générale.*?(\d+[.,]\d+)/s, baseline_html)
 
-    :ok = Attendance.build_default_periods(school)
+    :ok = Attendance.build_default_periods(scope)
     [tc] = Curriculum.list_assignments_for_class(cg)
-    periods = Attendance.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+    periods = Attendance.list_periods(scope) |> Enum.filter(&(&1.kind == :lesson))
     [period1, period2 | _] = periods
 
     # 2025-09-15 is a Monday within séquence 1's date range.
     {:ok, slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period1.id,
         teaching_context_id: tc.id
@@ -124,24 +125,24 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
     {:ok, _} =
       Attendance.record_period(
+        scope,
         cg,
         period1,
         tc,
         date,
-        [{enr.id, :absent}],
-        cg.workspace_id
+        [{enr.id, :absent}]
       )
 
-    {:ok, _} = Attendance.justify_day(enr, date, "Certificat médical")
+    {:ok, _} = Attendance.justify_day(scope, enr, date, "Certificat médical")
 
     {:ok, _} =
       Attendance.record_period(
+        scope,
         cg,
         period2,
         tc,
         date,
-        [{enr.id, :late}],
-        cg.workspace_id
+        [{enr.id, :late}]
       )
 
     _ = slot
@@ -151,21 +152,21 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
     {:ok, _} =
       Attendance.record_period(
+        scope,
         cg,
         period3,
         tc,
         date,
-        [{enr.id, :absent}],
-        cg.workspace_id
+        [{enr.id, :absent}]
       )
 
     expected_justified_hours =
-      Attendance.student_conduct(enr, {:sequence, seq}).justified_hours
+      Attendance.student_conduct(scope, enr, {:sequence, seq}).justified_hours
       |> Decimal.round(2)
       |> Decimal.to_string()
 
     expected_unjustified_hours =
-      Attendance.student_conduct(enr, {:sequence, seq}).unjustified_hours
+      Attendance.student_conduct(scope, enr, {:sequence, seq}).unjustified_hours
       |> Decimal.round(2)
       |> Decimal.to_string()
 

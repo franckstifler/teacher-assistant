@@ -105,14 +105,15 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     # Places a `TimetableSlot` for every member class of a combined course at
     # the same `day`/`period_id`, one call per member (`placements`, each
     # `%{class_group_id, teaching_context_id}`; every member class shares the
-    # same workspace, so `input.tenant` covers every placement). `transaction?
-    # true` wraps every member's upsert in one DB transaction, so a failure
-    # for any member rolls back every member already placed in this call —
-    # no partial commit across a combined course's classes. The teacher-clash
-    # guard (with the member classes exempted from clashing against each
-    # other) runs in `TeacherAssistant.Timetabling.place_combined_slot/3`
-    # *before* this action is ever called — this action only ever performs
-    # already-validated writes, mirroring `AttendanceEntry.:record_combined_period`.
+    # same workspace, so the action context's scope covers every placement).
+    # `transaction? true` wraps every member's upsert in one DB transaction, so
+    # a failure for any member rolls back every member already placed in this
+    # call — no partial commit across a combined course's classes. The
+    # teacher-clash guard (with the member classes exempted from clashing
+    # against each other) runs in
+    # `TeacherAssistant.Timetabling.place_combined_slot/4` *before* this action
+    # is ever called — this action only ever performs already-validated writes,
+    # mirroring `AttendanceEntry.:record_combined_period`.
     action :place_combined, {:array, :struct} do
       constraints items: [instance_of: __MODULE__]
 
@@ -122,13 +123,12 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         %{day: day, period_id: period_id, placements: placements} = input.arguments
-        tenant = input.tenant
 
         placements
         |> Enum.reduce_while({:ok, []}, fn placement, {:ok, acc} ->
-          case place_one(placement, day, period_id, tenant) do
+          case place_one(placement, day, period_id, scope) do
             {:ok, slot} -> {:cont, {:ok, [slot | acc]}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -152,20 +152,20 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       transaction? true
 
-      run fn input, _ctx ->
+      run fn input, scope ->
         %{day: day, period_id: period_id, class_group_ids: class_group_ids} = input.arguments
-        tenant = input.tenant
 
         Enum.each(class_group_ids, fn class_group_id ->
           __MODULE__
-          |> Ash.Query.for_read(:for_cell, %{
-            class_group_id: class_group_id,
-            day: day,
-            period_id: period_id
-          })
-          |> Ash.Query.set_tenant(tenant)
+          |> Ash.Query.for_read(
+            :for_cell,
+            %{
+              class_group_id: class_group_id,
+              day: day,
+              period_id: period_id
+            }, scope: scope)
           |> Ash.read!()
-          |> Enum.each(&Ash.destroy!(&1, tenant: tenant))
+          |> Enum.each(&Ash.destroy!(&1, scope: scope))
         end)
 
         {:ok, :ok}
@@ -228,16 +228,19 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
          %{class_group_id: cg_id, teaching_context_id: tc_id},
          day,
          period_id,
-         tenant
+         scope
        ) do
     __MODULE__
-    |> Ash.Changeset.for_create(:place, %{
-      class_group_id: cg_id,
-      teaching_context_id: tc_id,
-      period_id: period_id,
-      day: day
-    })
-    |> Ash.Changeset.set_tenant(tenant)
+    |> Ash.Changeset.for_create(
+      :place,
+      %{
+        class_group_id: cg_id,
+        teaching_context_id: tc_id,
+        period_id: period_id,
+        day: day
+      },
+      scope: scope
+    )
     |> Ash.create()
   end
 end

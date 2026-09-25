@@ -20,10 +20,17 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
       units = Curriculum.list_units_for_scope(scope)
 
       lessons =
-        scope.current_workspace |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+        scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 
-      own_slots = Timetabling.teacher_timetable(scope.current_workspace, scope.current_user)
-      ctx = %{today: today, day: day_of_week(today), lessons: lessons, own_slots: own_slots}
+      own_slots = Timetabling.teacher_timetable(scope, scope.current_user)
+
+      ctx = %{
+        today: today,
+        day: day_of_week(today),
+        lessons: lessons,
+        own_slots: own_slots,
+        scope: scope
+      }
 
       {:ok,
        socket
@@ -39,9 +46,9 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   defp course_row({:course, %CombinedCourse{} = course}, ctx) do
     contexts =
       course.id
-      |> Curriculum.contexts_of_course!(tenant: course.workspace_id)
-      # `:class_group` is also multitenant — Ash needs a tenant to resolve the load.
-      |> Ash.load!(:class_group, tenant: course.workspace_id)
+      |> Curriculum.contexts_of_course!(scope: ctx.scope)
+      # `:class_group` is also multitenant — Ash needs a scope to resolve the load.
+      |> Ash.load!(:class_group, scope: ctx.scope)
 
     representative = List.first(contexts)
 
@@ -75,17 +82,17 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   defp roll_call_period(_class_group, %{lessons: []}), do: nil
   defp roll_call_period(_class_group, %{day: nil, lessons: [first | _]}), do: first
 
-  defp roll_call_period(class_group, %{day: day, lessons: lessons, own_slots: own_slots}) do
+  defp roll_call_period(class_group, %{day: day, lessons: lessons, own_slots: own_slots} = ctx) do
     own =
       Enum.find(lessons, fn p ->
         match?(%{class_group_id: id} when id == class_group.id, Map.get(own_slots, {day, p.id}))
       end)
 
-    own || first_free_lesson(class_group, day, lessons) || List.first(lessons)
+    own || first_free_lesson(ctx.scope, class_group, day, lessons) || List.first(lessons)
   end
 
-  defp first_free_lesson(class_group, day, lessons) do
-    %{slots: grid} = Timetabling.class_timetable(class_group)
+  defp first_free_lesson(scope, class_group, day, lessons) do
+    %{slots: grid} = Timetabling.class_timetable(scope, class_group)
     Enum.find(lessons, &(not Map.has_key?(grid, {day, &1.id})))
   end
 

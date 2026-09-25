@@ -11,6 +11,7 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Print TT"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -23,11 +24,11 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Attendance.build_default_periods(school)
-    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     {:ok, _slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id

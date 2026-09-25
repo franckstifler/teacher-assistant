@@ -44,8 +44,8 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   end
 
   defp load_register(socket) do
-    register = Attendance.class_register(socket.assigns.cg, socket.assigns.date)
     scope = socket.assigns.current_scope
+    register = Attendance.class_register(scope, socket.assigns.cg, socket.assigns.date)
 
     sequence =
       case scope.current_academic_year do
@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
       Map.new(register.students, fn student ->
         totals =
           if sequence do
-            Attendance.student_conduct(student.enrollment, {:sequence, sequence})
+            Attendance.student_conduct(scope, student.enrollment, {:sequence, sequence})
           else
             %{justified_hours: Decimal.new(0), unjustified_hours: Decimal.new(0), retards: 0}
           end
@@ -90,7 +90,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
          %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
       note = presence(params["note"])
 
-      case Attendance.justify_day(student.enrollment, socket.assigns.date, note) do
+      case Attendance.justify_day(scope, student.enrollment, socket.assigns.date, note) do
         {:ok, _count} -> {:noreply, load_register(socket)}
         {:error, _reason} -> {:noreply, socket}
       end
@@ -104,7 +104,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
 
     with true <- Permissions.conduct_manager?(scope),
          %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
-      case Attendance.unjustify_day(student.enrollment, socket.assigns.date) do
+      case Attendance.unjustify_day(scope, student.enrollment, socket.assigns.date) do
         {:ok, _count} -> {:noreply, load_register(socket)}
         {:error, _reason} -> {:noreply, socket}
       end

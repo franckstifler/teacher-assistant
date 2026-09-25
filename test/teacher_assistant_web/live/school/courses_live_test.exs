@@ -11,7 +11,8 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Cours"})
-    year = TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
+    scope = school_scope(head, school)
+    year = TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "3e M2", level: "3ème"})
 
     teacher = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -23,7 +24,17 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     {:ok, tc} = Curriculum.assign_teacher(cg, teacher, %{subject: "Maths"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, year: year, cg: cg, teacher: teacher, tc: tc, head: head}
+
+    %{
+      conn: conn,
+      school: school,
+      year: year,
+      cg: cg,
+      teacher: teacher,
+      tc: tc,
+      head: head,
+      scope: scope
+    }
   end
 
   defp conn_for(school, user) do
@@ -37,7 +48,8 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     school: school,
     teacher: teacher,
     cg: cg,
-    tc: tc
+    tc: tc,
+    scope: scope
   } do
     {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
 
@@ -52,7 +64,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
              "#course-#{tc.id} a[href='/teacher/contexts/#{tc.id}/marks/summary']"
            )
 
-    first_lesson = school |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))
+    first_lesson = scope |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))
 
     assert has_element?(
              view,
@@ -65,9 +77,10 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     teacher: teacher,
     cg: cg,
     tc: tc,
-    head: head
+    head: head,
+    scope: scope
   } do
-    [p1, p2 | _] = school |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    [p1, p2 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
     {:ok, tc_head} = Curriculum.assign_teacher(cg, head, %{subject: "Physique"})
 
     case Date.day_of_week(Date.utc_today()) do
@@ -80,14 +93,14 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
         day = Enum.at(~w(monday tuesday wednesday thursday friday saturday)a, n - 1)
 
         {:ok, _} =
-          TeacherAssistant.Timetabling.place_slot(cg, %{
+          TeacherAssistant.Timetabling.place_slot(scope, cg, %{
             day: day,
             period_id: p1.id,
             teaching_context_id: tc_head.id
           })
 
         {:ok, _} =
-          TeacherAssistant.Timetabling.place_slot(cg, %{
+          TeacherAssistant.Timetabling.place_slot(scope, cg, %{
             day: day,
             period_id: p2.id,
             teaching_context_id: tc.id

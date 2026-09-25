@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -40,15 +41,15 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     other_roster = Enrollment.list_roster(cg_other)
     [%{enrollment: other_enrollment}] = other_roster
 
-    :ok = Attendance.build_default_periods(ws)
-    period = Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     other_period =
-      Attendance.list_periods(ws) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
+      Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson and &1.id != period.id))
 
     # 2025-09-15 is a Monday
     {:ok, slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
@@ -56,6 +57,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     %{
       head: head,
+      scope: scope,
       ws: ws,
       year: year,
       cg: cg,
@@ -70,10 +72,10 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     }
   end
 
-  describe "slot_for/3" do
+  describe "slot_for/4" do
     test "returns the placed slot with teaching_context loaded for a matching weekday", ctx do
       assert {:ok, %TimetableSlot{} = slot} =
-               Attendance.slot_for(ctx.cg, ~D[2025-09-15], ctx.period.id)
+               Attendance.slot_for(ctx.scope, ctx.cg, ~D[2025-09-15], ctx.period.id)
 
       assert slot.id == ctx.slot.id
       assert slot.teaching_context.id == ctx.tc.id
@@ -81,18 +83,20 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "returns {:error, :no_slot} for a day with no placed slot", ctx do
       # 2025-09-16 is a Tuesday, no slot placed there
-      assert {:error, :no_slot} = Attendance.slot_for(ctx.cg, ~D[2025-09-16], ctx.period.id)
+      assert {:error, :no_slot} =
+               Attendance.slot_for(ctx.scope, ctx.cg, ~D[2025-09-16], ctx.period.id)
     end
 
     test "returns {:error, :no_slot} for a Sunday date", ctx do
       # 2025-09-14 is a Sunday
-      assert {:error, :no_slot} = Attendance.slot_for(ctx.cg, ~D[2025-09-14], ctx.period.id)
+      assert {:error, :no_slot} =
+               Attendance.slot_for(ctx.scope, ctx.cg, ~D[2025-09-14], ctx.period.id)
     end
   end
 
-  describe "period_roll/3 and record_period/6" do
+  describe "period_roll/4 and record_period/5" do
     test "roll starts blank for every roster student", ctx do
-      roll = Attendance.period_roll(ctx.cg, ctx.period, ~D[2025-09-15])
+      roll = Attendance.period_roll(ctx.scope, ctx.cg, ctx.period, ~D[2025-09-15])
 
       assert roll.teaching_context.id == ctx.tc.id
 
@@ -107,15 +111,15 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:ok, 2} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
-      roll = Attendance.period_roll(ctx.cg, ctx.period, ~D[2025-09-15])
+      roll = Attendance.period_roll(ctx.scope, ctx.cg, ctx.period, ~D[2025-09-15])
       statuses = Map.new(roll.students, &{&1.enrollment_id, &1.status})
 
       assert statuses[ctx.enrollment1.id] == :present
@@ -128,25 +132,25 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:ok, 1} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks1,
-                 ctx.head.id
+                 marks1
                )
 
       assert {:ok, 1} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks2,
-                 ctx.head.id
+                 marks2
                )
 
-      roll = Attendance.period_roll(ctx.cg, ctx.period, ~D[2025-09-15])
+      roll = Attendance.period_roll(ctx.scope, ctx.cg, ctx.period, ~D[2025-09-15])
       statuses = Map.new(roll.students, &{&1.enrollment_id, &1.status})
       assert statuses[ctx.enrollment1.id] == :late
 
@@ -161,12 +165,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:error, _} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
     end
 
@@ -175,12 +179,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:error, _} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
     end
 
@@ -194,31 +198,31 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:error, :record_failed} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  bogus_tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
     end
   end
 
-  describe "class_register/2" do
+  describe "class_register/3" do
     test "returns only lesson periods and every roster student with a cells map", ctx do
       marks = [{ctx.enrollment1.id, :present}, {ctx.enrollment2.id, :absent}]
 
       assert {:ok, 2} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
-      register = Attendance.class_register(ctx.cg, ~D[2025-09-15])
+      register = Attendance.class_register(ctx.scope, ctx.cg, ~D[2025-09-15])
 
       assert Enum.all?(register.periods, &(&1.kind == :lesson))
       refute Enum.any?(register.periods, &(&1.kind == :break))
@@ -240,21 +244,22 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     end
   end
 
-  describe "justify_day/3 and unjustify_day/2" do
+  describe "justify_day/4 and unjustify_day/3" do
     test "justify_day flips only that day's absent entries, leaving others untouched", ctx do
       marks = [{ctx.enrollment1.id, :absent}, {ctx.enrollment2.id, :present}]
 
       assert {:ok, 2} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
-      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Sick note")
+      assert {:ok, 1} =
+               Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Sick note")
 
       entry1 =
         AttendanceEntry
@@ -285,12 +290,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:ok, 1} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
       # 2025-09-22 is also a Monday; seed an absence there directly via :record
@@ -307,7 +312,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         |> Ash.Changeset.set_tenant(ctx.ws.id)
         |> Ash.create(authorize?: false)
 
-      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Note")
+      assert {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Note")
 
       other_day_entry =
         Ash.get!(AttendanceEntry, other_day_entry.id, tenant: ctx.ws.id, authorize?: false)
@@ -321,16 +326,18 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert {:ok, 1} =
                Attendance.record_period(
+                 ctx.scope,
                  ctx.cg,
                  ctx.period,
                  ctx.tc,
                  ~D[2025-09-15],
-                 marks,
-                 ctx.head.id
+                 marks
                )
 
-      assert {:ok, 1} = Attendance.justify_day(ctx.enrollment1, ~D[2025-09-15], "Sick note")
-      assert {:ok, 1} = Attendance.unjustify_day(ctx.enrollment1, ~D[2025-09-15])
+      assert {:ok, 1} =
+               Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Sick note")
+
+      assert {:ok, 1} = Attendance.unjustify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15])
 
       entry1 =
         AttendanceEntry
@@ -342,7 +349,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     end
   end
 
-  describe "student_conduct/2 and class_conduct/2" do
+  describe "student_conduct/3 and class_conduct/3" do
     setup ctx do
       :ok = Organization.build_default_calendar(ctx.year)
 
@@ -354,7 +361,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "sums justified/unjustified hours and retards within a séquence, excluding entries outside it",
          ctx do
-      %{seq1: seq1, period: period, tc: tc, enrollment1: enrollment1, ws: ws, head: head} = ctx
+      %{
+        seq1: seq1,
+        period: period,
+        tc: tc,
+        enrollment1: enrollment1,
+        ws: ws,
+        head: head,
+        scope: scope
+      } =
+        ctx
 
       in_range_date = seq1.start_date
       outside_date = Date.add(seq1.end_date, 30)
@@ -402,7 +418,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
-      totals = Attendance.student_conduct(enrollment1, {:sequence, seq1})
+      totals = Attendance.student_conduct(scope, enrollment1, {:sequence, seq1})
 
       expected_hours =
         Decimal.div(
@@ -416,7 +432,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     end
 
     test "trimester total covers both of its séquences", ctx do
-      %{term1: term1, period: period, tc: tc, enrollment1: enrollment1, ws: ws, head: head} = ctx
+      %{
+        term1: term1,
+        period: period,
+        tc: tc,
+        enrollment1: enrollment1,
+        ws: ws,
+        head: head,
+        scope: scope
+      } =
+        ctx
 
       [seq1, seq2 | _] = term1.sequences
 
@@ -448,7 +473,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
-      totals = Attendance.student_conduct(enrollment1, {:trimester, term1})
+      totals = Attendance.student_conduct(scope, enrollment1, {:trimester, term1})
 
       expected_hours =
         Decimal.div(
@@ -473,7 +498,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         })
 
       # no sequences built for this year -> {:annual, empty_year} resolves to nil range
-      totals = Attendance.student_conduct(ctx.enrollment1, {:annual, empty_year})
+      totals = Attendance.student_conduct(ctx.scope, ctx.enrollment1, {:annual, empty_year})
 
       assert Decimal.equal?(totals.justified_hours, Decimal.new(0))
       assert Decimal.equal?(totals.unjustified_hours, Decimal.new(0))
@@ -490,7 +515,8 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         enrollment2: enrollment2,
         ws: ws,
         head: head,
-        cg: cg
+        cg: cg,
+        scope: scope
       } = ctx
 
       {:ok, _} =
@@ -520,7 +546,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         |> Ash.Changeset.set_tenant(ws.id)
         |> Ash.create(authorize?: false)
 
-      results = Attendance.class_conduct(cg, {:sequence, seq1})
+      results = Attendance.class_conduct(scope, cg, {:sequence, seq1})
 
       expected_hours =
         Decimal.div(
@@ -538,7 +564,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     test "class_conduct includes roster enrollments with no entries as zero totals", ctx do
       %{seq1: seq1, cg: cg, enrollment1: enrollment1, enrollment2: enrollment2} = ctx
 
-      results = Attendance.class_conduct(cg, {:sequence, seq1})
+      results = Attendance.class_conduct(ctx.scope, cg, {:sequence, seq1})
 
       assert map_size(results) == 2
       assert Decimal.equal?(results[enrollment1.id].justified_hours, Decimal.new(0))
@@ -558,7 +584,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           active: false
         })
 
-      results = Attendance.class_conduct(ctx.cg, {:annual, empty_year})
+      results = Attendance.class_conduct(ctx.scope, ctx.cg, {:annual, empty_year})
 
       assert map_size(results) == 2
       assert Decimal.equal?(results[ctx.enrollment1.id].justified_hours, Decimal.new(0))

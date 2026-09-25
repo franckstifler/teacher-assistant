@@ -127,7 +127,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
     scope = socket.assigns.scope
 
     if Permissions.admin?(scope) do
-      :ok = Attendance.build_default_periods(scope.current_workspace)
+      :ok = Attendance.build_default_periods(scope)
       {:noreply, load_periods(socket)}
     else
       {:noreply, socket}
@@ -144,7 +144,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
 
         period ->
           form =
-            AshPhoenix.Form.for_update(period, :update, as: "period", tenant: period.workspace_id)
+            AshPhoenix.Form.for_update(period, :update, as: "period", scope: scope)
 
           case AshPhoenix.Form.submit(form, params: normalize_period_params(params)) do
             {:ok, _period} ->
@@ -172,7 +172,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           {:noreply, socket}
 
         period ->
-          case Attendance.delete_period(period) do
+          case Attendance.delete_period(scope, period) do
             :ok ->
               {:noreply, load_periods(socket)}
 
@@ -197,7 +197,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   end
 
   defp load_periods(socket) do
-    assign(socket, :periods, Attendance.list_periods(socket.assigns.scope.current_workspace))
+    assign(socket, :periods, Attendance.list_periods(socket.assigns.scope))
   end
 
   # The HTML time input posts `HH:MM`; `Ash.Type.Time` needs full ISO

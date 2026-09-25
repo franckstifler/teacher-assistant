@@ -29,7 +29,7 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
   test "create_school seeds the default bell schedule" do
     user = TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(user, @attrs)
-    periods = TeacherAssistant.Attendance.list_periods(school)
+    periods = TeacherAssistant.Attendance.list_periods(school_scope(user, school))
     assert periods != []
     assert Enum.any?(periods, &(&1.kind == :lesson))
   end
@@ -112,7 +112,8 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
 
     for {resource, list} <- [
           {TeacherAssistant.Academics.Subject, TeacherAssistant.Curriculum.list_subjects(school)},
-          {TeacherAssistant.Academics.Period, TeacherAssistant.Attendance.list_periods(school)}
+          {TeacherAssistant.Academics.Period,
+           TeacherAssistant.Attendance.list_periods(school_scope(user, school))}
         ] do
       assert list != [], inspect(resource)
       assert Enum.all?(list, &(&1.workspace_id == school.id))

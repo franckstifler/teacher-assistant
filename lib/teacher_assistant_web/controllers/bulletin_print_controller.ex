@@ -54,7 +54,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   end
 
   defp render_bulletins(conn, scope, cg, period, results, entries) do
-    conduct_by_enrollment = Attendance.class_conduct(cg, period)
+    conduct_by_enrollment = Attendance.class_conduct(scope, cg, period)
     discipline_by_enrollment = Discipline.class_discipline(scope, cg, period)
 
     bundles =

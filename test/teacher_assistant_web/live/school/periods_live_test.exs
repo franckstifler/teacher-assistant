@@ -13,9 +13,10 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
 
   setup %{conn: conn, actor: user} do
     {:ok, school} = Organization.create_school(user, %{name: "Lycée des Périodes"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
+    scope = school_scope(user, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, user: user}
+    %{conn: conn, school: school, user: user, scope: scope}
   end
 
   test "admin sees the page", %{conn: conn} do
@@ -23,10 +24,10 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     assert html =~ "P&eacute;riodes" or html =~ "Périodes" or html =~ "eriodes"
   end
 
-  test "empty state: seeding populates the list", %{conn: conn, school: school} do
+  test "empty state: seeding populates the list", %{conn: conn, scope: scope} do
     # Schools are created with the default schedule; clear it to reach the empty state.
-    Enum.each(Attendance.list_periods(school), &Attendance.delete_period/1)
-    assert Attendance.list_periods(school) == []
+    Enum.each(Attendance.list_periods(scope), &Attendance.delete_period(scope, &1))
+    assert Attendance.list_periods(scope) == []
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")
 
@@ -34,12 +35,12 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     |> element("#seed-periods")
     |> render_click()
 
-    assert Attendance.list_periods(school) != []
+    assert Attendance.list_periods(scope) != []
   end
 
-  test "editing a period's label and start_time persists", %{conn: conn, school: school} do
-    :ok = Attendance.build_default_periods(school)
-    [period | _] = Attendance.list_periods(school)
+  test "editing a period's label and start_time persists", %{conn: conn, scope: scope} do
+    :ok = Attendance.build_default_periods(scope)
+    [period | _] = Attendance.list_periods(scope)
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")
 
@@ -55,16 +56,16 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     })
     |> render_submit()
 
-    [updated | _] = Attendance.list_periods(school)
+    [updated | _] = Attendance.list_periods(scope)
     assert updated.label == "Cours modifié"
     assert updated.start_time == ~T[08:00:00]
   end
 
   test "deleting a period with a referencing slot shows a friendly message and keeps it", ctx do
-    %{conn: conn, school: school, user: head} = ctx
+    %{conn: conn, school: school, user: head, scope: scope} = ctx
 
-    :ok = Attendance.build_default_periods(school)
-    [period | _] = Attendance.list_periods(school)
+    :ok = Attendance.build_default_periods(scope)
+    [period | _] = Attendance.list_periods(scope)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -78,7 +79,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
     {:ok, _slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
@@ -94,7 +95,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
              render(view) =~ "ne peut pas" or
              render(view) =~ "ne peut être supprimée"
 
-    assert Enum.any?(Attendance.list_periods(school), &(&1.id == period.id))
+    assert Enum.any?(Attendance.list_periods(scope), &(&1.id == period.id))
   end
 
   test "non-admin member is redirected and forged events make no change", ctx do

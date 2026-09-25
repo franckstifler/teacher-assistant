@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -31,14 +32,15 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
     {:ok, tc_svt} =
       Curriculum.assign_teacher(cg, head, %{subject: "SVT", weekly_hours: 3})
 
-    :ok = Attendance.build_default_periods(school)
+    :ok = Attendance.build_default_periods(scope)
 
     periods =
-      Attendance.list_periods(school)
+      Attendance.list_periods(scope)
       |> Enum.filter(&(&1.kind == :lesson))
 
     %{
       head: head,
+      scope: scope,
       school: school,
       year: year,
       cg: cg,
@@ -49,47 +51,56 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
     }
   end
 
-  describe "class_timetable/1" do
+  describe "class_timetable/2" do
     test "returns keyed slots and a tally row per assignment", ctx do
-      %{cg: cg, tc_maths: tc_maths, tc_eps: tc_eps, tc_svt: tc_svt, periods: periods} = ctx
+      %{
+        cg: cg,
+        tc_maths: tc_maths,
+        tc_eps: tc_eps,
+        tc_svt: tc_svt,
+        periods: periods,
+        scope: scope
+      } =
+        ctx
+
       [p1, p2, p3 | _] = periods
 
       {:ok, _} =
-        Timetabling.place_slot(cg, %{
+        Timetabling.place_slot(scope, cg, %{
           day: :monday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetabling.place_slot(cg, %{
+        Timetabling.place_slot(scope, cg, %{
           day: :tuesday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetabling.place_slot(cg, %{
+        Timetabling.place_slot(scope, cg, %{
           day: :wednesday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetabling.place_slot(cg, %{
+        Timetabling.place_slot(scope, cg, %{
           day: :monday,
           period_id: p2.id,
           teaching_context_id: tc_eps.id
         })
 
       {:ok, _} =
-        Timetabling.place_slot(cg, %{
+        Timetabling.place_slot(scope, cg, %{
           day: :tuesday,
           period_id: p2.id,
           teaching_context_id: tc_eps.id
         })
 
-      result = Timetabling.class_timetable(cg)
+      result = Timetabling.class_timetable(scope, cg)
 
       assert map_size(result.slots) == 5
 
@@ -128,7 +139,15 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
 
   describe "teacher_timetable/2" do
     test "includes cells from all classes the teacher teaches in, with class_label", ctx do
-      %{head: head, school: school, year: year, cg: cg_a, tc_maths: tc_maths, periods: periods} =
+      %{
+        head: head,
+        school: school,
+        year: year,
+        cg: cg_a,
+        tc_maths: tc_maths,
+        periods: periods,
+        scope: scope
+      } =
         ctx
 
       [p1, p2 | _] = periods
@@ -139,20 +158,20 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       {:ok, tc_b} = Curriculum.assign_teacher(cg_b, head, %{subject: "Histoire", weekly_hours: 3})
 
       {:ok, _} =
-        Timetabling.place_slot(cg_a, %{
+        Timetabling.place_slot(scope, cg_a, %{
           day: :monday,
           period_id: p1.id,
           teaching_context_id: tc_maths.id
         })
 
       {:ok, _} =
-        Timetabling.place_slot(cg_b, %{
+        Timetabling.place_slot(scope, cg_b, %{
           day: :tuesday,
           period_id: p2.id,
           teaching_context_id: tc_b.id
         })
 
-      result = Timetabling.teacher_timetable(school, head)
+      result = Timetabling.teacher_timetable(scope, head)
 
       assert map_size(result) == 2
 
@@ -168,10 +187,9 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
     end
 
     test "returns an empty map for a teacher with no slots", ctx do
-      %{school: school} = ctx
       other_teacher = TeacherFixtures.user_fixture()
 
-      assert Timetabling.teacher_timetable(school, other_teacher) == %{}
+      assert Timetabling.teacher_timetable(ctx.scope, other_teacher) == %{}
     end
   end
 end

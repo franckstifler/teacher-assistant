@@ -15,8 +15,8 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
     else
       {:ok,
        assign(socket,
-         periods: Attendance.list_periods(scope.current_workspace),
-         grid: Timetabling.teacher_timetable(scope.current_workspace, scope.current_user),
+         periods: Attendance.list_periods(scope),
+         grid: Timetabling.teacher_timetable(scope, scope.current_user),
          days: @days
        )}
     end

@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -26,14 +27,14 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
 
-    :ok = Attendance.build_default_periods(school)
-    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     # Monday, so the slot's day_of_week matches.
     date = ~D[2025-09-08]
 
     {:ok, _slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period.id,
         teaching_context_id: tc.id
@@ -43,7 +44,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _count} =
-      Attendance.record_period(cg, period, tc, date, [{enrollment.id, :absent}], head.id)
+      Attendance.record_period(scope, cg, period, tc, date, [{enrollment.id, :absent}])
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -56,6 +57,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       period: period,
       date: date,
       head: head,
+      scope: scope,
       enrollment: enrollment
     }
   end
@@ -72,6 +74,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     cg: cg,
     date: date,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -98,6 +101,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
     conduct =
       Attendance.student_conduct(
+        scope,
         enrollment,
         {:sequence,
          Organization.current_sequence(
@@ -151,6 +155,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     cg: cg,
     date: date,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -174,6 +179,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
     conduct =
       Attendance.student_conduct(
+        scope,
         enrollment,
         {:sequence,
          Organization.current_sequence(Organization.current_academic_year(school), date)}

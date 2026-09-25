@@ -31,28 +31,43 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
 
     {:ok, cg} = Enrollment.create_class_group(school, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(cg, head, %{subject: "Maths"})
-    :ok = Attendance.build_default_periods(school)
-    period = Attendance.list_periods(school) |> Enum.find(&(&1.kind == :lesson))
+    scope = school_scope(head, school)
+    :ok = Attendance.build_default_periods(scope)
+    period = Attendance.list_periods(scope) |> Enum.find(&(&1.kind == :lesson))
 
     {:ok, _slot} =
-      Timetabling.place_slot(cg, %{day: :monday, period_id: period.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: period.id,
+        teaching_context_id: tc.id
+      })
 
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, cg: cg, period: period, date: ~D[2025-09-08], head: head}
+
+    %{
+      conn: conn,
+      school: school,
+      cg: cg,
+      period: period,
+      date: ~D[2025-09-08],
+      head: head,
+      scope: scope
+    }
   end
 
   test "an unverified school cannot record attendance", %{
     conn: conn,
     cg: cg,
     period: period,
-    date: date
+    date: date,
+    scope: scope
   } do
     {:ok, view, _} =
       live(conn, "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
 
     view |> element("#record-roll") |> render_click()
-    roll = Attendance.period_roll(cg, period, date)
+    roll = Attendance.period_roll(scope, cg, period, date)
     assert Enum.all?(roll.students, &(&1.status == nil))
   end
 
@@ -62,7 +77,8 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
     cg: cg,
     period: period,
     date: date,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, p} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(p, head.id)
@@ -71,7 +87,7 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
       live(conn, "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
 
     view |> element("#record-roll") |> render_click()
-    roll = Attendance.period_roll(cg, period, date)
+    roll = Attendance.period_roll(scope, cg, period, date)
     assert Enum.any?(roll.students, &(&1.status == :present))
   end
 end

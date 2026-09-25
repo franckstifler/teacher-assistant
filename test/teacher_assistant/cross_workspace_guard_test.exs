@@ -19,7 +19,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
     %{workspace: ws_a, head_user: head_a, year: year_a, scope: scope_a} =
       TeacherFixtures.setup_complete_school_fixture()
 
-    %{workspace: ws_b, head_user: head_b, year: year_b} =
+    %{workspace: ws_b, head_user: head_b, year: year_b, scope: scope_b} =
       TeacherFixtures.setup_complete_school_fixture()
 
     {:ok, cg_a} = Enrollment.create_class_group(ws_a, year_a, %{label: "6e A", level: "6ème"})
@@ -40,8 +40,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
     seq_a = year_a |> Organization.list_sequences() |> List.first()
     seq_b = year_b |> Organization.list_sequences() |> List.first()
 
-    period_a = Attendance.list_periods(ws_a) |> Enum.find(&(&1.kind == :lesson))
-    period_b = Attendance.list_periods(ws_b) |> Enum.find(&(&1.kind == :lesson))
+    period_a = Attendance.list_periods(scope_a) |> Enum.find(&(&1.kind == :lesson))
+    period_b = Attendance.list_periods(scope_b) |> Enum.find(&(&1.kind == :lesson))
 
     {:ok, plan_a} = Curriculum.create_progression_plan(tc_a, %{title: "Plan A"})
     {:ok, module_a} = Curriculum.create_module(plan_a, %{title: "M1"})
@@ -62,6 +62,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
       head_a: head_a,
       head_b: head_b,
       scope_a: scope_a,
+      scope_b: scope_b,
       year_a: year_a,
       year_b: year_b,
       cg_a: cg_a,
@@ -149,12 +150,12 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   test "Attendance.record_period rejects a class_group/period workspace mismatch", ctx do
     assert {:error, _} =
              Attendance.record_period(
+               ctx.scope_a,
                ctx.cg_a,
                ctx.period_b,
                ctx.tc_a,
                ~D[2025-09-15],
-               [{ctx.enrollment_a.id, :present}],
-               nil
+               [{ctx.enrollment_a.id, :present}]
              )
 
     assert count_all(AttendanceEntry, ctx.ws_a.id) == 0
@@ -164,11 +165,11 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   test "Attendance.record_combined_period rejects a course/period workspace mismatch", ctx do
     assert {:error, _} =
              Attendance.record_combined_period(
+               ctx.scope_a,
                ctx.course_a,
                ctx.period_b,
                ~D[2025-09-15],
-               [{ctx.enrollment_a.id, :present}],
-               nil
+               [{ctx.enrollment_a.id, :present}]
              )
 
     assert count_all(AttendanceEntry, ctx.ws_a.id) == 0
@@ -177,7 +178,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
   test "Timetabling.place_slot rejects a foreign period_id", ctx do
     assert {:error, :invalid} =
-             Timetabling.place_slot(ctx.cg_a, %{
+             Timetabling.place_slot(ctx.scope_a, ctx.cg_a, %{
                day: :monday,
                period_id: ctx.period_b.id,
                teaching_context_id: ctx.tc_a.id
@@ -189,7 +190,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
   test "Timetabling.place_combined_slot rejects a foreign period_id", ctx do
     assert {:error, :invalid} =
-             Timetabling.place_combined_slot(ctx.course_a, :monday, ctx.period_b.id)
+             Timetabling.place_combined_slot(ctx.scope_a, ctx.course_a, :monday, ctx.period_b.id)
 
     assert count_all(TimetableSlot, ctx.ws_a.id) == 0
     assert count_all(TimetableSlot, ctx.ws_b.id) == 0
@@ -197,19 +198,21 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
   test "Timetabling.clear_slot rejects a foreign period_id", ctx do
     {:ok, _slot} =
-      Timetabling.place_slot(ctx.cg_a, %{
+      Timetabling.place_slot(ctx.scope_a, ctx.cg_a, %{
         day: :monday,
         period_id: ctx.period_a.id,
         teaching_context_id: ctx.tc_a.id
       })
 
-    assert {:error, :invalid} = Timetabling.clear_slot(ctx.cg_a, :monday, ctx.period_b.id)
+    assert {:error, :invalid} =
+             Timetabling.clear_slot(ctx.scope_a, ctx.cg_a, :monday, ctx.period_b.id)
+
     assert count_all(TimetableSlot, ctx.ws_a.id) == 1
   end
 
   test "Timetabling.clear_combined_slot rejects a foreign period_id", ctx do
     assert {:error, :invalid} =
-             Timetabling.clear_combined_slot(ctx.course_a, :monday, ctx.period_b.id)
+             Timetabling.clear_combined_slot(ctx.scope_a, ctx.course_a, :monday, ctx.period_b.id)
   end
 
   test "Curriculum.assign_module_sequence rejects a foreign sequence_id", ctx do

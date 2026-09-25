@@ -94,7 +94,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
 
   test "creating the academic year builds its calendar and the default periods", %{
     conn: conn,
-    ws: ws
+    ws: ws,
+    head: head
   } do
     {:ok, view, _} = live(conn, ~p"/school/setup")
 
@@ -109,7 +110,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     assert length(seqs) == 6
     assert List.first(seqs).start_date == ~D[2026-09-01]
     assert List.last(seqs).end_date == ~D[2027-07-05]
-    assert TeacherAssistant.Attendance.list_periods(ws) != []
+    assert TeacherAssistant.Attendance.list_periods(school_scope(head, ws)) != []
   end
 
   test "a year whose end precedes its start is refused and the wizard stays on the year step", %{

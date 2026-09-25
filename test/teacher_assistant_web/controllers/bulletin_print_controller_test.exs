@@ -77,16 +77,16 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     seq: seq,
     roster: roster,
     school: school,
-    head: head
+    scope: scope
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
 
-    :ok = Attendance.build_default_periods(school)
+    :ok = Attendance.build_default_periods(scope)
     [tc] = Curriculum.list_assignments_for_class(cg)
-    [period1, period2 | _] = Attendance.list_periods(school) |> Enum.filter(&(&1.kind == :lesson))
+    [period1, period2 | _] = Attendance.list_periods(scope) |> Enum.filter(&(&1.kind == :lesson))
 
     {:ok, slot} =
-      Timetabling.place_slot(cg, %{
+      Timetabling.place_slot(scope, cg, %{
         day: :monday,
         period_id: period1.id,
         teaching_context_id: tc.id
@@ -96,10 +96,12 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     date = seq.start_date
 
     {:ok, _} =
-      Attendance.record_period(cg, period1, tc, date, [{enr.id, :absent}], head.id)
+      Attendance.record_period(scope, cg, period1, tc, date, [{enr.id, :absent}])
 
-    {:ok, _} = Attendance.justify_day(enr, date, "Certificat médical")
-    {:ok, _} = Attendance.record_period(cg, period2, tc, date, [{enr.id, :late}], head.id)
+    {:ok, _} = Attendance.justify_day(scope, enr, date, "Certificat médical")
+
+    {:ok, _} =
+      Attendance.record_period(scope, cg, period2, tc, date, [{enr.id, :late}])
 
     conn =
       get(
