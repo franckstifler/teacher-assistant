@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.WorkspaceController do
   alias TeacherAssistant.Accounts.Workspaces
 
   def select(conn, %{"id" => workspace_id}) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
+    user = conn.assigns.current_user
 
     case Workspaces.scope_for(user, workspace_id) do
       {:ok, _scope} ->
@@ -18,15 +18,6 @@ defmodule TeacherAssistantWeb.WorkspaceController do
         |> delete_session(:workspace_id)
         |> put_flash(:error, gettext("Workspace not found or access denied"))
         |> redirect(to: ~p"/school")
-    end
-  end
-
-  defp load_user(nil), do: nil
-
-  defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
-      {:ok, user} -> user
-      _ -> nil
     end
   end
 end

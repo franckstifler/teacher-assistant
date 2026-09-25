@@ -20,7 +20,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   # The school's head's scope — for fixtures that now need a `%Scope{}`.
   defp scope_of(school) do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
-    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
     school_scope(head, school)
   end
 
@@ -72,7 +72,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   defp row_for(A.CombinedCourse, school, _ctx) do
     year = Organization.current_academic_year(school)
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
-    {:ok, teacher} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    teacher = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
     scope = school_scope(teacher, school)
 
     tc1 =
@@ -158,7 +158,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(SchoolInvitation, school, _ctx) do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
-    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
 
     {:ok, inv} =
       TeacherAssistant.Accounts.invite_member(school, head, %{
@@ -348,7 +348,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   test "the scope exposes the workspace as tenant", %{a: a} do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(a)
-    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
     {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(head, a.id)
     assert Ash.Scope.ToOpts.get_tenant(scope) == {:ok, a.id}
   end
@@ -412,7 +412,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     end
 
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(a)
-    {:ok, head} = TeacherAssistant.Accounts.get_user(profile.owner_user_id)
+    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
 
     assert {:ok, _memberships} =
              SchoolMembership

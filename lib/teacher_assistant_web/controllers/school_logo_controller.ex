@@ -1,15 +1,11 @@
 defmodule TeacherAssistantWeb.SchoolLogoController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Accounts.{Permissions, Workspaces}
+  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Accounts
 
   def show(conn, _params) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
-
-    with %{} = user <- user,
-         {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         %{} <- scope.current_workspace,
+    with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          true <- Permissions.member?(scope),
          {:ok, profile} <- Accounts.fetch_school_profile(scope.current_workspace),
          logo_path when is_binary(logo_path) <- profile.logo_path,
@@ -32,15 +28,6 @@ defmodule TeacherAssistantWeb.SchoolLogoController do
       {:ok, path}
     else
       :error
-    end
-  end
-
-  defp load_user(nil), do: nil
-
-  defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
-      {:ok, user} -> user
-      _ -> nil
     end
   end
 end

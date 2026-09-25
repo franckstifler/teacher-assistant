@@ -86,12 +86,12 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   end
 
   defp assign_scope(socket, session) do
-    user = socket.assigns[:current_user] || load_user(session["user_id"])
+    user = socket.assigns[:current_user] || Accounts.session_user(session["user_id"])
     locale = session["locale"] || "fr"
     Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
 
     scope = %{
-      resolve_scope(user, session["workspace_id"], session["context_id"])
+      Workspaces.session_scope(user, session["workspace_id"], session["context_id"])
       | locale: locale
     }
 
@@ -100,23 +100,5 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     |> assign(:current_scope, scope)
     |> assign(:scope, scope)
     |> assign_new(:current_path, fn -> nil end)
-  end
-
-  defp load_user(nil), do: nil
-
-  defp load_user(user_id) do
-    case Accounts.get_user(user_id) do
-      {:ok, user} -> user
-      _ -> nil
-    end
-  end
-
-  defp resolve_scope(nil, _workspace_id, _context_id), do: %Scope{}
-
-  defp resolve_scope(user, workspace_id, context_id) do
-    case Workspaces.scope_for(user, workspace_id, context_id) do
-      {:ok, scope} -> scope
-      {:error, _} -> %Scope{current_user: user}
-    end
   end
 end

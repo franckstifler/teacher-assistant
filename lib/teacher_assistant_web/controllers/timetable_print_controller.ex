@@ -4,16 +4,12 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Timetabling
-  alias TeacherAssistant.Accounts.{Permissions, Workspaces}
+  alias TeacherAssistant.Accounts.Permissions
 
   @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
 
   def class(conn, %{"id" => id} = _params) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
-
-    with %{} = user <- user,
-         {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         %{} <- scope.current_workspace,
+    with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       timetable = Timetabling.class_timetable(cg)
@@ -36,34 +32,21 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
   end
 
   def me(conn, _params) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
-
-    with %{} = user <- user,
-         {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         %{} <- scope.current_workspace do
+    with %{current_workspace: %{}} = scope <- conn.assigns.current_scope do
       conn
       |> put_layout(false)
       |> put_root_layout(false)
       |> render(:show,
         mode: :me,
-        title: to_string(user.email),
+        title: to_string(scope.current_user.email),
         etablissement: scope.current_workspace.name,
         annee: scope.current_academic_year && scope.current_academic_year.name,
         periods: Attendance.list_periods(scope.current_workspace),
-        grid: Timetabling.teacher_timetable(scope.current_workspace, user),
+        grid: Timetabling.teacher_timetable(scope.current_workspace, scope.current_user),
         days: @days
       )
     else
       _ -> redirect(conn, to: ~p"/school")
-    end
-  end
-
-  defp load_user(nil), do: nil
-
-  defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
-      {:ok, user} -> user
-      _ -> nil
     end
   end
 end

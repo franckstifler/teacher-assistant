@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.TeacherContextController do
   alias TeacherAssistant.Accounts.Workspaces
 
   def select(conn, %{"id" => context_id} = params) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
+    user = conn.assigns.current_user
     return_to = safe_return_to(params["return_to"])
 
     case user && Workspaces.scope_for(user, get_session(conn, :workspace_id), context_id) do
@@ -26,13 +26,4 @@ defmodule TeacherAssistantWeb.TeacherContextController do
   # if the path targets a specific class, swap its id segment to the newly selected class
   defp rewrite_return_to(path, id),
     do: Regex.replace(~r{^(/teacher/contexts/)[^/]+}, path, fn _, prefix -> prefix <> id end)
-
-  defp load_user(nil), do: nil
-
-  defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
-      {:ok, user} -> user
-      _ -> nil
-    end
-  end
 end

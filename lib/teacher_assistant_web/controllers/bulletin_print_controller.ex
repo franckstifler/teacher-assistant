@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
-  alias TeacherAssistant.Accounts.{Permissions, Workspaces}
+  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
@@ -32,11 +32,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   # Resolves scope + admin + class + period, then hands off to `fun`.
   defp with_class(conn, id, params, fun) do
-    user = conn.assigns[:current_user] || load_user(get_session(conn, :user_id))
-
-    with %{} = user <- user,
-         {:ok, scope} <- Workspaces.scope_for(user, get_session(conn, :workspace_id), nil),
-         %{} <- scope.current_workspace,
+    with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(id, scope.current_workspace),
          true <- Permissions.admin_or_form_master?(scope, cg),
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
@@ -92,13 +88,4 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"
   defp period_heading({:trimester, term}), do: "#{gettext("Trimestre")} #{term.position}"
   defp period_heading({:annual, _}), do: gettext("Année scolaire")
-
-  defp load_user(nil), do: nil
-
-  defp load_user(user_id) do
-    case Ash.get(TeacherAssistant.Accounts.User, user_id) do
-      {:ok, user} -> user
-      _ -> nil
-    end
-  end
 end

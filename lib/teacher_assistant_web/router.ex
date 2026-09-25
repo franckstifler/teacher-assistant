@@ -21,6 +21,10 @@ defmodule TeacherAssistantWeb.Router do
     plug :set_actor, :user
   end
 
+  pipeline :school do
+    plug TeacherAssistantWeb.Plug.Scope
+  end
+
   scope "/", TeacherAssistantWeb do
     pipe_through :browser
 
@@ -34,20 +38,7 @@ defmodule TeacherAssistantWeb.Router do
         Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
       ]
 
-    get "/workspaces/select/:id", WorkspaceController, :select
-    get "/teacher/select-context/:id", TeacherContextController, :select
-
-    get "/school/classes/:id/students/:enrollment_id/bulletin/print",
-        BulletinPrintController,
-        :show
-
-    get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
-    get "/school/classes/:id/timetable/print", TimetablePrintController, :class
-    get "/school/timetable/me/print", TimetablePrintController, :me
-    get "/school/logo", SchoolLogoController, :show
     get "/locale/:locale", LocaleController, :set
-    get "/schools/invitations/:token", SchoolInvitationController, :show
-    post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
 
     sign_in_route register_path: "/register",
                   reset_path: "/reset",
@@ -74,6 +65,24 @@ defmodule TeacherAssistantWeb.Router do
         Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
       ]
     )
+  end
+
+  scope "/", TeacherAssistantWeb do
+    pipe_through [:browser, :school]
+
+    get "/workspaces/select/:id", WorkspaceController, :select
+    get "/teacher/select-context/:id", TeacherContextController, :select
+
+    get "/school/classes/:id/students/:enrollment_id/bulletin/print",
+        BulletinPrintController,
+        :show
+
+    get "/school/classes/:id/bulletin/print", BulletinPrintController, :class
+    get "/school/classes/:id/timetable/print", TimetablePrintController, :class
+    get "/school/timetable/me/print", TimetablePrintController, :me
+    get "/school/logo", SchoolLogoController, :show
+    get "/schools/invitations/:token", SchoolInvitationController, :show
+    post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
   end
 
   scope "/", TeacherAssistantWeb do

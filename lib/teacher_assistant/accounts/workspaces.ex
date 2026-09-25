@@ -53,4 +53,18 @@ defmodule TeacherAssistant.Accounts.Workspaces do
     contexts = TeacherAssistant.Curriculum.list_assignments_for_user(ws, year, user)
     Enum.find(contexts, &(&1.id == context_id)) || List.first(contexts)
   end
+
+  @doc """
+  The scope for a request: `scope_for/3` when the user is an active member of a
+  school, otherwise a user-only scope (or an empty one when signed out). Shared
+  by `TeacherAssistantWeb.LiveUserAuth` and `TeacherAssistantWeb.Plug.Scope`.
+  """
+  def session_scope(nil, _workspace_id, _context_id), do: %Scope{}
+
+  def session_scope(user, workspace_id, context_id) do
+    case scope_for(user, workspace_id, context_id) do
+      {:ok, scope} -> scope
+      {:error, _} -> %Scope{current_user: user}
+    end
+  end
 end

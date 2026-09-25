@@ -136,4 +136,22 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
       assert accepted_inv.status == :accepted
     end
   end
+
+  test "accepting while signed out redirects to sign-in and remembers the link", %{conn: _conn} do
+    %{workspace: ws, head_user: head} = TeacherAssistant.TeacherFixtures.school_fixture()
+
+    {:ok, inv} =
+      TeacherAssistant.Accounts.invite_member(ws, head, %{
+        email: "new@example.com",
+        roles: [:teacher]
+      })
+
+    conn =
+      build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> post(~p"/schools/invitations/#{inv.token}/accept")
+
+    assert redirected_to(conn) == ~p"/sign-in"
+    assert get_session(conn, :return_to) == ~p"/schools/invitations/#{inv.token}"
+  end
 end
