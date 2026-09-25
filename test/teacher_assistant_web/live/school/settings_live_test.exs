@@ -7,7 +7,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Ancien Nom"
+      })
+
     # Setup-complete (active year + a class) so /school/settings isn't gated
     # to the wizard. Tests below that exercise year creation/activation add
     # their own additional years on top of this one.
@@ -17,13 +21,13 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     %{conn: conn, school: school, scope: scope}
   end
 
-  test "head renames the school", %{conn: conn, school: school} do
+  test "head renames the school", %{conn: conn, school: school, scope: scope} do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     assert has_element?(view, "#school-settings")
     view |> form("#school-settings", %{"school" => %{"name" => "Nouveau Nom"}}) |> render_submit()
 
-    assert TeacherAssistant.Organization.get_workspace(school.id)
+    assert TeacherAssistant.Organization.get_workspace(school.id, scope: scope)
            |> elem(1)
            |> Map.get(:name) ==
              "Nouveau Nom"
@@ -41,7 +45,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert render(view) =~ "2025-2026"
   end
 
-  test "creating a year from settings builds its calendar", %{conn: conn, school: school} do
+  test "creating a year from settings builds its calendar", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings")
 
     view
@@ -50,17 +54,16 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     })
     |> render_submit()
 
-    year = Organization.list_academic_years(school) |> Enum.find(&(&1.name == "2030-2031"))
-    assert length(Organization.list_sequences(year)) == 6
+    year = Organization.list_academic_years(scope) |> Enum.find(&(&1.name == "2030-2031"))
+    assert length(Organization.list_sequences(scope, year)) == 6
   end
 
   test "an active year without a calendar offers to generate it", %{
     conn: conn,
-    school: school,
     scope: scope
   } do
     {:ok, bare} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2031-2032",
         start_date: ~D[2031-09-01],
         end_date: ~D[2032-06-26],
@@ -73,12 +76,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/settings")
     assert has_element?(view, "#generate-calendar-#{bare.id}")
     view |> element("#generate-calendar-#{bare.id}") |> render_click()
-    assert length(Organization.list_sequences(bare)) == 6
+    assert length(Organization.list_sequences(scope, bare)) == 6
     assert has_element?(view, "#year-calendar-#{bare.id}")
   end
 
-  test "settings lists the active year's séquences", %{conn: conn, school: school} do
-    year = Organization.current_academic_year(school)
+  test "settings lists the active year's séquences", %{conn: conn, scope: scope} do
+    year = TeacherAssistant.Organization.current_academic_year(scope)
     {:ok, view, _} = live(conn, ~p"/school/settings")
     assert has_element?(view, "#year-calendar-#{year.id}")
     assert has_element?(view, "#year-calendar-#{year.id} li", "Séquence 6")
@@ -86,11 +89,10 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
   test "activating a year deactivates the previous one", %{
     conn: conn,
-    school: school,
     scope: scope
   } do
     {:ok, y1} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2024-2025",
         start_date: ~D[2024-09-09],
         end_date: ~D[2025-07-31],
@@ -103,7 +105,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, _cg} = Enrollment.create_class_group(scope, y1, %{label: "6e A", level: "6ème"})
 
     {:ok, y2} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -113,8 +115,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/settings")
     view |> element("#year-activate-#{y2.id}") |> render_click()
 
-    assert Organization.current_academic_year(school).id == y2.id
-    assert {:ok, %{active: false}} = Organization.get_academic_year(y1.id, school)
+    assert TeacherAssistant.Organization.current_academic_year(scope).id == y2.id
+    assert {:ok, %{active: false}} = TeacherAssistant.Organization.get_academic_year(scope, y1.id)
   end
 
   test "a plain teacher member cannot create years (forged event)", %{
@@ -125,9 +127,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -138,13 +143,13 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
     refute has_element?(view, "#year-form")
 
-    years_before = Organization.list_academic_years(school)
+    years_before = Organization.list_academic_years(school_scope(head, school))
 
     render_hook(view, "create_year", %{
       "year" => %{"name" => "2025-2026", "start_date" => "2025-09-08", "end_date" => "2026-07-31"}
     })
 
-    assert Organization.list_academic_years(school) == years_before
+    assert Organization.list_academic_years(school_scope(head, school)) == years_before
   end
 
   test "a vice_principal member sees the Settings nav link and can manage years", %{
@@ -155,12 +160,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     vp = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{
+      Accounts.invite_member(school_scope(head, school), %{
         email: to_string(vp.email),
         roles: [:vice_principal]
       })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, vp)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: vp}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -181,7 +186,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     })
     |> render_submit()
 
-    assert Organization.list_academic_years(school) |> Enum.any?(&(&1.name == "2025-2026"))
+    assert Organization.list_academic_years(school_scope(head, school))
+           |> Enum.any?(&(&1.name == "2025-2026"))
   end
 
   test "head can add and remove a subject", %{conn: conn} do
@@ -259,9 +265,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     teacher_conn =
       Phoenix.ConnTest.build_conn()
@@ -302,12 +311,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
   test "additional academic years created via form are inactive; only first is active", %{
     conn: conn,
-    school: school,
     scope: scope
   } do
     # Create first year directly with active: true
     {:ok, y1} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2024-2025",
         start_date: ~D[2024-09-09],
         end_date: ~D[2025-07-31],
@@ -329,10 +337,10 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     |> render_submit()
 
     # First year must still be active
-    assert Organization.current_academic_year(school).name == "2024-2025"
+    assert TeacherAssistant.Organization.current_academic_year(scope).name == "2024-2025"
 
     # Second year must exist and be inactive
-    years = Organization.list_academic_years(school)
+    years = TeacherAssistant.Organization.list_academic_years(scope)
     y2 = Enum.find(years, &(&1.name == "2025-2026"))
     assert y2 != nil
     assert y2.active == false

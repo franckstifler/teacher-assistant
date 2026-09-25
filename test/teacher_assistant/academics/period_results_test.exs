@@ -7,19 +7,22 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
   setup do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée P"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée P"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
-    sequences = Organization.list_sequences(year)
+    :ok = Organization.build_default_calendar(scope, year)
+    sequences = Organization.list_sequences(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
 
@@ -50,7 +53,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     grade.(s1, 12)
     grade.(s2, 16)
 
-    [term1 | _] = Organization.list_terms(year)
+    [term1 | _] = Organization.list_terms(scope, year)
     r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
     data = r.per_student[student.id]
     # (12 + 16) / 2 = 14
@@ -65,7 +68,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     [s1, _s2 | _] = seqs
     grade.(s1, 11)
 
-    [term1 | _] = Organization.list_terms(year)
+    [term1 | _] = Organization.list_terms(scope, year)
     r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(11))
   end
@@ -94,37 +97,41 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     head2 = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, school2} =
-      Organization.create_school(head2, %{
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head2}, %{
         name: "Lycée Q"
       })
 
     scope2 = school_scope(head2, school2)
 
     {:ok, y2} =
-      Organization.create_academic_year(school2, %{
+      Organization.create_academic_year(scope2, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(y2)
+    :ok = Organization.build_default_calendar(scope2, y2)
     {:ok, cg2} = Enrollment.create_class_group(scope2, y2, %{label: "6e Z", level: "6ème"})
     assert Assessment.class_results_for_period(scope2, cg2, {:annual, y2}) == nil
   end
 
-  test "resolve_period maps params and rejects bad ones", %{year: year, sequences: seqs} do
+  test "resolve_period maps params and rejects bad ones", %{
+    year: year,
+    sequences: seqs,
+    scope: scope
+  } do
     [s1 | _] = seqs
-    [term1 | _] = Organization.list_terms(year)
+    [term1 | _] = Organization.list_terms(scope, year)
 
-    assert {:sequence, got_seq} = Organization.resolve_period(year, "seq:#{s1.id}")
+    assert {:sequence, got_seq} = Organization.resolve_period(scope, year, "seq:#{s1.id}")
     assert got_seq.id == s1.id
-    assert {:trimester, got_term} = Organization.resolve_period(year, "trim:#{term1.id}")
+    assert {:trimester, got_term} = Organization.resolve_period(scope, year, "trim:#{term1.id}")
     assert got_term.id == term1.id
-    assert {:annual, got_year} = Organization.resolve_period(year, "annee")
+    assert {:annual, got_year} = Organization.resolve_period(scope, year, "annee")
     assert got_year.id == year.id
-    assert Organization.resolve_period(year, "seq:#{Ecto.UUID.generate()}") == nil
-    assert Organization.resolve_period(year, "garbage") == nil
+    assert Organization.resolve_period(scope, year, "seq:#{Ecto.UUID.generate()}") == nil
+    assert Organization.resolve_period(scope, year, "garbage") == nil
 
     # round-trips
     assert Organization.period_param({:sequence, s1}) == "seq:#{s1.id}"

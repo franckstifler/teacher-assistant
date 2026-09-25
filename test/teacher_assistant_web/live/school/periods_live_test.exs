@@ -12,7 +12,11 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée des Périodes"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée des Périodes"
+      })
+
     scope = school_scope(user, school)
     TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
@@ -62,13 +66,13 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
   end
 
   test "deleting a period with a referencing slot shows a friendly message and keeps it", ctx do
-    %{conn: conn, school: school, user: head, scope: scope} = ctx
+    %{conn: conn, user: head, scope: scope} = ctx
 
     :ok = Attendance.build_default_periods(scope)
     [period | _] = Attendance.list_periods(scope)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -103,9 +107,12 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()

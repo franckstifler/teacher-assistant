@@ -12,19 +12,23 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Print"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Print"
+      })
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
-    [seq | _] = Organization.list_sequences(year)
+    :ok = Organization.build_default_calendar(scope, year)
+    [seq | _] = Organization.list_sequences(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
 
     {:ok, _} =
@@ -47,8 +51,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     for %{student: s} <- roster,
         do: Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new(14)}])
 
-    {:ok, profile} = Accounts.fetch_school_profile(school)
-    {:ok, _} = Accounts.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    {:ok, _} = Accounts.verify_school(profile, head.id, scope: scope)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, roster: roster, head: head, scope: scope}
@@ -173,9 +177,12 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -188,7 +195,6 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
   end
 
   test "the form master can print their class", %{
-    conn: conn,
     cg: cg,
     seq: seq,
     head: head,
@@ -198,9 +204,12 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(fm.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: fm}, inv.token)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn =
@@ -229,12 +238,11 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     conn: conn,
     cg: cg,
     seq: seq,
-    school: school,
     scope: scope
   } do
-    year = TeacherAssistant.Organization.current_academic_year(school)
-    [_s1, s2 | _] = TeacherAssistant.Organization.list_sequences(year)
-    [term1 | _] = TeacherAssistant.Organization.list_terms(year)
+    year = TeacherAssistant.Organization.current_academic_year(scope)
+    [_s1, s2 | _] = TeacherAssistant.Organization.list_sequences(scope, year)
+    [term1 | _] = TeacherAssistant.Organization.list_terms(scope, year)
     _ = seq
 
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
@@ -272,19 +280,24 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
   test "an unverified school cannot print bulletins", %{conn: conn} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Non Vérifié"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Non Vérifié"
+      })
+
+    unverified_scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(unverified_scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
-    [seq | _] = Organization.list_sequences(year)
-    unverified_scope = school_scope(head, school)
+    :ok = Organization.build_default_calendar(unverified_scope, year)
+    [seq | _] = Organization.list_sequences(unverified_scope, year)
 
     {:ok, cg} =
       Enrollment.create_class_group(unverified_scope, year, %{label: "6e A", level: "6ème"})

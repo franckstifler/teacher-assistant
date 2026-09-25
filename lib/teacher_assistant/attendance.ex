@@ -412,11 +412,11 @@ defmodule TeacherAssistant.Attendance do
 
   @doc """
   Aggregates justified/unjustified absence hours and retards for `enrollment`
-  within `period_tuple`'s date range (see `Organization.period_date_range/1`).
+  within `period_tuple`'s date range (see `Organization.period_date_range/2`).
   Returns zero totals when the range is `nil`.
   """
   def student_conduct(%Scope{} = scope, %Enrollment{id: id}, period_tuple) do
-    case Organization.period_date_range(period_tuple) do
+    case Organization.period_date_range(scope, period_tuple) do
       nil ->
         @zero_totals
 
@@ -441,7 +441,7 @@ defmodule TeacherAssistant.Attendance do
 
     zero_map = Map.new(roster_enrollment_ids, &{&1, @zero_totals})
 
-    case Organization.period_date_range(period_tuple) do
+    case Organization.period_date_range(scope, period_tuple) do
       nil ->
         zero_map
 

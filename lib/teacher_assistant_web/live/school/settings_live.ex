@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:scope, scope)
         |> assign(:head?, Permissions.head?(scope))
         |> assign(:admin?, admin?)
-        |> assign(:name_form, name_form(scope.current_workspace))
+        |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
         |> assign(:subject_form, subject_form(scope))
         |> allow_upload(:logo,
@@ -36,7 +36,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
       socket =
         socket
-        |> assign(:year_form, year_form(scope.current_workspace.id, socket.assigns.years == []))
+        |> assign(:year_form, year_form(scope, socket.assigns.years == []))
         |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)
 
       {:ok, socket}
@@ -413,7 +413,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            socket
            |> assign(:scope, new_scope)
            |> assign(:current_scope, new_scope)
-           |> assign(:name_form, name_form(school))
+           |> assign(:name_form, name_form(new_scope))
            |> put_flash(:info, gettext("École renommée avec succès."))}
 
         {:error, form} ->
@@ -436,8 +436,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     with true <- Permissions.admin?(scope),
-         {:ok, year} <- Organization.get_academic_year(id, scope.current_workspace),
-         :ok <- Organization.build_default_calendar(year) do
+         {:ok, year} <- Organization.get_academic_year(scope, id),
+         :ok <- Organization.build_default_calendar(scope, year) do
       {:noreply, socket |> load_years() |> put_flash(:info, gettext("Calendrier généré."))}
     else
       _ -> {:noreply, socket}
@@ -450,7 +450,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     if Permissions.admin?(scope) do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
-          :ok = Organization.build_default_calendar(year)
+          :ok = Organization.build_default_calendar(scope, year)
           :ok = TeacherAssistant.Attendance.build_default_periods(scope)
           TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
 
@@ -461,7 +461,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            |> put_flash(:info, gettext("Année scolaire créée."))
            |> assign(
              :year_form,
-             year_form(year.workspace_id, socket.assigns.years == [])
+             year_form(scope, socket.assigns.years == [])
            )}
 
         {:error, form} ->
@@ -479,8 +479,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     scope = socket.assigns.scope
 
     with true <- Permissions.admin?(scope),
-         {:ok, year} <- Organization.get_academic_year(id, scope.current_workspace),
-         {:ok, _} <- Organization.activate_academic_year(year) do
+         {:ok, year} <- Organization.get_academic_year(scope, id),
+         {:ok, _} <- Organization.activate_academic_year(scope, year) do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Année scolaire activée."))
@@ -640,7 +640,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
       case uploaded do
         [relative_path] ->
-          case Accounts.update_school_profile(socket.assigns.profile, %{logo_path: relative_path}) do
+          case Accounts.update_school_profile(socket.assigns.profile, %{logo_path: relative_path},
+                 scope: scope
+               ) do
             {:ok, _profile} ->
               {:noreply,
                socket
@@ -662,7 +664,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   defp load_years(socket) do
     scope = socket.assigns.scope
-    years = Organization.list_academic_years(scope.current_workspace)
+    years = Organization.list_academic_years(scope)
     active_year = Enum.find(years, & &1.active)
 
     socket
@@ -670,20 +672,20 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     |> assign(:active_year, active_year)
     |> assign(
       :active_sequences,
-      if(active_year, do: Organization.list_sequences(active_year), else: [])
+      if(active_year, do: Organization.list_sequences(scope, active_year), else: [])
     )
   end
 
   defp load_profile(socket) do
     scope = socket.assigns.scope
 
-    case Accounts.fetch_school_profile(scope.current_workspace) do
+    case Accounts.fetch_school_profile(scope) do
       {:ok, profile} ->
         socket
         |> assign(:profile, profile)
         |> assign(
           :profile_form,
-          AshPhoenix.Form.for_update(profile, :update, as: "profile") |> to_form()
+          AshPhoenix.Form.for_update(profile, :update, as: "profile", scope: scope) |> to_form()
         )
 
       {:error, _} ->
@@ -693,8 +695,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
-  defp name_form(workspace) do
-    workspace |> AshPhoenix.Form.for_update(:update, as: "school") |> to_form()
+  defp name_form(scope) do
+    scope.current_workspace
+    |> AshPhoenix.Form.for_update(:update, as: "school", scope: scope)
+    |> to_form()
   end
 
   # `AcademicYear` is tenant-scoped to the workspace (attribute multitenancy);
@@ -707,11 +711,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   # flips from `true` to `false` the moment the first year exists. Callers
   # must rebuild the form — via this helper — on mount and again right after
   # a successful year creation (see `handle_event("create_year", ...)`).
-  defp year_form(workspace_id, active?) do
+  defp year_form(scope, active?) do
     AcademicYear
     |> AshPhoenix.Form.for_create(:create_for_workspace,
       as: "year",
-      tenant: workspace_id,
+      scope: scope,
       prepare_source: fn changeset ->
         Ash.Changeset.change_attribute(changeset, :active, active?)
       end

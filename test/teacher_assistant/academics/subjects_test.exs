@@ -6,7 +6,12 @@ defmodule TeacherAssistant.Academics.SubjectsTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+
+    {:ok, ws} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Test"
+      })
+
     scope = school_scope(head, ws)
     Enum.each(Curriculum.list_subjects(scope), &Curriculum.delete_subject(&1, scope: scope))
     %{ws: ws, scope: scope}

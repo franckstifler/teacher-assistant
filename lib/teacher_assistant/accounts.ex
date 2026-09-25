@@ -2,9 +2,9 @@ defmodule TeacherAssistant.Accounts do
   use Ash.Domain,
     otp_app: :teacher_assistant
 
-  alias TeacherAssistant.Academics.Workspace
   alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership, SchoolProfile, User}
   alias TeacherAssistant.Accounts.User.Senders.SendSchoolInvitationEmail
+  alias TeacherAssistant.Scope
 
   resources do
     resource TeacherAssistant.Accounts.Token
@@ -46,9 +46,13 @@ defmodule TeacherAssistant.Accounts do
 
   # --- School profiles -----------------------------------------------------
 
-  def fetch_school_profile(%Workspace{id: ws_id}) do
+  def fetch_school_profile(%Scope{} = scope) do
     SchoolProfile
-    |> Ash.Query.for_read(:for_workspace, %{workspace_id: ws_id})
+    |> Ash.Query.for_read(
+      :for_workspace,
+      %{workspace_id: scope.current_workspace.id},
+      scope: scope
+    )
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_found}
@@ -56,16 +60,15 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
-  def list_unverified_schools do
-    SchoolProfile |> Ash.Query.for_read(:unverified) |> Ash.read!()
+  def list_unverified_schools(%Scope{} = scope) do
+    SchoolProfile |> Ash.Query.for_read(:unverified, %{}, scope: scope) |> Ash.read!()
   end
 
   # --- School memberships --------------------------------------------------
 
-  def fetch_school_membership(%Workspace{id: ws_id}, %User{id: user_id}) do
+  def fetch_school_membership(%Scope{} = scope, %User{id: user_id}) do
     SchoolMembership
-    |> Ash.Query.for_read(:for_workspace_and_user, %{user_id: user_id})
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:for_workspace_and_user, %{user_id: user_id}, scope: scope)
     |> Ash.read_one()
     |> case do
       {:ok, nil} -> {:error, :not_a_member}
@@ -74,68 +77,71 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
-  def list_members(%Workspace{id: ws_id}) do
+  def list_members(%Scope{} = scope) do
     SchoolMembership
-    |> Ash.Query.for_read(:active_for_workspace)
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:active_for_workspace, %{}, scope: scope)
     |> Ash.read!()
   end
 
-  def update_member_roles(%SchoolMembership{} = m, roles) do
-    if removing_last_head?(m, roles) do
+  def update_member_roles(%Scope{} = scope, %SchoolMembership{} = m, roles) do
+    if removing_last_head?(scope, m, roles) do
       {:error, :last_head}
     else
-      m |> Ash.Changeset.for_update(:update, %{roles: roles}) |> Ash.update()
+      m |> Ash.Changeset.for_update(:update, %{roles: roles}, scope: scope) |> Ash.update()
     end
   end
 
-  def update_member_status(%SchoolMembership{} = m, status) do
+  def update_member_status(%Scope{} = scope, %SchoolMembership{} = m, status) do
     m
-    |> Ash.Changeset.for_update(:update, %{status: status})
+    |> Ash.Changeset.for_update(:update, %{status: status}, scope: scope)
     |> Ash.update()
   end
 
-  def deactivate_member(%SchoolMembership{} = m) do
-    if :head in m.roles and last_head?(m) do
+  def deactivate_member(%Scope{} = scope, %SchoolMembership{} = m) do
+    if :head in m.roles and last_head?(scope, m) do
       {:error, :last_head}
     else
-      m |> Ash.Changeset.for_update(:deactivate, %{}) |> Ash.update()
+      m |> Ash.Changeset.for_update(:deactivate, %{}, scope: scope) |> Ash.update()
     end
   end
 
-  defp removing_last_head?(%SchoolMembership{} = m, new_roles) do
-    :head in m.roles and :head not in new_roles and last_head?(m)
+  defp removing_last_head?(%Scope{} = scope, %SchoolMembership{} = m, new_roles) do
+    :head in m.roles and :head not in new_roles and last_head?(scope, m)
   end
 
   # The guard itself lives here (rather than as a resource validation) so
   # callers keep getting the bare `{:error, :last_head}` atom instead of an
   # `%Ash.Error.Invalid{}` — the `other_active_heads` aggregate on
   # `SchoolMembership` does the actual counting.
-  defp last_head?(%SchoolMembership{} = m) do
-    m |> Ash.load!(:other_active_heads) |> Map.fetch!(:other_active_heads) == 0
+  defp last_head?(%Scope{} = scope, %SchoolMembership{} = m) do
+    m |> Ash.load!(:other_active_heads, scope: scope) |> Map.fetch!(:other_active_heads) == 0
   end
 
   # --- School invitations --------------------------------------------------
 
-  def invite_member(%Workspace{} = school, %User{} = inviter, %{} = attrs) do
+  def invite_member(%Scope{} = scope, %{} = attrs) do
+    school = scope.current_workspace
     email = attrs[:email] || attrs["email"]
     roles = attrs[:roles] || attrs["roles"] || [:teacher]
     membership_status = attrs[:membership_status] || attrs["membership_status"]
 
-    if active_member_email?(school, email) do
+    if active_member_email?(scope, email) do
       {:error, :already_member}
     else
       {:ok, invitation} =
         SchoolInvitation
-        |> Ash.Changeset.for_create(:create, %{
-          email: email,
-          roles: roles,
-          membership_status: membership_status,
-          invited_by_user_id: inviter.id,
-          token: gen_token(),
-          expires_at: DateTime.add(DateTime.utc_now(), 14, :day) |> DateTime.truncate(:second)
-        })
-        |> Ash.Changeset.set_tenant(school.id)
+        |> Ash.Changeset.for_create(
+          :create,
+          %{
+            email: email,
+            roles: roles,
+            membership_status: membership_status,
+            invited_by_user_id: scope.current_user.id,
+            token: gen_token(),
+            expires_at: DateTime.add(DateTime.utc_now(), 14, :day) |> DateTime.truncate(:second)
+          },
+          scope: scope
+        )
         |> Ash.create()
 
       SendSchoolInvitationEmail.send(
@@ -159,18 +165,24 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
-  def list_pending_invitations(%Workspace{id: ws_id}) do
+  def list_pending_invitations(%Scope{} = scope) do
     SchoolInvitation
-    |> Ash.Query.for_read(:pending_for_workspace)
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:pending_for_workspace, %{}, scope: scope)
     |> Ash.read!()
   end
 
-  def accept_invitation(token, %User{} = user) do
+  def accept_invitation(%Scope{} = scope, token) do
+    user = scope.current_user
+
     with {:ok, inv} <- fetch_invitation_by_token(token),
          :ok <- check_acceptable(inv),
          :ok <- check_email(inv, user) do
-      case fetch_school_membership(inv.workspace, user) do
+      # The invitation names the school (`inv.workspace`); run the membership
+      # read under a scope for that school. (Task 17 turns this into a
+      # transactional `:accept` action on the invitation.)
+      school_scope = %Scope{current_user: user, current_workspace: inv.workspace}
+
+      case fetch_school_membership(school_scope, user) do
         {:ok, _already} ->
           {:ok, inv.workspace}
 
@@ -214,8 +226,8 @@ defmodule TeacherAssistant.Accounts do
     if to_string(email) == to_string(user_email), do: :ok, else: {:error, :email_mismatch}
   end
 
-  defp active_member_email?(%Workspace{} = school, email) do
-    school
+  defp active_member_email?(%Scope{} = scope, email) do
+    scope
     |> list_members()
     |> Enum.any?(fn m -> to_string(m.user.email) == to_string(email) end)
   end

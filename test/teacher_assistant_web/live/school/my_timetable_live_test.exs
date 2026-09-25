@@ -11,11 +11,13 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée T"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -70,9 +72,13 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(member.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(member.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, member)
+    {:ok, _} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: member}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()

@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} =
-      Organization.create_school(head, %{
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
         name: "Lycée G",
         school_type: :lycee,
         subsystem: :francophone,
@@ -24,7 +24,7 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -74,15 +74,14 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
 
   test "a verified school can record attendance", %{
     conn: conn,
-    school: school,
     cg: cg,
     period: period,
     date: date,
     head: head,
     scope: scope
   } do
-    {:ok, p} = Accounts.fetch_school_profile(school)
-    {:ok, _} = Accounts.verify_school(p, head.id)
+    {:ok, p} = Accounts.fetch_school_profile(scope)
+    {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
 
     {:ok, view, _} =
       live(conn, "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")

@@ -54,7 +54,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
     workspaces =
       if current_user,
-        do: Organization.list_workspaces_for(current_user),
+        do: Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: current_user}),
         else: []
 
     assigns =
@@ -182,10 +182,10 @@ defmodule TeacherAssistantWeb.Layouts do
               >
                 <li
                   :for={u <- @units}
-                  id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(u)}"}
+                  id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(@current_scope, u)}"}
                 >
                   <.link href={
-                    ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(u)}?return_to=#{@current_path || "/school"}"
+                    ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(@current_scope, u)}?return_to=#{@current_path || "/school"}"
                   }>
                     {TeacherAssistant.Curriculum.unit_label(u)}
                   </.link>

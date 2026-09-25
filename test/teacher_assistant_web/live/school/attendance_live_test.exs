@@ -11,11 +11,13 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée T"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -41,8 +43,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkolo", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
-    {:ok, profile} = Accounts.fetch_school_profile(school)
-    {:ok, _} = Accounts.verify_school(profile, head.id)
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    {:ok, _} = Accounts.verify_school(profile, head.id, scope: scope)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
@@ -124,19 +126,18 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     cg: cg,
     period: period,
     date: date,
-    head: head,
     scope: scope,
     enrollment: enrollment
   } do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{
+      Accounts.invite_member(scope, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: dm}, inv.token)
 
     {:ok, view, _html} = live(conn_for(school, dm), att_path(cg, period, date))
 
@@ -185,27 +186,28 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     cg: cg,
     period: period,
     date: date,
-    head: head
+    scope: scope
   } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn_for(school, other), att_path(cg, period, date))
   end
 
   describe "assignment-based roll call (no timetable slot)" do
-    setup %{school: school, head: head, scope: scope} do
+    setup %{scope: scope} do
       other = TeacherAssistant.TeacherFixtures.user_fixture()
 
       {:ok, inv} =
-        Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+        Accounts.invite_member(scope, %{email: to_string(other.email), roles: [:teacher]})
 
-      {:ok, _} = Accounts.accept_invitation(inv.token, other)
+      {:ok, _} =
+        Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
       # A lesson period with no slot placed on any day.
       free_period =
@@ -278,11 +280,14 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     date: date
   } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+
+    {:ok, os} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other}, %{name: "Autre"})
+
     other_scope = school_scope(other, os)
 
     {:ok, oy} =
-      Organization.create_academic_year(os, %{
+      Organization.create_academic_year(other_scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

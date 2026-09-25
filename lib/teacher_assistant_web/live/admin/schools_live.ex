@@ -78,8 +78,10 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
         {:noreply, socket}
 
       profile ->
+        scope = socket.assigns.current_scope
+
         {:ok, _} =
-          Accounts.verify_school(profile, socket.assigns.current_scope.current_user.id)
+          Accounts.verify_school(profile, scope.current_user.id, scope: scope)
 
         {:noreply, reload_schools(socket)}
     end
@@ -91,11 +93,14 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
         {:noreply, socket}
 
       profile ->
+        scope = socket.assigns.current_scope
+
         {:ok, _} =
           Accounts.reject_school(
             profile,
-            socket.assigns.current_scope.current_user.id,
-            reason
+            scope.current_user.id,
+            reason,
+            scope: scope
           )
 
         {:noreply, reload_schools(socket)}
@@ -106,5 +111,6 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
     Enum.find(socket.assigns.schools, &(to_string(&1.workspace_id) == to_string(workspace_id)))
   end
 
-  defp reload_schools(socket), do: assign(socket, :schools, Accounts.list_unverified_schools())
+  defp reload_schools(socket),
+    do: assign(socket, :schools, Accounts.list_unverified_schools(socket.assigns.current_scope))
 end

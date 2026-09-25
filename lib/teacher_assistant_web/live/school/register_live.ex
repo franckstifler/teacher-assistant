@@ -50,7 +50,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     sequence =
       case scope.current_academic_year do
         nil -> nil
-        year -> Organization.current_sequence(year, socket.assigns.date)
+        year -> Organization.current_sequence(scope, year, socket.assigns.date)
       end
 
     conduct_by_enrollment =

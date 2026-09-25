@@ -58,18 +58,18 @@ defmodule TeacherAssistant.Discipline do
   @doc """
   Lists `SanctionEntry`s for `class_group` (or a single `enrollment`) whose
   `date` is within `period_tuple`'s inclusive date range (see
-  `Organization.period_date_range/1`), newest first, with the enrollment's
+  `Organization.period_date_range/2`), newest first, with the enrollment's
   student loaded. Returns `[]` when the range is `nil`.
   """
   def list_sanctions(%Scope{} = scope, %ClassGroup{id: cg_id}, period_tuple) do
-    case Organization.period_date_range(period_tuple) do
+    case Organization.period_date_range(scope, period_tuple) do
       nil -> []
       {first, last} -> list_sanctions_for_class_in_range!(cg_id, first, last, scope: scope)
     end
   end
 
   def list_sanctions(%Scope{} = scope, %Enrollment{} = e, period_tuple) do
-    case Organization.period_date_range(period_tuple) do
+    case Organization.period_date_range(scope, period_tuple) do
       nil ->
         []
 
@@ -189,11 +189,11 @@ defmodule TeacherAssistant.Discipline do
   end
 
   def note_de_conduite(%Scope{} = scope, %Enrollment{} = e, {:trimester, %Term{} = term}) do
-    mean_conduct_marks(scope, e, resolve_term_sequences(term))
+    mean_conduct_marks(scope, e, resolve_term_sequences(scope, term))
   end
 
   def note_de_conduite(%Scope{} = scope, %Enrollment{} = e, {:annual, %AcademicYear{} = year}) do
-    mean_conduct_marks(scope, e, Organization.list_sequences(year))
+    mean_conduct_marks(scope, e, Organization.list_sequences(scope, year))
   end
 
   defp mean_conduct_marks(%Scope{} = scope, %Enrollment{id: id}, sequences) do
@@ -206,14 +206,14 @@ defmodule TeacherAssistant.Discipline do
   end
 
   # Resolves a `Term`'s séquences, re-fetching (with them loaded) if needed.
-  defp resolve_term_sequences(%Term{sequences: %Ash.NotLoaded{}} = term) do
+  defp resolve_term_sequences(%Scope{} = scope, %Term{sequences: %Ash.NotLoaded{}} = term) do
     %AcademicYear{id: term.academic_year_id, workspace_id: term.workspace_id}
-    |> Organization.list_terms()
+    |> then(&Organization.list_terms(scope, &1))
     |> Enum.find(&(&1.id == term.id))
     |> then(fn t -> if t, do: t.sequences, else: [] end)
   end
 
-  defp resolve_term_sequences(%Term{sequences: sequences}), do: sequences
+  defp resolve_term_sequences(%Scope{} = _scope, %Term{sequences: sequences}), do: sequences
 
   # Shared averaging rule: mean of present values only, never a raw sum.
   # `nil` when the list is empty. Used by both the single-student
@@ -230,14 +230,14 @@ defmodule TeacherAssistant.Discipline do
 
   # Séquence ids covered by `period_tuple`, computed once for the whole
   # roster (avoids a per-student `list_terms`/`list_sequences` re-fetch).
-  defp period_sequence_ids({:sequence, %Sequence{id: id}}), do: [id]
+  defp period_sequence_ids(_scope, {:sequence, %Sequence{id: id}}), do: [id]
 
-  defp period_sequence_ids({:trimester, %Term{} = term}) do
-    term |> resolve_term_sequences() |> Enum.map(& &1.id)
+  defp period_sequence_ids(%Scope{} = scope, {:trimester, %Term{} = term}) do
+    term |> then(&resolve_term_sequences(scope, &1)) |> Enum.map(& &1.id)
   end
 
-  defp period_sequence_ids({:annual, %AcademicYear{} = year}) do
-    year |> Organization.list_sequences() |> Enum.map(& &1.id)
+  defp period_sequence_ids(%Scope{} = scope, {:annual, %AcademicYear{} = year}) do
+    year |> then(&Organization.list_sequences(scope, &1)) |> Enum.map(& &1.id)
   end
 
   @doc """
@@ -272,7 +272,7 @@ defmodule TeacherAssistant.Discipline do
 
     conduct_values_by_enrollment =
       period_tuple
-      |> period_sequence_ids()
+      |> then(&period_sequence_ids(scope, &1))
       |> batch_conduct_values(enrollment_ids, scope)
 
     Map.new(roster, fn %{enrollment: enrollment} ->

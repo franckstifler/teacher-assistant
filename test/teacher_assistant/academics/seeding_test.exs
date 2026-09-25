@@ -10,14 +10,14 @@ defmodule TeacherAssistant.Academics.SeedingTest do
     head = TeacherFixtures.user_fixture()
 
     {:ok, ws} =
-      Organization.create_school(head, %{
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
         name: "Lycée Test",
         school_type: :lycee,
         subsystem: :francophone
       })
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(school_scope(head, ws), %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

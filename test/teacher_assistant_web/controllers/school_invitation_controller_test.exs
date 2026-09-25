@@ -7,34 +7,50 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
 
   test "accepting a matching invitation joins the school", %{conn: conn, actor: user} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "École Accept"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "École Accept"
+      })
+
+    head_scope = school_scope(head, school)
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+      Accounts.invite_member(head_scope, %{email: to_string(user.email), roles: [:teacher]})
 
     conn = post(conn, ~p"/schools/invitations/#{inv.token}/accept")
     assert redirected_to(conn) == "/school"
-    assert {:ok, _m} = Accounts.fetch_school_membership(school, user)
+    assert {:ok, _m} = Accounts.fetch_school_membership(head_scope, user)
   end
 
   test "a mismatched invitation is rejected", %{conn: conn} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "École Mismatch"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "École Mismatch"
+      })
+
+    head_scope = school_scope(head, school)
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: "someone@example.com", roles: [:teacher]})
+      Accounts.invite_member(head_scope, %{email: "someone@example.com", roles: [:teacher]})
 
     conn = post(conn, ~p"/schools/invitations/#{inv.token}/accept")
     assert redirected_to(conn) == "/school"
-    refute match?({:ok, _}, Accounts.fetch_school_membership(school, conn.assigns.current_user))
+
+    refute match?(
+             {:ok, _},
+             Accounts.fetch_school_membership(head_scope, conn.assigns.current_user)
+           )
   end
 
   describe "show/2 — signed-out visitor" do
     test "is offered register + sign-in and return_to is set", %{conn: _conn} do
-      %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+      %{workspace: _ws, head_user: _head, scope: head_scope} = TeacherFixtures.school_fixture()
 
       {:ok, inv} =
-        Accounts.invite_member(ws, head, %{email: "new@example.com", roles: [:teacher]})
+        Accounts.invite_member(head_scope, %{email: "new@example.com", roles: [:teacher]})
 
       conn =
         build_conn()
@@ -50,10 +66,10 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
 
   describe "show/2 — signed-in visitor" do
     test "matching email sees a Join action", %{conn: _conn} do
-      %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+      %{scope: head_scope} = TeacherFixtures.school_fixture()
 
       {:ok, inv} =
-        Accounts.invite_member(ws, head, %{email: "match@example.com", roles: [:teacher]})
+        Accounts.invite_member(head_scope, %{email: "match@example.com", roles: [:teacher]})
 
       user = TeacherFixtures.user_fixture(%{email: "match@example.com"})
 
@@ -68,10 +84,10 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
     end
 
     test "mismatched email is told to sign out, with no accept action offered", %{conn: _conn} do
-      %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+      %{scope: head_scope} = TeacherFixtures.school_fixture()
 
       {:ok, inv} =
-        Accounts.invite_member(ws, head, %{email: "match@example.com", roles: [:teacher]})
+        Accounts.invite_member(head_scope, %{email: "match@example.com", roles: [:teacher]})
 
       other = TeacherFixtures.user_fixture(%{email: "other@example.com"})
 
@@ -90,10 +106,10 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
     test "a signed-out visitor who registers lands back on the invite page and can join", %{
       conn: _conn
     } do
-      %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+      %{scope: head_scope} = TeacherFixtures.school_fixture()
 
       {:ok, inv} =
-        Accounts.invite_member(ws, head, %{email: "invitee@example.com", roles: [:teacher]})
+        Accounts.invite_member(head_scope, %{email: "invitee@example.com", roles: [:teacher]})
 
       # 1. Signed-out visit stores return_to in the session (as AuthController.success/4
       #    expects to find it once the person finishes registering).
@@ -129,7 +145,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
       conn = post(conn, ~p"/schools/invitations/#{inv.token}/accept")
       assert redirected_to(conn) == "/school"
 
-      assert {:ok, membership} = Accounts.fetch_school_membership(ws, new_user)
+      assert {:ok, membership} = Accounts.fetch_school_membership(head_scope, new_user)
       assert membership.roles == [:teacher]
 
       assert {:ok, accepted_inv} = Accounts.fetch_invitation_by_token(inv.token)
@@ -138,10 +154,10 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
   end
 
   test "accepting while signed out redirects to sign-in and remembers the link", %{conn: _conn} do
-    %{workspace: ws, head_user: head} = TeacherAssistant.TeacherFixtures.school_fixture()
+    %{scope: head_scope} = TeacherAssistant.TeacherFixtures.school_fixture()
 
     {:ok, inv} =
-      TeacherAssistant.Accounts.invite_member(ws, head, %{
+      TeacherAssistant.Accounts.invite_member(head_scope, %{
         email: "new@example.com",
         roles: [:teacher]
       })

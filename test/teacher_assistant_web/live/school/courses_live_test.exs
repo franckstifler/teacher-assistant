@@ -10,7 +10,11 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Cours"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Cours"
+      })
+
     scope = school_scope(head, school)
     year = TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
@@ -18,9 +22,11 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     teacher = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(teacher.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(teacher.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, teacher)
+    {:ok, _} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: teacher}, inv.token)
+
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, teacher, %{subject: "Maths"})
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
@@ -173,15 +179,17 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
 
     test "staff without a management-free role keep the dashboard (bursar, discipline master)", %{
       school: school,
-      head: head
+      scope: scope
     } do
       for role <- [:bursar, :discipline_master] do
         staff = TeacherAssistant.TeacherFixtures.user_fixture()
 
         {:ok, inv} =
-          Accounts.invite_member(school, head, %{email: to_string(staff.email), roles: [role]})
+          Accounts.invite_member(scope, %{email: to_string(staff.email), roles: [role]})
 
-        {:ok, _} = Accounts.accept_invitation(inv.token, staff)
+        {:ok, _} =
+          Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: staff}, inv.token)
+
         {:ok, view, _html} = live(conn_for(school, staff), ~p"/school")
         assert has_element?(view, "#school-dashboard")
       end

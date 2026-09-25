@@ -19,31 +19,36 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   # The school's head's scope — for fixtures that now need a `%Scope{}`.
   defp scope_of(school) do
-    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
+    {:ok, profile} =
+      TeacherAssistant.Accounts.fetch_school_profile(%TeacherAssistant.Scope{
+        current_workspace: school
+      })
+
     head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
     school_scope(head, school)
   end
 
   # One clause per resource; returns a row created under `school`.
-  defp row_for(A.AcademicYear, school, _ctx), do: Organization.current_academic_year(school)
+  defp row_for(A.AcademicYear, school, _ctx),
+    do: Organization.current_academic_year(scope_of(school))
 
-  defp row_for(A.Term, school, _ctx),
-    do:
-      school |> Organization.current_academic_year() |> Organization.list_terms() |> List.first()
+  defp row_for(A.Term, school, _ctx) do
+    scope = scope_of(school)
+    year = Organization.current_academic_year(scope)
+    Organization.list_terms(scope, year) |> List.first()
+  end
 
-  defp row_for(A.Sequence, school, _ctx),
-    do:
-      school
-      |> Organization.current_academic_year()
-      |> Organization.list_sequences()
-      |> List.first()
+  defp row_for(A.Sequence, school, _ctx) do
+    scope = scope_of(school)
+    year = Organization.current_academic_year(scope)
+    Organization.list_sequences(scope, year) |> List.first()
+  end
 
-  defp row_for(A.ClassGroup, school, _ctx),
-    do:
-      school
-      |> Organization.current_academic_year()
-      |> then(&TeacherAssistant.Enrollment.list_class_groups(scope_of(school), &1))
-      |> List.first()
+  defp row_for(A.ClassGroup, school, _ctx) do
+    scope = scope_of(school)
+    year = Organization.current_academic_year(scope)
+    TeacherAssistant.Enrollment.list_class_groups(scope, year) |> List.first()
+  end
 
   defp row_for(A.Student, school, ctx), do: row_for(A.Enrollment, school, ctx).student
 
@@ -65,18 +70,15 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   defp row_for(A.Subject, school, _ctx),
     do: school |> scope_of() |> TeacherAssistant.Curriculum.list_subjects() |> List.first()
 
-  defp row_for(A.TeachingContext, school, _ctx),
-    do:
-      TeacherFixtures.assigned_context_fixture(
-        scope_of(school),
-        Organization.current_academic_year(school)
-      )
+  defp row_for(A.TeachingContext, school, _ctx) do
+    scope = scope_of(school)
+    TeacherFixtures.assigned_context_fixture(scope, Organization.current_academic_year(scope))
+  end
 
   defp row_for(A.CombinedCourse, school, _ctx) do
-    year = Organization.current_academic_year(school)
-    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
-    teacher = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
-    scope = school_scope(teacher, school)
+    scope = scope_of(school)
+    year = Organization.current_academic_year(scope)
+    teacher = scope.current_user
 
     tc1 =
       TeacherFixtures.assigned_context_fixture(scope, year, %{teacher: teacher, subject: "Maths"})
@@ -131,16 +133,14 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   end
 
   defp row_for(A.Assessment, school, ctx) do
+    scope = scope_of(school)
     tc = row_for(A.TeachingContext, school, ctx)
 
-    seq =
-      school
-      |> Organization.current_academic_year()
-      |> Organization.list_sequences()
-      |> List.first()
+    year = Organization.current_academic_year(scope)
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
     {:ok, a} =
-      TeacherAssistant.Assessment.create_assessment(scope_of(school), tc, seq, %{label: "Iso"})
+      TeacherAssistant.Assessment.create_assessment(scope, tc, seq, %{label: "Iso"})
 
     a
   end
@@ -174,14 +174,13 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     do: school |> scope_of() |> TeacherAssistant.Attendance.list_periods() |> List.first()
 
   defp row_for(SchoolMembership, school, _ctx),
-    do: TeacherAssistant.Accounts.list_members(school) |> List.first()
+    do: TeacherAssistant.Accounts.list_members(scope_of(school)) |> List.first()
 
   defp row_for(SchoolInvitation, school, _ctx) do
-    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(school)
-    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
+    scope = scope_of(school)
 
     {:ok, inv} =
-      TeacherAssistant.Accounts.invite_member(school, head, %{
+      TeacherAssistant.Accounts.invite_member(scope, %{
         email: "iso-#{System.unique_integer([:positive])}@example.com",
         roles: [:teacher]
       })
@@ -245,15 +244,13 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   end
 
   defp row_for(A.ConductMark, school, ctx) do
+    scope = scope_of(school)
     e = row_for(A.Enrollment, school, ctx)
 
-    seq =
-      school
-      |> Organization.current_academic_year()
-      |> Organization.list_sequences()
-      |> List.first()
+    year = Organization.current_academic_year(scope)
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
-    {:ok, m} = TeacherAssistant.Discipline.set_conduct_mark(scope_of(school), e, seq, 15)
+    {:ok, m} = TeacherAssistant.Discipline.set_conduct_mark(scope, e, seq, 15)
     m
   end
 
@@ -366,7 +363,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   end
 
   test "creating a flipped resource without a tenant raises", %{a: a} do
-    year = Organization.current_academic_year(a)
+    year = Organization.current_academic_year(scope_of(a))
 
     assert_raise Ash.Error.Invalid, ~r/tenant/, fn ->
       A.Term
@@ -376,7 +373,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
   end
 
   test "the scope exposes the workspace as tenant", %{a: a} do
-    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(a)
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope_of(a))
     head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
     {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(head, a.id)
     assert Ash.Scope.ToOpts.get_tenant(scope) == {:ok, a.id}
@@ -451,7 +448,8 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     # M7 / F1: the database rejects a cross-workspace combination
     # (a's enrollment paired with b's sequence) — nothing is written.
     seq_b =
-      b |> Organization.current_academic_year() |> Organization.list_sequences() |> List.first()
+      Organization.list_sequences(scope_of(b), Organization.current_academic_year(scope_of(b)))
+      |> List.first()
 
     assert {:error, _} = TeacherAssistant.Discipline.set_conduct_mark(scope_of(a), e, seq_b, 15)
 
@@ -467,7 +465,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
       SchoolMembership |> Ash.Query.for_read(:active_for_workspace) |> Ash.read!()
     end
 
-    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(a)
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope_of(a))
     head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
 
     assert {:ok, _memberships} =

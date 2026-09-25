@@ -8,11 +8,16 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+
+    {:ok, ws} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Test"
+      })
+
     scope = school_scope(head, ws)
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -48,11 +53,16 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
     {:ok, tc_a} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
 
     other_head = TeacherFixtures.user_fixture()
-    {:ok, other_ws} = Organization.create_school(other_head, %{name: "Autre lycée"})
+
+    {:ok, other_ws} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other_head}, %{
+        name: "Autre lycée"
+      })
+
     other_scope = school_scope(other_head, other_ws)
 
     {:ok, other_year} =
-      Organization.create_academic_year(other_ws, %{
+      Organization.create_academic_year(other_scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

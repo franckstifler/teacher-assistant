@@ -6,7 +6,11 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   setup :register_and_log_in_user
 
   test "a member sees the school shell after selecting the school", %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Central"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Central"
+      })
+
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
@@ -17,7 +21,11 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   test "teacher pages redirect to /school while in a school scope without a teaching assignment",
        %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "École Guard"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "École Guard"
+      })
+
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
@@ -27,12 +35,16 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   test "dashboard shows structure stats", %{conn: conn, actor: user} do
     alias TeacherAssistant.Enrollment
 
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Stats"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Stats"
+      })
+
     scope = school_scope(user, school)
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -53,7 +65,11 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   # the gate's redirect, which is the current form of "prompts to create
   # one" for an incomplete school (regardless of member role).
   test "dashboard without a year redirects to the setup wizard", %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "École SansAnnée"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "École SansAnnée"
+      })
+
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
 
     assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school")
@@ -63,13 +79,20 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     conn: _conn,
     actor: head
   } do
-    {:ok, school} = Organization.create_school(head, %{name: "École SansAnnéeVP"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "École SansAnnéeVP"
+      })
+
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -84,11 +107,15 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     alias TeacherAssistant.Enrollment
 
     setup %{conn: conn, actor: head} do
-      {:ok, school} = Organization.create_school(head, %{name: "Lycée Dash"})
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+          name: "Lycée Dash"
+        })
+
       scope = school_scope(head, school)
 
       {:ok, year} =
-        Organization.create_academic_year(school, %{
+        Organization.create_academic_year(scope, %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
@@ -120,7 +147,11 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   describe "verification banner" do
     setup %{conn: conn, actor: head} do
-      {:ok, school} = Organization.create_school(head, %{name: "Lycée Vérif"})
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+          name: "Lycée Vérif"
+        })
+
       TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
       conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
       %{conn: conn, school: school, head: head}
@@ -133,8 +164,9 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     end
 
     test "hides the banner once verified", %{conn: conn, school: school, head: head} do
-      {:ok, p} = Accounts.fetch_school_profile(school)
-      {:ok, _} = Accounts.verify_school(p, head.id)
+      scope = school_scope(head, school)
+      {:ok, p} = Accounts.fetch_school_profile(scope)
+      {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
       {:ok, view, _html} = live(conn, ~p"/school")
       refute has_element?(view, "#pending-verification")
     end
@@ -148,7 +180,12 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     # (a stale/foreign reference), so the resolved scope is non-school even
     # though the user has a real school of their own.
     other_head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, other_school} = Organization.create_school(other_head, %{name: "École Étrangère"})
+
+    {:ok, other_school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other_head}, %{
+        name: "École Étrangère"
+      })
+
     conn = Plug.Conn.put_session(conn, :workspace_id, other_school.id)
     expected_to = "/workspaces/select/#{home_school.id}"
 
@@ -167,7 +204,9 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   end
 
   test "the shell shows no personal navigation", %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Nav"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée Nav"})
+
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")

@@ -55,7 +55,7 @@ defmodule TeacherAssistant.Accounts.ChecksTest do
 
     test "an inactive membership does not count", %{ws: ws, head: head} do
       teacher = member_scope_fixture(head, %{roles: [:teacher]})
-      {:ok, m} = Accounts.fetch_school_membership(ws, teacher.current_user)
+      {:ok, m} = Accounts.fetch_school_membership(head, teacher.current_user)
       {:ok, _} = m |> Ash.Changeset.for_update(:deactivate, %{}) |> Ash.update(authorize?: false)
 
       refute SchoolRole.holds?(teacher.current_user, ws.id, :member)

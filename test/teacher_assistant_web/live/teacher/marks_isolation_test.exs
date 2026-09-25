@@ -14,11 +14,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Iso"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée Iso"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -29,12 +31,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
 
     # Teacher A owns the Maths context.
-    teacher_a = member(school, head)
+    teacher_a = member(scope)
     {:ok, tc_a} = Curriculum.assign_teacher(scope, cg, teacher_a, %{subject: "Maths"})
 
     # Teacher B is a member who teaches a DIFFERENT subject (so B passes the
     # teaching-scope guard and reaches mount) but does NOT teach tc_a.
-    teacher_b = member(school, head)
+    teacher_b = member(scope)
     {:ok, _tc_b} = Curriculum.assign_teacher(scope, cg, teacher_b, %{subject: "Français"})
 
     conn_b =
@@ -43,13 +45,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksIsolationTest do
     %{conn_b: conn_b, tc_a: tc_a}
   end
 
-  defp member(school, head) do
+  defp member(scope) do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(user.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, user)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: user}, inv.token)
     user
   end
 

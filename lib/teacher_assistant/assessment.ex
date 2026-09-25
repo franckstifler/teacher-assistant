@@ -296,7 +296,7 @@ defmodule TeacherAssistant.Assessment do
         %ClassGroup{} = cg,
         {:annual, %AcademicYear{} = year}
       ) do
-    seqs = TeacherAssistant.Organization.list_sequences(year)
+    seqs = TeacherAssistant.Organization.list_sequences(scope, year)
     period_result(scope, cg, seqs, :trimesters)
   end
 

@@ -25,7 +25,10 @@ defmodule TeacherAssistant.TeacherFixtures do
   def school_fixture(attrs \\ %{}) do
     user = attrs[:head_user] || user_fixture()
     name = attrs[:name] || "Lycée #{System.unique_integer([:positive])}"
-    {:ok, workspace} = Organization.create_school(user, %{name: name})
+
+    {:ok, workspace} =
+      Organization.create_school(%Scope{current_user: user}, %{name: name})
+
     %{workspace: workspace, head_user: user, scope: school_scope(user, workspace)}
   end
 
@@ -33,26 +36,26 @@ defmodule TeacherAssistant.TeacherFixtures do
   Creates an active academic year for the scope's school, builds its default
   calendar and seeds its starter classes, so `Scope.setup_complete?/1` is true.
   """
-  def complete_school_setup!(%Scope{current_workspace: workspace} = scope, attrs \\ %{}) do
+  def complete_school_setup!(%Scope{current_workspace: _workspace} = scope, attrs \\ %{}) do
     {:ok, year} =
-      Organization.create_academic_year(workspace, %{
+      Organization.create_academic_year(scope, %{
         name: attrs[:name] || "Année de référence",
         start_date: attrs[:start_date] || ~D[2025-09-08],
         end_date: attrs[:end_date] || ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(scope, year)
     {:ok, _count} = TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
 
     year
   end
 
   @doc "Verifies the scope's school as a fresh operator (the only role allowed to)."
-  def verify_school!(%Scope{current_workspace: workspace}) do
+  def verify_school!(%Scope{} = scope) do
     operator = admin_user_fixture()
-    {:ok, profile} = Accounts.fetch_school_profile(workspace)
-    {:ok, _} = Accounts.verify_school(profile, operator.id)
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    {:ok, _} = Accounts.verify_school(profile, operator.id, scope: scope)
     :ok
   end
 
@@ -99,29 +102,30 @@ defmodule TeacherAssistant.TeacherFixtures do
   membership when `attrs[:teacher]` already belongs to the school.
   """
   def school_teacher_fixture(
-        %Scope{current_workspace: workspace, current_user: head} = scope,
+        %Scope{current_workspace: workspace} = scope,
         attrs \\ %{}
       ) do
     teacher = attrs[:teacher] || user_fixture()
 
     membership =
-      case Accounts.fetch_school_membership(workspace, teacher) do
+      case Accounts.fetch_school_membership(scope, teacher) do
         {:ok, membership} ->
           membership
 
         {:error, _} ->
           {:ok, inv} =
-            Accounts.invite_member(workspace, head, %{
+            Accounts.invite_member(scope, %{
               email: to_string(teacher.email),
               roles: [:teacher]
             })
 
-          {:ok, _} = Accounts.accept_invitation(inv.token, teacher)
-          {:ok, membership} = Accounts.fetch_school_membership(workspace, teacher)
+          {:ok, _} = Accounts.accept_invitation(%Scope{current_user: teacher}, inv.token)
+
+          {:ok, membership} = Accounts.fetch_school_membership(scope, teacher)
           membership
       end
 
-    year = Organization.current_academic_year(workspace)
+    year = Organization.current_academic_year(scope)
 
     class_group =
       attrs[:class_group] ||
@@ -146,11 +150,11 @@ defmodule TeacherAssistant.TeacherFixtures do
   teacher and a real class group, via `Curriculum.assign_teacher/4`.
   """
   def assigned_context_fixture(
-        %Scope{current_workspace: workspace, current_user: head} = scope,
+        %Scope{current_workspace: _workspace} = scope,
         year,
         attrs \\ %{}
       ) do
-    teacher = attrs[:teacher] || member_teacher(workspace, head)
+    teacher = attrs[:teacher] || member_teacher(scope)
     class_group = attrs[:class_group] || new_class_group(scope, year, attrs)
 
     {:ok, tc} =
@@ -162,17 +166,17 @@ defmodule TeacherAssistant.TeacherFixtures do
     tc
   end
 
-  # Invites, accepts and returns a fresh `:teacher` member of `workspace`.
-  defp member_teacher(workspace, head) do
+  # Invites, accepts and returns a fresh `:teacher` member of the scope's school.
+  defp member_teacher(%Scope{} = scope) do
     u = user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(workspace, head, %{
+      Accounts.invite_member(scope, %{
         email: to_string(u.email),
         roles: [:teacher]
       })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, u)
+    {:ok, _} = Accounts.accept_invitation(%Scope{current_user: u}, inv.token)
     u
   end
 

@@ -44,9 +44,12 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
     u2 = TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(ws, head, %{email: to_string(u2.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, ws), %{
+        email: to_string(u2.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, u2)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: u2}, inv.token)
 
     assert {:error, _} = Curriculum.assign_teacher(scope, cg, u2, %{subject: "Maths"})
   end

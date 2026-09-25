@@ -12,8 +12,8 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Permissions.admin_or_form_master?(scope, cg) do
       year = scope.current_academic_year
-      sequences = if year, do: Organization.list_sequences(year), else: []
-      terms = if year, do: Organization.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(scope, year), else: []
+      terms = if year, do: Organization.list_terms(scope, year), else: []
 
       {:ok,
        socket
@@ -43,7 +43,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     year = socket.assigns.year
 
     period =
-      (year && param && Organization.resolve_period(year, param)) ||
+      (year && param && Organization.resolve_period(socket.assigns.current_scope, year, param)) ||
         default_period(socket.assigns.sequences)
 
     results =

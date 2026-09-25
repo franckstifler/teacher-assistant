@@ -6,14 +6,14 @@ defmodule TeacherAssistant.Accounts.Workspaces do
 
   # No workspace chosen yet: default to the first school the user belongs to.
   def scope_for(user, nil, context_id) do
-    case Organization.list_workspaces_for(user) do
+    case Organization.list_workspaces_for(%Scope{current_user: user}) do
       [ws | _] -> scope_for(user, ws.id, context_id)
       [] -> {:error, :no_workspace}
     end
   end
 
   def scope_for(user, workspace_id, context_id) do
-    case Organization.get_workspace(workspace_id) do
+    case Organization.get_workspace(workspace_id, actor: user) do
       {:ok, ws} -> school_scope(user, ws, context_id)
       _ -> {:error, :workspace_not_found}
     end
@@ -22,12 +22,12 @@ defmodule TeacherAssistant.Accounts.Workspaces do
   defp school_scope(user, ws, context_id) do
     base = %Scope{current_user: user, current_workspace: ws}
 
-    case Accounts.fetch_school_membership(ws, user) do
+    case Accounts.fetch_school_membership(base, user) do
       {:ok, membership} ->
-        year = Organization.current_academic_year(ws)
+        year = Organization.current_academic_year(base)
 
         status =
-          case Accounts.fetch_school_profile(ws) do
+          case Accounts.fetch_school_profile(base) do
             {:ok, p} -> p.verification_status
             _ -> :unverified
           end

@@ -11,13 +11,17 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
 
   describe "with a school profile" do
     setup %{conn: conn, actor: user} do
-      {:ok, school} = Organization.create_school(user, %{name: "Ancien Nom"})
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+          name: "Ancien Nom"
+        })
+
       TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
       conn = get(conn, ~p"/workspaces/select/#{school.id}")
-      %{conn: conn, school: school}
+      %{conn: conn, school: school, scope: school_scope(user, school)}
     end
 
-    test "an admin edits the full school profile", %{conn: conn, school: school} do
+    test "an admin edits the full school profile", %{conn: conn, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/settings")
 
       view
@@ -34,7 +38,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       })
       |> render_submit()
 
-      {:ok, p} = Accounts.fetch_school_profile(school)
+      {:ok, p} = Accounts.fetch_school_profile(scope)
       assert p.short_name == "GBHS"
       assert p.head_name == "M. Ndenge"
     end
@@ -61,7 +65,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       # be used (it seeds classes from the profile's school-type template).
       # Create the year + class directly to satisfy the setup-complete gate.
       {:ok, year} =
-        Organization.create_academic_year(school, %{
+        Organization.create_academic_year(school_scope(user, school), %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
@@ -80,7 +84,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
         |> Plug.Conn.put_session(:user_id, user.id)
         |> Plug.Conn.put_session(:workspace_id, school.id)
 
-      %{conn: conn, school: school}
+      %{conn: conn, school: school, scope: school_scope(user, school)}
     end
 
     test "an admin visiting settings does not crash and the profile form is absent", %{

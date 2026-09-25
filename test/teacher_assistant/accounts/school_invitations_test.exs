@@ -7,13 +7,21 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "Collège Test"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Collège Test"
+      })
+
     %{head: head, school: school}
   end
 
   test "invite_member creates a pending invitation with a token", %{school: school, head: head} do
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: "prof@example.com", roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: "prof@example.com",
+        roles: [:teacher]
+      })
 
     assert inv.status == :pending
     assert to_string(inv.email) == "prof@example.com"
@@ -27,45 +35,58 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
     invitee = TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(invitee.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(invitee.email),
+        roles: [:teacher]
+      })
 
-    assert {:ok, joined} = Accounts.accept_invitation(inv.token, invitee)
+    assert {:ok, joined} =
+             Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: invitee}, inv.token)
+
     assert joined.id == school.id
-    assert {:ok, m} = Accounts.fetch_school_membership(school, invitee)
+    assert {:ok, m} = Accounts.fetch_school_membership(school_scope(head, school), invitee)
     assert :teacher in m.roles
   end
 
   test "accept rejects an email mismatch", %{school: school, head: head} do
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: "someone@example.com", roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: "someone@example.com",
+        roles: [:teacher]
+      })
 
     other = TeacherFixtures.user_fixture()
-    assert {:error, :email_mismatch} = Accounts.accept_invitation(inv.token, other)
+
+    assert {:error, :email_mismatch} =
+             Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
   end
 
   test "accept rejects a revoked invitation", %{school: school, head: head} do
     invitee = TeacherFixtures.user_fixture()
+    scope = school_scope(head, school)
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(invitee.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(invitee.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.revoke_invitation(inv)
-    assert {:error, :invalid} = Accounts.accept_invitation(inv.token, invitee)
+    {:ok, _} = Accounts.revoke_invitation(inv, scope: scope)
+
+    assert {:error, :invalid} =
+             Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: invitee}, inv.token)
   end
 
   test "inviting an existing active member is rejected", %{school: school, head: head} do
     assert {:error, :already_member} =
-             Accounts.invite_member(school, head, %{
+             Accounts.invite_member(school_scope(head, school), %{
                email: to_string(head.email),
                roles: [:teacher]
              })
   end
 
   test "invite_member delivers an email to the invited address with the accept link" do
-    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+    %{scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(ws, head, %{email: "new@example.com", roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: "new@example.com", roles: [:teacher]})
 
     assert_email_sent(fn email ->
       assert {_, "new@example.com"} = hd(email.to)
@@ -74,10 +95,10 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
   end
 
   test "invite with employment type carries onto the membership on accept" do
-    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+    %{scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(ws, head, %{
+      Accounts.invite_member(scope, %{
         email: "t@example.com",
         roles: [:teacher],
         membership_status: :contractuel
@@ -86,52 +107,61 @@ defmodule TeacherAssistant.Accounts.SchoolInvitationsTest do
     assert inv.membership_status == :contractuel
 
     user = TeacherFixtures.user_fixture(%{email: "t@example.com"})
-    {:ok, _ws} = Accounts.accept_invitation(inv.token, user)
-    {:ok, m} = Accounts.fetch_school_membership(ws, user)
+
+    {:ok, _ws} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: user}, inv.token)
+
+    {:ok, m} = Accounts.fetch_school_membership(scope, user)
     assert m.status == :contractuel
   end
 
   test "invite without employment type leaves membership status nil" do
-    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture()
+    %{scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(ws, head, %{email: "u@example.com", roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: "u@example.com", roles: [:teacher]})
 
     user = TeacherFixtures.user_fixture(%{email: "u@example.com"})
-    {:ok, _} = Accounts.accept_invitation(inv.token, user)
-    {:ok, m} = Accounts.fetch_school_membership(ws, user)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: user}, inv.token)
+    {:ok, m} = Accounts.fetch_school_membership(scope, user)
     assert m.status == nil
   end
 
   test "update_member_status changes a member's employment type" do
     %{scope: scope} = TeacherFixtures.school_fixture()
     m = TeacherFixtures.membership_fixture(scope, roles: [:teacher])
-    {:ok, m2} = Accounts.update_member_status(m, :titulaire)
+    {:ok, m2} = Accounts.update_member_status(scope, m, :titulaire)
     assert m2.status == :titulaire
   end
 
   test "an invitation is found by token without a tenant and accepted into its school" do
-    %{workspace: school, head_user: head} = TeacherFixtures.school_fixture()
+    %{workspace: school, scope: scope} = TeacherFixtures.school_fixture()
     other = TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(other.email), roles: [:teacher]})
 
     # Compared by id, not pinned as `^school`: `accept_invitation` returns
     # `inv.workspace`, loaded via the `:by_token` read's relationship load,
     # which carries extra (harmless) `__metadata__` (e.g. a keyset entry)
     # that a freshly `create`d struct doesn't — so the two aren't `==`, only
     # the same row.
-    assert {:ok, joined} = Accounts.accept_invitation(inv.token, other)
+    assert {:ok, joined} =
+             Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
+
     assert joined.id == school.id
-    assert {:ok, m} = Accounts.fetch_school_membership(school, other)
+    assert {:ok, m} = Accounts.fetch_school_membership(scope, other)
     assert m.workspace_id == school.id
   end
 
   test "a user's schools are listed without a tenant" do
     %{workspace: s1, head_user: head} = TeacherFixtures.school_fixture()
     %{workspace: s2} = TeacherFixtures.school_fixture(%{head_user: head})
-    ids = head |> Organization.list_workspaces_for() |> Enum.map(& &1.id)
+
+    ids =
+      Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: head})
+      |> Enum.map(& &1.id)
+
     assert Enum.sort(ids) == Enum.sort([s1.id, s2.id])
   end
 end

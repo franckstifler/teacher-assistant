@@ -9,7 +9,7 @@ defmodule TeacherAssistant.Academics.MarkTest do
     %{head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
-    seq = Organization.list_sequences(year) |> List.first()
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
     ctx =
       TeacherFixtures.assigned_context_fixture(scope, year, %{

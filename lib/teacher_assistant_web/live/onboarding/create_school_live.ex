@@ -34,11 +34,13 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   end
 
   defp build_form(socket) do
-    user = socket.assigns.current_scope.current_user
+    scope = socket.assigns.current_scope
+    user = scope.current_user
 
     Workspace
     |> AshPhoenix.Form.for_create(:create_school,
       as: "school",
+      scope: scope,
       prepare_source: fn changeset ->
         Ash.Changeset.set_argument(changeset, :owner_user_id, user.id)
       end

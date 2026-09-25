@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLiveTest do
     school =
       Workspace |> Ash.Query.filter(name == "Collège Vogt") |> Ash.read_one!(authorize?: false)
 
-    {:ok, profile} = Accounts.fetch_school_profile(school)
+    {:ok, profile} = Accounts.fetch_school_profile(school_scope(user, school))
     assert profile.verification_status == :unverified
     assert profile.owner_user_id == user.id
   end

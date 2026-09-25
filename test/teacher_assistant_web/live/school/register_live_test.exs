@@ -11,18 +11,20 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée R"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
+    :ok = Organization.build_default_calendar(scope, year)
 
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
@@ -73,19 +75,18 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     school: school,
     cg: cg,
     date: date,
-    head: head,
     scope: scope,
     enrollment: enrollment
   } do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{
+      Accounts.invite_member(scope, %{
         email: to_string(dm.email),
         roles: [:discipline_master]
       })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, dm)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: dm}, inv.token)
 
     conn = conn_for(school, dm)
 
@@ -105,7 +106,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         enrollment,
         {:sequence,
          Organization.current_sequence(
-           TeacherAssistant.Organization.current_academic_year(school),
+           scope,
+           TeacherAssistant.Organization.current_academic_year(scope),
            date
          )}
       )
@@ -155,16 +157,15 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     school: school,
     cg: cg,
     date: date,
-    head: head,
     scope: scope,
     enrollment: enrollment
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: fm}, inv.token)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn = conn_for(school, fm)
@@ -183,7 +184,7 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
         scope,
         enrollment,
         {:sequence,
-         Organization.current_sequence(Organization.current_academic_year(school), date)}
+         Organization.current_sequence(scope, Organization.current_academic_year(scope), date)}
       )
 
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :eq
@@ -193,14 +194,14 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     school: school,
     cg: cg,
     date: date,
-    head: head
+    scope: scope
   } do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn = conn_for(school, other)
 
@@ -210,11 +211,14 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
   test "cross-school class id redirects to /school/classes", %{conn: conn, date: date} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+
+    {:ok, os} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other}, %{name: "Autre"})
+
     other_scope = school_scope(other, os)
 
     {:ok, oy} =
-      Organization.create_academic_year(os, %{
+      Organization.create_academic_year(other_scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

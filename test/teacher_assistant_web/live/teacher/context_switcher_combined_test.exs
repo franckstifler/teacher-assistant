@@ -9,11 +9,15 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Combiné"
+      })
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -30,11 +34,21 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
-    %{conn: conn, ws: school, year: year, head: head, course: course, tc_a: tc_a, tc_b: tc_b}
+    %{
+      conn: conn,
+      ws: school,
+      year: year,
+      head: head,
+      scope: scope,
+      course: course,
+      tc_a: tc_a,
+      tc_b: tc_b
+    }
   end
 
   test "the class switcher shows one row for a combined course, not one per class", %{
     conn: conn,
+    scope: scope,
     course: course,
     tc_a: tc_a
   } do
@@ -50,7 +64,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
 
     assert length(item_ids) == 1
 
-    representative_id = Curriculum.unit_select_id({:course, course})
+    representative_id = Curriculum.unit_select_id(scope, {:course, course})
     assert has_element?(view, "#class-switcher-item-#{representative_id}", course.label)
   end
 end

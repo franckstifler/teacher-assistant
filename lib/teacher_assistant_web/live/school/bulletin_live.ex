@@ -19,11 +19,11 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
       year = scope.current_academic_year
-      sequences = if year, do: Organization.list_sequences(year), else: []
-      terms = if year, do: Organization.list_terms(year), else: []
+      sequences = if year, do: Organization.list_sequences(scope, year), else: []
+      terms = if year, do: Organization.list_terms(scope, year), else: []
 
       period =
-        (year && Organization.resolve_period(year, params["period"])) ||
+        (year && Organization.resolve_period(scope, year, params["period"])) ||
           case sequences do
             [seq | _] -> {:sequence, seq}
             [] -> nil
@@ -69,7 +69,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     year = socket.assigns.year
 
     period =
-      (year && Organization.resolve_period(year, params["period"])) || socket.assigns.period
+      (year && Organization.resolve_period(socket.assigns.current_scope, year, params["period"])) ||
+        socket.assigns.period
 
     results =
       period &&

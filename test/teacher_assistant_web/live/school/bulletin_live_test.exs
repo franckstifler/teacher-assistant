@@ -12,19 +12,21 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Bu"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée Bu"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
-    [seq | _] = Organization.list_sequences(year)
+    :ok = Organization.build_default_calendar(scope, year)
+    [seq | _] = Organization.list_sequences(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
 
     {:ok, _} =
@@ -61,13 +63,12 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     cg: cg,
     enr: enr,
     seq: seq,
-    school: school,
     scope: scope
   } do
     # grade a second séquence in the same term so the trimester has two components
-    year = TeacherAssistant.Organization.current_academic_year(school)
-    [s1, s2 | _] = TeacherAssistant.Organization.list_sequences(year)
-    [term1 | _] = TeacherAssistant.Organization.list_terms(year)
+    year = TeacherAssistant.Organization.current_academic_year(scope)
+    [s1, s2 | _] = TeacherAssistant.Organization.list_sequences(scope, year)
+    [term1 | _] = TeacherAssistant.Organization.list_terms(scope, year)
     _ = seq
 
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
@@ -235,14 +236,17 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     conn: conn,
     cg: cg,
     seq: seq,
-    school: school,
     scope: scope
   } do
     {:ok, cg2} =
-      Enrollment.create_class_group(scope, Organization.current_academic_year(school), %{
-        label: "6e B",
-        level: "6ème"
-      })
+      Enrollment.create_class_group(
+        scope,
+        TeacherAssistant.Organization.current_academic_year(scope),
+        %{
+          label: "6e B",
+          level: "6ème"
+        }
+      )
 
     {:ok, _} = Enrollment.add_student(scope, cg2, %{full_name: "Bob", sex: :m})
     [%{enrollment: other_enr}] = Enrollment.list_roster(scope, cg2)

@@ -11,11 +11,13 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée T"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée T"})
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -183,9 +185,12 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(fm.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: fm}, inv.token)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn =
@@ -214,9 +219,12 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -230,11 +238,14 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
   test "cross-school class id redirects to /school/classes", %{conn: conn} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+
+    {:ok, os} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other}, %{name: "Autre"})
+
     other_scope = school_scope(other, os)
 
     {:ok, oy} =
-      Organization.create_academic_year(os, %{
+      Organization.create_academic_year(other_scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

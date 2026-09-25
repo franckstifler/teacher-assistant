@@ -20,15 +20,15 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     %{ws: ws, scope: scope, plan: plan}
   end
 
-  defp seed_sequence(plan) do
+  defp seed_sequence(scope, plan) do
     {:ok, ay} =
       Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id,
         authorize?: false,
         tenant: plan.workspace_id
       )
 
-    :ok = Organization.build_default_calendar(ay)
-    [seq | _] = Organization.list_sequences(ay)
+    :ok = Organization.build_default_calendar(scope, ay)
+    [seq | _] = Organization.list_sequences(scope, ay)
     seq
   end
 
@@ -126,7 +126,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     plan: plan,
     scope: scope
   } do
-    seq = seed_sequence(plan)
+    seq = seed_sequence(scope, plan)
     {:ok, m} = Curriculum.create_module(scope, plan, %{title: "M1"})
 
     {:ok, e1} =
@@ -139,7 +139,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
   end
 
   test "a lesson added after assignment inherits the module sequence", %{plan: plan, scope: scope} do
-    seq = seed_sequence(plan)
+    seq = seed_sequence(scope, plan)
     {:ok, m} = Curriculum.create_module(scope, plan, %{title: "M1"})
     {:ok, m} = Curriculum.assign_module_sequence(scope, m, seq.id)
     {:ok, m} = Curriculum.fetch_owned_module(scope, m.id)

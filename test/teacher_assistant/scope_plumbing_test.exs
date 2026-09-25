@@ -10,7 +10,7 @@ defmodule TeacherAssistant.ScopePlumbingTest do
     %{workspace: _ws, year: year, scope: head} = setup_complete_school_fixture()
     [cg | _] = Enrollment.list_class_groups(head, year)
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(head, cg, %{full_name: "Awa Ndi", sex: :f})
-    [seq | _] = Organization.list_sequences(year)
+    [seq | _] = Organization.list_sequences(head, year)
     %{head: head, e: e, seq: seq}
   end
 
@@ -46,5 +46,12 @@ defmodule TeacherAssistant.ScopePlumbingTest do
     assert [%{enrollment: %{id: id}}] = Enrollment.list_roster(head, cg)
     assert id == e.id
     assert is_list(TeacherAssistant.Curriculum.list_subjects(head))
+  end
+
+  test "Accounts attributes an invitation to the scope's user", %{head: head} do
+    {:ok, inv} =
+      TeacherAssistant.Accounts.invite_member(head, %{email: "x@example.com", roles: [:teacher]})
+
+    assert inv.invited_by_user_id == head.current_user.id
   end
 end

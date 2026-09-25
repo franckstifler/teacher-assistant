@@ -2,7 +2,8 @@ defmodule TeacherAssistant.Organization do
   use Ash.Domain, otp_app: :teacher_assistant
 
   alias TeacherAssistant.Academics.{AcademicYear, Sequence, Term, Workspace}
-  alias TeacherAssistant.Accounts.{SchoolMembership, User}
+  alias TeacherAssistant.Accounts.SchoolMembership
+  alias TeacherAssistant.Scope
 
   @profile_keys [
     :short_name,
@@ -38,77 +39,78 @@ defmodule TeacherAssistant.Organization do
   @doc """
   Creates a school workspace with its profile, the creator's `:head`
   membership, and the seeded Subject catalog — all inside the
-  `Workspace.:create_school` create transaction.
+  `Workspace.:create_school` create transaction. Takes a scope carrying
+  only the user (there is no school yet to scope to).
   """
-  def create_school(%User{} = user, %{} = attrs) do
+  def create_school(%Scope{} = scope, %{} = attrs) do
     name = attrs[:name] || attrs["name"]
 
     Workspace
-    |> Ash.Changeset.for_create(:create_school, %{
-      name: name,
-      owner_user_id: user.id,
-      profile: Map.take(attrs, @profile_keys)
-    })
+    |> Ash.Changeset.for_create(
+      :create_school,
+      %{
+        name: name,
+        owner_user_id: scope.current_user.id,
+        profile: Map.take(attrs, @profile_keys)
+      },
+      scope: scope
+    )
     |> Ash.create()
   end
 
   @doc """
-  Every school the user is an active member of, in membership order.
+  Every school the scope's user is an active member of, in membership order.
 
   Runs with no tenant: `SchoolMembership` is a `global? true` multitenant
   resource so this read (needed before any tenant is chosen) works across
-  every school.
+  every school. Takes a scope carrying only the user.
   """
-  def list_workspaces_for(%User{} = user) do
+  def list_workspaces_for(%Scope{} = scope) do
     SchoolMembership
-    |> Ash.Query.for_read(:active_for_user, %{user_id: user.id})
+    |> Ash.Query.for_read(:active_for_user, %{user_id: scope.current_user.id}, scope: scope)
     |> Ash.read!()
     |> Enum.map(& &1.workspace)
   end
 
   # --- Academic calendar (AcademicYear / Term / Sequence) -------------------
 
-  def create_academic_year(%Workspace{} = ws, attrs) do
+  def create_academic_year(%Scope{} = scope, attrs) do
     attrs = Map.put_new(attrs, :active, true)
 
     AcademicYear
-    |> Ash.Changeset.for_create(:create_for_workspace, attrs)
-    |> Ash.Changeset.set_tenant(ws.id)
+    |> Ash.Changeset.for_create(:create_for_workspace, attrs, scope: scope)
     |> Ash.create()
   end
 
-  def list_academic_years(%Workspace{id: ws_id}) do
+  def list_academic_years(%Scope{} = scope) do
     AcademicYear
-    |> Ash.Query.for_read(:for_workspace)
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:for_workspace, %{}, scope: scope)
     |> Ash.read!()
   end
 
-  def current_academic_year(%Workspace{id: ws_id}) do
+  def current_academic_year(%Scope{} = scope) do
     AcademicYear
-    |> Ash.Query.for_read(:active_for_workspace)
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:active_for_workspace, %{}, scope: scope)
     |> Ash.read!()
     |> List.first()
   end
 
   @doc """
-  Fetches an academic year by id, scoped to `ws`'s tenant (IDOR guard):
+  Fetches an academic year by id, scoped to the scope's tenant (IDOR guard):
   a year that belongs to a different workspace is invisible, same as any
   other cross-tenant read.
   """
-  def get_academic_year(id, %Workspace{id: ws_id}) do
-    Ash.get(AcademicYear, id, tenant: ws_id)
+  def get_academic_year(%Scope{} = scope, id) do
+    Ash.get(AcademicYear, id, scope: scope)
   end
 
   @doc """
   Activates `year` and deactivates every other active year of the same
   workspace (see `AcademicYear`'s `:activate` action).
   """
-  def activate_academic_year(%AcademicYear{} = year) do
+  def activate_academic_year(%Scope{} = scope, %AcademicYear{} = year) do
     year
-    |> Ash.Changeset.for_update(:activate)
-    |> Ash.Changeset.set_tenant(year.workspace_id)
+    |> Ash.Changeset.for_update(:activate, %{}, scope: scope)
     |> Ash.update()
   end
 
@@ -117,22 +119,25 @@ defmodule TeacherAssistant.Organization do
   `Reference.default_calendar_preset/2` applied to the year's own dates. Not wrapped in a shared transaction
   (same as before the move) — each Term/Sequence create is its own action call.
   """
-  def build_default_calendar(%AcademicYear{} = year) do
-    if list_sequences(year) == [], do: do_build_default_calendar(year), else: :ok
+  def build_default_calendar(%Scope{} = scope, %AcademicYear{} = year) do
+    if list_sequences(scope, year) == [], do: do_build_default_calendar(scope, year), else: :ok
   end
 
-  defp do_build_default_calendar(year) do
+  defp do_build_default_calendar(%Scope{} = scope, year) do
     preset =
       TeacherAssistant.Academics.Reference.default_calendar_preset(year.start_date, year.end_date)
 
     Enum.each(preset.terms, fn term_spec ->
       {:ok, term} =
         Term
-        |> Ash.Changeset.for_create(:create, %{
-          position: term_spec.position,
-          academic_year_id: year.id
-        })
-        |> Ash.Changeset.set_tenant(year.workspace_id)
+        |> Ash.Changeset.for_create(
+          :create,
+          %{
+            position: term_spec.position,
+            academic_year_id: year.id
+          },
+          scope: scope
+        )
         |> Ash.create()
 
       Enum.each(term_spec.sequences, fn s ->
@@ -141,9 +146,9 @@ defmodule TeacherAssistant.Organization do
           :create,
           s
           |> Map.take([:number, :position_in_term, :start_date, :end_date, :integration_week])
-          |> Map.put(:term_id, term.id)
+          |> Map.put(:term_id, term.id),
+          scope: scope
         )
-        |> Ash.Changeset.set_tenant(year.workspace_id)
         |> Ash.create!()
       end)
     end)
@@ -151,17 +156,15 @@ defmodule TeacherAssistant.Organization do
     :ok
   end
 
-  def list_sequences(%AcademicYear{id: year_id, workspace_id: ws_id}) do
+  def list_sequences(%Scope{} = scope, %AcademicYear{id: year_id}) do
     Sequence
-    |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id})
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id}, scope: scope)
     |> Ash.read!()
   end
 
-  def list_terms(%AcademicYear{id: year_id, workspace_id: ws_id}) do
+  def list_terms(%Scope{} = scope, %AcademicYear{id: year_id}) do
     Term
-    |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id})
-    |> Ash.Query.set_tenant(ws_id)
+    |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id}, scope: scope)
     |> Ash.read!()
   end
 
@@ -181,34 +184,37 @@ defmodule TeacherAssistant.Organization do
   def period_param({:trimester, %Term{id: id}}), do: "trim:" <> id
   def period_param({:annual, _}), do: "annee"
 
-  def resolve_period(%AcademicYear{} = year, "annee"), do: {:annual, year}
+  def resolve_period(%Scope{} = _scope, %AcademicYear{} = year, "annee"), do: {:annual, year}
 
-  def resolve_period(%AcademicYear{} = year, "seq:" <> id) do
-    case Enum.find(list_sequences(year), &(&1.id == id)) do
+  def resolve_period(%Scope{} = scope, %AcademicYear{} = year, "seq:" <> id) do
+    case Enum.find(list_sequences(scope, year), &(&1.id == id)) do
       nil -> nil
       seq -> {:sequence, seq}
     end
   end
 
-  def resolve_period(%AcademicYear{} = year, "trim:" <> id) do
-    case Enum.find(list_terms(year), &(&1.id == id)) do
+  def resolve_period(%Scope{} = scope, %AcademicYear{} = year, "trim:" <> id) do
+    case Enum.find(list_terms(scope, year), &(&1.id == id)) do
       nil -> nil
       term -> {:trimester, term}
     end
   end
 
-  def resolve_period(_year, _param), do: nil
+  def resolve_period(%Scope{} = _scope, _year, _param), do: nil
 
-  def period_date_range({:sequence, %Sequence{start_date: start_date, end_date: end_date}}) do
-    {start_date, end_date}
+  def period_date_range(
+        %Scope{} = _scope,
+        {:sequence, %Sequence{start_date: start, end_date: last}}
+      ) do
+    {start, last}
   end
 
-  def period_date_range({:trimester, %Term{sequences: sequences}}) do
+  def period_date_range(%Scope{} = _scope, {:trimester, %Term{sequences: sequences}}) do
     sequence_date_range(sequences)
   end
 
-  def period_date_range({:annual, %AcademicYear{} = year}) do
-    sequence_date_range(list_sequences(year))
+  def period_date_range(%Scope{} = scope, {:annual, %AcademicYear{} = year}) do
+    sequence_date_range(list_sequences(scope, year))
   end
 
   defp sequence_date_range([]), do: nil
@@ -219,9 +225,9 @@ defmodule TeacherAssistant.Organization do
     {first, last}
   end
 
-  def current_sequence(%AcademicYear{} = year, %Date{} = date) do
-    year
-    |> list_sequences()
+  def current_sequence(%Scope{} = scope, %AcademicYear{} = year, %Date{} = date) do
+    scope
+    |> list_sequences(year)
     |> Enum.find(fn s ->
       Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
     end)

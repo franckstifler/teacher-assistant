@@ -8,7 +8,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     %{workspace: ws, scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -90,9 +90,9 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     assert e.class_group_id == cg2.id
   end
 
-  test "transfer to a different year is rejected", %{ws: ws, cg: cg, scope: scope} do
+  test "transfer to a different year is rejected", %{cg: cg, scope: scope} do
     {:ok, other_year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2026-2027",
         start_date: ~D[2026-09-07],
         end_date: ~D[2027-07-31],

@@ -7,13 +7,17 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "École du Logo"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "École du Logo"
+      })
+
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
-    %{conn: conn, school: school}
+    %{conn: conn, school: school, scope: school_scope(user, school)}
   end
 
-  test "uploading a logo stores a file and sets logo_path", %{conn: conn, school: school} do
+  test "uploading a logo stores a file and sets logo_path", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings")
 
     logo =
@@ -28,7 +32,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
     render_upload(logo, "logo.png")
     view |> element("#school-logo-form") |> render_submit()
 
-    {:ok, p} = Accounts.fetch_school_profile(school)
+    {:ok, p} = Accounts.fetch_school_profile(scope)
     assert p.logo_path
 
     assert File.exists?(
@@ -36,7 +40,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
            )
   end
 
-  test "the served logo route returns the stored file", %{conn: conn, school: school} do
+  test "the served logo route returns the stored file", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings")
 
     logo =
@@ -51,7 +55,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
     render_upload(logo, "logo.png")
     view |> element("#school-logo-form") |> render_submit()
 
-    {:ok, _p} = Accounts.fetch_school_profile(school)
+    {:ok, _p} = Accounts.fetch_school_profile(scope)
 
     conn = get(conn, ~p"/school/logo")
     assert conn.status == 200

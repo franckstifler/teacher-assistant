@@ -42,7 +42,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
   end
 
   def accept(conn, %{"token" => token}) do
-    case Accounts.accept_invitation(token, conn.assigns.current_user) do
+    case Accounts.accept_invitation(conn.assigns.current_scope, token) do
       {:ok, school} ->
         conn
         |> put_session(:workspace_id, school.id)

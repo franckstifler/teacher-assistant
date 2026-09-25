@@ -6,23 +6,25 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Accounts.SchoolMembership, as: SchoolMembership
 
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
+    scope = %TeacherAssistant.Scope{current_user: head}
+    {:ok, school} = Organization.create_school(scope, %{name: "Lycée R"})
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    :ok = Organization.build_default_calendar(year)
-    [seq | _] = Organization.list_sequences(year)
+    :ok = Organization.build_default_calendar(scope, year)
+    [seq | _] = Organization.list_sequences(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
 
@@ -50,11 +52,14 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
 
   test "cross-school class id redirects", %{conn: conn, head: head} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, os} = Organization.create_school(other, %{name: "Autre"})
+
+    {:ok, os} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other}, %{name: "Autre"})
+
     other_scope = school_scope(other, os)
 
     {:ok, oy} =
-      Organization.create_academic_year(os, %{
+      Organization.create_academic_year(other_scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -68,13 +73,24 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
              live(conn, ~p"/school/classes/#{ocg.id}/results")
   end
 
-  test "a non-admin member is redirected to /school", %{school: school, cg: cg, head: head} do
+  test "a non-admin member is redirected to /school", %{school: school, cg: cg, scope: scope} do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(other.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    # Pre-create membership so school_scope works for acceptance
+    {:ok, _m} =
+      SchoolMembership
+      |> Ash.Changeset.for_create(:create, %{
+        user_id: other.id,
+        roles: inv.roles,
+        status: inv.membership_status
+      })
+      |> Ash.Changeset.set_tenant(school.id)
+      |> Ash.create()
+
+    {:ok, _} = Accounts.accept_invitation(school_scope(other, school), inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -87,18 +103,28 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   end
 
   test "the form master can view results for their class", %{
-    conn: conn,
     cg: cg,
-    head: head,
     school: school,
     scope: scope
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    # Pre-create membership so school_scope works for acceptance
+    {:ok, _m} =
+      SchoolMembership
+      |> Ash.Changeset.for_create(:create, %{
+        user_id: fm.id,
+        roles: inv.roles,
+        status: inv.membership_status
+      })
+      |> Ash.Changeset.set_tenant(school.id)
+      |> Ash.create()
+
+    {:ok, _} = Accounts.accept_invitation(school_scope(fm, school), inv.token)
+    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     conn =
@@ -114,12 +140,12 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   test "the period selector switches to a trimester and recomputes", %{
     conn: conn,
     cg: cg,
-    school: school
+    scope: scope
   } do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results")
     # séquence 1 is the default; switch to Trimestre 1
-    year = TeacherAssistant.Organization.current_academic_year(school)
-    [term1 | _] = TeacherAssistant.Organization.list_terms(year)
+    year = TeacherAssistant.Organization.current_academic_year(scope)
+    [term1 | _] = TeacherAssistant.Organization.list_terms(scope, year)
 
     html =
       view
@@ -135,16 +161,26 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
   test "results header shows the form master when set", %{
     conn: conn,
     cg: cg,
-    head: head,
     school: school,
     scope: scope
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(fm.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(fm.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, fm)
+    # Pre-create membership so school_scope works for acceptance
+    {:ok, _m} =
+      SchoolMembership
+      |> Ash.Changeset.for_create(:create, %{
+        user_id: fm.id,
+        roles: inv.roles,
+        status: inv.membership_status
+      })
+      |> Ash.Changeset.set_tenant(school.id)
+      |> Ash.create()
+
+    {:ok, _} = Accounts.accept_invitation(school_scope(fm, school), inv.token)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
 
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")

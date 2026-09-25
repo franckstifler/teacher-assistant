@@ -10,11 +10,16 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Test"
+      })
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

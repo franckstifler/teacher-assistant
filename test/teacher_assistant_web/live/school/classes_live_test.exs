@@ -8,11 +8,13 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée C"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée C"})
+
     scope = school_scope(user, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -71,9 +73,12 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()
@@ -99,7 +104,11 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
   # even mounts, redirecting to the wizard instead (regardless of member
   # role) — so they now assert on that redirect.
   test "no active year redirects to the setup wizard", %{conn: conn, actor: user} do
-    {:ok, school2} = Organization.create_school(user, %{name: "Lycée SansAnnée"})
+    {:ok, school2} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée SansAnnée"
+      })
+
     conn = Plug.Conn.put_session(conn, :workspace_id, school2.id)
     assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school/classes")
   end
@@ -108,13 +117,20 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     conn: _conn,
     actor: head
   } do
-    {:ok, school2} = Organization.create_school(head, %{name: "Lycée SansAnnéeVP"})
+    {:ok, school2} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée SansAnnéeVP"
+      })
+
     other = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school2, head, %{email: to_string(other.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school2), %{
+        email: to_string(other.email),
+        roles: [:teacher]
+      })
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, other)
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()

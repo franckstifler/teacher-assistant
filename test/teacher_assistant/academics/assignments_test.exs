@@ -8,11 +8,16 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Test"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Test"
+      })
+
     scope = school_scope(head, school)
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -166,8 +171,11 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
   # Creates an active membership for `user` in `school` via the invitation flow.
   defp add_active_member(school, head, user) do
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(user.email), roles: [:teacher]})
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(user.email),
+        roles: [:teacher]
+      })
 
-    Accounts.accept_invitation(inv.token, user)
+    Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: user}, inv.token)
   end
 end

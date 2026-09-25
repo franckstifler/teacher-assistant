@@ -6,7 +6,11 @@ defmodule TeacherAssistantWeb.LocaleTest do
   setup :register_and_log_in_user
 
   setup %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Locale"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Locale"
+      })
+
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn}

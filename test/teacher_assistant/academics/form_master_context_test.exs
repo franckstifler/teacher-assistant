@@ -5,10 +5,12 @@ defmodule TeacherAssistant.Academics.FormMasterContextTest do
 
   setup do
     user = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée FMC"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée FMC"})
 
     {:ok, year} =
-      Organization.create_academic_year(school, %{
+      Organization.create_academic_year(school_scope(user, school), %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],

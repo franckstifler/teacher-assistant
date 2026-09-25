@@ -28,12 +28,12 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
        step: initial_step(scope, year),
        ws: ws,
        year: year,
-       year_form: year_form(ws.id, year == nil),
-       class_streams: class_streams_for(ws),
+       year_form: year_form(scope, year == nil),
+       class_streams: class_streams_for(scope),
        class_form: class_form(),
        invite_form: invite_form(),
-       profile: fetch_profile(ws),
-       staff_count: ws |> Accounts.list_members() |> length()
+       profile: fetch_profile(scope),
+       staff_count: scope |> Accounts.list_members() |> length()
      )
      |> assign_classes(year)
      |> assign_invitations()}
@@ -249,7 +249,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     if Permissions.admin?(scope) do
       case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
         {:ok, year} ->
-          :ok = Organization.build_default_calendar(year)
+          :ok = Organization.build_default_calendar(scope, year)
           :ok = Attendance.build_default_periods(scope)
           Seeding.seed_starter_classes(scope, year)
 
@@ -344,7 +344,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     if Permissions.head?(scope) do
       roles = parse_invite_roles(params["roles"])
 
-      case Accounts.invite_member(scope.current_workspace, scope.current_user, %{
+      case Accounts.invite_member(scope, %{
              email: params["email"],
              roles: roles,
              membership_status: parse_membership_status(params["membership_status"])
@@ -376,11 +376,11 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   end
 
   defp assign_invitations(socket) do
-    assign(socket, :invitations, Accounts.list_pending_invitations(socket.assigns.ws))
+    assign(socket, :invitations, Accounts.list_pending_invitations(socket.assigns.current_scope))
   end
 
-  defp fetch_profile(ws) do
-    case Accounts.fetch_school_profile(ws) do
+  defp fetch_profile(scope) do
+    case Accounts.fetch_school_profile(scope) do
       {:ok, profile} -> profile
       _ -> nil
     end
@@ -405,8 +405,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   defp parse_membership_status(""), do: nil
   defp parse_membership_status(status) when is_binary(status), do: String.to_existing_atom(status)
 
-  defp class_streams_for(ws) do
-    case TeacherAssistant.Accounts.fetch_school_profile(ws) do
+  defp class_streams_for(scope) do
+    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
       {:ok, profile} -> SchoolTemplates.streams_for(profile.school_type, profile.subsystem)
       _ -> %{kind: :serie, values: [], levels: []}
     end
@@ -433,7 +433,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   defp presence(value), do: value
 
   # The invite dialog binds to `SchoolInvitation :create` for its email
-  # field. Submit still routes through `Accounts.invite_member/3`, which owns
+  # field. Submit still routes through `Accounts.invite_member/2`, which owns
   # the token/expiry generation, the "already a member" guard and the
   # invitation email — mirrors `MembersLive.invite_form/0`.
   defp invite_form do
@@ -448,11 +448,11 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   # user input), set on the changeset at build time via `prepare_source` —
   # same pattern as `School.SettingsLive.year_form/2`. Only the first year of
   # a workspace is created active.
-  defp year_form(workspace_id, active?) do
+  defp year_form(scope, active?) do
     AcademicYear
     |> AshPhoenix.Form.for_create(:create_for_workspace,
       as: "year",
-      tenant: workspace_id,
+      scope: scope,
       prepare_source: fn changeset ->
         Ash.Changeset.change_attribute(changeset, :active, active?)
       end

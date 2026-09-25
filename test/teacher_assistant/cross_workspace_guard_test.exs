@@ -41,8 +41,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
     {:ok, course_a} = Curriculum.combine_course(scope_a, [tc_a, tc_a2])
 
-    seq_a = year_a |> Organization.list_sequences() |> List.first()
-    seq_b = year_b |> Organization.list_sequences() |> List.first()
+    seq_a = Organization.list_sequences(scope_a, year_a) |> List.first()
+    seq_b = Organization.list_sequences(scope_b, year_b) |> List.first()
 
     period_a = Attendance.list_periods(scope_a) |> Enum.find(&(&1.kind == :lesson))
     period_b = Attendance.list_periods(scope_b) |> Enum.find(&(&1.kind == :lesson))

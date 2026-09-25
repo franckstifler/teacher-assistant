@@ -12,11 +12,16 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+
+    {:ok, ws} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Test"
+      })
+
     scope = school_scope(head, ws)
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -36,8 +41,8 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     other_roster = Enrollment.list_roster(scope, cg_other)
     [%{enrollment: other_enrollment}] = other_roster
 
-    :ok = Organization.build_default_calendar(year)
-    [seq1, seq2 | _] = Organization.list_sequences(year)
+    :ok = Organization.build_default_calendar(scope, year)
+    [seq1, seq2 | _] = Organization.list_sequences(scope, year)
 
     %{
       head: head,
@@ -234,10 +239,14 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     test "returns [] when the period range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty"})
+
+      {:ok, empty_ws} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: empty_year_head}, %{
+          name: "Lycée Empty"
+        })
 
       {:ok, empty_year} =
-        Organization.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(school_scope(empty_year_head, empty_ws), %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],
@@ -328,7 +337,9 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     test "trimester period returns the MEAN (not sum) of that term's present séquence marks",
          ctx do
-      term1 = Enum.find(Organization.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
+      term1 =
+        Enum.find(Organization.list_terms(ctx.scope, ctx.year), &(&1.id == ctx.seq1.term_id))
+
       assert ctx.seq2.term_id == term1.id
 
       {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 10)
@@ -433,7 +444,9 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     test "trimester période: batched per-student means match note_de_conduite/2, entry-less enrollment gets zeros",
          ctx do
-      term1 = Enum.find(Organization.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
+      term1 =
+        Enum.find(Organization.list_terms(ctx.scope, ctx.year), &(&1.id == ctx.seq1.term_id))
+
       assert ctx.seq2.term_id == term1.id
 
       {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 10)
@@ -456,7 +469,8 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     test "trimester période: enrollment with no marks in either séquence gets nil note_de_conduite",
          ctx do
-      term1 = Enum.find(Organization.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
+      term1 =
+        Enum.find(Organization.list_terms(ctx.scope, ctx.year), &(&1.id == ctx.seq1.term_id))
 
       {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 14)
 

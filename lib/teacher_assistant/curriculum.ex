@@ -16,8 +16,7 @@ defmodule TeacherAssistant.Curriculum do
     Sequence,
     Subject,
     TeachingContext,
-    TeachingLogEntry,
-    Workspace
+    TeachingLogEntry
   }
 
   alias TeacherAssistant.Accounts
@@ -133,7 +132,7 @@ defmodule TeacherAssistant.Curriculum do
   an active school membership.
   """
   def assign_teacher(%Scope{} = scope, %ClassGroup{} = cg, %User{} = teacher, attrs) do
-    with :ok <- assignable(cg, teacher) do
+    with :ok <- assignable(scope, teacher) do
       TeachingContext
       |> Ash.Changeset.for_create(
         :create,
@@ -162,7 +161,7 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   def reassign_teacher(%Scope{} = scope, %TeachingContext{} = tc, %User{} = teacher) do
-    with :ok <- assignable_ws(tc.workspace_id, teacher) do
+    with :ok <- assignable(scope, teacher) do
       tc
       |> Ash.Changeset.for_update(:update, %{teacher_user_id: teacher.id}, scope: scope)
       |> Ash.update()
@@ -264,10 +263,8 @@ defmodule TeacherAssistant.Curriculum do
     |> Ash.read!()
   end
 
-  defp assignable(%ClassGroup{workspace_id: ws_id}, teacher), do: assignable_ws(ws_id, teacher)
-
-  defp assignable_ws(ws_id, teacher) do
-    case Accounts.fetch_school_membership(%Workspace{id: ws_id}, teacher) do
+  defp assignable(%Scope{} = scope, %User{} = teacher) do
+    case Accounts.fetch_school_membership(scope, teacher) do
       {:ok, _membership} -> :ok
       {:error, :not_a_member} -> {:error, :not_assignable}
     end
@@ -497,7 +494,7 @@ defmodule TeacherAssistant.Curriculum do
          plan: plan,
          ctx: ctx,
          class_group: class_group,
-         year: TeacherAssistant.Organization.current_academic_year(scope.current_workspace),
+         year: TeacherAssistant.Organization.current_academic_year(scope),
          effectif: effectif
        }}
     end
@@ -684,14 +681,14 @@ defmodule TeacherAssistant.Curriculum do
   `/teacher/select-context/:id` route still resolves it), or the context's
   own id for `{:solo, _}`.
   """
-  def unit_select_id({:course, %CombinedCourse{} = course}) do
+  def unit_select_id(%Scope{} = scope, {:course, %CombinedCourse{} = course}) do
     course.id
-    |> contexts_of_course!(tenant: course.workspace_id)
+    |> contexts_of_course!(scope: scope)
     |> List.first()
     |> Map.fetch!(:id)
   end
 
-  def unit_select_id({:solo, %TeachingContext{id: id}}), do: id
+  def unit_select_id(%Scope{} = _scope, {:solo, %TeachingContext{id: id}}), do: id
 
   defp teaching_context_label(%{subject: subject, class_group: %{label: label}})
        when is_binary(label),

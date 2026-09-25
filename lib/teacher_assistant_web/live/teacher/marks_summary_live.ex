@@ -10,12 +10,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
-    ws = scope.current_workspace
 
     with {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(scope, ctx_id),
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
-      year = Organization.current_academic_year(ws)
-      sequences = if year, do: Organization.list_sequences(year), else: []
+      year = Organization.current_academic_year(scope)
+      sequences = if year, do: Organization.list_sequences(scope, year), else: []
       seq = pick(sequences, params["seq"]) || List.first(sequences)
       students = Enrollment.list_students(scope, cg)
 

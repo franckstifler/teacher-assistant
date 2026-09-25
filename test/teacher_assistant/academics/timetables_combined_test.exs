@@ -14,11 +14,16 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Combiné"})
+
+    {:ok, ws} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Combiné"
+      })
+
     scope = school_scope(head, ws)
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -103,12 +108,13 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     other_teacher = TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(ctx.ws, ctx.head, %{
+      Accounts.invite_member(school_scope(ctx.head, ctx.ws), %{
         email: to_string(other_teacher.email),
         roles: [:teacher]
       })
 
-    {:ok, _member} = Accounts.accept_invitation(inv.token, other_teacher)
+    {:ok, _member} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other_teacher}, inv.token)
 
     {:ok, tc_other} =
       Curriculum.assign_teacher(ctx.scope, ctx.unrelated, other_teacher, %{subject: "Anglais"})

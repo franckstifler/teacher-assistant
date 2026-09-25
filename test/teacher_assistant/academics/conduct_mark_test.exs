@@ -13,15 +13,15 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     %{workspace: ws, scope: scope} = TeacherFixtures.school_fixture()
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
         active: true
       })
 
-    Organization.build_default_calendar(year)
-    seq = Organization.list_sequences(year) |> List.first()
+    Organization.build_default_calendar(scope, year)
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})

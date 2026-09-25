@@ -9,10 +9,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   setup :register_and_log_in_user
 
   setup %{workspace: ws, year: year, actor: head, scope: scope} do
-    {:ok, p} = Accounts.fetch_school_profile(ws)
-    {:ok, _} = Accounts.verify_school(p, head.id)
+    {:ok, p} = Accounts.fetch_school_profile(scope)
+    {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
 
-    seq = Organization.list_sequences(year) |> List.first()
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
     ctx =
       TeacherFixtures.assigned_context_fixture(scope, year, %{

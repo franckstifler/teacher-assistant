@@ -71,7 +71,6 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
 
   test "creating the academic year seeds classes and advances to the classes step", %{
     conn: conn,
-    ws: ws,
     scope: scope
   } do
     {:ok, view, _} = live(conn, ~p"/school/setup")
@@ -82,11 +81,11 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     })
     |> render_submit()
 
-    assert TeacherAssistant.Organization.current_academic_year(ws) != nil
+    assert TeacherAssistant.Organization.current_academic_year(scope) != nil
 
     assert Enrollment.list_class_groups(
              scope,
-             TeacherAssistant.Organization.current_academic_year(ws)
+             TeacherAssistant.Organization.current_academic_year(scope)
            ) != []
 
     html = render(view)
@@ -95,8 +94,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
 
   test "creating the academic year builds its calendar and the default periods", %{
     conn: conn,
-    ws: ws,
-    head: head
+    scope: scope
   } do
     {:ok, view, _} = live(conn, ~p"/school/setup")
 
@@ -106,17 +104,17 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     })
     |> render_submit()
 
-    year = TeacherAssistant.Organization.current_academic_year(ws)
-    seqs = TeacherAssistant.Organization.list_sequences(year)
+    year = TeacherAssistant.Organization.current_academic_year(scope)
+    seqs = TeacherAssistant.Organization.list_sequences(scope, year)
     assert length(seqs) == 6
     assert List.first(seqs).start_date == ~D[2026-09-01]
     assert List.last(seqs).end_date == ~D[2027-07-05]
-    assert TeacherAssistant.Attendance.list_periods(school_scope(head, ws)) != []
+    assert TeacherAssistant.Attendance.list_periods(scope) != []
   end
 
   test "a year whose end precedes its start is refused and the wizard stays on the year step", %{
     conn: conn,
-    ws: ws
+    scope: scope
   } do
     {:ok, view, _} = live(conn, ~p"/school/setup")
 
@@ -126,12 +124,12 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
     })
     |> render_submit()
 
-    assert TeacherAssistant.Organization.current_academic_year(ws) == nil
+    assert TeacherAssistant.Organization.current_academic_year(scope) == nil
     assert has_element?(view, "#year-form")
   end
 
   describe "classes step" do
-    setup %{conn: conn, ws: ws} do
+    setup %{conn: conn, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/setup")
 
       view
@@ -144,7 +142,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLiveTest do
       })
       |> render_submit()
 
-      year = TeacherAssistant.Organization.current_academic_year(ws)
+      year = TeacherAssistant.Organization.current_academic_year(scope)
       %{view: view, year: year}
     end
 

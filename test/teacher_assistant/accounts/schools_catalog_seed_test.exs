@@ -8,7 +8,7 @@ defmodule TeacherAssistant.Accounts.SchoolsCatalogSeedTest do
     head = TeacherFixtures.user_fixture()
 
     {:ok, ws} =
-      Organization.create_school(head, %{
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
         name: "Lycée Test",
         school_type: :lycee,
         subsystem: :francophone
@@ -24,7 +24,7 @@ defmodule TeacherAssistant.Accounts.SchoolsCatalogSeedTest do
     head = TeacherFixtures.user_fixture()
 
     {:ok, ws} =
-      Organization.create_school(head, %{
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
         name: "CETIC Test",
         school_type: :cetic,
         subsystem: :francophone

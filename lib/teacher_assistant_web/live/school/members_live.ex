@@ -172,7 +172,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     if Permissions.head?(scope) do
       roles = parse_roles(params["roles"])
 
-      case Accounts.invite_member(scope.current_workspace, scope.current_user, %{
+      case Accounts.invite_member(scope, %{
              email: params["email"],
              roles: roles,
              membership_status: parse_membership_status(params["membership_status"])
@@ -193,12 +193,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     scope = socket.assigns.scope
 
     if Permissions.head?(scope) do
-      case find_invitation(scope.current_workspace, id) do
+      case find_invitation(scope, id) do
         nil ->
           {:noreply, socket}
 
         inv ->
-          {:ok, _} = Accounts.revoke_invitation(inv)
+          {:ok, _} = Accounts.revoke_invitation(inv, scope: scope)
           {:noreply, reload_members(socket)}
       end
     else
@@ -210,12 +210,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     scope = socket.assigns.scope
 
     if Permissions.head?(scope) do
-      case find_membership(scope.current_workspace, id) do
+      case find_membership(scope, id) do
         nil ->
           {:noreply, socket}
 
         membership ->
-          case Accounts.deactivate_member(membership) do
+          case Accounts.deactivate_member(scope, membership) do
             {:ok, _} ->
               {:noreply, reload_members(socket)}
 
@@ -239,12 +239,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     if Permissions.head?(scope) do
       roles = parse_roles(params["roles"])
 
-      case find_membership(scope.current_workspace, id) do
+      case find_membership(scope, id) do
         nil ->
           {:noreply, socket}
 
         membership ->
-          case Accounts.update_member_roles(membership, roles) do
+          case Accounts.update_member_roles(scope, membership, roles) do
             {:ok, _} ->
               {:noreply, reload_members(socket)}
 
@@ -266,12 +266,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     scope = socket.assigns.scope
 
     if Permissions.head?(scope) do
-      case find_membership(scope.current_workspace, id) do
+      case find_membership(scope, id) do
         nil ->
           {:noreply, socket}
 
         membership ->
-          case Accounts.update_member_status(membership, parse_membership_status(status)) do
+          case Accounts.update_member_status(scope, membership, parse_membership_status(status)) do
             {:ok, _} -> {:noreply, reload_members(socket)}
             {:error, _} -> {:noreply, socket}
           end
@@ -282,7 +282,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   end
 
   # The invite dialog binds to `SchoolInvitation :create` for its email field.
-  # Submit still routes through `Accounts.invite_member/3`, which owns the
+  # Submit still routes through `Accounts.invite_member/2`, which owns the
   # token/expiry generation, the "already a member" guard and the invitation
   # email — behaviour the bare create action does not reproduce.
   defp invite_form do
@@ -292,11 +292,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   end
 
   defp reload_members(socket) do
-    school = socket.assigns.scope.current_workspace
+    scope = socket.assigns.scope
 
     socket
-    |> assign(:members, Accounts.list_members(school))
-    |> assign(:invitations, Accounts.list_pending_invitations(school))
+    |> assign(:members, Accounts.list_members(scope))
+    |> assign(:invitations, Accounts.list_pending_invitations(scope))
   end
 
   defp parse_roles(nil), do: [:teacher]
@@ -316,14 +316,14 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   defp parse_membership_status(""), do: nil
   defp parse_membership_status(status) when is_binary(status), do: String.to_existing_atom(status)
 
-  defp find_invitation(school, id) do
-    school
+  defp find_invitation(scope, id) do
+    scope
     |> Accounts.list_pending_invitations()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end
 
-  defp find_membership(school, id) do
-    school
+  defp find_membership(scope, id) do
+    scope
     |> Accounts.list_members()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end

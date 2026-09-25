@@ -22,7 +22,7 @@ defmodule TeacherAssistant.ConstraintsTest do
     {:ok, cg} = TeacherAssistant.Enrollment.fetch_owned_class_group(scope, tc.class_group_id)
     {:ok, _} = TeacherAssistant.Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
-    seq = year |> Organization.list_sequences() |> List.first()
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
     %{
       ws: ws,
@@ -51,42 +51,43 @@ defmodule TeacherAssistant.ConstraintsTest do
     end
 
     test "a create with active: true that fails (duplicate name) leaves the previous year active",
-         %{ws: ws, year: year} do
+         %{ws: _ws, year: year, scope: scope} do
       assert year.active
 
       assert {:error, %Ash.Error.Invalid{}} =
-               Organization.create_academic_year(ws, %{
+               Organization.create_academic_year(scope, %{
                  name: year.name,
                  start_date: ~D[2031-09-01],
                  end_date: ~D[2032-06-30],
                  active: true
                })
 
-      {:ok, reloaded} = Organization.get_academic_year(year.id, ws)
+      {:ok, reloaded} = Organization.get_academic_year(scope, year.id)
       assert reloaded.active
     end
 
-    test "activate still works because it deactivates siblings first", %{ws: ws} do
+    test "activate still works because it deactivates siblings first", %{ws: _ws, scope: scope} do
       {:ok, y2} =
-        Organization.create_academic_year(ws, %{
+        Organization.create_academic_year(scope, %{
           name: "Suivante",
           start_date: ~D[2030-09-01],
           end_date: ~D[2031-06-30],
           active: false
         })
 
-      assert {:ok, %{active: true}} = Organization.activate_academic_year(y2)
-      assert Organization.current_academic_year(ws).id == y2.id
+      assert {:ok, %{active: true}} = Organization.activate_academic_year(scope, y2)
+      assert Organization.current_academic_year(scope).id == y2.id
     end
 
     test "create_academic_year(active: true) also deactivates the sibling first", %{
-      ws: ws,
-      year: year
+      ws: _ws,
+      year: year,
+      scope: scope
     } do
       assert year.active
 
       assert {:ok, y2} =
-               Organization.create_academic_year(ws, %{
+               Organization.create_academic_year(scope, %{
                  name: "2031-2032",
                  start_date: ~D[2031-09-01],
                  end_date: ~D[2032-06-30],
@@ -94,7 +95,7 @@ defmodule TeacherAssistant.ConstraintsTest do
                })
 
       assert y2.active
-      {:ok, reloaded} = Organization.get_academic_year(year.id, ws)
+      {:ok, reloaded} = Organization.get_academic_year(scope, year.id)
       refute reloaded.active
     end
 
@@ -298,9 +299,10 @@ defmodule TeacherAssistant.ConstraintsTest do
   describe "sequences: ordered dates" do
     test "a sequence with end_date before start_date is rejected at the database level", %{
       ws: ws,
-      year: year
+      year: year,
+      scope: scope
     } do
-      term = year |> Organization.list_terms() |> List.first()
+      term = Organization.list_terms(scope, year) |> List.first()
 
       assert {:error, _} =
                Sequence

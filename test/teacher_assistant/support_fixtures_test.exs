@@ -12,10 +12,10 @@ defmodule TeacherAssistant.SupportFixturesTest do
     year: year,
     scope: scope
   } do
-    assert {:ok, m} = Accounts.fetch_school_membership(school, head)
+    assert {:ok, m} = Accounts.fetch_school_membership(scope, head)
     assert :head in m.roles
-    assert Organization.current_academic_year(school).id == year.id
-    assert length(Organization.list_sequences(year)) == 6
+    assert Organization.current_academic_year(scope).id == year.id
+    assert length(Organization.list_sequences(scope, year)) == 6
     assert Attendance.list_periods(scope) != []
     assert Plug.Conn.get_session(conn, :workspace_id) == school.id
   end

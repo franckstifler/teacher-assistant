@@ -10,11 +10,19 @@ defmodule TeacherAssistantWeb.WorkspaceSwitcherTest do
     actor: user,
     workspace: home_school
   } do
-    {:ok, school} = Organization.create_school(user, %{name: "École Deux"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "École Deux"
+      })
+
     TeacherFixtures.complete_school_setup!(school_scope(user, school))
 
     other_head = TeacherFixtures.user_fixture()
-    {:ok, other_school} = Organization.create_school(other_head, %{name: "École Étrangère"})
+
+    {:ok, other_school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: other_head}, %{
+        name: "École Étrangère"
+      })
 
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")

@@ -13,7 +13,11 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
   end
 
   test "scope_for resolves a school workspace via active membership", %{user: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "École Scope"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "École Scope"
+      })
+
     assert {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
     assert scope.current_workspace.id == school.id
     assert :head in scope.current_roles
@@ -21,7 +25,9 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
   test "scope_for rejects a school the user is not a member of", %{user: user} do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(head, %{name: "École X"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "École X"})
 
     assert {:error, :not_a_member} =
              TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
@@ -29,10 +35,11 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
   describe "school teaching scope (P2.2)" do
     setup %{user: user} do
-      {:ok, school} = Organization.create_school(user, %{name: "Lycée S"})
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée S"})
 
       {:ok, year} =
-        Organization.create_academic_year(school, %{
+        Organization.create_academic_year(school_scope(user, school), %{
           name: "2025-2026",
           start_date: ~D[2025-09-08],
           end_date: ~D[2026-07-31],
@@ -71,12 +78,13 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
       other = TeacherFixtures.user_fixture()
 
       {:ok, inv} =
-        Accounts.invite_member(school, user, %{
+        Accounts.invite_member(school_scope(user, school), %{
           email: to_string(other.email),
           roles: [:teacher]
         })
 
-      {:ok, _} = Accounts.accept_invitation(inv.token, other)
+      {:ok, _} =
+        Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
 
       {:ok, mine} =
         Curriculum.assign_teacher(school_scope(user, school), cg, user, %{subject: "Maths"})
@@ -91,7 +99,11 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
 
   describe "default workspace (school-only product)" do
     test "scope_for with nil workspace resolves the first active school membership", %{user: user} do
-      {:ok, school} = Organization.create_school(user, %{name: "École Défaut"})
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+          name: "École Défaut"
+        })
+
       assert {:ok, scope} = Workspaces.scope_for(user, nil)
       assert scope.current_workspace.id == school.id
     end
@@ -102,22 +114,36 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
     end
 
     test "list_workspaces_for returns schools only", %{user: user} do
-      {:ok, school} = Organization.create_school(user, %{name: "École Liste"})
-      ids = user |> Organization.list_workspaces_for() |> Enum.map(& &1.id)
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+          name: "École Liste"
+        })
+
+      ids =
+        Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: user})
+        |> Enum.map(& &1.id)
+
       assert ids == [school.id]
     end
 
     test "scope_for(user, nil) and list_workspaces_for are stable across several schools", %{
       user: user
     } do
-      {:ok, first} = Organization.create_school(user, %{name: "École Première"})
-      {:ok, second} = Organization.create_school(user, %{name: "École Seconde"})
+      {:ok, first} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+          name: "École Première"
+        })
+
+      {:ok, second} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+          name: "École Seconde"
+        })
 
       assert {:ok, scope} = Workspaces.scope_for(user, nil)
       assert scope.current_workspace.id == first.id
 
-      assert user |> Organization.list_workspaces_for() |> Enum.map(& &1.id) ==
-               [first.id, second.id]
+      assert Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: user})
+             |> Enum.map(& &1.id) == [first.id, second.id]
     end
   end
 

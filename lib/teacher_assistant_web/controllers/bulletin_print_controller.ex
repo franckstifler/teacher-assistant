@@ -37,7 +37,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
          true <- Permissions.admin_or_form_master?(scope, cg),
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
-         period when not is_nil(period) <- Organization.resolve_period(year, params["period"]) do
+         period when not is_nil(period) <-
+           Organization.resolve_period(scope, year, params["period"]) do
       fun.(scope, cg, period, Assessment.class_results_for_period(scope, cg, period))
     else
       {:operating, false} ->

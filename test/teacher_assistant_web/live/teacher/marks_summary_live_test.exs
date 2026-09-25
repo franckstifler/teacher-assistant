@@ -9,10 +9,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   setup :register_and_log_in_user
 
   setup %{workspace: ws, year: year, actor: head, scope: scope} do
-    {:ok, p} = Accounts.fetch_school_profile(ws)
-    {:ok, _} = Accounts.verify_school(p, head.id)
+    {:ok, p} = Accounts.fetch_school_profile(scope)
+    {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
 
-    seq = Organization.list_sequences(year) |> List.first()
+    seq = Organization.list_sequences(scope, year) |> List.first()
 
     ctx =
       TeacherFixtures.assigned_context_fixture(scope, year, %{
@@ -91,9 +91,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert has_element?(view, "#summary-missing", "1")
   end
 
-  test "séquence switcher patches to the chosen séquence", %{conn: conn, ctx: ctx, ws: ws} do
-    year = Organization.current_academic_year(ws)
-    seq2 = Organization.list_sequences(year) |> Enum.at(1)
+  test "séquence switcher patches to the chosen séquence", %{conn: conn, ctx: ctx, scope: scope} do
+    year = Organization.current_academic_year(scope)
+    seq2 = Organization.list_sequences(scope, year) |> Enum.at(1)
 
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary")
 

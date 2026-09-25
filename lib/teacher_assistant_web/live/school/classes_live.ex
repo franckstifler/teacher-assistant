@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     if scope.current_workspace == nil do
       {:ok, push_navigate(socket, to: ~p"/school")}
     else
-      profile = Accounts.fetch_school_profile(scope.current_workspace)
+      profile = Accounts.fetch_school_profile(scope)
 
       class_streams =
         case profile do
@@ -28,7 +28,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
        |> assign(:class_streams, class_streams)
        |> assign(
          :class_form,
-         class_form(scope.current_workspace.id, scope.current_academic_year)
+         class_form(scope, scope.current_academic_year)
        )
        |> load_classes()}
     end
@@ -157,7 +157,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           {:noreply,
            socket
            |> put_flash(:info, gettext("Class created."))
-           |> assign(:class_form, class_form(scope.current_workspace.id, year))
+           |> assign(:class_form, class_form(scope, year))
            |> load_classes()}
 
         {:error, form} ->
@@ -214,11 +214,11 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   # first built), so callers must rebuild the form — via this helper — on
   # mount and again after any change to `year` (currently: after a
   # successful class creation).
-  defp class_form(workspace_id, year) do
+  defp class_form(scope, year) do
     ClassGroup
     |> AshPhoenix.Form.for_create(:create,
       as: "class_group",
-      tenant: workspace_id,
+      scope: scope,
       prepare_source: fn changeset ->
         Ash.Changeset.change_attribute(changeset, :academic_year_id, year && year.id)
       end

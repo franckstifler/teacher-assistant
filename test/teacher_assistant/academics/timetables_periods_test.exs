@@ -7,7 +7,12 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
 
   setup do
     user = TeacherFixtures.user_fixture()
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Test"})
+
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Test"
+      })
+
     %{school: school, scope: school_scope(user, school)}
   end
 
@@ -38,7 +43,11 @@ defmodule TeacherAssistant.Academics.TimetablesPeriodsTest do
 
   test "a new school is created with the default bell schedule" do
     user = TeacherFixtures.user_fixture()
-    {:ok, other_school} = Organization.create_school(user, %{name: "Other School"})
+
+    {:ok, other_school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Other School"
+      })
 
     assert Attendance.list_periods(school_scope(user, other_school)) != []
   end

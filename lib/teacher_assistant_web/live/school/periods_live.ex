@@ -48,7 +48,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
                     for={
                       AshPhoenix.Form.for_update(period, :update,
                         as: "period",
-                        tenant: period.workspace_id
+                        scope: @current_scope
                       )
                       |> to_form()
                     }

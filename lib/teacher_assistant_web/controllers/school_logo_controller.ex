@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.SchoolLogoController do
   def show(conn, _params) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          true <- Permissions.member?(scope),
-         {:ok, profile} <- Accounts.fetch_school_profile(scope.current_workspace),
+         {:ok, profile} <- Accounts.fetch_school_profile(scope),
          logo_path when is_binary(logo_path) <- profile.logo_path,
          {:ok, path} <- safe_logo_path(logo_path) do
       conn

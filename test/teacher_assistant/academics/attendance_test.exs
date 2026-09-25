@@ -14,11 +14,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   setup do
     head = TeacherFixtures.user_fixture()
-    {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+
+    {:ok, ws} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Test"
+      })
+
     scope = school_scope(head, ws)
 
     {:ok, year} =
-      Organization.create_academic_year(ws, %{
+      Organization.create_academic_year(scope, %{
         name: "2025-2026",
         start_date: ~D[2025-09-08],
         end_date: ~D[2026-07-31],
@@ -351,10 +356,10 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
   describe "student_conduct/3 and class_conduct/3" do
     setup ctx do
-      :ok = Organization.build_default_calendar(ctx.year)
+      :ok = Organization.build_default_calendar(ctx.scope, ctx.year)
 
-      [seq1, seq2 | _] = Organization.list_sequences(ctx.year)
-      [term1 | _] = Organization.list_terms(ctx.year)
+      [seq1, seq2 | _] = Organization.list_sequences(ctx.scope, ctx.year)
+      [term1 | _] = Organization.list_terms(ctx.scope, ctx.year)
 
       %{seq1: seq1, seq2: seq2, term1: term1}
     end
@@ -487,10 +492,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "returns zeros when the period date range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty"})
+
+      {:ok, empty_ws} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: empty_year_head}, %{
+          name: "Lycée Empty"
+        })
+
+      empty_scope = school_scope(empty_year_head, empty_ws)
 
       {:ok, empty_year} =
-        Organization.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(empty_scope, %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],
@@ -574,10 +585,16 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
     test "class_conduct returns zeros for every roster enrollment when the range is nil", ctx do
       empty_year_head = TeacherFixtures.user_fixture()
-      {:ok, empty_ws} = Organization.create_school(empty_year_head, %{name: "Lycée Empty2"})
+
+      {:ok, empty_ws} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: empty_year_head}, %{
+          name: "Lycée Empty2"
+        })
+
+      empty_scope = school_scope(empty_year_head, empty_ws)
 
       {:ok, empty_year} =
-        Organization.create_academic_year(empty_ws, %{
+        Organization.create_academic_year(empty_scope, %{
           name: "2099-2100",
           start_date: ~D[2099-09-08],
           end_date: ~D[2100-07-31],

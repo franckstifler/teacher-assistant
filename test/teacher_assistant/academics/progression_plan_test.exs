@@ -80,8 +80,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
         tenant: plan.workspace_id
       )
 
-    :ok = Organization.build_default_calendar(ay)
-    [seq | _] = Organization.list_sequences(ay)
+    :ok = Organization.build_default_calendar(scope, ay)
+    [seq | _] = Organization.list_sequences(scope, ay)
 
     {:ok, m} = Curriculum.create_module(scope, plan, %{title: "M1"})
     {:ok, m} = Curriculum.assign_module_sequence(scope, m, seq.id)

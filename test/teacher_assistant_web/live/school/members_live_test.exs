@@ -13,8 +13,13 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     conn: conn,
     actor: user
   } do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Membres"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Membres"
+      })
+
+    scope = school_scope(user, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
@@ -32,14 +37,20 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
   end
 
   test "a non-head member does not see the invite form", %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Gate"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Gate"
+      })
+
+    scope = school_scope(head, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(member.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(member.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, member)
+    {:ok, _} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: member}, inv.token)
 
     conn = conn |> log_in_user(member) |> get(~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school/members")
@@ -49,8 +60,13 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
   end
 
   test "invite form includes the employment-type options", %{conn: conn, actor: user} do
-    {:ok, school} = Organization.create_school(user, %{name: "Lycée Emploi"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Emploi"
+      })
+
+    scope = school_scope(user, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
@@ -61,20 +77,26 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
   end
 
   test "head can set a member's employment type", %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Statut"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Statut"
+      })
+
+    scope = school_scope(head, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(member.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(member.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, member)
+    {:ok, _} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: member}, inv.token)
 
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
     membership =
-      school
+      scope
       |> Accounts.list_members()
       |> Enum.find(&(&1.user_id == member.id))
 
@@ -85,7 +107,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     assert has_element?(view, "#member-row-#{membership.id}", "Titulaire")
 
     reloaded =
-      school
+      scope
       |> Accounts.list_members()
       |> Enum.find(&(&1.id == membership.id))
 
@@ -93,20 +115,26 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
   end
 
   test "non-head cannot change employment type", %{conn: conn, actor: head} do
-    {:ok, school} = Organization.create_school(head, %{name: "Lycée Statut Gate"})
-    TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(head, school))
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+        name: "Lycée Statut Gate"
+      })
+
+    scope = school_scope(head, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
     member = TeacherAssistant.TeacherFixtures.user_fixture()
 
     {:ok, inv} =
-      Accounts.invite_member(school, head, %{email: to_string(member.email), roles: [:teacher]})
+      Accounts.invite_member(scope, %{email: to_string(member.email), roles: [:teacher]})
 
-    {:ok, _} = Accounts.accept_invitation(inv.token, member)
+    {:ok, _} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: member}, inv.token)
 
     conn = conn |> log_in_user(member) |> get(~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
     membership =
-      school
+      scope
       |> Accounts.list_members()
       |> Enum.find(&(&1.user_id == member.id))
 
@@ -115,7 +143,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     render_change(view, "set_status", %{"id" => membership.id, "status" => "titulaire"})
 
     reloaded =
-      school
+      scope
       |> Accounts.list_members()
       |> Enum.find(&(&1.id == membership.id))
 

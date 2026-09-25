@@ -385,7 +385,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       assignments: assignments,
       combinable_siblings:
         combinable_siblings_by_context(scope, assignments, socket.assigns[:admin?]),
-      members: Accounts.list_members(scope.current_workspace)
+      members: Accounts.list_members(scope)
     )
   end
 

@@ -53,9 +53,9 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     create :create_for_workspace do
       accept [:name, :start_date, :end_date, :active]
 
-      change before_action(fn changeset, _context ->
+      change before_action(fn changeset, context ->
                if Ash.Changeset.get_attribute(changeset, :active) do
-                 deactivate_all_active(changeset.tenant)
+                 deactivate_all_active(context)
                end
 
                changeset
@@ -82,9 +82,9 @@ defmodule TeacherAssistant.Academics.AcademicYear do
 
       change set_attribute(:active, true)
 
-      change before_action(fn changeset, _context ->
+      change before_action(fn changeset, context ->
                year = changeset.data
-               deactivate_others(changeset.tenant, year.id)
+               deactivate_others(context, year.id)
                changeset
              end)
     end
@@ -129,36 +129,32 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     identity :unique_workspace_year, [:workspace_id, :name]
   end
 
-  # Deactivates every other active year of `tenant`'s workspace, keeping
+  # Deactivates every other active year of the scope's workspace, keeping
   # `keep_id` untouched. Runs inside the `:activate` action's own transaction
   # (the before_action hook that calls this executes within it), so a failure
   # here rolls back the whole activation.
-  defp deactivate_others(tenant, keep_id) do
+  defp deactivate_others(scope, keep_id) do
     __MODULE__
     |> Ash.Query.filter(id != ^keep_id and active == true)
-    |> Ash.Query.set_tenant(tenant)
-    |> Ash.read!()
+    |> Ash.read!(scope: scope)
     |> Enum.each(fn y ->
       y
-      |> Ash.Changeset.for_update(:update, %{active: false})
-      |> Ash.Changeset.set_tenant(tenant)
+      |> Ash.Changeset.for_update(:update, %{active: false}, scope: scope)
       |> Ash.update!()
     end)
   end
 
-  # Deactivates every currently active year of `tenant`'s workspace. Used on
+  # Deactivates every currently active year of the scope's workspace. Used on
   # create (there is no existing row id to exclude yet) so the new active row
   # can be inserted without tripping the one-active-per-workspace partial
   # unique index.
-  defp deactivate_all_active(tenant) do
+  defp deactivate_all_active(scope) do
     __MODULE__
     |> Ash.Query.filter(active == true)
-    |> Ash.Query.set_tenant(tenant)
-    |> Ash.read!()
+    |> Ash.read!(scope: scope)
     |> Enum.each(fn y ->
       y
-      |> Ash.Changeset.for_update(:update, %{active: false})
-      |> Ash.Changeset.set_tenant(tenant)
+      |> Ash.Changeset.for_update(:update, %{active: false}, scope: scope)
       |> Ash.update!()
     end)
   end

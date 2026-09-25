@@ -26,8 +26,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     with {:ok, cg} <-
            Enrollment.fetch_owned_class_group(socket.assigns.current_scope, ctx.class_group_id) do
       scope = socket.assigns.current_scope
-      year = Organization.current_academic_year(ws)
-      sequences = if year, do: Organization.list_sequences(year), else: []
+      year = Organization.current_academic_year(scope)
+      sequences = if year, do: Organization.list_sequences(scope, year), else: []
       seq = pick(sequences, params["seq"])
       assessments = if seq, do: Assessment.list_assessments(scope, ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
@@ -60,8 +60,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     case Curriculum.get_course(socket.assigns.current_scope, course_id) do
       {:ok, course} ->
         scope = socket.assigns.current_scope
-        year = Organization.current_academic_year(ws)
-        sequences = if year, do: Organization.list_sequences(year), else: []
+        year = Organization.current_academic_year(scope)
+        sequences = if year, do: Organization.list_sequences(scope, year), else: []
         seq = pick(sequences, params["seq"])
         combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
         selected = pick(combined, params["assessment"])

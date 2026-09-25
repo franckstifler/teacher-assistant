@@ -10,7 +10,7 @@ defmodule TeacherAssistant.Academics.Seeding do
     if has_any_class?(scope) do
       {:ok, 0}
     else
-      {:ok, profile} = Accounts.fetch_school_profile(scope.current_workspace)
+      {:ok, profile} = Accounts.fetch_school_profile(scope)
       rows = SchoolTemplates.classes_for(profile.school_type, profile.subsystem)
 
       Enum.each(rows, fn %{label: label, level: level, serie: serie} ->

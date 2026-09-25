@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Enrollment do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Student, Workspace}
+  alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Student}
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.User
@@ -98,7 +98,7 @@ defmodule TeacherAssistant.Enrollment do
 
   def set_form_master(%Scope{} = scope, %ClassGroup{} = cg, user_id) do
     with {:ok, _membership} <-
-           Accounts.fetch_school_membership(%Workspace{id: cg.workspace_id}, %User{id: user_id}) do
+           Accounts.fetch_school_membership(scope, %User{id: user_id}) do
       cg
       |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id}, scope: scope)
       |> Ash.update()

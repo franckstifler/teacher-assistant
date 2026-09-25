@@ -26,7 +26,9 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         # A stale workspace id (or a deactivated membership) can leave the
         # resolved scope without a workspace even though the user has a real
         # school — send them there instead of prompting to create a new one.
-        case Organization.list_workspaces_for(scope.current_user) do
+        case Organization.list_workspaces_for(%TeacherAssistant.Scope{
+               current_user: scope.current_user
+             }) do
           [first | _] -> {:ok, push_navigate(socket, to: ~p"/workspaces/select/#{first.id}")}
           [] -> {:ok, push_navigate(socket, to: ~p"/schools/new")}
         end
@@ -200,12 +202,12 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         else: []
 
     profile_complete? =
-      case Accounts.fetch_school_profile(scope.current_workspace) do
+      case Accounts.fetch_school_profile(scope) do
         {:ok, profile} -> profile.head_name not in [nil, ""]
         _ -> false
       end
 
-    staff_count = scope.current_workspace |> Accounts.list_members() |> length()
+    staff_count = scope |> Accounts.list_members() |> length()
 
     socket
     |> assign(:year, year)
