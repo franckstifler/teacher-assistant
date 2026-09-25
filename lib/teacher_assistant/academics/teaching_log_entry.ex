@@ -11,7 +11,11 @@ defmodule TeacherAssistant.Academics.TeachingLogEntry do
 
     references do
       reference :workspace, on_delete: :delete, index?: true
-      reference :progression_entry, index?: true
+
+      reference :progression_entry,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
     end
   end
 

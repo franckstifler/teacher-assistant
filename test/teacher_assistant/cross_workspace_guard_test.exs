@@ -1,11 +1,12 @@
 defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   @moduledoc """
-  Phase 2 fix wave (F1): every domain function that receives more than one
-  tenant-owned struct (or a raw id naming one) and writes must refuse a
-  cross-workspace combination BEFORE writing. One test per guarded function,
-  each built from two independent schools (`TeacherFixtures.setup_complete_school_fixture/1`),
-  asserting the call returns the documented error tuple AND that nothing was
-  written under either tenant.
+  The database rejects cross-school writes: every domain function that receives
+  more than one tenant-owned struct (or a raw id naming one) and writes must
+  return an error tuple AND write nothing, because the composite foreign keys
+  tie every tenant-to-tenant reference to the tenant. One test per guarded
+  function, each built from two independent schools
+  (`TeacherFixtures.setup_complete_school_fixture/1`), asserting the call
+  returns `{:error, _}` and that nothing was written under either tenant.
   """
   use TeacherAssistant.DataCase, async: true
 
@@ -80,8 +81,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Assessment.create_assessment rejects a context/sequence workspace mismatch", ctx do
-    assert {:error, :workspace_mismatch} =
-             Assessment.create_assessment(ctx.tc_a, ctx.seq_b, %{label: "D1"})
+    assert {:error, _} = Assessment.create_assessment(ctx.tc_a, ctx.seq_b, %{label: "D1"})
 
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_a.id) == 0
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_b.id) == 0
@@ -89,7 +89,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
   test "Assessment.create_combined_assessment rejects a course/sequence workspace mismatch",
        ctx do
-    assert {:error, :workspace_mismatch} =
+    assert {:error, _} =
              Assessment.create_combined_assessment(ctx.course_a, ctx.seq_b, %{label: "D1"})
 
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_a.id) == 0
@@ -97,8 +97,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Discipline.set_conduct_mark rejects an enrollment/sequence workspace mismatch", ctx do
-    assert {:error, :workspace_mismatch} =
-             Discipline.set_conduct_mark(ctx.enrollment_a, ctx.seq_b, 15, nil)
+    assert {:error, _} = Discipline.set_conduct_mark(ctx.enrollment_a, ctx.seq_b, 15, nil)
 
     assert count_all(ConductMark, ctx.ws_a.id) == 0
     assert count_all(ConductMark, ctx.ws_b.id) == 0
@@ -110,7 +109,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Enrollment.enroll_existing rejects a class_group/student workspace mismatch", ctx do
-    assert {:error, :workspace_mismatch} = Enrollment.enroll_existing(ctx.cg_a, ctx.student_b)
+    assert {:error, _} = Enrollment.enroll_existing(ctx.cg_a, ctx.student_b)
 
     assert Enrollment.list_roster(ctx.cg_a) |> length() == 1
     assert Enrollment.list_roster(ctx.cg_b) |> length() == 1
@@ -125,7 +124,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Enrollment.create_class_group rejects a workspace/academic_year mismatch", ctx do
-    assert {:error, :workspace_mismatch} =
+    assert {:error, _} =
              Enrollment.create_class_group(ctx.ws_a, ctx.year_b, %{
                label: "Bogus",
                level: "6ème"
@@ -136,14 +135,14 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Enrollment.transfer rejects an enrollment/class_group workspace mismatch", ctx do
-    assert {:error, :workspace_mismatch} = Enrollment.transfer(ctx.enrollment_a, ctx.cg_b)
+    assert {:error, _} = Enrollment.transfer(ctx.enrollment_a, ctx.cg_b)
 
     {:ok, reloaded} = Enrollment.fetch_owned_enrollment(ctx.enrollment_a.id, ctx.ws_a)
     assert reloaded.class_group_id == ctx.cg_a.id
   end
 
   test "Attendance.record_period rejects a class_group/period workspace mismatch", ctx do
-    assert {:error, :workspace_mismatch} =
+    assert {:error, _} =
              Attendance.record_period(
                ctx.cg_a,
                ctx.period_b,
@@ -158,7 +157,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Attendance.record_combined_period rejects a course/period workspace mismatch", ctx do
-    assert {:error, :workspace_mismatch} =
+    assert {:error, _} =
              Attendance.record_combined_period(
                ctx.course_a,
                ctx.period_b,

@@ -20,8 +20,16 @@ defmodule TeacherAssistant.Academics.Mark do
     end
 
     references do
-      reference :assessment, index?: true
-      reference :student, index?: true
+      reference :assessment,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :student,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
 

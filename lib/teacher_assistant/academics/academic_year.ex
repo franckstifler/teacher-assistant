@@ -16,6 +16,10 @@ defmodule TeacherAssistant.Academics.AcademicYear do
         unique: true,
         where: "active",
         name: "academic_years_one_active_per_workspace"
+
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
     end
 
     references do

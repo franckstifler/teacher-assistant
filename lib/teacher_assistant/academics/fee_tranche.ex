@@ -10,7 +10,12 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     repo TeacherAssistant.Repo
 
     references do
-      reference :class_group, on_delete: :delete, index?: true
+      reference :class_group,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
 

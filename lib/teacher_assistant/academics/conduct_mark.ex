@@ -10,8 +10,18 @@ defmodule TeacherAssistant.Academics.ConductMark do
     repo TeacherAssistant.Repo
 
     references do
-      reference :enrollment, on_delete: :delete, index?: true
-      reference :sequence, on_delete: :delete, index?: true
+      reference :enrollment,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :sequence,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
 

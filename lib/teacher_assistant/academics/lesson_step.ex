@@ -12,7 +12,11 @@ defmodule TeacherAssistant.Academics.LessonStep do
     repo TeacherAssistant.Repo
 
     references do
-      reference :lesson_plan, index?: true
+      reference :lesson_plan,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end

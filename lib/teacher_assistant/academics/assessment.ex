@@ -15,9 +15,23 @@ defmodule TeacherAssistant.Academics.Assessment do
     table "assessments"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
+    end
+
     references do
-      reference :teaching_context, index?: true
-      reference :sequence, index?: true
+      reference :teaching_context,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :sequence,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end

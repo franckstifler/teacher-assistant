@@ -24,7 +24,6 @@ defmodule TeacherAssistant.Curriculum do
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Scope
-  alias TeacherAssistant.Tenancy
 
   resources do
     resource Subject do
@@ -298,7 +297,6 @@ defmodule TeacherAssistant.Curriculum do
   """
   def combine_course(contexts) when is_list(contexts) do
     with :ok <- validate_count(contexts),
-         :ok <- validate_same_workspace(contexts),
          :ok <- validate_same_teacher(contexts),
          :ok <- validate_same_subject(contexts),
          :ok <- validate_not_already_combined(contexts) do
@@ -312,12 +310,6 @@ defmodule TeacherAssistant.Curriculum do
 
   defp validate_count(contexts) when length(contexts) >= 2, do: :ok
   defp validate_count(_contexts), do: {:error, :need_two}
-
-  # `CombinedCourse.:combine`'s `run/3` trusts any member's `workspace_id` as
-  # the tenant for its `:class_group` load (see the comment there) — this
-  # makes that trust real instead of assumed. Delegates to the shared
-  # `TeacherAssistant.Tenancy.same_workspace/1` guard.
-  defp validate_same_workspace(contexts), do: Tenancy.same_workspace(contexts)
 
   defp validate_same_teacher(contexts) do
     contexts
@@ -877,8 +869,8 @@ defmodule TeacherAssistant.Curriculum do
   Sets `sequence_id` on `m` and cascades it to every entry currently in the
   module. `sequence_id` must name a `Sequence` in `m`'s own workspace — a
   foreign or non-existent id is rejected with `{:error, :invalid}` before
-  anything is written (see `TeacherAssistant.Tenancy` for why: nothing at the
-  DB layer ties this foreign key's value to `m`'s tenant).
+  anything is written (defence in depth next to the composite foreign key,
+  which ties this reference to `m`'s tenant at the database).
   """
   def assign_module_sequence(%ProgressionModule{} = m, sequence_id) do
     tenant = m.workspace_id

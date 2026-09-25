@@ -9,9 +9,23 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     table "progression_modules"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
+    end
+
     references do
-      reference :progression_plan, index?: true
-      reference :sequence, index?: true
+      reference :progression_plan,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :sequence,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end

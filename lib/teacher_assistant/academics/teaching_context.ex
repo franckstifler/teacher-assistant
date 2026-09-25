@@ -14,13 +14,31 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         unique: true,
         name: "teaching_contexts_unique_school_assignment",
         message: "this class already has a teacher for this subject"
+
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
     end
 
     references do
-      reference :combined_course, on_delete: :nilify, index?: true
+      reference :combined_course,
+        on_delete: {:nilify, [:combined_course_id]},
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
-      reference :academic_year, index?: true
-      reference :class_group, index?: true
+
+      reference :academic_year,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :class_group,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :teacher, index?: true
     end
   end

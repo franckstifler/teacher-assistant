@@ -61,6 +61,17 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
 
     {:ok, tc_b} = Curriculum.assign_teacher(other_cg, other_head, %{subject: "Mathématiques"})
 
-    assert {:error, :workspace_mismatch} = Curriculum.combine_course([tc_a, tc_b])
+    assert {:error, _} = Curriculum.combine_course([tc_a, tc_b])
+
+    assert CombinedCourse
+           |> Ash.Query.for_read(:read)
+           |> Ash.Query.set_tenant(ws.id)
+           |> Ash.read!() ==
+             []
+
+    assert CombinedCourse
+           |> Ash.Query.for_read(:read)
+           |> Ash.Query.set_tenant(other_ws.id)
+           |> Ash.read!() == []
   end
 end

@@ -13,7 +13,6 @@ defmodule TeacherAssistant.Discipline do
   alias TeacherAssistant.Academics.Sequence
   alias TeacherAssistant.Academics.Term
   alias TeacherAssistant.Organization
-  alias TeacherAssistant.Tenancy
 
   resources do
     resource SanctionEntry do
@@ -119,8 +118,7 @@ defmodule TeacherAssistant.Discipline do
   out-of-bounds value with `{:error, :invalid_value}`.
   """
   def set_conduct_mark(%Enrollment{} = e, %Sequence{} = sequence, value, recorded_by_user_id) do
-    with :ok <- Tenancy.same_workspace([e, sequence]),
-         {:ok, decimal_value} <- to_bounded_decimal(value) do
+    with {:ok, decimal_value} <- to_bounded_decimal(value) do
       ConductMark
       |> Ash.Changeset.for_create(:set, %{
         value: decimal_value,
@@ -172,33 +170,21 @@ defmodule TeacherAssistant.Discipline do
   missing séquences. `nil` when none present.
   """
   def note_de_conduite(
-        %Enrollment{id: id, workspace_id: ws_id} = e,
+        %Enrollment{id: id, workspace_id: ws_id},
         {:sequence, %Sequence{} = sequence}
       ) do
-    with :ok <- Tenancy.same_workspace([e, sequence]) do
-      case conduct_mark_for_enrollment_sequence!(id, sequence.id, tenant: ws_id) do
-        [mark | _] -> mark.value
-        [] -> nil
-      end
-    else
-      {:error, :workspace_mismatch} -> nil
+    case conduct_mark_for_enrollment_sequence!(id, sequence.id, tenant: ws_id) do
+      [mark | _] -> mark.value
+      [] -> nil
     end
   end
 
   def note_de_conduite(%Enrollment{} = e, {:trimester, %Term{} = term}) do
-    with :ok <- Tenancy.same_workspace([e, term]) do
-      mean_conduct_marks(e, resolve_term_sequences(term))
-    else
-      {:error, :workspace_mismatch} -> nil
-    end
+    mean_conduct_marks(e, resolve_term_sequences(term))
   end
 
   def note_de_conduite(%Enrollment{} = e, {:annual, %AcademicYear{} = year}) do
-    with :ok <- Tenancy.same_workspace([e, year]) do
-      mean_conduct_marks(e, Organization.list_sequences(year))
-    else
-      {:error, :workspace_mismatch} -> nil
-    end
+    mean_conduct_marks(e, Organization.list_sequences(year))
   end
 
   defp mean_conduct_marks(%Enrollment{id: id, workspace_id: ws_id}, sequences) do

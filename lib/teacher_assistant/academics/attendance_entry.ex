@@ -37,9 +37,23 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     end
 
     references do
-      reference :enrollment, on_delete: :delete, index?: true
-      reference :period, on_delete: :delete, index?: true
-      reference :teaching_context, index?: true
+      reference :enrollment,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :period,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :teaching_context,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end

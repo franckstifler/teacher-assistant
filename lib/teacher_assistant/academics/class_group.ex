@@ -9,9 +9,20 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     table "class_groups"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
+    end
+
     references do
       reference :form_master, on_delete: :nilify, index?: true
-      reference :academic_year, index?: true
+
+      reference :academic_year,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end

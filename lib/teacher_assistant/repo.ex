@@ -9,5 +9,5 @@ defmodule TeacherAssistant.Repo do
   def prefer_transaction?, do: false
 
   @impl true
-  def min_pg_version, do: %Version{major: 14, minor: 18, patch: 0}
+  def min_pg_version, do: %Version{major: 15, minor: 0, patch: 0}
 end

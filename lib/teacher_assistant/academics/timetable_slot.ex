@@ -14,9 +14,23 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     # tenant-prefixed (`[:workspace_id, :teaching_context_id]`), covering the
     # same lookup a hand-declared custom index of that shape would.
     references do
-      reference :class_group, on_delete: :delete, index?: true
-      reference :teaching_context, on_delete: :delete, index?: true
-      reference :period, index?: true
+      reference :class_group,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :teaching_context,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :period,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end

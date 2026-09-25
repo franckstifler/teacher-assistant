@@ -15,6 +15,10 @@ defmodule TeacherAssistant.Academics.Student do
         where: "matricule IS NOT NULL",
         name: "students_unique_matricule_index",
         message: "matricule already used in this workspace"
+
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
     end
 
     references do

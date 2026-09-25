@@ -7,7 +7,6 @@ defmodule TeacherAssistant.Enrollment do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.Tenancy
 
   resources do
     resource ClassGroup do
@@ -255,21 +254,19 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   def enroll_existing(%ClassGroup{} = cg, %Student{} = student, attrs \\ %{}) do
-    with :ok <- Tenancy.same_workspace([cg, student]) do
-      Enrollment
-      |> Ash.Changeset.for_create(
-        :create,
-        Map.merge(attrs, %{
-          student_id: student.id,
-          class_group_id: cg.id,
-          academic_year_id: cg.academic_year_id,
-          status: :reinscription
-        })
-      )
-      |> Ash.Changeset.set_tenant(cg.workspace_id)
-      |> Ash.create()
-      |> handle_enroll_existing_result()
-    end
+    Enrollment
+    |> Ash.Changeset.for_create(
+      :create,
+      Map.merge(attrs, %{
+        student_id: student.id,
+        class_group_id: cg.id,
+        academic_year_id: cg.academic_year_id,
+        status: :reinscription
+      })
+    )
+    |> Ash.Changeset.set_tenant(cg.workspace_id)
+    |> Ash.create()
+    |> handle_enroll_existing_result()
   end
 
   defp handle_enroll_existing_result(result) do
@@ -283,12 +280,10 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   def transfer(%Enrollment{} = e, %ClassGroup{} = cg) do
-    with :ok <- Tenancy.same_workspace([e, cg]) do
-      if cg.academic_year_id == e.academic_year_id do
-        update_enrollment(e, %{class_group_id: cg.id}, tenant: e.workspace_id)
-      else
-        {:error, :different_year}
-      end
+    if cg.academic_year_id == e.academic_year_id do
+      update_enrollment(e, %{class_group_id: cg.id}, tenant: e.workspace_id)
+    else
+      {:error, :different_year}
     end
   end
 

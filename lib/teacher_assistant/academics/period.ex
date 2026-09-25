@@ -9,6 +9,12 @@ defmodule TeacherAssistant.Academics.Period do
     table "periods"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
+    end
+
     references do
       reference :workspace, on_delete: :delete, index?: true
     end
