@@ -16,7 +16,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    %{workspace: ws_a, head_user: head_a, year: year_a} =
+    %{workspace: ws_a, head_user: head_a, year: year_a, scope: scope_a} =
       TeacherFixtures.setup_complete_school_fixture()
 
     %{workspace: ws_b, head_user: head_b, year: year_b} =
@@ -61,6 +61,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
       ws_b: ws_b,
       head_a: head_a,
       head_b: head_b,
+      scope_a: scope_a,
       year_a: year_a,
       year_b: year_b,
       cg_a: cg_a,
@@ -81,7 +82,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   end
 
   test "Assessment.create_assessment rejects a context/sequence workspace mismatch", ctx do
-    assert {:error, _} = Assessment.create_assessment(ctx.tc_a, ctx.seq_b, %{label: "D1"})
+    assert {:error, _} =
+             Assessment.create_assessment(ctx.scope_a, ctx.tc_a, ctx.seq_b, %{label: "D1"})
 
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_a.id) == 0
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_b.id) == 0
@@ -90,14 +92,16 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
   test "Assessment.create_combined_assessment rejects a course/sequence workspace mismatch",
        ctx do
     assert {:error, _} =
-             Assessment.create_combined_assessment(ctx.course_a, ctx.seq_b, %{label: "D1"})
+             Assessment.create_combined_assessment(ctx.scope_a, ctx.course_a, ctx.seq_b, %{
+               label: "D1"
+             })
 
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_a.id) == 0
     assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_b.id) == 0
   end
 
   test "Discipline.set_conduct_mark rejects an enrollment/sequence workspace mismatch", ctx do
-    assert {:error, _} = Discipline.set_conduct_mark(ctx.enrollment_a, ctx.seq_b, 15, nil)
+    assert {:error, _} = Discipline.set_conduct_mark(ctx.scope_a, ctx.enrollment_a, ctx.seq_b, 15)
 
     assert count_all(ConductMark, ctx.ws_a.id) == 0
     assert count_all(ConductMark, ctx.ws_b.id) == 0
@@ -105,7 +109,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
   test "Discipline.note_de_conduite returns nil (never data) for a cross-workspace sequence",
        ctx do
-    assert Discipline.note_de_conduite(ctx.enrollment_a, {:sequence, ctx.seq_b}) == nil
+    assert Discipline.note_de_conduite(ctx.scope_a, ctx.enrollment_a, {:sequence, ctx.seq_b}) ==
+             nil
   end
 
   test "Enrollment.enroll_existing rejects a class_group/student workspace mismatch", ctx do

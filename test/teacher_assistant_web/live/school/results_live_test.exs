@@ -11,6 +11,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée R"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -29,14 +30,14 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Assessment.create_assessment(tc, seq, %{
+      Assessment.create_assessment(scope, tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
       })
 
     [student] = Enrollment.list_students(cg)
-    :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, student: student, head: head}
   end

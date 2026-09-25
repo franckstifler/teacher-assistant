@@ -90,13 +90,11 @@ defmodule TeacherAssistant.Academics.Mark do
 
       transaction? true
 
-      run fn input, _ctx ->
-        tenant = input.tenant
-
+      run fn input, scope ->
         input.arguments.marks
         |> Enum.group_by(& &1.assessment_id)
         |> Enum.reduce_while({:ok, []}, fn {assessment_id, entries}, {:ok, acc} ->
-          case upsert_group(assessment_id, entries, tenant) do
+          case upsert_group(assessment_id, entries, scope) do
             {:ok, notifications} -> {:cont, {:ok, acc ++ notifications}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -125,12 +123,12 @@ defmodule TeacherAssistant.Academics.Mark do
   end
 
   validations do
-    # `before_action?: true`: the validation fetches the `Assessment` scoped
-    # to `changeset.tenant`, but on `:create` the tenant is set via
-    # `Ash.Changeset.set_tenant/2` *after* `for_create/2` builds the
-    # changeset — plain (non-`before_action?`) validations run at build time,
-    # before that `set_tenant` call ever happens. Running it in a
-    # before_action hook defers it to commit time, once the tenant is final.
+    # `before_action?: true`: the validation fetches the `Assessment` in the
+    # scope of the action context (actor + tenant), but on `:create` the scope
+    # is threaded through `for_create/4` at build time — plain (non-
+    # `before_action?`) validations run during that build, before the action
+    # context is attached. Running it in a before_action hook defers it to
+    # commit time, once the scope is final.
     validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []},
       on: [:create, :update],
       before_action?: true
@@ -177,11 +175,10 @@ defmodule TeacherAssistant.Academics.Mark do
   # back the whole transaction. Deliberately without its own transaction — the
   # `:upsert_all` action wraps every group in one shared transaction, so a
   # failure here rolls back every group's writes, not just this one's.
-  defp upsert_group(assessment_id, entries, tenant) do
+  defp upsert_group(assessment_id, entries, scope) do
     existing =
       __MODULE__
-      |> Ash.Query.for_read(:for_assessment, %{assessment_id: assessment_id})
-      |> Ash.Query.set_tenant(tenant)
+      |> Ash.Query.for_read(:for_assessment, %{assessment_id: assessment_id}, scope: scope)
       |> Ash.read!()
       |> Map.new(fn mark -> {mark.student_id, mark} end)
 
@@ -190,18 +187,20 @@ defmodule TeacherAssistant.Academics.Mark do
         case Map.get(existing, entry.student_id) do
           nil ->
             __MODULE__
-            |> Ash.Changeset.for_create(:create, %{
-              assessment_id: assessment_id,
-              student_id: entry.student_id,
-              score: Map.get(entry, :score)
-            })
-            |> Ash.Changeset.set_tenant(tenant)
+            |> Ash.Changeset.for_create(
+              :create,
+              %{
+                assessment_id: assessment_id,
+                student_id: entry.student_id,
+                score: Map.get(entry, :score)
+              },
+              scope: scope
+            )
             |> Ash.create(return_notifications?: true)
 
           %__MODULE__{} = mark ->
             mark
-            |> Ash.Changeset.for_update(:update, %{score: Map.get(entry, :score)})
-            |> Ash.Changeset.set_tenant(tenant)
+            |> Ash.Changeset.for_update(:update, %{score: Map.get(entry, :score)}, scope: scope)
             |> Ash.update(return_notifications?: true)
         end
 

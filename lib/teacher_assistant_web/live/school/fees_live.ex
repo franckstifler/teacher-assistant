@@ -43,20 +43,28 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   end
 
   defp load_tranches(socket) do
-    tranches = Fees.list_tranches(socket.assigns.cg)
+    tranches = Fees.list_tranches(socket.assigns.current_scope, socket.assigns.cg)
     total = Enum.reduce(tranches, 0, &(&1.amount + &2))
     assign(socket, tranches: tranches, total: total)
   end
 
   defp load_balances(socket) do
-    balances = Fees.class_balances(socket.assigns.cg, Date.utc_today())
+    balances =
+      Fees.class_balances(socket.assigns.current_scope, socket.assigns.cg, Date.utc_today())
+
     assign(socket, balances: balances)
   end
 
   defp load_history(socket, enrollment_id) do
     case Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
-      %{} = row -> assign(socket, history_payments: Fees.list_payments(row.enrollment))
-      nil -> assign(socket, history_payments: [])
+      %{} = row ->
+        assign(
+          socket,
+          history_payments: Fees.list_payments(socket.assigns.current_scope, row.enrollment)
+        )
+
+      nil ->
+        assign(socket, history_payments: [])
     end
   end
 
@@ -80,7 +88,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
         due_date: date
       }
 
-      case Fees.add_tranche(socket.assigns.cg, attrs) do
+      case Fees.add_tranche(scope, socket.assigns.cg, attrs) do
         {:ok, _tranche} ->
           {:noreply, socket |> put_flash(:info, gettext("Tranche added.")) |> load_tranches()}
 
@@ -117,7 +125,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
         due_date: date
       }
 
-      case Fees.update_tranche(tranche, attrs) do
+      case Fees.update_tranche(scope, tranche, attrs) do
         {:ok, _tranche} ->
           {:noreply,
            socket
@@ -138,7 +146,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
     with true <- Permissions.fees_manager?(scope),
          %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)) do
-      case Fees.delete_tranche(tranche) do
+      case Fees.delete_tranche(tranche, scope: scope) do
         :ok ->
           {:noreply, socket |> put_flash(:info, gettext("Tranche removed.")) |> load_tranches()}
 
@@ -180,7 +188,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
         note: presence(params["note"])
       }
 
-      case Fees.record_payment(row.enrollment, attrs, scope.current_user.id) do
+      case Fees.record_payment(scope, row.enrollment, attrs) do
         {:ok, _payment} ->
           {:noreply,
            socket
@@ -207,8 +215,8 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)),
          %{} = payment <-
-           Enum.find(Fees.list_payments(row.enrollment), &(&1.id == payment_id)) do
-      case Fees.delete_payment(payment) do
+           Enum.find(Fees.list_payments(scope, row.enrollment), &(&1.id == payment_id)) do
+      case Fees.delete_payment(payment, scope: scope) do
         :ok ->
           {:noreply,
            socket
@@ -233,7 +241,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          {:ok, amount} <- parse_amount(params["amount"]) do
       attrs = %{amount: amount, reason: presence(params["reason"])}
 
-      case Fees.set_adjustment(row.enrollment, attrs, scope.current_user.id) do
+      case Fees.set_adjustment(scope, row.enrollment, attrs) do
         {:ok, _adjustment} ->
           {:noreply, socket |> put_flash(:info, gettext("Adjustment saved.")) |> load_balances()}
 
@@ -251,7 +259,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     with true <- Permissions.fees_manager?(scope),
          %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
-      case Fees.clear_adjustment(row.enrollment) do
+      case Fees.clear_adjustment(scope, row.enrollment) do
         {:ok, _count} ->
           {:noreply,
            socket |> put_flash(:info, gettext("Adjustment cleared.")) |> load_balances()}

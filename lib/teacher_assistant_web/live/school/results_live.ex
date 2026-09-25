@@ -46,7 +46,14 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
       (year && param && Organization.resolve_period(year, param)) ||
         default_period(socket.assigns.sequences)
 
-    results = period && Assessment.class_results_for_period(socket.assigns.cg, period)
+    results =
+      period &&
+        Assessment.class_results_for_period(
+          socket.assigns.current_scope,
+          socket.assigns.cg,
+          period
+        )
+
     roster = Enrollment.list_roster(socket.assigns.cg)
 
     assign(socket,

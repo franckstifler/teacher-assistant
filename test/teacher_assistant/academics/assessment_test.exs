@@ -37,8 +37,8 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
     assert ctx2.class_group_id == cg.id
   end
 
-  test "creates an assessment with defaults", %{ctx: ctx, seq: seq} do
-    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
+  test "creates an assessment with defaults", %{ctx: ctx, seq: seq, scope: scope} do
+    {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
     assert a.label == "Devoir 1"
     assert Decimal.equal?(a.weight, Decimal.new(1))
     assert Decimal.equal?(a.max_score, Decimal.new(20))
@@ -46,17 +46,17 @@ defmodule TeacherAssistant.Academics.AssessmentTest do
     assert a.sequence_id == seq.id
   end
 
-  test "lists assessments for a context + sequence", %{ctx: ctx, seq: seq} do
-    {:ok, _} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
-    {:ok, _} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 2"})
-    assert length(Assessment.list_assessments(ctx, seq)) == 2
+  test "lists assessments for a context + sequence", %{ctx: ctx, seq: seq, scope: scope} do
+    {:ok, _} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
+    {:ok, _} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 2"})
+    assert length(Assessment.list_assessments(scope, ctx, seq)) == 2
   end
 
-  test "fetch_owned_assessment refuses another workspace", %{ws: ws, ctx: ctx, seq: seq} do
-    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
-    %{workspace: other} = TeacherFixtures.school_fixture()
-    assert {:error, :not_found} = Assessment.fetch_owned_assessment(a.id, other)
-    assert {:ok, %{id: id}} = Assessment.fetch_owned_assessment(a.id, ws)
+  test "fetch_owned_assessment refuses another workspace", %{ctx: ctx, seq: seq, scope: scope} do
+    {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
+    %{scope: other_scope} = TeacherFixtures.school_fixture()
+    assert {:error, :not_found} = Assessment.fetch_owned_assessment(other_scope, a.id)
+    assert {:ok, %{id: id}} = Assessment.fetch_owned_assessment(scope, a.id)
     assert id == a.id
   end
 end

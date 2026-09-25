@@ -14,6 +14,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -32,6 +33,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     %{
       ws: ws,
+      scope: scope,
       year: year,
       cg: cg,
       head: head,
@@ -40,10 +42,10 @@ defmodule TeacherAssistant.Academics.FeesTest do
     }
   end
 
-  describe "add_tranche/2" do
+  describe "add_tranche/3" do
     test "persists with the class's workspace_id and position 0 for the first tranche", ctx do
       assert {:ok, %FeeTranche{} = tranche} =
-               Fees.add_tranche(ctx.cg, %{
+               Fees.add_tranche(ctx.scope, ctx.cg, %{
                  label: "1ère tranche",
                  amount: 25_000,
                  due_date: ~D[2025-10-15]
@@ -56,14 +58,14 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "appends position for a second tranche", ctx do
       {:ok, _first} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "1ère tranche",
           amount: 25_000,
           due_date: ~D[2025-10-15]
         })
 
       assert {:ok, %FeeTranche{} = second} =
-               Fees.add_tranche(ctx.cg, %{
+               Fees.add_tranche(ctx.scope, ctx.cg, %{
                  label: "2ème tranche",
                  amount: 15_000,
                  due_date: ~D[2025-12-15]
@@ -74,7 +76,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "rejects a negative amount", ctx do
       assert {:error, :invalid_amount} =
-               Fees.add_tranche(ctx.cg, %{
+               Fees.add_tranche(ctx.scope, ctx.cg, %{
                  label: "Invalide",
                  amount: -1,
                  due_date: ~D[2025-10-15]
@@ -84,7 +86,7 @@ defmodule TeacherAssistant.Academics.FeesTest do
     test "translates an Ash write failure (nil due_date) to a tagged error, not a raw struct",
          ctx do
       assert {:error, :tranche_failed} =
-               Fees.add_tranche(ctx.cg, %{
+               Fees.add_tranche(ctx.scope, ctx.cg, %{
                  label: "Sans date",
                  amount: 10_000,
                  due_date: nil
@@ -92,65 +94,65 @@ defmodule TeacherAssistant.Academics.FeesTest do
     end
   end
 
-  describe "list_tranches/1" do
+  describe "list_tranches/2" do
     test "returns tranches ordered by position ascending", ctx do
       {:ok, first} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "1ère tranche",
           amount: 25_000,
           due_date: ~D[2025-10-15]
         })
 
       {:ok, second} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "2ème tranche",
           amount: 15_000,
           due_date: ~D[2025-12-15]
         })
 
-      assert Fees.list_tranches(ctx.cg) |> Enum.map(& &1.id) == [first.id, second.id]
+      assert Fees.list_tranches(ctx.scope, ctx.cg) |> Enum.map(& &1.id) == [first.id, second.id]
     end
 
     test "returns [] when the class has no tranches", ctx do
-      assert Fees.list_tranches(ctx.cg) == []
+      assert Fees.list_tranches(ctx.scope, ctx.cg) == []
     end
   end
 
-  describe "update_tranche/2" do
+  describe "update_tranche/3" do
     test "changes the amount", ctx do
       {:ok, tranche} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "1ère tranche",
           amount: 25_000,
           due_date: ~D[2025-10-15]
         })
 
-      assert {:ok, updated} = Fees.update_tranche(tranche, %{amount: 30_000})
+      assert {:ok, updated} = Fees.update_tranche(ctx.scope, tranche, %{amount: 30_000})
       assert updated.amount == 30_000
     end
 
     test "rejects a negative amount", ctx do
       {:ok, tranche} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "1ère tranche",
           amount: 25_000,
           due_date: ~D[2025-10-15]
         })
 
-      assert {:error, :invalid_amount} = Fees.update_tranche(tranche, %{amount: -5})
+      assert {:error, :invalid_amount} = Fees.update_tranche(ctx.scope, tranche, %{amount: -5})
     end
 
     test "ignores a position key in attrs, leaving the append-managed position untouched",
          ctx do
       {:ok, _first} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "1ère tranche",
           amount: 25_000,
           due_date: ~D[2025-10-15]
         })
 
       {:ok, second} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "2ème tranche",
           amount: 15_000,
           due_date: ~D[2025-12-15]
@@ -158,7 +160,9 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
       assert second.position == 1
 
-      assert {:ok, updated} = Fees.update_tranche(second, %{position: 99, amount: 5_000})
+      assert {:ok, updated} =
+               Fees.update_tranche(ctx.scope, second, %{position: 99, amount: 5_000})
+
       assert updated.amount == 5_000
       assert updated.position == 1
     end
@@ -167,14 +171,14 @@ defmodule TeacherAssistant.Academics.FeesTest do
   describe "delete_tranche/1" do
     test "removes the row", ctx do
       {:ok, tranche} =
-        Fees.add_tranche(ctx.cg, %{
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
           label: "1ère tranche",
           amount: 25_000,
           due_date: ~D[2025-10-15]
         })
 
-      assert :ok = Fees.delete_tranche(tranche)
-      assert Fees.list_tranches(ctx.cg) == []
+      assert :ok = Fees.delete_tranche(tranche, scope: ctx.scope)
+      assert Fees.list_tranches(ctx.scope, ctx.cg) == []
     end
   end
 
@@ -182,9 +186,9 @@ defmodule TeacherAssistant.Academics.FeesTest do
     test "persists with the enrollment's workspace_id", ctx do
       assert {:ok, %Payment{} = payment} =
                Fees.record_payment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: 10_000, paid_on: ~D[2025-10-01], method: :cash},
-                 ctx.head.id
+                 %{amount: 10_000, paid_on: ~D[2025-10-01], method: :cash}
                )
 
       assert payment.workspace_id == ctx.ws.id
@@ -196,27 +200,27 @@ defmodule TeacherAssistant.Academics.FeesTest do
     test "rejects a zero amount", ctx do
       assert {:error, :invalid_amount} =
                Fees.record_payment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: 0, paid_on: ~D[2025-10-01], method: :cash},
-                 ctx.head.id
+                 %{amount: 0, paid_on: ~D[2025-10-01], method: :cash}
                )
     end
 
     test "rejects a negative amount", ctx do
       assert {:error, :invalid_amount} =
                Fees.record_payment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: -100, paid_on: ~D[2025-10-01], method: :cash},
-                 ctx.head.id
+                 %{amount: -100, paid_on: ~D[2025-10-01], method: :cash}
                )
     end
 
     test "rejects an invalid method", ctx do
       assert {:error, :invalid_method} =
                Fees.record_payment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: 10_000, paid_on: ~D[2025-10-01], method: :check},
-                 ctx.head.id
+                 %{amount: 10_000, paid_on: ~D[2025-10-01], method: :check}
                )
     end
 
@@ -224,48 +228,51 @@ defmodule TeacherAssistant.Academics.FeesTest do
          ctx do
       assert {:error, :payment_failed} =
                Fees.record_payment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: 10_000, paid_on: nil, method: :cash},
-                 ctx.head.id
+                 %{amount: 10_000, paid_on: nil, method: :cash}
                )
     end
   end
 
-  describe "list_payments/1" do
+  describe "list_payments/2" do
     test "returns payments newest first by paid_on", ctx do
       {:ok, older} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash},
-          ctx.head.id
+          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
         )
 
       {:ok, newer} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-10-15], method: :mobile_money},
-          ctx.head.id
+          %{amount: 5_000, paid_on: ~D[2025-10-15], method: :mobile_money}
         )
 
-      assert Fees.list_payments(ctx.enrollment1) |> Enum.map(& &1.id) == [newer.id, older.id]
+      assert Fees.list_payments(ctx.scope, ctx.enrollment1) |> Enum.map(& &1.id) == [
+               newer.id,
+               older.id
+             ]
     end
 
     test "scopes to the given enrollment only", ctx do
       {:ok, mine} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash},
-          ctx.head.id
+          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
         )
 
       {:ok, _other} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment2,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash},
-          ctx.head.id
+          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
         )
 
-      assert Fees.list_payments(ctx.enrollment1) |> Enum.map(& &1.id) == [mine.id]
+      assert Fees.list_payments(ctx.scope, ctx.enrollment1) |> Enum.map(& &1.id) == [mine.id]
     end
   end
 
@@ -273,13 +280,13 @@ defmodule TeacherAssistant.Academics.FeesTest do
     test "removes the row", ctx do
       {:ok, payment} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash},
-          ctx.head.id
+          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
         )
 
-      assert :ok = Fees.delete_payment(payment)
-      assert Fees.list_payments(ctx.enrollment1) == []
+      assert :ok = Fees.delete_payment(payment, scope: ctx.scope)
+      assert Fees.list_payments(ctx.scope, ctx.enrollment1) == []
     end
   end
 
@@ -287,9 +294,9 @@ defmodule TeacherAssistant.Academics.FeesTest do
     test "persists with the enrollment's workspace_id", ctx do
       assert {:ok, %FeeAdjustment{} = adjustment} =
                Fees.set_adjustment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: 5_000, reason: "Bourse"},
-                 ctx.head.id
+                 %{amount: 5_000, reason: "Bourse"}
                )
 
       assert adjustment.workspace_id == ctx.ws.id
@@ -299,13 +306,13 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "re-setting upserts: one row, latest value replaces", ctx do
       {:ok, _} =
-        Fees.set_adjustment(ctx.enrollment1, %{amount: 5_000, reason: "Bourse"}, ctx.head.id)
+        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 5_000, reason: "Bourse"})
 
       assert {:ok, updated} =
                Fees.set_adjustment(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{amount: 8_000, reason: "Bourse+"},
-                 ctx.head.id
+                 %{amount: 8_000, reason: "Bourse+"}
                )
 
       assert updated.amount == 8_000
@@ -321,16 +328,16 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "rejects a negative amount", ctx do
       assert {:error, :invalid_amount} =
-               Fees.set_adjustment(ctx.enrollment1, %{amount: -1, reason: "x"}, ctx.head.id)
+               Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: -1, reason: "x"})
     end
   end
 
-  describe "clear_adjustment/1" do
+  describe "clear_adjustment/2" do
     test "deletes the adjustment for the enrollment", ctx do
       {:ok, _} =
-        Fees.set_adjustment(ctx.enrollment1, %{amount: 5_000, reason: "Bourse"}, ctx.head.id)
+        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 5_000, reason: "Bourse"})
 
-      assert {:ok, 1} = Fees.clear_adjustment(ctx.enrollment1)
+      assert {:ok, 1} = Fees.clear_adjustment(ctx.scope, ctx.enrollment1)
 
       assert FeeAdjustment
              |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
@@ -338,26 +345,34 @@ defmodule TeacherAssistant.Academics.FeesTest do
     end
 
     test "returns {:ok, 0} when no adjustment exists", ctx do
-      assert {:ok, 0} = Fees.clear_adjustment(ctx.enrollment1)
+      assert {:ok, 0} = Fees.clear_adjustment(ctx.scope, ctx.enrollment1)
     end
   end
 
-  describe "student_balance/2" do
+  describe "student_balance/3" do
     test "composes tranches + partial payment into :behind with the right shortfall", ctx do
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "1ère",
+          amount: 10_000,
+          due_date: ~D[2025-09-15]
+        })
 
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "2ème", amount: 20_000, due_date: ~D[2025-12-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "2ème",
+          amount: 20_000,
+          due_date: ~D[2025-12-15]
+        })
 
       {:ok, _} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 4_000, paid_on: ~D[2025-09-20], method: :cash},
-          ctx.head.id
+          %{amount: 4_000, paid_on: ~D[2025-09-20], method: :cash}
         )
 
-      balance = Fees.student_balance(ctx.enrollment1, ~D[2025-10-01])
+      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
 
       assert balance.total_due == 30_000
       assert balance.due_to_date == 10_000
@@ -368,16 +383,20 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "paying up to due_to_date reaches :paid_up once total_due is covered", ctx do
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "1ère",
+          amount: 10_000,
+          due_date: ~D[2025-09-15]
+        })
 
       {:ok, _} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 10_000, paid_on: ~D[2025-09-20], method: :cash},
-          ctx.head.id
+          %{amount: 10_000, paid_on: ~D[2025-09-20], method: :cash}
         )
 
-      balance = Fees.student_balance(ctx.enrollment1, ~D[2025-10-01])
+      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
 
       assert balance.total_due == 10_000
       assert balance.total_paid == 10_000
@@ -387,40 +406,52 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "adjustment amount defaults to 0 when none set", ctx do
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "1ère",
+          amount: 10_000,
+          due_date: ~D[2025-09-15]
+        })
 
-      balance = Fees.student_balance(ctx.enrollment1, ~D[2025-10-01])
+      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
 
       assert balance.total_due == 10_000
     end
 
     test "reflects the adjustment amount, reducing total_due", ctx do
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "1ère",
+          amount: 10_000,
+          due_date: ~D[2025-09-15]
+        })
 
       {:ok, _} =
-        Fees.set_adjustment(ctx.enrollment1, %{amount: 4_000, reason: "Bourse"}, ctx.head.id)
+        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 4_000, reason: "Bourse"})
 
-      balance = Fees.student_balance(ctx.enrollment1, ~D[2025-10-01])
+      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
 
       assert balance.total_due == 6_000
     end
   end
 
-  describe "class_balances/2" do
+  describe "class_balances/3" do
     test "returns every roster enrollment in one pass; unpaid student shows schedule due/status",
          ctx do
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "1ère",
+          amount: 10_000,
+          due_date: ~D[2025-09-15]
+        })
 
       {:ok, _} =
         Fees.record_payment(
+          ctx.scope,
           ctx.enrollment1,
-          %{amount: 10_000, paid_on: ~D[2025-09-20], method: :cash},
-          ctx.head.id
+          %{amount: 10_000, paid_on: ~D[2025-09-20], method: :cash}
         )
 
-      result = Fees.class_balances(ctx.cg, ~D[2025-10-01])
+      result = Fees.class_balances(ctx.scope, ctx.cg, ~D[2025-10-01])
 
       assert map_size(result) == 2
 
@@ -437,12 +468,16 @@ defmodule TeacherAssistant.Academics.FeesTest do
 
     test "reflects an adjustment for the affected student only", ctx do
       {:ok, _} =
-        Fees.add_tranche(ctx.cg, %{label: "1ère", amount: 10_000, due_date: ~D[2025-09-15]})
+        Fees.add_tranche(ctx.scope, ctx.cg, %{
+          label: "1ère",
+          amount: 10_000,
+          due_date: ~D[2025-09-15]
+        })
 
       {:ok, _} =
-        Fees.set_adjustment(ctx.enrollment1, %{amount: 10_000, reason: "Bourse"}, ctx.head.id)
+        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 10_000, reason: "Bourse"})
 
-      result = Fees.class_balances(ctx.cg, ~D[2025-10-01])
+      result = Fees.class_balances(ctx.scope, ctx.cg, ~D[2025-10-01])
 
       assert result[ctx.enrollment1.id].total_due == 0
       assert result[ctx.enrollment1.id].status == :paid_up

@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Combiné"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -47,6 +48,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
       conn: conn,
       ws: school,
       seq: seq,
+      scope: scope,
       course: course,
       tc_maco: tc_maco,
       tc_menu: tc_menu,
@@ -62,13 +64,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     tc_maco: tc_maco,
     course: course,
     seq: seq,
+    scope: scope,
     maco: maco,
     menu: menu,
     s_maco: s_maco,
     s_menu: s_menu
   } do
-    {:ok, _} = Assessment.create_combined_assessment(course, seq, %{label: "Devoir 1"})
-    %{id: aid} = course |> Assessment.combined_assessments_for(seq) |> List.first()
+    {:ok, _} = Assessment.create_combined_assessment(scope, course, seq, %{label: "Devoir 1"})
+
+    %{id: aid} =
+      scope |> Assessment.combined_assessments_for(course, seq) |> List.first()
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}&assessment=#{aid}")
@@ -83,7 +88,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     conn: conn,
     tc_maco: tc_maco,
     tc_menu: tc_menu,
-    seq: seq
+    seq: seq,
+    scope: scope
   } do
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
 
@@ -91,8 +97,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
     |> render_submit()
 
-    assert [a_maco] = Assessment.list_assessments(tc_maco, seq)
-    assert [a_menu] = Assessment.list_assessments(tc_menu, seq)
+    assert [a_maco] = Assessment.list_assessments(scope, tc_maco, seq)
+    assert [a_menu] = Assessment.list_assessments(scope, tc_menu, seq)
     assert a_maco.label == "Devoir 1"
     assert a_menu.label == "Devoir 1"
     assert a_maco.id != a_menu.id
@@ -104,6 +110,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
          tc_maco: tc_maco,
          tc_menu: tc_menu,
          seq: seq,
+         scope: scope,
          s_maco: s_maco,
          s_menu: s_menu
        } do
@@ -117,14 +124,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#marks-form", %{"scores" => %{s_maco.id => "15", s_menu.id => "12"}})
     |> render_submit()
 
-    [a_maco] = Assessment.list_assessments(tc_maco, seq)
-    [a_menu] = Assessment.list_assessments(tc_menu, seq)
+    [a_maco] = Assessment.list_assessments(scope, tc_maco, seq)
+    [a_menu] = Assessment.list_assessments(scope, tc_menu, seq)
 
-    assert [m_maco] = Assessment.list_marks(a_maco)
+    assert [m_maco] = Assessment.list_marks(scope, a_maco)
     assert m_maco.student_id == s_maco.id
     assert Decimal.equal?(m_maco.score, Decimal.new("15"))
 
-    assert [m_menu] = Assessment.list_marks(a_menu)
+    assert [m_menu] = Assessment.list_marks(scope, a_menu)
     assert m_menu.student_id == s_menu.id
     assert Decimal.equal?(m_menu.score, Decimal.new("12"))
   end
@@ -134,6 +141,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     tc_maco: tc_maco,
     tc_menu: tc_menu,
     seq: seq,
+    scope: scope,
     s_maco: s_maco,
     s_menu: s_menu
   } do
@@ -151,10 +159,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
     assert html =~ "0 and 20"
 
-    [a_maco] = Assessment.list_assessments(tc_maco, seq)
-    [a_menu] = Assessment.list_assessments(tc_menu, seq)
+    [a_maco] = Assessment.list_assessments(scope, tc_maco, seq)
+    [a_menu] = Assessment.list_assessments(scope, tc_menu, seq)
 
-    assert Assessment.list_marks(a_maco) == []
-    assert Assessment.list_marks(a_menu) == []
+    assert Assessment.list_marks(scope, a_maco) == []
+    assert Assessment.list_marks(scope, a_menu) == []
   end
 end

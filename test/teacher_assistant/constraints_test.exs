@@ -23,7 +23,17 @@ defmodule TeacherAssistant.ConstraintsTest do
     {:ok, _} = TeacherAssistant.Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = TeacherAssistant.Enrollment.list_roster(cg)
     seq = year |> Organization.list_sequences() |> List.first()
-    %{ws: ws, head: head, year: year, tc: tc, cg: cg, enrollment: enrollment, seq: seq}
+
+    %{
+      ws: ws,
+      head: head,
+      year: year,
+      tc: tc,
+      cg: cg,
+      enrollment: enrollment,
+      seq: seq,
+      scope: scope
+    }
   end
 
   describe "academic_years: one active year per workspace" do
@@ -116,20 +126,29 @@ defmodule TeacherAssistant.ConstraintsTest do
   end
 
   describe "marks: score bounds" do
-    test "a mark above the assessment's max score is rejected", %{tc: tc, seq: seq, cg: cg} do
-      {:ok, a} = Assessment.create_assessment(tc, seq, %{label: "D1", max_score: Decimal.new(20)})
+    test "a mark above the assessment's max score is rejected", %{
+      tc: tc,
+      seq: seq,
+      cg: cg,
+      scope: scope
+    } do
+      {:ok, a} =
+        Assessment.create_assessment(scope, tc, seq, %{label: "D1", max_score: Decimal.new(20)})
+
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
 
       assert {:error, _} =
-               Assessment.upsert_marks(a, [%{student_id: s.id, score: Decimal.new("21")}])
+               Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new("21")}])
 
       assert {:error, _} =
-               Assessment.upsert_marks(a, [%{student_id: s.id, score: Decimal.new("-1")}])
+               Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new("-1")}])
     end
 
     test "the ScoreWithinMax validation rejects a score above max_score directly on the resource",
-         %{tc: tc, seq: seq, cg: cg} do
-      {:ok, a} = Assessment.create_assessment(tc, seq, %{label: "D2", max_score: Decimal.new(20)})
+         %{tc: tc, seq: seq, cg: cg, scope: scope} do
+      {:ok, a} =
+        Assessment.create_assessment(scope, tc, seq, %{label: "D2", max_score: Decimal.new(20)})
+
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
 
       assert {:error, _} =
@@ -144,8 +163,10 @@ defmodule TeacherAssistant.ConstraintsTest do
     end
 
     test "the score_non_negative check constraint rejects a negative score directly on the resource",
-         %{tc: tc, seq: seq, cg: cg} do
-      {:ok, a} = Assessment.create_assessment(tc, seq, %{label: "D3", max_score: Decimal.new(20)})
+         %{tc: tc, seq: seq, cg: cg, scope: scope} do
+      {:ok, a} =
+        Assessment.create_assessment(scope, tc, seq, %{label: "D3", max_score: Decimal.new(20)})
+
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
 
       assert {:error, _} =
@@ -159,8 +180,15 @@ defmodule TeacherAssistant.ConstraintsTest do
                |> Ash.create()
     end
 
-    test "the ScoreWithinMax validation also runs on update", %{tc: tc, seq: seq, cg: cg} do
-      {:ok, a} = Assessment.create_assessment(tc, seq, %{label: "D4", max_score: Decimal.new(20)})
+    test "the ScoreWithinMax validation also runs on update", %{
+      tc: tc,
+      seq: seq,
+      cg: cg,
+      scope: scope
+    } do
+      {:ok, a} =
+        Assessment.create_assessment(scope, tc, seq, %{label: "D4", max_score: Decimal.new(20)})
+
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(cg)
 
       {:ok, mark} =
@@ -181,14 +209,14 @@ defmodule TeacherAssistant.ConstraintsTest do
   end
 
   describe "fees: tranche/payment/adjustment amount guards" do
-    test "a negative fee tranche amount is rejected", %{cg: cg} do
+    test "a negative fee tranche amount is rejected", %{cg: cg, scope: scope} do
       # `Fees.add_tranche/2`'s own `validate_amount/1` guard allows a
       # zero-amount tranche (see `FeeTrancheTest."amount accepts 0"`) — the
       # DB-level `fee_tranches_amount_non_negative_check` mirrors that same
       # rule (>= 0), not a stricter one, so only a negative amount is
       # rejected here.
       assert {:error, _} =
-               Fees.add_tranche(cg, %{label: "T1", amount: -1, due_date: ~D[2030-10-01]})
+               Fees.add_tranche(scope, cg, %{label: "T1", amount: -1, due_date: ~D[2030-10-01]})
     end
 
     test "the fee_tranches amount_non_negative check constraint rejects a negative amount directly on the resource",
@@ -206,8 +234,8 @@ defmodule TeacherAssistant.ConstraintsTest do
                |> Ash.create()
     end
 
-    test "a non-positive payment amount is rejected", %{enrollment: e, head: head} do
-      assert {:error, _} = Fees.record_payment(e, %{amount: 0, method: :cash}, head.id)
+    test "a non-positive payment amount is rejected", %{enrollment: e, scope: scope} do
+      assert {:error, _} = Fees.record_payment(scope, e, %{amount: 0, method: :cash})
     end
 
     test "the payments amount_positive check constraint rejects a zero amount directly on the resource",
@@ -227,7 +255,8 @@ defmodule TeacherAssistant.ConstraintsTest do
 
     test "the fee_adjustments amount_non_zero check constraint rejects a zero amount", %{
       enrollment: e,
-      head: head
+      head: head,
+      scope: scope
     } do
       assert {:error, _} =
                FeeAdjustment
@@ -242,13 +271,13 @@ defmodule TeacherAssistant.ConstraintsTest do
 
       # Also reachable through the domain function, whose own guard only
       # rejects a negative amount, not zero.
-      assert {:error, _} = Fees.set_adjustment(e, %{amount: 0, reason: "erreur"}, head.id)
+      assert {:error, _} = Fees.set_adjustment(scope, e, %{amount: 0, reason: "erreur"})
     end
   end
 
   describe "conduct marks: 0..20 range" do
-    test "a conduct mark outside 0..20 is rejected", %{enrollment: e, seq: seq, head: head} do
-      assert {:error, _} = Discipline.set_conduct_mark(e, seq, 21, head.id)
+    test "a conduct mark outside 0..20 is rejected", %{enrollment: e, seq: seq, scope: scope} do
+      assert {:error, _} = Discipline.set_conduct_mark(scope, e, seq, 21)
     end
 
     test "the conduct_marks value_in_range check constraint rejects an out-of-range value directly on the resource",

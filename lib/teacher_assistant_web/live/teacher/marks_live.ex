@@ -24,10 +24,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp mount_solo(ctx, params, socket, ws) do
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(ctx.class_group_id, ws) do
+      scope = socket.assigns.current_scope
       year = Organization.current_academic_year(ws)
       sequences = if year, do: Organization.list_sequences(year), else: []
       seq = pick(sequences, params["seq"])
-      assessments = if seq, do: Assessment.list_assessments(ctx, seq), else: []
+      assessments = if seq, do: Assessment.list_assessments(scope, ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
       students = Enrollment.list_students(cg)
 
@@ -40,10 +41,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:assessments, assessments)
        |> assign(:assessment, assessment)
        |> assign(:students, students)
-       |> assign(:scores, existing_scores(assessment))
+       |> assign(:scores, existing_scores(scope, assessment))
        |> assign(:unsaved, %{})
-       |> assign(:sibling_scores, sibling_scores(ctx, seq))
-       |> assign(:new_assessment_form, solo_assessment_form(ctx, seq))}
+       |> assign(:sibling_scores, sibling_scores(scope, ctx, seq))
+       |> assign(:new_assessment_form, solo_assessment_form(scope, ctx, seq))}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
@@ -57,10 +58,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp mount_combined(ctx, course_id, params, socket, ws) do
     case Curriculum.get_course(course_id, ws) do
       {:ok, course} ->
+        scope = socket.assigns.current_scope
         year = Organization.current_academic_year(ws)
         sequences = if year, do: Organization.list_sequences(year), else: []
         seq = pick(sequences, params["seq"])
-        combined = if seq, do: Assessment.combined_assessments_for(course, seq), else: []
+        combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
         selected = pick(combined, params["assessment"])
         groups = Curriculum.list_union_students(course)
 
@@ -74,9 +76,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:seq, seq)
          |> assign(:combined_assessments, combined)
          |> assign(:selected, selected)
-         |> assign(:scores, combined_existing_scores(selected))
+         |> assign(:scores, combined_existing_scores(socket.assigns.current_scope, selected))
          |> assign(:unsaved, %{})
-         |> assign(:new_assessment_form, assessment_form(ws.id))}
+         |> assign(:new_assessment_form, assessment_form(socket.assigns.current_scope))}
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/school")}
@@ -86,30 +88,30 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
 
-  defp existing_scores(nil), do: %{}
+  defp existing_scores(_scope, nil), do: %{}
 
-  defp existing_scores(assessment) do
-    assessment
-    |> Assessment.list_marks()
+  defp existing_scores(scope, assessment) do
+    scope
+    |> Assessment.list_marks(assessment)
     |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
   end
 
-  defp combined_existing_scores(nil), do: %{}
+  defp combined_existing_scores(_scope, nil), do: %{}
 
-  defp combined_existing_scores(%{by_class_group_id: by_class_group_id}) do
+  defp combined_existing_scores(scope, %{by_class_group_id: by_class_group_id}) do
     by_class_group_id
     |> Map.values()
     |> Enum.uniq_by(& &1.id)
-    |> Enum.flat_map(&Assessment.list_marks/1)
+    |> Enum.flat_map(&Assessment.list_marks(scope, &1))
     |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
   end
 
   # %{ {student_id, assessment_id} => score } for every assessment of the séquence
-  defp sibling_scores(_ctx, nil), do: %{}
+  defp sibling_scores(_scope, _ctx, nil), do: %{}
 
-  defp sibling_scores(ctx, seq) do
-    ctx
-    |> Assessment.list_marks_for_context_sequence(seq)
+  defp sibling_scores(scope, ctx, seq) do
+    scope
+    |> Assessment.list_marks_for_context_sequence(ctx, seq)
     |> Map.new(fn m -> {{m.student_id, m.assessment_id}, m.score} end)
   end
 
@@ -185,32 +187,31 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # renders as an `AshPhoenix.Form` field; `as: "assessment"` keeps the
   # posted param key (`%{"assessment" => %{"label" => …}}`) exactly as
   # before. In combined mode the multi-class create runs through
-  # `Assessment.create_combined_assessment/3` directly (it never calls
+  # `Assessment.create_combined_assessment/4` directly (it never calls
   # `AshPhoenix.Form.submit/2` on this form), so no `prepare_source` is
   # needed here.
-  defp assessment_form(workspace_id) do
+  defp assessment_form(scope) do
     TeacherAssistant.Academics.Assessment
-    |> AshPhoenix.Form.for_create(:create, as: "assessment", tenant: workspace_id)
+    |> AshPhoenix.Form.for_create(:create, as: "assessment", scope: scope)
     |> to_form()
   end
 
   # Solo mode: the "new assessment" toolbar form, with the server-controlled
   # context/sequence ids set on the changeset at build time via
-  # `prepare_source` (never merged into the submitted params). `workspace_id`
-  # is no longer an acceptable create attribute — it's derived from the
-  # form's `tenant:`. `seq` is a *live* value — the operator can switch
-  # séquence via the "seq" selector — so callers must rebuild this form on
-  # mount and again whenever `seq` changes (see `handle_params/3`). Falls
-  # back to the plain scaffold when there's no séquence yet; the toolbar
-  # form itself is only rendered when `@seq` is present, so that scaffold is
-  # never actually submitted.
-  defp solo_assessment_form(ctx, nil), do: assessment_form(ctx.workspace_id)
+  # `prepare_source` (never merged into the submitted params). The tenant and
+  # actor travel on the form's `scope:`. `seq` is a *live* value — the
+  # operator can switch séquence via the "seq" selector — so callers must
+  # rebuild this form on mount and again whenever `seq` changes (see
+  # `handle_params/3`). Falls back to the plain scaffold when there's no
+  # séquence yet; the toolbar form itself is only rendered when `@seq` is
+  # present, so that scaffold is never actually submitted.
+  defp solo_assessment_form(scope, _ctx, nil), do: assessment_form(scope)
 
-  defp solo_assessment_form(ctx, seq) do
+  defp solo_assessment_form(scope, ctx, seq) do
     TeacherAssistant.Academics.Assessment
     |> AshPhoenix.Form.for_create(:create,
       as: "assessment",
-      tenant: ctx.workspace_id,
+      scope: scope,
       prepare_source: fn changeset ->
         changeset
         |> Ash.Changeset.change_attribute(:teaching_context_id, ctx.id)
@@ -221,9 +222,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   # Drives the `Assessment :create` action through the form built by
-  # `solo_assessment_form/2` (assigned at mount and kept fresh in
+  # `solo_assessment_form/3` (assigned at mount and kept fresh in
   # `handle_params/3`) — no second `for_create` here. This is behaviourally
-  # identical to the old `Assessment.create_assessment/3` (which was itself
+  # identical to the old `Assessment.create_assessment/4` (which was itself
   # `for_create(:create)` + `Ash.create/1` with those two ids merged). Errors
   # keep the original flash; on success, the `push_patch` re-runs
   # `handle_params/3`, which reassigns a fresh scaffold form.
@@ -248,11 +249,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   defp new_combined_assessment(socket, course, label) do
+    scope = socket.assigns.current_scope
+
     with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
-         {:ok, _created} <- Assessment.create_combined_assessment(course, seq, %{label: label}),
+         {:ok, _created} <-
+           Assessment.create_combined_assessment(scope, course, seq, %{label: label}),
          %{id: id} <-
-           course
-           |> Assessment.combined_assessments_for(seq)
+           scope
+           |> Assessment.combined_assessments_for(course, seq)
            |> Enum.find(&(&1.label == label)) do
       {:noreply,
        push_patch(socket,
@@ -283,14 +287,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp save_marks(socket, parsed) do
     entries = Enum.map(parsed, fn {id, {:ok, score}} -> %{student_id: id, score: score} end)
+    scope = socket.assigns.current_scope
 
-    case Assessment.upsert_marks(socket.assigns.assessment, entries) do
+    case Assessment.upsert_marks(scope, socket.assigns.assessment, entries) do
       :ok ->
         {:noreply,
          socket
          |> put_flash(:info, gettext("Marks saved"))
          |> assign(:unsaved, Map.delete(socket.assigns.unsaved, socket.assigns.assessment.id))
-         |> assign(:scores, existing_scores(socket.assigns.assessment))}
+         |> assign(:scores, existing_scores(scope, socket.assigns.assessment))}
 
       {:error, :out_of_range} ->
         {:noreply,
@@ -310,13 +315,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # Combined mode: each student's score is routed to *their own class's*
   # assessment — never the other member class's — via
   # `selected.by_class_group_id[class_group_id]`. All groups are written in
-  # ONE `Assessment.upsert_marks_all_or_nothing/1` call: if any class's
+  # ONE `Assessment.upsert_marks_all_or_nothing/2` call: if any class's
   # scores are out of range, NOTHING is persisted for ANY class (no partial
   # commit), matching the "record once, all classes together" model.
   # `Mark`'s `[:assessment_id, :student_id]` identity and the bulletin read
   # path are untouched: a MACO student's mark still belongs to MACO's context.
   defp save_combined(socket, scores) do
     %{groups: groups, selected: selected} = socket.assigns
+    scope = socket.assigns.current_scope
 
     all_students = Enum.flat_map(groups, & &1.students)
 
@@ -345,13 +351,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           {assessment, entries}
         end)
 
-      case Assessment.upsert_marks_all_or_nothing(assessment_entries) do
+      case Assessment.upsert_marks_all_or_nothing(scope, assessment_entries) do
         :ok ->
           {:noreply,
            socket
            |> put_flash(:info, gettext("Marks saved"))
            |> assign(:unsaved, Map.delete(socket.assigns.unsaved, selected.id))
-           |> assign(:scores, combined_existing_scores(selected))}
+           |> assign(:scores, combined_existing_scores(scope, selected))}
 
         {:error, :out_of_range} ->
           {:noreply,
@@ -375,10 +381,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     # so an accidental tap on a selector never discards typed marks.
     unsaved = stash_current(socket)
     seq = pick(socket.assigns.sequences, params["seq"])
+    scope = socket.assigns.current_scope
 
     case socket.assigns[:course] do
       %CombinedCourse{} = course ->
-        combined = if seq, do: Assessment.combined_assessments_for(course, seq), else: []
+        combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
         selected = pick(combined, params["assessment"])
 
         {:noreply,
@@ -387,10 +394,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:combined_assessments, combined)
          |> assign(:selected, selected)
          |> assign(:unsaved, unsaved)
-         |> assign(:scores, restore_combined_scores(selected, unsaved))}
+         |> assign(:scores, restore_combined_scores(scope, selected, unsaved))}
 
       _ ->
-        assessments = if seq, do: Assessment.list_assessments(socket.assigns.ctx, seq), else: []
+        assessments =
+          if seq, do: Assessment.list_assessments(scope, socket.assigns.ctx, seq), else: []
+
         assessment = pick(assessments, params["assessment"])
 
         {:noreply,
@@ -399,9 +408,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:assessments, assessments)
          |> assign(:assessment, assessment)
          |> assign(:unsaved, unsaved)
-         |> assign(:scores, restore_scores(assessment, unsaved))
-         |> assign(:sibling_scores, sibling_scores(socket.assigns.ctx, seq))
-         |> assign(:new_assessment_form, solo_assessment_form(socket.assigns.ctx, seq))}
+         |> assign(:scores, restore_scores(scope, assessment, unsaved))
+         |> assign(:sibling_scores, sibling_scores(scope, socket.assigns.ctx, seq))
+         |> assign(:new_assessment_form, solo_assessment_form(scope, socket.assigns.ctx, seq))}
     end
   end
 
@@ -414,15 +423,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
-  defp restore_scores(nil, _unsaved), do: %{}
+  defp restore_scores(_scope, nil, _unsaved), do: %{}
 
-  defp restore_scores(%{id: id} = assessment, unsaved),
-    do: Map.merge(existing_scores(assessment), Map.get(unsaved, id, %{}))
+  defp restore_scores(scope, %{id: id} = assessment, unsaved),
+    do: Map.merge(existing_scores(scope, assessment), Map.get(unsaved, id, %{}))
 
-  defp restore_combined_scores(nil, _unsaved), do: %{}
+  defp restore_combined_scores(_scope, nil, _unsaved), do: %{}
 
-  defp restore_combined_scores(%{id: id} = selected, unsaved),
-    do: Map.merge(combined_existing_scores(selected), Map.get(unsaved, id, %{}))
+  defp restore_combined_scores(scope, %{id: id} = selected, unsaved),
+    do: Map.merge(combined_existing_scores(scope, selected), Map.get(unsaved, id, %{}))
 
   # Parses a raw score field into {:ok, Decimal.t() | nil} — nil meaning absent —
   # or :error. Accepts a French decimal comma; rejects any non-empty value that is

@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
   setup do
     head = TeacherAssistant.TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(head, %{name: "Lycée P"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -30,26 +31,27 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     # helper: give the student `score`/20 in séquence `seq` for Maths
     grade = fn seq, score ->
       {:ok, a} =
-        Assessment.create_assessment(tc, seq, %{
+        Assessment.create_assessment(scope, tc, seq, %{
           label: "D",
           weight: Decimal.new(1),
           max_score: Decimal.new(20)
         })
 
-      :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(score)}])
+      :ok =
+        Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(score)}])
     end
 
-    %{year: year, cg: cg, sequences: sequences, student: student, grade: grade}
+    %{year: year, cg: cg, sequences: sequences, student: student, grade: grade, scope: scope}
   end
 
   test "trimester average is the mean of its two séquences", ctx do
-    %{year: year, cg: cg, sequences: seqs, student: student, grade: grade} = ctx
+    %{year: year, cg: cg, sequences: seqs, student: student, grade: grade, scope: scope} = ctx
     [s1, s2 | _] = seqs
     grade.(s1, 12)
     grade.(s2, 16)
 
     [term1 | _] = Organization.list_terms(year)
-    r = Assessment.class_results_for_period(cg, {:trimester, term1})
+    r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
     data = r.per_student[student.id]
     # (12 + 16) / 2 = 14
     assert Decimal.equal?(data.moyenne_generale, Decimal.new(14))
@@ -59,23 +61,23 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
   end
 
   test "a partially-graded trimester uses the one séquence present", ctx do
-    %{year: year, cg: cg, sequences: seqs, student: student, grade: grade} = ctx
+    %{year: year, cg: cg, sequences: seqs, student: student, grade: grade, scope: scope} = ctx
     [s1, _s2 | _] = seqs
     grade.(s1, 11)
 
     [term1 | _] = Organization.list_terms(year)
-    r = Assessment.class_results_for_period(cg, {:trimester, term1})
+    r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(11))
   end
 
   test "annual average is the mean of the graded séquences, with trimester components", ctx do
-    %{year: year, cg: cg, sequences: seqs, student: student, grade: grade} = ctx
+    %{year: year, cg: cg, sequences: seqs, student: student, grade: grade, scope: scope} = ctx
     [s1, s2, s3 | _] = seqs
     grade.(s1, 10)
     grade.(s2, 12)
     grade.(s3, 8)
 
-    r = Assessment.class_results_for_period(cg, {:annual, year})
+    r = Assessment.class_results_for_period(scope, cg, {:annual, year})
     # mean of present séquences: (10 + 12 + 8) / 3 = 10
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(10))
     maths = Enum.find(r.per_student[student.id].subjects, &(&1.label == "Maths"))
@@ -88,11 +90,15 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     assert t3 == nil
   end
 
-  test "class_results_for_period is nil when the class has no subjects", %{year: year} do
+  test "class_results_for_period is nil when the class has no subjects", %{year: _year} do
+    head2 = TeacherAssistant.TeacherFixtures.user_fixture()
+
     {:ok, school2} =
-      Organization.create_school(TeacherAssistant.TeacherFixtures.user_fixture(), %{
+      Organization.create_school(head2, %{
         name: "Lycée Q"
       })
+
+    scope2 = school_scope(head2, school2)
 
     {:ok, y2} =
       Organization.create_academic_year(school2, %{
@@ -104,8 +110,7 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
 
     :ok = Organization.build_default_calendar(y2)
     {:ok, cg2} = Enrollment.create_class_group(school2, y2, %{label: "6e Z", level: "6ème"})
-    assert Assessment.class_results_for_period(cg2, {:annual, y2}) == nil
-    _ = year
+    assert Assessment.class_results_for_period(scope2, cg2, {:annual, y2}) == nil
   end
 
   test "resolve_period maps params and rejects bad ones", %{year: year, sequences: seqs} do

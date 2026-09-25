@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, ws} = Organization.create_school(head, %{name: "Lycée Test"})
+    scope = school_scope(head, ws)
 
     {:ok, year} =
       Organization.create_academic_year(ws, %{
@@ -40,6 +41,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     %{
       head: head,
+      scope: scope,
       ws: ws,
       year: year,
       cg: cg,
@@ -56,9 +58,9 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "persists with the class's workspace_id", ctx do
       assert {:ok, %SanctionEntry{} = sanction} =
                Discipline.add_sanction(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{type: :avertissement, date: ctx.seq1.start_date, reason: "Retard répété"},
-                 ctx.head.id
+                 %{type: :avertissement, date: ctx.seq1.start_date, reason: "Retard répété"}
                )
 
       assert sanction.workspace_id == ctx.ws.id
@@ -69,31 +71,31 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "rejects an invalid type", ctx do
       assert {:error, :invalid_type} =
                Discipline.add_sanction(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{type: :expulsion, date: ctx.seq1.start_date},
-                 ctx.head.id
+                 %{type: :expulsion, date: ctx.seq1.start_date}
                )
     end
 
     test "translates an Ash write failure (nil date) to a tagged error, not a raw struct", ctx do
       assert {:error, :sanction_failed} =
                Discipline.add_sanction(
+                 ctx.scope,
                  ctx.enrollment1,
-                 %{type: :avertissement, date: nil},
-                 ctx.head.id
+                 %{type: :avertissement, date: nil}
                )
     end
 
     test "keeps duration_days for exclusion_temporaire", ctx do
       assert {:ok, %SanctionEntry{} = sanction} =
                Discipline.add_sanction(
+                 ctx.scope,
                  ctx.enrollment1,
                  %{
                    type: :exclusion_temporaire,
                    date: ctx.seq1.start_date,
                    duration_days: 3
-                 },
-                 ctx.head.id
+                 }
                )
 
       assert sanction.duration_days == 3
@@ -102,13 +104,13 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "drops duration_days (nil) for a consigne", ctx do
       assert {:ok, %SanctionEntry{} = sanction} =
                Discipline.add_sanction(
+                 ctx.scope,
                  ctx.enrollment1,
                  %{
                    type: :consigne,
                    date: ctx.seq1.start_date,
                    duration_days: 2
-                 },
-                 ctx.head.id
+                 }
                )
 
       assert sanction.duration_days == nil
@@ -117,44 +119,44 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "drops duration_days (nil) for an avertissement", ctx do
       assert {:ok, %SanctionEntry{} = sanction} =
                Discipline.add_sanction(
+                 ctx.scope,
                  ctx.enrollment1,
                  %{
                    type: :avertissement,
                    date: ctx.seq1.start_date,
                    duration_days: 5
-                 },
-                 ctx.head.id
+                 }
                )
 
       assert sanction.duration_days == nil
     end
   end
 
-  describe "list_sanctions/2" do
+  describe "list_sanctions/3" do
     test "class + période: returns only in-range sanctions newest-first, excludes out-of-range",
          ctx do
       {:ok, in_range1} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :avertissement, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :avertissement, date: ctx.seq1.start_date}
         )
 
       {:ok, in_range2} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment2,
-          %{type: :blame, date: Date.add(ctx.seq1.start_date, 1)},
-          ctx.head.id
+          %{type: :blame, date: Date.add(ctx.seq1.start_date, 1)}
         )
 
       {:ok, _out_of_range} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :blame, date: ctx.seq2.start_date},
-          ctx.head.id
+          %{type: :blame, date: ctx.seq2.start_date}
         )
 
-      results = Discipline.list_sanctions(ctx.cg, {:sequence, ctx.seq1})
+      results = Discipline.list_sanctions(ctx.scope, ctx.cg, {:sequence, ctx.seq1})
 
       assert Enum.map(results, & &1.id) == [in_range2.id, in_range1.id]
       assert Enum.all?(results, &(&1.enrollment.student != nil))
@@ -163,19 +165,19 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "class + période excludes sanctions from another class", ctx do
       {:ok, _own} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :avertissement, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :avertissement, date: ctx.seq1.start_date}
         )
 
       {:ok, _other} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.other_enrollment,
-          %{type: :avertissement, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :avertissement, date: ctx.seq1.start_date}
         )
 
-      results = Discipline.list_sanctions(ctx.cg, {:sequence, ctx.seq1})
+      results = Discipline.list_sanctions(ctx.scope, ctx.cg, {:sequence, ctx.seq1})
 
       assert length(results) == 1
       assert hd(results).enrollment_id == ctx.enrollment1.id
@@ -184,19 +186,19 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "single enrollment scopes to that student", ctx do
       {:ok, mine} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :avertissement, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :avertissement, date: ctx.seq1.start_date}
         )
 
       {:ok, _other_student} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment2,
-          %{type: :blame, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :blame, date: ctx.seq1.start_date}
         )
 
-      results = Discipline.list_sanctions(ctx.enrollment1, {:sequence, ctx.seq1})
+      results = Discipline.list_sanctions(ctx.scope, ctx.enrollment1, {:sequence, ctx.seq1})
 
       assert Enum.map(results, & &1.id) == [mine.id]
     end
@@ -205,26 +207,26 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
          ctx do
       {:ok, on_start} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :avertissement, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :avertissement, date: ctx.seq1.start_date}
         )
 
       {:ok, on_end} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :blame, date: ctx.seq1.end_date},
-          ctx.head.id
+          %{type: :blame, date: ctx.seq1.end_date}
         )
 
       {:ok, _after_end} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :consigne, date: Date.add(ctx.seq1.end_date, 1)},
-          ctx.head.id
+          %{type: :consigne, date: Date.add(ctx.seq1.end_date, 1)}
         )
 
-      results = Discipline.list_sanctions(ctx.cg, {:sequence, ctx.seq1})
+      results = Discipline.list_sanctions(ctx.scope, ctx.cg, {:sequence, ctx.seq1})
       result_ids = MapSet.new(results, & &1.id)
 
       assert result_ids == MapSet.new([on_start.id, on_end.id])
@@ -242,7 +244,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
           active: false
         })
 
-      assert Discipline.list_sanctions(ctx.cg, {:annual, empty_year}) == []
+      assert Discipline.list_sanctions(ctx.scope, ctx.cg, {:annual, empty_year}) == []
     end
   end
 
@@ -250,21 +252,21 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     test "removes the row", ctx do
       {:ok, sanction} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :avertissement, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :avertissement, date: ctx.seq1.start_date}
         )
 
-      assert :ok = Discipline.delete_sanction(sanction)
+      assert :ok = Discipline.delete_sanction(sanction, scope: ctx.scope)
 
-      assert Discipline.list_sanctions(ctx.enrollment1, {:sequence, ctx.seq1}) == []
+      assert Discipline.list_sanctions(ctx.scope, ctx.enrollment1, {:sequence, ctx.seq1}) == []
     end
   end
 
   describe "set_conduct_mark/4" do
     test "creates a mark with the enrollment's workspace_id", ctx do
       assert {:ok, %ConductMark{} = mark} =
-               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 15, ctx.head.id)
+               Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 15)
 
       assert mark.value == Decimal.new(15)
       assert mark.workspace_id == ctx.ws.id
@@ -273,10 +275,10 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     end
 
     test "re-setting the same (enrollment, sequence) upserts: one row, latest value", ctx do
-      assert {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 12, ctx.head.id)
+      assert {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 12)
 
       assert {:ok, updated} =
-               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 18, ctx.head.id)
+               Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 18)
 
       assert Decimal.equal?(updated.value, Decimal.new(18))
 
@@ -291,35 +293,35 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
 
     test "rejects a value above 20", ctx do
       assert {:error, :invalid_value} =
-               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 21, ctx.head.id)
+               Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 21)
     end
 
     test "rejects a value below 0", ctx do
       assert {:error, :invalid_value} =
-               Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, -1, ctx.head.id)
+               Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, -1)
     end
   end
 
-  describe "clear_conduct_mark/2" do
+  describe "clear_conduct_mark/3" do
     test "deletes the mark for (enrollment, sequence)", ctx do
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 14, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 14)
 
-      assert {:ok, 1} = Discipline.clear_conduct_mark(ctx.enrollment1, ctx.seq1)
+      assert {:ok, 1} = Discipline.clear_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1)
 
-      assert Discipline.note_de_conduite(ctx.enrollment1, {:sequence, ctx.seq1}) == nil
+      assert Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:sequence, ctx.seq1}) == nil
     end
 
     test "returns {:ok, 0} when no mark exists", ctx do
-      assert {:ok, 0} = Discipline.clear_conduct_mark(ctx.enrollment1, ctx.seq1)
+      assert {:ok, 0} = Discipline.clear_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1)
     end
   end
 
-  describe "note_de_conduite/2" do
+  describe "note_de_conduite/3" do
     test "sequence period returns that séquence's mark value", ctx do
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 16, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 16)
 
       assert Decimal.equal?(
-               Discipline.note_de_conduite(ctx.enrollment1, {:sequence, ctx.seq1}),
+               Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:sequence, ctx.seq1}),
                Decimal.new(16)
              )
     end
@@ -329,67 +331,67 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       term1 = Enum.find(Organization.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
       assert ctx.seq2.term_id == term1.id
 
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 10, ctx.head.id)
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq2, 20, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 10)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq2, 20)
 
-      result = Discipline.note_de_conduite(ctx.enrollment1, {:trimester, term1})
+      result = Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:trimester, term1})
 
       assert Decimal.equal?(result, Decimal.new(15))
       refute Decimal.equal?(result, Decimal.new(30))
     end
 
     test "annual period returns the mean of present séquence marks across the year", ctx do
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 10, ctx.head.id)
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq2, 20, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 10)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq2, 20)
 
-      result = Discipline.note_de_conduite(ctx.enrollment1, {:annual, ctx.year})
+      result = Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:annual, ctx.year})
 
       assert Decimal.equal?(result, Decimal.new(15))
     end
 
     test "returns nil when no marks are present", ctx do
-      assert Discipline.note_de_conduite(ctx.enrollment1, {:sequence, ctx.seq1}) == nil
-      assert Discipline.note_de_conduite(ctx.enrollment1, {:annual, ctx.year}) == nil
+      assert Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:sequence, ctx.seq1}) == nil
+      assert Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:annual, ctx.year}) == nil
     end
   end
 
-  describe "discipline_summary/2" do
+  describe "discipline_summary/3" do
     test "splits the sanction ladder from consignes and reports note_de_conduite", ctx do
       {:ok, consigne} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :consigne, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :consigne, date: ctx.seq1.start_date}
         )
 
       {:ok, avertissement} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :avertissement, date: Date.add(ctx.seq1.start_date, 1)},
-          ctx.head.id
+          %{type: :avertissement, date: Date.add(ctx.seq1.start_date, 1)}
         )
 
       {:ok, exclusion} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
           %{
             type: :exclusion_temporaire,
             date: Date.add(ctx.seq1.start_date, 2),
             duration_days: 2
-          },
-          ctx.head.id
+          }
         )
 
       {:ok, _out_of_range} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :consigne, date: ctx.seq2.start_date},
-          ctx.head.id
+          %{type: :consigne, date: ctx.seq2.start_date}
         )
 
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 17, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 17)
 
-      summary = Discipline.discipline_summary(ctx.enrollment1, {:sequence, ctx.seq1})
+      summary = Discipline.discipline_summary(ctx.scope, ctx.enrollment1, {:sequence, ctx.seq1})
 
       assert Enum.map(summary.sanctions, & &1.id) == [exclusion.id, avertissement.id]
       refute Enum.any?(summary.sanctions, &(&1.id == consigne.id))
@@ -398,7 +400,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     end
 
     test "consignes_count and note_de_conduite are zero/nil with no entries", ctx do
-      summary = Discipline.discipline_summary(ctx.enrollment2, {:sequence, ctx.seq1})
+      summary = Discipline.discipline_summary(ctx.scope, ctx.enrollment2, {:sequence, ctx.seq1})
 
       assert summary.sanctions == []
       assert summary.consignes_count == 0
@@ -406,18 +408,18 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
     end
   end
 
-  describe "class_discipline/2" do
+  describe "class_discipline/3" do
     test "includes every roster enrollment, entry-less ones get zeros", ctx do
       {:ok, _} =
         Discipline.add_sanction(
+          ctx.scope,
           ctx.enrollment1,
-          %{type: :blame, date: ctx.seq1.start_date},
-          ctx.head.id
+          %{type: :blame, date: ctx.seq1.start_date}
         )
 
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 13, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 13)
 
-      result = Discipline.class_discipline(ctx.cg, {:sequence, ctx.seq1})
+      result = Discipline.class_discipline(ctx.scope, ctx.cg, {:sequence, ctx.seq1})
 
       assert map_size(result) == 2
 
@@ -434,16 +436,16 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       term1 = Enum.find(Organization.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
       assert ctx.seq2.term_id == term1.id
 
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 10, ctx.head.id)
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq2, 20, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 10)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq2, 20)
 
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment2, ctx.seq1, 8, ctx.head.id)
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment2, ctx.seq2, 12, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment2, ctx.seq1, 8)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment2, ctx.seq2, 12)
 
-      expected1 = Discipline.note_de_conduite(ctx.enrollment1, {:trimester, term1})
-      expected2 = Discipline.note_de_conduite(ctx.enrollment2, {:trimester, term1})
+      expected1 = Discipline.note_de_conduite(ctx.scope, ctx.enrollment1, {:trimester, term1})
+      expected2 = Discipline.note_de_conduite(ctx.scope, ctx.enrollment2, {:trimester, term1})
 
-      result = Discipline.class_discipline(ctx.cg, {:trimester, term1})
+      result = Discipline.class_discipline(ctx.scope, ctx.cg, {:trimester, term1})
 
       assert Decimal.equal?(result[ctx.enrollment1.id].note_de_conduite, expected1)
       assert Decimal.equal?(result[ctx.enrollment1.id].note_de_conduite, Decimal.new(15))
@@ -456,9 +458,9 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
          ctx do
       term1 = Enum.find(Organization.list_terms(ctx.year), &(&1.id == ctx.seq1.term_id))
 
-      {:ok, _} = Discipline.set_conduct_mark(ctx.enrollment1, ctx.seq1, 14, ctx.head.id)
+      {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 14)
 
-      result = Discipline.class_discipline(ctx.cg, {:trimester, term1})
+      result = Discipline.class_discipline(ctx.scope, ctx.cg, {:trimester, term1})
 
       assert result[ctx.enrollment2.id] ==
                %{sanctions: [], consignes_count: 0, note_de_conduite: nil}

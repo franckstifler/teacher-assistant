@@ -38,7 +38,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
          {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
          period when not is_nil(period) <- Organization.resolve_period(year, params["period"]) do
-      fun.(scope, cg, period, Assessment.class_results_for_period(cg, period))
+      fun.(scope, cg, period, Assessment.class_results_for_period(scope, cg, period))
     else
       {:operating, false} ->
         conn
@@ -55,7 +55,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   defp render_bulletins(conn, scope, cg, period, results, entries) do
     conduct_by_enrollment = Attendance.class_conduct(cg, period)
-    discipline_by_enrollment = Discipline.class_discipline(cg, period)
+    discipline_by_enrollment = Discipline.class_discipline(scope, cg, period)
 
     bundles =
       Enum.map(entries, fn %{student: student, enrollment: enrollment} ->

@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Fees do
   alias TeacherAssistant.Academics.FeeBalance
   alias TeacherAssistant.Academics.FeeTranche
   alias TeacherAssistant.Academics.Payment
+  alias TeacherAssistant.Scope
 
   resources do
     resource FeeTranche do
@@ -55,30 +56,33 @@ defmodule TeacherAssistant.Fees do
   @doc """
   Lists `FeeTranche`s for `class_group`, ordered by `position` ascending.
   """
-  def list_tranches(%ClassGroup{id: cg_id, workspace_id: ws_id}),
-    do: list_tranches_for_class_group_id!(cg_id, tenant: ws_id)
+  def list_tranches(%Scope{} = scope, %ClassGroup{id: cg_id}),
+    do: list_tranches_for_class_group_id!(cg_id, scope: scope)
 
   @doc """
   Adds a fee tranche to `class_group`. `attrs` carries `label`, `amount`
   (integer FCFA), optional `due_date`. Rejects a negative `amount` with
-  `{:error, :invalid_amount}`. `workspace_id` is taken from the class
-  group; `position` is set to the next index (count of existing tranches).
+  `{:error, :invalid_amount}`. Runs under the scope's tenant; `position`
+  is set to the next index (count of existing tranches).
   """
-  def add_tranche(%ClassGroup{} = class_group, attrs) do
+  def add_tranche(%Scope{} = scope, %ClassGroup{} = class_group, attrs) do
     amount = attrs[:amount] || attrs["amount"]
 
     with :ok <- validate_amount(amount) do
-      position = length(list_tranches(class_group))
+      position = length(list_tranches(scope, class_group))
 
       FeeTranche
-      |> Ash.Changeset.for_create(:create, %{
-        label: attrs[:label] || attrs["label"],
-        amount: amount,
-        due_date: attrs[:due_date] || attrs["due_date"],
-        position: position,
-        class_group_id: class_group.id
-      })
-      |> Ash.Changeset.set_tenant(class_group.workspace_id)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          label: attrs[:label] || attrs["label"],
+          amount: amount,
+          due_date: attrs[:due_date] || attrs["due_date"],
+          position: position,
+          class_group_id: class_group.id
+        },
+        scope: scope
+      )
       |> Ash.create()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
@@ -92,7 +96,7 @@ defmodule TeacherAssistant.Fees do
   present) with `{:error, :invalid_amount}`. Sanitizes any Ash write
   failure to `{:error, :tranche_failed}`.
   """
-  def update_tranche(%FeeTranche{} = tranche, attrs) do
+  def update_tranche(%Scope{} = scope, %FeeTranche{} = tranche, attrs) do
     amount = attrs[:amount] || attrs["amount"]
 
     with :ok <- validate_amount(amount) do
@@ -100,8 +104,7 @@ defmodule TeacherAssistant.Fees do
         Map.take(attrs, [:label, "label", :amount, "amount", :due_date, "due_date"])
 
       tranche
-      |> Ash.Changeset.for_update(:update, update_attrs)
-      |> Ash.Changeset.set_tenant(tranche.workspace_id)
+      |> Ash.Changeset.for_update(:update, update_attrs, scope: scope)
       |> Ash.update()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
@@ -117,29 +120,32 @@ defmodule TeacherAssistant.Fees do
   # --- Payments ----------------------------------------------------------
 
   @doc """
-  Records a payment for `enrollment`. `attrs` carries
-  `amount` (integer FCFA), `paid_on`, `method` (atom), optional `reference`,
-  optional `note`. Rejects `amount <= 0` with `{:error, :invalid_amount}`
-  and a `method` outside the enum whitelist with `{:error, :invalid_method}`.
-  `workspace_id` is taken from the enrollment.
+  Records a payment for `enrollment`, attributed to the scope's user. `attrs`
+  carries `amount` (integer FCFA), `paid_on`, `method` (atom), optional
+  `reference`, optional `note`. Rejects `amount <= 0` with
+  `{:error, :invalid_amount}` and a `method` outside the enum whitelist with
+  `{:error, :invalid_method}`. Runs under the scope's tenant.
   """
-  def record_payment(%Enrollment{} = e, attrs, recorded_by_user_id) do
+  def record_payment(%Scope{} = scope, %Enrollment{} = e, attrs) do
     amount = attrs[:amount] || attrs["amount"]
     method = attrs[:method] || attrs["method"]
 
     with :ok <- validate_positive_amount(amount),
          :ok <- validate_method(method) do
       Payment
-      |> Ash.Changeset.for_create(:create, %{
-        amount: amount,
-        paid_on: attrs[:paid_on] || attrs["paid_on"],
-        method: method,
-        reference: attrs[:reference] || attrs["reference"],
-        note: attrs[:note] || attrs["note"],
-        recorded_by_user_id: recorded_by_user_id,
-        enrollment_id: e.id
-      })
-      |> Ash.Changeset.set_tenant(e.workspace_id)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          amount: amount,
+          paid_on: attrs[:paid_on] || attrs["paid_on"],
+          method: method,
+          reference: attrs[:reference] || attrs["reference"],
+          note: attrs[:note] || attrs["note"],
+          recorded_by_user_id: scope.current_user && scope.current_user.id,
+          enrollment_id: e.id
+        },
+        scope: scope
+      )
       |> Ash.create()
       |> case do
         {:ok, payment} -> {:ok, payment}
@@ -159,29 +165,32 @@ defmodule TeacherAssistant.Fees do
   Lists `Payment`s for `enrollment`, newest first
   (`paid_on` desc, then `inserted_at` desc).
   """
-  def list_payments(%Enrollment{id: id, workspace_id: ws_id}),
-    do: list_payments_for_enrollment_id!(id, tenant: ws_id)
+  def list_payments(%Scope{} = scope, %Enrollment{id: id}),
+    do: list_payments_for_enrollment_id!(id, scope: scope)
 
   # --- Adjustments ---------------------------------------------------------
 
   @doc """
   Upserts the fee adjustment for `enrollment` to `attrs`
-  (`amount`, `reason`), recorded by `recorded_by_user_id`. Rejects a
-  negative `amount` with `{:error, :invalid_amount}`. `workspace_id` is
-  taken from the enrollment.
+  (`amount`, `reason`), recorded by the scope's user. Rejects a
+  negative `amount` with `{:error, :invalid_amount}`. Runs under the
+  scope's tenant.
   """
-  def set_adjustment(%Enrollment{} = e, attrs, recorded_by_user_id) do
+  def set_adjustment(%Scope{} = scope, %Enrollment{} = e, attrs) do
     amount = attrs[:amount] || attrs["amount"]
 
     with :ok <- validate_amount(amount) do
       FeeAdjustment
-      |> Ash.Changeset.for_create(:set, %{
-        amount: amount,
-        reason: attrs[:reason] || attrs["reason"],
-        recorded_by_user_id: recorded_by_user_id,
-        enrollment_id: e.id
-      })
-      |> Ash.Changeset.set_tenant(e.workspace_id)
+      |> Ash.Changeset.for_create(
+        :set,
+        %{
+          amount: amount,
+          reason: attrs[:reason] || attrs["reason"],
+          recorded_by_user_id: scope.current_user && scope.current_user.id,
+          enrollment_id: e.id
+        },
+        scope: scope
+      )
       |> Ash.create()
       |> case do
         {:ok, adjustment} -> {:ok, adjustment}
@@ -191,11 +200,11 @@ defmodule TeacherAssistant.Fees do
   end
 
   @doc "Deletes the fee adjustment for `enrollment`, if any."
-  def clear_adjustment(%Enrollment{id: id, workspace_id: ws_id}) do
-    adjustments = list_adjustments_for_enrollment_id!(id, tenant: ws_id)
+  def clear_adjustment(%Scope{} = scope, %Enrollment{id: id}) do
+    adjustments = list_adjustments_for_enrollment_id!(id, scope: scope)
 
     try do
-      Enum.each(adjustments, &Ash.destroy!(&1, tenant: ws_id))
+      Enum.each(adjustments, &Ash.destroy!(&1, scope: scope))
       {:ok, length(adjustments)}
     rescue
       _ -> {:error, :adjustment_failed}
@@ -209,18 +218,17 @@ defmodule TeacherAssistant.Fees do
   tranches from the enrollment's class group, that student's payments, and
   that student's adjustment amount (0 when none).
   """
-  def student_balance(%Enrollment{} = e, on_date \\ Date.utc_today()) do
-    tranches =
-      list_tranches(%ClassGroup{id: e.class_group_id, workspace_id: e.workspace_id})
+  def student_balance(%Scope{} = scope, %Enrollment{} = e, on_date \\ Date.utc_today()) do
+    tranches = list_tranches_for_class_group_id!(e.class_group_id, scope: scope)
 
-    payments = list_payments(e)
-    adjustment_amount = adjustment_amount_for(e.id, e.workspace_id)
+    payments = list_payments(scope, e)
+    adjustment_amount = adjustment_amount_for(e.id, scope)
 
     FeeBalance.compute(tranches, payments, adjustment_amount, on_date)
   end
 
-  defp adjustment_amount_for(enrollment_id, ws_id) do
-    case list_adjustments_for_enrollment_id!(enrollment_id, tenant: ws_id) do
+  defp adjustment_amount_for(enrollment_id, %Scope{} = scope) do
+    case list_adjustments_for_enrollment_id!(enrollment_id, scope: scope) do
       [adjustment | _] -> adjustment.amount
       [] -> 0
     end
@@ -232,19 +240,18 @@ defmodule TeacherAssistant.Fees do
   enrollments get the schedule's full due / status with 0 paid, 0
   adjustment.
   """
-  def class_balances(%ClassGroup{} = class_group, on_date \\ Date.utc_today()) do
+  def class_balances(%Scope{} = scope, %ClassGroup{} = class_group, on_date \\ Date.utc_today()) do
     roster = TeacherAssistant.Enrollment.list_roster(class_group)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
-    ws_id = class_group.workspace_id
 
-    tranches = list_tranches(class_group)
+    tranches = list_tranches(scope, class_group)
 
     payments_by_enrollment =
       if enrollment_ids == [] do
         %{}
       else
         enrollment_ids
-        |> list_payments_for_enrollment_ids!(tenant: ws_id)
+        |> list_payments_for_enrollment_ids!(scope: scope)
         |> Enum.group_by(& &1.enrollment_id)
       end
 
@@ -253,7 +260,7 @@ defmodule TeacherAssistant.Fees do
         %{}
       else
         enrollment_ids
-        |> list_adjustments_for_enrollment_ids!(tenant: ws_id)
+        |> list_adjustments_for_enrollment_ids!(scope: scope)
         |> Map.new(&{&1.enrollment_id, &1.amount})
       end
 

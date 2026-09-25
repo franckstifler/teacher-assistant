@@ -10,6 +10,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée F"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -25,7 +26,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 
-    %{conn: conn, school: school, year: year, cg: cg, head: head}
+    %{conn: conn, school: school, year: year, cg: cg, head: head, scope: scope}
   end
 
   defp conn_for(school, user) do
@@ -38,7 +39,8 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   test "a fees manager adds a tranche, sees it, and deletes it", %{
     school: school,
     cg: cg,
-    head: head
+    head: head,
+    scope: scope
   } do
     bursar = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -61,7 +63,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert [tranche] = Fees.list_tranches(cg)
+    assert [tranche] = Fees.list_tranches(scope, cg)
     assert tranche.label == "1ère tranche"
     assert tranche.amount == 25_000
 
@@ -69,13 +71,14 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     |> element("#delete-tranche-#{tranche.id}")
     |> render_click()
 
-    assert Fees.list_tranches(cg) == []
+    assert Fees.list_tranches(scope, cg) == []
   end
 
   test "a negative or non-numeric amount is rejected without persisting", %{
     cg: cg,
     school: school,
-    head: head
+    head: head,
+    scope: scope
   } do
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
@@ -88,7 +91,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert Fees.list_tranches(cg) == []
+    assert Fees.list_tranches(scope, cg) == []
 
     view
     |> form("#fees-add-form", %{
@@ -98,16 +101,17 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert Fees.list_tranches(cg) == []
+    assert Fees.list_tranches(scope, cg) == []
   end
 
   test "a fees manager edits a tranche's label and amount", %{
     school: school,
     cg: cg,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
@@ -129,7 +133,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert [updated] = Fees.list_tranches(cg)
+    assert [updated] = Fees.list_tranches(scope, cg)
     assert updated.label == "Tranche 1 modifiée"
     assert updated.amount == 15_000
     assert updated.due_date == ~D[2025-11-01]
@@ -138,10 +142,11 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   test "an invalid amount on edit is rejected without persisting", %{
     school: school,
     cg: cg,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
@@ -159,17 +164,18 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert [unchanged] = Fees.list_tranches(cg)
+    assert [unchanged] = Fees.list_tranches(scope, cg)
     assert unchanged.amount == 10_000
   end
 
   test "a form master sees read-only rows and forged events are rejected", %{
     school: school,
     cg: cg,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -186,7 +192,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     assert html =~ "Tranche 1"
     refute has_element?(view, "#fees-add-form")
 
-    [tranche] = Fees.list_tranches(cg)
+    [tranche] = Fees.list_tranches(scope, cg)
     refute has_element?(view, "#delete-tranche-#{tranche.id}")
     refute has_element?(view, "#edit-tranche-#{tranche.id}")
 
@@ -208,7 +214,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       "due_date" => "2025-10-01"
     })
 
-    assert Fees.list_tranches(cg) == [tranche]
+    assert Fees.list_tranches(scope, cg) == [tranche]
   end
 
   test "a plain teacher who is not the form master is redirected to /school", %{
@@ -232,13 +238,14 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   test "a fees manager records a payment and the balance + status chip update", %{
     school: school,
     cg: cg,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Awa Nkeng", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
@@ -255,11 +262,11 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert [payment] = Fees.list_payments(enrollment)
+    assert [payment] = Fees.list_payments(scope, enrollment)
     assert payment.amount == 4000
     assert payment.method == :cash
 
-    balance = Fees.student_balance(enrollment)
+    balance = Fees.student_balance(scope, enrollment)
     assert balance.total_paid == 4000
     assert balance.status == :behind
 
@@ -270,13 +277,14 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   test "a fees manager sets an adjustment and the due drops", %{
     school: school,
     cg: cg,
-    head: head
+    head: head,
+    scope: scope
   } do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Bella Fon", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
@@ -288,22 +296,22 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    balance = Fees.student_balance(enrollment)
+    balance = Fees.student_balance(scope, enrollment)
     assert balance.total_due == 8000
   end
 
-  test "a fees manager deletes a payment", %{school: school, cg: cg, head: head} do
+  test "a fees manager deletes a payment", %{school: school, cg: cg, head: head, scope: scope} do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Chris Mbua", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     {:ok, payment} =
       Fees.record_payment(
+        scope,
         enrollment,
-        %{amount: 5000, paid_on: ~D[2025-10-05], method: :cash},
-        head.id
+        %{amount: 5000, paid_on: ~D[2025-10-05], method: :cash}
       )
 
     conn = conn_for(school, head)
@@ -320,23 +328,28 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       |> element("#delete-payment-#{payment.id}")
       |> render_click()
 
-    assert Fees.list_payments(enrollment) == []
+    assert Fees.list_payments(scope, enrollment) == []
     refute html =~ "delete-payment-#{payment.id}"
     refute has_element?(view, "#delete-payment-#{payment.id}")
   end
 
-  test "status chip shows Soldé when fully paid", %{school: school, cg: cg, head: head} do
+  test "status chip shows Soldé when fully paid", %{
+    school: school,
+    cg: cg,
+    head: head,
+    scope: scope
+  } do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Dora Ateh", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     {:ok, _payment} =
       Fees.record_payment(
+        scope,
         enrollment,
-        %{amount: 10_000, paid_on: ~D[2025-10-05], method: :cash},
-        head.id
+        %{amount: 10_000, paid_on: ~D[2025-10-05], method: :cash}
       )
 
     conn = conn_for(school, head)
@@ -348,12 +361,12 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
   end
 
   test "a form master sees balances read-only and forged payment/adjustment events are rejected",
-       %{school: school, cg: cg, head: head} do
+       %{school: school, cg: cg, head: head, scope: scope} do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Eyoh Bate", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
 
@@ -385,16 +398,21 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       "reason" => "forged"
     })
 
-    assert Fees.list_payments(enrollment) == []
-    assert Fees.student_balance(enrollment).total_due == 10_000
+    assert Fees.list_payments(scope, enrollment) == []
+    assert Fees.student_balance(scope, enrollment).total_due == 10_000
   end
 
-  test "a zero or non-numeric payment amount is rejected", %{school: school, cg: cg, head: head} do
+  test "a zero or non-numeric payment amount is rejected", %{
+    school: school,
+    cg: cg,
+    head: head,
+    scope: scope
+  } do
     {:ok, _student} = Enrollment.add_student(cg, %{full_name: "Fon Ngu", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(cg)
 
     {:ok, _tranche} =
-      Fees.add_tranche(cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
+      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
 
     conn = conn_for(school, head)
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
@@ -415,7 +433,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     })
     |> render_submit()
 
-    assert Fees.list_payments(enrollment) == []
+    assert Fees.list_payments(scope, enrollment) == []
   end
 
   test "cross-school class id redirects to /school/classes", %{conn: conn} do

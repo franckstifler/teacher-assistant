@@ -80,7 +80,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
         duration_days: duration_days
       }
 
-      case Discipline.add_sanction(row.enrollment, attrs, scope.current_user.id) do
+      case Discipline.add_sanction(scope, row.enrollment, attrs) do
         {:ok, _sanction} ->
           {:noreply,
            socket |> put_flash(:info, gettext("Sanction recorded.")) |> select_period(nil)}
@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
     with true <- Permissions.conduct_manager?(scope),
          %{} = sanction <- Enum.find(socket.assigns.sanctions, &(&1.id == sanction_id)) do
-      case Discipline.delete_sanction(sanction) do
+      case Discipline.delete_sanction(sanction, scope: scope) do
         :ok ->
           {:noreply,
            socket |> put_flash(:info, gettext("Sanction removed.")) |> select_period(nil)}
@@ -117,7 +117,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     with true <- Permissions.conduct_manager?(scope),
          {:sequence, sequence} <- socket.assigns.period,
          %{} = row <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
-      case Discipline.set_conduct_mark(row.enrollment, sequence, value, scope.current_user.id) do
+      case Discipline.set_conduct_mark(scope, row.enrollment, sequence, value) do
         {:ok, _mark} ->
           {:noreply,
            socket
@@ -164,8 +164,11 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
         default_period(socket.assigns.sequences)
 
     cg = socket.assigns.cg
-    sanctions = if period, do: Discipline.list_sanctions(cg, period), else: []
-    discipline_by_enrollment = if period, do: Discipline.class_discipline(cg, period), else: %{}
+    scope = socket.assigns.current_scope
+    sanctions = if period, do: Discipline.list_sanctions(scope, cg, period), else: []
+
+    discipline_by_enrollment =
+      if period, do: Discipline.class_discipline(scope, cg, period), else: %{}
 
     assign(socket,
       period: period,

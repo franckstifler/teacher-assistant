@@ -133,7 +133,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
       |> Organization.list_sequences()
       |> List.first()
 
-    {:ok, a} = TeacherAssistant.Assessment.create_assessment(tc, seq, %{label: "Iso"})
+    {:ok, a} =
+      TeacherAssistant.Assessment.create_assessment(scope_of(school), tc, seq, %{label: "Iso"})
+
     a
   end
 
@@ -145,9 +147,11 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     [%{student: s} | _] = TeacherAssistant.Enrollment.list_roster(cg)
 
     :ok =
-      TeacherAssistant.Assessment.upsert_marks(a, [%{student_id: s.id, score: Decimal.new("12")}])
+      TeacherAssistant.Assessment.upsert_marks(scope_of(school), a, [
+        %{student_id: s.id, score: Decimal.new("12")}
+      ])
 
-    a |> TeacherAssistant.Assessment.list_marks() |> List.first()
+    a |> then(&TeacherAssistant.Assessment.list_marks(scope_of(school), &1)) |> List.first()
   end
 
   defp row_for(A.Period, school, _ctx),
@@ -210,9 +214,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     {:ok, s} =
       TeacherAssistant.Discipline.add_sanction(
+        scope_of(school),
         e,
-        %{type: :avertissement, date: ~D[2030-10-07], reason: "Iso"},
-        nil
+        %{type: :avertissement, date: ~D[2030-10-07], reason: "Iso"}
       )
 
     s
@@ -227,7 +231,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
       |> Organization.list_sequences()
       |> List.first()
 
-    {:ok, m} = TeacherAssistant.Discipline.set_conduct_mark(e, seq, 15, nil)
+    {:ok, m} = TeacherAssistant.Discipline.set_conduct_mark(scope_of(school), e, seq, 15)
     m
   end
 
@@ -235,7 +239,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     cg = row_for(A.ClassGroup, school, ctx)
 
     {:ok, t} =
-      TeacherAssistant.Fees.add_tranche(cg, %{
+      TeacherAssistant.Fees.add_tranche(scope_of(school), cg, %{
         label: "T1",
         amount: 10_000,
         due_date: ~D[2030-10-01]
@@ -249,9 +253,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     {:ok, p} =
       TeacherAssistant.Fees.record_payment(
+        scope_of(school),
         e,
-        %{amount: 5_000, method: :cash, paid_on: ~D[2030-10-02]},
-        nil
+        %{amount: 5_000, method: :cash, paid_on: ~D[2030-10-02]}
       )
 
     p
@@ -259,7 +263,10 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   defp row_for(A.FeeAdjustment, school, ctx) do
     e = row_for(A.Enrollment, school, ctx)
-    {:ok, adj} = TeacherAssistant.Fees.set_adjustment(e, %{amount: 1_000, reason: "Iso"}, nil)
+
+    {:ok, adj} =
+      TeacherAssistant.Fees.set_adjustment(scope_of(school), e, %{amount: 1_000, reason: "Iso"})
+
     adj
   end
 
@@ -404,19 +411,20 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert {:ok, _} =
              TeacherAssistant.Fees.record_payment(
+               scope_of(a),
                e,
-               %{amount: 1_000, method: :cash, paid_on: ~D[2030-10-03]},
-               nil
+               %{amount: 1_000, method: :cash, paid_on: ~D[2030-10-03]}
              )
 
-    assert TeacherAssistant.Fees.list_payments(e) |> Enum.all?(&(&1.workspace_id == a.id))
+    assert TeacherAssistant.Fees.list_payments(scope_of(a), e)
+           |> Enum.all?(&(&1.workspace_id == a.id))
 
     # M7 / F1: the database rejects a cross-workspace combination
     # (a's enrollment paired with b's sequence) — nothing is written.
     seq_b =
       b |> Organization.current_academic_year() |> Organization.list_sequences() |> List.first()
 
-    assert {:error, _} = TeacherAssistant.Discipline.set_conduct_mark(e, seq_b, 15, nil)
+    assert {:error, _} = TeacherAssistant.Discipline.set_conduct_mark(scope_of(a), e, seq_b, 15)
 
     assert A.ConductMark
            |> Ash.Query.for_read(:read)

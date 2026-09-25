@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Bu"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -31,16 +32,16 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Assessment.create_assessment(tc, seq, %{
+      Assessment.create_assessment(scope, tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
       })
 
     [%{student: student, enrollment: enr}] = Enrollment.list_roster(cg)
-    :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head}
+    %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head, scope: scope}
   end
 
   test "renders the student's bulletin", %{conn: conn, cg: cg, enr: enr, seq: seq} do
@@ -58,7 +59,8 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     cg: cg,
     enr: enr,
     seq: seq,
-    school: school
+    school: school,
+    scope: scope
   } do
     # grade a second séquence in the same term so the trimester has two components
     year = TeacherAssistant.Organization.current_academic_year(school)
@@ -69,7 +71,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
     {:ok, a2} =
-      TeacherAssistant.Assessment.create_assessment(tc, s2, %{
+      TeacherAssistant.Assessment.create_assessment(scope, tc, s2, %{
         label: "D2",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -78,7 +80,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [%{student: student}] = TeacherAssistant.Enrollment.list_roster(cg)
 
     :ok =
-      TeacherAssistant.Assessment.upsert_marks(a2, [
+      TeacherAssistant.Assessment.upsert_marks(scope, a2, [
         %{student_id: student.id, score: Decimal.new(17)}
       ])
 
@@ -184,7 +186,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   end
 
   test "the bulletin shows sanctions, consignes and note de conduite without changing the moyenne générale",
-       %{conn: conn, cg: cg, enr: enr, seq: seq, head: head} do
+       %{conn: conn, cg: cg, enr: enr, seq: seq, scope: scope} do
     # Baseline: no discipline recorded yet.
     {:ok, _view, baseline_html} =
       live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
@@ -194,23 +196,23 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     date = seq.start_date
 
     {:ok, _} =
-      Discipline.add_sanction(enr, %{type: :consigne, date: date, reason: "Bavardage"}, head.id)
+      Discipline.add_sanction(scope, enr, %{type: :consigne, date: date, reason: "Bavardage"})
 
     {:ok, _} =
       Discipline.add_sanction(
+        scope,
         enr,
-        %{type: :avertissement, date: date, reason: "Retards répétés"},
-        head.id
+        %{type: :avertissement, date: date, reason: "Retards répétés"}
       )
 
     {:ok, _} =
       Discipline.add_sanction(
+        scope,
         enr,
-        %{type: :exclusion_temporaire, date: date, duration_days: 3, reason: "Bagarre"},
-        head.id
+        %{type: :exclusion_temporaire, date: date, duration_days: 3, reason: "Bagarre"}
       )
 
-    {:ok, _} = Discipline.set_conduct_mark(enr, seq, 14, head.id)
+    {:ok, _} = Discipline.set_conduct_mark(scope, enr, seq, 14)
 
     {:ok, _view, html} =
       live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")

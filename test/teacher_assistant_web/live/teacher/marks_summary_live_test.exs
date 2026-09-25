@@ -24,10 +24,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.class_group_id, ws)
     {:ok, s1} = Enrollment.add_student(cg, %{full_name: "Awa", sex: :f})
     {:ok, s2} = Enrollment.add_student(cg, %{full_name: "Beba", sex: :m})
-    {:ok, a} = Assessment.create_assessment(ctx, seq, %{label: "Devoir 1"})
+    {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
 
     :ok =
-      Assessment.upsert_marks(a, [
+      Assessment.upsert_marks(scope, a, [
         %{student_id: s1.id, score: Decimal.new("14")},
         %{student_id: s2.id, score: Decimal.new("8")}
       ])

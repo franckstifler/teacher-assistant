@@ -44,12 +44,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   end
 
   defp assign_summary(socket) do
-    %{ctx: ctx, seq: seq, students: students} = socket.assigns
+    %{ctx: ctx, seq: seq, students: students, current_scope: scope} = socket.assigns
 
     summary =
       if seq do
-        assessments = Assessment.list_assessments(ctx, seq)
-        marks = Assessment.list_marks_for_context_sequence(ctx, seq)
+        assessments = Assessment.list_assessments(scope, ctx, seq)
+        marks = Assessment.list_marks_for_context_sequence(scope, ctx, seq)
 
         if assessments == [] do
           nil

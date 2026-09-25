@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée Print"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -32,7 +33,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Assessment.create_assessment(tc, seq, %{
+      Assessment.create_assessment(scope, tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -41,13 +42,13 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     roster = Enrollment.list_roster(cg)
 
     for %{student: s} <- roster,
-        do: Assessment.upsert_marks(a, [%{student_id: s.id, score: Decimal.new(14)}])
+        do: Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new(14)}])
 
     {:ok, profile} = Accounts.fetch_school_profile(school)
     {:ok, _} = Accounts.verify_school(profile, head.id)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, cg: cg, seq: seq, roster: roster, head: head}
+    %{conn: conn, school: school, cg: cg, seq: seq, roster: roster, head: head, scope: scope}
   end
 
   test "single bulletin print shows the school and the student", %{
@@ -118,29 +119,29 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     cg: cg,
     seq: seq,
     roster: roster,
-    head: head
+    scope: scope
   } do
     %{enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
     date = seq.start_date
 
     {:ok, _} =
-      Discipline.add_sanction(enr, %{type: :consigne, date: date, reason: "Bavardage"}, head.id)
+      Discipline.add_sanction(scope, enr, %{type: :consigne, date: date, reason: "Bavardage"})
 
     {:ok, _} =
       Discipline.add_sanction(
+        scope,
         enr,
-        %{type: :avertissement, date: date, reason: "Retards répétés"},
-        head.id
+        %{type: :avertissement, date: date, reason: "Retards répétés"}
       )
 
     {:ok, _} =
       Discipline.add_sanction(
+        scope,
         enr,
-        %{type: :exclusion_temporaire, date: date, duration_days: 3, reason: "Bagarre"},
-        head.id
+        %{type: :exclusion_temporaire, date: date, duration_days: 3, reason: "Bagarre"}
       )
 
-    {:ok, _} = Discipline.set_conduct_mark(enr, seq, 14, head.id)
+    {:ok, _} = Discipline.set_conduct_mark(scope, enr, seq, 14)
 
     conn =
       get(
@@ -217,7 +218,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     conn: conn,
     cg: cg,
     seq: seq,
-    school: school
+    school: school,
+    scope: scope
   } do
     year = TeacherAssistant.Organization.current_academic_year(school)
     [_s1, s2 | _] = TeacherAssistant.Organization.list_sequences(year)
@@ -227,7 +229,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(cg)
 
     {:ok, a2} =
-      TeacherAssistant.Assessment.create_assessment(tc, s2, %{
+      TeacherAssistant.Assessment.create_assessment(scope, tc, s2, %{
         label: "D2",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
@@ -235,7 +237,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     for %{student: s} <- TeacherAssistant.Enrollment.list_roster(cg),
         do:
-          TeacherAssistant.Assessment.upsert_marks(a2, [
+          TeacherAssistant.Assessment.upsert_marks(scope, a2, [
             %{student_id: s.id, score: Decimal.new(15)}
           ])
 

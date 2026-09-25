@@ -29,10 +29,10 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             [] -> nil
           end
 
-      results = period && Assessment.class_results_for_period(cg, period)
+      results = period && Assessment.class_results_for_period(scope, cg, period)
       data = results && results.per_student[student.id]
       conduct = period && Attendance.student_conduct(enrollment, period)
-      discipline = period && Discipline.discipline_summary(enrollment, period)
+      discipline = period && Discipline.discipline_summary(scope, enrollment, period)
 
       {:ok,
        assign(socket,
@@ -71,9 +71,23 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     period =
       (year && Organization.resolve_period(year, params["period"])) || socket.assigns.period
 
-    results = period && Assessment.class_results_for_period(socket.assigns.cg, period)
+    results =
+      period &&
+        Assessment.class_results_for_period(
+          socket.assigns.current_scope,
+          socket.assigns.cg,
+          period
+        )
+
     conduct = period && Attendance.student_conduct(socket.assigns.enrollment, period)
-    discipline = period && Discipline.discipline_summary(socket.assigns.enrollment, period)
+
+    discipline =
+      period &&
+        Discipline.discipline_summary(
+          socket.assigns.current_scope,
+          socket.assigns.enrollment,
+          period
+        )
 
     {:noreply,
      assign(socket,

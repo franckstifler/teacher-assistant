@@ -9,6 +9,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
   setup do
     head = TeacherFixtures.user_fixture()
     {:ok, school} = Organization.create_school(head, %{name: "Lycée B"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -28,18 +29,18 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
       Curriculum.assign_teacher(cg, head, %{subject: "Maths", coefficient: Decimal.new(4)})
 
     {:ok, a} =
-      Assessment.create_assessment(tc, seq, %{
+      Assessment.create_assessment(scope, tc, seq, %{
         label: "D1",
         weight: Decimal.new(1),
         max_score: Decimal.new(20)
       })
 
-    %{school: school, year: year, seq: seq, cg: cg, tc: tc, a: a}
+    %{school: school, year: year, seq: seq, cg: cg, tc: tc, a: a, scope: scope}
   end
 
   test "class_subjects shapes each context with coefficient, assessments and marks", ctx do
-    %{cg: cg, seq: seq, tc: tc} = ctx
-    [subj] = Assessment.class_subjects(cg, seq)
+    %{cg: cg, seq: seq, tc: tc, scope: scope} = ctx
+    [subj] = Assessment.class_subjects(scope, cg, seq)
     assert subj.context_id == tc.id
     assert subj.label == "Maths"
     assert Decimal.equal?(subj.coefficient, Decimal.new(4))
@@ -47,11 +48,11 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
   end
 
   test "class_results computes a bulletin for the séquence", ctx do
-    %{cg: cg, seq: seq, a: a} = ctx
+    %{cg: cg, seq: seq, a: a, scope: scope} = ctx
     [student] = Enrollment.list_students(cg)
-    :ok = Assessment.upsert_marks(a, [%{student_id: student.id, score: Decimal.new(15)}])
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
 
-    r = Assessment.class_results(cg, seq)
+    r = Assessment.class_results(scope, cg, seq)
     assert r.effectif == 1
     assert Decimal.equal?(r.per_student[student.id].moyenne_generale, Decimal.new(15))
   end
@@ -60,6 +61,6 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
     {:ok, cg2} =
       Enrollment.create_class_group(ctx.school, ctx.year, %{label: "6e B", level: "6ème"})
 
-    assert Assessment.class_results(cg2, ctx.seq) == nil
+    assert Assessment.class_results(ctx.scope, cg2, ctx.seq) == nil
   end
 end

@@ -10,6 +10,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
   setup %{conn: conn, actor: head} do
     {:ok, school} = Organization.create_school(head, %{name: "Lycée D"})
+    scope = school_scope(head, school)
 
     {:ok, year} =
       Organization.create_academic_year(school, %{
@@ -36,6 +37,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       year: year,
       cg: cg,
       head: head,
+      scope: scope,
       enrollment: enrollment,
       sequence: sequence
     }
@@ -52,6 +54,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     school: school,
     cg: cg,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -82,6 +85,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     sanctions =
       Discipline.list_sanctions(
+        scope,
         cg,
         {:sequence,
          Organization.current_sequence(
@@ -99,6 +103,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     |> render_click()
 
     assert Discipline.list_sanctions(
+             scope,
              cg,
              {:sequence,
               Organization.current_sequence(
@@ -112,6 +117,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     school: school,
     cg: cg,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     dm = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -140,6 +146,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     [sanction] =
       Discipline.list_sanctions(
+        scope,
         cg,
         {:sequence,
          Organization.current_sequence(
@@ -156,6 +163,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     school: school,
     cg: cg,
     head: head,
+    scope: scope,
     enrollment: enrollment,
     sequence: sequence
   } do
@@ -178,7 +186,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     |> render_submit()
 
     assert Decimal.equal?(
-             Discipline.note_de_conduite(enrollment, {:sequence, sequence}),
+             Discipline.note_de_conduite(scope, enrollment, {:sequence, sequence}),
              Decimal.new(15)
            )
   end
@@ -189,13 +197,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     cg: cg,
     year: year,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     {:ok, _sanction} =
       Discipline.add_sanction(
+        scope,
         enrollment,
-        %{type: :blame, date: ~D[2025-09-10], reason: "Retard"},
-        head.id
+        %{type: :blame, date: ~D[2025-09-10], reason: "Retard"}
       )
 
     sequence = Organization.current_sequence(year, ~D[2025-09-10])
@@ -222,6 +231,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     school: school,
     cg: cg,
     head: head,
+    scope: scope,
     enrollment: enrollment
   } do
     fm = TeacherAssistant.TeacherFixtures.user_fixture()
@@ -257,8 +267,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
         ~D[2025-09-10]
       )
 
-    assert Discipline.list_sanctions(cg, {:sequence, sequence}) == []
-    assert Discipline.note_de_conduite(enrollment, {:sequence, sequence}) == nil
+    assert Discipline.list_sanctions(scope, cg, {:sequence, sequence}) == []
+    assert Discipline.note_de_conduite(scope, enrollment, {:sequence, sequence}) == nil
   end
 
   test "a plain teacher who is not the form master is redirected to /school", %{
