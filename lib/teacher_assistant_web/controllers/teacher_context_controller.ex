@@ -3,11 +3,15 @@ defmodule TeacherAssistantWeb.TeacherContextController do
 
   alias TeacherAssistant.Accounts.Workspaces
 
+  def select(%{assigns: %{current_user: nil}} = conn, _params) do
+    redirect(conn, to: ~p"/sign-in")
+  end
+
   def select(conn, %{"id" => context_id} = params) do
     user = conn.assigns.current_user
     return_to = safe_return_to(params["return_to"])
 
-    case user && Workspaces.scope_for(user, get_session(conn, :workspace_id), context_id) do
+    case Workspaces.scope_for(user, get_session(conn, :workspace_id), context_id) do
       {:ok, %{current_context: %{id: ^context_id}}} ->
         conn
         |> put_session(:context_id, context_id)

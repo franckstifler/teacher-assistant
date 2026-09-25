@@ -49,4 +49,13 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
     conn = get(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=/teacher/log")
     assert redirected_to(conn) == "/school"
   end
+
+  test "selecting a context while signed out redirects to sign-in", %{conn: _conn} do
+    conn =
+      build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> get(~p"/teacher/select-context/#{Ecto.UUID.generate()}")
+
+    assert redirected_to(conn) == ~p"/sign-in"
+  end
 end

@@ -3,6 +3,10 @@ defmodule TeacherAssistantWeb.WorkspaceController do
 
   alias TeacherAssistant.Accounts.Workspaces
 
+  def select(%{assigns: %{current_user: nil}} = conn, _params) do
+    redirect(conn, to: ~p"/sign-in")
+  end
+
   def select(conn, %{"id" => workspace_id}) do
     user = conn.assigns.current_user
 
