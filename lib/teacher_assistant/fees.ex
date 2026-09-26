@@ -46,8 +46,11 @@ defmodule TeacherAssistant.Fees do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
+
+  @doc "Whether the scope may manage tranches, payments and adjustments (fees axis)."
+  def can_manage_fees?(scope), do: Ash.can?({Payment, :create}, scope)
 
   @valid_methods MapSet.new([:cash, :mobile_money, :bank_transfer, :other])
 
@@ -68,7 +71,7 @@ defmodule TeacherAssistant.Fees do
   def add_tranche(%Scope{} = scope, %ClassGroup{} = class_group, attrs) do
     amount = attrs[:amount] || attrs["amount"]
 
-    with :ok <- validate_amount(amount) do
+    with :ok <- validate_tranche_amount(amount) do
       position = length(list_tranches(scope, class_group))
 
       FeeTranche
@@ -86,6 +89,7 @@ defmodule TeacherAssistant.Fees do
       |> Ash.create()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :tranche_failed}
       end
     end
@@ -99,7 +103,7 @@ defmodule TeacherAssistant.Fees do
   def update_tranche(%Scope{} = scope, %FeeTranche{} = tranche, attrs) do
     amount = attrs[:amount] || attrs["amount"]
 
-    with :ok <- validate_amount(amount) do
+    with :ok <- validate_tranche_amount(amount) do
       update_attrs =
         Map.take(attrs, [:label, "label", :amount, "amount", :due_date, "due_date"])
 
@@ -108,14 +112,21 @@ defmodule TeacherAssistant.Fees do
       |> Ash.update()
       |> case do
         {:ok, tranche} -> {:ok, tranche}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :tranche_failed}
       end
     end
   end
 
-  defp validate_amount(nil), do: :ok
-  defp validate_amount(amount) when is_integer(amount) and amount >= 0, do: :ok
-  defp validate_amount(_amount), do: {:error, :invalid_amount}
+  # Tranches may be zero (matching fee_tranches_amount_non_negative_check);
+  # an update may omit the amount.
+  defp validate_tranche_amount(nil), do: :ok
+  defp validate_tranche_amount(amount) when is_integer(amount) and amount >= 0, do: :ok
+  defp validate_tranche_amount(_amount), do: {:error, :invalid_amount}
+
+  # An adjustment is a discount: total_due = tranches - adjustment.
+  defp validate_adjustment_amount(amount) when is_integer(amount) and amount > 0, do: :ok
+  defp validate_adjustment_amount(_amount), do: {:error, :invalid_amount}
 
   # --- Payments ----------------------------------------------------------
 
@@ -149,6 +160,7 @@ defmodule TeacherAssistant.Fees do
       |> Ash.create()
       |> case do
         {:ok, payment} -> {:ok, payment}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :payment_failed}
       end
     end
@@ -172,14 +184,14 @@ defmodule TeacherAssistant.Fees do
 
   @doc """
   Upserts the fee adjustment for `enrollment` to `attrs`
-  (`amount`, `reason`), recorded by the scope's user. Rejects a
-  negative `amount` with `{:error, :invalid_amount}`. Runs under the
-  scope's tenant.
+  (`amount`, `reason`), recorded by the scope's user. Rejects an amount that
+  is not a positive integer with `{:error, :invalid_amount}`; a positive
+  amount is a discount. Runs under the scope's tenant.
   """
   def set_adjustment(%Scope{} = scope, %Enrollment{} = e, attrs) do
     amount = attrs[:amount] || attrs["amount"]
 
-    with :ok <- validate_amount(amount) do
+    with :ok <- validate_adjustment_amount(amount) do
       FeeAdjustment
       |> Ash.Changeset.for_create(
         :set,
@@ -194,6 +206,7 @@ defmodule TeacherAssistant.Fees do
       |> Ash.create()
       |> case do
         {:ok, adjustment} -> {:ok, adjustment}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :adjustment_failed}
       end
     end
@@ -203,12 +216,13 @@ defmodule TeacherAssistant.Fees do
   def clear_adjustment(%Scope{} = scope, %Enrollment{id: id}) do
     adjustments = list_adjustments_for_enrollment_id!(id, scope: scope)
 
-    try do
-      Enum.each(adjustments, &Ash.destroy!(&1, scope: scope))
-      {:ok, length(adjustments)}
-    rescue
-      _ -> {:error, :adjustment_failed}
-    end
+    Enum.reduce_while(adjustments, {:ok, length(adjustments)}, fn adjustment, ok ->
+      case Ash.destroy(adjustment, scope: scope) do
+        :ok -> {:cont, ok}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:halt, {:error, forbidden}}
+        {:error, _error} -> {:halt, {:error, :adjustment_failed}}
+      end
+    end)
   end
 
   # --- Balances --------------------------------------------------------------

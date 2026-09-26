@@ -24,7 +24,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
-    %{ws: ws, enrollment: enrollment}
+    %{ws: ws, scope: scope, enrollment: enrollment}
   end
 
   defp base_attrs(ctx, overrides \\ %{}) do
@@ -41,8 +41,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     assert {:ok, %FeeAdjustment{} = adj} =
              FeeAdjustment
              |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert adj.amount == 5_000
     assert adj.reason == "Bourse partielle"
@@ -54,8 +53,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     {:ok, adj1} =
       FeeAdjustment
       |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{amount: 5_000}))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     assert {:ok, adj2} =
              FeeAdjustment
@@ -63,8 +61,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
                :set,
                base_attrs(ctx, %{amount: 8_000, reason: "Bourse totale"})
              )
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert adj2.id == adj1.id
     assert adj2.amount == 8_000
@@ -72,7 +69,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
 
     assert FeeAdjustment
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+           |> Ash.read!(scope: ctx.scope)
            |> length() == 1
   end
 
@@ -80,12 +77,11 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
     {:ok, adj} =
       FeeAdjustment
       |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
+    :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(FeeAdjustment, adj.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(FeeAdjustment, adj.id, scope: ctx.scope)
   end
 end

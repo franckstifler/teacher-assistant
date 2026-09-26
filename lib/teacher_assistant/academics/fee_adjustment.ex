@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "fee_adjustments"
     repo TeacherAssistant.Repo
@@ -20,9 +22,9 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
     end
 
     check_constraints do
-      check_constraint :amount, "fee_adjustments_amount_non_zero_check",
-        check: "amount <> 0",
-        message: "must not be zero"
+      check_constraint :amount, "fee_adjustments_amount_positive_check",
+        check: "amount > 0",
+        message: "must be positive (a discount)"
     end
   end
 
@@ -55,8 +57,13 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :fees}
+      authorize_if expr(enrollment.class_group.form_master_user_id == ^actor(:id))
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :fees}
     end
   end
 

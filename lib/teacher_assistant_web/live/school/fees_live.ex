@@ -19,7 +19,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
        socket
        |> assign(
          cg: cg,
-         can_edit?: Permissions.fees_manager?(scope),
+         can_edit?: Fees.can_manage_fees?(scope),
          editing_id: nil,
          roster: Enrollment.list_roster(scope, cg),
          payment_methods: @payment_methods,
@@ -39,7 +39,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   end
 
   defp authorized?(scope, cg) do
-    Permissions.fees_manager?(scope) or Permissions.admin_or_form_master?(scope, cg)
+    Fees.can_manage_fees?(scope) or Permissions.admin_or_form_master?(scope, cg)
   end
 
   defp load_tranches(socket) do
@@ -79,8 +79,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("add_tranche", params, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         {:ok, amount} <- parse_amount(params["amount"]),
+    with {:ok, amount} <- parse_amount(params["amount"]),
          {:ok, date} <- Date.from_iso8601(params["due_date"] || "") do
       attrs = %{
         label: presence(params["label"]),
@@ -91,6 +90,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       case Fees.add_tranche(scope, socket.assigns.cg, attrs) do
         {:ok, _tranche} ->
           {:noreply, socket |> put_flash(:info, gettext("Tranche added.")) |> load_tranches()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not add the tranche."))}
@@ -115,8 +117,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("update_tranche", %{"tranche_id" => tranche_id} = params, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)),
+    with %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)),
          {:ok, amount} <- parse_amount(params["amount"]),
          {:ok, date} <- Date.from_iso8601(params["due_date"] || "") do
       attrs = %{
@@ -133,6 +134,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
            |> assign(editing_id: nil)
            |> load_tranches()}
 
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not update the tranche."))}
       end
@@ -144,11 +148,13 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("delete_tranche", %{"tranche_id" => tranche_id}, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)) do
+    with %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)) do
       case Fees.delete_tranche(tranche, scope: scope) do
         :ok ->
           {:noreply, socket |> put_flash(:info, gettext("Tranche removed.")) |> load_tranches()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not remove the tranche."))}
@@ -174,8 +180,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("record_payment", params, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         %{} = row <-
+    with %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
          {:ok, amount} <- parse_positive_amount(params["amount"]),
          {:ok, method} <- fetch_method(params["method"]),
@@ -196,6 +201,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
            |> load_balances()
            |> refresh_history_if_open(row.enrollment.id)}
 
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not record the payment."))}
       end
@@ -211,8 +219,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       ) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         %{} = row <-
+    with %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)),
          %{} = payment <-
            Enum.find(Fees.list_payments(scope, row.enrollment), &(&1.id == payment_id)) do
@@ -223,6 +230,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
            |> put_flash(:info, gettext("Payment removed."))
            |> load_balances()
            |> refresh_history_if_open(enrollment_id)}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not remove the payment."))}
@@ -235,8 +245,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("set_adjustment", params, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         %{} = row <-
+    with %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
          {:ok, amount} <- parse_amount(params["amount"]) do
       attrs = %{amount: amount, reason: presence(params["reason"])}
@@ -244,6 +253,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       case Fees.set_adjustment(scope, row.enrollment, attrs) do
         {:ok, _adjustment} ->
           {:noreply, socket |> put_flash(:info, gettext("Adjustment saved.")) |> load_balances()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not save the adjustment."))}
@@ -256,13 +268,15 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   def handle_event("clear_adjustment", %{"enrollment_id" => enrollment_id}, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.fees_manager?(scope),
-         %{} = row <-
+    with %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
       case Fees.clear_adjustment(scope, row.enrollment) do
         {:ok, _count} ->
           {:noreply,
            socket |> put_flash(:info, gettext("Adjustment cleared.")) |> load_balances()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not clear the adjustment."))}

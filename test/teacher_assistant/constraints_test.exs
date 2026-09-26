@@ -211,7 +211,7 @@ defmodule TeacherAssistant.ConstraintsTest do
 
   describe "fees: tranche/payment/adjustment amount guards" do
     test "a negative fee tranche amount is rejected", %{cg: cg, scope: scope} do
-      # `Fees.add_tranche/3`'s own `validate_amount/1` guard allows a
+      # `Fees.add_tranche/3`'s own `validate_tranche_amount/1` guard allows a
       # zero-amount tranche (see `FeeTrancheTest."amount accepts 0"`) — the
       # DB-level `fee_tranches_amount_non_negative_check` mirrors that same
       # rule (>= 0), not a stricter one, so only a negative amount is
@@ -221,17 +221,20 @@ defmodule TeacherAssistant.ConstraintsTest do
     end
 
     test "the fee_tranches amount_non_negative check constraint rejects a negative amount directly on the resource",
-         %{cg: cg} do
-      assert {:error, _} =
+         %{cg: cg, scope: scope} do
+      assert {:error, %Ash.Error.Invalid{}} =
                FeeTranche
-               |> Ash.Changeset.for_create(:create, %{
-                 label: "T1",
-                 amount: -1,
-                 due_date: ~D[2030-10-01],
-                 position: 0,
-                 class_group_id: cg.id
-               })
-               |> Ash.Changeset.set_tenant(cg.workspace_id)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   label: "T1",
+                   amount: -1,
+                   due_date: ~D[2030-10-01],
+                   position: 0,
+                   class_group_id: cg.id
+                 },
+                 scope: scope
+               )
                |> Ash.create()
     end
 
@@ -240,39 +243,45 @@ defmodule TeacherAssistant.ConstraintsTest do
     end
 
     test "the payments amount_positive check constraint rejects a zero amount directly on the resource",
-         %{enrollment: e, head: head} do
-      assert {:error, _} =
+         %{enrollment: e, head: head, scope: scope} do
+      assert {:error, %Ash.Error.Invalid{}} =
                Payment
-               |> Ash.Changeset.for_create(:create, %{
-                 amount: 0,
-                 paid_on: ~D[2030-10-01],
-                 method: :cash,
-                 recorded_by_user_id: head.id,
-                 enrollment_id: e.id
-               })
-               |> Ash.Changeset.set_tenant(e.workspace_id)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   amount: 0,
+                   paid_on: ~D[2030-10-01],
+                   method: :cash,
+                   recorded_by_user_id: head.id,
+                   enrollment_id: e.id
+                 },
+                 scope: scope
+               )
                |> Ash.create()
     end
 
-    test "the fee_adjustments amount_non_zero check constraint rejects a zero amount", %{
+    test "the fee_adjustments amount_positive check constraint rejects a zero amount", %{
       enrollment: e,
       head: head,
       scope: scope
     } do
-      assert {:error, _} =
+      assert {:error, %Ash.Error.Invalid{}} =
                FeeAdjustment
-               |> Ash.Changeset.for_create(:create, %{
-                 amount: 0,
-                 reason: "erreur",
-                 recorded_by_user_id: head.id,
-                 enrollment_id: e.id
-               })
-               |> Ash.Changeset.set_tenant(e.workspace_id)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   amount: 0,
+                   reason: "erreur",
+                   recorded_by_user_id: head.id,
+                   enrollment_id: e.id
+                 },
+                 scope: scope
+               )
                |> Ash.create()
 
-      # Also reachable through the domain function, whose own guard only
-      # rejects a negative amount, not zero.
-      assert {:error, _} = Fees.set_adjustment(scope, e, %{amount: 0, reason: "erreur"})
+      # The domain guard rejects it before any write.
+      assert {:error, :invalid_amount} =
+               Fees.set_adjustment(scope, e, %{amount: 0, reason: "erreur"})
     end
   end
 

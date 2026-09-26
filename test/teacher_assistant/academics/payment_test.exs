@@ -32,6 +32,7 @@ defmodule TeacherAssistant.Academics.PaymentTest do
 
     %{
       ws: ws,
+      scope: scope,
       year: year,
       cg: cg,
       student: student,
@@ -57,8 +58,7 @@ defmodule TeacherAssistant.Academics.PaymentTest do
     assert {:ok, %Payment{} = payment} =
              Payment
              |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert payment.amount == 25_000
     assert payment.paid_on == ~D[2025-09-20]
@@ -71,41 +71,37 @@ defmodule TeacherAssistant.Academics.PaymentTest do
     assert {:error, %Ash.Error.Invalid{}} =
              Payment
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{method: :cheque}))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
   end
 
   test "deleting the enrollment cascades to delete its payments", ctx do
     {:ok, payment} =
       Payment
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
+    :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(Payment, payment.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(Payment, payment.id, scope: ctx.scope)
   end
 
   test "two payments for one enrollment both persist", ctx do
     {:ok, payment1} =
       Payment
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     {:ok, payment2} =
       Payment
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     assert payment1.id != payment2.id
 
     assert Payment
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+           |> Ash.read!(scope: ctx.scope)
            |> length() == 2
   end
 end

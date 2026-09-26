@@ -5,7 +5,6 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
-  alias TeacherAssistant.Accounts.Permissions
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -41,7 +40,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   defp plain_teacher?(scope) do
     not Enrollment.can_manage_classes?(scope) and
       not TeacherAssistant.Discipline.can_manage_conduct?(scope) and
-      not Permissions.fees_manager?(scope) and form_master_classes(scope) == []
+      not TeacherAssistant.Fees.can_manage_fees?(scope) and form_master_classes(scope) == []
   end
 
   defp form_master_classes(%{current_academic_year: nil}), do: []
