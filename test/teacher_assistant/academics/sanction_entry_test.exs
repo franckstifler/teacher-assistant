@@ -32,6 +32,7 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
 
     %{
       ws: ws,
+      scope: scope,
       year: year,
       cg: cg,
       student: student,
@@ -56,8 +57,7 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
     assert {:ok, %SanctionEntry{} = entry} =
              SanctionEntry
              |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert entry.type == :avertissement
     assert entry.date == ~D[2025-09-15]
@@ -70,41 +70,37 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
     assert {:error, %Ash.Error.Invalid{}} =
              SanctionEntry
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{type: :suspension}))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
   end
 
   test "deleting the enrollment cascades to delete its sanctions", ctx do
     {:ok, entry} =
       SanctionEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
+    :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(SanctionEntry, entry.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(SanctionEntry, entry.id, scope: ctx.scope)
   end
 
   test "two entries of the same type for one enrollment both persist", ctx do
     {:ok, entry1} =
       SanctionEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     {:ok, entry2} =
       SanctionEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     assert entry1.id != entry2.id
 
     assert SanctionEntry
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+           |> Ash.read!(scope: ctx.scope)
            |> length() == 2
   end
 end

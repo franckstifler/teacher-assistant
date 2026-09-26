@@ -8,7 +8,6 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
-  alias TeacherAssistant.Accounts.Permissions
 
   @valid_statuses %{"present" => :present, "absent" => :absent, "late" => :late}
   @statuses [:present, :absent, :late]
@@ -112,7 +111,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   # Owning the slot or holding the assignment both resolve to "this teaching
   # context is mine"; conduct managers may record any class.
   defp authorized?(scope, teaching_context) do
-    owns_context?(scope, teaching_context) or Permissions.conduct_manager?(scope)
+    owns_context?(scope, teaching_context) or
+      TeacherAssistant.Discipline.can_manage_conduct?(scope)
   end
 
   defp owns_context?(_scope, nil), do: false

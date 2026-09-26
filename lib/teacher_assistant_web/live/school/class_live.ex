@@ -28,9 +28,11 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          can_manage_assignments?: Curriculum.can_manage_assignments?(scope),
          manage?: true,
          register_link?:
-           Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
+           TeacherAssistant.Discipline.can_manage_conduct?(scope) or
+             Permissions.admin_or_form_master?(scope, cg),
          discipline_link?:
-           Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
+           TeacherAssistant.Discipline.can_manage_conduct?(scope) or
+             Permissions.admin_or_form_master?(scope, cg),
          search_results: [],
          q: "",
          subject_options: subject_options

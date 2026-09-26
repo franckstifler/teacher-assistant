@@ -454,8 +454,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert A.ConductMark
            |> Ash.Query.for_read(:read)
-           |> Ash.Query.set_tenant(a.id)
-           |> Ash.read!() == []
+           |> Ash.read!(scope: scope_of(a)) == []
   end
 
   test "SchoolMembership :active_for_workspace requires a tenant while :active_for_user does not (F3)",

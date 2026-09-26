@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "sanction_entries"
     repo TeacherAssistant.Repo
@@ -69,8 +71,13 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
+      authorize_if expr(enrollment.class_group.form_master_user_id == ^actor(:id))
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
     end
   end
 

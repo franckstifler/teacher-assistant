@@ -27,7 +27,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
-    %{ws: ws, seq: seq, enrollment: enrollment}
+    %{ws: ws, scope: scope, seq: seq, enrollment: enrollment}
   end
 
   defp base_attrs(ctx, overrides \\ %{}) do
@@ -44,8 +44,7 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     assert {:ok, %ConductMark{} = mark} =
              ConductMark
              |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert Decimal.equal?(mark.value, Decimal.new(18))
     assert mark.sequence_id == ctx.seq.id
@@ -57,21 +56,19 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     {:ok, mark1} =
       ConductMark
       |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(18)}))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     assert {:ok, mark2} =
              ConductMark
              |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(12)}))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert mark2.id == mark1.id
     assert Decimal.equal?(mark2.value, Decimal.new(12))
 
     assert ConductMark
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+           |> Ash.read!(scope: ctx.scope)
            |> length() == 1
   end
 
@@ -79,25 +76,23 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
     {:ok, mark} =
       ConductMark
       |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.enrollment, authorize?: false)
+    :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(ConductMark, mark.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(ConductMark, mark.id, scope: ctx.scope)
   end
 
   test "deleting the sequence cascades to delete its marks", ctx do
     {:ok, mark} =
       ConductMark
       |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.seq, authorize?: false)
+    :ok = Ash.destroy!(ctx.seq, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(ConductMark, mark.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(ConductMark, mark.id, scope: ctx.scope)
   end
 end

@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          year: year,
          sequences: sequences,
          terms: terms,
-         can_edit?: Permissions.conduct_manager?(scope),
+         can_edit?: Discipline.can_manage_conduct?(scope),
          roster: Enrollment.list_roster(scope, cg),
          sanction_types: @sanction_types
        )
@@ -49,7 +49,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   end
 
   defp authorized?(scope, cg) do
-    Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg)
+    Discipline.can_manage_conduct?(scope) or Permissions.admin_or_form_master?(scope, cg)
   end
 
   def handle_params(params, _uri, socket),
@@ -65,8 +65,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def handle_event("add_sanction", params, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.conduct_manager?(scope),
-         %{} = row <-
+    with %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
          {:ok, type} <- fetch_type(params["type"]),
          {:ok, date} <- Date.from_iso8601(params["date"] || "") do
@@ -85,6 +84,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
           {:noreply,
            socket |> put_flash(:info, gettext("Sanction recorded.")) |> select_period(nil)}
 
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not record the sanction."))}
       end
@@ -96,12 +98,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def handle_event("delete_sanction", %{"sanction_id" => sanction_id}, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.conduct_manager?(scope),
-         %{} = sanction <- Enum.find(socket.assigns.sanctions, &(&1.id == sanction_id)) do
+    with %{} = sanction <- Enum.find(socket.assigns.sanctions, &(&1.id == sanction_id)) do
       case Discipline.delete_sanction(sanction, scope: scope) do
         :ok ->
           {:noreply,
            socket |> put_flash(:info, gettext("Sanction removed.")) |> select_period(nil)}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not remove the sanction."))}
@@ -114,8 +118,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def handle_event("set_note", %{"enrollment_id" => enrollment_id, "value" => value}, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.conduct_manager?(scope),
-         {:sequence, sequence} <- socket.assigns.period,
+    with {:sequence, sequence} <- socket.assigns.period,
          %{} = row <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
       case Discipline.set_conduct_mark(scope, row.enrollment, sequence, value) do
         {:ok, _mark} ->
@@ -123,6 +126,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
            socket
            |> put_flash(:info, gettext("Note de conduite enregistrée."))
            |> select_period(nil)}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Enter a value between 0 and 20."))}

@@ -44,8 +44,11 @@ defmodule TeacherAssistant.Discipline do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
+
+  @doc "Whether the scope may record sanctions, conduct marks and justifications (conduct axis)."
+  def can_manage_conduct?(scope), do: Ash.can?({SanctionEntry, :create}, scope)
 
   @valid_types MapSet.new([
                  :avertissement,
@@ -107,6 +110,7 @@ defmodule TeacherAssistant.Discipline do
       |> Ash.create()
       |> case do
         {:ok, sanction} -> {:ok, sanction}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :sanction_failed}
       end
     end
@@ -137,6 +141,7 @@ defmodule TeacherAssistant.Discipline do
       |> Ash.create()
       |> case do
         {:ok, mark} -> {:ok, mark}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :conduct_mark_failed}
       end
     end
@@ -163,12 +168,13 @@ defmodule TeacherAssistant.Discipline do
       ) do
     marks = conduct_mark_for_enrollment_sequence!(id, sequence_id, scope: scope)
 
-    try do
-      Enum.each(marks, &Ash.destroy!(&1, scope: scope))
-      {:ok, length(marks)}
-    rescue
-      _ -> {:error, :conduct_mark_failed}
-    end
+    Enum.reduce_while(marks, {:ok, length(marks)}, fn mark, ok ->
+      case Ash.destroy(mark, scope: scope) do
+        :ok -> {:cont, ok}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:halt, {:error, forbidden}}
+        {:error, _error} -> {:halt, {:error, :conduct_mark_failed}}
+      end
+    end)
   end
 
   @doc """

@@ -17,7 +17,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
        |> assign(
          cg: cg,
          date: date,
-         can_edit?: Permissions.conduct_manager?(scope)
+         can_edit?: TeacherAssistant.Discipline.can_manage_conduct?(scope)
        )
        |> load_register()}
     else
@@ -40,7 +40,8 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   end
 
   defp authorized?(scope, cg) do
-    Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg)
+    TeacherAssistant.Discipline.can_manage_conduct?(scope) or
+      Permissions.admin_or_form_master?(scope, cg)
   end
 
   defp load_register(socket) do
