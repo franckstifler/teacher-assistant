@@ -67,4 +67,29 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
              "#class-switcher-item-#{tc.id} a[href*='return_to=%2Fteacher%2Fcontexts%2F']"
            )
   end
+
+  test "staff and settings nav items show for the head only", %{
+    conn: conn,
+    school: school,
+    user: head
+  } do
+    {:ok, view, _html} = live(conn, ~p"/school/courses")
+    assert has_element?(view, "#nav-school-members")
+    assert has_element?(view, "#nav-school-settings")
+
+    teacher =
+      TeacherAssistant.TeacherFixtures.member_scope_fixture(school_scope(head, school), %{
+        roles: [:teacher]
+      })
+
+    teacher_conn =
+      build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, teacher.current_user.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    {:ok, view, _html} = live(teacher_conn, ~p"/school/courses")
+    refute has_element?(view, "#nav-school-members")
+    refute has_element?(view, "#nav-school-settings")
+  end
 end

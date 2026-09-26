@@ -12,7 +12,8 @@ defmodule TeacherAssistant.Scope do
     :current_academic_year,
     :current_context,
     :locale,
-    :school_verification_status
+    :school_verification_status,
+    capabilities: %{}
   ]
 
   def school_verified?(%__MODULE__{school_verification_status: :verified}), do: true

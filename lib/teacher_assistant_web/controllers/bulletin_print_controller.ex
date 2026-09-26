@@ -5,7 +5,6 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
@@ -34,8 +33,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   defp with_class(conn, id, params, fun) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin_or_form_master?(scope, cg),
-         {:operating, true} <- {:operating, Permissions.operating_allowed?(scope)},
+         true <- Enrollment.class_manager?(scope, cg),
+         {:operating, true} <- {:operating, TeacherAssistant.Scope.school_verified?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
          period when not is_nil(period) <-
            Organization.resolve_period(scope, year, params["period"]) do

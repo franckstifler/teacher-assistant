@@ -4,14 +4,13 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Timetabling
-  alias TeacherAssistant.Accounts.Permissions
 
   @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
 
   def class(conn, %{"id" => id} = _params) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin_or_form_master?(scope, cg) do
+         true <- Enrollment.class_manager?(scope, cg) do
       timetable = Timetabling.class_timetable(scope, cg)
 
       conn

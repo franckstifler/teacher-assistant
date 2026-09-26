@@ -35,6 +35,24 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     end
   end
 
+  # Navigation capabilities for the layout, computed once per mount from the
+  # policies (never in render). A scope without a school has none.
+  def on_mount(:assign_capabilities, _params, _session, socket) do
+    case socket.assigns.current_scope do
+      %{current_workspace: %{}} = scope ->
+        capabilities = %{
+          manage_staff: TeacherAssistant.Accounts.can_manage_staff?(scope),
+          manage_school: TeacherAssistant.Organization.can_manage_calendar?(scope)
+        }
+
+        {:cont,
+         Phoenix.Component.assign(socket, :current_scope, %{scope | capabilities: capabilities})}
+
+      _ ->
+        {:cont, socket}
+    end
+  end
+
   def on_mount(:require_operator, _params, _session, socket) do
     if socket.assigns[:current_user] && socket.assigns.current_user.role == :admin do
       {:cont, socket}

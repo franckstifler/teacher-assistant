@@ -6,6 +6,7 @@ defmodule TeacherAssistant.Enrollment do
   alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Student}
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Accounts
+  alias TeacherAssistant.Accounts.Checks
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Scope
 
@@ -26,6 +27,23 @@ defmodule TeacherAssistant.Enrollment do
   authorization do
     authorize :by_default
   end
+
+  @doc """
+  Navigation gate — **not a security boundary**: whether the scope may open a
+  class's management pages (roster, results, bulletins, timetable, register).
+  Those pages read membership-readable data; the sensitive reads on them are
+  policy-enforced regardless. True for the admin axis and for the class's form
+  master, both with a fresh active membership.
+  """
+  def class_manager?(
+        %Scope{current_user: %{id: uid} = user, current_workspace: %{id: ws_id}},
+        %ClassGroup{} = cg
+      ) do
+    Checks.SchoolRole.holds?(user, ws_id, :admin) or
+      (cg.form_master_user_id == uid and Checks.SchoolRole.holds?(user, ws_id, :member))
+  end
+
+  def class_manager?(_scope, _cg), do: false
 
   @doc "Whether the scope may create and delete classes (admin axis)."
   def can_manage_classes?(scope), do: Ash.can?({ClassGroup, :create}, scope)

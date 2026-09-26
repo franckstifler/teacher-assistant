@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Discipline
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
@@ -49,7 +48,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   end
 
   defp authorized?(scope, cg) do
-    Discipline.can_manage_conduct?(scope) or Permissions.admin_or_form_master?(scope, cg)
+    Discipline.can_manage_conduct?(scope) or Enrollment.class_manager?(scope, cg)
   end
 
   def handle_params(params, _uri, socket),

@@ -7,7 +7,6 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   alias TeacherAssistant.Academics.DayOfWeek
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Timetabling
-  alias TeacherAssistant.Accounts.Permissions
 
   @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
 
@@ -15,7 +14,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin_or_form_master?(scope, cg) do
+         true <- Enrollment.class_manager?(scope, cg) do
       {:ok,
        socket
        |> assign(

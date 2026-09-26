@@ -6,7 +6,6 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
   alias TeacherAssistant.Academics.Sex
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
@@ -14,7 +13,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin_or_form_master?(scope, cg),
+         true <- Enrollment.class_manager?(scope, cg),
          roster = Enrollment.list_roster(scope, cg),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do

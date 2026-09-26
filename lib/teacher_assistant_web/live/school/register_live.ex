@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
 
   def mount(%{"id" => id} = params, _session, socket) do
@@ -41,7 +40,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
 
   defp authorized?(scope, cg) do
     TeacherAssistant.Discipline.can_manage_conduct?(scope) or
-      Permissions.admin_or_form_master?(scope, cg)
+      Enrollment.class_manager?(scope, cg)
   end
 
   defp load_register(socket) do

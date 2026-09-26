@@ -72,11 +72,11 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
       |> assign(
         :is_head?,
-        current_scope && TeacherAssistant.Accounts.Permissions.head?(current_scope)
+        current_scope && current_scope.capabilities[:manage_staff] == true
       )
       |> assign(
         :is_admin?,
-        current_scope && TeacherAssistant.Accounts.Permissions.admin?(current_scope)
+        current_scope && current_scope.capabilities[:manage_school] == true
       )
       |> assign(:current_context, current_scope && current_scope.current_context)
       |> assign(:current_path, assigns[:current_path])
@@ -234,6 +234,7 @@ defmodule TeacherAssistantWeb.Layouts do
                 {gettext("Mon emploi du temps")}
               </.rail_link>
               <.rail_link
+                :if={@is_head?}
                 id="nav-school-members"
                 href={~p"/school/members"}
                 icon="hero-user-group"

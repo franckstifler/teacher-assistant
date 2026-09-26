@@ -6,7 +6,6 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   alias TeacherAssistant.Academics.{EnrollmentStatus, Sex}
   alias TeacherAssistant.Curriculum
 
-  alias TeacherAssistant.Accounts.{Permissions}
   alias TeacherAssistant.Accounts
 
   def mount(%{"id" => id}, _session, socket) do
@@ -14,7 +13,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
     with %{} <- scope.current_workspace,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin_or_form_master?(scope, cg) do
+         true <- Enrollment.class_manager?(scope, cg) do
       subject_options =
         scope
         |> Curriculum.list_subjects()
@@ -29,10 +28,10 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          manage?: true,
          register_link?:
            TeacherAssistant.Discipline.can_manage_conduct?(scope) or
-             Permissions.admin_or_form_master?(scope, cg),
+             Enrollment.class_manager?(scope, cg),
          discipline_link?:
            TeacherAssistant.Discipline.can_manage_conduct?(scope) or
-             Permissions.admin_or_form_master?(scope, cg),
+             Enrollment.class_manager?(scope, cg),
          search_results: [],
          q: "",
          subject_options: subject_options

@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Fees
   alias TeacherAssistant.Academics.PaymentMethod
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistantWeb.Money
 
   @payment_methods [:cash, :mobile_money, :bank_transfer, :other]
@@ -39,7 +38,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   end
 
   defp authorized?(scope, cg) do
-    Fees.can_manage_fees?(scope) or Permissions.admin_or_form_master?(scope, cg)
+    Fees.can_manage_fees?(scope) or Enrollment.class_manager?(scope, cg)
   end
 
   defp load_tranches(socket) do

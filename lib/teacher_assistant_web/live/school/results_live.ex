@@ -3,14 +3,13 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
 
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Organization
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin_or_form_master?(scope, cg) do
+         true <- Enrollment.class_manager?(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
