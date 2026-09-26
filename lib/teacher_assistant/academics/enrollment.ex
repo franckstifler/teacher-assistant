@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.Enrollment do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "enrollments"
     repo TeacherAssistant.Repo
@@ -86,9 +88,16 @@ defmodule TeacherAssistant.Academics.Enrollment do
       run fn input, scope ->
         args = input.arguments
 
+        # Bootstrap write (spec §4.1 case 3): the new student has no class yet,
+        # so no row rule could admit it. The sibling Enrollment create below is
+        # authorized (admin or the class's form master) and a refusal rolls
+        # this insert back with the transaction.
         with {:ok, student} <-
                TeacherAssistant.Academics.Student
-               |> Ash.Changeset.for_create(:create, args.student_attrs, scope: scope)
+               |> Ash.Changeset.for_create(:create, args.student_attrs,
+                 tenant: input.tenant,
+                 authorize?: false
+               )
                |> Ash.create(),
              {:ok, enrollment} <-
                __MODULE__
@@ -111,8 +120,19 @@ defmodule TeacherAssistant.Academics.Enrollment do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action(:enroll_new) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    # Update/destroy are checked against the original record, so a transfer is
+    # decided by the source class.
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if expr(class_group.form_master_user_id == ^actor(:id))
     end
   end
 

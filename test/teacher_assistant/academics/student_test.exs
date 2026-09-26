@@ -44,7 +44,7 @@ defmodule TeacherAssistant.Academics.StudentTest do
     assert id == s.id
   end
 
-  test "does not leave an orphaned student when enrollment fails", %{cg: cg, scope: scope, ws: ws} do
+  test "does not leave an orphaned student when enrollment fails", %{cg: cg, scope: scope} do
     bogus_cg = %{cg | id: Ecto.UUID.generate()}
 
     assert {:error, _} = Enrollment.add_student(scope, bogus_cg, %{full_name: "Orphan", sex: :f})
@@ -54,8 +54,7 @@ defmodule TeacherAssistant.Academics.StudentTest do
     students =
       TeacherAssistant.Academics.Student
       |> Ash.Query.filter(full_name == "Orphan")
-      |> Ash.Query.set_tenant(ws.id)
-      |> Ash.read!(authorize?: false)
+      |> Ash.read!(scope: scope)
 
     assert students == []
   end

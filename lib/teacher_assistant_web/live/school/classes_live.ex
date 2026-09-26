@@ -5,7 +5,6 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.SchoolTemplates
   alias TeacherAssistant.Academics.Subsystem
-  alias TeacherAssistant.Accounts.Permissions
   alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
@@ -24,7 +23,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
       {:ok,
        socket
-       |> assign(:admin?, Permissions.admin?(scope))
+       |> assign(:can_manage_classes?, Enrollment.can_manage_classes?(scope))
        |> assign(:class_streams, class_streams)
        |> assign(
          :class_form,
@@ -46,13 +45,17 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             eyebrow={gettext("Get started")}
             title={gettext("No active academic year")}
             message={
-              if @admin?,
+              if @can_manage_classes?,
                 do: gettext("Set up an academic year before creating classes."),
                 else: gettext("L'année scolaire n'a pas encore été créée.")
             }
           >
             <:action>
-              <.link :if={@admin?} navigate={~p"/school/settings"} class="btn btn-primary">
+              <.link
+                :if={@can_manage_classes?}
+                navigate={~p"/school/settings"}
+                class="btn btn-primary"
+              >
                 {gettext("Go to settings")}
               </.link>
             </:action>
@@ -67,7 +70,9 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
                   <th>{gettext("Série")}</th>
                   <th>{gettext("Subsystem")}</th>
                   <th>{gettext("Effectif")}</th>
-                  <th :if={@admin?}><span class="sr-only">{gettext("Actions")}</span></th>
+                  <th :if={@can_manage_classes?}>
+                    <span class="sr-only">{gettext("Actions")}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -81,7 +86,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
                   <td>{row.cg.serie}</td>
                   <td>{row.cg.subsystem}</td>
                   <td>{row.effectif}</td>
-                  <td :if={@admin?}>
+                  <td :if={@can_manage_classes?}>
                     <button
                       id={"class-delete-#{row.cg.id}"}
                       type="button"
@@ -104,7 +109,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             title={gettext("No classes yet")}
           />
 
-          <div :if={@admin?} class="ta-leaf space-y-3">
+          <div :if={@can_manage_classes?} class="ta-leaf space-y-3">
             <h2 class="text-sm font-semibold">{gettext("Create a class")}</h2>
             <.form
               for={@class_form}
@@ -148,35 +153,39 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   def handle_event("create_class", %{"class_group" => params}, socket) do
     %{current_scope: scope} = socket.assigns
 
-    with true <- Permissions.admin?(scope),
-         year when not is_nil(year) <- scope.current_academic_year do
-      submit_params = drop_blank_serie(params)
+    case scope.current_academic_year do
+      nil ->
+        {:noreply, put_flash(socket, :error, gettext("Create an academic year first."))}
 
-      case AshPhoenix.Form.submit(socket.assigns.class_form, params: submit_params) do
-        {:ok, _class_group} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Class created."))
-           |> assign(:class_form, class_form(scope, year))
-           |> load_classes()}
+      year ->
+        submit_params = drop_blank_serie(params)
 
-        {:error, form} ->
-          {:noreply, assign(socket, :class_form, form)}
-      end
-    else
-      false -> {:noreply, socket}
-      nil -> {:noreply, put_flash(socket, :error, gettext("Create an academic year first."))}
+        case AshPhoenix.Form.submit(socket.assigns.class_form, params: submit_params) do
+          {:ok, _class_group} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, gettext("Class created."))
+             |> assign(:class_form, class_form(scope, year))
+             |> load_classes()}
+
+          {:error, form} ->
+            if Authz.forbidden_form?(form),
+              do: {:noreply, Authz.put_not_allowed(socket)},
+              else: {:noreply, assign(socket, :class_form, form)}
+        end
     end
   end
 
   def handle_event("delete_class", %{"id" => id}, socket) do
     %{current_scope: scope} = socket.assigns
 
-    with true <- Permissions.admin?(scope),
-         %{cg: cg} <- Enum.find(socket.assigns.classes, &(&1.cg.id == id)),
+    with %{cg: cg} <- Enum.find(socket.assigns.classes, &(&1.cg.id == id)),
          :ok <- Enrollment.delete_class_group(scope, cg) do
       {:noreply, socket |> put_flash(:info, gettext("Class deleted.")) |> load_classes()}
     else
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
       {:error, :has_data} ->
         {:noreply,
          put_flash(

@@ -39,7 +39,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   # conduct or fees manager, not a form master. Everyone else needs the
   # dashboard's class list and setup checklist.
   defp plain_teacher?(scope) do
-    not Permissions.admin?(scope) and not Permissions.conduct_manager?(scope) and
+    not Enrollment.can_manage_classes?(scope) and not Permissions.conduct_manager?(scope) and
       not Permissions.fees_manager?(scope) and form_master_classes(scope) == []
   end
 

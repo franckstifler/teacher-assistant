@@ -280,22 +280,19 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     scope = socket.assigns.current_scope
     %{year: year} = socket.assigns
 
-    if Permissions.admin?(scope) do
-      attrs = class_attrs(params)
+    case Enrollment.create_class_group(scope, year, class_attrs(params)) do
+      {:ok, _class_group} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Class created."))
+         |> assign(:class_form, class_form())
+         |> assign_classes(year)}
 
-      case Enrollment.create_class_group(scope, year, attrs) do
-        {:ok, _class_group} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Class created."))
-           |> assign(:class_form, class_form())
-           |> assign_classes(year)}
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
 
-        {:error, _error} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create the class."))}
-      end
-    else
-      {:noreply, socket}
+      {:error, _error} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not create the class."))}
     end
   end
 
@@ -303,30 +300,26 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     scope = socket.assigns.current_scope
     %{classes: classes, year: year} = socket.assigns
 
-    if Permissions.admin?(scope) do
-      case Enum.find(classes, &(&1.id == id)) do
-        nil ->
-          {:noreply, socket}
-
-        class_group ->
-          case Enrollment.delete_class_group(scope, class_group) do
-            :ok ->
-              {:noreply,
-               socket
-               |> put_flash(:info, gettext("Class deleted."))
-               |> assign_classes(year)}
-
-            {:error, :has_data} ->
-              {:noreply,
-               put_flash(
-                 socket,
-                 :error,
-                 gettext("This class has students or teachers — remove them first.")
-               )}
-          end
-      end
+    with %{} = class_group <- Enum.find(classes, &(&1.id == id)),
+         :ok <- Enrollment.delete_class_group(scope, class_group) do
+      {:noreply,
+       socket
+       |> put_flash(:info, gettext("Class deleted."))
+       |> assign_classes(year)}
     else
-      {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
+      {:error, :has_data} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("This class has students or teachers — remove them first.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
     end
   end
 

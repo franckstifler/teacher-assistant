@@ -24,8 +24,11 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
+
+  @doc "Whether the scope may create and delete classes (admin axis)."
+  def can_manage_classes?(scope), do: Ash.can?({ClassGroup, :create}, scope)
 
   # --- ClassGroup ------------------------------------------------------------
 
@@ -79,8 +82,10 @@ defmodule TeacherAssistant.Enrollment do
     if has_enrollments or has_assignments do
       {:error, :has_data}
     else
-      Ash.destroy!(cg, scope: scope)
-      :ok
+      case Ash.destroy(cg, scope: scope) do
+        :ok -> :ok
+        {:error, error} -> {:error, error}
+      end
     end
   end
 
@@ -225,9 +230,15 @@ defmodule TeacherAssistant.Enrollment do
         {:ok, ok}
 
       {:error, error} ->
-        error = Ash.Error.to_error_class(error)
+        case Ash.Error.to_error_class(error) do
+          %Ash.Error.Forbidden{} = forbidden ->
+            {:error, forbidden}
 
-        if duplicate_matricule?(error), do: {:error, :duplicate_matricule}, else: {:error, error}
+          error ->
+            if duplicate_matricule?(error),
+              do: {:error, :duplicate_matricule},
+              else: {:error, error}
+        end
     end
   end
 
@@ -363,6 +374,8 @@ defmodule TeacherAssistant.Enrollment do
     )
     |> Ash.read!() != []
   end
+
+  defp conflict(acc, row, %Ash.Error.Forbidden{}), do: conflict(acc, row, :forbidden)
 
   defp conflict(acc, row, reason),
     do: %{acc | conflicts: acc.conflicts ++ [Map.put(row, :reason, reason)]}

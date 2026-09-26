@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.Student do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "students"
     repo TeacherAssistant.Repo
@@ -54,8 +56,17 @@ defmodule TeacherAssistant.Academics.Student do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+    end
+
+    policy action_type(:update) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if expr(exists(enrollments, class_group.form_master_user_id == ^actor(:id)))
     end
   end
 

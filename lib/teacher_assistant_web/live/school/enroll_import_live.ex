@@ -2,14 +2,13 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Accounts.Permissions
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with %{} <- scope.current_workspace,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Permissions.admin?(scope) do
+         true <- Enrollment.can_manage_classes?(scope) do
       {:ok,
        socket
        |> assign(

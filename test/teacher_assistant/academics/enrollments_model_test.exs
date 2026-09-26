@@ -46,19 +46,18 @@ defmodule TeacherAssistant.Academics.EnrollmentsModelTest do
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Dan", sex: :m})
   end
 
-  test "a student has one enrollment per year", %{ws: ws, year: year, cg: cg, scope: scope} do
+  test "a student has one enrollment per year", %{year: year, cg: cg, scope: scope} do
     {:ok, s} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, cg2} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
 
     assert {:error, _} =
              TeacherAssistant.Academics.Enrollment
-             |> Ash.Changeset.for_create(:create, %{
-               student_id: s.id,
-               class_group_id: cg2.id,
-               academic_year_id: year.id
-             })
-             |> Ash.Changeset.set_tenant(ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.Changeset.for_create(
+               :create,
+               %{student_id: s.id, class_group_id: cg2.id, academic_year_id: year.id},
+               scope: scope
+             )
+             |> Ash.create()
   end
 
   test "update_enrollment toggles repeater", %{cg: cg, scope: scope} do

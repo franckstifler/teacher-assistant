@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "class_groups"
     repo TeacherAssistant.Repo
@@ -63,8 +65,12 @@ defmodule TeacherAssistant.Academics.ClassGroup do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
     end
   end
 
