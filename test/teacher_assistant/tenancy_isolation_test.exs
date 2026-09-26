@@ -349,8 +349,8 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     for resource <- @flipped do
       row = row_for(resource, ctx.a, ctx)
       assert row, "#{inspect(resource)}: no row created"
-      assert {:ok, _} = Ash.get(resource, row.id, tenant: ctx.a.id)
-      assert {:error, %Ash.Error.Invalid{}} = Ash.get(resource, row.id, tenant: ctx.b.id)
+      assert {:ok, _} = Ash.get(resource, row.id, scope: scope_of(ctx.a))
+      assert {:error, %Ash.Error.Invalid{}} = Ash.get(resource, row.id, scope: scope_of(ctx.b))
     end
   end
 

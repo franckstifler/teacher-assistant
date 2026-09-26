@@ -75,10 +75,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanTest do
     {:ok, plan} = Curriculum.create_progression_plan(scope, ctx, %{title: "Original"})
 
     {:ok, ay} =
-      Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id,
-        authorize?: false,
-        tenant: plan.workspace_id
-      )
+      Ash.get(TeacherAssistant.Academics.AcademicYear, plan.academic_year_id, scope: scope)
 
     :ok = Organization.build_default_calendar(scope, ay)
     [seq | _] = Organization.list_sequences(scope, ay)

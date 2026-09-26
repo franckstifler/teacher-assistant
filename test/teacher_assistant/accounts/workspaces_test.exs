@@ -29,7 +29,8 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "École X"})
 
-    assert {:error, :not_a_member} =
+    # A non-member cannot read the school at all (Workspace read policy).
+    assert {:error, :workspace_not_found} =
              TeacherAssistant.Accounts.Workspaces.scope_for(user, school.id)
   end
 

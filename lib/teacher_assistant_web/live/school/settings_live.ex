@@ -19,8 +19,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       socket =
         socket
         |> assign(:scope, scope)
-        |> assign(:head?, Permissions.head?(scope))
         |> assign(:admin?, admin?)
+        |> assign(:can_manage_calendar?, Organization.can_manage_calendar?(scope))
+        |> assign(:can_rename_school?, Organization.can_rename_school?(scope))
         |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
         |> assign(:subject_form, subject_form(scope))
@@ -59,7 +60,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
         <section id="profil" class="space-y-6">
           <.form
-            :if={@head?}
+            :if={@can_rename_school?}
             for={@name_form}
             id="school-settings"
             phx-change="validate_name"
@@ -150,7 +151,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </div>
         </section>
 
-        <section :if={@admin?} id="annee" class="space-y-4">
+        <section :if={@can_manage_calendar?} id="annee" class="space-y-4">
           <h2 class="text-lg font-semibold">{gettext("Année scolaire")}</h2>
 
           <div class="overflow-x-auto">
@@ -404,26 +405,26 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("save", %{"school" => params}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.head?(scope) do
-      case AshPhoenix.Form.submit(socket.assigns.name_form, params: params) do
-        {:ok, school} ->
-          new_scope = %{scope | current_workspace: school}
+    case AshPhoenix.Form.submit(socket.assigns.name_form, params: params) do
+      {:ok, school} ->
+        new_scope = %{scope | current_workspace: school}
 
-          {:noreply,
-           socket
-           |> assign(:scope, new_scope)
-           |> assign(:current_scope, new_scope)
-           |> assign(:name_form, name_form(new_scope))
-           |> put_flash(:info, gettext("École renommée avec succès."))}
+        {:noreply,
+         socket
+         |> assign(:scope, new_scope)
+         |> assign(:current_scope, new_scope)
+         |> assign(:name_form, name_form(new_scope))
+         |> put_flash(:info, gettext("École renommée avec succès."))}
 
-        {:error, form} ->
+      {:error, form} ->
+        if Authz.forbidden_form?(form) do
+          {:noreply, Authz.put_not_allowed(socket)}
+        else
           {:noreply,
            socket
            |> assign(:name_form, form)
            |> put_flash(:error, gettext("Impossible de renommer l'école."))}
-      end
-    else
-      {:noreply, socket}
+        end
     end
   end
 
@@ -435,11 +436,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("generate_calendar", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    with true <- Permissions.admin?(scope),
-         {:ok, year} <- Organization.get_academic_year(scope, id),
+    with {:ok, year} <- Organization.get_academic_year(scope, id),
          :ok <- Organization.build_default_calendar(scope, year) do
       {:noreply, socket |> load_years() |> put_flash(:info, gettext("Calendrier généré."))}
     else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, socket}
     end
   end
@@ -447,45 +448,45 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("create_year", %{"year" => params}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
-      case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
-        {:ok, year} ->
-          :ok = Organization.build_default_calendar(scope, year)
-          :ok = TeacherAssistant.Attendance.build_default_periods(scope)
-          TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
+    case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
+      {:ok, year} ->
+        :ok = Organization.build_default_calendar(scope, year)
+        :ok = TeacherAssistant.Attendance.build_default_periods(scope)
+        TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
 
-          socket = load_years(socket)
+        socket = load_years(socket)
 
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Année scolaire créée."))
-           |> assign(
-             :year_form,
-             year_form(scope, socket.assigns.years == [])
-           )}
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Année scolaire créée."))
+         |> assign(
+           :year_form,
+           year_form(scope, socket.assigns.years == [])
+         )}
 
-        {:error, form} ->
+      {:error, form} ->
+        if Authz.forbidden_form?(form) do
+          {:noreply, Authz.put_not_allowed(socket)}
+        else
           {:noreply,
            socket
            |> assign(:year_form, form)
            |> put_flash(:error, gettext("Impossible de créer l'année scolaire."))}
-      end
-    else
-      {:noreply, socket}
+        end
     end
   end
 
   def handle_event("activate_year", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    with true <- Permissions.admin?(scope),
-         {:ok, year} <- Organization.get_academic_year(scope, id),
+    with {:ok, year} <- Organization.get_academic_year(scope, id),
          {:ok, _} <- Organization.activate_academic_year(scope, year) do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Année scolaire activée."))
        |> load_years()}
     else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, socket}
     end
   end

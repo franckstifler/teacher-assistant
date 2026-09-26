@@ -52,6 +52,8 @@ defmodule TeacherAssistantWeb do
     quote do
       use Phoenix.LiveView
 
+      alias TeacherAssistantWeb.Authz
+
       unquote(html_helpers())
     end
   end

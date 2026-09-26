@@ -37,16 +37,19 @@ defmodule TeacherAssistant.ConstraintsTest do
   end
 
   describe "academic_years: one active year per workspace" do
-    test "only one active academic year per workspace at the database level", %{ws: ws} do
+    test "only one active academic year per workspace at the database level", %{scope: scope} do
       assert {:error, %Ash.Error.Invalid{}} =
                AcademicYear
-               |> Ash.Changeset.for_create(:create, %{
-                 name: "Doublon",
-                 start_date: ~D[2030-09-01],
-                 end_date: ~D[2031-06-30],
-                 active: true
-               })
-               |> Ash.Changeset.set_tenant(ws.id)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   name: "Doublon",
+                   start_date: ~D[2030-09-01],
+                   end_date: ~D[2031-06-30],
+                   active: true
+                 },
+                 scope: scope
+               )
                |> Ash.create()
     end
 

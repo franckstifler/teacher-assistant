@@ -12,8 +12,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   end
 
   def handle_event("create", %{"school" => p}, socket) do
-    # `owner_user_id` is a static server-controlled argument — it's set on the
-    # changeset at build time via `prepare_source` (see `build_form/1`). The
+    # The owner is the form's actor (`scope:` in `build_form/1`). The
     # `:profile` argument is assembled from the operator's own inputs, so it
     # can't be a build-time value; it's supplied as a submit param.
     params = Map.put(p, "profile", build_profile(p))
@@ -34,16 +33,10 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   end
 
   defp build_form(socket) do
-    scope = socket.assigns.current_scope
-    user = scope.current_user
-
     Workspace
     |> AshPhoenix.Form.for_create(:create_school,
       as: "school",
-      scope: scope,
-      prepare_source: fn changeset ->
-        Ash.Changeset.set_argument(changeset, :owner_user_id, user.id)
-      end
+      scope: socket.assigns.current_scope
     )
     |> to_form()
   end

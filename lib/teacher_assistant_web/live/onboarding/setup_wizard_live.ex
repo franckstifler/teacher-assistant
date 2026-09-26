@@ -246,33 +246,33 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   def handle_event("create_year", %{"year" => params}, socket) do
     scope = socket.assigns.current_scope
 
-    if Permissions.admin?(scope) do
-      case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
-        {:ok, year} ->
-          :ok = Organization.build_default_calendar(scope, year)
-          :ok = Attendance.build_default_periods(scope)
-          Seeding.seed_starter_classes(scope, year)
+    case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
+      {:ok, year} ->
+        :ok = Organization.build_default_calendar(scope, year)
+        :ok = Attendance.build_default_periods(scope)
+        Seeding.seed_starter_classes(scope, year)
 
-          # Deliberately land on the `:classes` step rather than re-deriving
-          # via `initial_step/2` — seeding just populated classes, so the
-          # derived step would jump straight past it to `:invite`. We want
-          # the head to see (and can edit) the seeded starter classes before
-          # continuing.
-          {:noreply,
-           socket
-           |> assign(:year, year)
-           |> assign(:step, :classes)
-           |> assign_classes(year)
-           |> put_flash(:info, gettext("Année scolaire créée."))}
+        # Deliberately land on the `:classes` step rather than re-deriving
+        # via `initial_step/2` — seeding just populated classes, so the
+        # derived step would jump straight past it to `:invite`. We want
+        # the head to see (and can edit) the seeded starter classes before
+        # continuing.
+        {:noreply,
+         socket
+         |> assign(:year, year)
+         |> assign(:step, :classes)
+         |> assign_classes(year)
+         |> put_flash(:info, gettext("Année scolaire créée."))}
 
-        {:error, form} ->
+      {:error, form} ->
+        if Authz.forbidden_form?(form) do
+          {:noreply, Authz.put_not_allowed(socket)}
+        else
           {:noreply,
            socket
            |> assign(:year_form, form)
            |> put_flash(:error, gettext("Impossible de créer l'année scolaire."))}
-      end
-    else
-      {:noreply, socket}
+        end
     end
   end
 

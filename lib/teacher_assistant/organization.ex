@@ -33,7 +33,7 @@ defmodule TeacherAssistant.Organization do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
 
   @doc """
@@ -48,11 +48,7 @@ defmodule TeacherAssistant.Organization do
     Workspace
     |> Ash.Changeset.for_create(
       :create_school,
-      %{
-        name: name,
-        owner_user_id: scope.current_user.id,
-        profile: Map.take(attrs, @profile_keys)
-      },
+      %{name: name, profile: Map.take(attrs, @profile_keys)},
       scope: scope
     )
     |> Ash.create()
@@ -127,34 +123,49 @@ defmodule TeacherAssistant.Organization do
     preset =
       TeacherAssistant.Academics.Reference.default_calendar_preset(year.start_date, year.end_date)
 
-    Enum.each(preset.terms, fn term_spec ->
-      {:ok, term} =
-        Term
-        |> Ash.Changeset.for_create(
-          :create,
-          %{
-            position: term_spec.position,
-            academic_year_id: year.id
-          },
-          scope: scope
-        )
-        |> Ash.create()
-
-      Enum.each(term_spec.sequences, fn s ->
-        Sequence
-        |> Ash.Changeset.for_create(
-          :create,
-          s
-          |> Map.take([:number, :position_in_term, :start_date, :end_date, :integration_week])
-          |> Map.put(:term_id, term.id),
-          scope: scope
-        )
-        |> Ash.create!()
-      end)
+    Enum.reduce_while(preset.terms, :ok, fn term_spec, :ok ->
+      with {:ok, term} <-
+             Term
+             |> Ash.Changeset.for_create(
+               :create,
+               %{position: term_spec.position, academic_year_id: year.id},
+               scope: scope
+             )
+             |> Ash.create(),
+           :ok <- create_sequences(scope, term, term_spec.sequences) do
+        {:cont, :ok}
+      else
+        {:error, error} -> {:halt, {:error, error}}
+      end
     end)
-
-    :ok
   end
+
+  defp create_sequences(%Scope{} = scope, term, sequence_specs) do
+    Enum.reduce_while(sequence_specs, :ok, fn s, :ok ->
+      Sequence
+      |> Ash.Changeset.for_create(
+        :create,
+        s
+        |> Map.take([:number, :position_in_term, :start_date, :end_date, :integration_week])
+        |> Map.put(:term_id, term.id),
+        scope: scope
+      )
+      |> Ash.create()
+      |> case do
+        {:ok, _} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  @doc "Whether the scope may manage academic years and calendars (admin axis)."
+  def can_manage_calendar?(scope), do: Ash.can?({AcademicYear, :create_for_workspace}, scope)
+
+  @doc "Whether the scope may rename its school (head)."
+  def can_rename_school?(%{current_workspace: %Workspace{} = ws} = scope),
+    do: Ash.can?({ws, :update}, scope)
+
+  def can_rename_school?(_scope), do: false
 
   def list_sequences(%Scope{} = scope, %AcademicYear{id: year_id}) do
     Sequence

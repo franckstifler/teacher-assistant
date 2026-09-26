@@ -6,7 +6,7 @@ defmodule TeacherAssistant.Academics.Workspace do
     authorizers: [Ash.Policy.Authorizer]
 
   alias TeacherAssistant.Academics.{Period, Reference, SchoolTemplates, Subject}
-  alias TeacherAssistant.Accounts.{SchoolMembership, SchoolProfile}
+  alias TeacherAssistant.Accounts.{Checks, SchoolMembership, SchoolProfile}
 
   @profile_keys [
     :short_name,
@@ -43,11 +43,12 @@ defmodule TeacherAssistant.Academics.Workspace do
     # error rolls the whole thing back — no orphan workspace).
     create :create_school do
       accept [:name]
-      argument :owner_user_id, :uuid, allow_nil?: false
       argument :profile, :map, default: %{}
 
-      change after_action(fn changeset, workspace, _context ->
-               owner_user_id = Ash.Changeset.get_argument(changeset, :owner_user_id)
+      # The owner is the actor (the policy requires one): nobody can create a
+      # school on someone else's behalf.
+      change after_action(fn changeset, workspace, context ->
+               owner_user_id = context.actor.id
                profile_input = Ash.Changeset.get_argument(changeset, :profile) || %{}
                profile_attrs = build_profile_attrs(profile_input)
 
@@ -68,8 +69,17 @@ defmodule TeacherAssistant.Academics.Workspace do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action(:create_school) do
+      authorize_if actor_present()
+    end
+
+    policy action_type(:read) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if expr(exists(school_memberships, user_id == ^actor(:id) and active == true))
+    end
+
+    policy action(:update) do
+      authorize_if {Checks.SchoolRole, any_of: :head}
     end
   end
 
@@ -101,13 +111,16 @@ defmodule TeacherAssistant.Academics.Workspace do
     )
   end
 
+  # Bootstrap writes (spec §4.1 case 2): the creator is not a member of the new
+  # school until this transaction commits, so no school policy could admit
+  # them. `authorize?: false` is limited to these four seeding writes.
   defp create_school_profile(workspace, owner_user_id, profile_attrs) do
     SchoolProfile
     |> Ash.Changeset.for_create(
       :create,
       Map.merge(profile_attrs, %{workspace_id: workspace.id, owner_user_id: owner_user_id})
     )
-    |> Ash.create()
+    |> Ash.create(authorize?: false)
   end
 
   # `SchoolMembership` is multitenant (attribute strategy); `workspace_id` is
@@ -119,7 +132,7 @@ defmodule TeacherAssistant.Academics.Workspace do
       roles: [:head]
     })
     |> Ash.Changeset.set_tenant(workspace.id)
-    |> Ash.create()
+    |> Ash.create(authorize?: false)
   end
 
   # The default bell schedule, so roll call works from day one (Increment 2).
@@ -132,7 +145,7 @@ defmodule TeacherAssistant.Academics.Workspace do
       case Period
            |> Ash.Changeset.for_create(:create, attrs)
            |> Ash.Changeset.set_tenant(workspace.id)
-           |> Ash.create() do
+           |> Ash.create(authorize?: false) do
         {:ok, _} -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -151,7 +164,7 @@ defmodule TeacherAssistant.Academics.Workspace do
       case Subject
            |> Ash.Changeset.for_create(:create, params)
            |> Ash.Changeset.set_tenant(workspace.id)
-           |> Ash.create() do
+           |> Ash.create(authorize?: false) do
         {:ok, _} -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end
