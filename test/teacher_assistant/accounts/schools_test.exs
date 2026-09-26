@@ -55,23 +55,20 @@ defmodule TeacherAssistant.Accounts.SchoolsTest do
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "École D"})
 
+    scope = school_scope(head, school)
+
     {:ok, other_membership} =
       SchoolMembership
-      |> Ash.Changeset.for_create(:create, %{
-        user_id: other.id,
-        roles: [:head]
-      })
-      |> Ash.Changeset.set_tenant(school.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.Changeset.for_create(:create, %{user_id: other.id, roles: [:head]}, scope: scope)
+      |> Ash.create()
 
-    scope = school_scope(head, school)
     {:ok, m} = Accounts.fetch_school_membership(scope, head)
-    assert Ash.load!(m, :other_active_heads).other_active_heads == 1
+    assert Ash.load!(m, :other_active_heads, scope: scope).other_active_heads == 1
 
     assert {:ok, updated} = Accounts.update_member_roles(scope, m, [:teacher])
     refute :head in updated.roles
 
-    assert Ash.load!(other_membership, :other_active_heads).other_active_heads == 0
+    assert Ash.load!(other_membership, :other_active_heads, scope: scope).other_active_heads == 0
     assert {:error, :last_head} = Accounts.deactivate_member(scope, other_membership)
   end
 end

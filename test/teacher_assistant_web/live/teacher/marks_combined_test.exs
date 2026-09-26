@@ -5,7 +5,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -43,8 +42,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
     {:ok, course} = Curriculum.combine_course(scope, [tc_maco, tc_menu])
 
-    {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(profile, head.id, scope: scope)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

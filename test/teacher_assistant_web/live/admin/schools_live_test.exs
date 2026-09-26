@@ -36,6 +36,8 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLiveTest do
 
     {:ok, view, html} = live(conn, ~p"/admin/schools")
     assert html =~ "Lycée Op"
+    # The operator reads each school's name and its owner's email.
+    assert html =~ to_string(head.email)
     view |> element("#verify-#{school.id}") |> render_click()
 
     {:ok, p} = Accounts.fetch_school_profile(school_scope(head, school))

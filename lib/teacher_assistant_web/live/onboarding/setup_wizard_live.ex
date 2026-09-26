@@ -8,7 +8,6 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   alias TeacherAssistant.Accounts.{
     CameroonRegion,
     MembershipStatus,
-    Permissions,
     SchoolInvitation,
     SchoolRole,
     SchoolSubsystem,
@@ -32,6 +31,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
        class_streams: class_streams_for(scope),
        class_form: class_form(),
        invite_form: invite_form(),
+       can_manage_staff?: Accounts.can_manage_staff?(scope),
        profile: fetch_profile(scope),
        staff_count: scope |> Accounts.list_members() |> length()
      )
@@ -333,28 +333,29 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   def handle_event("invite", %{"invite" => params}, socket) do
     scope = socket.assigns.current_scope
+    roles = parse_invite_roles(params["roles"])
 
-    if Permissions.head?(scope) do
-      roles = parse_invite_roles(params["roles"])
+    case Accounts.invite_member(scope, %{
+           email: params["email"],
+           roles: roles,
+           membership_status: parse_membership_status(params["membership_status"])
+         }) do
+      {:ok, _invitation} ->
+        {:noreply,
+         socket
+         |> assign(:invite_form, invite_form())
+         |> assign_invitations()
+         |> put_flash(:info, gettext("Invitation envoyée."))}
 
-      case Accounts.invite_member(scope, %{
-             email: params["email"],
-             roles: roles,
-             membership_status: parse_membership_status(params["membership_status"])
-           }) do
-        {:ok, _invitation} ->
-          {:noreply,
-           socket
-           |> assign(:invite_form, invite_form())
-           |> assign_invitations()
-           |> put_flash(:info, gettext("Invitation envoyée."))}
+      {:error, :already_member} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
 
-        {:error, :already_member} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
-      end
-    else
-      {:noreply, socket}
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Impossible d'envoyer l'invitation."))}
     end
   end
 
@@ -608,7 +609,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
       </div>
 
       <div class="ta-leaf space-y-3">
-        <.form for={@invite_form} id="invite-form" phx-submit="invite">
+        <.form :if={@can_manage_staff?} for={@invite_form} id="invite-form" phx-submit="invite">
           <div class="flex flex-wrap items-end gap-3">
             <.input field={@invite_form[:email]} type="email" label={gettext("Email")} />
             <div class="flex flex-wrap gap-2">

@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "school_profiles"
     repo TeacherAssistant.Repo
@@ -98,8 +100,27 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action(:unverified) do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    policy action([:read, :for_workspace]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+
+      authorize_if expr(
+                     exists(
+                       workspace.school_memberships,
+                       user_id == ^actor(:id) and active == true
+                     )
+                   )
+    end
+
+    policy action(:update) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+    end
+
+    policy action([:verify, :reject]) do
+      authorize_if actor_attribute_equals(:role, :admin)
     end
   end
 

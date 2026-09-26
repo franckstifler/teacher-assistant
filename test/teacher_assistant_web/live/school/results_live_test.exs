@@ -88,8 +88,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         roles: inv.roles,
         status: inv.membership_status
       })
-      |> Ash.Changeset.set_tenant(school.id)
-      |> Ash.create()
+      |> Ash.create(scope: scope)
 
     {:ok, _} = Accounts.accept_invitation(school_scope(other, school), inv.token)
 
@@ -121,8 +120,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         roles: inv.roles,
         status: inv.membership_status
       })
-      |> Ash.Changeset.set_tenant(school.id)
-      |> Ash.create()
+      |> Ash.create(scope: scope)
 
     {:ok, _} = Accounts.accept_invitation(school_scope(fm, school), inv.token)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
@@ -178,8 +176,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         roles: inv.roles,
         status: inv.membership_status
       })
-      |> Ash.Changeset.set_tenant(school.id)
-      |> Ash.create()
+      |> Ash.create(scope: scope)
 
     {:ok, _} = Accounts.accept_invitation(school_scope(fm, school), inv.token)
     {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)

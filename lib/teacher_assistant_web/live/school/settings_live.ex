@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   alias TeacherAssistant.Academics.{AcademicYear, Subject, SubjectCategory}
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Accounts.{Permissions}
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
@@ -14,12 +13,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     if scope.current_workspace == nil do
       {:ok, push_navigate(socket, to: ~p"/school")}
     else
-      admin? = Permissions.admin?(scope)
-
       socket =
         socket
         |> assign(:scope, scope)
-        |> assign(:admin?, admin?)
+        |> assign(:can_manage_periods?, TeacherAssistant.Attendance.can_manage_periods?(scope))
         |> assign(:can_manage_calendar?, Organization.can_manage_calendar?(scope))
         |> assign(:can_rename_school?, Organization.can_rename_school?(scope))
         |> assign(:can_manage_subjects?, Curriculum.can_manage_subjects?(scope))
@@ -39,7 +36,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       socket =
         socket
         |> assign(:year_form, year_form(scope, socket.assigns.years == []))
-        |> then(fn socket -> if admin?, do: load_profile(socket), else: socket end)
+        |> load_profile()
 
       {:ok, socket}
     end
@@ -72,7 +69,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
           </.form>
 
-          <div :if={@admin? and @profile_form} class="ta-leaf space-y-3">
+          <div :if={@can_edit_profile? and @profile_form} class="ta-leaf space-y-3">
             <h2 class="text-lg font-semibold">{gettext("Profil de l'école")}</h2>
 
             <.form
@@ -388,7 +385,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </div>
         </section>
 
-        <section :if={@admin?} id="emploi">
+        <section :if={@can_manage_periods?} id="emploi">
           <.link navigate={~p"/school/periods"} class="link link-primary text-sm">
             {gettext("Emploi du temps — périodes")}
           </.link>
@@ -598,9 +595,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   end
 
   def handle_event("save_profile", %{"profile" => attrs}, socket) do
-    scope = socket.assigns.scope
-
-    if Permissions.admin?(scope) and socket.assigns.profile do
+    if socket.assigns.profile do
       case AshPhoenix.Form.submit(socket.assigns.profile_form, params: attrs) do
         {:ok, _profile} ->
           {:noreply,
@@ -609,10 +604,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            |> load_profile()}
 
         {:error, form} ->
-          {:noreply,
-           socket
-           |> assign(:profile_form, form)
-           |> put_flash(:error, gettext("Impossible de mettre à jour le profil."))}
+          if Authz.forbidden_form?(form) do
+            {:noreply, Authz.put_not_allowed(socket)}
+          else
+            {:noreply,
+             socket
+             |> assign(:profile_form, form)
+             |> put_flash(:error, gettext("Impossible de mettre à jour le profil."))}
+          end
       end
     else
       {:noreply, socket}
@@ -624,7 +623,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("save_logo", _params, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) and socket.assigns.profile do
+    # The capability gates the file write itself (a side effect outside the
+    # data layer); the profile update below is still policy-checked.
+    if socket.assigns.can_edit_profile? and socket.assigns.profile do
       uploads_dir = Application.fetch_env!(:teacher_assistant, :uploads_dir)
       workspace_id = scope.current_workspace.id
 
@@ -651,6 +652,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                socket
                |> put_flash(:info, gettext("Logo mis à jour."))
                |> load_profile()}
+
+            {:error, %Ash.Error.Forbidden{}} ->
+              {:noreply, Authz.put_not_allowed(socket)}
 
             {:error, _changeset} ->
               {:noreply,
@@ -686,6 +690,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       {:ok, profile} ->
         socket
         |> assign(:profile, profile)
+        |> assign(:can_edit_profile?, Accounts.can_edit_profile?(scope, profile))
         |> assign(
           :profile_form,
           AshPhoenix.Form.for_update(profile, :update, as: "profile", scope: scope) |> to_form()
@@ -694,6 +699,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       {:error, _} ->
         socket
         |> assign(:profile, nil)
+        |> assign(:can_edit_profile?, false)
         |> assign(:profile_form, nil)
     end
   end

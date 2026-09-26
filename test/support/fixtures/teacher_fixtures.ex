@@ -5,19 +5,24 @@ defmodule TeacherAssistant.TeacherFixtures do
   def user_fixture(attrs \\ %{}) do
     email = Map.get(attrs, :email, "teacher-#{System.unique_integer([:positive])}@example.com")
 
+    # Registration is an authentication interaction (`User`'s bypass).
     {:ok, user} =
-      Accounts.create_user(%{
-        email: email,
-        password: Map.get(attrs, :password, "password1234"),
-        password_confirmation: Map.get(attrs, :password_confirmation, "password1234")
-      })
+      Accounts.create_user(
+        %{
+          email: email,
+          password: Map.get(attrs, :password, "password1234"),
+          password_confirmation: Map.get(attrs, :password_confirmation, "password1234")
+        },
+        context: %{private: %{ash_authentication?: true}}
+      )
 
     user
   end
 
   def admin_user_fixture(attrs \\ %{}) do
     user = user_fixture(attrs)
-    {:ok, admin} = Accounts.promote_to_admin(user)
+    # test support: no in-app path creates an operator
+    {:ok, admin} = Accounts.promote_to_admin(user, authorize?: false)
     admin
   end
 
@@ -55,7 +60,7 @@ defmodule TeacherAssistant.TeacherFixtures do
   def verify_school!(%Scope{} = scope) do
     operator = admin_user_fixture()
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(profile, operator.id, scope: scope)
+    {:ok, _} = Accounts.verify_school(profile, operator.id, actor: operator)
     :ok
   end
 
@@ -71,20 +76,18 @@ defmodule TeacherAssistant.TeacherFixtures do
     %{workspace: ws, head_user: head, year: year, scope: school_scope(head, ws)}
   end
 
-  def membership_fixture(%Scope{current_workspace: workspace}, attrs \\ %{}) do
+  def membership_fixture(%Scope{} = scope, attrs \\ %{}) do
     user = attrs[:user] || user_fixture()
     roles = attrs[:roles] || [:teacher]
 
     {:ok, m} =
       Accounts.SchoolMembership
-      |> Ash.Changeset.for_create(:create, %{
-        user_id: user.id,
-        roles: roles,
-        status: attrs[:status],
-        active: true
-      })
-      |> Ash.Changeset.set_tenant(workspace.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{user_id: user.id, roles: roles, status: attrs[:status], active: true},
+        scope: scope
+      )
+      |> Ash.create()
 
     m
   end

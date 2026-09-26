@@ -43,8 +43,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkolo", sex: :f})
     [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
 
-    {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(profile, head.id, scope: scope)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

@@ -165,8 +165,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
     test "hides the banner once verified", %{conn: conn, school: school, head: head} do
       scope = school_scope(head, school)
-      {:ok, p} = Accounts.fetch_school_profile(scope)
-      {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
+      :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
       {:ok, view, _html} = live(conn, ~p"/school")
       refute has_element?(view, "#pending-verification")
     end

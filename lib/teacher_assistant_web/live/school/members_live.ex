@@ -1,17 +1,18 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{MembershipStatus, Permissions, SchoolInvitation, SchoolRole}
+  alias TeacherAssistant.Accounts.{MembershipStatus, SchoolInvitation, SchoolRole}
   alias TeacherAssistant.Accounts
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if Permissions.member?(scope) do
+    # Reads are policy-checked; a non-member has no workspace in scope.
+    if scope.current_workspace do
       {:ok,
        socket
        |> assign(:scope, scope)
-       |> assign(:head?, Permissions.head?(scope))
+       |> assign(:can_manage_staff?, Accounts.can_manage_staff?(scope))
        |> assign(:invite_form, invite_form())
        |> reload_members()}
     else
@@ -32,7 +33,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                 <th>{gettext("Nom")}</th>
                 <th>{gettext("Rôles")}</th>
                 <th>{gettext("Statut")}</th>
-                <th :if={@head?}><span class="sr-only">{gettext("Actions")}</span></th>
+                <th :if={@can_manage_staff?}><span class="sr-only">{gettext("Actions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -40,7 +41,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                 <td>{m.user.email}</td>
                 <td>
                   <form
-                    :if={@head?}
+                    :if={@can_manage_staff?}
                     id={"roles-#{m.id}"}
                     phx-change="set_roles"
                     phx-value-id={m.id}
@@ -57,13 +58,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                       <span class="text-xs">{SchoolRole.label(role)}</span>
                     </label>
                   </form>
-                  <span :if={!@head?}>
+                  <span :if={!@can_manage_staff?}>
                     {m.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
                   </span>
                 </td>
                 <td>
                   <form
-                    :if={@head?}
+                    :if={@can_manage_staff?}
                     id={"member-status-form-#{m.id}"}
                     phx-change="set_status"
                     phx-value-id={m.id}
@@ -75,11 +76,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                       </option>
                     </select>
                   </form>
-                  <span :if={!@head?}>
+                  <span :if={!@can_manage_staff?}>
                     {if m.status, do: MembershipStatus.label(m.status), else: "—"}
                   </span>
                 </td>
-                <td :if={@head?}>
+                <td :if={@can_manage_staff?}>
                   <button
                     id={"member-deactivate-#{m.id}"}
                     type="button"
@@ -102,7 +103,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           title={gettext("Aucun membre actif pour le moment")}
         />
 
-        <div :if={@head?} class="ta-leaf space-y-3">
+        <div :if={@can_manage_staff?} class="ta-leaf space-y-3">
           <h2 class="text-sm font-semibold">{gettext("Inviter un membre")}</h2>
           <.form for={@invite_form} id="invite-form" phx-submit="invite">
             <div class="flex flex-wrap items-end gap-3">
@@ -131,7 +132,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           </.form>
         </div>
 
-        <div :if={@head?} id="invitations-list" class="space-y-2">
+        <div :if={@can_manage_staff?} id="invitations-list" class="space-y-2">
           <h2 class="text-sm font-semibold">{gettext("Invitations en attente")}</h2>
           <.empty_state
             :if={@invitations == []}
@@ -168,116 +169,97 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   def handle_event("invite", %{"invite" => params}, socket) do
     scope = socket.assigns.scope
+    roles = parse_roles(params["roles"])
 
-    if Permissions.head?(scope) do
-      roles = parse_roles(params["roles"])
+    case Accounts.invite_member(scope, %{
+           email: params["email"],
+           roles: roles,
+           membership_status: parse_membership_status(params["membership_status"])
+         }) do
+      {:ok, _invitation} ->
+        {:noreply, socket |> assign(:invite_form, invite_form()) |> reload_members()}
 
-      case Accounts.invite_member(scope, %{
-             email: params["email"],
-             roles: roles,
-             membership_status: parse_membership_status(params["membership_status"])
-           }) do
-        {:ok, _invitation} ->
-          {:noreply, socket |> assign(:invite_form, invite_form()) |> reload_members()}
+      {:error, :already_member} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
 
-        {:error, :already_member} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
-      end
-    else
-      {:noreply, socket}
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Impossible d'envoyer l'invitation."))}
     end
   end
 
   def handle_event("revoke_invite", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.head?(scope) do
-      case find_invitation(scope, id) do
-        nil ->
-          {:noreply, socket}
-
-        inv ->
-          {:ok, _} = Accounts.revoke_invitation(inv, scope: scope)
-          {:noreply, reload_members(socket)}
-      end
+    with %{} = inv <- find_invitation(scope, id),
+         {:ok, _} <- Accounts.revoke_invitation(inv, scope: scope) do
+      {:noreply, reload_members(socket)}
     else
-      {:noreply, socket}
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+      _ -> {:noreply, socket}
     end
   end
 
   def handle_event("deactivate_member", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.head?(scope) do
-      case find_membership(scope, id) do
-        nil ->
-          {:noreply, socket}
-
-        membership ->
-          case Accounts.deactivate_member(scope, membership) do
-            {:ok, _} ->
-              {:noreply, reload_members(socket)}
-
-            {:error, :last_head} ->
-              {:noreply,
-               put_flash(
-                 socket,
-                 :error,
-                 gettext("Impossible de désactiver le dernier chef d'établissement.")
-               )}
-          end
-      end
+    with %{} = membership <- find_membership(scope, id),
+         {:ok, _} <- Accounts.deactivate_member(scope, membership) do
+      {:noreply, reload_members(socket)}
     else
-      {:noreply, socket}
+      {:error, :last_head} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Impossible de désactiver le dernier chef d'établissement.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
   def handle_event("set_roles", %{"id" => id} = params, socket) do
     scope = socket.assigns.scope
+    roles = parse_roles(params["roles"])
 
-    if Permissions.head?(scope) do
-      roles = parse_roles(params["roles"])
-
-      case find_membership(scope, id) do
-        nil ->
-          {:noreply, socket}
-
-        membership ->
-          case Accounts.update_member_roles(scope, membership, roles) do
-            {:ok, _} ->
-              {:noreply, reload_members(socket)}
-
-            {:error, :last_head} ->
-              {:noreply,
-               put_flash(
-                 socket,
-                 :error,
-                 gettext("Impossible de retirer le rôle de chef d'établissement du dernier chef.")
-               )}
-          end
-      end
+    with %{} = membership <- find_membership(scope, id),
+         {:ok, _} <- Accounts.update_member_roles(scope, membership, roles) do
+      {:noreply, reload_members(socket)}
     else
-      {:noreply, socket}
+      {:error, :last_head} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Impossible de retirer le rôle de chef d'établissement du dernier chef.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
   def handle_event("set_status", %{"id" => id, "status" => status}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.head?(scope) do
-      case find_membership(scope, id) do
-        nil ->
-          {:noreply, socket}
-
-        membership ->
-          case Accounts.update_member_status(scope, membership, parse_membership_status(status)) do
-            {:ok, _} -> {:noreply, reload_members(socket)}
-            {:error, _} -> {:noreply, socket}
-          end
-      end
+    with %{} = membership <- find_membership(scope, id),
+         {:ok, _} <-
+           Accounts.update_member_status(scope, membership, parse_membership_status(status)) do
+      {:noreply, reload_members(socket)}
     else
-      {:noreply, socket}
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+      _ -> {:noreply, socket}
     end
   end
 

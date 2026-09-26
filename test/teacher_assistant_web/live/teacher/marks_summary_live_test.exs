@@ -4,13 +4,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.TeacherFixtures
   setup :register_and_log_in_user
 
   setup %{workspace: ws, year: year, actor: head, scope: scope} do
-    {:ok, p} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     seq = Organization.list_sequences(scope, year) |> List.first()
 

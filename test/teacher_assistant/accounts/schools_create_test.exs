@@ -80,30 +80,30 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
 
   test "verify and reject transitions" do
     user = TeacherFixtures.user_fixture()
-    op = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.admin_user_fixture()
 
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: user}, @attrs)
 
     scope = school_scope(user, school)
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, verified} = Accounts.verify_school(profile, op.id, scope: scope)
+    {:ok, verified} = Accounts.verify_school(profile, op.id, actor: op)
     assert verified.verification_status == :verified
-    {:ok, rejected} = Accounts.reject_school(verified, op.id, "doc manquant", scope: scope)
+    {:ok, rejected} = Accounts.reject_school(verified, op.id, "doc manquant", actor: op)
     assert rejected.verification_status == :rejected
     assert rejected.rejection_reason == "doc manquant"
   end
 
   test "editing a rejected school's profile re-opens it for verification" do
     user = TeacherFixtures.user_fixture()
-    op = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.admin_user_fixture()
 
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: user}, @attrs)
 
     scope = school_scope(user, school)
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, rejected} = Accounts.reject_school(profile, op.id, "doc manquant", scope: scope)
+    {:ok, rejected} = Accounts.reject_school(profile, op.id, "doc manquant", actor: op)
     assert rejected.verification_status == :rejected
 
     assert {:ok, updated} =
@@ -115,19 +115,22 @@ defmodule TeacherAssistant.Accounts.SchoolsCreateTest do
     assert updated.verified_by_user_id == nil
     assert updated.short_name == "X"
 
-    assert Enum.any?(Accounts.list_unverified_schools(scope), &(&1.id == updated.id))
+    assert Enum.any?(
+             Accounts.list_unverified_schools(%TeacherAssistant.Scope{current_user: op}),
+             &(&1.id == updated.id)
+           )
   end
 
   test "editing a verified school's profile leaves it verified" do
     user = TeacherFixtures.user_fixture()
-    op = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.admin_user_fixture()
 
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: user}, @attrs)
 
     scope = school_scope(user, school)
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, verified} = Accounts.verify_school(profile, op.id, scope: scope)
+    {:ok, verified} = Accounts.verify_school(profile, op.id, actor: op)
     assert verified.verification_status == :verified
 
     assert {:ok, updated} =

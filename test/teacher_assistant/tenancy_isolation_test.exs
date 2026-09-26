@@ -19,10 +19,11 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   # The school's head's scope — for fixtures that now need a `%Scope{}`.
   defp scope_of(school) do
-    {:ok, profile} =
-      TeacherAssistant.Accounts.fetch_school_profile(%TeacherAssistant.Scope{
-        current_workspace: school
-      })
+    # Test support: finds the school's owner below the policies (no actor yet).
+    profile =
+      TeacherAssistant.Accounts.SchoolProfile
+      |> Ash.Query.filter(workspace_id == ^school.id)
+      |> Ash.read_one!(authorize?: false)
 
     head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
     school_scope(head, school)
@@ -331,18 +332,29 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.FeeAdjustment
   ]
 
-  # Global multitenant resources (`global? true`): readable under any tenant
-  # they belong to, invisible under a different tenant, and still readable
-  # with no tenant at all (the whole point of `global?`).
+  # Global multitenant resources (`global? true`): invisible under a different
+  # tenant, and still readable with no tenant through their global read actions
+  # (the whole point of `global?`): a user's own memberships, an invitation by
+  # its token.
   @global [SchoolMembership, SchoolInvitation]
 
   test "a global resource is invisible under a different tenant but readable without one", ctx do
     for resource <- @global do
       row = row_for(resource, ctx.a, ctx)
       assert row, "#{inspect(resource)}: no row created"
-      assert {:error, %Ash.Error.Invalid{}} = Ash.get(resource, row.id, tenant: ctx.b.id)
-      assert {:ok, _} = Ash.get(resource, row.id)
+      assert {:error, %Ash.Error.Invalid{}} = Ash.get(resource, row.id, scope: scope_of(ctx.b))
     end
+
+    membership = row_for(SchoolMembership, ctx.a, ctx)
+    user = TeacherAssistant.Accounts.session_user(membership.user_id)
+
+    assert SchoolMembership
+           |> Ash.Query.for_read(:active_for_user, %{user_id: user.id}, actor: user)
+           |> Ash.read!()
+           |> Enum.any?(&(&1.id == membership.id))
+
+    invitation = row_for(SchoolInvitation, ctx.a, ctx)
+    assert {:ok, _} = TeacherAssistant.Accounts.fetch_invitation_by_token(invitation.token)
   end
 
   test "a row of school A is not readable under school B", ctx do
@@ -466,9 +478,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope_of(a))
     head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
 
-    assert {:ok, _memberships} =
+    assert {:ok, [_ | _]} =
              SchoolMembership
-             |> Ash.Query.for_read(:active_for_user, %{user_id: head.id})
+             |> Ash.Query.for_read(:active_for_user, %{user_id: head.id}, actor: head)
              |> Ash.read()
   end
 end

@@ -48,12 +48,12 @@ defmodule TeacherAssistant.Accounts.SchoolProfileTest do
 
   test "verify sets status, timestamp and verifier", %{ws: ws, user: user} do
     {:ok, p} = create(ws, user)
-    op = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.admin_user_fixture()
 
     {:ok, p} =
       p
-      |> Ash.Changeset.for_update(:verify, %{verified_by_user_id: op.id})
-      |> Ash.update(authorize?: false)
+      |> Ash.Changeset.for_update(:verify, %{verified_by_user_id: op.id}, actor: op)
+      |> Ash.update()
 
     assert p.verification_status == :verified
     assert p.verified_at
@@ -62,15 +62,16 @@ defmodule TeacherAssistant.Accounts.SchoolProfileTest do
 
   test "reject records a reason", %{ws: ws, user: user} do
     {:ok, p} = create(ws, user)
-    op = TeacherFixtures.user_fixture()
+    op = TeacherFixtures.admin_user_fixture()
 
     {:ok, p} =
       p
-      |> Ash.Changeset.for_update(:reject, %{
-        verified_by_user_id: op.id,
-        rejection_reason: "Nom incomplet"
-      })
-      |> Ash.update(authorize?: false)
+      |> Ash.Changeset.for_update(
+        :reject,
+        %{verified_by_user_id: op.id, rejection_reason: "Nom incomplet"},
+        actor: op
+      )
+      |> Ash.update()
 
     assert p.verification_status == :rejected
     assert p.rejection_reason == "Nom incomplet"

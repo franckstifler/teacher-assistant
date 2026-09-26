@@ -5,6 +5,10 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  require Ash.Query
+
+  alias TeacherAssistant.Accounts.{Checks, SchoolMembership}
+
   postgres do
     table "school_invitations"
     repo TeacherAssistant.Repo
@@ -37,7 +41,6 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
       argument :token, :string, allow_nil?: false
       get? true
       filter expr(token == ^arg(:token))
-      prepare build(load: [:workspace])
     end
 
     # Tenant scoping (attribute multitenancy) already restricts this to the
@@ -58,11 +61,56 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
     update :revoke do
       change set_attribute(:status, :revoked)
     end
+
+    # Accepting an invitation: in one transaction, create (or reactivate) the
+    # invitee's membership and mark the invitation accepted.
+    update :accept do
+      accept []
+      require_atomic? false
+
+      validate attribute_equals(:status, :pending), message: "is no longer pending"
+
+      validate fn changeset, context ->
+        inv = changeset.data
+
+        cond do
+          inv.expires_at && DateTime.compare(DateTime.utc_now(), inv.expires_at) == :gt ->
+            {:error, field: :expires_at, message: "has expired"}
+
+          to_string(inv.email) != to_string(context.actor && context.actor.email) ->
+            {:error, field: :email, message: "does not match the signed-in user"}
+
+          true ->
+            :ok
+        end
+      end
+
+      change set_attribute(:status, :accepted)
+
+      change after_action(fn _changeset, inv, context ->
+               with :ok <- ensure_membership(inv, context.actor) do
+                 {:ok, inv}
+               end
+             end)
+    end
   end
 
   policies do
-    policy always() do
+    # The token is the credential: the accept page works signed-out.
+    policy action(:by_token) do
       authorize_if always()
+    end
+
+    policy action([:read, :pending_for_workspace]) do
+      authorize_if {Checks.SchoolRole, any_of: :head}
+    end
+
+    policy action(:accept) do
+      authorize_if expr(email == ^actor(:email))
+    end
+
+    policy action([:create, :revoke, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :head}
     end
   end
 
@@ -111,4 +159,42 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
   identities do
     identity :unique_token, [:token], all_tenants?: true
   end
+
+  # Bootstrap write (spec §4.1 case 2): the invitee is not a member until this
+  # transaction commits, so no school policy could admit these reads/writes.
+  defp ensure_membership(inv, user) do
+    SchoolMembership
+    |> Ash.Query.filter(user_id == ^user.id)
+    |> Ash.read_one(tenant: inv.workspace_id, authorize?: false)
+    |> case do
+      {:ok, %SchoolMembership{active: true}} ->
+        :ok
+
+      {:ok, %SchoolMembership{} = m} ->
+        m
+        |> Ash.Changeset.for_update(:update, %{
+          active: true,
+          roles: inv.roles,
+          status: inv.membership_status
+        })
+        |> Ash.update(tenant: inv.workspace_id, authorize?: false)
+        |> ok()
+
+      {:ok, nil} ->
+        SchoolMembership
+        |> Ash.Changeset.for_create(:create, %{
+          user_id: user.id,
+          roles: inv.roles,
+          status: inv.membership_status
+        })
+        |> Ash.create(tenant: inv.workspace_id, authorize?: false)
+        |> ok()
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp ok({:ok, _}), do: :ok
+  defp ok({:error, error}), do: {:error, error}
 end

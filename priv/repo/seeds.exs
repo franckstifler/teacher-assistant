@@ -17,12 +17,16 @@ if Mix.env() == :dev do
 
   email = "demo@example.com"
 
+  # Registration is an authentication interaction (`User`'s bypass).
   user =
-    case Accounts.create_user(%{
-           email: email,
-           password: "password1234",
-           password_confirmation: "password1234"
-         }) do
+    case Accounts.create_user(
+           %{
+             email: email,
+             password: "password1234",
+             password_confirmation: "password1234"
+           },
+           context: %{private: %{ash_authentication?: true}}
+         ) do
       {:ok, u} ->
         u
 
@@ -37,7 +41,8 @@ if Mix.env() == :dev do
     if user.role == :admin do
       user
     else
-      {:ok, admin} = Accounts.promote_to_admin(user)
+      # bootstrap: the seeded operator
+      {:ok, admin} = Accounts.promote_to_admin(user, authorize?: false)
       admin
     end
 

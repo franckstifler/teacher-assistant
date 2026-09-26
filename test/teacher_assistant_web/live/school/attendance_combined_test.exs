@@ -6,7 +6,6 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Timetabling
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -59,8 +58,7 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
 
     date = ~D[2025-09-08]
 
-    {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(profile, head.id, scope: scope)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
 

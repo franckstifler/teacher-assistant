@@ -82,7 +82,7 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     create :create do
-      accept [:email, :role, :hashed_password]
+      accept [:email, :hashed_password]
     end
 
     create :register_with_password do
@@ -124,8 +124,26 @@ defmodule TeacherAssistant.Accounts.User do
       authorize_if always()
     end
 
-    policy always() do
-      authorize_if always()
+    # Self, co-members of one of the actor's schools, and the operator (who
+    # needs owners' emails for the school list).
+    policy action_type(:read) do
+      authorize_if expr(id == ^actor(:id))
+      authorize_if actor_attribute_equals(:role, :admin)
+
+      authorize_if expr(
+                     exists(
+                       school_memberships,
+                       active == true and
+                         exists(
+                           workspace.school_memberships,
+                           user_id == ^actor(:id) and active == true
+                         )
+                     )
+                   )
+    end
+
+    policy action(:promote_to_admin) do
+      authorize_if actor_attribute_equals(:role, :admin)
     end
   end
 
@@ -142,6 +160,13 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     timestamps()
+  end
+
+  relationships do
+    has_many :school_memberships, TeacherAssistant.Accounts.SchoolMembership do
+      destination_attribute :user_id
+      public? true
+    end
   end
 
   identities do

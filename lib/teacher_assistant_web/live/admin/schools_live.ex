@@ -80,10 +80,9 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
       profile ->
         scope = socket.assigns.current_scope
 
-        {:ok, _} =
-          Accounts.verify_school(profile, scope.current_user.id, scope: scope)
-
-        {:noreply, reload_schools(socket)}
+        profile
+        |> Accounts.verify_school(scope.current_user.id, scope: scope)
+        |> after_decision(socket)
     end
   end
 
@@ -95,17 +94,19 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
       profile ->
         scope = socket.assigns.current_scope
 
-        {:ok, _} =
-          Accounts.reject_school(
-            profile,
-            scope.current_user.id,
-            reason,
-            scope: scope
-          )
-
-        {:noreply, reload_schools(socket)}
+        profile
+        |> Accounts.reject_school(scope.current_user.id, reason, scope: scope)
+        |> after_decision(socket)
     end
   end
+
+  defp after_decision({:ok, _profile}, socket), do: {:noreply, reload_schools(socket)}
+
+  defp after_decision({:error, %Ash.Error.Forbidden{}}, socket),
+    do: {:noreply, Authz.put_not_allowed(socket)}
+
+  defp after_decision({:error, _error}, socket),
+    do: {:noreply, put_flash(socket, :error, gettext("Impossible d'enregistrer la décision."))}
 
   defp find_profile(socket, workspace_id) do
     Enum.find(socket.assigns.schools, &(to_string(&1.workspace_id) == to_string(workspace_id)))

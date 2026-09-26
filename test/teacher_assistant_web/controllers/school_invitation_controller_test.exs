@@ -170,4 +170,14 @@ defmodule TeacherAssistantWeb.SchoolInvitationControllerTest do
     assert redirected_to(conn) == ~p"/sign-in"
     assert get_session(conn, :return_to) == ~p"/schools/invitations/#{inv.token}"
   end
+
+  test "the invitation page shows the school name to a signed-out visitor", %{conn: conn} do
+    %{workspace: ws, scope: head} = TeacherAssistant.TeacherFixtures.school_fixture()
+
+    {:ok, inv} =
+      TeacherAssistant.Accounts.invite_member(head, %{email: "v@example.com", roles: [:teacher]})
+
+    html = conn |> get(~p"/schools/invitations/#{inv.token}") |> html_response(200)
+    assert html =~ ws.name
+  end
 end

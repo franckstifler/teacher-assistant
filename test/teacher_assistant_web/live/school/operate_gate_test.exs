@@ -5,7 +5,6 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
   setup :register_and_log_in_user
@@ -77,11 +76,9 @@ defmodule TeacherAssistantWeb.School.OperateGateTest do
     cg: cg,
     period: period,
     date: date,
-    head: head,
     scope: scope
   } do
-    {:ok, p} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(p, head.id, scope: scope)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, view, _} =
       live(conn, "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}")
