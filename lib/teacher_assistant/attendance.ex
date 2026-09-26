@@ -44,7 +44,7 @@ defmodule TeacherAssistant.Attendance do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
 
   @valid_statuses [:present, :absent, :late]
@@ -56,6 +56,9 @@ defmodule TeacherAssistant.Attendance do
   }
 
   # --- Periods -------------------------------------------------------------
+
+  @doc "Whether the scope may edit the bell schedule (admin axis)."
+  def can_manage_periods?(scope), do: Ash.can?({Period, :create}, scope)
 
   @doc "Every period in the scope's school, sorted by position."
   def list_periods(%Scope{} = scope) do
@@ -76,8 +79,10 @@ defmodule TeacherAssistant.Attendance do
     if has_slots do
       {:error, :has_slots}
     else
-      Ash.destroy!(period, scope: scope)
-      :ok
+      case Ash.destroy(period, scope: scope) do
+        :ok -> :ok
+        {:error, error} -> {:error, error}
+      end
     end
   end
 
@@ -88,13 +93,15 @@ defmodule TeacherAssistant.Attendance do
   def build_default_periods(%Scope{} = scope) do
     case list_periods(scope) do
       [] ->
-        Enum.each(Reference.default_periods_preset(), fn preset ->
+        Enum.reduce_while(Reference.default_periods_preset(), :ok, fn preset, :ok ->
           Period
           |> Ash.Changeset.for_create(:create, preset, scope: scope)
-          |> Ash.create!()
+          |> Ash.create()
+          |> case do
+            {:ok, _} -> {:cont, :ok}
+            {:error, error} -> {:halt, {:error, error}}
+          end
         end)
-
-        :ok
 
       _ ->
         :ok
@@ -278,6 +285,7 @@ defmodule TeacherAssistant.Attendance do
     |> Ash.run_action()
     |> case do
       {:ok, total_count} -> {:ok, total_count}
+      {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
       {:error, _reason} -> {:error, :record_failed}
     end
   end
@@ -325,6 +333,7 @@ defmodule TeacherAssistant.Attendance do
 
       case Enum.find(results, &match?({:error, _}, &1)) do
         nil -> {:ok, length(results)}
+        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
         {:error, _error} -> {:error, :record_failed}
       end
     end
@@ -406,6 +415,7 @@ defmodule TeacherAssistant.Attendance do
 
     case Enum.find(results, &match?({:error, _}, &1)) do
       nil -> {:ok, length(results)}
+      {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
       {:error, _error} -> {:error, :justify_failed}
     end
   end

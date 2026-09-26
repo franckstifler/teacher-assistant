@@ -241,7 +241,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       [entry] =
         TeacherAssistant.Academics.AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^enrollment.id and period_id == ^free_period.id)
-        |> Ash.read!(tenant: school.id)
+        |> Ash.read!(scope: scope)
 
       assert entry.status == :absent
       assert entry.teaching_context_id == tc_other.id

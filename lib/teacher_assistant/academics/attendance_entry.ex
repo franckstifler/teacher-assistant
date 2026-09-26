@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   require Ash.Query
 
   # `TeacherAssistant.Attendance` is this resource's own owning domain, whose
@@ -228,8 +230,24 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action([:period_roll, :combined_period_roll]) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action(:record_combined_period) do
+      forbid_unless Checks.SchoolVerified
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    # A nil teaching_context makes the ownership expr nil (false): conduct only.
+    policy action_type([:create, :update, :destroy]) do
+      forbid_unless Checks.SchoolVerified
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
+      authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
     end
   end
 
@@ -302,7 +320,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
           period_id: period_id,
           date: date,
           class_group_id: class_group.id
-        }, scope: scope)
+        },
+        scope: scope
+      )
       |> Ash.read!()
       |> Map.new(&{&1.enrollment_id, &1.status})
 

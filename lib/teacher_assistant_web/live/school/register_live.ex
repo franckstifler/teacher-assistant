@@ -86,12 +86,12 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   def handle_event("justify", %{"enrollment_id" => enrollment_id} = params, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.conduct_manager?(scope),
-         %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
+    with %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
       note = presence(params["note"])
 
       case Attendance.justify_day(scope, student.enrollment, socket.assigns.date, note) do
         {:ok, _count} -> {:noreply, load_register(socket)}
+        {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
         {:error, _reason} -> {:noreply, socket}
       end
     else
@@ -102,10 +102,10 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   def handle_event("unjustify", %{"enrollment_id" => enrollment_id}, socket) do
     scope = socket.assigns.current_scope
 
-    with true <- Permissions.conduct_manager?(scope),
-         %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
+    with %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
       case Attendance.unjustify_day(scope, student.enrollment, socket.assigns.date) do
         {:ok, _count} -> {:noreply, load_register(socket)}
+        {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
         {:error, _reason} -> {:noreply, socket}
       end
     else

@@ -3,7 +3,6 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
 
   alias TeacherAssistant.Academics.PeriodKind
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Accounts.Permissions
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -12,7 +11,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
       scope.current_workspace == nil ->
         {:ok, push_navigate(socket, to: ~p"/school")}
 
-      not Permissions.admin?(scope) ->
+      not Attendance.can_manage_periods?(scope) ->
         {:ok, push_navigate(socket, to: ~p"/school")}
 
       true ->
@@ -126,69 +125,60 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   def handle_event("seed", _params, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
-      :ok = Attendance.build_default_periods(scope)
-      {:noreply, load_periods(socket)}
-    else
-      {:noreply, socket}
+    case Attendance.build_default_periods(scope) do
+      :ok -> {:noreply, load_periods(socket)}
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+      {:error, _} -> {:noreply, load_periods(socket)}
     end
   end
 
   def handle_event("update_period", %{"period_id" => id, "period" => params}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
-      case find_period(socket, id) do
-        nil ->
-          {:noreply, socket}
+    case find_period(socket, id) do
+      nil ->
+        {:noreply, socket}
 
-        period ->
-          form =
-            AshPhoenix.Form.for_update(period, :update, as: "period", scope: scope)
+      period ->
+        form = AshPhoenix.Form.for_update(period, :update, as: "period", scope: scope)
 
-          case AshPhoenix.Form.submit(form, params: normalize_period_params(params)) do
-            {:ok, _period} ->
-              {:noreply,
-               socket
-               |> put_flash(:info, gettext("Période mise à jour."))
-               |> load_periods()}
+        case AshPhoenix.Form.submit(form, params: normalize_period_params(params)) do
+          {:ok, _period} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, gettext("Période mise à jour."))
+             |> load_periods()}
 
-            {:error, _form} ->
-              {:noreply,
-               put_flash(socket, :error, gettext("Impossible de mettre à jour la période."))}
-          end
-      end
-    else
-      {:noreply, socket}
+          {:error, form} ->
+            if Authz.forbidden_form?(form),
+              do: {:noreply, Authz.put_not_allowed(socket)},
+              else:
+                {:noreply,
+                 put_flash(socket, :error, gettext("Impossible de mettre à jour la période."))}
+        end
     end
   end
 
   def handle_event("delete_period", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
-      case find_period(socket, id) do
-        nil ->
-          {:noreply, socket}
-
-        period ->
-          case Attendance.delete_period(scope, period) do
-            :ok ->
-              {:noreply, load_periods(socket)}
-
-            {:error, :has_slots} ->
-              {:noreply,
-               put_flash(
-                 socket,
-                 :error,
-                 gettext(
-                   "Cette période a des cours à l'emploi du temps et ne peut pas être supprimée."
-                 )
-               )}
-          end
-      end
+    with %{} = period <- find_period(socket, id),
+         :ok <- Attendance.delete_period(scope, period) do
+      {:noreply, load_periods(socket)}
     else
-      {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
+      {:error, :has_slots} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Cette période a des cours à l'emploi du temps et ne peut pas être supprimée.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
     end
   end
 

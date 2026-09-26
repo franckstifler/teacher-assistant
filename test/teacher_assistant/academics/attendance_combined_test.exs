@@ -20,6 +20,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
       })
 
     scope = school_scope(head, ws)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, year} =
       Organization.create_academic_year(scope, %{
@@ -111,14 +112,14 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
         |> Ash.Query.filter(
           enrollment_id == ^ctx.enr_maco.id and date == ^ctx.date and period_id == ^ctx.period.id
         )
-        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
+        |> Ash.read_one!(scope: ctx.scope)
 
       entry_menu =
         AttendanceEntry
         |> Ash.Query.filter(
           enrollment_id == ^ctx.enr_menu.id and date == ^ctx.date and period_id == ^ctx.period.id
         )
-        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
+        |> Ash.read_one!(scope: ctx.scope)
 
       assert entry_maco.status == :present
       assert entry_maco.teaching_context_id == ctx.tc_maco.id
@@ -146,12 +147,12 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_maco.id)
-               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+               |> Ash.read!(scope: ctx.scope)
 
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
-               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+               |> Ash.read!(scope: ctx.scope)
     end
 
     test "a genuine DB-level failure in the second group rolls back the first group's already-written entry",
@@ -196,12 +197,12 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_maco.id)
-               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+               |> Ash.read!(scope: ctx.scope)
 
       assert [] =
                AttendanceEntry
                |> Ash.Query.filter(enrollment_id == ^ctx.enr_menu.id)
-               |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+               |> Ash.read!(scope: ctx.scope)
     end
   end
 end

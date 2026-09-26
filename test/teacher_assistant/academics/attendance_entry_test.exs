@@ -19,6 +19,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
       })
 
     scope = school_scope(head, ws)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, year} =
       Organization.create_academic_year(scope, %{
@@ -38,6 +39,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
 
     %{
       ws: ws,
+      scope: scope,
       year: year,
       cg: cg,
       tc: tc,
@@ -63,8 +65,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
     assert {:ok, %AttendanceEntry{} = entry} =
              AttendanceEntry
              |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert entry.status == :present
     assert entry.date == ~D[2025-09-15]
@@ -76,21 +77,19 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
     {:ok, entry1} =
       AttendanceEntry
       |> Ash.Changeset.for_create(:record, base_attrs(ctx, %{status: :present}))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     assert {:ok, entry2} =
              AttendanceEntry
              |> Ash.Changeset.for_create(:record, base_attrs(ctx, %{status: :absent}))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
 
     assert entry2.id == entry1.id
     assert entry2.status == :absent
 
     assert AttendanceEntry
            |> Ash.Query.filter(enrollment_id == ^ctx.enrollment.id)
-           |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+           |> Ash.read!(scope: ctx.scope)
            |> length() == 1
   end
 
@@ -98,34 +97,31 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
     {:ok, entry} =
       AttendanceEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.enrollment, tenant: ctx.ws.id, authorize?: false)
+    :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(AttendanceEntry, entry.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(AttendanceEntry, entry.id, scope: ctx.scope)
   end
 
   test "deleting the period cascades to delete its entries", ctx do
     {:ok, entry} =
       AttendanceEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
-    :ok = Ash.destroy!(ctx.period, tenant: ctx.ws.id, authorize?: false)
+    :ok = Ash.destroy!(ctx.period, scope: ctx.scope)
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Ash.get(AttendanceEntry, entry.id, tenant: ctx.ws.id, authorize?: false)
+             Ash.get(AttendanceEntry, entry.id, scope: ctx.scope)
   end
 
   test "justified defaults to false", ctx do
     {:ok, entry} =
       AttendanceEntry
       |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.Changeset.set_tenant(ctx.ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: ctx.scope)
 
     assert entry.justified == false
   end
@@ -134,7 +130,6 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
     assert {:error, %Ash.Error.Invalid{}} =
              AttendanceEntry
              |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{status: :tardy}))
-             |> Ash.Changeset.set_tenant(ctx.ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: ctx.scope)
   end
 end

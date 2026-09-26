@@ -208,7 +208,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     A.AttendanceEntry
     |> Ash.Query.filter(enrollment_id == ^e.id)
-    |> Ash.read!(tenant: school.id)
+    |> Ash.read!(scope: scope_of(school))
     |> List.first()
   end
 
@@ -409,7 +409,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     period_b = row_for(A.Period, b, ctx)
 
     before =
-      A.AttendanceEntry |> Ash.Query.for_read(:read) |> Ash.Query.set_tenant(a.id) |> Ash.read!()
+      A.AttendanceEntry |> Ash.Query.for_read(:read) |> Ash.read!(scope: scope_of(a))
 
     assert {:error, _} =
              TeacherAssistant.Attendance.record_period(
@@ -423,8 +423,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert A.AttendanceEntry
            |> Ash.Query.for_read(:read)
-           |> Ash.Query.set_tenant(a.id)
-           |> Ash.read!() == before
+           |> Ash.read!(scope: scope_of(a)) == before
   end
 
   test "a payment can be recorded for school A's own enrollment (school B cannot see it), " <>

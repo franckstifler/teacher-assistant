@@ -182,7 +182,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     scope = socket.assigns.current_scope
 
     cond do
-      not Permissions.operating_allowed?(scope) ->
+      not TeacherAssistant.Scope.school_verified?(scope) ->
         {:noreply,
          put_flash(
            socket,
@@ -199,6 +199,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
         case record_marks(socket, marks, scope) do
           {:ok, _count} ->
             {:noreply, socket |> put_flash(:info, gettext("Appel enregistré")) |> reload_roll()}
+
+          {:error, %Ash.Error.Forbidden{}} ->
+            {:noreply, Authz.put_not_allowed(socket)}
 
           {:error, _reason} ->
             {:noreply, put_flash(socket, :error, gettext("Impossible d'enregistrer l'appel"))}

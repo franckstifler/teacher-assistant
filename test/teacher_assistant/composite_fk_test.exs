@@ -24,9 +24,9 @@ defmodule TeacherAssistant.CompositeFkTest do
     AttendanceEntry
     |> Ash.Changeset.for_create(
       :create,
-      Map.merge(%{date: ~D[2025-09-15], status: :absent, enrollment_id: ctx.e_a.id}, attrs)
+      Map.merge(%{date: ~D[2025-09-15], status: :absent, enrollment_id: ctx.e_a.id}, attrs),
+      scope: ctx.a.scope
     )
-    |> Ash.Changeset.set_tenant(ctx.a.workspace.id)
     |> Ash.create()
   end
 

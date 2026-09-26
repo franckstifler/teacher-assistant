@@ -21,6 +21,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       })
 
     scope = school_scope(head, ws)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, year} =
       Organization.create_academic_year(scope, %{
@@ -161,7 +162,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert AttendanceEntry
              |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
-             |> Ash.read!(tenant: ctx.ws.id, authorize?: false)
+             |> Ash.read!(scope: ctx.scope)
              |> length() == 1
     end
 
@@ -269,12 +270,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       entry1 =
         AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
+        |> Ash.read_one!(scope: ctx.scope)
 
       entry2 =
         AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment2.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
+        |> Ash.read_one!(scope: ctx.scope)
 
       assert entry1.justified == true
       assert entry1.justification_note == "Sick note"
@@ -314,13 +315,12 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: ctx.tc.id,
           recorded_by_user_id: ctx.head.id
         })
-        |> Ash.Changeset.set_tenant(ctx.ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: ctx.scope)
 
       assert {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Note")
 
       other_day_entry =
-        Ash.get!(AttendanceEntry, other_day_entry.id, tenant: ctx.ws.id, authorize?: false)
+        Ash.get!(AttendanceEntry, other_day_entry.id, scope: ctx.scope)
 
       assert other_day_entry.justified == false
       assert other_day_entry.justification_note == nil
@@ -347,7 +347,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       entry1 =
         AttendanceEntry
         |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id and date == ^~D[2025-09-15])
-        |> Ash.read_one!(tenant: ctx.ws.id, authorize?: false)
+        |> Ash.read_one!(scope: ctx.scope)
 
       assert entry1.justified == false
       assert entry1.justification_note == nil
@@ -371,7 +371,6 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         period: period,
         tc: tc,
         enrollment1: enrollment1,
-        ws: ws,
         head: head,
         scope: scope
       } =
@@ -392,8 +391,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       {:ok, _} =
         AttendanceEntry
@@ -405,8 +403,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       # Outside the séquence: must be excluded entirely.
       {:ok, _} =
@@ -420,8 +417,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       totals = Attendance.student_conduct(scope, enrollment1, {:sequence, seq1})
 
@@ -442,7 +438,6 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         period: period,
         tc: tc,
         enrollment1: enrollment1,
-        ws: ws,
         head: head,
         scope: scope
       } =
@@ -461,8 +456,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       {:ok, _} =
         AttendanceEntry
@@ -475,8 +469,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       totals = Attendance.student_conduct(scope, enrollment1, {:trimester, term1})
 
@@ -524,7 +517,6 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         tc: tc,
         enrollment1: enrollment1,
         enrollment2: enrollment2,
-        ws: ws,
         head: head,
         cg: cg,
         scope: scope
@@ -541,8 +533,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       {:ok, _} =
         AttendanceEntry
@@ -554,8 +545,7 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
           teaching_context_id: tc.id,
           recorded_by_user_id: head.id
         })
-        |> Ash.Changeset.set_tenant(ws.id)
-        |> Ash.create(authorize?: false)
+        |> Ash.create(scope: scope)
 
       results = Attendance.class_conduct(scope, cg, {:sequence, seq1})
 
