@@ -14,6 +14,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     scope = %TeacherAssistant.Scope{current_user: head}
     {:ok, school} = Organization.create_school(scope, %{name: "Lycée R"})
     scope = school_scope(head, school)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, year} =
       Organization.create_academic_year(scope, %{

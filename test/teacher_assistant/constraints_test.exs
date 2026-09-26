@@ -155,14 +155,13 @@ defmodule TeacherAssistant.ConstraintsTest do
 
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
-      assert {:error, _} =
+      assert {:error, %Ash.Error.Invalid{}} =
                Mark
-               |> Ash.Changeset.for_create(:create, %{
-                 assessment_id: a.id,
-                 student_id: s.id,
-                 score: Decimal.new("21")
-               })
-               |> Ash.Changeset.set_tenant(a.workspace_id)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{assessment_id: a.id, student_id: s.id, score: Decimal.new("21")},
+                 scope: scope
+               )
                |> Ash.create()
     end
 
@@ -173,14 +172,13 @@ defmodule TeacherAssistant.ConstraintsTest do
 
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, cg)
 
-      assert {:error, _} =
+      assert {:error, %Ash.Error.Invalid{}} =
                Mark
-               |> Ash.Changeset.for_create(:create, %{
-                 assessment_id: a.id,
-                 student_id: s.id,
-                 score: Decimal.new("-1")
-               })
-               |> Ash.Changeset.set_tenant(a.workspace_id)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{assessment_id: a.id, student_id: s.id, score: Decimal.new("-1")},
+                 scope: scope
+               )
                |> Ash.create()
     end
 
@@ -197,17 +195,16 @@ defmodule TeacherAssistant.ConstraintsTest do
 
       {:ok, mark} =
         Mark
-        |> Ash.Changeset.for_create(:create, %{
-          assessment_id: a.id,
-          student_id: s.id,
-          score: Decimal.new("10")
-        })
-        |> Ash.Changeset.set_tenant(a.workspace_id)
+        |> Ash.Changeset.for_create(
+          :create,
+          %{assessment_id: a.id, student_id: s.id, score: Decimal.new("10")},
+          scope: scope
+        )
         |> Ash.create()
 
-      assert {:error, _} =
+      assert {:error, %Ash.Error.Invalid{}} =
                mark
-               |> Ash.Changeset.for_update(:update, %{score: Decimal.new("21")})
+               |> Ash.Changeset.for_update(:update, %{score: Decimal.new("21")}, scope: scope)
                |> Ash.update()
     end
   end

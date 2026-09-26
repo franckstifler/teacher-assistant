@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       })
 
     scope = school_scope(head, school)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, year} =
       Organization.create_academic_year(scope, %{
@@ -50,9 +51,6 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     for %{student: s} <- roster,
         do: Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new(14)}])
-
-    {:ok, profile} = Accounts.fetch_school_profile(scope)
-    {:ok, _} = Accounts.verify_school(profile, head.id, scope: scope)
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, school: school, cg: cg, seq: seq, roster: roster, head: head, scope: scope}

@@ -168,7 +168,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   def handle_event("save", %{"scores" => scores}, socket) do
-    if not TeacherAssistant.Accounts.Permissions.operating_allowed?(socket.assigns.current_scope) do
+    if not TeacherAssistant.Scope.school_verified?(socket.assigns.current_scope) do
       {:noreply,
        put_flash(
          socket,
@@ -240,8 +240,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                  ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}"
              )}
 
-          {:error, _form} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
+          {:error, form} ->
+            if Authz.forbidden_form?(form),
+              do: {:noreply, Authz.put_not_allowed(socket)},
+              else:
+                {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
         end
 
       _ ->
@@ -264,6 +267,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{id}"
        )}
     else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, put_flash(socket, :error, gettext("Could not create the assessment"))}
     end
   end
@@ -307,6 +311,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
              max: max_label(socket.assigns.assessment)
            )
          )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
 
       _ ->
         {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}
@@ -367,6 +374,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
              :error,
              gettext("Marks must be between 0 and %{max}.", max: max_label(selected))
            )}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         _ ->
           {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}

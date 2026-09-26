@@ -27,7 +27,7 @@ defmodule TeacherAssistant.Assessment do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
 
   # --- Assessments -----------------------------------------------------------

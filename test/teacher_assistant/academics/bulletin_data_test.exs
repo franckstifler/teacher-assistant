@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
       Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée B"})
 
     scope = school_scope(head, school)
+    :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
 
     {:ok, year} =
       Organization.create_academic_year(scope, %{

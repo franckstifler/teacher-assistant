@@ -6,6 +6,8 @@ defmodule TeacherAssistant.Academics.Mark do
     authorizers: [Ash.Policy.Authorizer],
     notifiers: [Ash.Notifier.PubSub]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "marks"
     repo TeacherAssistant.Repo
@@ -108,8 +110,19 @@ defmodule TeacherAssistant.Academics.Mark do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action(:upsert_all) do
+      forbid_unless Checks.SchoolVerified
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      forbid_unless Checks.SchoolVerified
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if expr(assessment.teaching_context.teacher_user_id == ^actor(:id))
     end
   end
 

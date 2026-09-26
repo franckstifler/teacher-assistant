@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.Assessment do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   # The owning domain (`TeacherAssistant.Assessment`) shares this module's last
   # name segment, so it is always referenced fully qualified below — a bare
   # `Assessment.<fn>` would rebind to this resource. `Curriculum` is the only
@@ -129,8 +131,23 @@ defmodule TeacherAssistant.Academics.Assessment do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action(:combined_for) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action(:create_combined) do
+      forbid_unless Checks.SchoolVerified
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      forbid_unless Checks.SchoolVerified
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
     end
   end
 
@@ -243,7 +260,9 @@ defmodule TeacherAssistant.Academics.Assessment do
       %{
         teaching_context_id: teaching_context_id,
         sequence_id: sequence_id
-      }, scope: scope)
+      },
+      scope: scope
+    )
     |> Ash.read!()
   end
 
