@@ -1,7 +1,7 @@
 # Authorization (Increment C) — design
 
 **Date:** 2026-09-24
-**Status:** approved in conversation; written spec pending review
+**Status:** implemented (plan `docs/superpowers/plans/2026-09-25-authorization.md`)
 **Supersedes:** `docs/superpowers/specs/2026-09-23-authorization-hardening-design.md` and its plan
 `docs/superpowers/plans/2026-09-23-authorization-hardening.md` (both written before the schema pass
 and multitenancy; audit README §8 lists what changed).

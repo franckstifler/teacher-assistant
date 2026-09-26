@@ -196,6 +196,13 @@ Term/Sequence, `Reference.default_calendar_preset/0`, `Organization.build_defaul
 
 ## 8. Authorization end-state (decision discussion, 2026-09-23)
 
+> **Executed 2026-09-26** on branch `feat/authorization` (spec
+> `docs/superpowers/specs/2026-09-24-authorization-design.md`, plan
+> `docs/superpowers/plans/2026-09-25-authorization.md`): every domain is
+> `authorize :by_default` with real policies (role axes via `Checks.SchoolRole`, operate gate via
+> `Checks.SchoolVerified`, ownership `expr` checks), `Permissions` is deleted, and screens use each
+> domain's `can_*?` functions plus `Enrollment.class_manager?/2` and the layout capability map.
+
 Agreed direction: **Ash policies are the single source of truth; the `Permissions` predicate
 module is retired.** This amends the pending spec/plan
 (`docs/superpowers/specs/2026-09-23-authorization-hardening-design.md`,
@@ -298,7 +305,7 @@ layer passes; the "one active year per workspace" partial unique index guards th
 Already noted before this section: README §4 "Tenancy", §7 step 4, report A ASH-10/ASH-19/ASH-24,
 report D §3 and risks #2/#5.
 
-Follow-up (authorization increment): tie foreign keys to the tenant at the DB level with
-`reference ..., match_with: [workspace_id: :workspace_id]` (needs a unique `(id, workspace_id)`
-per parent); until then the domain guards (`TeacherAssistant.Tenancy.same_workspace/1`) are the
-only cross-tenant write check.
+Follow-up (authorization increment) — **executed 2026-09-26** (`1a1fb9e` on `feat/authorization`):
+every tenant-to-tenant foreign key is composite `(workspace_id, id)` (`match_with`), so the
+database itself rejects a cross-tenant reference; `TeacherAssistant.Tenancy.same_workspace/1` is
+deleted.
