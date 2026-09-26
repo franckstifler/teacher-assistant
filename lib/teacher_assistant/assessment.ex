@@ -67,12 +67,14 @@ defmodule TeacherAssistant.Assessment do
   full contract. Returns the list of column maps.
   """
   def combined_assessments_for(%Scope{} = scope, %CombinedCourse{} = course, %Sequence{} = seq) do
-    {:ok, entries} =
-      Assessment
-      |> Ash.ActionInput.for_action(:combined_for, %{course: course, sequence: seq}, scope: scope)
-      |> Ash.run_action()
-
-    entries
+    Assessment
+    |> Ash.ActionInput.for_action(:combined_for, %{course: course, sequence: seq}, scope: scope)
+    |> Ash.run_action()
+    |> case do
+      {:ok, entries} -> entries
+      # A refused actor sees no columns, like any policy-filtered read.
+      {:error, %Ash.Error.Forbidden{}} -> []
+    end
   end
 
   @doc """

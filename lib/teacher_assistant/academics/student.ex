@@ -65,6 +65,8 @@ defmodule TeacherAssistant.Academics.Student do
     end
 
     policy action_type(:update) do
+      # Row rules name a user, not a membership: require an active one.
+      forbid_unless {Checks.SchoolRole, any_of: :member}
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if expr(exists(enrollments, class_group.form_master_user_id == ^actor(:id)))
     end

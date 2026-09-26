@@ -120,6 +120,8 @@ defmodule TeacherAssistant.Academics.Mark do
     end
 
     policy action_type([:create, :update, :destroy]) do
+      # Row rules name a user, not a membership: require an active one.
+      forbid_unless {Checks.SchoolRole, any_of: :member}
       forbid_unless Checks.SchoolVerified
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if expr(assessment.teaching_context.teacher_user_id == ^actor(:id))

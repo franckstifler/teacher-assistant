@@ -72,6 +72,8 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
 
   policies do
     policy action_type(:read) do
+      # Row rules name a user, not a membership: require an active one.
+      forbid_unless {Checks.SchoolRole, any_of: :member}
       authorize_if {Checks.SchoolRole, any_of: :conduct}
       authorize_if expr(enrollment.class_group.form_master_user_id == ^actor(:id))
     end

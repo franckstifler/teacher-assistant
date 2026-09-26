@@ -142,20 +142,23 @@ defmodule TeacherAssistant.Attendance do
         %Period{} = period,
         %Date{} = date
       ) do
-    {:ok, roll} =
-      AttendanceEntry
-      |> Ash.ActionInput.for_action(
-        :period_roll,
-        %{
-          class_group: class_group,
-          period: period,
-          date: date
-        },
-        scope: scope
-      )
-      |> Ash.run_action()
-
-    roll
+    # A refused actor (e.g. a member revoked mid-session) sees an empty roll,
+    # like any policy-filtered read; the next write shows the refusal.
+    AttendanceEntry
+    |> Ash.ActionInput.for_action(
+      :period_roll,
+      %{
+        class_group: class_group,
+        period: period,
+        date: date
+      },
+      scope: scope
+    )
+    |> Ash.run_action()
+    |> case do
+      {:ok, roll} -> roll
+      {:error, %Ash.Error.Forbidden{}} -> %{students: [], teaching_context: nil}
+    end
   end
 
   @doc """
@@ -178,20 +181,21 @@ defmodule TeacherAssistant.Attendance do
         %Period{} = period,
         %Date{} = date
       ) do
-    {:ok, groups} =
-      AttendanceEntry
-      |> Ash.ActionInput.for_action(
-        :combined_period_roll,
-        %{
-          course: course,
-          period: period,
-          date: date
-        },
-        scope: scope
-      )
-      |> Ash.run_action()
-
-    groups
+    AttendanceEntry
+    |> Ash.ActionInput.for_action(
+      :combined_period_roll,
+      %{
+        course: course,
+        period: period,
+        date: date
+      },
+      scope: scope
+    )
+    |> Ash.run_action()
+    |> case do
+      {:ok, groups} -> groups
+      {:error, %Ash.Error.Forbidden{}} -> []
+    end
   end
 
   @doc """

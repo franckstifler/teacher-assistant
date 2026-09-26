@@ -245,6 +245,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
     # A nil teaching_context makes the ownership expr nil (false): conduct only.
     policy action_type([:create, :update, :destroy]) do
+      # Row rules name a user, not a membership: require an active one.
+      forbid_unless {Checks.SchoolRole, any_of: :member}
       forbid_unless Checks.SchoolVerified
       authorize_if {Checks.SchoolRole, any_of: :conduct}
       authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
