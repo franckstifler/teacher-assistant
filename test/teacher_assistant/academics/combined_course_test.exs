@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Academics.CombinedCourseTest do
   use TeacherAssistant.DataCase, async: true
-  alias TeacherAssistant.Academics.CombinedCourse
+  require Ash.Query
+  alias TeacherAssistant.Academics.{CombinedCourse, ProgressionPlan}
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
@@ -44,13 +45,11 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
   end
 
   test "Curriculum.combine_course/1 rejects contexts from two different schools", %{
-    head: head,
     ws: ws,
     year: year,
     scope: scope
   } do
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "1ère A", level: "1ère"})
-    {:ok, tc_a} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
 
     other_head = TeacherFixtures.user_fixture()
 
@@ -72,11 +71,23 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
     {:ok, other_cg} =
       Enrollment.create_class_group(other_scope, other_year, %{label: "1ère A", level: "1ère"})
 
+    # One teacher, an active member of BOTH schools, with a context in each —
+    # so `combine_course/2`'s teacher/subject/count guards all pass and the
+    # call actually reaches `CombinedCourse`'s `:combine` action instead of
+    # being rejected upfront by `validate_same_teacher/1`.
+    teacher = TeacherFixtures.user_fixture()
+    _ = TeacherFixtures.member_scope_fixture(scope, %{user: teacher, roles: [:teacher]})
+    _ = TeacherFixtures.member_scope_fixture(other_scope, %{user: teacher, roles: [:teacher]})
+
+    {:ok, tc_a} = Curriculum.assign_teacher(scope, cg, teacher, %{subject: "Mathématiques"})
+
     {:ok, tc_b} =
-      Curriculum.assign_teacher(other_scope, other_cg, other_head, %{subject: "Mathématiques"})
+      Curriculum.assign_teacher(other_scope, other_cg, teacher, %{subject: "Mathématiques"})
 
     assert {:error, _} = Curriculum.combine_course(scope, [tc_a, tc_b])
 
+    # Nothing was written in either tenant: no CombinedCourse, no
+    # ProgressionPlan tied to one, and neither context got stamped.
     assert CombinedCourse
            |> Ash.Query.for_read(:read)
            |> Ash.Query.set_tenant(ws.id)
@@ -87,5 +98,22 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
            |> Ash.Query.for_read(:read)
            |> Ash.Query.set_tenant(other_ws.id)
            |> Ash.read!() == []
+
+    assert ProgressionPlan
+           |> Ash.Query.for_read(:read)
+           |> Ash.Query.filter(not is_nil(combined_course_id))
+           |> Ash.Query.set_tenant(ws.id)
+           |> Ash.read!() == []
+
+    assert ProgressionPlan
+           |> Ash.Query.for_read(:read)
+           |> Ash.Query.filter(not is_nil(combined_course_id))
+           |> Ash.Query.set_tenant(other_ws.id)
+           |> Ash.read!() == []
+
+    assert {:ok, reloaded_tc_a} = Curriculum.get_teaching_context(scope, tc_a.id)
+    assert {:ok, reloaded_tc_b} = Curriculum.get_teaching_context(other_scope, tc_b.id)
+    assert is_nil(reloaded_tc_a.combined_course_id)
+    assert is_nil(reloaded_tc_b.combined_course_id)
   end
 end

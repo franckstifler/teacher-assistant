@@ -63,6 +63,18 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
         # `:class_group` is multitenant, and so is `TeachingContext` itself now
         # — the domain passes its scope as this action's context, so `scope`
         # is the right scope for every nested query/changeset below.
+        #
+        # Nothing upstream re-checks that every member context belongs to
+        # `scope`'s workspace (there is no `Tenancy.same_workspace/1` guard
+        # anymore). What actually stops a cross-school combine is this
+        # action's own tenant-scoped writes: `create_course/3` creates the
+        # course under `scope`'s tenant, and `stamp_contexts/3` updates each
+        # context under that same tenant — a context that lives in a
+        # different workspace can't be matched under this tenant, so its
+        # update raises `Ash.Error.Changes.StaleRecord`. Combined with
+        # `transaction? true`, that failure rolls back everything already
+        # written (the course, any earlier stamps, the plan), so a
+        # cross-workspace combine leaves no partial state in either tenant.
         contexts = Ash.load!(input.arguments.contexts, :class_group, scope: scope)
         [first | _] = contexts
 
