@@ -68,7 +68,7 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
 
   # Every one of `get_teaching_context/2`, `get_course/2`,
@@ -123,6 +123,12 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   defp duplicate_subject_name?(_), do: false
+
+  @doc "Whether the scope may manage the subject catalog (admin axis)."
+  def can_manage_subjects?(scope), do: Ash.can?({Subject, :create}, scope)
+
+  @doc "Whether the scope may assign teachers and combine courses (admin axis)."
+  def can_manage_assignments?(scope), do: Ash.can?({TeachingContext, :create}, scope)
 
   # --- Teaching-context assignments ------------------------------------------
 
@@ -210,8 +216,10 @@ defmodule TeacherAssistant.Curriculum do
     if has_plans or has_assessments do
       {:error, :has_data}
     else
-      Ash.destroy!(tc, scope: scope)
-      :ok
+      case Ash.destroy(tc, scope: scope) do
+        :ok -> :ok
+        {:error, error} -> {:error, error}
+      end
     end
   end
 
@@ -337,14 +345,16 @@ defmodule TeacherAssistant.Curriculum do
   @doc """
   Splits a `CombinedCourse` apart via its `:split` action: unlinks every member
   context, destroys the course's shared `ProgressionPlan`, then destroys the
-  course. Always returns `:ok`.
+  course. Returns `:ok`, or `{:error, error}` (e.g. `Ash.Error.Forbidden`).
   """
   def split_course(%Scope{} = scope, %CombinedCourse{} = course) do
     CombinedCourse
     |> Ash.ActionInput.for_action(:split, %{course: course}, scope: scope)
-    |> Ash.run_action!()
-
-    :ok
+    |> Ash.run_action()
+    |> case do
+      {:error, error} -> {:error, error}
+      _ -> :ok
+    end
   end
 
   @doc """
@@ -895,17 +905,24 @@ defmodule TeacherAssistant.Curriculum do
   def delete_module(%Scope{}, %ProgressionModule{default?: true}), do: {:error, :default_bucket}
 
   def delete_module(%Scope{} = scope, %ProgressionModule{} = m) do
-    {:ok, plan} = get_progression_plan(scope, m.progression_plan_id)
-    {:ok, bucket} = ensure_default_module(scope, plan)
+    with {:ok, plan} <- get_progression_plan(scope, m.progression_plan_id),
+         {:ok, bucket} <- ensure_default_module(scope, plan),
+         :ok <- move_entries_to(scope, m, bucket) do
+      Ash.destroy(m, scope: scope)
+    end
+  end
+
+  defp move_entries_to(%Scope{} = scope, %ProgressionModule{} = m, bucket) do
     base = entry_count(bucket.id, scope)
 
     entries_in_module(m.id, scope)
     |> Enum.with_index(base + 1)
-    |> Enum.each(fn {e, pos} ->
-      update_progression_entry(scope, e, %{progression_module_id: bucket.id, position: pos})
+    |> Enum.reduce_while(:ok, fn {e, pos}, :ok ->
+      case update_progression_entry(scope, e, %{progression_module_id: bucket.id, position: pos}) do
+        {:ok, _} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
     end)
-
-    Ash.destroy(m, scope: scope)
   end
 
   def add_progression_entry(

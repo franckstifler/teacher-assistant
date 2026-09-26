@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.LessonStep do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   require Ash.Query
 
   postgres do
@@ -96,8 +98,24 @@ defmodule TeacherAssistant.Academics.LessonStep do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+
+      authorize_if expr(
+                     lesson_plan.progression_entry.progression_plan.teaching_context.teacher_user_id ==
+                       ^actor(:id)
+                   )
+
+      authorize_if expr(
+                     exists(
+                       lesson_plan.progression_entry.progression_plan.combined_course.teaching_contexts,
+                       teacher_user_id == ^actor(:id)
+                     )
+                   )
     end
   end
 

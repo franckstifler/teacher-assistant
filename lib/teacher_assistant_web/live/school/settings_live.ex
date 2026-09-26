@@ -22,6 +22,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:admin?, admin?)
         |> assign(:can_manage_calendar?, Organization.can_manage_calendar?(scope))
         |> assign(:can_rename_school?, Organization.can_rename_school?(scope))
+        |> assign(:can_manage_subjects?, Curriculum.can_manage_subjects?(scope))
         |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
         |> assign(:subject_form, subject_form(scope))
@@ -272,7 +273,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </div>
         </section>
 
-        <section :if={@admin?} id="matieres" class="space-y-4">
+        <section :if={@can_manage_subjects?} id="matieres" class="space-y-4">
           <h2 class="text-lg font-semibold">{gettext("Matières")}</h2>
 
           <div class="overflow-x-auto">
@@ -499,39 +500,35 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("create_subject", %{"subject" => params}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
-      case AshPhoenix.Form.submit(socket.assigns.subject_form, params: params) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> assign(:subjects, Curriculum.list_subjects(scope))
-           |> assign(:subject_form, subject_form(scope))}
+    case AshPhoenix.Form.submit(socket.assigns.subject_form, params: params) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> assign(:subjects, Curriculum.list_subjects(scope))
+         |> assign(:subject_form, subject_form(scope))}
 
-        {:error, form} ->
-          {:noreply, assign(socket, :subject_form, form)}
-      end
-    else
-      {:noreply, socket}
+      {:error, form} ->
+        if Authz.forbidden_form?(form),
+          do: {:noreply, Authz.put_not_allowed(socket)},
+          else: {:noreply, assign(socket, :subject_form, form)}
     end
   end
 
   def handle_event("delete_subject", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    if Permissions.admin?(scope) do
-      subject = Enum.find(socket.assigns.subjects, &(&1.id == id))
-      if subject, do: Curriculum.delete_subject(subject, scope: scope)
-      {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
+    with %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
+         {:error, %Ash.Error.Forbidden{}} <- Curriculum.delete_subject(subject, scope: scope) do
+      {:noreply, Authz.put_not_allowed(socket)}
     else
-      {:noreply, socket}
+      _ -> {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
     end
   end
 
   def handle_event("update_subject", %{"subject_id" => id, "subject_edit" => params}, socket) do
     scope = socket.assigns.scope
 
-    with true <- Permissions.admin?(scope),
-         %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
+    with %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
          {:ok, coefficient} <- Curriculum.parse_coefficient(params["default_coefficient"]) do
       form =
         AshPhoenix.Form.for_update(subject, :update,
@@ -550,9 +547,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            |> assign(:subjects, Curriculum.list_subjects(scope))
            |> put_flash(:info, gettext("Matière mise à jour."))}
 
-        {:error, _form} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
+        {:error, form} ->
+          if Authz.forbidden_form?(form),
+            do: {:noreply, Authz.put_not_allowed(socket)},
+            else:
+              {:noreply,
+               put_flash(socket, :error, gettext("Impossible de mettre à jour la matière."))}
       end
     else
       _ -> {:noreply, socket}
@@ -562,8 +562,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("toggle_subject_active", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    with true <- Permissions.admin?(scope),
-         %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
+    with %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
       result =
         if subject.active?,
           do: Curriculum.deactivate_subject(subject, scope: scope),
@@ -572,6 +571,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       case result do
         {:ok, _} ->
           {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
 
         _ ->
           {:noreply,

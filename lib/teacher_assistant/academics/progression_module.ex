@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "progression_modules"
     repo TeacherAssistant.Repo
@@ -77,8 +79,20 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if expr(progression_plan.teaching_context.teacher_user_id == ^actor(:id))
+
+      authorize_if expr(
+                     exists(
+                       progression_plan.combined_course.teaching_contexts,
+                       teacher_user_id == ^actor(:id)
+                     )
+                   )
     end
   end
 

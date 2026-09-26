@@ -22,8 +22,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
         academic_year_id: year.id,
         teacher_user_id: head.id
       })
-      |> Ash.Changeset.set_tenant(ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     %{ws: ws, year: year, scope: scope, ctx: ctx, course: course}
   end
@@ -58,8 +57,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
 
   describe "exactly one owner validation" do
     test "create fails when neither teaching_context_id nor combined_course_id is set", %{
-      ws: ws,
-      year: year
+      year: year,
+      scope: scope
     } do
       assert {:error, error} =
                ProgressionPlan
@@ -67,14 +66,13 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
                  title: "Orphan",
                  academic_year_id: year.id
                })
-               |> Ash.Changeset.set_tenant(ws.id)
-               |> Ash.create(authorize?: false)
+               |> Ash.create(scope: scope)
 
       assert error_on_field?(error, :teaching_context_id)
     end
 
     test "create fails when both teaching_context_id and combined_course_id are set", %{
-      ws: ws,
+      scope: scope,
       year: year,
       ctx: ctx,
       course: course
@@ -87,8 +85,7 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
                  teaching_context_id: ctx.id,
                  combined_course_id: course.id
                })
-               |> Ash.Changeset.set_tenant(ws.id)
-               |> Ash.create(authorize?: false)
+               |> Ash.create(scope: scope)
 
       assert error_on_field?(error, :teaching_context_id)
     end

@@ -24,7 +24,7 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolVerified do
     |> Ash.Query.for_read(:for_workspace, %{workspace_id: workspace_id})
     |> Ash.read_one(authorize?: false)
     |> case do
-      {:ok, %SchoolProfile{verification_status: :verified}} -> true
+      {:ok, %{verification_status: :verified}} -> true
       _ -> false
     end
   end

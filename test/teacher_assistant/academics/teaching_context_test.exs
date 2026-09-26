@@ -55,7 +55,7 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
   end
 
   test "a teaching context requires a teacher and a class group" do
-    %{workspace: ws, year: year} = TeacherFixtures.setup_complete_school_fixture()
+    %{year: year, scope: scope} = TeacherFixtures.setup_complete_school_fixture()
 
     assert {:error, %Ash.Error.Invalid{}} =
              TeacherAssistant.Academics.TeachingContext
@@ -64,7 +64,6 @@ defmodule TeacherAssistant.Academics.TeachingContextTest do
                level: "3ème",
                academic_year_id: year.id
              })
-             |> Ash.Changeset.set_tenant(ws.id)
-             |> Ash.create()
+             |> Ash.create(scope: scope)
   end
 end

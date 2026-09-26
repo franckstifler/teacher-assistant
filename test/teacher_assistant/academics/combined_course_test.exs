@@ -28,7 +28,7 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
     %{head: head, ws: ws, year: year, scope: scope}
   end
 
-  test "creates a combined course", %{head: head, ws: ws, year: year} do
+  test "creates a combined course", %{head: head, year: year, scope: scope} do
     {:ok, c} =
       CombinedCourse
       |> Ash.Changeset.for_create(:create, %{
@@ -37,15 +37,13 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
         academic_year_id: year.id,
         teacher_user_id: head.id
       })
-      |> Ash.Changeset.set_tenant(ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert c.subject == "Mathématiques"
     assert c.teacher_user_id == head.id
   end
 
   test "Curriculum.combine_course/1 rejects contexts from two different schools", %{
-    ws: ws,
     year: year,
     scope: scope
   } do
@@ -90,26 +88,22 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
     # ProgressionPlan tied to one, and neither context got stamped.
     assert CombinedCourse
            |> Ash.Query.for_read(:read)
-           |> Ash.Query.set_tenant(ws.id)
-           |> Ash.read!() ==
+           |> Ash.read!(scope: scope) ==
              []
 
     assert CombinedCourse
            |> Ash.Query.for_read(:read)
-           |> Ash.Query.set_tenant(other_ws.id)
-           |> Ash.read!() == []
+           |> Ash.read!(scope: other_scope) == []
 
     assert ProgressionPlan
            |> Ash.Query.for_read(:read)
            |> Ash.Query.filter(not is_nil(combined_course_id))
-           |> Ash.Query.set_tenant(ws.id)
-           |> Ash.read!() == []
+           |> Ash.read!(scope: scope) == []
 
     assert ProgressionPlan
            |> Ash.Query.for_read(:read)
            |> Ash.Query.filter(not is_nil(combined_course_id))
-           |> Ash.Query.set_tenant(other_ws.id)
-           |> Ash.read!() == []
+           |> Ash.read!(scope: other_scope) == []
 
     assert {:ok, reloaded_tc_a} = Curriculum.get_teaching_context(scope, tc_a.id)
     assert {:ok, reloaded_tc_b} = Curriculum.get_teaching_context(other_scope, tc_b.id)

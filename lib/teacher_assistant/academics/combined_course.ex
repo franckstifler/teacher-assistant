@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   require Ash.Query
 
   alias TeacherAssistant.Academics.{ProgressionPlan, TeachingContext}
@@ -125,8 +127,12 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy, :action]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
     end
   end
 
@@ -143,6 +149,11 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
   end
 
   relationships do
+    has_many :teaching_contexts, TeacherAssistant.Academics.TeachingContext do
+      destination_attribute :combined_course_id
+      public? true
+    end
+
     belongs_to :workspace, TeacherAssistant.Academics.Workspace do
       source_attribute :workspace_id
       allow_nil? false

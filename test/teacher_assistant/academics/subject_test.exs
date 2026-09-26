@@ -17,15 +17,14 @@ defmodule TeacherAssistant.Academics.SubjectTest do
 
     Enum.each(Curriculum.list_subjects(scope), &Curriculum.delete_subject(&1, scope: scope))
 
-    %{ws: school}
+    %{scope: scope}
   end
 
-  test "creates a subject with defaults", %{ws: ws} do
+  test "creates a subject with defaults", %{scope: scope} do
     {:ok, s} =
       Subject
       |> Ash.Changeset.for_create(:create, %{name: "Mathématiques"})
-      |> Ash.Changeset.set_tenant(ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert s.name == "Mathématiques"
     assert s.category == :general
@@ -33,19 +32,17 @@ defmodule TeacherAssistant.Academics.SubjectTest do
     assert s.active? == true
   end
 
-  test "name is unique per workspace", %{ws: ws} do
+  test "name is unique per workspace", %{scope: scope} do
     attrs = %{name: "Français"}
 
     {:ok, _} =
       Subject
       |> Ash.Changeset.for_create(:create, attrs)
-      |> Ash.Changeset.set_tenant(ws.id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert {:error, _} =
              Subject
              |> Ash.Changeset.for_create(:create, attrs)
-             |> Ash.Changeset.set_tenant(ws.id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: scope)
   end
 end

@@ -37,11 +37,13 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolRole do
   def holds?(_user, _workspace_id, _axis), do: false
 
   @doc "The school a policy subject (query, changeset or action input) belongs to."
-  def workspace_id(%{resource: Workspace, data: %Workspace{id: id}}) when is_binary(id), do: id
+  # Map patterns, not struct patterns: a struct pattern would make this check
+  # a compile-time dependent of the resources whose policies call its `init/1`
+  # at compile time — a compile deadlock.
+  def workspace_id(%{resource: Workspace, data: %{id: id}}) when is_binary(id), do: id
 
-  def workspace_id(%{resource: SchoolProfile, data: %SchoolProfile{workspace_id: id}})
-      when is_binary(id),
-      do: id
+  def workspace_id(%{resource: SchoolProfile, data: %{workspace_id: id}}) when is_binary(id),
+    do: id
 
   def workspace_id(%{tenant: %{id: id}}), do: id
   def workspace_id(%{tenant: id}) when is_binary(id), do: id
@@ -55,7 +57,7 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolRole do
     |> Ash.Query.set_tenant(workspace_id)
     |> Ash.read_one(authorize?: false)
     |> case do
-      {:ok, %SchoolMembership{roles: roles}} -> roles
+      {:ok, %{roles: roles}} -> roles
       _ -> nil
     end
   end

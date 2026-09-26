@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   require Ash.Query
 
   alias TeacherAssistant.Academics.{ProgressionEntry, ProgressionModule, TeachingContext}
@@ -273,8 +275,24 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action([:import, :apply_layout]) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
+
+      authorize_if expr(
+                     exists(
+                       combined_course.teaching_contexts,
+                       teacher_user_id == ^actor(:id)
+                     )
+                   )
     end
   end
 

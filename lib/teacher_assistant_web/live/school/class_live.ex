@@ -25,6 +25,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
        |> assign(
          cg: cg,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
+         can_manage_assignments?: Curriculum.can_manage_assignments?(scope),
          manage?: true,
          register_link?:
            Permissions.conduct_manager?(scope) or Permissions.admin_or_form_master?(scope, cg),
@@ -258,8 +259,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                   <th>{gettext("Enseignant")}</th>
                   <th>{gettext("H/semaine")}</th>
                   <th>{gettext("Coefficient")}</th>
-                  <th :if={@can_manage_classes?}>{gettext("Regroupement")}</th>
-                  <th :if={@can_manage_classes?}>
+                  <th :if={@can_manage_assignments?}>{gettext("Regroupement")}</th>
+                  <th :if={@can_manage_assignments?}>
                     <span class="sr-only">{gettext("Actions")}</span>
                   </th>
                 </tr>
@@ -279,11 +280,11 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                         name="coefficient"
                         value={Decimal.to_string(tc.coefficient)}
                         class="input input-bordered input-xs w-20"
-                        disabled={!@can_manage_classes?}
+                        disabled={!@can_manage_assignments?}
                       />
                     </form>
                   </td>
-                  <td :if={@can_manage_classes?}>
+                  <td :if={@can_manage_assignments?}>
                     <div :if={tc.combined_course_id} class="flex items-center gap-2">
                       <span class="badge badge-sm badge-info">
                         {tc.combined_course.label}
@@ -316,7 +317,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                       </button>
                     </form>
                   </td>
-                  <td :if={@can_manage_classes?}>
+                  <td :if={@can_manage_assignments?}>
                     <div class="flex items-center gap-2">
                       <form
                         id={"reassign-#{tc.id}"}
@@ -352,7 +353,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             title={gettext("Aucun enseignant affecté")}
           />
 
-          <form :if={@can_manage_classes?} id="assign-form" phx-submit="assign" class="space-y-2">
+          <form :if={@can_manage_assignments?} id="assign-form" phx-submit="assign" class="space-y-2">
             <div class="grid gap-2 sm:grid-cols-4">
               <select name="assignment[user_id]" class="select select-bordered select-sm">
                 <option :for={m <- @members} value={m.user_id}>{m.user.email}</option>
@@ -391,7 +392,11 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         |> Enum.reject(&(&1.id == cg.id)),
       assignments: assignments,
       combinable_siblings:
-        combinable_siblings_by_context(scope, assignments, socket.assigns[:can_manage_classes?]),
+        combinable_siblings_by_context(
+          scope,
+          assignments,
+          socket.assigns[:can_manage_assignments?]
+        ),
       members: Accounts.list_members(scope)
     )
   end
@@ -494,8 +499,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("assign", %{"assignment" => params}, socket) do
-    with true <- socket.assigns.can_manage_classes?,
-         %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == params["user_id"])) do
+    with %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == params["user_id"])) do
       coef =
         socket.assigns.subject_options
         |> Enum.find(&(&1.name == params["subject"]))
@@ -527,6 +531,12 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
         {:error, :not_assignable} ->
           {:noreply, put_flash(socket, :error, gettext("This member cannot be assigned."))}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not assign the teacher."))}
       end
     else
       _ -> {:noreply, socket}
@@ -534,8 +544,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("unassign", %{"context-id" => cid}, socket) do
-    with true <- socket.assigns.can_manage_classes?,
-         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
       case Curriculum.remove_assignment(socket.assigns.current_scope, tc) do
         :ok ->
           {:noreply, socket |> put_flash(:info, gettext("Assignment removed.")) |> load_roster()}
@@ -547,6 +556,12 @@ defmodule TeacherAssistantWeb.School.ClassLive do
              :error,
              gettext("This assignment has marks or progressions — it cannot be removed.")
            )}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, _} ->
+          {:noreply, socket}
       end
     else
       _ -> {:noreply, socket}
@@ -554,12 +569,14 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("set_coefficient", %{"context-id" => cid, "coefficient" => value}, socket) do
-    with true <- socket.assigns.can_manage_classes?,
-         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          {:ok, _} <-
            Curriculum.set_assignment_coefficient(socket.assigns.current_scope, tc, value) do
       {:noreply, socket |> put_flash(:info, gettext("Coefficient updated.")) |> load_roster()}
     else
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
       {:error, :invalid_coefficient} ->
         {:noreply, put_flash(socket, :error, gettext("Enter a positive coefficient."))}
 
@@ -569,12 +586,12 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("reassign", %{"context-id" => cid, "user_id" => uid}, socket) do
-    with true <- socket.assigns.can_manage_classes?,
-         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == uid)),
          {:ok, _} <- Curriculum.reassign_teacher(socket.assigns.current_scope, tc, member.user) do
       {:noreply, socket |> put_flash(:info, gettext("Teacher reassigned.")) |> load_roster()}
     else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, socket}
     end
   end
@@ -608,8 +625,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("teach_together", %{"context-id" => cid} = params, socket) do
-    with true <- socket.assigns.can_manage_classes?,
-         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
       sibling_ids = List.wrap(params["sibling-ids"])
 
       siblings =
@@ -647,6 +663,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           {:noreply,
            put_flash(socket, :error, gettext("One of these classes is already combined."))}
 
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not combine these classes."))}
       end
@@ -656,17 +675,16 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   end
 
   def handle_event("split_course", %{"context-id" => cid}, socket) do
-    with true <- socket.assigns.can_manage_classes?,
-         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
          course_id when not is_nil(course_id) <- tc.combined_course_id,
-         {:ok, course} <- Curriculum.get_course(socket.assigns.current_scope, course_id) do
-      :ok = Curriculum.split_course(socket.assigns.current_scope, course)
-
+         {:ok, course} <- Curriculum.get_course(socket.assigns.current_scope, course_id),
+         :ok <- Curriculum.split_course(socket.assigns.current_scope, course) do
       {:noreply,
        socket
        |> put_flash(:info, gettext("These classes are now taught separately."))
        |> load_roster()}
     else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, socket}
     end
   end

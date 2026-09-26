@@ -29,7 +29,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
     seq
   end
 
-  test "creates a module belonging to a plan", %{plan: plan} do
+  test "creates a module belonging to a plan", %{plan: plan, scope: scope} do
     {:ok, m} =
       ProgressionModule
       |> Ash.Changeset.for_create(:create, %{
@@ -37,8 +37,7 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
         position: 1,
         progression_plan_id: plan.id
       })
-      |> Ash.Changeset.set_tenant(plan.workspace_id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert m.title == "M1"
     assert m.position == 1

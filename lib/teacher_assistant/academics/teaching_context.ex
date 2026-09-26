@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "teaching_contexts"
     repo TeacherAssistant.Repo
@@ -132,8 +134,12 @@ defmodule TeacherAssistant.Academics.TeachingContext do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
     end
   end
 

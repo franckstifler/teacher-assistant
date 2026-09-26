@@ -45,27 +45,30 @@ defmodule TeacherAssistant.CompositeFkTest do
   test "deleting a combined course nulls only combined_course_id on its contexts", ctx do
     tc1 = assigned_context_fixture(ctx.a.scope, ctx.a.year, %{subject: "Physique"})
     tenant = ctx.a.workspace.id
+    scope = ctx.a.scope
 
     {:ok, course} =
       CombinedCourse
-      |> Ash.Changeset.for_create(:create, %{
-        subject: "Physique",
-        label: "Physique commune",
-        academic_year_id: ctx.a.year.id,
-        teacher_user_id: tc1.teacher_user_id
-      })
-      |> Ash.Changeset.set_tenant(tenant)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          subject: "Physique",
+          label: "Physique commune",
+          academic_year_id: ctx.a.year.id,
+          teacher_user_id: tc1.teacher_user_id
+        },
+        scope: scope
+      )
       |> Ash.create()
 
     {:ok, _} =
       tc1
-      |> Ash.Changeset.for_update(:update, %{combined_course_id: course.id})
-      |> Ash.Changeset.set_tenant(tenant)
+      |> Ash.Changeset.for_update(:update, %{combined_course_id: course.id}, scope: scope)
       |> Ash.update()
 
-    :ok = Ash.destroy(course, tenant: tenant)
+    :ok = Ash.destroy(course, scope: scope)
 
-    reloaded = Ash.get!(TeachingContext, tc1.id, tenant: tenant)
+    reloaded = Ash.get!(TeachingContext, tc1.id, scope: scope)
     assert reloaded.combined_course_id == nil
     assert reloaded.workspace_id == tenant
   end

@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
   alias TeacherAssistant.Curriculum
 
   setup do
-    %{workspace: ws, head_user: head, year: year, scope: scope} =
+    %{head_user: head, year: year, scope: scope} =
       TeacherFixtures.setup_complete_school_fixture()
 
     ctx =
@@ -26,43 +26,39 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
         entry_type: :lesson
       })
 
-    %{ws: ws, entry: entry}
+    %{scope: scope, entry: entry}
   end
 
-  test "a lesson plan persists and links to its entry", %{entry: entry} do
+  test "a lesson plan persists and links to its entry", %{entry: entry, scope: scope} do
     {:ok, lp} =
       LessonPlan
       |> Ash.Changeset.for_create(:create, %{
         progression_entry_id: entry.id,
         titre: "Les entiers"
       })
-      |> Ash.Changeset.set_tenant(entry.workspace_id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert lp.progression_entry_id == entry.id
     assert lp.duration_minutes == 55
   end
 
-  test "the entry↔plan link is 1:1 (unique)", %{entry: entry} do
+  test "the entry↔plan link is 1:1 (unique)", %{entry: entry, scope: scope} do
     {:ok, _} =
       LessonPlan
       |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
-      |> Ash.Changeset.set_tenant(entry.workspace_id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert {:error, _} =
              LessonPlan
              |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
-             |> Ash.Changeset.set_tenant(entry.workspace_id)
-             |> Ash.create(authorize?: false)
+             |> Ash.create(scope: scope)
   end
 
-  test "steps persist against a lesson plan", %{entry: entry} do
+  test "steps persist against a lesson plan", %{entry: entry, scope: scope} do
     {:ok, lp} =
       LessonPlan
       |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
-      |> Ash.Changeset.set_tenant(entry.workspace_id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     {:ok, step} =
       LessonStep
@@ -71,8 +67,7 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
         position: 1,
         etape: "Découverte"
       })
-      |> Ash.Changeset.set_tenant(lp.workspace_id)
-      |> Ash.create(authorize?: false)
+      |> Ash.create(scope: scope)
 
     assert step.position == 1
     assert step.etape == "Découverte"
