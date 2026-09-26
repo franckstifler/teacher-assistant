@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
        socket
        |> assign(
          cg: cg,
-         admin?: Permissions.admin?(scope),
+         can_edit_timetable?: Timetabling.can_edit_timetable?(scope),
          periods: Attendance.list_periods(scope),
          assignments: Curriculum.list_assignments_for_class(scope, cg),
          days: @days
@@ -38,8 +38,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   end
 
   def handle_event("place", %{"day" => day, "period_id" => period_id} = params, socket) do
-    with true <- socket.assigns.admin?,
-         day_atom when not is_nil(day_atom) <- day_atom(day) do
+    with day_atom when not is_nil(day_atom) <- day_atom(day) do
       teaching_context_id = params["teaching_context_id"]
 
       case teaching_context_id do
@@ -78,6 +77,9 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
       {:error, {:teacher_clash, class_label}} ->
         {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
 
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
       {:error, _reason} ->
         {:noreply, socket}
     end
@@ -95,7 +97,10 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
       {:error, {:teacher_clash, class_label}} ->
         {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
 
-      {:error, :invalid} ->
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _reason} ->
         {:noreply, socket}
     end
   end
@@ -122,6 +127,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
 
     case result do
       :ok -> {:noreply, load_timetable(socket)}
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       {:error, _reason} -> {:noreply, socket}
     end
   end
@@ -194,7 +200,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                   <td class="font-semibold">{period.label}</td>
                   <td :for={day <- @days} id={"cell-#{day}-#{period.id}"}>
                     <% slot = @slots[{day, period.id}] %>
-                    <%= if @admin? do %>
+                    <%= if @can_edit_timetable? do %>
                       <form id={"place-#{day}-#{period.id}"} phx-change="place">
                         <input type="hidden" name="day" value={day} />
                         <input type="hidden" name="period_id" value={period.id} />

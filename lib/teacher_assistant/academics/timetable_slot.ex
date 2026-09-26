@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias TeacherAssistant.Accounts.Checks
+
   postgres do
     table "timetable_slots"
     repo TeacherAssistant.Repo
@@ -163,7 +165,9 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
               class_group_id: class_group_id,
               day: day,
               period_id: period_id
-            }, scope: scope)
+            },
+            scope: scope
+          )
           |> Ash.read!()
           |> Enum.each(&Ash.destroy!(&1, scope: scope))
         end)
@@ -174,8 +178,12 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
   end
 
   policies do
-    policy always() do
-      authorize_if always()
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update, :destroy, :action]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
     end
   end
 

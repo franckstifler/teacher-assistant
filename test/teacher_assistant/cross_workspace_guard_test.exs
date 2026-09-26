@@ -90,8 +90,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
     assert {:error, _} =
              Assessment.create_assessment(ctx.scope_a, ctx.tc_a, ctx.seq_b, %{label: "D1"})
 
-    assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_a.id) == 0
-    assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_b.id) == 0
+    assert count_all(TeacherAssistant.Academics.Assessment, ctx.scope_a) == 0
+    assert count_all(TeacherAssistant.Academics.Assessment, ctx.scope_b) == 0
   end
 
   test "Assessment.create_combined_assessment rejects a course/sequence workspace mismatch",
@@ -101,15 +101,15 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
                label: "D1"
              })
 
-    assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_a.id) == 0
-    assert count_all(TeacherAssistant.Academics.Assessment, ctx.ws_b.id) == 0
+    assert count_all(TeacherAssistant.Academics.Assessment, ctx.scope_a) == 0
+    assert count_all(TeacherAssistant.Academics.Assessment, ctx.scope_b) == 0
   end
 
   test "Discipline.set_conduct_mark rejects an enrollment/sequence workspace mismatch", ctx do
     assert {:error, _} = Discipline.set_conduct_mark(ctx.scope_a, ctx.enrollment_a, ctx.seq_b, 15)
 
-    assert count_all(ConductMark, ctx.ws_a.id) == 0
-    assert count_all(ConductMark, ctx.ws_b.id) == 0
+    assert count_all(ConductMark, ctx.scope_a) == 0
+    assert count_all(ConductMark, ctx.scope_b) == 0
   end
 
   test "Discipline.note_de_conduite returns nil (never data) for a cross-workspace sequence",
@@ -163,8 +163,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
                [{ctx.enrollment_a.id, :present}]
              )
 
-    assert count_all(AttendanceEntry, ctx.ws_a.id) == 0
-    assert count_all(AttendanceEntry, ctx.ws_b.id) == 0
+    assert count_all(AttendanceEntry, ctx.scope_a) == 0
+    assert count_all(AttendanceEntry, ctx.scope_b) == 0
   end
 
   test "Attendance.record_combined_period rejects a course/period workspace mismatch", ctx do
@@ -177,8 +177,8 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
                [{ctx.enrollment_a.id, :present}]
              )
 
-    assert count_all(AttendanceEntry, ctx.ws_a.id) == 0
-    assert count_all(AttendanceEntry, ctx.ws_b.id) == 0
+    assert count_all(AttendanceEntry, ctx.scope_a) == 0
+    assert count_all(AttendanceEntry, ctx.scope_b) == 0
   end
 
   test "Timetabling.place_slot rejects a foreign period_id", ctx do
@@ -189,16 +189,16 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
                teaching_context_id: ctx.tc_a.id
              })
 
-    assert count_all(TimetableSlot, ctx.ws_a.id) == 0
-    assert count_all(TimetableSlot, ctx.ws_b.id) == 0
+    assert count_all(TimetableSlot, ctx.scope_a) == 0
+    assert count_all(TimetableSlot, ctx.scope_b) == 0
   end
 
   test "Timetabling.place_combined_slot rejects a foreign period_id", ctx do
     assert {:error, :invalid} =
              Timetabling.place_combined_slot(ctx.scope_a, ctx.course_a, :monday, ctx.period_b.id)
 
-    assert count_all(TimetableSlot, ctx.ws_a.id) == 0
-    assert count_all(TimetableSlot, ctx.ws_b.id) == 0
+    assert count_all(TimetableSlot, ctx.scope_a) == 0
+    assert count_all(TimetableSlot, ctx.scope_b) == 0
   end
 
   test "Timetabling.clear_slot rejects a foreign period_id", ctx do
@@ -212,7 +212,7 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
     assert {:error, :invalid} =
              Timetabling.clear_slot(ctx.scope_a, ctx.cg_a, :monday, ctx.period_b.id)
 
-    assert count_all(TimetableSlot, ctx.ws_a.id) == 1
+    assert count_all(TimetableSlot, ctx.scope_a) == 1
   end
 
   test "Timetabling.clear_combined_slot rejects a foreign period_id", ctx do
@@ -241,10 +241,9 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
              []
   end
 
-  defp count_all(resource, tenant) do
+  defp count_all(resource, scope) do
     resource
     |> Ash.Query.for_read(:read)
-    |> Ash.Query.set_tenant(tenant)
-    |> Ash.count!()
+    |> Ash.count!(scope: scope)
   end
 end

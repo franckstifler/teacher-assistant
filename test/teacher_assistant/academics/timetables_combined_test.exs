@@ -74,14 +74,14 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     assert maco_slot.teaching_context_id == ctx.tc_maco.id
     assert menu_slot.teaching_context_id == ctx.tc_menu.id
 
-    assert length(list_slots_for_cell(ctx.ws, :monday, ctx.period.id)) == 2
+    assert length(list_slots_for_cell(ctx.scope, :monday, ctx.period.id)) == 2
   end
 
   test "clear_combined_slot removes both member slots and is idempotent", ctx do
     {:ok, _slots} = Timetabling.place_combined_slot(ctx.scope, ctx.course, :monday, ctx.period.id)
 
     assert :ok = Timetabling.clear_combined_slot(ctx.scope, ctx.course, :monday, ctx.period.id)
-    assert list_slots_for_cell(ctx.ws, :monday, ctx.period.id) == []
+    assert list_slots_for_cell(ctx.scope, :monday, ctx.period.id) == []
     assert :ok = Timetabling.clear_combined_slot(ctx.scope, ctx.course, :monday, ctx.period.id)
   end
 
@@ -100,7 +100,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     assert {:error, {:teacher_clash, "1ère C"}} =
              Timetabling.place_combined_slot(ctx.scope, ctx.course, :monday, ctx.period.id)
 
-    assert list_slots_for_cell(ctx.ws, :monday, ctx.period.id)
+    assert list_slots_for_cell(ctx.scope, :monday, ctx.period.id)
            |> Enum.reject(&(&1.class_group_id == ctx.unrelated.id)) == []
   end
 
@@ -144,10 +144,9 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
              })
   end
 
-  defp list_slots_for_cell(ws, day, period_id) do
+  defp list_slots_for_cell(scope, day, period_id) do
     TimetableSlot
     |> Ash.Query.filter(day == ^day and period_id == ^period_id)
-    |> Ash.Query.set_tenant(ws.id)
-    |> Ash.read!(authorize?: false)
+    |> Ash.read!(scope: scope)
   end
 end

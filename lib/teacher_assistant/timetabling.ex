@@ -30,8 +30,11 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   authorization do
-    authorize :when_requested
+    authorize :by_default
   end
+
+  @doc "Whether the scope may place and clear timetable slots (admin axis)."
+  def can_edit_timetable?(scope), do: Ash.can?({TimetableSlot, :place}, scope)
 
   @doc """
   Places a teaching context into a (day, period) cell of a class's timetable.
@@ -75,18 +78,23 @@ defmodule TeacherAssistant.Timetabling do
 
   @doc """
   Clears the (day, period) cell of a class's timetable, if occupied. Returns
-  `:ok`, or `{:error, :invalid}` when `period_id` doesn't name a `Period` in
-  the class's own workspace.
+  `:ok`, `{:error, :invalid}` when `period_id` doesn't name a `Period` in
+  the class's own workspace, or `{:error, error}` when a destroy is refused.
   """
   def clear_slot(%Scope{} = scope, %ClassGroup{id: cg_id}, day, period_id) do
-    with {:ok, %Period{}} <- Ash.get(Period, period_id, scope: scope) do
-      cg_id
-      |> list_for_cell!(day, period_id, scope: scope)
-      |> Enum.each(&Ash.destroy!(&1, scope: scope))
+    case Ash.get(Period, period_id, scope: scope) do
+      {:ok, %Period{}} ->
+        cg_id
+        |> list_for_cell!(day, period_id, scope: scope)
+        |> Enum.reduce_while(:ok, fn slot, :ok ->
+          case Ash.destroy(slot, scope: scope) do
+            :ok -> {:cont, :ok}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+        end)
 
-      :ok
-    else
-      _ -> {:error, :invalid}
+      _ ->
+        {:error, :invalid}
     end
   end
 
@@ -151,31 +159,36 @@ defmodule TeacherAssistant.Timetabling do
   @doc """
   Clears the (day, period) cell for EVERY member class of a `CombinedCourse`.
   Mirrors `clear_slot/4` per member class. Returns `:ok` (idempotent —
-  clearing an already-empty cell is a no-op), or `{:error, :invalid}` when
-  `period_id` doesn't name a `Period` in the course's own workspace.
+  clearing an already-empty cell is a no-op), `{:error, :invalid}` when
+  `period_id` doesn't name a `Period` in the course's own workspace, or
+  `{:error, error}` when the action is refused.
   """
   def clear_combined_slot(%Scope{} = scope, %CombinedCourse{} = course, day, period_id) do
-    with {:ok, %Period{}} <- Ash.get(Period, period_id, scope: scope) do
-      class_group_ids =
-        course.id
-        |> Curriculum.contexts_of_course!(scope: scope)
-        |> Enum.map(& &1.class_group_id)
+    case Ash.get(Period, period_id, scope: scope) do
+      {:ok, %Period{}} ->
+        class_group_ids =
+          course.id
+          |> Curriculum.contexts_of_course!(scope: scope)
+          |> Enum.map(& &1.class_group_id)
 
-      TimetableSlot
-      |> Ash.ActionInput.for_action(
-        :clear_combined,
-        %{
-          day: day,
-          period_id: period_id,
-          class_group_ids: class_group_ids
-        },
-        scope: scope
-      )
-      |> Ash.run_action!()
+        TimetableSlot
+        |> Ash.ActionInput.for_action(
+          :clear_combined,
+          %{
+            day: day,
+            period_id: period_id,
+            class_group_ids: class_group_ids
+          },
+          scope: scope
+        )
+        |> Ash.run_action()
+        |> case do
+          {:error, error} -> {:error, error}
+          _ -> :ok
+        end
 
-      :ok
-    else
-      _ -> {:error, :invalid}
+      _ ->
+        {:error, :invalid}
     end
   end
 

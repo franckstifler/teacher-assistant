@@ -82,7 +82,7 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
              })
 
     refute Enum.any?(
-             list_slots_for_cell(cg_b, :monday, period.id),
+             list_slots_for_cell(scope, :monday, period.id),
              &(&1.class_group_id == cg_b.id)
            )
   end
@@ -147,7 +147,7 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
 
     assert slot2.id == slot1.id
     assert slot2.teaching_context_id == tc_a2.id
-    assert length(list_slots_for_cell(cg_a, :monday, period.id)) == 1
+    assert length(list_slots_for_cell(scope, :monday, period.id)) == 1
   end
 
   test "placing a teaching_context from another class is rejected", ctx do
@@ -172,16 +172,15 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
       })
 
     assert :ok = Timetabling.clear_slot(scope, cg_a, :monday, period.id)
-    assert list_slots_for_cell(cg_a, :monday, period.id) == []
+    assert list_slots_for_cell(scope, :monday, period.id) == []
     assert :ok = Timetabling.clear_slot(scope, cg_a, :monday, period.id)
   end
 
-  defp list_slots_for_cell(cg, day, period_id) do
+  defp list_slots_for_cell(scope, day, period_id) do
     require Ash.Query
 
     TimetableSlot
     |> Ash.Query.filter(day == ^day and period_id == ^period_id)
-    |> Ash.Query.set_tenant(cg.workspace_id)
-    |> Ash.read!(authorize?: false)
+    |> Ash.read!(scope: scope)
   end
 end
