@@ -91,16 +91,19 @@ Behaviour:
 3. **`TeachingContext.subject_id`** (required), set at assignment from the chosen `Subject`. The `subject`
    string stays as the display label.
    `coefficient` becomes nullable and means the class override.
-4. **Calculations on `TeachingContext`:** relationship `grid_coefficient` = the cell matching the context's
-   subject and its **class's** subsystem, level and série (blank série matched explicitly, since
-   `NULL = NULL` is false); `effective_coefficient = coalesce(coefficient, grid_coefficient.coefficient,
-   subject.default_coefficient)`; `taught_here? = exists(grid_coefficient)`.
+4. **Calculations on `TeachingContext`:** relationship `grid_coefficient` = the cell for the context's
+   subject, subsystem and level (copied from its class at assignment; no path edits a class's level or
+   série), preferring the context's série cell and falling back to the level's blank-série cell. A blank-série
+   cell of a streamed level therefore applies to every série without a cell of its own.
+   `effective_coefficient = coefficient || grid_coefficient.coefficient || subject.default_coefficient`;
+   `taught_here? = grid_coefficient exists`.
 5. **School profile settings:** `class_coefficients_allowed?` (default true) and
    `bulletin_group_subtotals?` (default false).
-6. **Grid editing** in Settings (the existing subjects block): rows are active subjects grouped G1→G3 then
+6. **Grid editing** on its own Settings page, `/school/settings/coefficients`, linked from the subjects block: rows are active subjects grouped G1→G3 then
    by position, each with a group selector; columns are the school subsystem's levels (a subsystem switch
    when the school has classes in both); streamed 2nd-cycle levels are edited per série, the switch listing
-   the séries used by the active year's classes (plus "sans série" when a class has none). A cell overridden
+   the séries used by the active year's classes; the default view edits the blank-série ("toutes séries")
+   cells, a série view edits that série's cells and shows the inherited value when empty. A cell overridden
    in at least one class gets the amber border; the footer shows the total per column.
    `Curriculum.update_coefficient_grid(scope, params)` parses the whole form, validates it with a pure
    `CoefficientRules` module (positive decimal, `,` accepted; a cell cannot be cleared while classes use it,
