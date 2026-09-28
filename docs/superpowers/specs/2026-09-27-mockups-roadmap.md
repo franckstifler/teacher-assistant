@@ -82,10 +82,10 @@ Behaviour:
    Unique on (subject, subsystem, level, série) with a blank série as its own value. A missing row is an
    empty cell: the subject is not taught at that level. Read: members; write: admin axis.
 2. **`Subject.category` is replaced by `bulletin_group`** (`:g1_lettres | :g2_sciences | :g3_autres`,
-   default `:g3_autres`; migration maps language → g1, technical → g2, general → g3). `position` orders
+   default `:g3_autres`). `position` orders
    subjects within a group. `default_coefficient` only pre-fills a cell when it is switched on.
-3. **`TeachingContext.subject_id`** (required), backfilled by name within the school; an unmatched name gets
-   a `Subject` created (active, g3, coefficient 1). The `subject` string stays as the display label.
+3. **`TeachingContext.subject_id`** (required), set at assignment from the chosen `Subject`. The `subject`
+   string stays as the display label.
    `coefficient` becomes nullable and means the class override.
 4. **Calculations on `TeachingContext`:** relationship `grid_coefficient` = the cell matching the context's
    subject and its **class's** subsystem, level and série (blank série matched explicitly, since
@@ -116,14 +116,14 @@ Behaviour:
    statistics are unchanged. `BulletinLive` and the print template show rows under group headings (empty
    groups hidden) and, when `bulletin_group_subtotals?` is on, a "Total groupe" row per group. The
    coefficient column shows the effective coefficient.
-10. **Migration keeps every average identical:** one cell is seeded per subject × subsystem × level × série
-    in use, valued at the most common coefficient among those assignments; assignments with a different
-    coefficient keep it as an override, the others are set to nil.
+10. **No data backfill.** No real school data exists yet (dev has no teaching contexts, no production),
+    so the schema changes are generated with `mix ash.codegen` only: `subject_id` is required from the
+    start, and dev/test databases are reset. A school starts with an empty grid and fills it in Settings.
 
 Review focus: an unparseable or non-positive coefficient (per-cell error, nothing written); clearing a used
 cell; a crafted save from a teacher (`Forbidden`, full rollback); turning overrides off while some exist; a
-class whose série has no grid column (fallback, never a crash); bulletin averages identical before and after
-the migration.
+class whose série has no grid column (fallback, never a crash); a class assignment made before any grid
+cell exists (falls back to the subject default, flagged).
 
 Out of scope (D2b): optional subjects and what a missing mark means (today a subject with no marks is left
 out of the coefficient total, which already covers an optional subject nobody grades); school assessment
