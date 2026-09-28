@@ -115,14 +115,14 @@
                 <% :trimester -> %>
                   <td class="num">{fmt(comp(row, :sequences, 0))}</td>
                   <td class="num">{fmt(comp(row, :sequences, 1))}</td>
-                  <td class="num">{fmt(row.average)}</td>
+                  <td class="num">{fmt(row.average)}<sup :if={row.makeup_pending}>R</sup></td>
                 <% :annual -> %>
                   <td class="num">{fmt(comp(row, :trimesters, 0))}</td>
                   <td class="num">{fmt(comp(row, :trimesters, 1))}</td>
                   <td class="num">{fmt(comp(row, :trimesters, 2))}</td>
-                  <td class="num">{fmt(row.average)}</td>
+                  <td class="num">{fmt(row.average)}<sup :if={row.makeup_pending}>R</sup></td>
                 <% _ -> %>
-                  <td class="num">{fmt(row.average)}</td>
+                  <td class="num">{fmt(row.average)}<sup :if={row.makeup_pending}>R</sup></td>
               <% end %>
               <td class="num">{fmt(row.note_x_coef)}</td>
               <td class="num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
@@ -146,6 +146,9 @@
             </tr>
           </tfoot>
         </table>
+        <p :if={Enum.any?(b.data.subjects, & &1.makeup_pending)} class="legend">
+          {gettext("R : rattrapage attendu")}
+        </p>
 
         <p class="totals">
           <strong>{gettext("Moyenne générale")} : {fmt(b.data.moyenne_generale)}/20</strong>

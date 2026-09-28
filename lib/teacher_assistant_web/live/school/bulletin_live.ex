@@ -257,14 +257,44 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                     <% :trimester -> %>
                       <td class="ta-num">{fmt(component_at(row, :sequences, 0))}</td>
                       <td class="ta-num">{fmt(component_at(row, :sequences, 1))}</td>
-                      <td class="ta-num">{fmt(row.average)}</td>
+                      <td class="ta-num">
+                        {fmt(row.average)}
+                        <span
+                          :if={row.makeup_pending}
+                          id={"makeup-#{row.context_id}"}
+                          class="badge badge-warning badge-xs ml-1"
+                          title={gettext("Rattrapage attendu")}
+                        >
+                          R
+                        </span>
+                      </td>
                     <% :annual -> %>
                       <td class="ta-num">{fmt(component_at(row, :trimesters, 0))}</td>
                       <td class="ta-num">{fmt(component_at(row, :trimesters, 1))}</td>
                       <td class="ta-num">{fmt(component_at(row, :trimesters, 2))}</td>
-                      <td class="ta-num">{fmt(row.average)}</td>
+                      <td class="ta-num">
+                        {fmt(row.average)}
+                        <span
+                          :if={row.makeup_pending}
+                          id={"makeup-#{row.context_id}"}
+                          class="badge badge-warning badge-xs ml-1"
+                          title={gettext("Rattrapage attendu")}
+                        >
+                          R
+                        </span>
+                      </td>
                     <% _ -> %>
-                      <td class="ta-num">{fmt(row.average)}</td>
+                      <td class="ta-num">
+                        {fmt(row.average)}
+                        <span
+                          :if={row.makeup_pending}
+                          id={"makeup-#{row.context_id}"}
+                          class="badge badge-warning badge-xs ml-1"
+                          title={gettext("Rattrapage attendu")}
+                        >
+                          R
+                        </span>
+                      </td>
                   <% end %>
                   <td class="ta-num">{fmt(row.note_x_coef)}</td>
                   <td class="ta-num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
@@ -292,6 +322,13 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                 </tr>
               </tfoot>
             </table>
+            <p
+              :if={Enum.any?(@data.subjects, & &1.makeup_pending)}
+              id="makeup-legend"
+              class="mt-1 text-xs text-base-content/70"
+            >
+              {gettext("R : rattrapage attendu")}
+            </p>
           </div>
 
           <div id="bulletin-totals" class="grid grid-cols-2 gap-2 sm:grid-cols-3">

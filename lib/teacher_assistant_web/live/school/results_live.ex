@@ -152,6 +152,14 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
             <.stat label={gettext("Plus faible moyenne")} value={fmt(@results.lowest)} suffix="/20" />
           </div>
 
+          <p
+            :if={@results.makeup_pending_count > 0}
+            id="results-makeups"
+            class="alert alert-warning text-sm"
+          >
+            {gettext("Rattrapages attendus : %{count}", count: @results.makeup_pending_count)}
+          </p>
+
           <div class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
             <div class="ta-leaf">
               <p class="ta-eyebrow">{gettext("Effectif")}</p>

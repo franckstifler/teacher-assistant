@@ -185,4 +185,25 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     assert html =~ to_string(fm.email)
     assert html =~ "Professeur principal"
   end
+
+  test "pending make-ups are counted under the make-up rule", ctx do
+    %{conn: conn, cg: cg, seq: seq, student: student, scope: scope} = ctx
+    [tc] = Curriculum.list_assignments_for_class(scope, cg)
+
+    {:ok, a2} =
+      Assessment.create_assessment(scope, tc, seq, %{
+        label: "D2",
+        weight: Decimal.new(1),
+        max_score: Decimal.new(20)
+      })
+
+    :ok = Assessment.upsert_marks(scope, a2, [%{student_id: student.id, score: nil, status: :absent}])
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results?period=seq:#{seq.id}")
+    refute has_element?(view, "#results-makeups")
+
+    {:ok, _} = Assessment.update_grading_rules(scope, %{"absence_rule" => "makeup"})
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results?period=seq:#{seq.id}")
+    assert has_element?(view, "#results-makeups", "1")
+  end
 end

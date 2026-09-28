@@ -272,4 +272,23 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     {:ok, view, _} = live(conn, path)
     assert has_element?(view, "#bulletin-group-total-g3_autres", "Total groupe")
   end
+
+  test "switching to the make-up rule turns a zero into an R", ctx do
+    %{conn: conn, cg: cg, enr: enr, seq: seq, scope: scope, head: head} = ctx
+    [tc] = Curriculum.list_assignments_for_class(scope, cg)
+    {:ok, a2} = Assessment.create_assessment(scope, tc, seq, %{label: "D2", weight: Decimal.new(1), max_score: Decimal.new(20)})
+    [%{student: st}] = Enrollment.list_roster(scope, cg)
+    :ok = Assessment.upsert_marks(scope, a2, [%{student_id: st.id, score: nil, status: :absent}])
+    path = ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}"
+
+    {:ok, view, _} = live(conn, path)
+    assert render(view) =~ "7.50"
+    refute has_element?(view, "#makeup-#{tc.id}")
+
+    {:ok, _} = Assessment.update_grading_rules(scope, %{"absence_rule" => "makeup"})
+    {:ok, view, _} = live(conn, path)
+    assert has_element?(view, "#makeup-#{tc.id}", "R")
+    assert has_element?(view, "#makeup-legend")
+    _ = head
+  end
 end
