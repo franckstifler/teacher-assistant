@@ -296,6 +296,38 @@ defmodule TeacherAssistant.Curriculum do
         |> Ash.update()
   end
 
+  @doc """
+  Allows or forbids class-specific coefficient overrides. Switching them off is
+  refused while active-year classes carry one: overrides are never silently ignored
+  or deleted (spec D2a §7).
+  """
+  def set_class_coefficients_allowed(%Scope{} = scope, allowed?) when is_boolean(allowed?) do
+    overridden =
+      if allowed?,
+        do: [],
+        else:
+          scope
+          |> grid_assignments()
+          |> Enum.filter(& &1.override?)
+          |> Enum.map(& &1.class_label)
+          |> Enum.uniq()
+          |> Enum.sort()
+
+    if overridden == [],
+      do: update_profile(scope, %{class_coefficients_allowed?: allowed?}),
+      else: {:error, {:overrides_exist, overridden}}
+  end
+
+  @doc "Shows or hides the per-group subtotal rows on bulletins."
+  def set_bulletin_group_subtotals(%Scope{} = scope, on?) when is_boolean(on?),
+    do: update_profile(scope, %{bulletin_group_subtotals?: on?})
+
+  defp update_profile(scope, attrs) do
+    with {:ok, profile} <- Accounts.fetch_school_profile(scope) do
+      Accounts.update_school_profile(profile, attrs, scope: scope)
+    end
+  end
+
   defp write_groups(changes, subjects, scope) do
     Enum.reduce_while(changes, :ok, fn {subject_id, group}, :ok ->
       subject = subjects[subject_id]
@@ -373,14 +405,15 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   def set_assignment_coefficient(%Scope{} = scope, %TeachingContext{} = tc, value) do
-    case parse_coefficient(value) do
-      {:ok, dec} ->
-        tc
-        |> Ash.Changeset.for_update(:update, %{coefficient: dec}, scope: scope)
-        |> Ash.update()
-
-      :error ->
-        {:error, :invalid_coefficient}
+    with {:ok, %{class_coefficients_allowed?: true}} <- Accounts.fetch_school_profile(scope),
+         {:ok, dec} <- parse_coefficient(value) do
+      tc
+      |> Ash.Changeset.for_update(:update, %{coefficient: dec}, scope: scope)
+      |> Ash.update()
+    else
+      {:ok, %{class_coefficients_allowed?: false}} -> {:error, :class_coefficients_disabled}
+      :error -> {:error, :invalid_coefficient}
+      {:error, error} -> {:error, error}
     end
   end
 

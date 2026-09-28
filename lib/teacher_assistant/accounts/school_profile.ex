@@ -69,7 +69,9 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :head_name,
         :motto,
         :registration_number,
-        :logo_path
+        :logo_path,
+        :class_coefficients_allowed?,
+        :bulletin_group_subtotals?
       ]
 
       change fn changeset, _context ->
@@ -145,6 +147,16 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     attribute :motto, :string, public?: true
     attribute :registration_number, :string, public?: true
     attribute :logo_path, :string, public?: true
+
+    attribute :class_coefficients_allowed?, :boolean,
+      allow_nil?: false,
+      default: true,
+      public?: true
+
+    attribute :bulletin_group_subtotals?, :boolean,
+      allow_nil?: false,
+      default: false,
+      public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,
