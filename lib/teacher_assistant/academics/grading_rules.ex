@@ -4,13 +4,15 @@ defmodule TeacherAssistant.Academics.GradingRules do
   and annual rules, and whether tied students share a rank. Built from the school
   profile by `TeacherAssistant.Assessment.grading_rules/1`. The struct default
   (`rounding: :none`) reproduces the historical unrounded computation for callers
-  that pass no rules.
+  that pass no rules. `absence` (`:zero | :excluded | :makeup`) decides what an
+  unjustified absence counts; its struct default is the historic `:excluded`.
   """
 
   defstruct trimester: :mean_of_sequences,
             annual: :mean_of_sequences,
             rounding: :none,
-            shared_ranks?: true
+            shared_ranks?: true,
+            absence: :excluded
 
   @four Decimal.new(4)
 

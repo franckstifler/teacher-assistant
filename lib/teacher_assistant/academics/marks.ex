@@ -76,20 +76,19 @@ defmodule TeacherAssistant.Academics.Marks do
   # --- per-student weighted average, normalized to /20 over non-nil marks ---
 
   @doc """
-  Weighted /20 average for one student in one subject/séquence.
-
-  `marks` = `[%{assessment_id, score}]` (score may be nil); `weights` =
-  `%{assessment_id => %{weight, max_score}}`. Returns a `%Decimal{}` on the /20
-  scale, or nil when nothing is graded. Shared with `Academics.Bulletins` so the
-  per-subject figure is computed identically in both places.
+  Weighted /20 average for one student in one subject/séquence, under the school's
+  absence rule. `marks` = `[%{assessment_id, score, status}]` (`status` optional:
+  graded when a score is present); `weights` = `%{assessment_id => %{weight, max_score}}`.
+  Graded marks count; an `:absent` mark counts as 0 under `absence: :zero` and is left
+  out otherwise; an `:excused` mark is always left out. Returns nil when nothing counts.
   """
-  def subject_average(marks, weights) do
+  def subject_average(marks, weights, rules \\ %GradingRules{}) do
     contributions =
       marks
-      |> Enum.reject(&is_nil(&1.score))
-      |> Enum.map(fn m ->
-        a = Map.fetch!(weights, m.assessment_id)
-        normalized = Decimal.div(Decimal.mult(m.score, @scale), a.max_score)
+      |> Enum.flat_map(&counted_score(&1, rules))
+      |> Enum.map(fn {assessment_id, score} ->
+        a = Map.fetch!(weights, assessment_id)
+        normalized = Decimal.div(Decimal.mult(score, @scale), a.max_score)
         {Decimal.mult(normalized, a.weight), a.weight}
       end)
 
@@ -100,11 +99,27 @@ defmodule TeacherAssistant.Academics.Marks do
       list ->
         total = Enum.reduce(list, Decimal.new(0), fn {c, _w}, acc -> Decimal.add(acc, c) end)
         weight = Enum.reduce(list, Decimal.new(0), fn {_c, w}, acc -> Decimal.add(acc, w) end)
-        # Defensive only: assessments always carry positive weight, so this
-        # guards against a degenerate all-zero-weight assessment set.
         if Decimal.equal?(weight, Decimal.new(0)), do: nil, else: Decimal.div(total, weight)
     end
   end
+
+  @doc "Whether a make-up is expected: the make-up rule and an absent or excused mark."
+  def makeup_pending?(marks, %GradingRules{absence: :makeup}),
+    do: Enum.any?(marks, &(status(&1) in [:absent, :excused]))
+
+  def makeup_pending?(_marks, _rules), do: false
+
+  defp counted_score(mark, rules) do
+    case {status(mark), rules.absence} do
+      {:graded, _} -> [{mark.assessment_id, mark.score}]
+      {:absent, :zero} -> [{mark.assessment_id, Decimal.new(0)}]
+      _ -> []
+    end
+  end
+
+  defp status(%{status: status}) when not is_nil(status), do: status
+  defp status(%{score: nil}), do: :blank
+  defp status(_mark), do: :graded
 
   # --- aggregates ---
 
