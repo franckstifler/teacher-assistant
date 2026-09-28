@@ -393,4 +393,16 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
     assert Enum.at(Organization.list_sequences(scope, year), 1).start_date == s2.start_date
   end
+
+  test "deleting a subject a class uses explains why it stays", %{conn: conn, scope: scope} do
+    year = Organization.current_academic_year(scope)
+    [cg | _] = Enrollment.list_class_groups(scope, year)
+    maths = Enum.find(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
+    {:ok, _} = TeacherAssistant.Curriculum.assign_teacher(scope, cg, scope.current_user, %{subject: maths})
+
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+    view |> element("#subject-delete-#{maths.id}") |> render_click()
+    assert render(view) =~ "Matière utilisée par des classes : désactivez-la plutôt."
+    assert Enum.any?(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.id == maths.id))
+  end
 end

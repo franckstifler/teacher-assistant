@@ -332,6 +332,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         <section :if={@can_manage_subjects?} id="matieres" class="space-y-4">
           <h2 class="text-lg font-semibold">{gettext("Matières")}</h2>
 
+          <.link
+            id="coefficients-link"
+            navigate={~p"/school/settings/coefficients"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Coefficients par niveau et groupes du bulletin")}
+          </.link>
+
           <div class="overflow-x-auto">
             <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
               <thead>
@@ -591,11 +599,24 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("delete_subject", %{"id" => id}, socket) do
     scope = socket.assigns.scope
 
-    with %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)),
-         {:error, %Ash.Error.Forbidden{}} <- Curriculum.delete_subject(subject, scope: scope) do
-      {:noreply, Authz.put_not_allowed(socket)}
+    with %{} = subject <- Enum.find(socket.assigns.subjects, &(&1.id == id)) do
+      case Curriculum.delete_subject(subject, scope: scope) do
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("Matière utilisée par des classes : désactivez-la plutôt.")
+           )}
+
+        _ ->
+          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
+      end
     else
-      _ -> {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
+      _ -> {:noreply, socket}
     end
   end
 
