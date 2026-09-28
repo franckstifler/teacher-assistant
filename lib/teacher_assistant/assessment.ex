@@ -244,7 +244,9 @@ defmodule TeacherAssistant.Assessment do
       %{
         context_id: tc.id,
         label: tc.subject,
-        coefficient: tc.coefficient,
+        coefficient: tc.effective_coefficient,
+        group: tc.catalog_subject.bulletin_group,
+        position: tc.catalog_subject.position,
         assessments_by_id:
           Map.new(assessments, fn a -> {a.id, %{weight: a.weight, max_score: a.max_score}} end),
         marks:
@@ -326,7 +328,13 @@ defmodule TeacherAssistant.Assessment do
               end)
 
             {subj.context_id,
-             %{label: subj.label, coefficient: subj.coefficient, per_student_avg: psa}}
+             %{
+               label: subj.label,
+               coefficient: subj.coefficient,
+               group: subj.group,
+               position: subj.position,
+               per_student_avg: psa
+             }}
           end)
 
         {seq, subjects}
@@ -340,7 +348,7 @@ defmodule TeacherAssistant.Assessment do
     else
       subject_inputs =
         Enum.map(contexts, fn cid ->
-          {label, coef} = context_label_coef(per_seq, cid)
+          meta = context_meta(per_seq, cid)
 
           per_student_avg =
             Map.new(students, fn s ->
@@ -354,8 +362,10 @@ defmodule TeacherAssistant.Assessment do
 
           %{
             context_id: cid,
-            label: label,
-            coefficient: coef,
+            label: meta.label,
+            coefficient: meta.coefficient,
+            group: meta.group,
+            position: meta.position,
             per_student_avg: per_student_avg,
             components: components
           }
@@ -365,10 +375,9 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
-  defp context_label_coef(per_seq, cid) do
+  defp context_meta(per_seq, cid) do
     {_seq, m} = Enum.find(per_seq, fn {_seq, m} -> Map.has_key?(m, cid) end)
-    sub = m[cid]
-    {sub.label, sub.coefficient}
+    m[cid]
   end
 
   # this subject's per-séquence average for one student, in séquence order (nils dropped)

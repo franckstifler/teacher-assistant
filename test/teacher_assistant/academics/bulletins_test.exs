@@ -153,4 +153,42 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
       assert eps.components == nil
     end
   end
+
+  test "rows are ordered by bulletin group, then position, and grouped with subtotals" do
+    students = [%{id: "s1", sex: :m}]
+
+    subjects = [
+      "eps"
+      |> subject("EPS", "1", [{"s1", "10"}])
+      |> Map.merge(%{group: :g3_autres, position: 0}),
+      "maths"
+      |> subject("Maths", "4", [{"s1", "15"}])
+      |> Map.merge(%{group: :g2_sciences, position: 0}),
+      "fr"
+      |> subject("Français", "4", [{"s1", "12"}])
+      |> Map.merge(%{group: :g1_lettres, position: 1}),
+      "ang"
+      |> subject("Anglais", "2", [{"s1", nil}])
+      |> Map.merge(%{group: :g1_lettres, position: 0})
+    ]
+
+    d = Bulletins.compile(students, subjects).per_student["s1"]
+    assert Enum.map(d.subjects, & &1.label) == ["Anglais", "Français", "Maths", "EPS"]
+    assert Enum.map(d.groups, & &1.group) == [:g1_lettres, :g2_sciences, :g3_autres]
+
+    [lettres | _] = d.groups
+    assert Enum.map(lettres.rows, & &1.label) == ["Anglais", "Français"]
+    assert Decimal.equal?(lettres.total_coef, 4)
+    assert Decimal.equal?(lettres.total_points, 48)
+    assert Decimal.equal?(lettres.average, 12)
+
+    # (12*4 + 15*4 + 10*1) / 9 — grouping never changes the moyenne générale
+    assert Decimal.equal?(d.moyenne_generale, Decimal.div(Decimal.new(118), Decimal.new(9)))
+  end
+
+  test "subjects without a group fall in G3, and a group with no graded subject has no average" do
+    students = [%{id: "s1", sex: :f}]
+    d = Bulletins.compile(students, [subject("x", "X", "1", [{"s1", nil}])]).per_student["s1"]
+    assert [%{group: :g3_autres, average: nil, total_points: nil}] = d.groups
+  end
 end

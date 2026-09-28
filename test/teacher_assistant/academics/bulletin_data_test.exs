@@ -67,4 +67,11 @@ defmodule TeacherAssistant.Academics.BulletinDataTest do
 
     assert Assessment.class_results(ctx.scope, cg2, ctx.seq) == nil
   end
+
+  test "class_subjects carries the effective coefficient, bulletin group and position", ctx do
+    [subj] = Assessment.class_subjects(ctx.scope, ctx.cg, ctx.seq)
+    assert Decimal.equal?(subj.coefficient, Decimal.new(4))
+    assert subj.group == :g3_autres
+    assert is_integer(subj.position)
+  end
 end

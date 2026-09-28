@@ -4,7 +4,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
   No database access — operates on plain maps, like `Academics.Marks`. Reuses
   `Marks.subject_average/2` for the per-subject figure so the two never drift.
   """
-  alias TeacherAssistant.Academics.Marks
+  alias TeacherAssistant.Academics.{BulletinGroup, Marks}
 
   @pass Decimal.new(10)
   @felicitations Decimal.new(16)
@@ -24,6 +24,8 @@ defmodule TeacherAssistant.Academics.Bulletins do
           context_id: subj.context_id,
           label: subj.label,
           coefficient: subj.coefficient,
+          group: Map.get(subj, :group, :g3_autres),
+          position: Map.get(subj, :position, 0),
           per_student_avg: per_student_avg,
           components: nil
         }
@@ -49,11 +51,14 @@ defmodule TeacherAssistant.Academics.Bulletins do
           coefficient: subj.coefficient,
           per_student_avg: subj.per_student_avg,
           components: subj.components,
+          group: Map.get(subj, :group, :g3_autres),
+          position: Map.get(subj, :position, 0),
           class_min: min_of(graded),
           class_max: max_of(graded),
           ranks: rank_map(subj.per_student_avg)
         }
       end)
+      |> Enum.sort_by(&{BulletinGroup.rank(&1.group), &1.position, &1.label})
 
     per_student_core =
       Map.new(students, fn s ->
@@ -70,7 +75,8 @@ defmodule TeacherAssistant.Academics.Bulletins do
               subject_rank: sv.ranks[s.id],
               class_min: sv.class_min,
               class_max: sv.class_max,
-              components: sv.components && sv.components[s.id]
+              components: sv.components && sv.components[s.id],
+              group: sv.group
             }
           end)
 
@@ -86,6 +92,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
         {s.id,
          %{
            subjects: rows,
+           groups: group_subtotals(rows),
            total_points: if(graded_rows == [], do: nil, else: total_points),
            total_coef: total_coef,
            moyenne_generale: moy,
@@ -112,6 +119,29 @@ defmodule TeacherAssistant.Academics.Bulletins do
       by_sex: %{m: sex_stats(students, per_student, :m), f: sex_stats(students, per_student, :f)},
       distinctions: distinctions(students, per_student)
     }
+  end
+
+  # Rows are already in bulletin order, so consecutive rows share a group.
+  defp group_subtotals(rows) do
+    rows
+    |> Enum.chunk_by(& &1.group)
+    |> Enum.map(fn [%{group: group} | _] = group_rows ->
+      graded = Enum.filter(group_rows, &(&1.average != nil))
+      total_coef = sum(Enum.map(graded, & &1.coefficient))
+      total_points = sum(Enum.map(graded, & &1.note_x_coef))
+
+      %{
+        group: group,
+        rows: group_rows,
+        total_coef: total_coef,
+        total_points: if(graded == [], do: nil, else: total_points),
+        average:
+          if(Decimal.equal?(total_coef, Decimal.new(0)),
+            do: nil,
+            else: Decimal.div(total_points, total_coef)
+          )
+      }
+    end)
   end
 
   # --- ex-aequo ranking over a %{id => Decimal | nil} map ---
