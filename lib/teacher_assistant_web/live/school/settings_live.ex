@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:scope, scope)
         |> assign(:can_manage_periods?, TeacherAssistant.Attendance.can_manage_periods?(scope))
         |> assign(:can_manage_calendar?, Organization.can_manage_calendar?(scope))
+        |> assign(calendar_errors: %{}, calendar_params: %{})
         |> assign(:can_rename_school?, Organization.can_rename_school?(scope))
         |> assign(:can_manage_subjects?, Curriculum.can_manage_subjects?(scope))
         |> assign(:name_form, name_form(scope))
@@ -220,29 +221,87 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             </h3>
             <p class="mt-1 text-xs text-base-content/70">
               {gettext(
-                "Calendrier généré à la création de l'année. Les dates seront modifiables prochainement."
+                "Sans date limite, la saisie des notes ferme %{days} jours après la fin de la séquence.",
+                days: TeacherAssistant.Academics.Reference.entry_grace_days()
               )}
             </p>
-            <ul class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
-              <li
-                :for={seq <- @active_sequences}
-                id={"sequence-#{seq.id}"}
-                class="flex justify-between gap-3"
-              >
-                <span>
-                  <span class="text-base-content/60">
-                    {gettext("Trimestre %{n}", n: div(seq.number - 1, 2) + 1)} ·
-                  </span>
-                  {gettext("Séquence %{n}", n: seq.number)}
-                </span>
-                <span class="ta-num text-base-content/70">
-                  {Calendar.strftime(seq.start_date, "%d/%m/%Y")} → {Calendar.strftime(
-                    seq.end_date,
-                    "%d/%m/%Y"
-                  )}
-                </span>
-              </li>
-            </ul>
+
+            <.form
+              for={to_form(%{}, as: :calendar)}
+              id="calendar-form"
+              phx-submit="save_calendar"
+              class="mt-3 space-y-3"
+            >
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>{gettext("Séquence")}</th>
+                      <th>{gettext("Début")}</th>
+                      <th>{gettext("Fin")}</th>
+                      <th>{gettext("Limite de saisie")}</th>
+                      <th>{gettext("Conseil de classe")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr :for={seq <- @active_sequences} id={"sequence-#{seq.id}"} class="align-top">
+                      <td class="whitespace-nowrap">
+                        <span class="text-base-content/60">
+                          {gettext("Trimestre %{n}", n: seq.term.position)} ·
+                        </span>
+                        {gettext("Séquence %{n}", n: seq.number)}
+                      </td>
+                      <td :for={field <- [:start_date, :end_date, :entry_deadline]}>
+                        <.input
+                          type="date"
+                          name={"calendar[sequences][#{seq.id}][#{field}]"}
+                          value={
+                            calendar_value(
+                              @calendar_params,
+                              "sequences",
+                              seq.id,
+                              field,
+                              Map.get(seq, field)
+                            )
+                          }
+                          disabled={!@can_manage_calendar?}
+                          errors={calendar_errors(@calendar_errors, seq.id, field)}
+                        />
+                        <span
+                          :if={field == :entry_deadline and is_nil(seq.entry_deadline)}
+                          class="ta-num text-xs text-base-content/60"
+                        >
+                          {gettext("Par défaut : %{date}",
+                            date: Calendar.strftime(seq.grade_entry_deadline, "%d/%m/%Y")
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        <.input
+                          :if={seq.position_in_term == 2}
+                          type="date"
+                          name={"calendar[terms][#{seq.term_id}][class_council_date]"}
+                          value={
+                            calendar_value(
+                              @calendar_params,
+                              "terms",
+                              seq.term_id,
+                              :class_council_date,
+                              seq.term.class_council_date
+                            )
+                          }
+                          disabled={!@can_manage_calendar?}
+                          errors={calendar_errors(@calendar_errors, seq.term_id, :class_council_date)}
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <button :if={@can_manage_calendar?} type="submit" class="btn btn-primary btn-sm">
+                {gettext("Enregistrer le calendrier")}
+              </button>
+            </.form>
           </div>
 
           <.empty_state
@@ -429,6 +488,32 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   def handle_event("validate_year", %{"year" => params}, socket) do
     {:noreply,
      assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
+  end
+
+  def handle_event("save_calendar", %{"calendar" => params}, socket) do
+    case Organization.update_calendar(socket.assigns.scope, socket.assigns.active_year, params) do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign(calendar_errors: %{}, calendar_params: %{})
+         |> load_years()
+         |> put_flash(:info, gettext("Calendrier enregistré."))}
+
+      {:error, {:invalid, errors}} ->
+        {:noreply,
+         socket
+         |> assign(calendar_errors: errors, calendar_params: params)
+         |> put_flash(
+           :error,
+           gettext("Calendrier non enregistré : corrigez les dates signalées.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Calendrier non enregistré."))}
+    end
   end
 
   def handle_event("generate_calendar", %{"id" => id}, socket) do
@@ -742,4 +827,28 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     |> AshPhoenix.Form.for_create(:create, as: "subject", scope: scope)
     |> to_form()
   end
+
+  # The submitted value after a rejected save (so the manager's input is kept),
+  # otherwise the stored date.
+  defp calendar_value(params, kind, id, field, stored) do
+    get_in(params, [kind, id, Atom.to_string(field)]) || stored
+  end
+
+  defp calendar_errors(errors, id, field) do
+    for {^field, code} <- Map.get(errors, id, []), do: calendar_error_text(code)
+  end
+
+  defp calendar_error_text(:required), do: gettext("Date obligatoire.")
+  defp calendar_error_text(:invalid_date), do: gettext("Date invalide.")
+  defp calendar_error_text(:end_before_start), do: gettext("La fin est avant le début.")
+  defp calendar_error_text(:outside_year), do: gettext("En dehors de l'année scolaire.")
+
+  defp calendar_error_text(:overlaps_previous),
+    do: gettext("Commence avant la fin de la séquence précédente.")
+
+  defp calendar_error_text(:deadline_before_end),
+    do: gettext("La limite de saisie est avant la fin de la séquence.")
+
+  defp calendar_error_text(:council_before_term_end),
+    do: gettext("Le conseil est avant la fin du trimestre.")
 end

@@ -84,7 +84,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     year = TeacherAssistant.Organization.current_academic_year(scope)
     {:ok, view, _} = live(conn, ~p"/school/settings")
     assert has_element?(view, "#year-calendar-#{year.id}")
-    assert has_element?(view, "#year-calendar-#{year.id} li", "Séquence 6")
+    assert has_element?(view, "#year-calendar-#{year.id}", "Séquence 6")
   end
 
   test "activating a year deactivates the previous one", %{
@@ -344,5 +344,48 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     y2 = Enum.find(years, &(&1.name == "2025-2026"))
     assert y2 != nil
     assert y2.active == false
+  end
+
+  test "head edits a séquence end and its grade-entry deadline", %{conn: conn, scope: scope} do
+    year = Organization.current_academic_year(scope)
+    [s1 | _] = Organization.list_sequences(scope, year)
+    new_end = Date.add(s1.end_date, -2)
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#calendar-form", %{
+      "calendar" => %{
+        "sequences" => %{
+          s1.id => %{
+            "end_date" => Date.to_iso8601(new_end),
+            "entry_deadline" => Date.to_iso8601(s1.end_date)
+          }
+        }
+      }
+    })
+    |> render_submit()
+
+    [u1 | _] = Organization.list_sequences(scope, year)
+    assert u1.end_date == new_end
+    assert u1.entry_deadline == s1.end_date
+    assert render(view) =~ "Calendrier enregistré."
+  end
+
+  test "an overlapping séquence is flagged on its row and nothing is saved", %{
+    conn: conn,
+    scope: scope
+  } do
+    year = Organization.current_academic_year(scope)
+    [s1, s2 | _] = Organization.list_sequences(scope, year)
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+
+    view
+    |> form("#calendar-form", %{
+      "calendar" => %{"sequences" => %{s2.id => %{"start_date" => Date.to_iso8601(s1.end_date)}}}
+    })
+    |> render_submit()
+
+    assert has_element?(view, "#sequence-#{s2.id}", "Commence avant la fin de la séquence précédente.")
+    assert Enum.at(Organization.list_sequences(scope, year), 1).start_date == s2.start_date
   end
 end
