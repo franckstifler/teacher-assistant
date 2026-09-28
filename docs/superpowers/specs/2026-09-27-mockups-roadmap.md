@@ -179,3 +179,54 @@ off.
 
 Out of scope (D2b-2): assessment types and default weights, the default maximum mark, the absent marker and
 absent rule, optional subjects.
+
+## D2b-2 — Marks and absence: assessment types, default max, absent marker and rule, optional subjects (spec)
+
+Mockup: `Paramètres école` → *Évaluations & moyennes* (panel "Types d'évaluation et poids par défaut"; rows
+"Note maximale", "Élève absent à une évaluation") and *Matières & coefficients* ("Matières optionnelles").
+
+Existing code: a teacher creates an assessment by label only (weight 1, max 20, no UI for either). `Mark` has
+only a nullable `score`; the marks page writes `nil` for every blank ("Blank = absent"), and `nil` is left out
+of averages, so "absent", "not entered" and "does not take the subject" are indistinguishable. Every student of
+a class takes every subject assigned to it.
+
+**Default decided with the user (domain doc silent):** an unjustified absence from an assessment counts as 0
+(common Cameroon practice), not the mockup's "Non noté".
+
+Behaviour:
+1. **`Mark.status`** (`:graded | :absent | :excused`, default `:graded`); `score` is required when graded and
+   nil otherwise (check constraint). A blank field means *no mark row* ("not entered"): saving a blank deletes
+   an existing mark. The marks page accepts a number, `abs`/`a` (absent, unjustified), `abj` (excused,
+   justified) or blank; anything else is rejected and nothing in the batch is saved. Fields show `abs`/`abj`;
+   the hint reads "Vide = non saisi · abs = absent · abj = absence justifiée".
+2. **`SchoolProfile.absence_rule`** `:zero | :excluded | :makeup` (default `:zero`) and
+   **`SchoolProfile.default_max_score`** (default 20, > 0). `GradingRules` gains `absence`.
+3. **Computation** (`Marks.subject_average`): graded marks count; `:absent` counts as 0 under `:zero`, is left
+   out under `:excluded` and `:makeup`; `:excused` is always left out. Under `:makeup`, both absent and excused
+   marks flag the student's subject average `makeup_pending` ("Rattrapage attendu") until the teacher replaces
+   the marker with the make-up score on the same assessment.
+4. **`AssessmentType`** (school catalog, admin-edited: `name`, `default_weight` > 0, `position`), seeded at
+   school creation with Interrogation écrite 0.5, Devoir surveillé 1, Travaux pratiques 0.5.
+   `Assessment.assessment_type_id` (nullable). The teacher picks a type when creating an assessment: the label
+   is pre-filled ("Devoir surveillé 2"), the max score defaults to `default_max_score`, and the type's weight is
+   **copied** onto the assessment (changing a type later affects only new assessments). A type used by
+   assessments cannot be deleted, only renamed or re-weighted. Combined-course assessments get the same fields.
+5. **Optional subjects:** `Subject.optional?`, set on the coefficients grid ("Facultative"; switching it off is
+   refused while exemptions exist, naming the classes). `SubjectExemption` (teaching context × student) records
+   who does **not** take an optional subject, so a later-enrolled student takes every subject by default;
+   exemptions are refused on non-optional subjects and for students outside the context's class. The class page
+   shows, per optional subject, an "Élèves concernés (n/N)" checklist (class managers and admins). An exempted
+   student is not listed on that subject's marks page, has no bulletin row for it, and is not counted in its
+   class statistics. This replaces the mockup's school-wide "Matières optionnelles" toggle.
+6. **Évaluations & moyennes page** completes the mockup: the types panel (with its example line), "Note
+   maximale", and the absence rule as pills (Zéro · pratique courante / Non noté / Rattrapage obligatoire).
+7. **Bulletin, results, print:** a subject average with a pending make-up shows "R" with the legend
+   "R : rattrapage attendu"; the class results page shows the count of pending make-ups. Marks pages list
+   pending make-ups under the `:makeup` rule.
+
+Review focus: a crafted mark value ("abx") rejects the whole batch; an exemption on a non-optional subject or
+for a student from another class; a type weight or max score ≤ 0; a teacher saving types or rules; switching
+the rule from `:zero` to `:makeup` leaves no stale zeros (the computation is live).
+
+Out of scope: medical exemption from a non-optional subject (e.g. EPS) — possible later by marking the subject
+optional; linking `abs`/`abj` to the attendance register (attendance justification stays separate).
