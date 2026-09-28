@@ -218,7 +218,10 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     assert shared.per_student["a"].rank == 1 and shared.per_student["b"].rank == 1
 
     strict =
-      Bulletins.compile(students, subjects, %GradingRules{rounding: :quarter, shared_ranks?: false})
+      Bulletins.compile(students, subjects, %GradingRules{
+        rounding: :quarter,
+        shared_ranks?: false
+      })
 
     assert strict.per_student["a"].rank == 1 and strict.per_student["b"].rank == 2
   end
