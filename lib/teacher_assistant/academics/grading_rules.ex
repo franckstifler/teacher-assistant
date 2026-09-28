@@ -30,26 +30,34 @@ defmodule TeacherAssistant.Academics.GradingRules do
   end
 
   @doc "A subject's trimester average from its `{position_in_term, séquence average}` pairs."
-  def trimester_average(sequence_averages, %__MODULE__{} = rules) do
+  def trimester_average(sequence_averages, %__MODULE__{} = rules),
+    do: sequence_averages |> trimester_mean(rules) |> round_average(rules)
+
+  @doc "The trimester average before its final rounding (the rank tie-break)."
+  def trimester_mean(sequence_averages, %__MODULE__{} = rules) do
     sequence_averages
     |> Enum.map(fn {position, avg} -> {avg, sequence_weight(position, rules)} end)
     |> weighted_mean()
-    |> round_average(rules)
   end
 
   @doc "A subject's annual average from `{term_position, [{position_in_term, avg}]}` entries."
-  def annual_average(terms, %__MODULE__{annual: :mean_of_sequences} = rules) do
+  def annual_average(terms, %__MODULE__{} = rules),
+    do: terms |> annual_mean(rules) |> round_average(rules)
+
+  @doc """
+  The annual average before its final rounding (the rank tie-break). Under
+  `:mean_of_trimesters` the trimesters themselves are the rounded trimester averages.
+  """
+  def annual_mean(terms, %__MODULE__{annual: :mean_of_sequences}) do
     terms
     |> Enum.flat_map(fn {_term, seqs} -> Enum.map(seqs, fn {_pos, avg} -> {avg, 1} end) end)
     |> weighted_mean()
-    |> round_average(rules)
   end
 
-  def annual_average(terms, %__MODULE__{annual: :mean_of_trimesters} = rules) do
+  def annual_mean(terms, %__MODULE__{annual: :mean_of_trimesters} = rules) do
     terms
     |> Enum.map(fn {_term, seqs} -> {trimester_average(seqs, rules), 1} end)
     |> weighted_mean()
-    |> round_average(rules)
   end
 
   defp sequence_weight(2, %__MODULE__{trimester: :second_sequence_double}), do: 2

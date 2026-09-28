@@ -487,9 +487,14 @@ defmodule TeacherAssistant.Assessment do
         Enum.map(contexts, fn cid ->
           meta = context_meta(per_seq, cid)
 
-          per_student_avg =
+          per_student_precise =
             Map.new(students, fn s ->
-              {s.id, period_average(component_kind, per_seq, cid, s.id, rules)}
+              {s.id, period_mean(component_kind, per_seq, cid, s.id, rules)}
+            end)
+
+          per_student_avg =
+            Map.new(per_student_precise, fn {id, mean} ->
+              {id, GradingRules.round_average(mean, rules)}
             end)
 
           components =
@@ -504,6 +509,7 @@ defmodule TeacherAssistant.Assessment do
             group: meta.group,
             position: meta.position,
             per_student_avg: per_student_avg,
+            per_student_precise: per_student_precise,
             components: components,
             exempt: meta.exempt,
             makeup_pending:
@@ -523,13 +529,14 @@ defmodule TeacherAssistant.Assessment do
     m[cid]
   end
 
-  # A subject's period average for one student under the school's rules.
+  # A subject's period average for one student under the school's rules, before its
+  # final rounding (kept as the rank tie-break).
   # :sequences = one trimester; :trimesters = the whole year.
-  defp period_average(:sequences, per_seq, cid, sid, rules),
-    do: GradingRules.trimester_average(sequence_pairs(per_seq, cid, sid), rules)
+  defp period_mean(:sequences, per_seq, cid, sid, rules),
+    do: GradingRules.trimester_mean(sequence_pairs(per_seq, cid, sid), rules)
 
-  defp period_average(:trimesters, per_seq, cid, sid, rules),
-    do: GradingRules.annual_average(term_pairs(per_seq, cid, sid), rules)
+  defp period_mean(:trimesters, per_seq, cid, sid, rules),
+    do: GradingRules.annual_mean(term_pairs(per_seq, cid, sid), rules)
 
   # [{position_in_term, avg}] for the séquences of `per_seq`, in order.
   defp sequence_pairs(per_seq, cid, sid) do

@@ -57,6 +57,12 @@ defmodule TeacherAssistant.Academics.Bulletins do
       Enum.map(subject_inputs, fn subj ->
         exempt = Map.get(subj, :exempt, MapSet.new())
 
+        # The unrounded subject average breaks rounding ties in subject ranks.
+        precise =
+          subj
+          |> Map.get(:per_student_precise, subj.per_student_avg)
+          |> Map.new(fn {id, avg} -> {id, if(MapSet.member?(exempt, id), do: nil, else: avg)} end)
+
         %{
           subj
           | per_student_avg:
@@ -69,6 +75,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
               end)
         }
         |> Map.put(:exempt, exempt)
+        |> Map.put(:per_student_precise, precise)
         |> Map.put_new(:makeup_pending, %{})
       end)
 
@@ -88,7 +95,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
           makeup_pending: subj.makeup_pending,
           class_min: min_of(graded),
           class_max: max_of(graded),
-          ranks: subject_ranks(subj.per_student_avg, students, rules)
+          ranks: subject_ranks(subj.per_student_avg, subj.per_student_precise, students, rules)
         }
       end)
       |> Enum.sort_by(&{BulletinGroup.rank(&1.group), &1.position, &1.label})
@@ -206,12 +213,11 @@ defmodule TeacherAssistant.Academics.Bulletins do
     end)
   end
 
-  # Per-subject ranks: the rounded subject average is both the rank key and the tie-break.
-  defp subject_ranks(avg_map, students, rules) do
+  # Per-subject ranks: the rounded subject average, tie-broken by the unrounded one.
+  defp subject_ranks(avg_map, precise_map, students, rules) do
     students
     |> Enum.map(fn s ->
-      avg = avg_map[s.id]
-      %{id: s.id, average: avg, precise: avg, name: Map.get(s, :name, "")}
+      %{id: s.id, average: avg_map[s.id], precise: precise_map[s.id], name: Map.get(s, :name, "")}
     end)
     |> GradingRules.ranks(rules)
   end

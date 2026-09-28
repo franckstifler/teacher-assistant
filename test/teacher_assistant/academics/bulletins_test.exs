@@ -209,7 +209,7 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     assert Decimal.equal?(d.moyenne_generale, Decimal.new("11.76"))
   end
 
-  test "ties created by rounding: shared, or broken by the unrounded average" do
+  test "ties created by rounding: shared, or (class level) broken by the moyenne then the name" do
     students = [%{id: "a", sex: :f, name: "Awa"}, %{id: "b", sex: :m, name: "Bob"}]
     # a: 13.12 → quarter 13.00 ; b: 12.9 → quarter 13.00 ; unrounded a > b
     subjects = [subject("m", "Maths", "1", [{"a", "13.12"}, {"b", "12.9"}])]
@@ -253,5 +253,50 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     row = Enum.find(makeup.per_student["s2"].subjects, &(&1.label == "Maths"))
     assert row.average == nil and row.makeup_pending
     assert makeup.makeup_pending_count == 1
+  end
+
+  test "per-subject ranks break rounding ties by the unrounded average, like the marks summary" do
+    # Zoé 13.12 and Awa 12.9 both round to 13.00 at quarter precision; names sort
+    # the opposite way to the unrounded averages, so a name tie-break would flip them.
+    students = [%{id: "z", sex: :f, name: "Zoé"}, %{id: "a", sex: :f, name: "Awa"}]
+    subjects = [subject("m", "Maths", "1", [{"z", "13.12"}, {"a", "12.9"}])]
+    rules = %GradingRules{rounding: :quarter, shared_ranks?: false}
+
+    r = Bulletins.compile(students, subjects, rules)
+    [z_row] = r.per_student["z"].subjects
+    [a_row] = r.per_student["a"].subjects
+    assert z_row.subject_rank == 1 and a_row.subject_rank == 2
+
+    summary =
+      TeacherAssistant.Academics.Marks.summarize(
+        students,
+        [%{id: "m-a", weight: Decimal.new(1), max_score: Decimal.new(20)}],
+        [
+          %{assessment_id: "m-a", student_id: "z", score: Decimal.new("13.12")},
+          %{assessment_id: "m-a", student_id: "a", score: Decimal.new("12.9")}
+        ],
+        rules
+      )
+
+    assert summary.per_student["z"].rank == z_row.subject_rank
+    assert summary.per_student["a"].rank == a_row.subject_rank
+  end
+
+  test "period results keep the unrounded subject average for the tie-break" do
+    students = [%{id: "z", sex: :f, name: "Zoé"}, %{id: "a", sex: :f, name: "Awa"}]
+    rules = %GradingRules{rounding: :quarter, shared_ranks?: false}
+
+    input = %{
+      context_id: "m",
+      label: "Maths",
+      coefficient: Decimal.new(1),
+      per_student_avg: %{"z" => Decimal.new(13), "a" => Decimal.new(13)},
+      per_student_precise: %{"z" => Decimal.new("13.06"), "a" => Decimal.new("12.94")},
+      components: nil
+    }
+
+    r = Bulletins.aggregate(students, [input], rules)
+    assert [%{subject_rank: 1}] = r.per_student["z"].subjects
+    assert [%{subject_rank: 2}] = r.per_student["a"].subjects
   end
 end

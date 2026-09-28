@@ -87,4 +87,18 @@ defmodule TeacherAssistant.Academics.GradingRulesTest do
     assert GradingRules.ranks(entries, rules(shared_ranks?: false)) ==
              %{"b" => 1, "a" => 2, "d" => 3, "c" => 4}
   end
+
+  test "unrounded period means are available for tie-breaks" do
+    double = rules(trimester: :second_sequence_double, rounding: :quarter)
+
+    assert Decimal.equal?(
+             GradingRules.trimester_mean([{1, d("12.1")}, {2, d(14)}], double),
+             Decimal.div(d("40.1"), 3)
+           )
+
+    by_terms = rules(annual: :mean_of_trimesters, rounding: :quarter)
+    terms = [{1, [{1, d(10)}, {2, d(11)}]}, {2, [{1, d(14)}, {2, nil}]}]
+    # T1 = 10.5 (quarter) ; T2 = 14 → unrounded annual 12.25
+    assert Decimal.equal?(GradingRules.annual_mean(terms, by_terms), d("12.25"))
+  end
 end
