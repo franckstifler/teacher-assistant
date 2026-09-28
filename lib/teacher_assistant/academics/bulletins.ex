@@ -4,14 +4,14 @@ defmodule TeacherAssistant.Academics.Bulletins do
   No database access — operates on plain maps, like `Academics.Marks`. Reuses
   `Marks.subject_average/2` for the per-subject figure so the two never drift.
   """
-  alias TeacherAssistant.Academics.{BulletinGroup, Marks}
+  alias TeacherAssistant.Academics.{BulletinGroup, GradingRules, Marks}
 
   @pass Decimal.new(10)
   @felicitations Decimal.new(16)
   @encouragements Decimal.new(14)
   @tableau Decimal.new(12)
 
-  def compile(students, subjects) do
+  def compile(students, subjects, rules \\ %GradingRules{}) do
     inputs =
       Enum.map(subjects, fn subj ->
         per_student_avg =
@@ -31,7 +31,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
         }
       end)
 
-    aggregate(students, inputs)
+    aggregate(students, inputs, rules)
   end
 
   @doc """
@@ -40,7 +40,20 @@ defmodule TeacherAssistant.Academics.Bulletins do
   arithmetic never drifts. `subject_inputs` carry `per_student_avg` (%{id => Decimal | nil})
   and optional per-student `components` for the bulletin breakdown.
   """
-  def aggregate(students, subject_inputs) do
+  def aggregate(students, subject_inputs, rules \\ %GradingRules{}) do
+    # Round every subject average first: note×coef, totals and the moyenne are
+    # computed from the figures the bulletin prints, so it adds up by hand.
+    subject_inputs =
+      Enum.map(subject_inputs, fn subj ->
+        %{
+          subj
+          | per_student_avg:
+              Map.new(subj.per_student_avg, fn {id, avg} ->
+                {id, GradingRules.round_average(avg, rules)}
+              end)
+        }
+      end)
+
     subject_views =
       Enum.map(subject_inputs, fn subj ->
         graded = subj.per_student_avg |> Map.values() |> Enum.reject(&is_nil/1)
@@ -55,7 +68,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
           position: Map.get(subj, :position, 0),
           class_min: min_of(graded),
           class_max: max_of(graded),
-          ranks: rank_map(subj.per_student_avg)
+          ranks: subject_ranks(subj.per_student_avg, students, rules)
         }
       end)
       |> Enum.sort_by(&{BulletinGroup.rank(&1.group), &1.position, &1.label})
@@ -84,26 +97,44 @@ defmodule TeacherAssistant.Academics.Bulletins do
         total_coef = sum(Enum.map(graded_rows, & &1.coefficient))
         total_points = sum(Enum.map(graded_rows, & &1.note_x_coef))
 
-        moy =
+        precise =
           if Decimal.equal?(total_coef, Decimal.new(0)),
             do: nil,
             else: Decimal.div(total_points, total_coef)
 
+        moy = GradingRules.round_average(precise, rules)
+
         {s.id,
          %{
            subjects: rows,
-           groups: group_subtotals(rows),
+           groups: group_subtotals(rows, rules),
            total_points: if(graded_rows == [], do: nil, else: total_points),
            total_coef: total_coef,
            moyenne_generale: moy,
            mention: Marks.mention(moy),
+           precise_moyenne: precise,
            rank: nil
          }}
       end)
 
-    moy_map = Map.new(per_student_core, fn {id, d} -> {id, d.moyenne_generale} end)
-    class_ranks = rank_map(moy_map)
-    per_student = Map.new(per_student_core, fn {id, d} -> {id, %{d | rank: class_ranks[id]}} end)
+    class_ranks =
+      students
+      |> Enum.map(fn s ->
+        d = per_student_core[s.id]
+
+        %{
+          id: s.id,
+          average: d.moyenne_generale,
+          precise: d.precise_moyenne,
+          name: Map.get(s, :name, "")
+        }
+      end)
+      |> GradingRules.ranks(rules)
+
+    per_student =
+      Map.new(per_student_core, fn {id, d} ->
+        {id, d |> Map.delete(:precise_moyenne) |> Map.put(:rank, class_ranks[id])}
+      end)
 
     graded =
       per_student |> Map.values() |> Enum.map(& &1.moyenne_generale) |> Enum.reject(&is_nil/1)
@@ -122,7 +153,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
   end
 
   # Rows are already in bulletin order, so consecutive rows share a group.
-  defp group_subtotals(rows) do
+  defp group_subtotals(rows, rules) do
     rows
     |> Enum.chunk_by(& &1.group)
     |> Enum.map(fn [%{group: group} | _] = group_rows ->
@@ -136,35 +167,25 @@ defmodule TeacherAssistant.Academics.Bulletins do
         total_coef: total_coef,
         total_points: if(graded == [], do: nil, else: total_points),
         average:
-          if(Decimal.equal?(total_coef, Decimal.new(0)),
-            do: nil,
-            else: Decimal.div(total_points, total_coef)
+          GradingRules.round_average(
+            if(Decimal.equal?(total_coef, Decimal.new(0)),
+              do: nil,
+              else: Decimal.div(total_points, total_coef)
+            ),
+            rules
           )
       }
     end)
   end
 
-  # --- ex-aequo ranking over a %{id => Decimal | nil} map ---
-  defp rank_map(avg_map) do
-    ordered =
-      avg_map
-      |> Enum.reject(fn {_id, a} -> is_nil(a) end)
-      |> Enum.sort_by(fn {_id, a} -> a end, &(Decimal.compare(&1, &2) != :lt))
-
-    {ranks, _} =
-      Enum.reduce(ordered, {%{}, nil}, fn {id, a}, {acc, prev} ->
-        position = map_size(acc) + 1
-
-        rank =
-          case prev do
-            {pa, pr} -> if Decimal.equal?(pa, a), do: pr, else: position
-            nil -> position
-          end
-
-        {Map.put(acc, id, rank), {a, rank}}
-      end)
-
-    ranks
+  # Per-subject ranks: the rounded subject average is both the rank key and the tie-break.
+  defp subject_ranks(avg_map, students, rules) do
+    students
+    |> Enum.map(fn s ->
+      avg = avg_map[s.id]
+      %{id: s.id, average: avg, precise: avg, name: Map.get(s, :name, "")}
+    end)
+    |> GradingRules.ranks(rules)
   end
 
   defp distinctions(students, per_student) do

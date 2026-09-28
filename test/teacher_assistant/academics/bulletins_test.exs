@@ -1,6 +1,6 @@
 defmodule TeacherAssistant.Academics.BulletinsTest do
   use ExUnit.Case, async: true
-  alias TeacherAssistant.Academics.Bulletins
+  alias TeacherAssistant.Academics.{Bulletins, GradingRules}
 
   # helper: one subject with a /20 mark per student (max 20, weight 1)
   defp subject(context_id, label, coef, marks) do
@@ -190,5 +190,36 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     students = [%{id: "s1", sex: :f}]
     d = Bulletins.compile(students, [subject("x", "X", "1", [{"s1", nil}])]).per_student["s1"]
     assert [%{group: :g3_autres, average: nil, total_points: nil}] = d.groups
+  end
+
+  test "with rules, subject averages are rounded first and the bulletin adds up" do
+    students = [%{id: "s1", sex: :m, name: "Awa"}]
+    # Maths: 12.345/20 → 12.35 ; EPS 10
+    subjects = [
+      subject("maths", "Maths", "3", [{"s1", "12.345"}]),
+      subject("eps", "EPS", "1", [{"s1", "10"}])
+    ]
+
+    rules = %GradingRules{rounding: :hundredth}
+    d = Bulletins.compile(students, subjects, rules).per_student["s1"]
+    maths = Enum.find(d.subjects, &(&1.label == "Maths"))
+    assert Decimal.equal?(maths.average, Decimal.new("12.35"))
+    assert Decimal.equal?(maths.note_x_coef, Decimal.new("37.05"))
+    # (37.05 + 10) / 4 = 11.7625 → 11.76
+    assert Decimal.equal?(d.moyenne_generale, Decimal.new("11.76"))
+  end
+
+  test "ties created by rounding: shared, or broken by the unrounded average" do
+    students = [%{id: "a", sex: :f, name: "Awa"}, %{id: "b", sex: :m, name: "Bob"}]
+    # a: 13.12 → quarter 13.00 ; b: 12.9 → quarter 13.00 ; unrounded a > b
+    subjects = [subject("m", "Maths", "1", [{"a", "13.12"}, {"b", "12.9"}])]
+
+    shared = Bulletins.compile(students, subjects, %GradingRules{rounding: :quarter})
+    assert shared.per_student["a"].rank == 1 and shared.per_student["b"].rank == 1
+
+    strict =
+      Bulletins.compile(students, subjects, %GradingRules{rounding: :quarter, shared_ranks?: false})
+
+    assert strict.per_student["a"].rank == 1 and strict.per_student["b"].rank == 2
   end
 end

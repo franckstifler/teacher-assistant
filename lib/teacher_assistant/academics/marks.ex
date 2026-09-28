@@ -4,6 +4,8 @@ defmodule TeacherAssistant.Academics.Marks do
   No database access — operates on plain maps, like `Academics.Coverage`.
   """
 
+  alias TeacherAssistant.Academics.GradingRules
+
   @pass Decimal.new(10)
   @scale Decimal.new(20)
 
@@ -27,21 +29,33 @@ defmodule TeacherAssistant.Academics.Marks do
     mean(graded)
   end
 
-  @doc "Full per-séquence subject summary. See module docs / plan for the shape."
-  def summarize(students, assessments, marks) do
+  @doc "Full per-séquence subject summary, under the school's `GradingRules`."
+  def summarize(students, assessments, marks, rules \\ %GradingRules{}) do
     weights = Map.new(assessments, fn a -> {a.id, a} end)
+    marks_by_student = Enum.group_by(marks, & &1.student_id)
 
-    marks_by_student =
-      marks
-      |> Enum.group_by(& &1.student_id)
+    precise =
+      Map.new(students, fn s ->
+        {s.id, subject_average(Map.get(marks_by_student, s.id, []), weights)}
+      end)
+
+    ranks =
+      students
+      |> Enum.map(fn s ->
+        %{
+          id: s.id,
+          average: GradingRules.round_average(precise[s.id], rules),
+          precise: precise[s.id],
+          name: Map.get(s, :name, "")
+        }
+      end)
+      |> GradingRules.ranks(rules)
 
     per_student =
       Map.new(students, fn s ->
-        avg = subject_average(Map.get(marks_by_student, s.id, []), weights)
-        {s.id, %{average: avg, mention: mention(avg), rank: nil}}
+        avg = GradingRules.round_average(precise[s.id], rules)
+        {s.id, %{average: avg, mention: mention(avg), rank: ranks[s.id]}}
       end)
-
-    per_student = assign_ranks(per_student)
 
     graded = graded_averages(students, per_student)
 
@@ -90,35 +104,6 @@ defmodule TeacherAssistant.Academics.Marks do
         # guards against a degenerate all-zero-weight assessment set.
         if Decimal.equal?(weight, Decimal.new(0)), do: nil, else: Decimal.div(total, weight)
     end
-  end
-
-  # --- ranking: sort graded desc, ties share a rank (ex-aequo) ---
-
-  defp assign_ranks(per_student) do
-    ranked =
-      per_student
-      |> Enum.filter(fn {_id, %{average: a}} -> not is_nil(a) end)
-      |> Enum.sort_by(fn {_id, %{average: a}} -> a end, &(Decimal.compare(&1, &2) != :lt))
-
-    {ranks, _} =
-      Enum.reduce(ranked, {%{}, nil}, fn {id, %{average: a}}, {acc, prev} ->
-        position = map_size(acc) + 1
-
-        rank =
-          case prev do
-            {prev_avg, prev_rank} ->
-              if Decimal.equal?(prev_avg, a), do: prev_rank, else: position
-
-            nil ->
-              position
-          end
-
-        {Map.put(acc, id, rank), {a, rank}}
-      end)
-
-    Map.new(per_student, fn {id, data} ->
-      {id, %{data | rank: Map.get(ranks, id)}}
-    end)
   end
 
   # --- aggregates ---
