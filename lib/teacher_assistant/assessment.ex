@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Assessment do
   # calls its own domain functions bare, so there is never a bare
   # `Assessment.<fn>` that could rebind to the wrong module.
   alias TeacherAssistant.Academics.{
+    AbsenceRule,
     AcademicYear,
     AnnualAverageRule,
     Assessment,
@@ -240,14 +241,16 @@ defmodule TeacherAssistant.Assessment do
       trimester: profile.trimester_average_rule,
       annual: profile.annual_average_rule,
       rounding: profile.average_rounding,
-      shared_ranks?: profile.shared_ranks?
+      shared_ranks?: profile.shared_ranks?,
+      absence: profile.absence_rule
     }
   end
 
   @rule_fields %{
     "trimester_average_rule" => {:trimester_average_rule, TrimesterAverageRule},
     "annual_average_rule" => {:annual_average_rule, AnnualAverageRule},
-    "average_rounding" => {:average_rounding, AverageRounding}
+    "average_rounding" => {:average_rounding, AverageRounding},
+    "absence_rule" => {:absence_rule, AbsenceRule}
   }
 
   @doc """
@@ -260,6 +263,19 @@ defmodule TeacherAssistant.Assessment do
     with {:ok, attrs} <- parse_rule_params(params),
          {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
       TeacherAssistant.Accounts.update_school_profile(profile, attrs, scope: scope)
+    end
+  end
+
+  @doc "Sets the school's default maximum mark for new assessments (a positive number)."
+  def update_default_max_score(%Scope{} = scope, value) when is_binary(value) do
+    with {:ok, max} <- TeacherAssistant.Curriculum.parse_coefficient(value),
+         {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      TeacherAssistant.Accounts.update_school_profile(profile, %{default_max_score: max},
+        scope: scope
+      )
+    else
+      :error -> {:error, :invalid_max}
+      other -> other
     end
   end
 

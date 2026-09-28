@@ -14,7 +14,8 @@ defmodule TeacherAssistant.Academics.GradingSettingsTest do
              trimester: :mean_of_sequences,
              annual: :mean_of_sequences,
              rounding: :hundredth,
-             shared_ranks?: true
+             shared_ranks?: true,
+             absence: :zero
            }
   end
 
@@ -46,5 +47,23 @@ defmodule TeacherAssistant.Academics.GradingSettingsTest do
   test "a teacher cannot change the rules", %{scope: scope} do
     teacher = TeacherFixtures.member_scope_fixture(scope)
     assert_forbidden(Assessment.update_grading_rules(teacher, %{"average_rounding" => "tenth"}))
+  end
+
+  test "absence rule defaults to zero and can be changed", %{scope: scope} do
+    assert Assessment.grading_rules(scope).absence == :zero
+    {:ok, _} = Assessment.update_grading_rules(scope, %{"absence_rule" => "makeup"})
+    assert Assessment.grading_rules(scope).absence == :makeup
+
+    assert {:error, :invalid_rule} =
+             Assessment.update_grading_rules(scope, %{"absence_rule" => "ignore"})
+  end
+
+  test "the default maximum mark must be positive", %{scope: scope} do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    assert Decimal.equal?(profile.default_max_score, 20)
+    assert {:ok, %{default_max_score: max}} = Assessment.update_default_max_score(scope, "10")
+    assert Decimal.equal?(max, 10)
+    assert {:error, :invalid_max} = Assessment.update_default_max_score(scope, "0")
+    assert {:error, :invalid_max} = Assessment.update_default_max_score(scope, "abc")
   end
 end

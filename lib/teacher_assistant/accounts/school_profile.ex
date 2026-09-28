@@ -15,6 +15,12 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       reference :workspace, on_delete: :delete, index?: true
       reference :owner_user, index?: true
     end
+
+    check_constraints do
+      check_constraint :default_max_score, "school_profiles_default_max_positive_check",
+        check: "default_max_score > 0",
+        message: "must be positive"
+    end
   end
 
   actions do
@@ -75,7 +81,9 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :trimester_average_rule,
         :annual_average_rule,
         :average_rounding,
-        :shared_ranks?
+        :shared_ranks?,
+        :absence_rule,
+        :default_max_score
       ]
 
       change fn changeset, _context ->
@@ -178,6 +186,16 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       public?: true
 
     attribute :shared_ranks?, :boolean, allow_nil?: false, default: true, public?: true
+
+    attribute :absence_rule, TeacherAssistant.Academics.AbsenceRule,
+      allow_nil?: false,
+      default: :zero,
+      public?: true
+
+    attribute :default_max_score, :decimal,
+      allow_nil?: false,
+      default: Decimal.new(20),
+      public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,
