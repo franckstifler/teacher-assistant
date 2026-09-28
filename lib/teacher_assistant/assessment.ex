@@ -1,8 +1,6 @@
 defmodule TeacherAssistant.Assessment do
   use Ash.Domain, otp_app: :teacher_assistant
 
-  require Ash.Query
-
   # NAME COLLISION: this domain module is `TeacherAssistant.Assessment`, and
   # the resource is `TeacherAssistant.Academics.Assessment`. Inside this module
   # the short alias `Assessment` is bound to the RESOURCE (below); this module
@@ -371,8 +369,14 @@ defmodule TeacherAssistant.Assessment do
           scope
           |> list_marks_for_context_sequence(tc, seq)
           |> Enum.map(fn m ->
-            %{student_id: m.student_id, assessment_id: m.assessment_id, score: m.score}
-          end)
+            %{
+              student_id: m.student_id,
+              assessment_id: m.assessment_id,
+              score: m.score,
+              status: m.status
+            }
+          end),
+        exempt: TeacherAssistant.Curriculum.exempt_student_ids(scope, tc)
       }
     end)
   end
@@ -440,15 +444,22 @@ defmodule TeacherAssistant.Assessment do
           scope
           |> class_subjects(cg, seq)
           |> Map.new(fn subj ->
+            marks_by_student = Enum.group_by(subj.marks, & &1.student_id)
+
             psa =
               Map.new(students, fn s ->
-                sm = Enum.filter(subj.marks, &(&1.student_id == s.id))
+                sm = Map.get(marks_by_student, s.id, [])
 
                 {s.id,
                  GradingRules.round_average(
-                   Marks.subject_average(sm, subj.assessments_by_id),
+                   Marks.subject_average(sm, subj.assessments_by_id, rules),
                    rules
                  )}
+              end)
+
+            makeup =
+              Map.new(students, fn s ->
+                {s.id, Marks.makeup_pending?(Map.get(marks_by_student, s.id, []), rules)}
               end)
 
             {subj.context_id,
@@ -457,7 +468,9 @@ defmodule TeacherAssistant.Assessment do
                coefficient: subj.coefficient,
                group: subj.group,
                position: subj.position,
-               per_student_avg: psa
+               per_student_avg: psa,
+               makeup: makeup,
+               exempt: subj.exempt
              }}
           end)
 
@@ -491,7 +504,13 @@ defmodule TeacherAssistant.Assessment do
             group: meta.group,
             position: meta.position,
             per_student_avg: per_student_avg,
-            components: components
+            components: components,
+            exempt: meta.exempt,
+            makeup_pending:
+              Map.new(students, fn s ->
+                {s.id,
+                 Enum.any?(per_seq, fn {_seq, m} -> m[cid] != nil and m[cid].makeup[s.id] end)}
+              end)
           }
         end)
 

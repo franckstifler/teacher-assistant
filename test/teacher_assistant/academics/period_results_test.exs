@@ -225,4 +225,24 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
     assert Decimal.equal?(r.per_student[st.id].moyenne_generale, Decimal.new("12.75"))
   end
+
+  test "an absence counts 0 by default and is flagged under the make-up rule", ctx do
+    %{year: year, cg: cg, sequences: [s1 | _], student: st, grade: grade, scope: scope} = ctx
+    grade.(s1, 16)
+    [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
+
+    {:ok, a2} =
+      Assessment.create_assessment(scope, tc, s1, %{label: "D2", weight: Decimal.new(1), max_score: Decimal.new(20)})
+
+    :ok = Assessment.upsert_marks(scope, a2, [%{student_id: st.id, score: nil, status: :absent}])
+
+    r = Assessment.class_results_for_period(scope, cg, {:sequence, s1})
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, 8)
+
+    {:ok, _} = Assessment.update_grading_rules(scope, %{"absence_rule" => "makeup"})
+    r = Assessment.class_results_for_period(scope, cg, {:sequence, s1})
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, 16)
+    assert [%{makeup_pending: true}] = r.per_student[st.id].subjects
+    _ = year
+  end
 end

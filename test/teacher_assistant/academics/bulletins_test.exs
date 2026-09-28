@@ -225,4 +225,28 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
 
     assert strict.per_student["a"].rank == 1 and strict.per_student["b"].rank == 2
   end
+
+  test "the absence rule, make-up flags and exemptions reach the bulletin" do
+    students = [%{id: "s1", sex: :f, name: "Awa"}, %{id: "s2", sex: :m, name: "Bob"}]
+
+    maths = %{
+      subject("maths", "Maths", "2", [{"s1", "14"}])
+      | marks: [
+          %{student_id: "s1", assessment_id: "maths-a", score: Decimal.new(14), status: :graded},
+          %{student_id: "s2", assessment_id: "maths-a", score: nil, status: :absent}
+        ]
+    }
+
+    esp = subject("esp", "Espagnol", "1", [{"s1", "10"}]) |> Map.put(:exempt, MapSet.new(["s2"]))
+
+    zero = Bulletins.compile(students, [maths, esp], %GradingRules{absence: :zero})
+    assert Decimal.equal?(Enum.find(zero.per_student["s2"].subjects, &(&1.label == "Maths")).average, 0)
+    refute Enum.any?(zero.per_student["s2"].subjects, &(&1.label == "Espagnol"))
+    assert zero.makeup_pending_count == 0
+
+    makeup = Bulletins.compile(students, [maths, esp], %GradingRules{absence: :makeup})
+    row = Enum.find(makeup.per_student["s2"].subjects, &(&1.label == "Maths"))
+    assert row.average == nil and row.makeup_pending
+    assert makeup.makeup_pending_count == 1
+  end
 end

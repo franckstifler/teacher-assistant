@@ -14,10 +14,17 @@ defmodule TeacherAssistant.Academics.Bulletins do
   def compile(students, subjects, rules \\ %GradingRules{}) do
     inputs =
       Enum.map(subjects, fn subj ->
+        marks_by_student = Enum.group_by(subj.marks, & &1.student_id)
+
         per_student_avg =
           Map.new(students, fn s ->
-            student_marks = Enum.filter(subj.marks, &(&1.student_id == s.id))
-            {s.id, Marks.subject_average(student_marks, subj.assessments_by_id)}
+            student_marks = Map.get(marks_by_student, s.id, [])
+            {s.id, Marks.subject_average(student_marks, subj.assessments_by_id, rules)}
+          end)
+
+        makeup_pending =
+          Map.new(students, fn s ->
+            {s.id, Marks.makeup_pending?(Map.get(marks_by_student, s.id, []), rules)}
           end)
 
         %{
@@ -27,7 +34,9 @@ defmodule TeacherAssistant.Academics.Bulletins do
           group: Map.get(subj, :group, :g3_autres),
           position: Map.get(subj, :position, 0),
           per_student_avg: per_student_avg,
-          components: nil
+          components: nil,
+          exempt: Map.get(subj, :exempt, MapSet.new()),
+          makeup_pending: makeup_pending
         }
       end)
 
@@ -43,15 +52,24 @@ defmodule TeacherAssistant.Academics.Bulletins do
   def aggregate(students, subject_inputs, rules \\ %GradingRules{}) do
     # Round every subject average first: note×coef, totals and the moyenne are
     # computed from the figures the bulletin prints, so it adds up by hand.
+    # Exempt students have no average in a subject they do not take.
     subject_inputs =
       Enum.map(subject_inputs, fn subj ->
+        exempt = Map.get(subj, :exempt, MapSet.new())
+
         %{
           subj
           | per_student_avg:
               Map.new(subj.per_student_avg, fn {id, avg} ->
-                {id, GradingRules.round_average(avg, rules)}
+                {id,
+                 if(MapSet.member?(exempt, id),
+                   do: nil,
+                   else: GradingRules.round_average(avg, rules)
+                 )}
               end)
         }
+        |> Map.put(:exempt, exempt)
+        |> Map.put_new(:makeup_pending, %{})
       end)
 
     subject_views =
@@ -66,6 +84,8 @@ defmodule TeacherAssistant.Academics.Bulletins do
           components: subj.components,
           group: Map.get(subj, :group, :g3_autres),
           position: Map.get(subj, :position, 0),
+          exempt: subj.exempt,
+          makeup_pending: subj.makeup_pending,
           class_min: min_of(graded),
           class_max: max_of(graded),
           ranks: subject_ranks(subj.per_student_avg, students, rules)
@@ -76,7 +96,9 @@ defmodule TeacherAssistant.Academics.Bulletins do
     per_student_core =
       Map.new(students, fn s ->
         rows =
-          Enum.map(subject_views, fn sv ->
+          subject_views
+          |> Enum.reject(&MapSet.member?(&1.exempt, s.id))
+          |> Enum.map(fn sv ->
             avg = sv.per_student_avg[s.id]
 
             %{
@@ -89,7 +111,8 @@ defmodule TeacherAssistant.Academics.Bulletins do
               class_min: sv.class_min,
               class_max: sv.class_max,
               components: sv.components && sv.components[s.id],
-              group: sv.group
+              group: sv.group,
+              makeup_pending: Map.get(sv.makeup_pending, s.id, false)
             }
           end)
 
@@ -148,7 +171,12 @@ defmodule TeacherAssistant.Academics.Bulletins do
       highest: max_of(graded),
       lowest: min_of(graded),
       by_sex: %{m: sex_stats(students, per_student, :m), f: sex_stats(students, per_student, :f)},
-      distinctions: distinctions(students, per_student)
+      distinctions: distinctions(students, per_student),
+      makeup_pending_count:
+        per_student
+        |> Map.values()
+        |> Enum.flat_map(& &1.subjects)
+        |> Enum.count(& &1.makeup_pending)
     }
   end
 
