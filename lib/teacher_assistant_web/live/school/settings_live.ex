@@ -211,6 +211,33 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             </button>
           </div>
 
+          <.empty_state
+            :if={@years == []}
+            icon="hero-calendar"
+            title={gettext("No academic years yet")}
+          />
+
+          <div class="ta-leaf space-y-3">
+            <h3 class="text-sm font-semibold">{gettext("Create an academic year")}</h3>
+            <.form
+              for={@year_form}
+              id="year-form"
+              phx-change="validate_year"
+              phx-submit="create_year"
+              class="space-y-2"
+            >
+              <div class="grid gap-2 sm:grid-cols-3">
+                <.input field={@year_form[:name]} label={gettext("Name")} />
+                <.input field={@year_form[:start_date]} type="date" label={gettext("Start date")} />
+                <.input field={@year_form[:end_date]} type="date" label={gettext("End date")} />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Create")}</button>
+            </.form>
+          </div>
+        </section>
+
+        <%!-- Every member sees the calendar; only calendar managers can edit it. --%>
+        <section :if={@active_year && @active_sequences != []} id="calendrier" class="space-y-4">
           <div
             :if={@active_year && @active_sequences != []}
             id={"year-calendar-#{@active_year.id}"}
@@ -301,30 +328,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               <button :if={@can_manage_calendar?} type="submit" class="btn btn-primary btn-sm">
                 {gettext("Enregistrer le calendrier")}
               </button>
-            </.form>
-          </div>
-
-          <.empty_state
-            :if={@years == []}
-            icon="hero-calendar"
-            title={gettext("No academic years yet")}
-          />
-
-          <div class="ta-leaf space-y-3">
-            <h3 class="text-sm font-semibold">{gettext("Create an academic year")}</h3>
-            <.form
-              for={@year_form}
-              id="year-form"
-              phx-change="validate_year"
-              phx-submit="create_year"
-              class="space-y-2"
-            >
-              <div class="grid gap-2 sm:grid-cols-3">
-                <.input field={@year_form[:name]} label={gettext("Name")} />
-                <.input field={@year_form[:start_date]} type="date" label={gettext("Start date")} />
-                <.input field={@year_form[:end_date]} type="date" label={gettext("End date")} />
-              </div>
-              <button type="submit" class="btn btn-primary btn-sm">{gettext("Create")}</button>
             </.form>
           </div>
         </section>

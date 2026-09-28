@@ -409,4 +409,31 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert render(view) =~ "Matière utilisée par des classes : désactivez-la plutôt."
     assert Enum.any?(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.id == maths.id))
   end
+
+  test "a teacher sees the calendar read-only", %{school: school, scope: scope, actor: head} do
+    teacher = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(school_scope(head, school), %{
+        email: to_string(teacher.email),
+        roles: [:teacher]
+      })
+
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: teacher}, inv.token)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, teacher.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    year = Organization.current_academic_year(scope)
+    [s1 | _] = Organization.list_sequences(scope, year)
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+
+    assert has_element?(view, "#year-calendar-#{year.id}", "Séquence 1")
+    assert has_element?(view, "input[name='calendar[sequences][#{s1.id}][end_date]'][disabled]")
+    refute has_element?(view, "#calendar-form button[type=submit]")
+    refute has_element?(view, "#year-form")
+  end
 end
