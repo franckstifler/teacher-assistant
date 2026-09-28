@@ -36,7 +36,7 @@ defmodule TeacherAssistant.Academics.Marks do
 
     precise =
       Map.new(students, fn s ->
-        {s.id, subject_average(Map.get(marks_by_student, s.id, []), weights)}
+        {s.id, subject_average(Map.get(marks_by_student, s.id, []), weights, rules)}
       end)
 
     ranks =

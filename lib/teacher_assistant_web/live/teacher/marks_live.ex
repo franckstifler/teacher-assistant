@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.CombinedCourse
+  alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
   alias TeacherAssistant.Organization
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
@@ -31,7 +31,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       seq = pick(sequences, params["seq"])
       assessments = if seq, do: Assessment.list_assessments(scope, ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
-      students = Enrollment.list_students(scope, cg)
+      exempt = Curriculum.exempt_student_ids(scope, ctx)
+
+      students =
+        scope |> Enrollment.list_students(cg) |> Enum.reject(&MapSet.member?(exempt, &1.id))
 
       {:ok,
        socket
@@ -46,7 +49,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:scores, existing_scores(scope, assessment))
        |> assign(:unsaved, %{})
        |> assign(:sibling_scores, sibling_scores(scope, ctx, seq))
-       |> assign(:new_assessment_form, solo_assessment_form(scope, ctx, seq))}
+       |> assign_assessment_defaults(scope)
+       |> assign(:new_assessment_form, solo_assessment_form(scope, ctx, seq))
+       |> assign_pending()}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
@@ -66,7 +71,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         seq = pick(sequences, params["seq"])
         combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
         selected = pick(combined, params["assessment"])
-        groups = Curriculum.list_union_students(socket.assigns.current_scope, course)
+
+        groups =
+          scope
+          |> Curriculum.list_union_students(course)
+          |> Enum.map(fn group ->
+            exempt = Curriculum.exempt_student_ids(scope, group.teaching_context)
+            %{group | students: Enum.reject(group.students, &MapSet.member?(exempt, &1.id))}
+          end)
 
         {:ok,
          socket
@@ -81,11 +93,89 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:selected, selected)
          |> assign(:scores, combined_existing_scores(socket.assigns.current_scope, selected))
          |> assign(:unsaved, %{})
-         |> assign(:new_assessment_form, assessment_form(socket.assigns.current_scope))}
+         |> assign_assessment_defaults(scope)
+         |> assign(:new_assessment_form, assessment_form(socket.assigns.current_scope))
+         |> assign_pending()}
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/school")}
     end
+  end
+
+  # School assessment types and default maximum for the "new assessment" form.
+  defp assign_assessment_defaults(socket, scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    assign(socket,
+      assessment_types: Assessment.list_assessment_types(scope),
+      default_max: profile.default_max_score
+    )
+  end
+
+  # Students whose make-up is still expected on the selected assessment (make-up rule).
+  defp assign_pending(socket) do
+    %{current_scope: scope, grading_rules: rules} = socket.assigns
+
+    {students, assessments} =
+      case socket.assigns[:course] do
+        %CombinedCourse{} ->
+          selected = socket.assigns.selected
+
+          {Enum.flat_map(socket.assigns.groups, & &1.students),
+           if(selected,
+             do: selected.by_class_group_id |> Map.values() |> Enum.uniq_by(& &1.id),
+             else: []
+           )}
+
+        _ ->
+          assessment = socket.assigns.assessment
+          {socket.assigns.students, if(assessment, do: [assessment], else: [])}
+      end
+
+    by_student =
+      assessments
+      |> Enum.flat_map(&Assessment.list_marks(scope, &1))
+      |> Enum.group_by(& &1.student_id)
+
+    pending =
+      for s <- students,
+          Marks.makeup_pending?(Map.get(by_student, s.id, []), rules),
+          do: s.full_name
+
+    assign(socket, :pending_makeups, pending)
+  end
+
+  # "New assessment" params: drop an empty type, name it after its type when the
+  # label is blank ("Devoir surveillé 2"), and keep a valid maximum (otherwise the
+  # school default applies).
+  defp normalize_assessment_params(params, socket) do
+    type = Enum.find(socket.assigns.assessment_types, &(&1.id == params["assessment_type_id"]))
+
+    label =
+      case {String.trim(params["label"] || ""), type} do
+        {"", %{} = type} -> "#{type.name} #{next_type_number(socket, type)}"
+        {label, _} -> label
+      end
+
+    max =
+      case TeacherAssistant.Curriculum.parse_coefficient(params["max_score"] || "") do
+        {:ok, dec} -> dec
+        :error -> nil
+      end
+
+    %{"label" => label}
+    |> then(&if(type, do: Map.put(&1, "assessment_type_id", type.id), else: &1))
+    |> then(&if(max, do: Map.put(&1, "max_score", max), else: &1))
+  end
+
+  defp next_type_number(socket, type) do
+    existing =
+      case socket.assigns[:course] do
+        %CombinedCourse{} -> socket.assigns.combined_assessments
+        _ -> socket.assigns.assessments
+      end
+
+    Enum.count(existing, &String.starts_with?(&1.label, type.name)) + 1
   end
 
   defp pick(_list, nil), do: nil
@@ -96,7 +186,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp existing_scores(scope, assessment) do
     scope
     |> Assessment.list_marks(assessment)
-    |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
+    |> Map.new(fn m -> {m.student_id, mark_field(m)} end)
   end
 
   defp combined_existing_scores(_scope, nil), do: %{}
@@ -106,8 +196,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     |> Map.values()
     |> Enum.uniq_by(& &1.id)
     |> Enum.flat_map(&Assessment.list_marks(scope, &1))
-    |> Map.new(fn m -> {m.student_id, (m.score && Decimal.to_string(m.score)) || ""} end)
+    |> Map.new(fn m -> {m.student_id, mark_field(m)} end)
   end
+
+  defp mark_field(%{status: :graded, score: score}), do: Decimal.to_string(score, :normal)
+  defp mark_field(%{status: status}), do: MarkStatus.code(status)
 
   # %{ {student_id, assessment_id} => score } for every assessment of the séquence
   defp sibling_scores(_scope, _ctx, nil), do: %{}
@@ -115,7 +208,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp sibling_scores(scope, ctx, seq) do
     scope
     |> Assessment.list_marks_for_context_sequence(ctx, seq)
-    |> Map.new(fn m -> {{m.student_id, m.assessment_id}, m.score} end)
+    |> Map.new(fn m -> {{m.student_id, m.assessment_id}, m} end)
   end
 
   defp entered_count(scores), do: Enum.count(scores, fn {_id, v} -> v not in [nil, ""] end)
@@ -124,12 +217,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp preview_average(students, assessment, scores, rules) do
     marks =
-      Enum.map(students, fn s ->
-        %{
-          assessment_id: assessment.id,
-          student_id: s.id,
-          score: score_or_nil(Map.get(scores, s.id))
-        }
+      Enum.flat_map(students, fn s ->
+        case parse_entry(Map.get(scores, s.id)) do
+          {:ok, :blank} ->
+            []
+
+          :error ->
+            []
+
+          {:ok, entry} ->
+            [Map.merge(%{assessment_id: assessment.id, student_id: s.id}, entry_mark(entry))]
+        end
       end)
 
     summary =
@@ -161,8 +259,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   def handle_event("new_assessment", %{"assessment" => p}, socket) do
     case socket.assigns[:course] do
-      %CombinedCourse{} = course -> new_combined_assessment(socket, course, p["label"])
-      _ -> new_solo_assessment(socket, p)
+      %CombinedCourse{} = course ->
+        new_combined_assessment(socket, course, normalize_assessment_params(p, socket))
+
+      _ ->
+        new_solo_assessment(socket, normalize_assessment_params(p, socket))
     end
   end
 
@@ -255,12 +356,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
-  defp new_combined_assessment(socket, course, label) do
+  defp new_combined_assessment(socket, course, params) do
     scope = socket.assigns.current_scope
+    label = params["label"]
+
+    attrs = %{
+      label: label,
+      assessment_type_id: params["assessment_type_id"],
+      max_score: params["max_score"]
+    }
 
     with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
-         {:ok, _created} <-
-           Assessment.create_combined_assessment(scope, course, seq, %{label: label}),
+         {:ok, _created} <- Assessment.create_combined_assessment(scope, course, seq, attrs),
          %{id: id} <-
            scope
            |> Assessment.combined_assessments_for(course, seq)
@@ -278,7 +385,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp save_solo(socket, scores) do
     parsed =
       Enum.map(socket.assigns.students, fn s ->
-        {s.id, parse_score(Map.get(scores, s.id))}
+        {s.id, parse_entry(Map.get(scores, s.id))}
       end)
 
     if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
@@ -286,7 +393,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        put_flash(
          socket,
          :error,
-         gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+         gettext("Some marks aren't valid — use a number (e.g. 12 or 13,5), abs or abj.")
        )}
     else
       save_marks(socket, parsed)
@@ -294,7 +401,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   defp save_marks(socket, parsed) do
-    entries = Enum.map(parsed, fn {id, {:ok, score}} -> %{student_id: id, score: score} end)
+    entries =
+      Enum.map(parsed, fn {id, {:ok, entry}} -> Map.put(entry_attrs(entry), :student_id, id) end)
+
     scope = socket.assigns.current_scope
 
     case Assessment.upsert_marks(scope, socket.assigns.assessment, entries) do
@@ -303,7 +412,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          socket
          |> put_flash(:info, gettext("Marks saved"))
          |> assign(:unsaved, Map.delete(socket.assigns.unsaved, socket.assigns.assessment.id))
-         |> assign(:scores, existing_scores(scope, socket.assigns.assessment))}
+         |> assign(:scores, existing_scores(scope, socket.assigns.assessment))
+         |> assign_pending()}
 
       {:error, :out_of_range} ->
         {:noreply,
@@ -339,7 +449,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     parsed =
       Enum.map(all_students, fn s ->
-        {s.id, parse_score(Map.get(scores, s.id))}
+        {s.id, parse_entry(Map.get(scores, s.id))}
       end)
 
     if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
@@ -347,17 +457,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        put_flash(
          socket,
          :error,
-         gettext("Some marks aren't valid numbers — use digits only, e.g. 12 or 13,5.")
+         gettext("Some marks aren't valid — use a number (e.g. 12 or 13,5), abs or abj.")
        )}
     else
-      scores_by_id = Map.new(parsed, fn {id, {:ok, score}} -> {id, score} end)
+      entries_by_id = Map.new(parsed, fn {id, {:ok, entry}} -> {id, entry_attrs(entry)} end)
 
       assessment_entries =
         Enum.map(groups, fn %{class_group: cg, students: students} ->
           assessment = Map.fetch!(selected.by_class_group_id, cg.id)
 
           entries =
-            Enum.map(students, fn s -> %{student_id: s.id, score: Map.get(scores_by_id, s.id)} end)
+            Enum.map(students, fn s ->
+              Map.put(Map.get(entries_by_id, s.id, %{score: nil}), :student_id, s.id)
+            end)
 
           {assessment, entries}
         end)
@@ -368,7 +480,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
            socket
            |> put_flash(:info, gettext("Marks saved"))
            |> assign(:unsaved, Map.delete(socket.assigns.unsaved, selected.id))
-           |> assign(:scores, combined_existing_scores(scope, selected))}
+           |> assign(:scores, combined_existing_scores(scope, selected))
+           |> assign_pending()}
 
         {:error, :out_of_range} ->
           {:noreply,
@@ -408,7 +521,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:combined_assessments, combined)
          |> assign(:selected, selected)
          |> assign(:unsaved, unsaved)
-         |> assign(:scores, restore_combined_scores(scope, selected, unsaved))}
+         |> assign(:scores, restore_combined_scores(scope, selected, unsaved))
+         |> assign_pending()}
 
       _ ->
         assessments =
@@ -424,7 +538,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:unsaved, unsaved)
          |> assign(:scores, restore_scores(scope, assessment, unsaved))
          |> assign(:sibling_scores, sibling_scores(scope, socket.assigns.ctx, seq))
-         |> assign(:new_assessment_form, solo_assessment_form(scope, socket.assigns.ctx, seq))}
+         |> assign(:new_assessment_form, solo_assessment_form(scope, socket.assigns.ctx, seq))
+         |> assign_pending()}
     end
   end
 
@@ -447,31 +562,42 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp restore_combined_scores(scope, %{id: id} = selected, unsaved),
     do: Map.merge(combined_existing_scores(scope, selected), Map.get(unsaved, id, %{}))
 
-  # Parses a raw score field into {:ok, Decimal.t() | nil} — nil meaning absent —
-  # or :error. Accepts a French decimal comma; rejects any non-empty value that is
-  # not a clean number (e.g. "abc", "15x"), so a typo is never silently stored as
-  # an absence.
-  defp parse_score(nil), do: {:ok, nil}
+  # Parses a raw mark field: a number (French comma accepted), `a`/`abs` (absent),
+  # `abj` (justified absence), or blank ("not entered"). Anything else is :error, so a
+  # typo never becomes a silent absence.
+  defp parse_entry(nil), do: {:ok, :blank}
 
-  defp parse_score(v) do
-    case v |> String.trim() |> String.replace(",", ".") do
+  defp parse_entry(raw) do
+    case raw |> String.trim() |> String.downcase() |> String.replace(",", ".") do
       "" ->
-        {:ok, nil}
+        {:ok, :blank}
+
+      code when code in ["a", "abs"] ->
+        {:ok, :absent}
+
+      "abj" ->
+        {:ok, :excused}
 
       normalized ->
         case Decimal.parse(normalized) do
-          {d, ""} -> {:ok, d}
+          {d, ""} -> {:ok, {:graded, d}}
           _ -> :error
         end
     end
   end
 
-  defp score_or_nil(raw) do
-    case parse_score(raw) do
-      {:ok, d} -> d
-      :error -> nil
-    end
-  end
+  # Upsert-entry attributes for a parsed mark (a blank is "not entered": nil score).
+  defp entry_attrs(:blank), do: %{score: nil}
+  defp entry_attrs({:graded, d}), do: %{score: d}
+  defp entry_attrs(status) when status in [:absent, :excused], do: %{score: nil, status: status}
+
+  # A mark map for the live preview average.
+  defp entry_mark({:graded, d}), do: %{score: d, status: :graded}
+  defp entry_mark(status), do: %{score: nil, status: status}
+
+  defp sibling_text(nil), do: "—"
+  defp sibling_text(%{status: :graded, score: score}), do: fmt_avg(score)
+  defp sibling_text(%{status: status}), do: MarkStatus.code(status)
 
   def render(%{course: %CombinedCourse{}} = assigns) do
     ~H"""
@@ -525,15 +651,32 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             phx-submit="new_assessment"
             class="flex flex-1 items-end gap-2"
           >
+            <.input
+              type="select"
+              name="assessment[assessment_type_id]"
+              value=""
+              options={[{gettext("Type"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
+            />
             <.input field={@new_assessment_form[:label]} placeholder={gettext("New assessment")} />
+            <.input
+              type="text"
+              inputmode="decimal"
+              name="assessment[max_score]"
+              value={Decimal.to_string(@default_max, :normal)}
+              class="input input-bordered w-20"
+              aria-label={gettext("Note maximale")}
+            />
             <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
           </.form>
         </div>
 
         <%= if @selected do %>
           <p class="text-xs text-base-content/55">
-            {gettext("Blank = absent. Marks are out of 20.")}
+            {gettext("Vide = non saisi · abs = absent · abj = absence justifiée · notes sur %{max}.",
+              max: max_label(@selected)
+            )}
           </p>
+          <.pending_makeups names={@pending_makeups} />
 
           <.form
             for={to_form(%{}, as: :scores)}
@@ -553,13 +696,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 <span class="flex-1">{s.full_name}</span>
                 <input
                   id={"mark-input-#{s.id}"}
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  max="20"
-                  inputmode="decimal"
+                  type="text"
+                  inputmode="text"
+                  autocapitalize="off"
+                  autocomplete="off"
                   aria-label={s.full_name}
-                  placeholder={gettext("Abs")}
+                  placeholder="—"
                   name={"scores[#{s.id}]"}
                   value={Map.get(@scores, s.id, "")}
                   phx-debounce="300"
@@ -629,7 +771,21 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             phx-submit="new_assessment"
             class="flex flex-1 items-end gap-2"
           >
+            <.input
+              type="select"
+              name="assessment[assessment_type_id]"
+              value=""
+              options={[{gettext("Type"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
+            />
             <.input field={@new_assessment_form[:label]} placeholder={gettext("New assessment")} />
+            <.input
+              type="text"
+              inputmode="decimal"
+              name="assessment[max_score]"
+              value={Decimal.to_string(@default_max, :normal)}
+              class="input input-bordered w-20"
+              aria-label={gettext("Note maximale")}
+            />
             <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
           </.form>
         </div>
@@ -650,8 +806,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             </p>
           </div>
           <p class="text-xs text-base-content/55">
-            {gettext("Blank = absent. Marks are out of 20.")}
+            {gettext("Vide = non saisi · abs = absent · abj = absence justifiée · notes sur %{max}.",
+              max: max_label(@assessment)
+            )}
           </p>
+          <.pending_makeups names={@pending_makeups} />
 
           <.form
             for={to_form(%{}, as: :scores)}
@@ -683,17 +842,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 :if={a.id != @assessment.id}
                 class="ta-num hidden w-16 text-right text-sm text-base-content/55 md:inline-block"
               >
-                {fmt_avg(@sibling_scores[{s.id, a.id}])}
+                {sibling_text(@sibling_scores[{s.id, a.id}])}
               </span>
               <input
                 id={"mark-input-#{s.id}"}
-                type="number"
-                step="0.25"
-                min="0"
-                max="20"
-                inputmode="decimal"
+                type="text"
+                inputmode="text"
+                autocapitalize="off"
+                autocomplete="off"
                 aria-label={s.full_name}
-                placeholder={gettext("Abs")}
+                placeholder="—"
                 name={"scores[#{s.id}]"}
                 value={Map.get(@scores, s.id, "")}
                 phx-debounce="300"
@@ -707,6 +865,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         <% end %>
       </section>
     </Layouts.app>
+    """
+  end
+
+  attr :names, :list, required: true
+
+  defp pending_makeups(assigns) do
+    ~H"""
+    <div :if={@names != []} id="pending-makeups" class="alert alert-warning text-sm">
+      <.icon name="hero-arrow-path" class="size-4" />
+      <span>{gettext("Rattrapage attendu :")} {Enum.join(@names, ", ")}</span>
+    </div>
     """
   end
 end

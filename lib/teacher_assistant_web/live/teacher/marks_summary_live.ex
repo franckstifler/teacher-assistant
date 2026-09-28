@@ -16,7 +16,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
       year = Organization.current_academic_year(scope)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       seq = pick(sequences, params["seq"]) || List.first(sequences)
-      students = Enrollment.list_students(scope, cg)
+      exempt = TeacherAssistant.Curriculum.exempt_student_ids(scope, ctx)
+
+      students =
+        scope |> Enrollment.list_students(cg) |> Enum.reject(&MapSet.member?(exempt, &1.id))
 
       {:ok,
        socket
@@ -59,7 +62,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
               %{id: a.id, weight: a.weight, max_score: a.max_score}
             end),
             Enum.map(marks, fn m ->
-              %{assessment_id: m.assessment_id, student_id: m.student_id, score: m.score}
+              %{
+                assessment_id: m.assessment_id,
+                student_id: m.student_id,
+                score: m.score,
+                status: m.status
+              }
             end),
             Assessment.grading_rules(scope)
           )
