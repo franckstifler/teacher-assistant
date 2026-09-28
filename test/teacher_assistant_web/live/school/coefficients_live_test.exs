@@ -103,4 +103,14 @@ defmodule TeacherAssistantWeb.School.CoefficientsLiveTest do
     view |> element("#toggle-group-subtotals") |> render_click()
     assert {:ok, %{bulletin_group_subtotals?: true}} = Accounts.fetch_school_profile(scope)
   end
+
+  test "a subject can be marked optional from the grid", %{conn: conn, scope: scope, maths: m} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/coefficients")
+
+    view
+    |> form("#coefficient-grid-form", %{"grid" => %{"optional" => %{m.id => "true"}}})
+    |> render_submit()
+
+    assert Enum.find(Curriculum.list_subjects(scope), &(&1.id == m.id)).optional?
+  end
 end

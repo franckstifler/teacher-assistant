@@ -150,6 +150,21 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   end
 
   describe "assignments panel" do
+    test "an optional subject lists who takes it", %{conn: conn, cg: cg, user: head, scope: scope} do
+      {:ok, awa} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+      {:ok, bob} = Enrollment.add_student(scope, cg, %{full_name: "Bob", sex: :m})
+      {:ok, esp} = TeacherAssistant.Curriculum.create_subject(scope, %{name: "Espagnol"})
+      :ok = TeacherAssistant.Curriculum.update_coefficient_grid(scope, %{"optional" => %{esp.id => "true"}})
+      {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: esp})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert has_element?(view, "#takers-#{tc.id}", "2/2")
+
+      view |> form("#takers-form-#{tc.id}", %{"takers" => [awa.id]}) |> render_submit()
+      assert TeacherAssistant.Curriculum.exempt_student_ids(scope, tc) == MapSet.new([bob.id])
+      assert has_element?(view, "#takers-#{tc.id}", "1/2")
+    end
+
     test "only subjects taught at the class's level are offered", %{
       conn: conn,
       cg: cg,

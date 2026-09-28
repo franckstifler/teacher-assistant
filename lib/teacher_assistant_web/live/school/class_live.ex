@@ -266,7 +266,46 @@ defmodule TeacherAssistantWeb.School.ClassLive do
               </thead>
               <tbody>
                 <tr :for={tc <- @assignments} id={"assignment-row-#{tc.id}"}>
-                  <td>{tc.subject}</td>
+                  <td>
+                    {tc.subject}
+                    <details
+                      :if={tc.catalog_subject.optional?}
+                      id={"takers-#{tc.id}"}
+                      class="mt-1 text-xs"
+                    >
+                      <summary class="cursor-pointer text-base-content/70">
+                        {gettext("Élèves concernés")}
+                        <span class="ta-num">
+                          ({length(@roster_students) -
+                            MapSet.size(Map.get(@exemptions, tc.id, MapSet.new()))}/{length(
+                            @roster_students
+                          )})
+                        </span>
+                      </summary>
+                      <form
+                        :if={@can_manage_assignments?}
+                        id={"takers-form-#{tc.id}"}
+                        phx-submit="set_takers"
+                        class="mt-2 space-y-1"
+                      >
+                        <input type="hidden" name="context-id" value={tc.id} />
+                        <input type="hidden" name="takers[]" value="" />
+                        <label :for={s <- @roster_students} class="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            name="takers[]"
+                            value={s.id}
+                            checked={
+                              not MapSet.member?(Map.get(@exemptions, tc.id, MapSet.new()), s.id)
+                            }
+                            class="checkbox checkbox-xs"
+                          />
+                          {s.full_name}
+                        </label>
+                        <button type="submit" class="btn btn-ghost btn-xs">{gettext("Enregistrer")}</button>
+                      </form>
+                    </details>
+                  </td>
                   <td>{tc.teacher.email}</td>
                   <td>{tc.weekly_hours}</td>
                   <td>
@@ -433,7 +472,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           assignments,
           socket.assigns[:can_manage_assignments?]
         ),
-      members: Accounts.list_members(scope)
+      members: Accounts.list_members(scope),
+      roster_students: Enrollment.list_students(scope, cg),
+      exemptions:
+        for(
+          tc <- assignments,
+          tc.catalog_subject.optional?,
+          into: %{},
+          do: {tc.id, Curriculum.exempt_student_ids(scope, tc)}
+        )
     )
   end
 
@@ -626,6 +673,26 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:noreply, socket |> put_flash(:info, gettext("Coefficient updated.")) |> load_roster()}
     else
       {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("set_takers", %{"context-id" => cid} = params, socket) do
+    takers = params |> Map.get("takers", []) |> Enum.reject(&(&1 == ""))
+
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
+      case Curriculum.set_exemptions(socket.assigns.current_scope, tc, takers) do
+        :ok ->
+          {:noreply,
+           socket |> put_flash(:info, gettext("Élèves concernés enregistrés.")) |> load_roster()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Liste non enregistrée."))}
+      end
+    else
       _ -> {:noreply, socket}
     end
   end

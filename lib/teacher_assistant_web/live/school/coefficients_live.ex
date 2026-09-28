@@ -79,6 +79,7 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
                 <tr>
                   <th>{gettext("Matière")}</th>
                   <th>{gettext("Groupe")}</th>
+                  <th>{gettext("Facultative")}</th>
                   <th :for={col <- @columns} class="text-center">{col.level}</th>
                 </tr>
               </thead>
@@ -96,6 +97,23 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
                       errors={error_texts(@errors, {:group, s.id})}
                     />
                   </td>
+                  <td class="text-center">
+                    <input type="hidden" name={"grid[optional][#{s.id}]"} value="false" />
+                    <input
+                      type="checkbox"
+                      name={"grid[optional][#{s.id}]"}
+                      value="true"
+                      checked={s.optional?}
+                      class="checkbox checkbox-sm"
+                      aria-label={gettext("Facultative")}
+                    />
+                    <p
+                      :for={msg <- error_texts(@errors, {:optional, s.id})}
+                      class="text-xs text-error"
+                    >
+                      {msg}
+                    </p>
+                  </td>
                   <td :for={col <- @columns} class="min-w-20">
                     <.input
                       type="text"
@@ -111,7 +129,7 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
               </tbody>
               <tfoot>
                 <tr>
-                  <th colspan="2">{gettext("Total des coefficients")}</th>
+                  <th colspan="3">{gettext("Total des coefficients")}</th>
                   <th :for={col <- @columns} class="ta-num text-center">
                     {fmt(column_total(@subjects, @cells, col))}
                   </th>
@@ -297,6 +315,9 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
 
   defp error_text({:in_use, labels}),
     do: gettext("Utilisée par : %{classes}", classes: Enum.join(labels, ", "))
+
+  defp error_text({:has_exemptions, labels}),
+    do: gettext("Des élèves en sont dispensés : %{classes}", classes: Enum.join(labels, ", "))
 
   defp view_label(subsystem, nil, true),
     do: "#{TeacherAssistant.Academics.Subsystem.label(subsystem)} · #{gettext("Toutes séries")}"
