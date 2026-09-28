@@ -235,8 +235,12 @@ defmodule TeacherAssistant.Organization do
 
   defp date_param(params, key, current) do
     case Map.fetch(params, key) do
-      :error -> current
-      {:ok, ""} -> nil
+      :error ->
+        current
+
+      {:ok, ""} ->
+        nil
+
       {:ok, value} when is_binary(value) ->
         case Date.from_iso8601(value) do
           {:ok, date} -> date

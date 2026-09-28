@@ -26,7 +26,8 @@ defmodule TeacherAssistant.Academics.CalendarRulesTest do
   end
 
   test "a coherent calendar passes, with gaps between séquences allowed" do
-    assert :ok = CalendarRules.validate(@year, valid_seqs(), [%{id: "t1", class_council_date: nil}])
+    assert :ok =
+             CalendarRules.validate(@year, valid_seqs(), [%{id: "t1", class_council_date: nil}])
   end
 
   test "missing and unparseable dates are reported per field" do
@@ -69,7 +70,11 @@ defmodule TeacherAssistant.Academics.CalendarRulesTest do
     errs = errors(CalendarRules.validate(@year, valid_seqs(), terms))
     assert {:class_council_date, :council_before_term_end} in errs["t1"]
 
-    assert errors(CalendarRules.validate(@year, valid_seqs(), [%{id: "t1", class_council_date: :invalid}]))["t1"] ==
+    assert errors(
+             CalendarRules.validate(@year, valid_seqs(), [
+               %{id: "t1", class_council_date: :invalid}
+             ])
+           )["t1"] ==
              [{:class_council_date, :invalid_date}]
   end
 end

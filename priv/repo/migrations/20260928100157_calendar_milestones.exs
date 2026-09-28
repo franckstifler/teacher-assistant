@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
+defmodule TeacherAssistant.Repo.Migrations.CalendarMilestones do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 

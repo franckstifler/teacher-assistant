@@ -385,7 +385,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     })
     |> render_submit()
 
-    assert has_element?(view, "#sequence-#{s2.id}", "Commence avant la fin de la séquence précédente.")
+    assert has_element?(
+             view,
+             "#sequence-#{s2.id}",
+             "Commence avant la fin de la séquence précédente."
+           )
+
     assert Enum.at(Organization.list_sequences(scope, year), 1).start_date == s2.start_date
   end
 end

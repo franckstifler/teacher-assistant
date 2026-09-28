@@ -49,7 +49,9 @@ defmodule TeacherAssistant.Academics.CalendarEditTest do
       })
 
     :ok =
-      Organization.update_calendar(scope, year, %{"sequences" => %{s1.id => %{"entry_deadline" => ""}}})
+      Organization.update_calendar(scope, year, %{
+        "sequences" => %{s1.id => %{"entry_deadline" => ""}}
+      })
 
     [u1 | _] = Organization.list_sequences(scope, year)
     assert u1.entry_deadline == nil
