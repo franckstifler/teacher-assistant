@@ -43,6 +43,15 @@ defmodule TeacherAssistant.Academics.Reference do
 
   def entry_type_keys, do: Enum.map(entry_types(), & &1.key)
 
+  @doc "The assessment types a new school starts with (mockup 'Évaluations & moyennes')."
+  def default_assessment_types do
+    [
+      %{name: "Interrogation écrite", default_weight: Decimal.new("0.5"), position: 0},
+      %{name: "Devoir surveillé", default_weight: Decimal.new(1), position: 1},
+      %{name: "Travaux pratiques", default_weight: Decimal.new("0.5"), position: 2}
+    ]
+  end
+
   # Relative weight of each séquence in the official grid (docs/domain/01 §6):
   # the span from a séquence's first day to the next séquence's first day,
   # 2025-2026 reference year. Term 1 = S1+S2, term 2 = S3+S4, term 3 = S5+S6.

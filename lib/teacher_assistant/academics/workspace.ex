@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.Workspace do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  alias TeacherAssistant.Academics.{Period, Reference, SchoolTemplates, Subject}
+  alias TeacherAssistant.Academics.{AssessmentType, Period, Reference, SchoolTemplates, Subject}
   alias TeacherAssistant.Accounts.{Checks, SchoolMembership, SchoolProfile}
 
   @profile_keys [
@@ -61,7 +61,8 @@ defmodule TeacherAssistant.Academics.Workspace do
                         Map.get(profile_attrs, :school_type),
                         Map.get(profile_attrs, :subsystem)
                       ),
-                    :ok <- seed_periods(workspace) do
+                    :ok <- seed_periods(workspace),
+                    :ok <- seed_assessment_types(workspace) do
                  {:ok, workspace}
                end
              end)
@@ -143,6 +144,19 @@ defmodule TeacherAssistant.Academics.Workspace do
     Reference.default_periods_preset()
     |> Enum.reduce_while(:ok, fn attrs, :ok ->
       case Period
+           |> Ash.Changeset.for_create(:create, attrs)
+           |> Ash.Changeset.set_tenant(workspace.id)
+           |> Ash.create(authorize?: false) do
+        {:ok, _} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp seed_assessment_types(workspace) do
+    Reference.default_assessment_types()
+    |> Enum.reduce_while(:ok, fn attrs, :ok ->
+      case AssessmentType
            |> Ash.Changeset.for_create(:create, attrs)
            |> Ash.Changeset.set_tenant(workspace.id)
            |> Ash.create(authorize?: false) do

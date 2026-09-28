@@ -35,6 +35,11 @@ defmodule TeacherAssistant.Academics.Assessment do
         index?: true
 
       reference :workspace, on_delete: :delete, index?: true
+
+      reference :assessment_type,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
     end
   end
 
@@ -42,16 +47,24 @@ defmodule TeacherAssistant.Academics.Assessment do
     defaults [
       :read,
       :destroy,
-      create: [
+      update: [:label, :weight, :max_score, :given_on]
+    ]
+
+    create :create do
+      primary? true
+
+      accept [
         :label,
         :weight,
         :max_score,
         :given_on,
         :teaching_context_id,
-        :sequence_id
-      ],
-      update: [:label, :weight, :max_score, :given_on]
-    ]
+        :sequence_id,
+        :assessment_type_id
+      ]
+
+      change TeacherAssistant.Academics.Assessment.ApplyDefaults
+    end
 
     read :for_context_and_sequence do
       argument :teaching_context_id, :uuid, allow_nil?: false
@@ -112,16 +125,23 @@ defmodule TeacherAssistant.Academics.Assessment do
         constraints: [instance_of: TeacherAssistant.Academics.Sequence]
 
       argument :label, :string, allow_nil?: false
+      argument :assessment_type_id, :uuid, allow_nil?: true
+      argument :max_score, :decimal, allow_nil?: true
 
       transaction? true
 
       run fn input, scope ->
         %{course: course, sequence: seq, label: label} = input.arguments
 
+        attrs =
+          %{label: label}
+          |> put_present(:assessment_type_id, input.arguments[:assessment_type_id])
+          |> put_present(:max_score, input.arguments[:max_score])
+
         contexts = course_member_contexts(course, scope)
 
         Enum.reduce_while(contexts, {:ok, []}, fn ctx, {:ok, acc} ->
-          case create_assessment(ctx, seq, label, scope) do
+          case create_assessment(ctx, seq, attrs, scope) do
             {:ok, assessment} -> {:cont, {:ok, acc ++ [assessment]}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -168,6 +188,12 @@ defmodule TeacherAssistant.Academics.Assessment do
   end
 
   relationships do
+    belongs_to :assessment_type, TeacherAssistant.Academics.AssessmentType do
+      source_attribute :assessment_type_id
+      allow_nil? true
+      public? true
+    end
+
     belongs_to :teaching_context, TeacherAssistant.Academics.TeachingContext do
       source_attribute :teaching_context_id
       allow_nil? false
@@ -268,15 +294,14 @@ defmodule TeacherAssistant.Academics.Assessment do
     |> Ash.read!()
   end
 
-  defp create_assessment(ctx, seq, label, scope) do
+  defp put_present(map, _key, nil), do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  defp create_assessment(ctx, seq, attrs, scope) do
     __MODULE__
     |> Ash.Changeset.for_create(
       :create,
-      %{
-        label: label,
-        teaching_context_id: ctx.id,
-        sequence_id: seq.id
-      },
+      Map.merge(attrs, %{teaching_context_id: ctx.id, sequence_id: seq.id}),
       scope: scope
     )
     |> Ash.create()

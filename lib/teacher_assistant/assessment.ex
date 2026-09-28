@@ -1,6 +1,8 @@
 defmodule TeacherAssistant.Assessment do
   use Ash.Domain, otp_app: :teacher_assistant
 
+  require Ash.Query
+
   # NAME COLLISION: this domain module is `TeacherAssistant.Assessment`, and
   # the resource is `TeacherAssistant.Academics.Assessment`. Inside this module
   # the short alias `Assessment` is bound to the RESOURCE (below); this module
@@ -11,6 +13,7 @@ defmodule TeacherAssistant.Assessment do
     AcademicYear,
     AnnualAverageRule,
     Assessment,
+    AssessmentType,
     AverageRounding,
     Bulletins,
     ClassGroup,
@@ -28,6 +31,7 @@ defmodule TeacherAssistant.Assessment do
 
   resources do
     resource Assessment
+    resource AssessmentType
     resource Mark
   end
 
@@ -94,7 +98,14 @@ defmodule TeacherAssistant.Assessment do
         attrs
       ) do
     label = Map.get(attrs, :label) || Map.get(attrs, "label")
-    args = %{course: course, sequence: seq, label: label}
+
+    args = %{
+      course: course,
+      sequence: seq,
+      label: label,
+      assessment_type_id: Map.get(attrs, :assessment_type_id),
+      max_score: Map.get(attrs, :max_score)
+    }
 
     Assessment
     |> Ash.ActionInput.for_action(:create_combined, args, scope: scope)
@@ -105,6 +116,35 @@ defmodule TeacherAssistant.Assessment do
     case Ash.get(Assessment, id, scope: scope) do
       {:ok, assessment} -> {:ok, assessment}
       _ -> {:error, :not_found}
+    end
+  end
+
+  # --- Assessment types (spec D2b-2) -----------------------------------------------
+
+  def list_assessment_types(%Scope{} = scope) do
+    AssessmentType
+    |> Ash.Query.sort(position: :asc, name: :asc)
+    |> Ash.Query.load(:usage_count)
+    |> Ash.read!(scope: scope)
+  end
+
+  def create_assessment_type(%Scope{} = scope, attrs) do
+    position = length(list_assessment_types(scope))
+
+    AssessmentType
+    |> Ash.Changeset.for_create(:create, Map.put_new(attrs, :position, position), scope: scope)
+    |> Ash.create()
+  end
+
+  def update_assessment_type(%Scope{} = scope, %AssessmentType{} = type, attrs) do
+    type |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
+  end
+
+  @doc "Deletes a type no assessment uses; a used type is kept (`{:error, :in_use}`)."
+  def delete_assessment_type(%Scope{} = scope, %AssessmentType{} = type) do
+    case Ash.load!(type, :usage_count, scope: scope) do
+      %{usage_count: 0} -> Ash.destroy(type, scope: scope)
+      _ -> {:error, :in_use}
     end
   end
 
