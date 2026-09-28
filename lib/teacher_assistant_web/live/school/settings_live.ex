@@ -340,6 +340,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             {gettext("Coefficients par niveau et groupes du bulletin")}
           </.link>
 
+          <.link
+            id="evaluations-link"
+            navigate={~p"/school/settings/evaluations"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Évaluations & moyennes")}
+          </.link>
+
           <div class="overflow-x-auto">
             <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
               <thead>
