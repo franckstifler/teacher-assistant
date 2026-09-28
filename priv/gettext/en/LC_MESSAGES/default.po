@@ -3080,9 +3080,9 @@ msgid "Commence avant la fin de la séquence précédente."
 msgstr "Starts before the previous sequence ends."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:613
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Could not assign the teacher."
-msgstr "Could not add the tranche."
+msgstr "Could not assign the teacher."
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:863
 #, elixir-autogen, elixir-format
@@ -3105,9 +3105,9 @@ msgid "Enregistrer le calendrier"
 msgstr "Save calendar"
 
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:109
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Impossible d'enregistrer la décision."
-msgstr "Impossible d'enregistrer l'appel"
+msgstr "Could not save the decision."
 
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:358
 #: lib/teacher_assistant_web/live/school/members_live.ex:190
