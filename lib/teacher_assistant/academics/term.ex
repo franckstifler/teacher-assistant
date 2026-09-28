@@ -32,7 +32,7 @@ defmodule TeacherAssistant.Academics.Term do
       :read,
       :destroy,
       create: [:position, :academic_year_id],
-      update: [:position]
+      update: [:position, :class_council_date]
     ]
 
     read :for_academic_year do
@@ -60,6 +60,7 @@ defmodule TeacherAssistant.Academics.Term do
   attributes do
     uuid_v7_primary_key :id
     attribute :position, :integer, allow_nil?: false, public?: true
+    attribute :class_council_date, :date, public?: true
     timestamps()
   end
 

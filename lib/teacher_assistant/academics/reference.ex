@@ -49,6 +49,9 @@ defmodule TeacherAssistant.Academics.Reference do
   @sequence_weights [49, 35, 63, 35, 56, 40]
   @integration_weeks [false, true, false, true, false, true]
 
+  @doc "Days after a séquence's end during which marks may still be entered, when no explicit deadline is set."
+  def entry_grace_days, do: 5
+
   @doc """
   The default academic calendar for a year running from `start_date` to
   `end_date`: 3 terms × 2 séquences, consecutive (no gaps, so every in-year

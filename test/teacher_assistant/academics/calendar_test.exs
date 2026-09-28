@@ -29,6 +29,27 @@ defmodule TeacherAssistant.Academics.CalendarTest do
     seq = Organization.current_sequence(scope, year, ~D[2025-09-20])
     assert seq.number == 1
   end
+
+  test "a sequence without an explicit deadline closes grade entry 5 days after its end",
+       %{year: year, scope: scope} do
+    :ok = Organization.build_default_calendar(scope, year)
+    [s1 | _] = Organization.list_sequences(scope, year)
+    assert s1.entry_deadline == nil
+    assert s1.grade_entry_deadline == Date.add(s1.end_date, 5)
+  end
+
+  test "an explicit deadline before the sequence end is rejected by the database",
+       %{year: year, scope: scope} do
+    :ok = Organization.build_default_calendar(scope, year)
+    [s1 | _] = Organization.list_sequences(scope, year)
+
+    assert {:error, %Ash.Error.Invalid{}} =
+             s1
+             |> Ash.Changeset.for_update(:update, %{entry_deadline: Date.add(s1.end_date, -1)},
+               scope: scope
+             )
+             |> Ash.update()
+  end
 end
 
 defmodule TeacherAssistant.Academics.CalendarTemplateTest do
