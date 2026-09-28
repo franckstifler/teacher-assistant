@@ -19,6 +19,7 @@ defmodule TeacherAssistant.Curriculum do
     Sequence,
     Subject,
     SubjectCoefficient,
+    SubjectExemption,
     TeachingContext,
     TeachingLogEntry
   }
@@ -35,6 +36,7 @@ defmodule TeacherAssistant.Curriculum do
     end
 
     resource SubjectCoefficient
+    resource SubjectExemption
 
     resource TeachingContext do
       define :contexts_of_course, action: :for_combined_course, args: [:combined_course_id]
@@ -222,7 +224,10 @@ defmodule TeacherAssistant.Curriculum do
     group_changes = parse_group_changes(Map.get(params, "groups", %{}), subjects)
     current = Map.new(stored, fn {key, cell} -> {key, cell.coefficient} end)
 
-    with :ok <-
+    optional_changes = parse_optional_changes(Map.get(params, "optional", %{}), subjects)
+
+    with :ok <- check_optional_changes(optional_changes, subjects, scope),
+         :ok <-
            CoefficientRules.validate(
              current,
              cell_changes,
@@ -231,8 +236,9 @@ defmodule TeacherAssistant.Curriculum do
            ),
          {:ok, :ok} <-
            Ash.transact([SubjectCoefficient, Subject], fn ->
-             with :ok <- write_cells(cell_changes, stored, scope) do
-               write_groups(group_changes, subjects, scope)
+             with :ok <- write_cells(cell_changes, stored, scope),
+                  :ok <- write_groups(group_changes, subjects, scope) do
+               write_optional(optional_changes, subjects, scope)
              end
            end) do
       :ok
@@ -268,6 +274,51 @@ defmodule TeacherAssistant.Curriculum do
     for {subject_id, value} <- groups_params, Map.has_key?(subjects, subject_id), into: %{} do
       {subject_id, Map.get(@groups, value, :invalid)}
     end
+  end
+
+  defp parse_optional_changes(params, subjects) do
+    for {subject_id, value} <- params,
+        Map.has_key?(subjects, subject_id),
+        value in ["true", "false"],
+        into: %{},
+        do: {subject_id, value == "true"}
+  end
+
+  defp check_optional_changes(changes, subjects, scope) do
+    errors =
+      for {subject_id, false} <- changes,
+          subjects[subject_id].optional?,
+          labels = exempted_class_labels(subject_id, scope),
+          labels != [],
+          into: %{},
+          do: {{:optional, subject_id}, [{:has_exemptions, labels}]}
+
+    if errors == %{}, do: :ok, else: {:error, {:invalid, errors}}
+  end
+
+  defp exempted_class_labels(subject_id, scope) do
+    SubjectExemption
+    |> Ash.Query.filter(teaching_context.subject_id == ^subject_id)
+    |> Ash.Query.load(teaching_context: :class_group)
+    |> Ash.read!(scope: scope)
+    |> Enum.map(& &1.teaching_context.class_group.label)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp write_optional(changes, subjects, scope) do
+    Enum.reduce_while(changes, :ok, fn {subject_id, optional?}, :ok ->
+      subject = subjects[subject_id]
+
+      if subject.optional? == optional? do
+        {:cont, :ok}
+      else
+        case update_subject(scope, subject, %{optional?: optional?}) do
+          {:ok, _} -> {:cont, :ok}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end
+    end)
   end
 
   defp write_cells(changes, stored, scope) do
@@ -488,6 +539,80 @@ defmodule TeacherAssistant.Curriculum do
         {:error, error} -> {:error, error}
       end
     end
+  end
+
+  @doc "Students of `tc`'s class who do not take its (optional) subject."
+  def exempt_student_ids(%Scope{} = scope, %TeachingContext{id: tc_id}) do
+    SubjectExemption
+    |> Ash.Query.filter(teaching_context_id == ^tc_id)
+    |> Ash.read!(scope: scope)
+    |> MapSet.new(& &1.student_id)
+  end
+
+  @doc """
+  Sets who takes an optional subject in a class: every student of the class not in
+  `taking_ids` is exempted, the others are not. Refused for a compulsory subject
+  (`:not_optional`) or an id outside the class (`:unknown_student`); one transaction.
+  """
+  def set_exemptions(%Scope{} = scope, %TeachingContext{} = tc, taking_ids)
+      when is_list(taking_ids) do
+    tc = Ash.load!(tc, [:catalog_subject, :class_group], scope: scope)
+    class_ids = scope |> Enrollment.list_students(tc.class_group) |> MapSet.new(& &1.id)
+    taking = MapSet.new(taking_ids)
+
+    cond do
+      not tc.catalog_subject.optional? ->
+        {:error, :not_optional}
+
+      not MapSet.subset?(taking, class_ids) ->
+        {:error, :unknown_student}
+
+      true ->
+        wanted = MapSet.difference(class_ids, taking)
+
+        existing =
+          SubjectExemption
+          |> Ash.Query.filter(teaching_context_id == ^tc.id)
+          |> Ash.read!(scope: scope)
+
+        Ash.transact([SubjectExemption], fn ->
+          with :ok <-
+                 destroy_exemptions(
+                   Enum.reject(existing, &MapSet.member?(wanted, &1.student_id)),
+                   scope
+                 ) do
+            have = MapSet.new(existing, & &1.student_id)
+            create_exemptions(tc, MapSet.difference(wanted, have), scope)
+          end
+        end)
+        |> case do
+          {:ok, :ok} -> :ok
+          {:error, error} -> {:error, error}
+        end
+    end
+  end
+
+  defp destroy_exemptions(exemptions, scope) do
+    Enum.reduce_while(exemptions, :ok, fn e, :ok ->
+      case Ash.destroy(e, scope: scope) do
+        :ok -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp create_exemptions(tc, student_ids, scope) do
+    Enum.reduce_while(student_ids, :ok, fn sid, :ok ->
+      SubjectExemption
+      |> Ash.Changeset.for_create(:create, %{teaching_context_id: tc.id, student_id: sid},
+        scope: scope
+      )
+      |> Ash.create()
+      |> case do
+        {:ok, _} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   def list_assignments_for_class(%Scope{} = scope, %ClassGroup{id: cg_id}) do

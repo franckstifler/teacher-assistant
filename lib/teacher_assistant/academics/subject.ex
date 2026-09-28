@@ -26,12 +26,12 @@ defmodule TeacherAssistant.Academics.Subject do
     defaults [
       :read,
       :destroy,
-      update: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?]
+      update: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?, :optional?]
     ]
 
     create :create do
       primary? true
-      accept [:name, :code, :default_coefficient, :bulletin_group, :position, :active?]
+      accept [:name, :code, :default_coefficient, :bulletin_group, :position, :active?, :optional?]
       change TeacherAssistant.Academics.Subject.SeedCoefficientCells
     end
 
@@ -79,6 +79,7 @@ defmodule TeacherAssistant.Academics.Subject do
 
     attribute :position, :integer, allow_nil?: false, default: 0, public?: true
     attribute :active?, :boolean, allow_nil?: false, default: true, public?: true
+    attribute :optional?, :boolean, allow_nil?: false, default: false, public?: true
 
     timestamps()
   end
