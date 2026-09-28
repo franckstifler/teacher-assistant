@@ -15,13 +15,14 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 |---|---|---|---|---|
 | D1 | Editable calendar and grade-entry milestones | S01, N01 (+ class council date) | — | S |
 | D2a | Coefficients by level and série, bulletin groups | N08 | — | M |
-| D2b | School evaluation rules (types, averages, rounding, absence, optional subjects) | N07 | D2a | M |
+| D2b-1 | Averaging rules: trimester/annual rule, rounding, tied ranks | N07 (part) | D2a | S |
+| D2b-2 | Marks and absence: assessment types, default max, absent marker and rule, optional subjects | N07 (rest) | D2b-1 | M |
 | D3 | Lock and trace marks | N04 → N02 → N03 | D1 (deadline), N04 before N03 | M×3 |
 | E | Role-aware navigation and home | R01, R02 | authorization increment (done) | M |
 | F | Censeur follow-up | N05, then N06 (P2) | D1, E | S (+M) |
 | G | School life, day view | V02, V01, V03, then V04, V06 (P2) | E | S×3 |
 | H | Pedagogy screens | P01, P02 (P2) | E | M |
-| I | Report card cycle | N09, N13, N12, N11, N10 | D2a, D2b, D3 | S…L |
+| I | Report card cycle | N09, N13, N12, N11, N10 | D2a, D2b-1, D2b-2, D3 | S…L |
 | J | Timetable and staff | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
 | K | Platform | R04, R05, S04, S06, R03 | E | S…L |
 | — | Marketing site | `Landing` mockup (not in the gap list) | — | M |
@@ -135,3 +136,46 @@ cell exists (falls back to the subject default, flagged).
 Out of scope (D2b): optional subjects and what a missing mark means (today a subject with no marks is left
 out of the coefficient total, which already covers an optional subject nobody grades); school assessment
 types; trimester/annual rules; rounding; tied-rank toggle.
+
+## D2b-1 — Averaging rules: trimester/annual rule, rounding, tied ranks (spec)
+
+Mockup: `Paramètres école` → *Évaluations & moyennes*, panel **Moyennes** (rows "Moyenne trimestrielle",
+"Moyenne annuelle", "Arrondi", "Rang ex æquo"). The panel's other rows (note maximale, élève absent) and the
+assessment-types panel are D2b-2.
+
+Existing code: `Marks.subject_average/2` and `Bulletins.aggregate/2` compute unrounded averages; a trimester
+is the mean of the séquences that have marks, the annual average the mean of the 6 séquences
+(`Assessment.period_result/4`); ranks always share ties; `BulletinLive`/print show 2 decimals.
+
+Behaviour:
+1. **`SchoolProfile` settings** (per school; changing one also recomputes past years until increment I
+   freezes issued bulletins): `trimester_average_rule` `:mean_of_sequences | :second_sequence_double`
+   (default `:mean_of_sequences`); `annual_average_rule` `:mean_of_sequences | :mean_of_trimesters`
+   (default `:mean_of_sequences`, the ministerial rule); `average_rounding` `:hundredth | :tenth | :quarter`
+   (default `:hundredth`); `shared_ranks?` (default true). Each enum is an `Ash.Type.Enum`.
+2. **`GradingRules`**: a pure struct built from the profile (`Assessment.grading_rules/1`) and passed to
+   `Marks` and `Bulletins` as an optional last argument (absent = today's behaviour).
+3. **Rounding, at every stage** (half-up; `:quarter` = nearest 0.25): a subject's séquence average is
+   rounded; note×coef uses the rounded value; the moyenne générale is Σ(rounded note × coef) ÷ Σcoef, then
+   rounded. Group subtotals and class statistics are computed from those rounded figures, so a printed
+   bulletin adds up by hand. Display stays at 2 decimals.
+4. **Period rules**, per subject, over its rounded séquence averages, then rounded: `:second_sequence_double`
+   = (S1 + 2·S2) ÷ 3, a missing séquence skipped with its weight; `:mean_of_trimesters` = mean of the
+   subject's trimester averages (each by the trimester rule), missing trimesters skipped. The annual
+   bulletin's per-trimester breakdown uses the trimester rule.
+5. **Ranks** (class and per subject) are on the rounded average. With `shared_ranks?` off, ties are broken by
+   the unrounded average (computed from rounded subject averages, before the final rounding), then by student
+   name; students passed to `Marks`/`Bulletins` therefore carry a `name`.
+6. **`Marks.summarize`** (teacher per-subject summary) applies the same rounding and rank rule.
+7. **Page** `/school/settings/evaluations` ("Évaluations & moyennes"), linked from Settings, for those who
+   may edit the school profile: pill buttons per rule and a tied-ranks toggle, saved on click with a flash;
+   the official default is marked "règle officielle". `Assessment.update_grading_rules(scope, params)` maps
+   string values against the allowed options (no `String.to_atom`), returns `{:error, :invalid_rule}` without
+   writing on an unknown value, and relies on the profile update policy (a teacher gets `Forbidden`).
+
+Review focus: a crafted event with an unknown value; a teacher's event; the ×2 rule with one séquence
+unmarked; the trimesters rule with a whole trimester missing; ties created only by rounding with shared ranks
+off.
+
+Out of scope (D2b-2): assessment types and default weights, the default maximum mark, the absent marker and
+absent rule, optional subjects.
