@@ -91,6 +91,10 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
   def stream_label(:specialite), do: "Spécialité"
   def stream_label(:stream), do: "Stream"
 
+  @doc "The subsystems whose levels appear on the coefficient grid for a school subsystem."
+  def grid_subsystems(:bilingual), do: [:francophone, :anglophone]
+  def grid_subsystems(subsystem), do: [subsystem]
+
   # ---- starter classes -----------------------------------------------------
 
   def classes_for(type, subsystem) do

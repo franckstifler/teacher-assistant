@@ -14,15 +14,26 @@ defmodule TeacherAssistant.Academics.Subject do
     references do
       reference :workspace, on_delete: :delete, index?: true
     end
+
+    custom_indexes do
+      # Composite-FK target: attribute multitenancy prefixes this to
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
+    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?],
       update: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?]
     ]
+
+    create :create do
+      primary? true
+      accept [:name, :code, :default_coefficient, :bulletin_group, :position, :active?]
+      change TeacherAssistant.Academics.Subject.SeedCoefficientCells
+    end
 
     # Tenant scoping (attribute multitenancy) already restricts this to the
     # given workspace; no `workspace_id` argument is needed any more.

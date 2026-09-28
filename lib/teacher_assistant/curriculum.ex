@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Curriculum do
     ProgressionPlan,
     Sequence,
     Subject,
+    SubjectCoefficient,
     TeachingContext,
     TeachingLogEntry
   }
@@ -29,6 +30,8 @@ defmodule TeacherAssistant.Curriculum do
       define :deactivate_subject, action: :deactivate
       define :delete_subject, action: :destroy
     end
+
+    resource SubjectCoefficient
 
     resource TeachingContext do
       define :contexts_of_course, action: :for_combined_course, args: [:combined_course_id]
@@ -126,6 +129,15 @@ defmodule TeacherAssistant.Curriculum do
 
   @doc "Whether the scope may manage the subject catalog (admin axis)."
   def can_manage_subjects?(scope), do: Ash.can?({Subject, :create}, scope)
+
+  # --- Coefficient grid ------------------------------------------------------
+
+  @doc "The school's coefficient grid cells, keyed `{subject_id, subsystem, level, serie}`."
+  def coefficient_cells(%Scope{} = scope) do
+    SubjectCoefficient
+    |> Ash.read!(scope: scope)
+    |> Map.new(&{{&1.subject_id, &1.subsystem, &1.level, &1.serie}, &1})
+  end
 
   @doc "Whether the scope may assign teachers and combine courses (admin axis)."
   def can_manage_assignments?(scope), do: Ash.can?({TeachingContext, :create}, scope)
