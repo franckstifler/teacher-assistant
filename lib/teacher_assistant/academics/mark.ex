@@ -39,6 +39,10 @@ defmodule TeacherAssistant.Academics.Mark do
       check_constraint :score, "marks_score_non_negative_check",
         check: "score IS NULL OR score >= 0",
         message: "must not be negative"
+
+      check_constraint :status, "marks_status_score_check",
+        check: "(status = 'graded') = (score IS NOT NULL)",
+        message: "a graded mark needs a score; an absence has none"
     end
   end
 
@@ -46,14 +50,14 @@ defmodule TeacherAssistant.Academics.Mark do
     defaults [
       :read,
       :destroy,
-      create: [:score, :assessment_id, :student_id]
+      create: [:score, :status, :assessment_id, :student_id]
     ]
 
     # Not atomic: `ScoreWithinMax` fetches the assessment with `Ash.get/2`,
     # which the atomic-update upgrade path cannot express as a single SQL
     # expression.
     update :update do
-      accept [:score]
+      accept [:score, :status]
       require_atomic? false
     end
 
@@ -135,6 +139,7 @@ defmodule TeacherAssistant.Academics.Mark do
     prefix "marks"
     publish_all :create, ["assessment", :assessment_id]
     publish_all :update, ["assessment", :assessment_id]
+    publish_all :destroy, ["assessment", :assessment_id]
   end
 
   validations do
@@ -157,6 +162,12 @@ defmodule TeacherAssistant.Academics.Mark do
   attributes do
     uuid_v7_primary_key :id
     attribute :score, :decimal, allow_nil?: true, public?: true
+
+    attribute :status, TeacherAssistant.Academics.MarkStatus,
+      allow_nil?: false,
+      default: :graded,
+      public?: true
+
     timestamps()
   end
 
@@ -199,23 +210,29 @@ defmodule TeacherAssistant.Academics.Mark do
 
     Enum.reduce_while(entries, {:ok, []}, fn entry, {:ok, acc} ->
       result =
-        case Map.get(existing, entry.student_id) do
-          nil ->
+        case {Map.get(existing, entry.student_id), mark_attrs(entry)} do
+          {nil, :blank} ->
+            {:ok, nil, []}
+
+          {%__MODULE__{} = mark, :blank} ->
+            case Ash.destroy(mark, scope: scope, return_notifications?: true) do
+              {:ok, notifications} -> {:ok, nil, notifications}
+              :ok -> {:ok, nil, []}
+              {:error, reason} -> {:error, reason}
+            end
+
+          {nil, attrs} ->
             __MODULE__
             |> Ash.Changeset.for_create(
               :create,
-              %{
-                assessment_id: assessment_id,
-                student_id: entry.student_id,
-                score: Map.get(entry, :score)
-              },
+              Map.merge(attrs, %{assessment_id: assessment_id, student_id: entry.student_id}),
               scope: scope
             )
             |> Ash.create(return_notifications?: true)
 
-          %__MODULE__{} = mark ->
+          {%__MODULE__{} = mark, attrs} ->
             mark
-            |> Ash.Changeset.for_update(:update, %{score: Map.get(entry, :score)}, scope: scope)
+            |> Ash.Changeset.for_update(:update, attrs, scope: scope)
             |> Ash.update(return_notifications?: true)
         end
 
@@ -224,5 +241,16 @@ defmodule TeacherAssistant.Academics.Mark do
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
+  end
+
+  # An upsert entry's stored attributes, or :blank ("not entered": no row).
+  defp mark_attrs(%{status: status}) when status in [:absent, :excused],
+    do: %{status: status, score: nil}
+
+  defp mark_attrs(entry) do
+    case Map.get(entry, :score) do
+      nil -> :blank
+      score -> %{status: :graded, score: score}
+    end
   end
 end

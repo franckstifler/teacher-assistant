@@ -47,10 +47,51 @@ defmodule TeacherAssistant.Academics.MarkTest do
     assert Decimal.equal?(m.score, Decimal.new("18"))
   end
 
-  test "nil score records absent", %{a: a, s1: s1, scope: scope} do
+  test "a nil score means not entered: no mark is stored, and an existing one is removed",
+       %{a: a, s1: s1, scope: scope} do
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: s1.id, score: nil}])
-    assert [m] = Assessment.list_marks(scope, a)
-    assert m.score == nil
+    assert Assessment.list_marks(scope, a) == []
+
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: s1.id, score: Decimal.new(12)}])
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: s1.id, score: nil}])
+    assert Assessment.list_marks(scope, a) == []
+  end
+
+  test "absent and excused marks are stored without a score", %{
+    a: a,
+    s1: s1,
+    s2: s2,
+    scope: scope
+  } do
+    :ok =
+      Assessment.upsert_marks(scope, a, [
+        %{student_id: s1.id, score: nil, status: :absent},
+        %{student_id: s2.id, score: nil, status: :excused}
+      ])
+
+    by_student = Map.new(Assessment.list_marks(scope, a), &{&1.student_id, &1})
+    assert %{status: :absent, score: nil} = by_student[s1.id]
+    assert %{status: :excused, score: nil} = by_student[s2.id]
+
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: s1.id, score: Decimal.new(9)}])
+
+    assert %{status: :graded} =
+             Enum.find(Assessment.list_marks(scope, a), &(&1.student_id == s1.id))
+  end
+
+  test "a graded mark needs a score and an absence cannot carry one", %{
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    assert {:error, %Ash.Error.Invalid{}} =
+             TeacherAssistant.Academics.Mark
+             |> Ash.Changeset.for_create(
+               :create,
+               %{assessment_id: a.id, student_id: s1.id, score: Decimal.new(5), status: :absent},
+               scope: scope
+             )
+             |> Ash.create()
   end
 
   test "upsert rejects a score above the assessment maximum and writes nothing", %{

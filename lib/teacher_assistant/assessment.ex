@@ -111,7 +111,8 @@ defmodule TeacherAssistant.Assessment do
 
   @doc """
   Creates or updates a `Mark` per `(assessment, student)` in a single
-  transaction. A `nil` score is valid (records the student absent). Scores are
+  transaction. A `nil` score is "not entered" and removes any existing mark;
+  `status: :absent | :excused` records an absence (with no score). Scores are
   range-checked against the assessment's `max_score` before anything is
   written; an out-of-range score persists nothing (`{:error, :out_of_range}`).
   """
@@ -126,7 +127,8 @@ defmodule TeacherAssistant.Assessment do
         %{
           assessment_id: assessment_id,
           student_id: entry.student_id,
-          score: Map.get(entry, :score)
+          score: Map.get(entry, :score),
+          status: Map.get(entry, :status)
         }
       end)
       |> run_upsert_all(scope)
@@ -161,7 +163,8 @@ defmodule TeacherAssistant.Assessment do
           %{
             assessment_id: assessment_id,
             student_id: entry.student_id,
-            score: Map.get(entry, :score)
+            score: Map.get(entry, :score),
+            status: Map.get(entry, :status)
           }
         end)
       end)
