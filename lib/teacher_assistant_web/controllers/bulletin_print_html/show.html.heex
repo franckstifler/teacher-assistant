@@ -39,6 +39,8 @@
         body { padding: 0; }
         tr { break-inside: avoid; }
       }
+      tr.group th { text-align: left; font-size: 9pt; text-transform: uppercase; background: #f2f2f2; }
+      tr.group-total td { font-weight: 600; }
     </style>
   </head>
   <body>
@@ -100,8 +102,13 @@
               <th class="num">{gettext("Cote classe")}</th>
             </tr>
           </thead>
-          <tbody>
-            <tr :for={row <- b.data.subjects}>
+          <tbody :for={g <- b.data.groups} id={"bulletin-group-#{g.group}"}>
+            <tr class="group">
+              <th colspan={period_cols(@period_kind) + 4}>
+                {BulletinGroup.label(g.group)}
+              </th>
+            </tr>
+            <tr :for={row <- g.rows}>
               <td>{row.label}</td>
               <td class="num">{fmt(row.coefficient)}</td>
               <%= case @period_kind do %>
@@ -119,6 +126,14 @@
               <% end %>
               <td class="num">{fmt(row.note_x_coef)}</td>
               <td class="num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
+            </tr>
+            <tr :if={@group_subtotals?} id={"bulletin-group-total-#{g.group}"} class="group-total">
+              <td>{gettext("Total groupe")}</td>
+              <td class="num">{fmt(g.total_coef)}</td>
+              <td :for={_ <- 2..period_cols(@period_kind)//1}></td>
+              <td class="num">{fmt(g.average)}</td>
+              <td class="num">{fmt(g.total_points)}</td>
+              <td></td>
             </tr>
           </tbody>
           <tfoot>

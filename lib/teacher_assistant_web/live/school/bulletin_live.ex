@@ -5,7 +5,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
-  alias TeacherAssistant.Academics.Sex
+  alias TeacherAssistant.Academics.{BulletinGroup, Sex}
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
 
@@ -47,7 +47,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          effectif: (results && results.effectif) || 0,
          data: data,
          conduct: conduct,
-         discipline: discipline
+         discipline: discipline,
+         group_subtotals?: group_subtotals?(scope)
        )}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -123,6 +124,18 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
   defp period_heading(%{period: {:annual, _}}), do: gettext("Année scolaire")
   defp period_heading(_), do: "—"
+
+  # Columns between "Coefficient" and "Note×Coef" for each period kind.
+  defp period_cols(:trimester), do: 3
+  defp period_cols(:annual), do: 4
+  defp period_cols(_), do: 1
+
+  defp group_subtotals?(scope) do
+    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      {:ok, profile} -> profile.bulletin_group_subtotals?
+      _ -> false
+    end
+  end
 
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
@@ -228,8 +241,16 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                   <th>{gettext("Cote classe")}</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr :for={row <- @data.subjects} id={"bulletin-subject-#{row.context_id}"}>
+              <tbody :for={g <- @data.groups} id={"bulletin-group-#{g.group}"}>
+                <tr class="bg-base-200/60">
+                  <th
+                    colspan={period_cols(@period_kind) + 4}
+                    class="text-xs uppercase tracking-wide text-base-content/70"
+                  >
+                    {BulletinGroup.label(g.group)}
+                  </th>
+                </tr>
+                <tr :for={row <- g.rows} id={"bulletin-subject-#{row.context_id}"}>
                   <td>{row.label}</td>
                   <td class="ta-num">{fmt(row.coefficient)}</td>
                   <%= case @period_kind do %>
@@ -247,6 +268,18 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                   <% end %>
                   <td class="ta-num">{fmt(row.note_x_coef)}</td>
                   <td class="ta-num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
+                </tr>
+                <tr
+                  :if={@group_subtotals?}
+                  id={"bulletin-group-total-#{g.group}"}
+                  class="font-semibold"
+                >
+                  <td>{gettext("Total groupe")}</td>
+                  <td class="ta-num">{fmt(g.total_coef)}</td>
+                  <td :for={_ <- 2..period_cols(@period_kind)//1}></td>
+                  <td class="ta-num">{fmt(g.average)}</td>
+                  <td class="ta-num">{fmt(g.total_points)}</td>
+                  <td></td>
                 </tr>
               </tbody>
               <tfoot>

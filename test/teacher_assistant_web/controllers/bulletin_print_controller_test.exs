@@ -311,4 +311,19 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert redirected_to(conn) == "/school"
     assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "vérification"
   end
+
+  test "print lists subjects under their bulletin group; subtotals only when enabled", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    scope: scope
+  } do
+    path = ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}"
+    html = conn |> get(path) |> html_response(200)
+    assert html =~ "Groupe 3 · Autres"
+    refute html =~ "Total groupe"
+
+    {:ok, _} = Curriculum.set_bulletin_group_subtotals(scope, true)
+    assert conn |> get(path) |> html_response(200) =~ "Total groupe"
+  end
 end

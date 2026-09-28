@@ -258,4 +258,18 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
                ~p"/school/classes/#{cg.id}/students/#{other_enr.id}/bulletin?period=seq:#{seq.id}"
              )
   end
+
+  test "subjects appear under their bulletin group; subtotals only when enabled", ctx do
+    %{conn: conn, cg: cg, enr: enr, seq: seq, scope: scope} = ctx
+    path = ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}"
+
+    {:ok, view, _} = live(conn, path)
+    assert has_element?(view, "#bulletin-group-g3_autres", "Groupe 3 · Autres")
+    refute has_element?(view, "#bulletin-group-g1_lettres")
+    refute has_element?(view, "#bulletin-group-total-g3_autres")
+
+    {:ok, _} = TeacherAssistant.Curriculum.set_bulletin_group_subtotals(scope, true)
+    {:ok, view, _} = live(conn, path)
+    assert has_element?(view, "#bulletin-group-total-g3_autres", "Total groupe")
+  end
 end

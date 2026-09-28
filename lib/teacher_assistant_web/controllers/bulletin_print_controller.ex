@@ -81,8 +81,16 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       period_kind: Organization.period_kind(period),
       period_heading: period_heading(period),
       effectif: (results && results.effectif) || 0,
-      bundles: bundles
+      bundles: bundles,
+      group_subtotals?: group_subtotals?(scope)
     )
+  end
+
+  defp group_subtotals?(scope) do
+    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      {:ok, profile} -> profile.bulletin_group_subtotals?
+      _ -> false
+    end
   end
 
   defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"
