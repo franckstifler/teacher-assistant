@@ -126,4 +126,21 @@ defmodule TeacherAssistant.Academics.CoefficientResolutionTest do
 
     assert tc.subject == "Espagnol"
   end
+
+  test "a class whose level is not on the grid is offered every active subject", ctx do
+    {:ok, year} = {:ok, TeacherAssistant.Organization.current_academic_year(ctx.scope)}
+
+    {:ok, odd} =
+      Enrollment.create_class_group(ctx.scope, year, %{label: "Sixième A", level: "6e"})
+
+    refute Curriculum.class_on_grid?(ctx.scope, odd)
+    assert Curriculum.class_on_grid?(ctx.scope, ctx.cg_c)
+
+    offered = Enum.map(Curriculum.subjects_taught_in(ctx.scope, odd), & &1.id)
+
+    active =
+      ctx.scope |> Curriculum.list_subjects() |> Enum.filter(& &1.active?) |> Enum.map(& &1.id)
+
+    assert Enum.sort(offered) == Enum.sort(active)
+  end
 end

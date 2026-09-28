@@ -150,6 +150,17 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   end
 
   describe "assignments panel" do
+    test "a class off the grid is told why every subject is offered", %{
+      conn: conn,
+      year: year,
+      scope: scope
+    } do
+      {:ok, odd} = Enrollment.create_class_group(scope, year, %{label: "Sixième Z", level: "6e"})
+      {:ok, view, html} = live(conn, ~p"/school/classes/#{odd.id}")
+      assert has_element?(view, "#off-grid-hint")
+      assert html =~ "Mathématiques"
+    end
+
     test "an optional subject lists who takes it", %{conn: conn, cg: cg, user: head, scope: scope} do
       {:ok, awa} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
       {:ok, bob} = Enrollment.add_student(scope, cg, %{full_name: "Bob", sex: :m})

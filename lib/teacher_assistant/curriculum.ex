@@ -487,8 +487,28 @@ defmodule TeacherAssistant.Curriculum do
     |> Ash.update()
   end
 
-  @doc "Active subjects with a grid cell for the class's level and série (the assignable ones)."
+  @doc """
+  Active subjects with a grid cell for the class's level and série (the assignable
+  ones). A class whose subsystem and level are not a column of the grid (a level typed
+  freely, e.g. "6e") is offered every active subject: the grid cannot describe it, so
+  it must not leave the class with nothing to assign.
+  """
   def subjects_taught_in(%Scope{} = scope, %ClassGroup{} = cg) do
+    if class_on_grid?(scope, cg),
+      do: subjects_on_grid(scope, cg),
+      else: scope |> list_subjects() |> Enum.filter(& &1.active?)
+  end
+
+  @doc "Whether the class's subsystem and level are a column of the coefficient grid."
+  def class_on_grid?(%Scope{} = scope, %ClassGroup{} = cg) do
+    scope
+    |> coefficient_grid_layout()
+    |> Enum.any?(fn view ->
+      view.subsystem == cg.subsystem and Enum.any?(view.levels, &(&1.level == cg.level))
+    end)
+  end
+
+  defp subjects_on_grid(scope, cg) do
     cells = coefficient_cells(scope)
 
     scope

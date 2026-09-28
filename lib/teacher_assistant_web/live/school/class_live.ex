@@ -32,6 +32,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          search_results: [],
          q: "",
          subject_options: subject_options,
+         on_grid?: Curriculum.class_on_grid?(scope, cg),
          class_coefficients_allowed?: class_coefficients_allowed?(scope)
        )
        |> load_roster()}
@@ -427,6 +428,19 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             icon="hero-academic-cap"
             title={gettext("Aucun enseignant affecté")}
           />
+
+          <p
+            :if={@can_manage_assignments? and not @on_grid?}
+            id="off-grid-hint"
+            class="text-xs text-base-content/70"
+          >
+            {gettext(
+              "Ce niveau n'est pas une colonne de la grille des coefficients : toutes les matières sont proposées."
+            )}
+            <.link navigate={~p"/school/settings/coefficients"} class="link link-primary">
+              {gettext("Voir la grille")}
+            </.link>
+          </p>
 
           <form :if={@can_manage_assignments?} id="assign-form" phx-submit="assign" class="space-y-2">
             <div class="grid gap-2 sm:grid-cols-4">
