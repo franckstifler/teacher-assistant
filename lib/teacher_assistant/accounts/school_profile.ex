@@ -71,7 +71,11 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :registration_number,
         :logo_path,
         :class_coefficients_allowed?,
-        :bulletin_group_subtotals?
+        :bulletin_group_subtotals?,
+        :trimester_average_rule,
+        :annual_average_rule,
+        :average_rounding,
+        :shared_ranks?
       ]
 
       change fn changeset, _context ->
@@ -157,6 +161,23 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       allow_nil?: false,
       default: false,
       public?: true
+
+    attribute :trimester_average_rule, TeacherAssistant.Academics.TrimesterAverageRule,
+      allow_nil?: false,
+      default: :mean_of_sequences,
+      public?: true
+
+    attribute :annual_average_rule, TeacherAssistant.Academics.AnnualAverageRule,
+      allow_nil?: false,
+      default: :mean_of_sequences,
+      public?: true
+
+    attribute :average_rounding, TeacherAssistant.Academics.AverageRounding,
+      allow_nil?: false,
+      default: :hundredth,
+      public?: true
+
+    attribute :shared_ranks?, :boolean, allow_nil?: false, default: true, public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,

@@ -8,15 +8,19 @@ defmodule TeacherAssistant.Assessment do
   # `Assessment.<fn>` that could rebind to the wrong module.
   alias TeacherAssistant.Academics.{
     AcademicYear,
+    AnnualAverageRule,
     Assessment,
+    AverageRounding,
     Bulletins,
     ClassGroup,
     CombinedCourse,
+    GradingRules,
     Mark,
     Marks,
     Sequence,
     Term,
-    TeachingContext
+    TeachingContext,
+    TrimesterAverageRule
   }
 
   alias TeacherAssistant.Scope
@@ -220,6 +224,61 @@ defmodule TeacherAssistant.Assessment do
 
       _ ->
         true
+    end
+  end
+
+  # --- Grading rules (spec D2b-1) -----------------------------------------------
+
+  @doc "The school's averaging rules, from its profile."
+  def grading_rules(%Scope{} = scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    %GradingRules{
+      trimester: profile.trimester_average_rule,
+      annual: profile.annual_average_rule,
+      rounding: profile.average_rounding,
+      shared_ranks?: profile.shared_ranks?
+    }
+  end
+
+  @rule_fields %{
+    "trimester_average_rule" => {:trimester_average_rule, TrimesterAverageRule},
+    "annual_average_rule" => {:annual_average_rule, AnnualAverageRule},
+    "average_rounding" => {:average_rounding, AverageRounding}
+  }
+
+  @doc """
+  Saves averaging rules from string params. Every key must be a known rule and every
+  value one of its options (matched, never converted with `String.to_atom`); otherwise
+  `{:error, :invalid_rule}` and nothing is written. Authorization is the school
+  profile's update policy.
+  """
+  def update_grading_rules(%Scope{} = scope, %{} = params) do
+    with {:ok, attrs} <- parse_rule_params(params),
+         {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      TeacherAssistant.Accounts.update_school_profile(profile, attrs, scope: scope)
+    end
+  end
+
+  defp parse_rule_params(params) do
+    Enum.reduce_while(params, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      case parse_rule(key, value) do
+        {:ok, field, parsed} -> {:cont, {:ok, Map.put(acc, field, parsed)}}
+        :error -> {:halt, {:error, :invalid_rule}}
+      end
+    end)
+  end
+
+  defp parse_rule("shared_ranks?", "true"), do: {:ok, :shared_ranks?, true}
+  defp parse_rule("shared_ranks?", "false"), do: {:ok, :shared_ranks?, false}
+
+  defp parse_rule(key, value) do
+    with {field, enum} <- Map.get(@rule_fields, key),
+         %{} = by_string <- Map.new(enum.values(), &{Atom.to_string(&1), &1}),
+         {:ok, parsed} <- Map.fetch(by_string, value) do
+      {:ok, field, parsed}
+    else
+      _ -> :error
     end
   end
 
