@@ -139,4 +139,90 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     assert Organization.period_param({:trimester, term1}) == "trim:#{term1.id}"
     assert Organization.period_param({:annual, year}) == "annee"
   end
+
+  test "the ×2 trimester rule counts the second séquence twice, and alone when S1 is unmarked",
+       ctx do
+    %{year: year, cg: cg, sequences: [s1, s2 | _], student: st, grade: grade, scope: scope} = ctx
+
+    {:ok, _} =
+      Assessment.update_grading_rules(scope, %{
+        "trimester_average_rule" => "second_sequence_double"
+      })
+
+    [term1 | _] = Organization.list_terms(scope, year)
+
+    grade.(s2, 15)
+    r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, 15)
+
+    grade.(s1, 12)
+    r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
+    # (12 + 2·15) / 3 = 14
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, 14)
+  end
+
+  test "the trimesters annual rule skips an unmarked trimester instead of counting it as zero",
+       ctx do
+    %{
+      year: year,
+      cg: cg,
+      sequences: [s1, s2, s3, s4 | _],
+      student: st,
+      grade: grade,
+      scope: scope
+    } = ctx
+
+    {:ok, _} =
+      Assessment.update_grading_rules(scope, %{"annual_average_rule" => "mean_of_trimesters"})
+
+    grade.(s1, 10)
+    grade.(s2, 12)
+    grade.(s3, 16)
+    grade.(s4, 13)
+
+    r = Assessment.class_results_for_period(scope, cg, {:annual, year})
+    # T1 = 11, T2 = 14.5, T3 unmarked → (11 + 14.5) / 2 = 12.75
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, Decimal.new("12.75"))
+  end
+
+  test "the two annual rules differ when a trimester has fewer marked séquences", ctx do
+    %{
+      year: year,
+      cg: cg,
+      sequences: [s1, _s2, s3, s4 | _],
+      student: st,
+      grade: grade,
+      scope: scope
+    } = ctx
+
+    grade.(s1, 10)
+    grade.(s3, 16)
+    grade.(s4, 13)
+
+    r = Assessment.class_results_for_period(scope, cg, {:annual, year})
+    # séquences: (10 + 16 + 13) / 3 = 13
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, 13)
+
+    {:ok, _} =
+      Assessment.update_grading_rules(scope, %{"annual_average_rule" => "mean_of_trimesters"})
+
+    r = Assessment.class_results_for_period(scope, cg, {:annual, year})
+    # trimesters: T1 = 10, T2 = 14.5 → 12.25
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, Decimal.new("12.25"))
+  end
+
+  test "school rounding applies to period results", ctx do
+    %{year: year, cg: cg, sequences: [s1, s2 | _], student: st, grade: grade, scope: scope} = ctx
+    grade.(s1, 12)
+    grade.(s2, "13.3")
+    [term1 | _] = Organization.list_terms(scope, year)
+
+    r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
+    # (12 + 13.3) / 2 = 12.65 at the default hundredth
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, Decimal.new("12.65"))
+
+    {:ok, _} = Assessment.update_grading_rules(scope, %{"average_rounding" => "quarter"})
+    r = Assessment.class_results_for_period(scope, cg, {:trimester, term1})
+    assert Decimal.equal?(r.per_student[st.id].moyenne_generale, Decimal.new("12.75"))
+  end
 end

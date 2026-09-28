@@ -54,13 +54,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
           nil
         else
           Marks.summarize(
-            Enum.map(students, fn s -> %{id: s.id, sex: s.sex} end),
+            Enum.map(students, fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end),
             Enum.map(assessments, fn a ->
               %{id: a.id, weight: a.weight, max_score: a.max_score}
             end),
             Enum.map(marks, fn m ->
               %{assessment_id: m.assessment_id, student_id: m.student_id, score: m.score}
-            end)
+            end),
+            Assessment.grading_rules(scope)
           )
         end
       end

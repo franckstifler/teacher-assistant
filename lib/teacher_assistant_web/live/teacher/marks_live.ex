@@ -37,6 +37,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        socket
        |> assign(:ws, ws)
        |> assign(:ctx, ctx)
+       |> assign(:grading_rules, Assessment.grading_rules(scope))
        |> assign(:sequences, sequences)
        |> assign(:seq, seq)
        |> assign(:assessments, assessments)
@@ -71,6 +72,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          socket
          |> assign(:ws, ws)
          |> assign(:ctx, ctx)
+         |> assign(:grading_rules, Assessment.grading_rules(scope))
          |> assign(:course, course)
          |> assign(:groups, groups)
          |> assign(:sequences, sequences)
@@ -118,9 +120,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp entered_count(scores), do: Enum.count(scores, fn {_id, v} -> v not in [nil, ""] end)
 
-  defp preview_average(_students, nil, _scores), do: nil
+  defp preview_average(_students, nil, _scores, _rules), do: nil
 
-  defp preview_average(students, assessment, scores) do
+  defp preview_average(students, assessment, scores, rules) do
     marks =
       Enum.map(students, fn s ->
         %{
@@ -132,9 +134,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     summary =
       TeacherAssistant.Academics.Marks.summarize(
-        Enum.map(students, fn s -> %{id: s.id, sex: s.sex} end),
+        Enum.map(students, fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end),
         [%{id: assessment.id, weight: assessment.weight, max_score: assessment.max_score}],
-        marks
+        marks,
+        rules
       )
 
     summary.class_average
@@ -642,7 +645,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             <p id="marks-average-preview" class="ta-num font-semibold">
               {gettext("Class average")}:
               <span class="text-primary">
-                {fmt_avg(preview_average(@students, @assessment, @scores))}
+                {fmt_avg(preview_average(@students, @assessment, @scores, @grading_rules))}
               </span>
             </p>
           </div>

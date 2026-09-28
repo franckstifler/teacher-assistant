@@ -330,9 +330,9 @@ defmodule TeacherAssistant.Assessment do
         students =
           scope
           |> TeacherAssistant.Enrollment.list_students(cg)
-          |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+          |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
 
-        Bulletins.compile(students, subjects)
+        Bulletins.compile(students, subjects, grading_rules(scope))
     end
   end
 
@@ -367,10 +367,12 @@ defmodule TeacherAssistant.Assessment do
   # breakdown carried on each subject row: :sequences (per séquence, for trimester)
   # or :trimesters (per term, for annual).
   defp period_result(%Scope{} = scope, cg, seqs, component_kind) do
+    rules = grading_rules(scope)
+
     students =
       scope
       |> TeacherAssistant.Enrollment.list_students(cg)
-      |> Enum.map(fn s -> %{id: s.id, sex: s.sex} end)
+      |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
 
     # per séquence: %{context_id => %{label, coefficient, per_student_avg}}
     per_seq =
@@ -383,7 +385,11 @@ defmodule TeacherAssistant.Assessment do
               Map.new(students, fn s ->
                 sm = Enum.filter(subj.marks, &(&1.student_id == s.id))
 
-                {s.id, Marks.subject_average(sm, subj.assessments_by_id)}
+                {s.id,
+                 GradingRules.round_average(
+                   Marks.subject_average(sm, subj.assessments_by_id),
+                   rules
+                 )}
               end)
 
             {subj.context_id,
@@ -411,12 +417,12 @@ defmodule TeacherAssistant.Assessment do
 
           per_student_avg =
             Map.new(students, fn s ->
-              {s.id, mean_present(sequence_values(per_seq, cid, s.id))}
+              {s.id, period_average(component_kind, per_seq, cid, s.id, rules)}
             end)
 
           components =
             Map.new(students, fn s ->
-              {s.id, build_components(component_kind, per_seq, cid, s.id)}
+              {s.id, build_components(component_kind, per_seq, cid, s.id, rules)}
             end)
 
           %{
@@ -430,7 +436,7 @@ defmodule TeacherAssistant.Assessment do
           }
         end)
 
-      Bulletins.aggregate(students, subject_inputs)
+      Bulletins.aggregate(students, subject_inputs, rules)
     end
   end
 
@@ -439,42 +445,46 @@ defmodule TeacherAssistant.Assessment do
     m[cid]
   end
 
-  # this subject's per-séquence average for one student, in séquence order (nils dropped)
-  defp sequence_values(per_seq, cid, sid) do
+  # A subject's period average for one student under the school's rules.
+  # :sequences = one trimester; :trimesters = the whole year.
+  defp period_average(:sequences, per_seq, cid, sid, rules),
+    do: GradingRules.trimester_average(sequence_pairs(per_seq, cid, sid), rules)
+
+  defp period_average(:trimesters, per_seq, cid, sid, rules),
+    do: GradingRules.annual_average(term_pairs(per_seq, cid, sid), rules)
+
+  # [{position_in_term, avg}] for the séquences of `per_seq`, in order.
+  defp sequence_pairs(per_seq, cid, sid) do
+    Enum.map(per_seq, fn {seq, m} ->
+      {seq.position_in_term, m[cid] && m[cid].per_student_avg[sid]}
+    end)
+  end
+
+  # [{term_position, [{position_in_term, avg}]}], by term.
+  defp term_pairs(per_seq, cid, sid) do
     per_seq
-    |> Enum.map(fn {_seq, m} -> m[cid] && m[cid].per_student_avg[sid] end)
-    |> Enum.reject(&is_nil/1)
+    |> Enum.group_by(fn {seq, _m} -> seq.term.position end)
+    |> Enum.sort_by(fn {position, _} -> position end)
+    |> Enum.map(fn {position, term_seqs} -> {position, sequence_pairs(term_seqs, cid, sid)} end)
   end
 
-  defp build_components(:sequences, per_seq, cid, sid) do
-    seqs =
-      Enum.map(per_seq, fn {seq, m} ->
-        %{number: seq.number, average: m[cid] && m[cid].per_student_avg[sid]}
-      end)
-
-    %{sequences: seqs}
+  defp build_components(:sequences, per_seq, cid, sid, _rules) do
+    %{
+      sequences:
+        Enum.map(per_seq, fn {seq, m} ->
+          %{number: seq.number, average: m[cid] && m[cid].per_student_avg[sid]}
+        end)
+    }
   end
 
-  defp build_components(:trimesters, per_seq, cid, sid) do
-    trimesters =
-      per_seq
-      |> Enum.group_by(fn {seq, _m} -> seq.term.position end)
-      |> Enum.sort_by(fn {position, _} -> position end)
-      |> Enum.map(fn {position, term_seqs} ->
-        vals =
-          term_seqs
-          |> Enum.map(fn {_seq, m} -> m[cid] && m[cid].per_student_avg[sid] end)
-          |> Enum.reject(&is_nil/1)
-
-        %{position: position, average: mean_present(vals)}
-      end)
-
-    %{trimesters: trimesters}
-  end
-
-  defp mean_present([]), do: nil
-
-  defp mean_present(vals) do
-    Decimal.div(Enum.reduce(vals, Decimal.new(0), &Decimal.add/2), Decimal.new(length(vals)))
+  defp build_components(:trimesters, per_seq, cid, sid, rules) do
+    %{
+      trimesters:
+        per_seq
+        |> term_pairs(cid, sid)
+        |> Enum.map(fn {position, pairs} ->
+          %{position: position, average: GradingRules.trimester_average(pairs, rules)}
+        end)
+    }
   end
 end
