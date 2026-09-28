@@ -103,10 +103,7 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
                       name={"grid[cells][#{s.id}][#{Curriculum.cell_token(col.key)}]"}
                       value={cell_value(@submitted, @cells, s.id, col.key)}
                       placeholder={col.inherits? && fmt(@cells[put_elem(key(s.id, col.key), 3, nil)])}
-                      class={[
-                        "input input-sm w-16 text-center",
-                        MapSet.member?(@overridden, key(s.id, col.key)) && "border-warning"
-                      ]}
+                      class={cell_class(MapSet.member?(@overridden, key(s.id, col.key)))}
                       errors={error_texts(@errors, key(s.id, col.key))}
                     />
                   </td>
@@ -310,4 +307,8 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
   defp fmt(nil), do: nil
   defp fmt(false), do: nil
   defp fmt(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal)
+
+  # `<.input>` takes a string class, which replaces its default classes entirely.
+  defp cell_class(true), do: "input input-sm w-16 text-center border-warning"
+  defp cell_class(false), do: "input input-sm w-16 text-center"
 end

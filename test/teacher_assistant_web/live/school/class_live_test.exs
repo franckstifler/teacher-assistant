@@ -150,6 +150,73 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   end
 
   describe "assignments panel" do
+    test "only subjects taught at the class's level are offered", %{
+      conn: conn,
+      cg: cg,
+      scope: scope
+    } do
+      {:ok, s} = TeacherAssistant.Curriculum.create_subject(scope, %{name: "Philosophie"})
+
+      cell =
+        TeacherAssistant.Curriculum.coefficient_cells(scope)[{s.id, :francophone, "6ème", nil}]
+
+      :ok = Ash.destroy(cell, scope: scope)
+
+      {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}")
+      refute html =~ "Philosophie"
+    end
+
+    test "the class shows the grid coefficient, takes an override and resets it", ctx do
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert has_element?(view, "#coefficient-#{tc.id} input[value='4']")
+      refute has_element?(view, "#reset-coefficient-#{tc.id}")
+
+      view |> form("#coefficient-#{tc.id}", %{"coefficient" => "3"}) |> render_change()
+      assert has_element?(view, "#coefficient-#{tc.id} input.border-warning[value='3']")
+      assert render(view) =~ "modèle : 4"
+
+      view |> element("#reset-coefficient-#{tc.id}") |> render_click()
+      assert has_element?(view, "#coefficient-#{tc.id} input[value='4']")
+    end
+
+    test "with class coefficients off the value is read-only", ctx do
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
+
+      {:ok, _} = TeacherAssistant.Curriculum.set_class_coefficients_allowed(scope, false)
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      refute has_element?(view, "#coefficient-#{tc.id} input")
+      assert has_element?(view, "#assignment-row-#{tc.id}", "4")
+    end
+
+    test "an assignment with no grid cell is flagged", ctx do
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
+
+      cell =
+        TeacherAssistant.Curriculum.coefficient_cells(scope)[
+          {tc.subject_id, :francophone, "6ème", nil}
+        ]
+
+      :ok = Ash.destroy(cell, scope: scope)
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+      assert has_element?(
+               view,
+               "#not-taught-#{tc.id}",
+               "Non enseignée à ce niveau selon la grille"
+             )
+    end
+
     test "assign form lists catalog subjects", %{conn: conn, cg: cg, scope: scope} do
       # "Musique" is not part of the school's seeded starter catalog, so
       # creating it here (rather than reusing a seeded subject) proves the
@@ -221,7 +288,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       assert length(TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)) == 1
     end
 
-    test "assign defaults the coefficient from the chosen subject's catalog entry", %{
+    test "assign takes the coefficient from the grid, without an override", %{
       conn: conn,
       cg: cg,
       user: head,
@@ -239,9 +306,11 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       })
       |> render_submit()
 
-      # "Mathématiques" is seeded with default_coefficient 4 (SchoolTemplates).
+      # "Mathématiques" is seeded with default_coefficient 4 (SchoolTemplates), which
+      # seeds its grid cells; the assignment carries no override and reads the grid.
       [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
-      assert Decimal.equal?(tc.coefficient, Decimal.new(4))
+      assert tc.coefficient == nil
+      assert Decimal.equal?(tc.effective_coefficient, Decimal.new(4))
     end
 
     test "editing a coefficient inline persists it", %{
@@ -509,7 +578,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
       render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
       [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
-      assert Decimal.equal?(tc.coefficient, Decimal.new(1))
+      assert tc.coefficient == nil
     end
 
     test "form master cannot set the form master (forged event)", %{

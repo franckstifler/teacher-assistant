@@ -14,10 +14,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     with %{} <- scope.current_workspace,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Enrollment.class_manager?(scope, cg) do
-      subject_options =
-        scope
-        |> Curriculum.list_subjects()
-        |> Enum.filter(& &1.active?)
+      subject_options = Curriculum.subjects_taught_in(scope, cg)
 
       {:ok,
        socket
@@ -34,7 +31,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
              Enrollment.class_manager?(scope, cg),
          search_results: [],
          q: "",
-         subject_options: subject_options
+         subject_options: subject_options,
+         class_coefficients_allowed?: class_coefficients_allowed?(scope)
        )
        |> load_roster()}
     else
@@ -272,18 +270,55 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                   <td>{tc.teacher.email}</td>
                   <td>{tc.weekly_hours}</td>
                   <td>
-                    <form id={"coefficient-#{tc.id}"} phx-change="set_coefficient">
+                    <form
+                      :if={@can_manage_assignments? and @class_coefficients_allowed?}
+                      id={"coefficient-#{tc.id}"}
+                      phx-change="set_coefficient"
+                      class="flex items-center gap-1"
+                    >
                       <input type="hidden" name="context-id" value={tc.id} />
                       <input
-                        type="number"
-                        step="0.5"
-                        min="0"
+                        type="text"
+                        inputmode="decimal"
                         name="coefficient"
-                        value={Decimal.to_string(tc.coefficient)}
-                        class="input input-bordered input-xs w-20"
-                        disabled={!@can_manage_assignments?}
+                        value={fmt_coef(tc.effective_coefficient)}
+                        class={[
+                          "input input-bordered input-xs w-16",
+                          tc.coefficient && "border-warning"
+                        ]}
                       />
+                      <span
+                        :if={tc.coefficient && tc.grid_coefficient}
+                        class="text-xs text-base-content/60"
+                      >
+                        {gettext("modèle : %{value}",
+                          value: fmt_coef(tc.grid_coefficient.coefficient)
+                        )}
+                      </span>
+                      <button
+                        :if={tc.coefficient}
+                        id={"reset-coefficient-#{tc.id}"}
+                        type="button"
+                        class="btn btn-ghost btn-xs"
+                        phx-click="reset_coefficient"
+                        phx-value-context-id={tc.id}
+                      >
+                        {gettext("Revenir au modèle")}
+                      </button>
                     </form>
+                    <span
+                      :if={!(@can_manage_assignments? and @class_coefficients_allowed?)}
+                      class="ta-num"
+                    >
+                      {fmt_coef(tc.effective_coefficient)}
+                    </span>
+                    <span
+                      :if={!tc.taught_here?}
+                      id={"not-taught-#{tc.id}"}
+                      class="badge badge-warning badge-sm mt-1"
+                    >
+                      {gettext("Non enseignée à ce niveau selon la grille")}
+                    </span>
                   </td>
                   <td :if={@can_manage_assignments?}>
                     <div :if={tc.combined_course_id} class="flex items-center gap-2">
@@ -501,22 +536,13 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
   def handle_event("assign", %{"assignment" => params}, socket) do
     with %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == params["user_id"])) do
-      coef =
-        socket.assigns.subject_options
-        |> Enum.find(&(&1.name == params["subject"]))
-        |> case do
-          nil -> Decimal.new(1)
-          s -> s.default_coefficient
-        end
-
       case Curriculum.assign_teacher(
              socket.assigns.current_scope,
              socket.assigns.cg,
              member.user,
              %{
                subject: params["subject"],
-               weekly_hours: parse_hours(params["weekly_hours"]),
-               coefficient: coef
+               weekly_hours: parse_hours(params["weekly_hours"])
              }
            ) do
         {:ok, _} ->
@@ -581,8 +607,26 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:error, :invalid_coefficient} ->
         {:noreply, put_flash(socket, :error, gettext("Enter a positive coefficient."))}
 
+      {:error, :class_coefficients_disabled} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Les coefficients propres à une classe sont désactivés.")
+         )}
+
       _ ->
         {:noreply, socket}
+    end
+  end
+
+  def handle_event("reset_coefficient", %{"context-id" => cid}, socket) do
+    with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)),
+         {:ok, _} <- Curriculum.clear_assignment_coefficient(socket.assigns.current_scope, tc) do
+      {:noreply, socket |> put_flash(:info, gettext("Coefficient updated.")) |> load_roster()}
+    else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -702,4 +746,13 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   defp presence(nil), do: nil
   defp presence(""), do: nil
   defp presence(v), do: v
+
+  defp class_coefficients_allowed?(scope) do
+    case Accounts.fetch_school_profile(scope) do
+      {:ok, profile} -> profile.class_coefficients_allowed?
+      _ -> false
+    end
+  end
+
+  defp fmt_coef(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal)
 end
