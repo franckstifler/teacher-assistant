@@ -67,4 +67,48 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
     assert render(view) =~ "Réglage non enregistré."
     assert Assessment.grading_rules(scope).rounding == :hundredth
   end
+
+  test "admin manages assessment types", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+
+    view
+    |> form("#new-type-form", %{"type" => %{"name" => "Oral", "default_weight" => "0,5"}})
+    |> render_submit()
+
+    oral = Enum.find(Assessment.list_assessment_types(scope), &(&1.name == "Oral"))
+    assert Decimal.equal?(oral.default_weight, Decimal.new("0.5"))
+
+    view
+    |> form("#type-#{oral.id}", %{"type" => %{"name" => "Oral", "default_weight" => "2"}})
+    |> render_submit()
+
+    assert Decimal.equal?(
+             Enum.find(Assessment.list_assessment_types(scope), &(&1.id == oral.id)).default_weight,
+             2
+           )
+
+    view |> element("#delete-type-#{oral.id}") |> render_click()
+    refute Enum.any?(Assessment.list_assessment_types(scope), &(&1.id == oral.id))
+  end
+
+  test "a zero weight is refused", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+
+    view
+    |> form("#new-type-form", %{"type" => %{"name" => "Oral", "default_weight" => "0"}})
+    |> render_submit()
+
+    assert render(view) =~ "Type non enregistré."
+  end
+
+  test "maximum mark and absence rule", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+    assert has_element?(view, "#rule-absence_rule-zero.btn-primary")
+    view |> form("#default-max-form", %{"default_max_score" => "10"}) |> render_submit()
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    assert Decimal.equal?(profile.default_max_score, 10)
+
+    view |> element("#rule-absence_rule-makeup") |> render_click()
+    assert Assessment.grading_rules(scope).absence == :makeup
+  end
 end

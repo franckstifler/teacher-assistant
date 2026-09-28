@@ -555,6 +555,8 @@ msgstr "Email"
 
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:303
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:338
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:71
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:123
 #: lib/teacher_assistant_web/live/school/fees_live.ex:414
 #: lib/teacher_assistant_web/live/school/fees_live.ex:464
 #: lib/teacher_assistant_web/live/school/periods_live.ex:89
@@ -637,7 +639,7 @@ msgid "Nom de l'école"
 msgstr "Nom de l'école"
 
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:40
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:34
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:47
 #: lib/teacher_assistant_web/live/school/settings_live.ex:50
 #, elixir-autogen, elixir-format
 msgid "Paramètres"
@@ -1559,6 +1561,7 @@ msgid "Samedi"
 msgstr "Samedi"
 
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:257
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:79
 #: lib/teacher_assistant_web/live/school/fees_live.ex:375
 #: lib/teacher_assistant_web/live/school/fees_live.ex:620
 #: lib/teacher_assistant_web/live/school/periods_live.ex:99
@@ -3238,7 +3241,8 @@ msgstr ""
 
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:227
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:237
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:107
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:232
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:271
 #, elixir-autogen, elixir-format
 msgid "Réglage non enregistré."
 msgstr ""
@@ -3300,7 +3304,7 @@ msgstr ""
 msgid "2 décimales"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:113
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:277
 #, elixir-autogen, elixir-format
 msgid "Arrondi"
 msgstr ""
@@ -3310,12 +3314,12 @@ msgstr ""
 msgid "Au quart de point"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:70
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:162
 #, elixir-autogen, elixir-format
 msgid "Désactivé : départage par la moyenne non arrondie, puis par le nom."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:112
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:276
 #, elixir-autogen, elixir-format
 msgid "Moyenne annuelle"
 msgstr ""
@@ -3335,7 +3339,7 @@ msgstr ""
 msgid "Moyenne des 6 séquences"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:111
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:275
 #, elixir-autogen, elixir-format
 msgid "Moyenne trimestrielle"
 msgstr ""
@@ -3345,22 +3349,23 @@ msgstr ""
 msgid "Pondérée (2e séquence ×2)"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:68
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "Rang ex æquo"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:101
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:226
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:265
 #, elixir-autogen, elixir-format
 msgid "Réglage enregistré."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:59
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:152
 #, elixir-autogen, elixir-format
 msgid "règle officielle"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/evaluations_live.ex:34
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:47
 #: lib/teacher_assistant_web/live/school/settings_live.ex:348
 #, elixir-autogen, elixir-format
 msgid "Évaluations & moyennes"
@@ -3371,6 +3376,7 @@ msgstr ""
 msgid "Non noté (exclu du calcul)"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:119
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:667
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:787
 #, elixir-autogen, elixir-format
@@ -3402,4 +3408,54 @@ msgstr ""
 #: lib/teacher_assistant/academics/absence_rule.ex:5
 #, elixir-autogen, elixir-format
 msgid "Zéro"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:103
+#, elixir-autogen, elixir-format
+msgid "+ Type d'évaluation"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:106
+#, elixir-autogen, elixir-format
+msgid "Exemple : 12 (×0,5) et 14 (×1) → moyenne 13,33"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:94
+#, elixir-autogen, elixir-format
+msgid "Nouveau type"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:250
+#, elixir-autogen, elixir-format
+msgid "Type enregistré."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:253
+#, elixir-autogen, elixir-format
+msgid "Type non enregistré."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:204
+#, elixir-autogen, elixir-format
+msgid "Type utilisé par des évaluations : il est conservé."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:53
+#, elixir-autogen, elixir-format
+msgid "Types d'évaluation et poids par défaut"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:64
+#, elixir-autogen, elixir-format
+msgid "poids"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:151
+#, elixir-autogen, elixir-format
+msgid "pratique courante"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/evaluations_live.ex:278
+#, elixir-autogen, elixir-format
+msgid "Élève absent à une évaluation"
 msgstr ""
