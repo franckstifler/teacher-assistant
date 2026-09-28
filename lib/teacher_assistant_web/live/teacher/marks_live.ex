@@ -490,6 +490,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             />
           </form>
 
+          <p
+            :if={@seq}
+            id="entry-deadline"
+            class="ta-num self-center text-xs text-base-content/70"
+          >
+            {gettext("Limite de saisie : %{date}",
+              date: Calendar.strftime(@seq.grade_entry_deadline, "%d/%m/%Y")
+            )}
+          </p>
+
           <form
             :if={@seq}
             id="assessment-select"
@@ -583,6 +593,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               options={for s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", s.id}}
             />
           </form>
+
+          <p
+            :if={@seq}
+            id="entry-deadline"
+            class="ta-num self-center text-xs text-base-content/70"
+          >
+            {gettext("Limite de saisie : %{date}",
+              date: Calendar.strftime(@seq.grade_entry_deadline, "%d/%m/%Y")
+            )}
+          </p>
 
           <form
             :if={@seq}

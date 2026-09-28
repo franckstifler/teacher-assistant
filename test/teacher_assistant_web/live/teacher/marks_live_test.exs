@@ -245,4 +245,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert Assessment.list_assessments(scope, ctx, seq) == existing
     assert has_element?(view, "#new-assessment-form")
   end
+
+  test "shows the séquence's grade-entry deadline", %{conn: conn, ctx: ctx, seq: seq, a: a} do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(
+             view,
+             "#entry-deadline",
+             Calendar.strftime(seq.grade_entry_deadline, "%d/%m/%Y")
+           )
+  end
 end
