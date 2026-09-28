@@ -27,19 +27,26 @@ defmodule TeacherAssistant.Academics.CoefficientSettingsTest do
 
   test "overrides cannot be switched off while a class has one", %{scope: scope, tc: tc} do
     {:ok, _} = Curriculum.set_assignment_coefficient(scope, tc, "3")
-    assert {:error, {:overrides_exist, ["6e A"]}} = Curriculum.set_class_coefficients_allowed(scope, false)
+
+    assert {:error, {:overrides_exist, ["6e A"]}} =
+             Curriculum.set_class_coefficients_allowed(scope, false)
 
     {:ok, _} = Curriculum.clear_assignment_coefficient(scope, tc)
-    assert {:ok, %{class_coefficients_allowed?: false}} = Curriculum.set_class_coefficients_allowed(scope, false)
+
+    assert {:ok, %{class_coefficients_allowed?: false}} =
+             Curriculum.set_class_coefficients_allowed(scope, false)
   end
 
   test "with overrides off, a class coefficient cannot be set", %{scope: scope, tc: tc} do
     {:ok, _} = Curriculum.set_class_coefficients_allowed(scope, false)
-    assert {:error, :class_coefficients_disabled} = Curriculum.set_assignment_coefficient(scope, tc, "3")
+
+    assert {:error, :class_coefficients_disabled} =
+             Curriculum.set_assignment_coefficient(scope, tc, "3")
   end
 
   test "group subtotals can be switched on", %{scope: scope} do
-    assert {:ok, %{bulletin_group_subtotals?: true}} = Curriculum.set_bulletin_group_subtotals(scope, true)
+    assert {:ok, %{bulletin_group_subtotals?: true}} =
+             Curriculum.set_bulletin_group_subtotals(scope, true)
   end
 
   test "a teacher cannot change these settings", %{scope: scope} do

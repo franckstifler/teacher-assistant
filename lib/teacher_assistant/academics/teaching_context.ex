@@ -83,6 +83,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     read :for_class_group do
       argument :class_group_id, :uuid, allow_nil?: false
       filter expr(class_group_id == ^arg(:class_group_id))
+
       prepare build(
                 load: [
                   :teacher,
@@ -240,7 +241,9 @@ defmodule TeacherAssistant.Academics.TeachingContext do
   calculations do
     calculate :effective_coefficient,
               :decimal,
-              expr(coefficient || grid_coefficient.coefficient || catalog_subject.default_coefficient) do
+              expr(
+                coefficient || grid_coefficient.coefficient || catalog_subject.default_coefficient
+              ) do
       public? true
     end
 

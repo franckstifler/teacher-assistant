@@ -222,7 +222,13 @@ defmodule TeacherAssistant.Curriculum do
     group_changes = parse_group_changes(Map.get(params, "groups", %{}), subjects)
     current = Map.new(stored, fn {key, cell} -> {key, cell.coefficient} end)
 
-    with :ok <- CoefficientRules.validate(current, cell_changes, group_changes, grid_assignments(scope)),
+    with :ok <-
+           CoefficientRules.validate(
+             current,
+             cell_changes,
+             group_changes,
+             grid_assignments(scope)
+           ),
          {:ok, :ok} <-
            Ash.transact([SubjectCoefficient, Subject], fn ->
              with :ok <- write_cells(cell_changes, stored, scope) do
@@ -281,7 +287,13 @@ defmodule TeacherAssistant.Curriculum do
     SubjectCoefficient
     |> Ash.Changeset.for_create(
       :create,
-      %{subject_id: subject_id, subsystem: subsystem, level: level, serie: serie, coefficient: value},
+      %{
+        subject_id: subject_id,
+        subsystem: subsystem,
+        level: level,
+        serie: serie,
+        coefficient: value
+      },
       scope: scope
     )
     |> Ash.create()

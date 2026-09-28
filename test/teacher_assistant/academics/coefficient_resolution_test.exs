@@ -25,7 +25,9 @@ defmodule TeacherAssistant.Academics.CoefficientResolutionTest do
       Curriculum.create_subject(scope, %{name: "Musique", default_coefficient: Decimal.new(2)})
 
     blank = Curriculum.coefficient_cells(scope)[{musique.id, :francophone, "2nde", nil}]
-    {:ok, _} = blank |> Ash.Changeset.for_update(:update, %{coefficient: 4}, scope: scope) |> Ash.update()
+
+    {:ok, _} =
+      blank |> Ash.Changeset.for_update(:update, %{coefficient: 4}, scope: scope) |> Ash.update()
 
     %{scope: scope, head: head, cg_c: cg_c, cg_a: cg_a, musique: musique}
   end
@@ -41,7 +43,13 @@ defmodule TeacherAssistant.Academics.CoefficientResolutionTest do
       SubjectCoefficient
       |> Ash.Changeset.for_create(
         :create,
-        %{subject_id: subject.id, subsystem: :francophone, level: level, serie: serie, coefficient: coef},
+        %{
+          subject_id: subject.id,
+          subsystem: :francophone,
+          level: level,
+          serie: serie,
+          coefficient: coef
+        },
         scope: scope
       )
       |> Ash.create()
@@ -59,8 +67,16 @@ defmodule TeacherAssistant.Academics.CoefficientResolutionTest do
 
   test "a série cell beats the blank-série cell, for that série only", ctx do
     put_cell(ctx.scope, ctx.musique, "2nde", "C", 5)
-    assert Decimal.equal?(assign(ctx.scope, ctx.cg_c, ctx.head, "Musique").effective_coefficient, 5)
-    assert Decimal.equal?(assign(ctx.scope, ctx.cg_a, ctx.head, "Musique").effective_coefficient, 4)
+
+    assert Decimal.equal?(
+             assign(ctx.scope, ctx.cg_c, ctx.head, "Musique").effective_coefficient,
+             5
+           )
+
+    assert Decimal.equal?(
+             assign(ctx.scope, ctx.cg_a, ctx.head, "Musique").effective_coefficient,
+             4
+           )
   end
 
   test "a class override beats the grid, and clearing it returns to the grid", ctx do
@@ -77,7 +93,13 @@ defmodule TeacherAssistant.Academics.CoefficientResolutionTest do
 
   test "without a cell the subject default applies and the assignment is flagged", ctx do
     tc = assign(ctx.scope, ctx.cg_c, ctx.head, "Musique")
-    :ok = Ash.destroy(Curriculum.coefficient_cells(ctx.scope)[{ctx.musique.id, :francophone, "2nde", nil}], scope: ctx.scope)
+
+    :ok =
+      Ash.destroy(
+        Curriculum.coefficient_cells(ctx.scope)[{ctx.musique.id, :francophone, "2nde", nil}],
+        scope: ctx.scope
+      )
+
     [tc] = Curriculum.list_assignments_for_class(ctx.scope, ctx.cg_c)
     refute tc.taught_here?
     assert Decimal.equal?(tc.effective_coefficient, Decimal.new(2))
@@ -86,13 +108,22 @@ defmodule TeacherAssistant.Academics.CoefficientResolutionTest do
 
   test "only subjects taught at the class's level are offered", ctx do
     assert ctx.musique.id in Enum.map(Curriculum.subjects_taught_in(ctx.scope, ctx.cg_c), & &1.id)
-    :ok = Ash.destroy(Curriculum.coefficient_cells(ctx.scope)[{ctx.musique.id, :francophone, "2nde", nil}], scope: ctx.scope)
+
+    :ok =
+      Ash.destroy(
+        Curriculum.coefficient_cells(ctx.scope)[{ctx.musique.id, :francophone, "2nde", nil}],
+        scope: ctx.scope
+      )
+
     refute ctx.musique.id in Enum.map(Curriculum.subjects_taught_in(ctx.scope, ctx.cg_c), & &1.id)
   end
 
   test "assigning an unknown subject name creates it in the catalog", ctx do
     tc = assign(ctx.scope, ctx.cg_c, ctx.head, "Espagnol")
-    assert %{name: "Espagnol"} = Enum.find(Curriculum.list_subjects(ctx.scope), &(&1.id == tc.subject_id))
+
+    assert %{name: "Espagnol"} =
+             Enum.find(Curriculum.list_subjects(ctx.scope), &(&1.id == tc.subject_id))
+
     assert tc.subject == "Espagnol"
   end
 end

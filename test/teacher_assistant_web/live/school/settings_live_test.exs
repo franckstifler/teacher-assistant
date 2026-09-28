@@ -397,8 +397,12 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   test "deleting a subject a class uses explains why it stays", %{conn: conn, scope: scope} do
     year = Organization.current_academic_year(scope)
     [cg | _] = Enrollment.list_class_groups(scope, year)
-    maths = Enum.find(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
-    {:ok, _} = TeacherAssistant.Curriculum.assign_teacher(scope, cg, scope.current_user, %{subject: maths})
+
+    maths =
+      Enum.find(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
+
+    {:ok, _} =
+      TeacherAssistant.Curriculum.assign_teacher(scope, cg, scope.current_user, %{subject: maths})
 
     {:ok, view, _} = live(conn, ~p"/school/settings")
     view |> element("#subject-delete-#{maths.id}") |> render_click()

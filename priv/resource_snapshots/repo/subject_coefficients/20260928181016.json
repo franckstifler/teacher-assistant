@@ -21,7 +21,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "name",
+      "source": "subsystem",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "level",
       "type": "text"
     },
     {
@@ -33,56 +45,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "code",
+      "source": "serie",
       "type": "text"
     },
     {
       "allow_nil?": false,
-      "default": "\"1\"",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "default_coefficient",
+      "source": "coefficient",
       "type": "decimal"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"g3_autres\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "bulletin_group",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "position",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "true",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "active?",
-      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -122,6 +98,41 @@
         "index?": true,
         "index_where": null,
         "match_tenant?": false,
+        "match_type": "full",
+        "match_with": {
+          "workspace_id": "workspace_id"
+        },
+        "multitenancy": {
+          "attribute": "workspace_id",
+          "global": false,
+          "strategy": "attribute"
+        },
+        "name": "subject_coefficients_subject_id_fkey",
+        "on_delete": "delete",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "subjects"
+      },
+      "scale": null,
+      "size": null,
+      "source": "subject_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": true,
+        "index_where": null,
+        "match_tenant?": false,
         "match_type": null,
         "match_with": null,
         "multitenancy": {
@@ -129,7 +140,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "subjects_workspace_id_fkey",
+        "name": "subject_coefficients_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -143,29 +154,46 @@
     }
   ],
   "base_filter": null,
-  "check_constraints": [],
+  "check_constraints": [
+    {
+      "attribute": [
+        "coefficient"
+      ],
+      "base_filter": null,
+      "check": "coefficient > 0",
+      "name": "subject_coefficients_positive_check"
+    }
+  ],
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "E43EC0589D9AFA6FF46AEBEDFDC7BCF7D506E4DF0FF37659ECD72A6F31D4EA1A",
+  "hash": "ABECC52367D227C835C11C242F3D116E5B8AECDB11415C159BE4AB4A0DD819EB",
   "identities": [
     {
-      "all_tenants?": false,
+      "all_tenants?": true,
       "base_filter": null,
-      "index_name": "subjects_unique_subject_name_index",
+      "index_name": "subject_coefficients_unique_cell_index",
       "keys": [
         {
           "type": "atom",
-          "value": "workspace_id"
+          "value": "subject_id"
         },
         {
           "type": "atom",
-          "value": "name"
+          "value": "subsystem"
+        },
+        {
+          "type": "atom",
+          "value": "level"
+        },
+        {
+          "type": "atom",
+          "value": "serie"
         }
       ],
-      "name": "unique_subject_name",
-      "nils_distinct?": true,
+      "name": "unique_cell",
+      "nils_distinct?": false,
       "where": null
     }
   ],
@@ -176,5 +204,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "subjects"
+  "table": "subject_coefficients"
 }

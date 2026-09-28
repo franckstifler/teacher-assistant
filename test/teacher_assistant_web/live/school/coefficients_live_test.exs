@@ -11,7 +11,10 @@ defmodule TeacherAssistantWeb.School.CoefficientsLiveTest do
 
     scope = school_scope(user, school)
     year = TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
-    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "2nde Z", level: "2nde", serie: "C"})
+
+    {:ok, cg} =
+      Enrollment.create_class_group(scope, year, %{label: "2nde Z", level: "2nde", serie: "C"})
+
     maths = Enum.find(Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, scope: scope, cg: cg, maths: maths, user: user}
@@ -33,12 +36,19 @@ defmodule TeacherAssistantWeb.School.CoefficientsLiveTest do
 
     view
     |> form("#coefficient-grid-form", %{
-      "grid" => %{"cells" => %{m.id => %{tok("2nde") => "5"}}, "groups" => %{m.id => "g1_lettres"}}
+      "grid" => %{
+        "cells" => %{m.id => %{tok("2nde") => "5"}},
+        "groups" => %{m.id => "g1_lettres"}
+      }
     })
     |> render_submit()
 
     assert render(view) =~ "Coefficients enregistrés."
-    assert Decimal.equal?(Curriculum.coefficient_cells(scope)[{m.id, :francophone, "2nde", nil}].coefficient, 5)
+
+    assert Decimal.equal?(
+             Curriculum.coefficient_cells(scope)[{m.id, :francophone, "2nde", nil}].coefficient,
+             5
+           )
   end
 
   test "clearing a cell a class uses is refused on that cell", ctx do
@@ -46,22 +56,37 @@ defmodule TeacherAssistantWeb.School.CoefficientsLiveTest do
     {:ok, view, _} = live(ctx.conn, ~p"/school/settings/coefficients")
 
     view
-    |> form("#coefficient-grid-form", %{"grid" => %{"cells" => %{ctx.maths.id => %{tok("2nde") => ""}}}})
+    |> form("#coefficient-grid-form", %{
+      "grid" => %{"cells" => %{ctx.maths.id => %{tok("2nde") => ""}}}
+    })
     |> render_submit()
 
     assert has_element?(view, "#grid-row-#{ctx.maths.id}", "Utilisée par : 2nde Z")
   end
 
-  test "the série view edits série cells over the blank-série value", %{conn: conn, scope: scope, maths: m} do
+  test "the série view edits série cells over the blank-série value", %{
+    conn: conn,
+    scope: scope,
+    maths: m
+  } do
     {:ok, view, _} = live(conn, ~p"/school/settings/coefficients")
     view |> element("#grid-view-francophone-C") |> render_click()
-    assert has_element?(view, "input[name='grid[cells][#{m.id}][#{tok("2nde", "C")}]'][placeholder='4']")
+
+    assert has_element?(
+             view,
+             "input[name='grid[cells][#{m.id}][#{tok("2nde", "C")}]'][placeholder='4']"
+           )
 
     view
-    |> form("#coefficient-grid-form", %{"grid" => %{"cells" => %{m.id => %{tok("2nde", "C") => "6"}}}})
+    |> form("#coefficient-grid-form", %{
+      "grid" => %{"cells" => %{m.id => %{tok("2nde", "C") => "6"}}}
+    })
     |> render_submit()
 
-    assert Decimal.equal?(Curriculum.coefficient_cells(scope)[{m.id, :francophone, "2nde", "C"}].coefficient, 6)
+    assert Decimal.equal?(
+             Curriculum.coefficient_cells(scope)[{m.id, :francophone, "2nde", "C"}].coefficient,
+             6
+           )
   end
 
   test "switching overrides off is refused while a class has one", ctx do

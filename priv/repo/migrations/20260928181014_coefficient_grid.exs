@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
+defmodule TeacherAssistant.Repo.Migrations.CoefficientGrid do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -8,6 +8,11 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
   use Ecto.Migration
 
   def up do
+    alter table(:school_profiles) do
+      add :class_coefficients_allowed?, :boolean, null: false, default: true
+      add :bulletin_group_subtotals?, :boolean, null: false, default: false
+    end
+
     create table(:subject_coefficients, primary_key: false) do
       add :id, :uuid, null: false, default: fragment("uuid_generate_v7()"), primary_key: true
       add :subsystem, :text, null: false
@@ -42,6 +47,11 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
           ), null: false
     end
 
+    alter table(:subjects) do
+      add :bulletin_group, :text, null: false, default: "g3_autres"
+      remove :category
+    end
+
     create index(:subjects, [:workspace_id, :id], unique: true)
 
     alter table(:subject_coefficients) do
@@ -66,9 +76,34 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
                coefficient > 0
              """
            )
+
+    alter table(:teaching_contexts) do
+      add :subject_id,
+          references(:subjects,
+            column: :id,
+            with: [workspace_id: :workspace_id],
+            match: :full,
+            name: "teaching_contexts_subject_id_fkey",
+            type: :uuid,
+            prefix: "public"
+          ), null: false
+
+      modify :coefficient, :decimal, null: true, default: nil
+    end
+
+    create index(:teaching_contexts, [:workspace_id, :subject_id])
   end
 
   def down do
+    drop_if_exists index(:teaching_contexts, [:workspace_id, :subject_id])
+
+    drop constraint(:teaching_contexts, "teaching_contexts_subject_id_fkey")
+
+    alter table(:teaching_contexts) do
+      modify :coefficient, :decimal, null: false, default: "1"
+      remove :subject_id
+    end
+
     drop_if_exists constraint(:subject_coefficients, :subject_coefficients_positive_check)
 
     drop_if_exists index(:subject_coefficients, [:workspace_id])
@@ -85,6 +120,11 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
 
     drop_if_exists index(:subjects, [:workspace_id, :id])
 
+    alter table(:subjects) do
+      add :category, :text, null: false, default: "general"
+      remove :bulletin_group
+    end
+
     alter table(:subject_coefficients) do
       remove :workspace_id
     end
@@ -94,5 +134,10 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
                    )
 
     drop table(:subject_coefficients)
+
+    alter table(:school_profiles) do
+      remove :bulletin_group_subtotals?
+      remove :class_coefficients_allowed?
+    end
   end
 end
