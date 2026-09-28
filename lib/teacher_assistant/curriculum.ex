@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Curriculum do
     AcademicYear,
     Assessment,
     ClassGroup,
+    BulletinGroup,
     CoefficientRules,
     CombinedCourse,
     LessonPlan,
@@ -14,6 +15,7 @@ defmodule TeacherAssistant.Curriculum do
     ProgressionEntry,
     ProgressionModule,
     ProgressionPlan,
+    SchoolTemplates,
     Sequence,
     Subject,
     SubjectCoefficient,
@@ -138,6 +140,175 @@ defmodule TeacherAssistant.Curriculum do
     SubjectCoefficient
     |> Ash.read!(scope: scope)
     |> Map.new(&{{&1.subject_id, &1.subsystem, &1.level, &1.serie}, &1})
+  end
+
+  @doc """
+  What the grid shows: per subsystem, the school's levels (streamed 2nd-cycle levels
+  flagged) and the séries its active-year classes use at streamed levels.
+  """
+  def coefficient_grid_layout(%Scope{} = scope) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    classes = active_classes(scope)
+
+    for subsystem <- SchoolTemplates.grid_subsystems(profile.subsystem) do
+      streamed = SchoolTemplates.streams_for(profile.school_type, subsystem).levels
+
+      %{
+        subsystem: subsystem,
+        levels:
+          for(
+            level <- SchoolTemplates.levels_for(profile.school_type, subsystem),
+            do: %{level: level, streamed?: level in streamed}
+          ),
+        series:
+          classes
+          |> Enum.filter(&(&1.subsystem == subsystem and &1.level in streamed and &1.serie))
+          |> Enum.map(& &1.serie)
+          |> Enum.uniq()
+          |> Enum.sort()
+      }
+    end
+  end
+
+  @doc "The active year's assignments, shaped for `CoefficientRules`."
+  def grid_assignments(%Scope{} = scope) do
+    case TeacherAssistant.Organization.current_academic_year(scope) do
+      nil ->
+        []
+
+      year ->
+        TeachingContext
+        |> Ash.Query.filter(academic_year_id == ^year.id)
+        |> Ash.Query.load(:class_group)
+        |> Ash.read!(scope: scope)
+        |> Enum.map(fn tc ->
+          %{
+            subject_id: tc.subject_id,
+            subsystem: tc.subsystem,
+            level: tc.level,
+            serie: tc.serie,
+            class_label: tc.class_group.label,
+            override?: tc.coefficient != nil
+          }
+        end)
+    end
+  end
+
+  defp active_classes(%Scope{} = scope) do
+    case TeacherAssistant.Organization.current_academic_year(scope) do
+      nil -> []
+      year -> Enrollment.list_class_groups(scope, year)
+    end
+  end
+
+  @doc "Form token of a grid column: `\"francophone|2nde|C\"`, blank série as `\"\"`."
+  def cell_token({subsystem, level, serie}), do: "#{subsystem}|#{level}|#{serie}"
+
+  @grid_subsystems %{"francophone" => :francophone, "anglophone" => :anglophone}
+  @groups Map.new(BulletinGroup.values(), &{Atom.to_string(&1), &1})
+
+  @doc """
+  Saves the coefficient grid and bulletin groups in one transaction, after
+  `CoefficientRules` accepts the whole edit. `params` is form-shaped:
+  `%{"cells" => %{subject_id => %{cell_token => "4" | ""}}, "groups" => %{subject_id => "g1_lettres"}}`.
+  A missing key keeps the stored value; `""` clears a cell. Tokens with an unknown
+  subsystem and subject ids outside the school are ignored. Authorization is the
+  per-row admin policy: a forbidden row rolls back every write.
+  """
+  def update_coefficient_grid(%Scope{} = scope, %{} = params) do
+    subjects = Map.new(list_subjects(scope), &{&1.id, &1})
+    stored = coefficient_cells(scope)
+    cell_changes = parse_cell_changes(Map.get(params, "cells", %{}), subjects)
+    group_changes = parse_group_changes(Map.get(params, "groups", %{}), subjects)
+    current = Map.new(stored, fn {key, cell} -> {key, cell.coefficient} end)
+
+    with :ok <- CoefficientRules.validate(current, cell_changes, group_changes, grid_assignments(scope)),
+         {:ok, :ok} <-
+           Ash.transact([SubjectCoefficient, Subject], fn ->
+             with :ok <- write_cells(cell_changes, stored, scope) do
+               write_groups(group_changes, subjects, scope)
+             end
+           end) do
+      :ok
+    end
+  end
+
+  defp parse_cell_changes(cells_params, subjects) do
+    for {subject_id, tokens} <- cells_params,
+        Map.has_key?(subjects, subject_id),
+        {token, value} <- tokens,
+        [sub, level, serie] <- [String.split(token, "|")],
+        Map.has_key?(@grid_subsystems, sub),
+        into: %{} do
+      key = {subject_id, @grid_subsystems[sub], level, if(serie == "", do: nil, else: serie)}
+
+      parsed =
+        case String.trim(value) do
+          "" ->
+            nil
+
+          text ->
+            case parse_coefficient(text) do
+              {:ok, dec} -> dec
+              :error -> :invalid
+            end
+        end
+
+      {key, parsed}
+    end
+  end
+
+  defp parse_group_changes(groups_params, subjects) do
+    for {subject_id, value} <- groups_params, Map.has_key?(subjects, subject_id), into: %{} do
+      {subject_id, Map.get(@groups, value, :invalid)}
+    end
+  end
+
+  defp write_cells(changes, stored, scope) do
+    Enum.reduce_while(changes, :ok, fn {key, value}, :ok ->
+      case write_cell(key, value, stored[key], scope) do
+        :ok -> {:cont, :ok}
+        {:ok, _} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp write_cell(_key, nil, nil, _scope), do: :ok
+  defp write_cell(_key, nil, cell, scope), do: Ash.destroy(cell, scope: scope)
+
+  defp write_cell({subject_id, subsystem, level, serie}, value, nil, scope) do
+    SubjectCoefficient
+    |> Ash.Changeset.for_create(
+      :create,
+      %{subject_id: subject_id, subsystem: subsystem, level: level, serie: serie, coefficient: value},
+      scope: scope
+    )
+    |> Ash.create()
+  end
+
+  defp write_cell(_key, value, cell, scope) do
+    if Decimal.equal?(value, cell.coefficient),
+      do: :ok,
+      else:
+        cell
+        |> Ash.Changeset.for_update(:update, %{coefficient: value}, scope: scope)
+        |> Ash.update()
+  end
+
+  defp write_groups(changes, subjects, scope) do
+    Enum.reduce_while(changes, :ok, fn {subject_id, group}, :ok ->
+      subject = subjects[subject_id]
+
+      if subject.bulletin_group == group do
+        {:cont, :ok}
+      else
+        case update_subject(scope, subject, %{bulletin_group: group}) do
+          {:ok, _} -> {:cont, :ok}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end
+    end)
   end
 
   @doc "Whether the scope may assign teachers and combine courses (admin axis)."
