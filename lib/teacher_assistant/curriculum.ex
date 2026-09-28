@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Curriculum do
     AcademicYear,
     Assessment,
     ClassGroup,
+    CoefficientRules,
     CombinedCourse,
     LessonPlan,
     LessonStep,
@@ -150,14 +151,16 @@ defmodule TeacherAssistant.Curriculum do
   an active school membership.
   """
   def assign_teacher(%Scope{} = scope, %ClassGroup{} = cg, %User{} = teacher, attrs) do
-    with :ok <- assignable(scope, teacher) do
+    with :ok <- assignable(scope, teacher),
+         {:ok, subject} <- resolve_subject(scope, Map.fetch!(attrs, :subject)) do
       TeachingContext
       |> Ash.Changeset.for_create(
         :create,
         %{
-          subject: Map.fetch!(attrs, :subject),
+          subject: subject.name,
+          subject_id: subject.id,
           weekly_hours: Map.get(attrs, :weekly_hours, 4),
-          coefficient: Map.get(attrs, :coefficient, Decimal.new(1)),
+          coefficient: Map.get(attrs, :coefficient),
           level: cg.level,
           serie: cg.serie,
           subsystem: cg.subsystem,
@@ -175,6 +178,18 @@ defmodule TeacherAssistant.Curriculum do
         {:error, error} ->
           if already_assigned?(error), do: {:error, :already_assigned}, else: {:error, error}
       end
+    end
+  end
+
+  # A `%Subject{}`, or a name: the school's subject of that name, created if absent.
+  defp resolve_subject(_scope, %Subject{} = subject), do: {:ok, subject}
+
+  defp resolve_subject(%Scope{} = scope, name) when is_binary(name) do
+    name = String.trim(name)
+
+    case Enum.find(list_subjects(scope), &(&1.name == name)) do
+      %Subject{} = subject -> {:ok, subject}
+      nil -> create_subject(scope, %{name: name})
     end
   end
 
@@ -198,6 +213,30 @@ defmodule TeacherAssistant.Curriculum do
     end
   end
 
+  @doc "Removes a class's coefficient override: the grid applies again."
+  def clear_assignment_coefficient(%Scope{} = scope, %TeachingContext{} = tc) do
+    tc
+    |> Ash.Changeset.for_update(:update, %{coefficient: nil}, scope: scope)
+    |> Ash.update()
+  end
+
+  @doc "Active subjects with a grid cell for the class's level and série (the assignable ones)."
+  def subjects_taught_in(%Scope{} = scope, %ClassGroup{} = cg) do
+    cells = coefficient_cells(scope)
+
+    scope
+    |> list_subjects()
+    |> Enum.filter(fn s ->
+      s.active? and
+        CoefficientRules.resolve(cells, %{
+          subject_id: s.id,
+          subsystem: cg.subsystem,
+          level: cg.level,
+          serie: cg.serie
+        }) != nil
+    end)
+  end
+
   @doc """
   Canonical coefficient parser: accepts a positive `%Decimal{}` or a string that
   parses cleanly to a positive decimal, returning `{:ok, decimal}` or `:error`.
@@ -206,7 +245,7 @@ defmodule TeacherAssistant.Curriculum do
   def parse_coefficient(%Decimal{} = d), do: if(Decimal.positive?(d), do: {:ok, d}, else: :error)
 
   def parse_coefficient(value) when is_binary(value) do
-    case Decimal.parse(String.trim(value)) do
+    case value |> String.trim() |> String.replace(",", ".") |> Decimal.parse() do
       {dec, ""} -> if Decimal.positive?(dec), do: {:ok, dec}, else: :error
       _ -> :error
     end

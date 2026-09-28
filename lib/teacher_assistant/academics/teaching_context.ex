@@ -42,6 +42,11 @@ defmodule TeacherAssistant.Academics.TeachingContext do
         index?: true
 
       reference :teacher, index?: true
+
+      reference :catalog_subject,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
     end
   end
 
@@ -51,6 +56,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       :destroy,
       create: [
         :subject,
+        :subject_id,
         :level,
         :serie,
         :subsystem,
@@ -62,6 +68,7 @@ defmodule TeacherAssistant.Academics.TeachingContext do
       ],
       update: [
         :subject,
+        :subject_id,
         :level,
         :serie,
         :subsystem,
@@ -76,7 +83,17 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     read :for_class_group do
       argument :class_group_id, :uuid, allow_nil?: false
       filter expr(class_group_id == ^arg(:class_group_id))
-      prepare build(load: [:teacher, :combined_course], sort: [subject: :asc])
+      prepare build(
+                load: [
+                  :teacher,
+                  :combined_course,
+                  :catalog_subject,
+                  :grid_coefficient,
+                  :effective_coefficient,
+                  :taught_here?
+                ],
+                sort: [subject: :asc]
+              )
     end
 
     # Owner-scoped single-context lookup (IDOR guard): tenant scoping
@@ -161,10 +178,8 @@ defmodule TeacherAssistant.Academics.TeachingContext do
 
     attribute :weekly_hours, :integer, default: 4, public?: true
 
-    attribute :coefficient, :decimal,
-      allow_nil?: false,
-      default: Decimal.new(1),
-      public?: true
+    # The class override. nil = the coefficient grid (see `effective_coefficient`).
+    attribute :coefficient, :decimal, allow_nil?: true, public?: true
 
     timestamps()
   end
@@ -197,6 +212,39 @@ defmodule TeacherAssistant.Academics.TeachingContext do
     belongs_to :combined_course, TeacherAssistant.Academics.CombinedCourse do
       source_attribute :combined_course_id
       allow_nil? true
+      public? true
+    end
+
+    belongs_to :catalog_subject, TeacherAssistant.Academics.Subject do
+      source_attribute :subject_id
+      allow_nil? false
+      public? true
+    end
+
+    # The grid cell this assignment resolves to: its série's cell, else the
+    # blank-série cell of its level (same rule as `CoefficientRules.resolve/2`).
+    has_one :grid_coefficient, TeacherAssistant.Academics.SubjectCoefficient do
+      no_attributes? true
+      from_many? true
+      public? true
+
+      filter expr(
+               subject_id == parent(subject_id) and subsystem == parent(subsystem) and
+                 level == parent(level) and (serie == parent(serie) or is_nil(serie))
+             )
+
+      sort serie: :asc_nils_last
+    end
+  end
+
+  calculations do
+    calculate :effective_coefficient,
+              :decimal,
+              expr(coefficient || grid_coefficient.coefficient || catalog_subject.default_coefficient) do
+      public? true
+    end
+
+    calculate :taught_here?, :boolean, expr(not is_nil(grid_coefficient.id)) do
       public? true
     end
   end

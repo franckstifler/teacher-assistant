@@ -83,7 +83,7 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
   end
 
   describe "coefficient (P2.3)" do
-    test "assign accepts a coefficient; defaults to 1", ctx do
+    test "assign accepts a coefficient override; without one the grid applies", ctx do
       %{head: head, scope: scope, cg: cg} = ctx
 
       {:ok, tc} =
@@ -97,7 +97,9 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
       other = TeacherFixtures.user_fixture()
       {:ok, _} = add_active_member(ctx.school, head, other)
       {:ok, tc2} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
-      assert Decimal.equal?(tc2.coefficient, Decimal.new(1))
+      assert tc2.coefficient == nil
+      [tc2] = Enum.filter(Curriculum.list_assignments_for_class(scope, cg), &(&1.id == tc2.id))
+      assert Decimal.equal?(tc2.effective_coefficient, Decimal.new(2))
     end
 
     test "set_coefficient updates a valid positive value", ctx do
