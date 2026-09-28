@@ -84,6 +84,10 @@ Behaviour:
 2. **`Subject.category` is replaced by `bulletin_group`** (`:g1_lettres | :g2_sciences | :g3_autres`,
    default `:g3_autres`). `position` orders
    subjects within a group. `default_coefficient` only pre-fills a cell when it is switched on.
+   Creating a subject switches on its cell at every level of the school's subsystem(s), valued at
+   `default_coefficient` (1st-cycle levels with a blank série; streamed 2nd-cycle levels once per série used
+   by the active year's classes, plus blank). The admin then empties the cells where it is not taught, so a
+   new subject is assignable at once.
 3. **`TeachingContext.subject_id`** (required), set at assignment from the chosen `Subject`. The `subject`
    string stays as the display label.
    `coefficient` becomes nullable and means the class override.
