@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Organization do
   use Ash.Domain, otp_app: :teacher_assistant
 
-  alias TeacherAssistant.Academics.{AcademicYear, Sequence, Term, Workspace}
+  alias TeacherAssistant.Academics.{AcademicYear, CalendarRules, Sequence, Term, Workspace}
   alias TeacherAssistant.Accounts.SchoolMembership
   alias TeacherAssistant.Scope
 
@@ -177,6 +177,84 @@ defmodule TeacherAssistant.Organization do
     Term
     |> Ash.Query.for_read(:for_academic_year, %{academic_year_id: year_id}, scope: scope)
     |> Ash.read!()
+  end
+
+  @doc """
+  Saves a year's whole calendar — séquence dates, grade-entry deadlines and
+  trimester class-council dates — in one transaction, after `CalendarRules`
+  accepts the complete proposed calendar (so a later row can never be written
+  against a stale neighbour).
+
+  `params` is form-shaped and string-keyed:
+  `%{"sequences" => %{id => %{"start_date" => "2026-09-07", "end_date" => …,
+  "entry_deadline" => …}}, "terms" => %{id => %{"class_council_date" => …}}}`.
+  A missing key keeps the stored value; `""` blanks it. Authorization is the
+  per-row update policy (admin axis): a forbidden row rolls back every write.
+  """
+  def update_calendar(%Scope{} = scope, %AcademicYear{} = year, %{} = params) do
+    terms = list_terms(scope, year)
+    seq_params = Map.get(params, "sequences", %{})
+    term_params = Map.get(params, "terms", %{})
+
+    sequences =
+      for term <- terms, seq <- term.sequences do
+        p = Map.get(seq_params, seq.id, %{})
+
+        %{
+          record: seq,
+          id: seq.id,
+          number: seq.number,
+          term_id: term.id,
+          start_date: date_param(p, "start_date", seq.start_date),
+          end_date: date_param(p, "end_date", seq.end_date),
+          entry_deadline: date_param(p, "entry_deadline", seq.entry_deadline)
+        }
+      end
+
+    proposed_terms =
+      for term <- terms do
+        p = Map.get(term_params, term.id, %{})
+
+        %{
+          record: term,
+          id: term.id,
+          class_council_date: date_param(p, "class_council_date", term.class_council_date)
+        }
+      end
+
+    with :ok <- CalendarRules.validate(year, sequences, proposed_terms),
+         {:ok, :ok} <-
+           Ash.transact([Sequence, Term], fn ->
+             with :ok <- update_rows(sequences, [:start_date, :end_date, :entry_deadline], scope) do
+               update_rows(proposed_terms, [:class_council_date], scope)
+             end
+           end) do
+      :ok
+    end
+  end
+
+  defp date_param(params, key, current) do
+    case Map.fetch(params, key) do
+      :error -> current
+      {:ok, ""} -> nil
+      {:ok, value} when is_binary(value) ->
+        case Date.from_iso8601(value) do
+          {:ok, date} -> date
+          {:error, _} -> :invalid
+        end
+    end
+  end
+
+  defp update_rows(rows, fields, scope) do
+    Enum.reduce_while(rows, :ok, fn row, :ok ->
+      row.record
+      |> Ash.Changeset.for_update(:update, Map.take(row, fields), scope: scope)
+      |> Ash.update()
+      |> case do
+        {:ok, _} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   # --- Period resolution (séquence / trimester / annual) --------------------
