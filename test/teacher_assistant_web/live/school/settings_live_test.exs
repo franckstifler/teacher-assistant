@@ -194,7 +194,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
-    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
     |> render_submit()
 
     assert render(view) =~ "Allemand"
@@ -208,7 +208,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
-    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
     |> render_submit()
 
     subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
@@ -216,7 +216,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
     view
     |> form("#subject-edit-form-#{subject.id}",
-      subject_edit: %{name: "Allemand", default_coefficient: "2.5", category: "language"}
+      subject_edit: %{name: "Allemand", default_coefficient: "2.5", bulletin_group: "g1_lettres"}
     )
     |> render_submit()
 
@@ -229,7 +229,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
-    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
     |> render_submit()
 
     subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
@@ -255,7 +255,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/settings")
 
     view
-    |> form("#subject-form", subject: %{name: "Allemand", category: "language"})
+    |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
     |> render_submit()
 
     subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
@@ -284,7 +284,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     refute has_element?(tview, "#subject-form")
 
     render_hook(tview, "create_subject", %{
-      "subject" => %{"name" => "Forged", "category" => "general"}
+      "subject" => %{"name" => "Forged", "bulletin_group" => "g3_autres"}
     })
 
     render_hook(tview, "update_subject", %{
@@ -292,7 +292,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
       "subject_edit" => %{
         "name" => "Hacked",
         "default_coefficient" => "9",
-        "category" => "general"
+        "bulletin_group" => "g3_autres"
       }
     })
 

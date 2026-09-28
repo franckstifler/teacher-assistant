@@ -20,8 +20,8 @@ defmodule TeacherAssistant.Academics.Subject do
     defaults [
       :read,
       :destroy,
-      create: [:name, :code, :default_coefficient, :category, :position, :active?],
-      update: [:name, :code, :default_coefficient, :category, :position, :active?]
+      create: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?],
+      update: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?]
     ]
 
     # Tenant scoping (attribute multitenancy) already restricts this to the
@@ -61,9 +61,9 @@ defmodule TeacherAssistant.Academics.Subject do
       default: Decimal.new(1),
       public?: true
 
-    attribute :category, TeacherAssistant.Academics.SubjectCategory,
+    attribute :bulletin_group, TeacherAssistant.Academics.BulletinGroup,
       allow_nil?: false,
-      default: :general,
+      default: :g3_autres,
       public?: true
 
     attribute :position, :integer, allow_nil?: false, default: 0, public?: true

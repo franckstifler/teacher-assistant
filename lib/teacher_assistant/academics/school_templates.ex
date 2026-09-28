@@ -11,22 +11,22 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
   @technical_types [:cetic, :lycee_technique, :gtc, :gths, :sar_sm]
 
   @general_subjects [
-    {"Mathématiques", "MATH", :general, 4},
-    {"Français", "FR", :general, 4},
-    {"Anglais", "ANG", :language, 2},
-    {"Physique", "PHY", :general, 2},
-    {"Chimie", "CHI", :general, 2},
-    {"SVT", "SVT", :general, 2},
-    {"Histoire-Géographie", "HG", :general, 2},
-    {"ECM", "ECM", :general, 1},
-    {"Informatique", "INFO", :general, 1},
-    {"EPS", "EPS", :general, 1}
+    {"Mathématiques", "MATH", :g2_sciences, 4},
+    {"Français", "FR", :g1_lettres, 4},
+    {"Anglais", "ANG", :g1_lettres, 2},
+    {"Physique", "PHY", :g2_sciences, 2},
+    {"Chimie", "CHI", :g2_sciences, 2},
+    {"SVT", "SVT", :g2_sciences, 2},
+    {"Histoire-Géographie", "HG", :g1_lettres, 2},
+    {"ECM", "ECM", :g1_lettres, 1},
+    {"Informatique", "INFO", :g2_sciences, 1},
+    {"EPS", "EPS", :g3_autres, 1}
   ]
 
   @technical_subjects [
-    {"Technologie", "TECHNO", :technical, 4},
-    {"Dessin technique", "DESS", :technical, 3},
-    {"Atelier / Pratique", "ATEL", :technical, 4}
+    {"Technologie", "TECHNO", :g2_sciences, 4},
+    {"Dessin technique", "DESS", :g2_sciences, 3},
+    {"Atelier / Pratique", "ATEL", :g2_sciences, 4}
   ]
 
   @francophone_general_levels ~w(6ème 5ème 4ème 3ème 2nde 1ère Terminale)
@@ -54,8 +54,8 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
   def subjects_for(_type, _subsystem), do: to_subjects(@general_subjects)
 
   defp to_subjects(list) do
-    for {name, code, cat, coef} <- list,
-        do: %{name: name, code: code, category: cat, default_coefficient: @dec.(coef)}
+    for {name, code, group, coef} <- list,
+        do: %{name: name, code: code, bulletin_group: group, default_coefficient: @dec.(coef)}
   end
 
   # ---- levels --------------------------------------------------------------

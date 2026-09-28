@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics.{AcademicYear, Subject, SubjectCategory}
+  alias TeacherAssistant.Academics.{AcademicYear, BulletinGroup, Subject}
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -338,7 +338,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 <tr>
                   <th>{gettext("Nom")}</th>
                   <th>{gettext("Coefficient")}</th>
-                  <th>{gettext("Catégorie")}</th>
+                  <th>{gettext("Groupe du bulletin")}</th>
                   <th>{gettext("Statut")}</th>
                   <th><span class="sr-only">{gettext("Actions")}</span></th>
                 </tr>
@@ -366,15 +366,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                         label={gettext("Coefficient")}
                       />
                       <.input
-                        name="subject_edit[category]"
+                        name="subject_edit[bulletin_group]"
                         type="select"
-                        value={to_string(s.category)}
-                        options={[
-                          {SubjectCategory.label(:general), "general"},
-                          {SubjectCategory.label(:language), "language"},
-                          {SubjectCategory.label(:technical), "technical"}
-                        ]}
-                        label={gettext("Catégorie")}
+                        value={to_string(s.bulletin_group)}
+                        options={bulletin_group_options()}
+                        label={gettext("Groupe du bulletin")}
                       />
                       <div>
                         <span :if={s.active?} class="badge badge-primary">{gettext("Active")}</span>
@@ -430,14 +426,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             >
               <.input field={@subject_form[:name]} label={gettext("Nom de la matière")} />
               <.input
-                field={@subject_form[:category]}
+                field={@subject_form[:bulletin_group]}
                 type="select"
-                label={gettext("Catégorie")}
-                options={[
-                  {SubjectCategory.label(:general), "general"},
-                  {SubjectCategory.label(:language), "language"},
-                  {SubjectCategory.label(:technical), "technical"}
-                ]}
+                label={gettext("Groupe du bulletin")}
+                options={bulletin_group_options()}
               />
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>
             </.form>
@@ -851,4 +843,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
   defp calendar_error_text(:council_before_term_end),
     do: gettext("Le conseil est avant la fin du trimestre.")
+
+  defp bulletin_group_options,
+    do: for(g <- BulletinGroup.values(), do: {BulletinGroup.label(g), to_string(g)})
 end
