@@ -276,7 +276,14 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
   test "switching to the make-up rule turns a zero into an R", ctx do
     %{conn: conn, cg: cg, enr: enr, seq: seq, scope: scope, head: head} = ctx
     [tc] = Curriculum.list_assignments_for_class(scope, cg)
-    {:ok, a2} = Assessment.create_assessment(scope, tc, seq, %{label: "D2", weight: Decimal.new(1), max_score: Decimal.new(20)})
+
+    {:ok, a2} =
+      Assessment.create_assessment(scope, tc, seq, %{
+        label: "D2",
+        weight: Decimal.new(1),
+        max_score: Decimal.new(20)
+      })
+
     [%{student: st}] = Enrollment.list_roster(scope, cg)
     :ok = Assessment.upsert_marks(scope, a2, [%{student_id: st.id, score: nil, status: :absent}])
     path = ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}"

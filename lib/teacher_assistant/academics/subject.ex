@@ -26,12 +26,30 @@ defmodule TeacherAssistant.Academics.Subject do
     defaults [
       :read,
       :destroy,
-      update: [:name, :code, :default_coefficient, :bulletin_group, :position, :active?, :optional?]
+      update: [
+        :name,
+        :code,
+        :default_coefficient,
+        :bulletin_group,
+        :position,
+        :active?,
+        :optional?
+      ]
     ]
 
     create :create do
       primary? true
-      accept [:name, :code, :default_coefficient, :bulletin_group, :position, :active?, :optional?]
+
+      accept [
+        :name,
+        :code,
+        :default_coefficient,
+        :bulletin_group,
+        :position,
+        :active?,
+        :optional?
+      ]
+
       change TeacherAssistant.Academics.Subject.SeedCoefficientCells
     end
 

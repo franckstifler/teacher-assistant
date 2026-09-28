@@ -154,7 +154,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       {:ok, awa} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
       {:ok, bob} = Enrollment.add_student(scope, cg, %{full_name: "Bob", sex: :m})
       {:ok, esp} = TeacherAssistant.Curriculum.create_subject(scope, %{name: "Espagnol"})
-      :ok = TeacherAssistant.Curriculum.update_coefficient_grid(scope, %{"optional" => %{esp.id => "true"}})
+
+      :ok =
+        TeacherAssistant.Curriculum.update_coefficient_grid(scope, %{
+          "optional" => %{esp.id => "true"}
+        })
+
       {:ok, tc} = TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: esp})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")

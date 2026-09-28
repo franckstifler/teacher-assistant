@@ -3,6 +3,7 @@ defmodule TeacherAssistant.Academics.AbsenceRulesTest do
   alias TeacherAssistant.Academics.{GradingRules, Marks}
 
   defp d(x), do: Decimal.new(x)
+
   @w %{
     "a" => %{weight: Decimal.new(1), max_score: Decimal.new(20)},
     "b" => %{weight: Decimal.new(1), max_score: Decimal.new(20)}

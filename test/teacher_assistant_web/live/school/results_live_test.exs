@@ -197,7 +197,8 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
         max_score: Decimal.new(20)
       })
 
-    :ok = Assessment.upsert_marks(scope, a2, [%{student_id: student.id, score: nil, status: :absent}])
+    :ok =
+      Assessment.upsert_marks(scope, a2, [%{student_id: student.id, score: nil, status: :absent}])
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results?period=seq:#{seq.id}")
     refute has_element?(view, "#results-makeups")

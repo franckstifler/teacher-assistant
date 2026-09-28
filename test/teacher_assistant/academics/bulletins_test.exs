@@ -240,7 +240,12 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     esp = subject("esp", "Espagnol", "1", [{"s1", "10"}]) |> Map.put(:exempt, MapSet.new(["s2"]))
 
     zero = Bulletins.compile(students, [maths, esp], %GradingRules{absence: :zero})
-    assert Decimal.equal?(Enum.find(zero.per_student["s2"].subjects, &(&1.label == "Maths")).average, 0)
+
+    assert Decimal.equal?(
+             Enum.find(zero.per_student["s2"].subjects, &(&1.label == "Maths")).average,
+             0
+           )
+
     refute Enum.any?(zero.per_student["s2"].subjects, &(&1.label == "Espagnol"))
     assert zero.makeup_pending_count == 0
 

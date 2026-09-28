@@ -14,6 +14,42 @@
     },
     {
       "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "default_weight",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "position",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
       "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
       "precision": null,
@@ -50,76 +86,6 @@
         "index?": true,
         "index_where": null,
         "match_tenant?": false,
-        "match_type": "full",
-        "match_with": {
-          "workspace_id": "workspace_id"
-        },
-        "multitenancy": {
-          "attribute": "workspace_id",
-          "global": false,
-          "strategy": "attribute"
-        },
-        "name": "subject_exemptions_teaching_context_id_fkey",
-        "on_delete": "delete",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "teaching_contexts"
-      },
-      "scale": null,
-      "size": null,
-      "source": "teaching_context_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": true,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": "full",
-        "match_with": {
-          "workspace_id": "workspace_id"
-        },
-        "multitenancy": {
-          "attribute": "workspace_id",
-          "global": false,
-          "strategy": "attribute"
-        },
-        "name": "subject_exemptions_student_id_fkey",
-        "on_delete": "delete",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "students"
-      },
-      "scale": null,
-      "size": null,
-      "source": "student_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": true,
-        "index_where": null,
-        "match_tenant?": false,
         "match_type": null,
         "match_with": null,
         "multitenancy": {
@@ -127,7 +93,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "subject_exemptions_workspace_id_fkey",
+        "name": "assessment_types_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -141,28 +107,61 @@
     }
   ],
   "base_filter": null,
-  "check_constraints": [],
+  "check_constraints": [
+    {
+      "attribute": [
+        "default_weight"
+      ],
+      "base_filter": null,
+      "check": "default_weight > 0",
+      "name": "assessment_types_weight_positive_check"
+    }
+  ],
   "create_table_options": null,
-  "custom_indexes": [],
+  "custom_indexes": [
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "id"
+        }
+      ],
+      "include": null,
+      "include_base_filter?": true,
+      "message": null,
+      "name": null,
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": true,
+      "using": null,
+      "where": null
+    }
+  ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "BD6EB299DEC330D8569BF8F3FDCB298667C0052111705583695CA07CCC4D609F",
+  "hash": "65DF0A585C01DE2FB55641A4D218458901394ED3D3993E7A30BBC62089D592B2",
   "identities": [
     {
-      "all_tenants?": true,
+      "all_tenants?": false,
       "base_filter": null,
-      "index_name": "subject_exemptions_unique_exemption_index",
+      "index_name": "assessment_types_unique_type_name_index",
       "keys": [
         {
           "type": "atom",
-          "value": "teaching_context_id"
+          "value": "workspace_id"
         },
         {
           "type": "atom",
-          "value": "student_id"
+          "value": "name"
         }
       ],
-      "name": "unique_exemption",
+      "name": "unique_type_name",
       "nils_distinct?": true,
       "where": null
     }
@@ -174,5 +173,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "subject_exemptions"
+  "table": "assessment_types"
 }

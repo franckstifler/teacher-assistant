@@ -13,30 +13,6 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "score",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"graded\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "status",
-      "type": "text"
-    },
-    {
       "allow_nil?": false,
       "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
@@ -83,16 +59,16 @@
           "global": false,
           "strategy": "attribute"
         },
-        "name": "marks_assessment_id_fkey",
-        "on_delete": null,
+        "name": "subject_exemptions_teaching_context_id_fkey",
+        "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "assessments"
+        "table": "teaching_contexts"
       },
       "scale": null,
       "size": null,
-      "source": "assessment_id",
+      "source": "teaching_context_id",
       "type": "uuid"
     },
     {
@@ -118,8 +94,8 @@
           "global": false,
           "strategy": "attribute"
         },
-        "name": "marks_student_id_fkey",
-        "on_delete": null,
+        "name": "subject_exemptions_student_id_fkey",
+        "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
@@ -151,7 +127,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "marks_workspace_id_fkey",
+        "name": "subject_exemptions_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -165,92 +141,28 @@
     }
   ],
   "base_filter": null,
-  "check_constraints": [
-    {
-      "attribute": [
-        "score"
-      ],
-      "base_filter": null,
-      "check": "score IS NULL OR score >= 0",
-      "name": "marks_score_non_negative_check"
-    },
-    {
-      "attribute": [
-        "status"
-      ],
-      "base_filter": null,
-      "check": "(status = 'graded') = (score IS NOT NULL)",
-      "name": "marks_status_score_check"
-    }
-  ],
+  "check_constraints": [],
   "create_table_options": null,
-  "custom_indexes": [
-    {
-      "all_tenants?": true,
-      "concurrently": false,
-      "error_fields": [
-        "student_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "student_id"
-        }
-      ],
-      "include": null,
-      "include_base_filter?": true,
-      "message": null,
-      "name": null,
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": true,
-      "concurrently": false,
-      "error_fields": [
-        "assessment_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "assessment_id"
-        }
-      ],
-      "include": null,
-      "include_base_filter?": true,
-      "message": null,
-      "name": null,
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    }
-  ],
+  "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "9F70C3EC5CA36A847B29616BEED040822ADED17730EB9B412576FAD0E48D8301",
+  "hash": "74F0441AD1246F550A521A14AB66DD614299F1CB0741B68E5A449872E67A1027",
   "identities": [
     {
-      "all_tenants?": false,
+      "all_tenants?": true,
       "base_filter": null,
-      "index_name": "marks_unique_mark_index",
+      "index_name": "subject_exemptions_unique_exemption_index",
       "keys": [
         {
           "type": "atom",
-          "value": "assessment_id"
+          "value": "teaching_context_id"
         },
         {
           "type": "atom",
           "value": "student_id"
         }
       ],
-      "name": "unique_mark",
+      "name": "unique_exemption",
       "nils_distinct?": true,
       "where": null
     }
@@ -262,5 +174,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "marks"
+  "table": "subject_exemptions"
 }

@@ -232,7 +232,11 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
 
     {:ok, a2} =
-      Assessment.create_assessment(scope, tc, s1, %{label: "D2", weight: Decimal.new(1), max_score: Decimal.new(20)})
+      Assessment.create_assessment(scope, tc, s1, %{
+        label: "D2",
+        weight: Decimal.new(1),
+        max_score: Decimal.new(20)
+      })
 
     :ok = Assessment.upsert_marks(scope, a2, [%{student_id: st.id, score: nil, status: :absent}])
 
