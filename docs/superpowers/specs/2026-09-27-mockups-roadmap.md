@@ -230,3 +230,51 @@ the rule from `:zero` to `:makeup` leaves no stale zeros (the computation is liv
 
 Out of scope: medical exemption from a non-optional subject (e.g. EPS) — possible later by marking the subject
 optional; linking `abs`/`abj` to the attendance register (attendance justification stays separate).
+
+## E — Role-aware navigation and home (spec)
+
+Mockup: `Espaces par rôle` ("Voir en tant que" Enseignant / Censeur / Surveillant général / Animateur
+pédagogique) and `Proviseur`. Gaps: **R01** navigation adapted to each role; **R02** "Choix Censorat /
+Enseignant en haut du menu, sans changer d'école". Only the Enseignant space could be read from the mockup
+(home "Ma journée · appel"; menu Aujourd'hui / Enseignement / Démarches); the other spaces were drafted from
+the existing screens and the roles' axes, and approved as defaults by the user, to be revisited.
+
+Existing code: one "School" menu for everyone (Dashboard, Mes cours, Classes, Mon emploi du temps; Members
+for the head, Settings for admins), gated by two capabilities; `/school` sends "plain teachers" to Mes cours.
+`Scope.current_roles` holds the member's roles (`SchoolRole`: head, vice_principal, discipline_master, bursar,
+hod, teacher, guidance_counsellor, librarian). The Members page already renders read-only for non-heads.
+
+**Scope rule:** E changes what each person sees in the menu and where they land — never permissions. Every
+screen keeps its own policy checks; a link hidden from a menu stays forbidden if typed directly. Menus link
+only to screens that exist; later increments add their screens to the right space.
+
+Behaviour:
+1. **`TeacherAssistantWeb.Spaces`** (pure): each space is data — `key`, label, home path, menu sections of
+   `{label, icon, path}`. `spaces_for(scope)` returns the member's spaces in priority order from
+   `current_roles` and whether they have teaching assignments:
+   - **Proviseur** (head) — home Tableau de bord; Pilotage: Tableau de bord, Classes, Membres; Paramètres:
+     Établissement & année, Matières & coefficients, Évaluations & moyennes, Périodes.
+   - **Censeur** (vice_principal) — home Tableau de bord; Suivi pédagogique: Tableau de bord, Classes,
+     Membres (read-only); Paramètres: Établissement & année, Matières & coefficients, Évaluations & moyennes.
+   - **Surveillant général** (discipline_master) — home Classes; Vie scolaire: Classes.
+   - **Intendant** (bursar) — home Classes; Intendance: Classes.
+   - **Enseignant** (anyone with teaching assignments) — home Mes cours; Enseignement: Mes cours, Mon emploi
+     du temps. The per-course menu (Liste, Notes, Résultats) stays.
+   - **École** (fallback: a member with none of the above, e.g. hod/counsellor/librarian who do not teach) —
+     home Classes; Classes, Mon emploi du temps.
+   Priority (and default): Proviseur > Censeur > Surveillant général > Intendant > Enseignant > École.
+2. **Current space (R02)** is kept in the session. `GET /school/space/:key` stores it only when it is one of
+   the member's spaces (otherwise ignored) and redirects to its home. An `:assign_space` on_mount resolves
+   the current space; a missing or no-longer-allowed stored space falls back to the highest one.
+3. **Layout**: the school menu is rendered from the current space's sections. A member with more than one
+   space sees a switcher at the top of the menu (e.g. "Censeur | Enseignant"); the school switcher stays.
+4. **Home**: `/school` sends each member to their current space's home; Proviseur and Censeur land on the
+   dashboard itself. This replaces the "plain teacher → Mes cours" special case.
+
+Review focus: a forged `/school/space/<key>` for a space the member does not have; a stored space whose role
+was since removed; a member with no role-specific space and no teaching (École); a hidden screen typed
+directly stays forbidden; the per-course menu still appears inside a course.
+
+Out of scope: new screens (Ma journée · appel → G; censeur follow-up → F; cahier de textes, coverage → H;
+corrections de notes, signaler une absence → D3/J; animateur pédagogique observations → J).
+
