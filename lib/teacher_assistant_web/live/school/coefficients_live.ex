@@ -149,12 +149,24 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
               <p class="text-xs text-base-content/60">
                 {gettext("Modifiable depuis la page de la classe.")}
               </p>
+              <p
+                :if={@profile.class_coefficients_allowed? and @override_classes != []}
+                id="class-coefficient-overrides"
+                class="text-xs text-warning"
+              >
+                {gettext("Coefficient propre dans : %{classes}. Réinitialisez-les pour désactiver.",
+                  classes: Enum.join(@override_classes, ", ")
+                )}
+              </p>
             </div>
+            <%!-- Disabled while switching off would be refused, so the switch never shows a
+                 state the server did not accept. --%>
             <input
               id="toggle-class-coefficients"
               type="checkbox"
               class="toggle toggle-primary"
               checked={@profile.class_coefficients_allowed?}
+              disabled={@profile.class_coefficients_allowed? and @override_classes != []}
               phx-click="toggle_class_coefficients"
             />
           </div>
@@ -261,8 +273,13 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
     cells = Map.new(Curriculum.coefficient_cells(scope), fn {k, c} -> {k, c.coefficient} end)
     {:ok, profile} = Accounts.fetch_school_profile(scope)
 
+    assignments = Curriculum.grid_assignments(scope)
+
+    override_classes =
+      for(a <- assignments, a.override?, do: a.class_label) |> Enum.uniq() |> Enum.sort()
+
     overridden =
-      for a <- Curriculum.grid_assignments(scope),
+      for a <- assignments,
           a.override?,
           key = CoefficientRules.resolve(cells, a),
           key != nil,
@@ -275,7 +292,13 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
       |> Enum.filter(& &1.active?)
       |> Enum.sort_by(&{BulletinGroup.rank(&1.bulletin_group), &1.position, &1.name})
 
-    assign(socket, cells: cells, overridden: overridden, subjects: subjects, profile: profile)
+    assign(socket,
+      cells: cells,
+      overridden: overridden,
+      override_classes: override_classes,
+      subjects: subjects,
+      profile: profile
+    )
   end
 
   # Columns of the current view: every level of the subsystem; streamed levels use

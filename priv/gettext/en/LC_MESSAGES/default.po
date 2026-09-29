@@ -3178,7 +3178,7 @@ msgstr "Group 3 · Other"
 msgid "Groupe du bulletin"
 msgstr "Bulletin group"
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:234
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:246
 #, elixir-autogen, elixir-format
 msgid "%{count} classes ont un coefficient propre : réinitialisez-les d'abord (%{classes})."
 msgstr "%{count} classes have their own coefficient: reset them first (%{classes})."
@@ -3193,22 +3193,22 @@ msgstr "Allow a class-specific coefficient"
 msgid "Case vide : matière non enseignée à ce niveau. Bordure ambre : une classe a un coefficient propre."
 msgstr "Empty cell: subject not taught at this level. Amber border: a class has its own coefficient."
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:313
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:336
 #, elixir-autogen, elixir-format
 msgid "Coefficient invalide."
 msgstr "Invalid coefficient."
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:200
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:212
 #, elixir-autogen, elixir-format
 msgid "Coefficients enregistrés."
 msgstr "Coefficients saved."
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:208
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:220
 #, elixir-autogen, elixir-format
 msgid "Coefficients non enregistrés : corrigez les cases signalées."
 msgstr "Coefficients not saved: fix the highlighted cells."
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:215
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:227
 #, elixir-autogen, elixir-format
 msgid "Coefficients non enregistrés."
 msgstr "Coefficients not saved."
@@ -3228,7 +3228,7 @@ msgstr "Save coefficients"
 msgid "Groupe"
 msgstr "Group"
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:314
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:337
 #, elixir-autogen, elixir-format
 msgid "Groupe invalide."
 msgstr "Invalid group."
@@ -3248,31 +3248,31 @@ msgstr "Subjects & coefficients"
 msgid "Modifiable depuis la page de la classe."
 msgstr "Editable from the class page."
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:245
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:255
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:257
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:267
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:232
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:271
 #, elixir-autogen, elixir-format
 msgid "Réglage non enregistré."
 msgstr "Setting not saved."
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:162
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:174
 #, elixir-autogen, elixir-format
 msgid "Sous-totaux par groupe sur le bulletin"
 msgstr "Group subtotals on the bulletin"
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:326
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:349
 #, elixir-autogen, elixir-format
 msgid "Série %{serie}"
 msgstr "Série %{serie}"
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:323
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:325
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:346
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:348
 #, elixir-autogen, elixir-format
 msgid "Toutes séries"
 msgstr "All séries"
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:317
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:340
 #, elixir-autogen, elixir-format
 msgid "Utilisée par : %{classes}"
 msgstr "Used by: %{classes}"
@@ -3469,7 +3469,7 @@ msgstr "common practice"
 msgid "Élève absent à une évaluation"
 msgstr "Student absent from an assessment"
 
-#: lib/teacher_assistant_web/live/school/coefficients_live.ex:320
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:343
 #, elixir-autogen, elixir-format
 msgid "Des élèves en sont dispensés : %{classes}"
 msgstr "Students are exempted in: %{classes}"
@@ -3522,3 +3522,8 @@ msgstr "This level is not a column of the coefficient grid: every subject is off
 #, elixir-autogen, elixir-format
 msgid "Voir la grille"
 msgstr "See the grid"
+
+#: lib/teacher_assistant_web/live/school/coefficients_live.ex:157
+#, elixir-autogen, elixir-format
+msgid "Coefficient propre dans : %{classes}. Réinitialisez-les pour désactiver."
+msgstr "Own coefficient in: %{classes}. Reset them to turn this off."

@@ -93,7 +93,11 @@ defmodule TeacherAssistantWeb.School.CoefficientsLiveTest do
     {:ok, tc} = Curriculum.assign_teacher(ctx.scope, ctx.cg, ctx.user, %{subject: ctx.maths})
     {:ok, _} = Curriculum.set_assignment_coefficient(ctx.scope, tc, "3")
     {:ok, view, _} = live(ctx.conn, ~p"/school/settings/coefficients")
-    view |> element("#toggle-class-coefficients") |> render_click()
+    # The toggle cannot be flipped (so it never shows a state the server refused)…
+    assert has_element?(view, "#toggle-class-coefficients[disabled]")
+    assert has_element?(view, "#class-coefficient-overrides", "2nde Z")
+    # …and a crafted event is still refused.
+    render_hook(view, "toggle_class_coefficients", %{})
     assert render(view) =~ "2nde Z"
     assert {:ok, %{class_coefficients_allowed?: true}} = Accounts.fetch_school_profile(ctx.scope)
   end
