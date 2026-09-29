@@ -54,6 +54,7 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
   end
 
   test "the rail marks the current page as active", %{conn: conn} do
+    conn = get(conn, ~p"/school/space/enseignant")
     {:ok, view, _html} = live(conn, ~p"/school/courses")
     assert has_element?(view, "#nav-school-courses[aria-current='page']")
     refute has_element?(view, "#nav-school-classes[aria-current='page']")

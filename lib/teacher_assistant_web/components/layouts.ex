@@ -43,6 +43,20 @@ defmodule TeacherAssistantWeb.Layouts do
     current_scope = assigns[:current_scope]
     current_user = current_scope && current_scope.current_user
 
+    space_info =
+      case current_scope do
+        %{current_workspace: %{}, capabilities: %{space: space, spaces: keys}} ->
+          {space, keys}
+
+        %{current_workspace: %{}} ->
+          facts = TeacherAssistantWeb.Spaces.facts(current_scope)
+          keys = TeacherAssistantWeb.Spaces.keys_for(facts)
+          {TeacherAssistantWeb.Spaces.space(hd(keys), facts), keys}
+
+        _ ->
+          {nil, []}
+      end
+
     units =
       case current_scope do
         %{current_workspace: %{}} ->
@@ -70,14 +84,8 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:units, units)
       |> assign(:workspaces, workspaces)
       |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
-      |> assign(
-        :is_head?,
-        current_scope && current_scope.capabilities[:manage_staff] == true
-      )
-      |> assign(
-        :is_admin?,
-        current_scope && current_scope.capabilities[:manage_school] == true
-      )
+      |> assign(:space, elem(space_info, 0))
+      |> assign(:space_keys, elem(space_info, 1))
       |> assign(:current_context, current_scope && current_scope.current_context)
       |> assign(:current_path, assigns[:current_path])
 
@@ -193,64 +201,45 @@ defmodule TeacherAssistantWeb.Layouts do
               </ul>
             </div>
 
+            <div
+              :if={@in_school? and length(@space_keys) > 1}
+              id="space-switcher"
+              class="flex flex-wrap gap-1 px-1"
+              role="navigation"
+              aria-label={gettext("Espaces")}
+            >
+              <.link
+                :for={key <- @space_keys}
+                id={"space-switch-#{key}"}
+                href={~p"/school/space/#{key}"}
+                aria-current={@space && @space.key == key && "true"}
+                class={[
+                  "btn btn-xs rounded-full",
+                  if(@space && @space.key == key, do: "btn-primary", else: "btn-ghost")
+                ]}
+              >
+                {TeacherAssistantWeb.Spaces.label(key)}
+              </.link>
+            </div>
+
             <nav
-              :if={@in_school?}
+              :if={@in_school? and @space}
               id="school-nav"
               class="flex flex-col gap-0.5"
               aria-label={gettext("School navigation")}
             >
-              <p class="ta-rail__label px-1.5 pb-1">{gettext("School")}</p>
-              <.rail_link
-                id="nav-school-dashboard"
-                href={~p"/school"}
-                icon="hero-squares-2x2"
-                current_path={@current_path}
-              >
-                {gettext("Dashboard")}
-              </.rail_link>
-              <.rail_link
-                :if={@units != []}
-                id="nav-school-courses"
-                href={~p"/school/courses"}
-                icon="hero-academic-cap"
-                current_path={@current_path}
-              >
-                {gettext("Mes cours")}
-              </.rail_link>
-              <.rail_link
-                id="nav-school-classes"
-                href={~p"/school/classes"}
-                icon="hero-rectangle-group"
-                current_path={@current_path}
-              >
-                {gettext("Classes")}
-              </.rail_link>
-              <.rail_link
-                id="nav-school-timetable-me"
-                href={~p"/school/timetable/me"}
-                icon="hero-calendar-days"
-                current_path={@current_path}
-              >
-                {gettext("Mon emploi du temps")}
-              </.rail_link>
-              <.rail_link
-                :if={@is_head?}
-                id="nav-school-members"
-                href={~p"/school/members"}
-                icon="hero-user-group"
-                current_path={@current_path}
-              >
-                {gettext("Members")}
-              </.rail_link>
-              <.rail_link
-                :if={@is_admin?}
-                id="nav-school-settings"
-                href={~p"/school/settings"}
-                icon="hero-cog-6-tooth"
-                current_path={@current_path}
-              >
-                {gettext("Settings")}
-              </.rail_link>
+              <%= for section <- @space.sections do %>
+                <p class="ta-rail__label px-1.5 pb-1 pt-2">{section.label}</p>
+                <.rail_link
+                  :for={item <- section.items}
+                  id={item.id}
+                  href={item.path}
+                  icon={item.icon}
+                  current_path={@current_path}
+                >
+                  {item.label}
+                </.rail_link>
+              <% end %>
             </nav>
 
             <nav

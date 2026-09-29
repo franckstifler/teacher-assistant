@@ -42,10 +42,17 @@ defmodule TeacherAssistantWeb.Spaces do
     }
   end
 
+  def label(:proviseur), do: gettext("Proviseur")
+  def label(:censeur), do: gettext("Censeur")
+  def label(:surveillant), do: gettext("Surveillant général")
+  def label(:intendant), do: gettext("Intendant")
+  def label(:enseignant), do: gettext("Enseignant")
+  def label(:ecole), do: gettext("École")
+
   def space(:proviseur, _facts) do
     %{
       key: :proviseur,
-      label: gettext("Proviseur"),
+      label: label(:proviseur),
       home: ~p"/school",
       sections: [
         section(gettext("Pilotage"), [dashboard(), classes(), members()]),
@@ -57,7 +64,7 @@ defmodule TeacherAssistantWeb.Spaces do
   def space(:censeur, _facts) do
     %{
       key: :censeur,
-      label: gettext("Censeur"),
+      label: label(:censeur),
       home: ~p"/school",
       sections: [
         section(gettext("Suivi pédagogique"), [dashboard(), classes(), members()]),
@@ -69,7 +76,7 @@ defmodule TeacherAssistantWeb.Spaces do
   def space(:surveillant, _facts) do
     %{
       key: :surveillant,
-      label: gettext("Surveillant général"),
+      label: label(:surveillant),
       home: ~p"/school/classes",
       sections: [section(gettext("Vie scolaire"), [classes()])]
     }
@@ -78,7 +85,7 @@ defmodule TeacherAssistantWeb.Spaces do
   def space(:intendant, _facts) do
     %{
       key: :intendant,
-      label: gettext("Intendant"),
+      label: label(:intendant),
       home: ~p"/school/classes",
       sections: [section(gettext("Intendance"), [classes()])]
     }
@@ -91,7 +98,7 @@ defmodule TeacherAssistantWeb.Spaces do
 
     %{
       key: :enseignant,
-      label: gettext("Enseignant"),
+      label: label(:enseignant),
       home: if(facts.teaches?, do: ~p"/school/courses", else: ~p"/school/classes"),
       sections: [section(gettext("Enseignement"), items)]
     }
@@ -100,7 +107,7 @@ defmodule TeacherAssistantWeb.Spaces do
   def space(:ecole, _facts) do
     %{
       key: :ecole,
-      label: gettext("École"),
+      label: label(:ecole),
       home: ~p"/school/classes",
       sections: [section(gettext("École"), [classes(), timetable()])]
     }
