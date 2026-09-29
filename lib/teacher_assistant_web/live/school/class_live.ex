@@ -291,6 +291,12 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                       >
                         <input type="hidden" name="context-id" value={tc.id} />
                         <input type="hidden" name="takers[]" value="" />
+                        <input
+                          :for={s <- @roster_students}
+                          type="hidden"
+                          name="shown[]"
+                          value={s.id}
+                        />
                         <label :for={s <- @roster_students} class="flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -695,7 +701,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     takers = params |> Map.get("takers", []) |> Enum.reject(&(&1 == ""))
 
     with %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == cid)) do
-      case Curriculum.set_exemptions(socket.assigns.current_scope, tc, takers) do
+      shown = params |> Map.get("shown", []) |> Enum.reject(&(&1 == ""))
+
+      case Curriculum.set_exemptions(socket.assigns.current_scope, tc, takers, shown) do
         :ok ->
           {:noreply,
            socket |> put_flash(:info, gettext("Élèves concernés enregistrés.")) |> load_roster()}

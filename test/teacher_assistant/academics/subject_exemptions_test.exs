@@ -57,4 +57,16 @@ defmodule TeacherAssistant.Academics.SubjectExemptionsTest do
     teacher = TeacherFixtures.member_scope_fixture(ctx.scope)
     assert_forbidden(Curriculum.set_exemptions(teacher, ctx.tc, [ctx.awa.id]))
   end
+
+  test "a student enrolled after the checklist was shown is not exempted by saving it", ctx do
+    :ok = make_optional(ctx.scope, ctx.esp, true)
+    [cg] = [ctx.tc] |> Ash.load!(:class_group, scope: ctx.scope) |> Enum.map(& &1.class_group)
+    {:ok, carl} = Enrollment.add_student(ctx.scope, cg, %{full_name: "Carl", sex: :m})
+
+    # The checklist showed Awa and Bob only; Awa is ticked.
+    :ok = Curriculum.set_exemptions(ctx.scope, ctx.tc, [ctx.awa.id], [ctx.awa.id, ctx.bob.id])
+
+    assert Curriculum.exempt_student_ids(ctx.scope, ctx.tc) == MapSet.new([ctx.bob.id])
+    refute MapSet.member?(Curriculum.exempt_student_ids(ctx.scope, ctx.tc), carl.id)
+  end
 end

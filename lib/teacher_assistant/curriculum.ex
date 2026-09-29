@@ -570,37 +570,43 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   @doc """
-  Sets who takes an optional subject in a class: every student of the class not in
-  `taking_ids` is exempted, the others are not. Refused for a compulsory subject
+  Sets who takes an optional subject in a class: among `shown_ids` (the students the
+  checklist displayed; default: the whole class), those not in `taking_ids` are
+  exempted and the others are not. Students outside `shown_ids` are left as they are. Refused for a compulsory subject
   (`:not_optional`) or an id outside the class (`:unknown_student`); one transaction.
   """
-  def set_exemptions(%Scope{} = scope, %TeachingContext{} = tc, taking_ids)
+  def set_exemptions(%Scope{} = scope, %TeachingContext{} = tc, taking_ids, shown_ids \\ nil)
       when is_list(taking_ids) do
     tc = Ash.load!(tc, [:catalog_subject, :class_group], scope: scope)
     class_ids = scope |> Enrollment.list_students(tc.class_group) |> MapSet.new(& &1.id)
+    # Only the students the checklist showed are changed: one enrolled since it was
+    # rendered keeps taking the subject (the default for a later-enrolled student).
+    shown = if shown_ids, do: MapSet.new(shown_ids), else: class_ids
     taking = MapSet.new(taking_ids)
 
     cond do
       not tc.catalog_subject.optional? ->
         {:error, :not_optional}
 
-      not MapSet.subset?(taking, class_ids) ->
+      not (MapSet.subset?(shown, class_ids) and MapSet.subset?(taking, shown)) ->
         {:error, :unknown_student}
 
       true ->
-        wanted = MapSet.difference(class_ids, taking)
+        wanted = MapSet.difference(shown, taking)
 
         existing =
           SubjectExemption
           |> Ash.Query.filter(teaching_context_id == ^tc.id)
           |> Ash.read!(scope: scope)
 
+        stale =
+          Enum.filter(
+            existing,
+            &(MapSet.member?(shown, &1.student_id) and not MapSet.member?(wanted, &1.student_id))
+          )
+
         Ash.transact([SubjectExemption], fn ->
-          with :ok <-
-                 destroy_exemptions(
-                   Enum.reject(existing, &MapSet.member?(wanted, &1.student_id)),
-                   scope
-                 ) do
+          with :ok <- destroy_exemptions(stale, scope) do
             have = MapSet.new(existing, & &1.student_id)
             create_exemptions(tc, MapSet.difference(wanted, have), scope)
           end
