@@ -89,4 +89,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
     {:ok, view, _} = live(ctx.conn, ctx.path)
     assert has_element?(view, "#pending-makeups", "Awa")
   end
+
+  test "saving a stale page never touches marks the teacher did not edit", ctx do
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+
+    # Someone else enters Bob's mark after this page was loaded.
+    :ok = Assessment.upsert_marks(ctx.scope, ctx.a, [%{student_id: ctx.bob.id, score: Decimal.new(14)}])
+
+    view
+    |> form("#marks-form", %{"scores" => %{ctx.awa.id => "12", ctx.bob.id => ""}})
+    |> render_submit()
+
+    by_student = Map.new(Assessment.list_marks(ctx.scope, ctx.a), &{&1.student_id, &1.score})
+    assert Decimal.equal?(by_student[ctx.awa.id], 12)
+    assert Decimal.equal?(by_student[ctx.bob.id], 14)
+  end
 end

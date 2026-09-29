@@ -47,6 +47,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:assessment, assessment)
        |> assign(:students, students)
        |> assign(:scores, existing_scores(scope, assessment))
+       |> assign(:loaded, existing_scores(scope, assessment))
        |> assign(:unsaved, %{})
        |> assign(:sibling_scores, sibling_scores(scope, ctx, seq))
        |> assign_assessment_defaults(scope)
@@ -92,6 +93,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:combined_assessments, combined)
          |> assign(:selected, selected)
          |> assign(:scores, combined_existing_scores(socket.assigns.current_scope, selected))
+         |> assign(:loaded, combined_existing_scores(socket.assigns.current_scope, selected))
          |> assign(:unsaved, %{})
          |> assign_assessment_defaults(scope)
          |> assign(:new_assessment_form, assessment_form(socket.assigns.current_scope))
@@ -402,7 +404,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp save_marks(socket, parsed) do
     entries =
-      Enum.map(parsed, fn {id, {:ok, entry}} -> Map.put(entry_attrs(entry), :student_id, id) end)
+      parsed
+      |> changed_entries(socket.assigns.loaded)
+      |> Enum.map(fn {id, entry} -> Map.put(entry_attrs(entry), :student_id, id) end)
 
     scope = socket.assigns.current_scope
 
@@ -413,6 +417,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> put_flash(:info, gettext("Marks saved"))
          |> assign(:unsaved, Map.delete(socket.assigns.unsaved, socket.assigns.assessment.id))
          |> assign(:scores, existing_scores(scope, socket.assigns.assessment))
+         |> assign(:loaded, existing_scores(scope, socket.assigns.assessment))
          |> assign_pending()}
 
       {:error, :out_of_range} ->
@@ -460,16 +465,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          gettext("Some marks aren't valid — use a number (e.g. 12 or 13,5), abs or abj.")
        )}
     else
-      entries_by_id = Map.new(parsed, fn {id, {:ok, entry}} -> {id, entry_attrs(entry)} end)
+      entries_by_id =
+        parsed
+        |> changed_entries(socket.assigns.loaded)
+        |> Map.new(fn {id, entry} -> {id, entry_attrs(entry)} end)
 
       assessment_entries =
         Enum.map(groups, fn %{class_group: cg, students: students} ->
           assessment = Map.fetch!(selected.by_class_group_id, cg.id)
 
           entries =
-            Enum.map(students, fn s ->
-              Map.put(Map.get(entries_by_id, s.id, %{score: nil}), :student_id, s.id)
-            end)
+            for s <- students,
+                Map.has_key?(entries_by_id, s.id),
+                do: Map.put(entries_by_id[s.id], :student_id, s.id)
 
           {assessment, entries}
         end)
@@ -481,6 +489,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
            |> put_flash(:info, gettext("Marks saved"))
            |> assign(:unsaved, Map.delete(socket.assigns.unsaved, selected.id))
            |> assign(:scores, combined_existing_scores(scope, selected))
+           |> assign(:loaded, combined_existing_scores(scope, selected))
            |> assign_pending()}
 
         {:error, :out_of_range} ->
@@ -522,6 +531,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:selected, selected)
          |> assign(:unsaved, unsaved)
          |> assign(:scores, restore_combined_scores(scope, selected, unsaved))
+         |> assign(:loaded, combined_existing_scores(scope, selected))
          |> assign_pending()}
 
       _ ->
@@ -537,6 +547,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:assessment, assessment)
          |> assign(:unsaved, unsaved)
          |> assign(:scores, restore_scores(scope, assessment, unsaved))
+         |> assign(:loaded, existing_scores(scope, assessment))
          |> assign(:sibling_scores, sibling_scores(scope, socket.assigns.ctx, seq))
          |> assign(:new_assessment_form, solo_assessment_form(scope, socket.assigns.ctx, seq))
          |> assign_pending()}
@@ -585,6 +596,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         end
     end
   end
+
+  # Only the students whose field differs from what this page loaded: a stale page
+  # (another teacher or device saved meanwhile) never overwrites or deletes a mark
+  # its user did not touch.
+  defp changed_entries(parsed, loaded) do
+    for {id, {:ok, entry}} <- parsed,
+        not same_entry?(entry, parse_entry(Map.get(loaded, id))),
+        do: {id, entry}
+  end
+
+  defp same_entry?({:graded, a}, {:ok, {:graded, b}}), do: Decimal.equal?(a, b)
+  defp same_entry?(entry, {:ok, entry}), do: true
+  defp same_entry?(_entry, _loaded), do: false
 
   # Upsert-entry attributes for a parsed mark (a blank is "not entered": nil score).
   defp entry_attrs(:blank), do: %{score: nil}
