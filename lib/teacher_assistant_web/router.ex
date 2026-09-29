@@ -72,6 +72,7 @@ defmodule TeacherAssistantWeb.Router do
 
     get "/workspaces/select/:id", WorkspaceController, :select
     get "/teacher/select-context/:id", TeacherContextController, :select
+    get "/school/space/:key", SpaceController, :select
 
     get "/school/classes/:id/students/:enrollment_id/bulletin/print",
         BulletinPrintController,
@@ -93,6 +94,7 @@ defmodule TeacherAssistantWeb.Router do
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
         {TeacherAssistantWeb.LiveUserAuth, :assign_capabilities},
+        {TeacherAssistantWeb.LiveUserAuth, :assign_space},
         {TeacherAssistantWeb.LiveUserAuth, :require_teaching_scope}
       ] do
       live "/teacher/contexts/:id/roster", Teacher.RosterLive, :index
@@ -105,6 +107,7 @@ defmodule TeacherAssistantWeb.Router do
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
         {TeacherAssistantWeb.LiveUserAuth, :assign_capabilities},
+        {TeacherAssistantWeb.LiveUserAuth, :assign_space},
         {TeacherAssistantWeb.LiveUserAuth, :require_school_setup}
       ] do
       live "/school", School.DashboardLive, :index

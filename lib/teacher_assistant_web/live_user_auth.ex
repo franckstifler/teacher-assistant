@@ -14,7 +14,8 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
       "workspace_id" => Plug.Conn.get_session(conn, :workspace_id),
       "user_id" => Plug.Conn.get_session(conn, :user_id),
       "context_id" => Plug.Conn.get_session(conn, :context_id),
-      "locale" => Plug.Conn.get_session(conn, :locale)
+      "locale" => Plug.Conn.get_session(conn, :locale),
+      "space" => Plug.Conn.get_session(conn, :space)
     }
   end
 
@@ -47,6 +48,29 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
 
         {:cont,
          Phoenix.Component.assign(socket, :current_scope, %{scope | capabilities: capabilities})}
+
+      _ ->
+        {:cont, socket}
+    end
+  end
+
+  # The member's role spaces and the current one (spec E), for the layout and the
+  # /school landing. Navigation only — never an authorization input.
+  def on_mount(:assign_space, _params, session, socket) do
+    case socket.assigns.current_scope do
+      %{current_workspace: %{}} = scope ->
+        facts = TeacherAssistantWeb.Spaces.facts(scope)
+        keys = TeacherAssistantWeb.Spaces.keys_for(facts)
+        key = TeacherAssistantWeb.Spaces.resolve(keys, TeacherAssistantWeb.Spaces.parse_key(session["space"]))
+
+        capabilities =
+          Map.merge(scope.capabilities || %{}, %{
+            spaces: keys,
+            space: TeacherAssistantWeb.Spaces.space(key, facts)
+          })
+
+        scope = %{scope | capabilities: capabilities}
+        {:cont, socket |> Phoenix.Component.assign(:current_scope, scope) |> Phoenix.Component.assign(:scope, scope)}
 
       _ ->
         {:cont, socket}
