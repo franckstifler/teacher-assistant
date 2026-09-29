@@ -167,4 +167,41 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert Assessment.list_marks(scope, a_maco) == []
     assert Assessment.list_marks(scope, a_menu) == []
   end
+
+  test "abs/abj land on each class's own assessment, a blank deletes only that mark, abx saves nothing",
+       ctx do
+    %{conn: conn, scope: scope, course: course, seq: seq, tc_maco: tc_maco} = ctx
+    %{maco: maco, menu: menu, s_maco: s_maco, s_menu: s_menu} = ctx
+
+    {:ok, _} = Assessment.create_combined_assessment(scope, course, seq, %{label: "DS"})
+    [column] = Assessment.combined_assessments_for(scope, course, seq)
+    a_maco = column.by_class_group_id[maco.id]
+    a_menu = column.by_class_group_id[menu.id]
+    path = ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}&assessment=#{column.id}"
+
+    {:ok, view, _} = live(conn, path)
+
+    view
+    |> form("#marks-form", %{"scores" => %{s_maco.id => "abs", s_menu.id => "ABJ"}})
+    |> render_submit()
+
+    assert [%{student_id: sid_maco, status: :absent}] = Assessment.list_marks(scope, a_maco)
+    assert sid_maco == s_maco.id
+    assert [%{student_id: sid_menu, status: :excused}] = Assessment.list_marks(scope, a_menu)
+    assert sid_menu == s_menu.id
+
+    view
+    |> form("#marks-form", %{"scores" => %{s_maco.id => "", s_menu.id => "abj"}})
+    |> render_submit()
+
+    assert Assessment.list_marks(scope, a_maco) == []
+    assert [%{status: :excused}] = Assessment.list_marks(scope, a_menu)
+
+    view
+    |> form("#marks-form", %{"scores" => %{s_maco.id => "12", s_menu.id => "abx"}})
+    |> render_submit()
+
+    assert Assessment.list_marks(scope, a_maco) == []
+    assert [%{status: :excused}] = Assessment.list_marks(scope, a_menu)
+  end
 end
