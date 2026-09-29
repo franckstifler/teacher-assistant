@@ -214,4 +214,37 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     refute has_element?(view, "a[href='/teacher/setup']")
     refute has_element?(view, "a[href='/teacher']")
   end
+
+  describe "landing by role space" do
+    setup %{actor: head} do
+      {:ok, school} = Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée L"})
+      scope = school_scope(head, school)
+      TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
+      %{school: school, lscope: scope}
+    end
+
+    defp conn_with_roles(school, scope, roles) do
+      member = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{roles: roles})
+
+      build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, member.current_user.id)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+    end
+
+    test "a surveillant général lands on the classes", %{school: school, lscope: scope} do
+      conn = conn_with_roles(school, scope, [:discipline_master])
+      assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school")
+    end
+
+    test "a member with no space of their own lands on the classes (École)", %{school: school, lscope: scope} do
+      conn = conn_with_roles(school, scope, [:librarian])
+      assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school")
+    end
+
+    test "a censeur stays on the dashboard", %{school: school, lscope: scope} do
+      conn = conn_with_roles(school, scope, [:vice_principal])
+      assert {:ok, _view, _html} = live(conn, ~p"/school")
+    end
+  end
 end

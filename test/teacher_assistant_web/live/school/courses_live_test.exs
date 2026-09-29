@@ -165,19 +165,19 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
                live(conn_for(school, teacher), ~p"/school")
     end
 
-    test "a teacher who is also a form master keeps the dashboard", %{
+    test "a teacher who is also a form master lands on their courses", %{
       school: school,
       teacher: teacher,
       cg: cg,
       scope: scope
     } do
       {:ok, _} = Enrollment.set_form_master(scope, cg, teacher.id)
-      {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school")
-      assert has_element?(view, "#school-dashboard")
-      assert has_element?(view, "#dashboard-my-courses a[href='/school/courses']")
+
+      assert {:error, {:live_redirect, %{to: "/school/courses"}}} =
+               live(conn_for(school, teacher), ~p"/school")
     end
 
-    test "staff without a management-free role keep the dashboard (bursar, discipline master)", %{
+    test "staff without a teaching space land on the classes (bursar, discipline master)", %{
       school: school,
       scope: scope
     } do
@@ -190,8 +190,8 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
         {:ok, _} =
           Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: staff}, inv.token)
 
-        {:ok, view, _html} = live(conn_for(school, staff), ~p"/school")
-        assert has_element?(view, "#school-dashboard")
+        assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
+                 live(conn_for(school, staff), ~p"/school")
       end
     end
 

@@ -10,10 +10,8 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     scope = socket.assigns.current_scope
 
     cond do
-      scope.current_workspace != nil and plain_teacher?(scope) ->
-        # Members who neither administer the school nor master a class get
-        # their teaching hub, not an admin dashboard they cannot act on.
-        {:ok, push_navigate(socket, to: ~p"/school/courses")}
+      scope.current_workspace != nil and landing_elsewhere(scope) != nil ->
+        {:ok, push_navigate(socket, to: landing_elsewhere(scope))}
 
       scope.current_workspace != nil ->
         {:ok,
@@ -34,19 +32,13 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     end
   end
 
-  # A member with no management responsibility at all: not an admin, not a
-  # conduct or fees manager, not a form master. Everyone else needs the
-  # dashboard's class list and setup checklist.
-  defp plain_teacher?(scope) do
-    not Enrollment.can_manage_classes?(scope) and
-      not TeacherAssistant.Discipline.can_manage_conduct?(scope) and
-      not TeacherAssistant.Fees.can_manage_fees?(scope) and form_master_classes(scope) == []
-  end
+  # Proviseur and Censeur use the dashboard as their home; every other space lands
+  # on its own home (spec E).
+  defp landing_elsewhere(%{capabilities: %{space: %{key: key}}}) when key in [:proviseur, :censeur],
+    do: nil
 
-  defp form_master_classes(%{current_academic_year: nil}), do: []
-
-  defp form_master_classes(scope),
-    do: Enrollment.list_form_master_classes(scope, scope.current_academic_year)
+  defp landing_elsewhere(%{capabilities: %{space: %{home: home}}}), do: home
+  defp landing_elsewhere(_scope), do: nil
 
   def render(assigns) do
     ~H"""
