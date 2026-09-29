@@ -419,7 +419,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
         roles: [:teacher]
       })
 
-    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: teacher}, inv.token)
+    {:ok, _} =
+      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: teacher}, inv.token)
 
     conn =
       Phoenix.ConnTest.build_conn()

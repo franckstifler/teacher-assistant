@@ -94,7 +94,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
     # Someone else enters Bob's mark after this page was loaded.
-    :ok = Assessment.upsert_marks(ctx.scope, ctx.a, [%{student_id: ctx.bob.id, score: Decimal.new(14)}])
+    :ok =
+      Assessment.upsert_marks(ctx.scope, ctx.a, [
+        %{student_id: ctx.bob.id, score: Decimal.new(14)}
+      ])
 
     view
     |> form("#marks-form", %{"scores" => %{ctx.awa.id => "12", ctx.bob.id => ""}})
