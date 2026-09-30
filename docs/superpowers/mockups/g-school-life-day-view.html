@@ -1,0 +1,212 @@
+<!-- Excerpt of claude.ai/design project abc12b3e-a26c-41e5-a97c-f0a9be47fc8b,
+     file "Espaces par rôle.dc.html", screens "Enseignant · Appel" (Ma journée) and
+     "Surveillant général · Aujourd'hui" (spec G). Palette tokens (K), sample data and the screens' data logic
+     follow the markup. Reference only. -->
+<section data-screen-label="Enseignant · Appel" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Mes créneaux du jour</span>
+            <sc-for list="{{ slots }}" as="sl" hint-placeholder-count="5">
+              <button onClick="{{ sl.onClick }}" style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;cursor:{{ sl.cursor }};border-radius:0.7rem;padding:11px 14px;border:1px solid {{ sl.border }};background:{{ sl.bg }};color:oklch(95% 0.012 150);font-family:inherit;opacity:{{ sl.opacity }}">
+                <span style="display:flex;flex-direction:column;font-family:'IBM Plex Mono',monospace">
+                  <span style="font-size:0.88rem;font-weight:600">{{ sl.code }}</span>
+                  <span style="font-size:0.7rem;color:oklch(78% 0.02 155)">{{ sl.time }}</span>
+                </span>
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-weight:600;font-size:0.95rem">{{ sl.title }}</span>
+                  <span style="font-size:0.78rem;color:oklch(78% 0.02 155)">{{ sl.sub }}</span>
+                </span>
+                <span style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:600;padding:3px 8px;border-radius:999px;background:{{ sl.tagBg }};color:{{ sl.tagFg }}">{{ sl.tag }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:16px 18px;box-shadow:0 6px 20px oklch(0% 0 0 / 0.16)">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+              <h2 style="margin:0;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.3rem">{{ roll.title }}</h2>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:999px;background:{{ roll.statusBg }};color:{{ roll.statusFg }}">{{ roll.status }}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem">{{ roll.summary }}</span>
+              <span style="font-size:0.78rem;color:oklch(78% 0.02 155)">Tous présents par défaut — touchez les absents et retards.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;border-top:1px solid oklch(46% 0.035 164)">
+              <sc-for list="{{ roll.students }}" as="st" hint-placeholder-count="12">
+                <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid oklch(44% 0.035 164)">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;width:22px;color:oklch(72% 0.02 155)">{{ st.n }}</span>
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column">
+                    <span style="font-size:0.92rem">{{ st.name }}</span>
+                    <sc-if value="{{ st.flag }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:0.72rem;color:oklch(83% 0.13 85)">{{ st.flag }}</span>
+                    </sc-if>
+                  </span>
+                  <div style="display:flex;border-radius:0.4rem;overflow:hidden;border:1px solid oklch(50% 0.035 164)">
+                    <sc-for list="{{ st.btns }}" as="b" hint-placeholder-count="3">
+                      <button title="{{ b.title }}" onClick="{{ b.onClick }}" style="width:44px;height:36px;border:0;cursor:pointer;font:600 0.85rem/1 'IBM Plex Mono',monospace;background:{{ b.bg }};color:{{ b.fg }}">{{ b.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <button onClick="{{ saveRoll }}" style="margin-top:4px;height:46px;border:0;border-radius:0.4rem;cursor:pointer;font:650 0.95rem/1 system-ui,sans-serif;background:oklch(80% 0.13 162);color:oklch(26% 0.05 164)">{{ roll.cta }}</button>
+          </div>
+        </section>
+<section data-screen-label="Surveillant général · Aujourd'hui" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:10px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:14px 16px;overflow-x:auto">
+            <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Appels par créneau · nombre d'absents</span>
+              <div style="display:flex;gap:12px;font-size:0.74rem;color:oklch(82% 0.02 155)">
+                <span style="display:flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:oklch(50% 0.07 162)"></i>Fait</span>
+                <span style="display:flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:oklch(52% 0.1 35)"></i>Non fait</span>
+                <span style="display:flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;border:1px solid oklch(83% 0.13 85)"></i>En cours</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:62px repeat(7,minmax(54px,1fr));gap:3px;min-width:500px">
+              <span></span>
+              <sc-for list="{{ sgPeriods }}" as="p" hint-placeholder-count="7">
+                <span style="display:flex;flex-direction:column;align-items:center;padding:3px 0;font-family:'IBM Plex Mono',monospace;font-size:0.66rem;font-weight:600;color:{{ p.color }}"><span>{{ p.code }}</span><span style="font-weight:400">{{ p.time }}</span></span>
+              </sc-for>
+              <sc-for list="{{ sgGrid }}" as="row" hint-placeholder-count="10">
+                <span style="display:flex;align-items:center;font-size:0.82rem;font-weight:600">{{ row.label }}</span>
+                <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="7">
+                  <span title="{{ cell.title }}" style="height:30px;display:grid;place-items:center;border-radius:0.35rem;font:600 0.76rem/1 'IBM Plex Mono',monospace;border:{{ cell.ring }};background:{{ cell.bg }};color:{{ cell.fg }}">{{ cell.text }}</span>
+                </sc-for>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:2px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:14px 16px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Absences à justifier</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:oklch(83% 0.13 85)">{{ absCount }}</span>
+              </div>
+              <sc-for list="{{ absences }}" as="ab" hint-placeholder-count="6">
+                <div style="display:flex;flex-direction:column;gap:8px;padding:8px 0;border-bottom:1px solid oklch(44% 0.035 164)">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                      <span style="font-size:0.9rem;font-weight:600">{{ ab.name }}</span>
+                      <span style="font-size:0.75rem;color:oklch(78% 0.02 155)">{{ ab.detail }}</span>
+                    </div>
+                    <sc-if value="{{ ab.done }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:600;padding:3px 8px;border-radius:999px;background:oklch(45% 0.07 162);color:oklch(92% 0.06 162)">{{ ab.doneLabel }}</span>
+                    </sc-if>
+                    <sc-if value="{{ ab.canJustify }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ ab.onToggle }}" style="flex:none;cursor:pointer;border-radius:0.35rem;padding:7px 11px;font:600 0.76rem/1 system-ui,sans-serif;border:1px solid oklch(50% 0.035 164);background:transparent;color:oklch(95% 0.012 150)">Justifier</button>
+                    </sc-if>
+                  </div>
+                  <sc-if value="{{ ab.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                      <sc-for list="{{ ab.reasons }}" as="rs" hint-placeholder-count="4">
+                        <button onClick="{{ rs.onClick }}" style="cursor:pointer;border-radius:999px;padding:6px 12px;font:600 0.76rem/1 system-ui,sans-serif;border:1px solid oklch(80% 0.13 162);background:transparent;color:oklch(80% 0.13 162)">{{ rs.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:2px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:14px 16px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Appels non faits</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:oklch(73% 0.13 30)">{{ missCount }}</span>
+                </div>
+                <sc-for list="{{ miss }}" as="m" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid oklch(44% 0.035 164)">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                      <span style="font-size:0.88rem;font-weight:600;font-family:'IBM Plex Mono',monospace">{{ m.title }}</span>
+                      <span style="font-size:0.74rem;color:oklch(78% 0.02 155)">{{ m.detail }}</span>
+                    </div>
+                    <button onClick="{{ m.onClick }}" style="flex:none;cursor:pointer;border-radius:0.35rem;padding:6px 10px;font:600 0.75rem/1 system-ui,sans-serif;border:1px solid {{ m.border }};background:transparent;color:{{ m.fg }}">{{ m.btn }}</button>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:14px 16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding-bottom:4px">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Sanctions récentes</span>
+                  <button style="cursor:pointer;border:0;border-radius:0.35rem;padding:7px 11px;font:650 0.76rem/1 system-ui,sans-serif;background:oklch(80% 0.13 162);color:oklch(26% 0.05 164)">Nouvelle sanction</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:2px;padding:7px 0;border-bottom:1px solid oklch(44% 0.035 164)"><span style="font-size:0.88rem;font-weight:600">Mbarga Serge · 4e B</span><span style="font-size:0.75rem;color:oklch(78% 0.02 155)">Consigne 2 h · bavardages répétés · <b style="color:oklch(83% 0.13 85)">parents à notifier</b></span></div>
+                <div style="display:flex;flex-direction:column;gap:2px;padding:7px 0;border-bottom:1px solid oklch(44% 0.035 164)"><span style="font-size:0.88rem;font-weight:600">Tsafack Ulrich · 3e A</span><span style="font-size:0.75rem;color:oklch(78% 0.02 155)">Avertissement · retards cumulés (4) · <b style="color:oklch(83% 0.13 85)">parents à notifier</b></span></div>
+                <div style="display:flex;flex-direction:column;gap:2px;padding:7px 0"><span style="font-size:0.88rem;font-weight:600">Ekani Paul · Tle D</span><span style="font-size:0.75rem;color:oklch(78% 0.02 155)">Convocation des parents · absences répétées · notifié hier</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+<script type="text/x-reference">
+const K={card:'oklch(38% 0.04 164)',line:'oklch(50% 0.035 164)',ink:'oklch(95% 0.012 150)',mute:'oklch(78% 0.02 155)',pri:'oklch(80% 0.13 162)',amb:'oklch(83% 0.13 85)',err:'oklch(73% 0.13 30)',on:'oklch(26% 0.05 164)'};
+const PERIODS=[['M1','07:30'],['M2','08:25'],['M3','09:20'],['M4','10:35'],['M5','11:30'],['S1','13:30'],['S2','14:25']];
+const ABS=[['Fouda Yannick','4e B','M1, M2 · 2 h'],['Kouam Brice','3e A','M3 · 1 h'],['Zambo Diane','4e B','M1 · retard 25 min'],['Ekani Paul','Tle D','Journée entière · 3e jour consécutif'],['Nkoulou Hervé','2nde A','M2, M3 · 2 h'],['Owona Joëlle','1re D','M1 · 1 h']];
+const REASONS=['Maladie','Raison familiale','Convocation','Autre motif'];
+const OLD_ABS=[['o0','Ekani Paul','Tle D','lun. 28 sept.','Journée entière',null],['o1','Ekani Paul','Tle D','ven. 25 sept.','Journée entière',null],['o2','Fouda Yannick','4e B','ven. 25 sept.','M1–M3','Maladie'],['o3','Belinga Estelle','3e A','jeu. 24 sept.','M5','Raison familiale']];
+const initSancs=()=>[{id:1,date:"Aujourd'hui",stu:'Mbarga Serge',cls:'4e B',type:'Consigne',motif:'Bavardages répétés',notified:false},{id:2,date:"Aujourd'hui",stu:'Tsafack Ulrich',cls:'3e A',type:'Avertissement',motif:'Retards répétés',notified:false},{id:3,date:'lun. 28 sept.',stu:'Ekani Paul',cls:'Tle D',type:'Avertissement',motif:'Absences répétées',notified:true},{id:4,date:'ven. 25 sept.',stu:'Nkoulou Hervé',cls:'2nde A',type:'Blâme',motif:'Insolence',notified:true}];
+// Ma journée (slots + roll)
+const slots=SLOTS.map(x=>{const sel=x.id===s.slot,done=s.saved[x.id],nA=Object.values(s.att[x.id]||{}).filter(v=>v==='A').length;
+      const tag=x.later?'À venir':done?`Fait · ${nA} abs.`:x.now?'En cours':'Non fait';
+      return{code:x.code,time:x.time,title:x.cls,sub:`${subject} · ${x.room}`,tag,
+        tagBg:x.later?t(K.ink,10):done?t(K.pri,22):t(K.amb,26),tagFg:x.later?K.mute:done?K.pri:K.amb,
+        border:sel?K.pri:K.line,bg:sel?t(K.pri,12):K.card,opacity:x.later?0.6:1,cursor:x.later?'default':'pointer',
+        onClick:()=>{if(!x.later)this.set({slot:x.id});}};});
+    const cur=SLOTS.find(x=>x.id===s.slot),names=ROSTER[cur.cls],a=s.att[s.slot]||{};
+    const setAtt=(i,v)=>this.setState(st=>{const m={...(st.att[st.slot]||{})};if(v==='P')delete m[i];else m[i]=v;return{att:{...st.att,[st.slot]:m}};});
+    const col={P:K.pri,A:K.err,R:K.amb};
+    const cnt=v=>Object.values(a).filter(x=>x===v).length;
+    const roll={title:`${cur.code} · ${cur.cls} — ${cur.time}`,status:s.saved[s.slot]?'Appel enregistré':'Appel non fait',
+      statusBg:s.saved[s.slot]?t(K.pri,22):t(K.amb,26),statusFg:s.saved[s.slot]?K.pri:K.amb,
+      summary:`${names.length-cnt('A')} présents · ${cnt('A')} absent${cnt('A')>1?'s':''} · ${cnt('R')} retard${cnt('R')>1?'s':''}`,
+      cta:s.saved[s.slot]?"Mettre à jour l'appel":"Enregistrer l'appel",
+      students:names.map((nm,i)=>{const v=a[i]||'P';return{n:i+1,name:nm,flag:(FLAGS[cur.cls]||{})[i]||false,
+        btns:[['P','Présent'],['A','Absent'],['R','Retard']].map(([k,ti])=>({label:k,title:ti,bg:v===k?t(col[k],k==='P'?22:85):'transparent',fg:v===k?(k==='P'?K.pri:K.on):K.mute,onClick:()=>setAtt(i,k)}))};})};
+    
+// SG home
+const NOW=3;
+    const sgGrid=CLASSES.map((cl,r)=>({label:cl,cells:PERIODS.map(([code],p)=>{
+      if(p>NOW)return{text:'·',bg:'transparent',fg:K.mute,ring:`1px dashed ${K.line}`,title:'À venir'};
+      if(p===NOW&&r%3===0)return{text:'…',bg:'transparent',fg:K.amb,ring:`1px solid ${K.amb}`,title:'En cours'};
+      if(p<NOW&&(r*5+p*3)%9===0)return{text:'—',bg:t(K.err,42),fg:K.ink,ring:'1px solid transparent',title:`Appel non fait · ${this.teacher(r,(r+p)%8)}`};
+      const n=(r+p*2)%4;return{text:String(n),bg:t(K.pri,n?22:34),fg:K.ink,ring:'1px solid transparent',title:`${n} absent(s)`};})}));
+    const missing=[];CLASSES.forEach((cl,r)=>PERIODS.forEach(([code,time],p)=>{if(p<NOW&&(r*5+p*3)%9===0)missing.push({key:cl+code,cls:cl,code,time,teacher:this.teacher(r,(r+p)%8),subj:SUBJ_L[(r+p)%8]});}));
+    let absTotal=0;CLASSES.forEach((_,r)=>PERIODS.forEach((_,p)=>{if(p<NOW&&(r*5+p*3)%9!==0)absTotal+=(r+p*2)%4;}));
+    const openCount=ABS.filter((_,i)=>!s.just[i]).length;
+    const absences=ABS.map(([nm,cl,d],i)=>({name:nm,detail:`${cl} · ${d}`,done:!!s.just[i],doneLabel:`Justifiée · ${s.just[i]||''}`,canJustify:!s.just[i],open:s.open===i&&!s.just[i],
+      onToggle:()=>this.set({open:s.open===i?null:i}),reasons:REASONS.map(rs=>({label:rs,onClick:()=>this.setState(st=>({just:{...st.just,[i]:rs},open:null}))}))}));
+    const miss=missing.map(m=>({title:`${m.cls} · ${m.code} ${m.time}`,detail:`${m.teacher} · ${m.subj}`,btn:s.sgRem[m.key]?'Relancé ✓':'Relancer',fg:s.sgRem[m.key]?K.pri:K.ink,border:s.sgRem[m.key]?K.pri:K.line,onClick:()=>this.setState(st=>({sgRem:{...st.sgRem,[m.key]:true}}))}));
+    
+// SG Absences page
+case 'absences':{
+      const f=s.flt||'Non justifiées';
+      const all=[...ABS.map(([n,c,d],i)=>({id:i,name:n,cls:c,date:"Aujourd'hui",slots:d,reason:s.just[i]||null})),...OLD_ABS.map(([id,n,c,date,sl,rs])=>({id,name:n,cls:c,date,slots:sl,reason:s.just[id]||rs}))];
+      const list=all.filter(x=>f==='Toutes'||(f==='Justifiées'?!!x.reason:!x.reason));
+      G([['Date'],['Élève'],['Classe'],['Créneaux'],['Statut']],'110px minmax(0,1fr) 70px minmax(0,1fr) 150px',list.map(x=>row('a'+x.id,[cell(x.date,{mono:true,color:K.mute}),cell(x.name,{bold:true}),cell(x.cls),cell(x.slots,{color:K.mute}),cell(x.reason?`Justifiée · ${x.reason}`:'Non justifiée',{color:x.reason?K.pri:K.amb})])),{filters:['Non justifiées','Justifiées','Toutes'].map(c=>chip(c,c===f,()=>up({flt:c,sel:null})))});
+      const x=all.find(y=>'a'+y.id===s.sel)||list[0];
+      if(x){const rep=all.filter(y=>y.name===x.name&&!y.reason).length;
+        X.detail=det({eyebrow:`${x.cls} · ${x.date}`,title:x.name,sub:x.slots,status:x.reason?`Justifiée · ${x.reason}`:'Non justifiée',statusBg:x.reason?t(K.pri,22):t(K.amb,26),statusFg:x.reason?K.pri:K.amb,
+          lines:[{label:'Absences non justifiées',value:String(rep)},{label:'Parent / tuteur',value:'Notifié par SMS à 08:10'}],
+          groups:x.reason?[]:[{label:'Motif de justification',options:REASONS.map(rs=>chip(rs,false,()=>this.setState(st=>({just:{...st.just,[x.id]:rs}}))))}],
+          note:rep>=3?'Absences répétées : convocation des parents recommandée.':false});}
+      X.head={eyebrow:'Vie scolaire',title:'Absences',side:`${all.filter(x=>!x.reason).length} non justifiées`};
+      X.notes=["Même justification qu'à l'accueil (état partagé) ; motif à ajouter au modèle.","La notification SMS au tuteur est une hypothèse à valider (coût et canal)."];break;}
+    
+// Sanctions page (V06 reference)
+case 'sanctions':{
+      G([['Date'],['Élève'],['Type'],['Motif'],['Parents']],'110px minmax(0,1fr) 130px minmax(0,1fr) 100px',s.sancs.map(x=>row('s'+x.id,[cell(x.date,{mono:true,color:K.mute}),cell(`${x.stu} · ${x.cls}`,{bold:true}),cell(x.type),cell(x.motif,{color:K.mute}),cell(x.notified?'Notifiés':'À notifier',{color:x.notified?K.pri:K.amb})])),{barBtn:{label:'Nouvelle sanction',onClick:()=>up({sel:null})}});
+      const x=s.sancs.find(y=>'s'+y.id===s.sel);
+      if(x)X.detail=det({eyebrow:`${x.cls} · ${x.date}`,title:x.stu,sub:`${x.type} · ${x.motif}`,status:x.notified?'Parents notifiés':'À notifier',statusBg:x.notified?t(K.pri,22):t(K.amb,26),statusFg:x.notified?K.pri:K.amb,
+        lines:[{label:'Prononcée par',value:'P. Abena (SG)'},{label:'Sanctions cette année',value:String(s.sancs.filter(y=>y.stu===x.stu).length)}],
+        cta:x.notified?false:cta('Marquer les parents notifiés',()=>this.setState(st=>({sancs:st.sancs.map(y=>y.id===x.id?{...y,notified:true}:y)})))});
+      else{const n=s.ns,ok=n.stu&&n.type&&n.motif,setN=(k,v)=>this.setState(st=>({ns:{...st.ns,[k]:v}}));
+        X.detail=det({eyebrow:'Nouvelle sanction',title:n.stu||'Choisir un élève',sub:n.stu?clsOf(n.stu):false,
+          groups:[{label:'Élève',options:S_STU.map(o=>chip(o,n.stu===o,()=>setN('stu',o)))},{label:'Type',options:S_TYPES.map(o=>chip(o,n.type===o,()=>setN('type',o)))},{label:'Motif',options:S_MOTIFS.map(o=>chip(o,n.motif===o,()=>setN('motif',o)))}],
+          cta:ok?cta('Enregistrer la sanction',()=>this.setState(st=>{const id=Date.now();return{sancs:[{id,date:"Aujourd'hui",stu:n.stu,cls:clsOf(n.stu),type:n.type,motif:n.motif,notified:false},...st.sancs],sel:'s'+id,ns:{stu:null,type:null,motif:null}};})):false,
+          note:ok?false:'Choisissez un élève, un type et un motif.'});}
+      X.head={eyebrow:'Vie scolaire · discipline',title:'Sanctions',side:`${s.sancs.filter(x=>!x.notified).length} à notifier`};
+      X.notes=["Saisie en trois choix (élève, type, motif) ; les types reprennent la liste du code (avertissement, blâme…).","Chaque sanction baisse la note de conduite proposée (écran Conduite)."];break;}
+    case 'conduite':{
+      const cls=s.flt||'4e B',ok=s.conduiteOk[cls];
+      const list=STU.filter(x=>x.cls===cls).map(x=>{const sn=s.sancs.filter(y=>y.stu===x.name).length,adj=s.adj[x.name]||0,note=Math.max(0,Math.min(20,20-x.absH*0.5-x.ret*0.25-sn*2+adj));return{...x,sn,adj,note};});
+      const ment=n=>n>=16?'Très bien':n>=14?'Bien':n>=12?'Assez bien':n>=10?'Passable':'Insuffisante';
+      G([['Élève'],['Abs. (h)',1],['Retards',1],['Sanctions',1],['Note 
+// Designer notes
+NOTES={journee:["Entrée par la journée (créneaux du jour tirés de l'emploi du temps) au lieu d'un lien classe + période : l'enseignant n'a plus à chercher sa classe.","Même logique que l'écran d'appel actuel : présent par défaut, P / A / R, statut « Appel enregistré ». Boutons de 44 px pour le téléphone.","Signal « absent au créneau précédent » : lecture des appels du jour, aucune donnée nouvelle.","La justification reste au surveillant général (le champ « justifié » existe déjà)."],
+      notes:["Cours et séquences en onglets plutôt qu'en listes déroulantes : deux clics de moins par classe.","Entrée → élève suivant ; virgule acceptée ; une note hors 0–20 est signalée dans la ligne avant l'envoi (mêmes règles que le code actuel).","La moyenne pondérée de la séquence s'affiche par ligne.","Manque dans le modèle : une date limite de saisie distincte de la date de fin de séquence."],
+      censeur:["Remplace le tableau de bord générique pour le censeur : sa question est « qui n'a pas saisi ? », pas « combien d'élèves ? ».","Cellule = un cours (classe × matière) ; % = notes saisies / (élèves × évaluations de la séquence). Case pointillée = matière non enseignée.","À créer : l'action « Relancer » (e-mail ou notification) et un journal des relances.","Un censeur qui enseigne bascule vers « Mon enseignement » en haut du menu, sans changer d'école. Les cellules Maths de 4e B, 3e A et 2nde C reflètent la saisie de l'enseignante."],
+      sg:["Écran d'accueil propre au surveillant général (droits discipline) : le jour en cours, pas des statistiques.","La grille classe × créneau affiche les appels faits, non faits et en cours, à partir de l'emploi du temps et des appels.","La justification se fait en un geste avec un motif ; il faut ajouter un champ « motif » au modèle (aujourd'hui, seul un booléen existe).","Absences répétées (3 jours et plus) remontées en tête : c'est le signal de décrochage à traiter en premier."]};
+    
+</script>

@@ -399,3 +399,83 @@ menu item; the screen **matches the mockup layout** (KPI tiles, sequence tabs, l
    the same item; `/school` no longer sends the Censeur to the dashboard.
 
 Out of scope: sending reminders and their log (N06), per-teacher view, export.
+
+## G — School life, day view (spec)
+
+Status: spec approved 2026-09-30, not implemented.
+
+Mockup: `Espaces par rôle` → Enseignant → "Ma journée · appel", Surveillant général → "Aujourd'hui" and
+"Absences" (excerpt with markup, palette, sample data and data logic saved in
+`docs/superpowers/mockups/g-school-life-day-view.html`). Gaps: **V02, V01, V03, V04, V06**.
+
+User decisions (2026-09-30): all five gaps in one increment; the SG gets **two screens** ("Aujourd'hui" home
+and "Absences"); "Ma journée" is the teacher's **home** and also lists **this week's missed roll calls**.
+Design choices: a roll call is "done" when attendance entries exist for (class, period, date) — computed,
+no roll-call session resource; missed roll calls are information only, no "Relancer" button (reminders
+come with notifications, N06/R03, as in F); V04 uses a fixed threshold, no settings screen.
+
+### Data (V02, V06)
+
+1. `AttendanceEntry` gains `justification_reason` — an `Ash.Type.Enum`
+   `:maladie | :famille | :convocation | :autre` (FR "Maladie", "Raison familiale", "Convocation",
+   "Autre motif") — plus `justified_by_user_id` and `justified_at` (utc datetime). Justifying requires a
+   reason; the note stays optional. Unjustifying clears reason, author and time. Entries justified before
+   this change have no reason and read "Motif non précisé".
+2. `Attendance.justify_day/…` (and the existing per-class register form) take the reason; same authorization
+   as today (conduct axis).
+3. `SanctionEntry` gains `parents_notified_on` (date) and `parents_notified_by_user_id`, set by a new update
+   action `:mark_parents_notified` (conduct axis; sets today's school date and the actor). No "un-notify".
+4. Migrations generated with `mix ash.codegen --dev`.
+
+### Computation
+
+5. `Reference.now/1` gives the school-local time (WAT, UTC+1) with the same frozen-clock hook as
+   `Reference.today/1`; all "today", "in progress" and "past" decisions use it.
+6. A plain module (like `EntryProgress`) computes, with a fixed number of queries per call:
+   - `school_day(scope, date, now)`: rows = classes having at least one slot on that weekday, columns = the
+     school's lesson periods. A cell is `nil` (no slot) or has a status:
+     `:done` (entries exist for that class, period and date; carries the number of `:absent` entries),
+     `:in_progress` (no entries, start ≤ now < end), `:missed` (no entries, end ≤ now), `:upcoming`
+     (start > now). A done cell stays done whatever the time. Combined-course slots count per class.
+     Also returns the list of missed roll calls (class, period, teacher, subject).
+   - `teacher_day(scope, user, date, now)`: the user's slots that weekday, sorted by period, with the same
+     statuses, class, subject and absent count.
+   - `teacher_missed_this_week(scope, user, today, now)`: the user's slots from Monday of this week up to
+     now (today's ended periods excluded — they appear in `teacher_day`), no entries, never before the
+     active year's start date.
+7. No holiday data exists yet (S02): a weekday with no slot gives an empty day ("Pas de cours aujourd'hui").
+8. Repeated absences (V04): a student is flagged when they have **3 or more distinct days** with an
+   unjustified `:absent` entry in the current sequence. The threshold is a module constant.
+
+### Screens
+
+9. **Enseignant → "Ma journée"** (`/school/today`), first menu item and the enseignant space's home when the
+   person teaches ("Mes cours" stays in the menu). Today's slots: period code and time, class, subject,
+   status tag ("Fait · n abs.", "En cours", "Non fait", "À venir"); every slot except upcoming ones links
+   to the existing roll call `/school/classes/:id/attendance/:period_id`. Below: "Appels manquants cette
+   semaine", one line per missed slot linking to the roll call with `?date=`. Empty day → "Pas de cours
+   aujourd'hui". Non-teachers are redirected to their space home.
+10. **Surveillant → "Aujourd'hui"** (`/school/vie-scolaire`), the surveillant space's home and first menu item:
+    - grid classes × lesson periods, legend Fait / Non fait / En cours; done cells show the absent count,
+      missed cells "—", in-progress "…", upcoming "·", no slot blank; hovering/title gives the detail;
+    - "Absences à justifier": today's students with unjustified absences (name, class, periods and hours);
+      "Justifier" opens the four reasons, one tap justifies the student's day; justified rows show
+      "Justifiée · motif"; students flagged by V04 carry an "Absences répétées" badge and come first;
+    - "Appels non faits": today's missed roll calls, "Classe · période heure" and "Enseignant · matière",
+      no button;
+    - "Sanctions récentes": the latest 5 sanctions of the school, with "parents à notifier" or
+      "notifiés le …", linking to the class discipline page.
+11. **Surveillant → "Absences"** (`/school/vie-scolaire/absences`): one row per student-day of the current
+    sequence with at least one `:absent` entry; columns Date, Élève, Classe, Créneaux, Statut ("Non
+    justifiée" / "Justifiée · motif"); filters Non justifiées (default) / Justifiées / Toutes. V04-flagged
+    students' rows come first with the badge. Selecting a row shows a side panel: student, class, date,
+    periods missed, status, "Absences non justifiées" (days in the sequence), the reason chips if not
+    justified, and "Absences répétées : convocation des parents recommandée." when flagged.
+12. **V06 on the class discipline page**: each sanction shows "Parents notifiés le …" or a
+    "Marquer les parents notifiés" button (conduct axis).
+13. Access: both SG screens require the conduct axis (Proviseur, Censeur, SG); others are redirected. Menu
+    items only in the surveillant space; Ma journée needs a teaching assignment in the active year.
+14. All strings go through gettext (FR and EN).
+
+Out of scope: reminders to teachers (N06/R03), SMS to parents, holidays (S02), a school-wide sanctions
+page, conduct mark proposal (V05), configurable V04 threshold.
