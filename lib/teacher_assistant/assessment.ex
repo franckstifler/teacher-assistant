@@ -290,6 +290,42 @@ defmodule TeacherAssistant.Assessment do
     |> Enum.filter(&TeacherAssistant.Academics.Lock.locked?(&1.sequence))
   end
 
+  @doc """
+  The student's séquence average in the correction's subject, before and after the
+  requested value: `{before, after}` (rounded as the school rounds; nil = none yet).
+  """
+  def correction_averages(%Scope{} = scope, %MarkCorrection{} = correction) do
+    %{assessment: %{teaching_context: tc} = assessment, student_id: student_id} = correction
+    seq = %Sequence{id: assessment.sequence_id}
+    rules = grading_rules(scope)
+
+    weights =
+      scope
+      |> list_assessments(tc, seq)
+      |> Map.new(&{&1.id, %{weight: &1.weight, max_score: &1.max_score}})
+
+    marks =
+      for m <- list_marks_for_context_sequence(scope, tc, seq),
+          m.student_id == student_id,
+          do: %{assessment_id: m.assessment_id, score: m.score, status: m.status}
+
+    requested =
+      Enum.reject(marks, &(&1.assessment_id == assessment.id)) ++
+        if(correction.requested_status,
+          do: [
+            %{
+              assessment_id: assessment.id,
+              score: correction.requested_score,
+              status: correction.requested_status
+            }
+          ],
+          else: []
+        )
+
+    average = &GradingRules.round_average(Marks.subject_average(&1, weights, rules), rules)
+    {average.(marks), average.(requested)}
+  end
+
   @doc "Approves a pending request: writes the mark, unless it changed since (\"stale\")."
   def approve_correction(%Scope{} = scope, %MarkCorrection{} = correction),
     do: decide_correction(scope, correction, :approve)
