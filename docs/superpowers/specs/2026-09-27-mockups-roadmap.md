@@ -455,7 +455,7 @@ come with notifications, N06/R03, as in F); V04 uses a fixed threshold, no setti
    to the existing roll call `/school/classes/:id/attendance/:period_id`. Below: "Appels manquants cette
    semaine", one line per missed slot linking to the roll call with `?date=`. Empty day → "Pas de cours
    aujourd'hui". Non-teachers are redirected to their space home.
-10. **Surveillant → "Aujourd'hui"** (`/school/vie-scolaire`), the surveillant space's home and first menu item:
+10. **Surveillant → "Aujourd'hui"** (`/school/day`), the surveillant space's home and first menu item:
     - grid classes × lesson periods, legend Fait / Non fait / En cours; done cells show the absent count,
       missed cells "—", in-progress "…", upcoming "·", no slot blank; hovering/title gives the detail;
     - "Absences à justifier": today's students with unjustified absences (name, class, periods and hours);
@@ -465,7 +465,7 @@ come with notifications, N06/R03, as in F); V04 uses a fixed threshold, no setti
       no button;
     - "Sanctions récentes": the latest 5 sanctions of the school, with "parents à notifier" or
       "notifiés le …", linking to the class discipline page.
-11. **Surveillant → "Absences"** (`/school/vie-scolaire/absences`): one row per student-day of the current
+11. **Surveillant → "Absences"** (`/school/absences`): one row per student-day of the current
     sequence with at least one `:absent` entry; columns Date, Élève, Classe, Créneaux, Statut ("Non
     justifiée" / "Justifiée · motif"); filters Non justifiées (default) / Justifiées / Toutes. V04-flagged
     students' rows come first with the badge. Selecting a row shows a side panel: student, class, date,
