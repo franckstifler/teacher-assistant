@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources3 do
+defmodule TeacherAssistant.Repo.Migrations.D3LockAndTraceMarks do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -92,9 +92,64 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources3 do
     create index(:mark_corrections, [:workspace_id, :student_id])
 
     create index(:mark_corrections, [:workspace_id])
+
+    alter table(:school_profiles) do
+      add :entry_grace_days, :bigint, null: false, default: 5
+    end
+
+    create table(:mark_events, primary_key: false) do
+      add :id, :uuid, null: false, default: fragment("uuid_generate_v7()"), primary_key: true
+      add :action, :text, null: false
+
+      add :actor_user_id,
+          references(:users,
+            column: :id,
+            name: "mark_events_actor_user_id_fkey",
+            type: :uuid,
+            prefix: "public",
+            on_delete: :nilify_all
+          )
+
+      add :before_status, :text
+      add :before_score, :decimal
+      add :after_status, :text
+      add :after_score, :decimal
+      add :batch_id, :uuid
+      add :mark_correction_id, :uuid
+
+      add :inserted_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :assessment_id, :uuid, null: false
+      add :student_id, :uuid, null: false
+
+      add :workspace_id,
+          references(:workspaces,
+            column: :id,
+            name: "mark_events_workspace_id_fkey",
+            type: :uuid,
+            prefix: "public",
+            on_delete: :delete_all
+          ), null: false
+    end
+
+    create index(:mark_events, [:workspace_id])
   end
 
   def down do
+    drop_if_exists index(:mark_events, [:workspace_id])
+
+    drop constraint(:mark_events, "mark_events_workspace_id_fkey")
+
+    drop constraint(:mark_events, "mark_events_actor_user_id_fkey")
+
+    drop table(:mark_events)
+
+    alter table(:school_profiles) do
+      remove :entry_grace_days
+    end
+
     drop_if_exists index(:mark_corrections, [:workspace_id])
 
     drop_if_exists index(:mark_corrections, [:workspace_id, :student_id])
