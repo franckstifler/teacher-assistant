@@ -5,15 +5,16 @@ defmodule TeacherAssistant.Academics.Mark.AssessmentOpen do
   """
   use Ash.Resource.Validation
 
-  alias TeacherAssistant.Academics.{Assessment, Lock}
+  require Ash.Query
+
+  alias TeacherAssistant.Academics.{Assessment, Lock, MarkCorrection, MarkEvent}
 
   @impl true
   def init(opts), do: {:ok, opts}
 
   @impl true
   def validate(changeset, _opts, context) do
-    assessment_id =
-      Ash.Changeset.get_attribute(changeset, :assessment_id) || changeset.data.assessment_id
+    assessment_id = mark_value(changeset, :assessment_id)
 
     with {:ok, assessment} <- Ash.get(Assessment, assessment_id, scope: context),
          {:ok, seq} <- Lock.fetch_sequence(assessment.sequence_id, context),
@@ -26,6 +27,28 @@ defmodule TeacherAssistant.Academics.Mark.AssessmentOpen do
     end
   end
 
-  # Task 5 replaces this with the pending-correction check.
-  defp approved_correction?(_changeset), do: false
+  # The write applies an approved correction of this very mark, not yet applied. Only
+  # `MarkCorrection.Decide` makes it true: the correction must already be approved in the
+  # database (an admin-only action, same transaction), so passing a correction id in a
+  # write's context unlocks nothing. Internal reads, hence `authorize?: false`.
+  defp approved_correction?(changeset) do
+    with id when is_binary(id) <- changeset.context[:mark_correction_id],
+         {:ok, %{status: :approved} = correction} <-
+           Ash.get(MarkCorrection, id, tenant: changeset.tenant, authorize?: false) do
+      correction.assessment_id == mark_value(changeset, :assessment_id) and
+        correction.student_id == mark_value(changeset, :student_id) and
+        not applied?(correction, changeset.tenant)
+    else
+      _ -> false
+    end
+  end
+
+  defp applied?(correction, tenant) do
+    MarkEvent
+    |> Ash.Query.filter(mark_correction_id == ^correction.id and action == :correction_approuvee)
+    |> Ash.exists?(tenant: tenant, authorize?: false)
+  end
+
+  defp mark_value(changeset, field),
+    do: Ash.Changeset.get_attribute(changeset, field) || Map.get(changeset.data, field)
 end

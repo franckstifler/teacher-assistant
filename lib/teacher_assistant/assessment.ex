@@ -1,6 +1,8 @@
 defmodule TeacherAssistant.Assessment do
   use Ash.Domain, otp_app: :teacher_assistant
 
+  require Ash.Query
+
   # NAME COLLISION: this domain module is `TeacherAssistant.Assessment`, and
   # the resource is `TeacherAssistant.Academics.Assessment`. Inside this module
   # the short alias `Assessment` is bound to the RESOURCE (below); this module
@@ -18,6 +20,7 @@ defmodule TeacherAssistant.Assessment do
     CombinedCourse,
     GradingRules,
     Mark,
+    MarkCorrection,
     MarkEvent,
     Marks,
     Sequence,
@@ -33,6 +36,7 @@ defmodule TeacherAssistant.Assessment do
     resource AssessmentType
     resource Mark
     resource MarkEvent
+    resource MarkCorrection
   end
 
   authorization do
@@ -256,6 +260,84 @@ defmodule TeacherAssistant.Assessment do
       {:error, %Ash.Error.Forbidden{}} -> []
     end
   end
+
+  # --- Correction requests (spec D3c) -----------------------------------------
+
+  @correction_loads [:student, :requester, assessment: [teaching_context: [:class_group]]]
+
+  @doc "Asks to change a locked mark (the course's teacher only)."
+  def request_correction(%Scope{} = scope, attrs) do
+    MarkCorrection
+    |> Ash.Changeset.for_create(:request, attrs, scope: scope)
+    |> Ash.create(load: @correction_loads)
+  end
+
+  @doc "Approves a pending request: writes the mark, unless it changed since (\"stale\")."
+  def approve_correction(%Scope{} = scope, %MarkCorrection{} = correction),
+    do: decide_correction(scope, correction, :approve)
+
+  @doc "Refuses a pending request; the mark is untouched."
+  def refuse_correction(%Scope{} = scope, %MarkCorrection{} = correction),
+    do: decide_correction(scope, correction, :refuse)
+
+  defp decide_correction(scope, correction, action) do
+    correction
+    |> Ash.Changeset.for_update(action, %{}, scope: scope)
+    |> Ash.update(load: @correction_loads)
+  end
+
+  @doc "The scope's own requests, newest first."
+  def list_my_corrections(%Scope{current_user: %{id: user_id}} = scope) do
+    MarkCorrection
+    |> Ash.Query.filter(requester_user_id == ^user_id)
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.Query.load(@correction_loads)
+    |> Ash.read!(scope: scope)
+  end
+
+  @doc "Requests awaiting a decision (`:pending`, oldest first) or decided (newest first)."
+  def list_corrections(%Scope{} = scope, :pending) do
+    MarkCorrection
+    |> Ash.Query.filter(status == :pending)
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.Query.load(@correction_loads)
+    |> Ash.read!(scope: scope)
+  end
+
+  def list_corrections(%Scope{} = scope, :decided) do
+    MarkCorrection
+    |> Ash.Query.filter(status != :pending)
+    |> Ash.Query.sort(decided_at: :desc)
+    |> Ash.Query.load(@correction_loads ++ [:decider])
+    |> Ash.read!(scope: scope)
+  end
+
+  @doc "Requests awaiting a decision, as the scope may see them."
+  def pending_corrections_count(%Scope{} = scope) do
+    MarkCorrection |> Ash.Query.filter(status == :pending) |> Ash.count!(scope: scope)
+  end
+
+  @doc "The scope's own requests decided since they last looked (menu badge)."
+  def unseen_decisions_count(%Scope{current_user: %{id: user_id}} = scope) do
+    MarkCorrection
+    |> Ash.Query.filter(requester_user_id == ^user_id and status != :pending and is_nil(seen_at))
+    |> Ash.count!(scope: scope)
+  end
+
+  @doc "Marks the scope's decided requests as seen."
+  def mark_corrections_seen(%Scope{current_user: %{id: user_id}} = scope) do
+    MarkCorrection
+    |> Ash.Query.filter(requester_user_id == ^user_id and status != :pending and is_nil(seen_at))
+    |> Ash.bulk_update!(:mark_seen, %{}, scope: scope, strategy: [:atomic, :stream])
+
+    :ok
+  end
+
+  @doc "Whether the scope decides correction requests (admin axis: Proviseur, Censeur)."
+  def can_decide_corrections?(%Scope{current_user: user, current_workspace: %{id: ws_id}}),
+    do: TeacherAssistant.Accounts.Checks.SchoolRole.holds?(user, ws_id, :admin)
+
+  def can_decide_corrections?(%Scope{}), do: false
 
   # The `:upsert_all` action does the all-or-nothing transactional upsert and
   # returns `:ok`; unwrap it back to the bare `:ok` the callers expect.
