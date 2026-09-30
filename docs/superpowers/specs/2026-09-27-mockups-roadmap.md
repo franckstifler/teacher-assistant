@@ -337,3 +337,29 @@ days N in "fin + N jours" (default 5), locking always on; the teacher learns the
 
 Out of scope: reopening a course, e-mail/SMS notification (N06/R03), a lock on/off switch, bulletin
 publication (N13).
+
+### D3 — deferred minors (final review, 2026-09-30)
+
+To pick up later; none blocks use.
+
+- [ ] Lock fails open: `Mark.AssessmentOpen` / `Assessment.SequenceOpen` treat any read error as
+  "open". Today every such error is NotFound, but a future read-policy tightening would silently
+  disable the lock. Return `:ok` only for NotFound, refuse otherwise.
+- [ ] Test clock: `Reference.today/0` reads `:school_clock_now` at runtime in prod code. Restrict it to
+  the test build (`compile_env`) or warn when set outside test.
+- [ ] Marks page left open past the deadline: `@locked?` is computed only at mount / séquence switch,
+  so the save shows a generic error instead of "Séquence verrouillée".
+- [ ] Locked banner "Nouvelle demande" link: shown to admins, who cannot request; on a combined course
+  it passes only the first class's assessment, so other classes' students are not offered.
+- [ ] `MarkCorrection.Request` does not check the student is enrolled in the assessment's class (a
+  crafted request, once approved, creates a mark for a non-enrolled student of the school).
+- [ ] Journal: add indexes `mark_events (workspace_id, inserted_at)` and `(mark_correction_id)`; the
+  200-row limit can split a save's batch (wrong "N notes"); a combined save is labelled with the
+  first assessment only.
+- [ ] Menu badge on `/school/corrections` shows the pre-visit count until the next navigation
+  (computed in `on_mount` before the page marks decisions seen).
+- [ ] Correction form reloads the class's students on every change event (cache by assessment).
+- [ ] Error handling: "stale" is detected by message substring (`CorrectionReviewLive.decide`); the
+  teacher's form shows one message for "not locked" / "unchanged" / "already pending".
+- [ ] `MarkCorrection.Decide` dereferences `context.actor.id`: an actor-less internal call would crash.
+- [ ] Gettext: ~150 pre-existing empty EN `msgstr` entries (not D3) remain untranslated.

@@ -1,0 +1,73 @@
+<!-- Excerpt of claude.ai/design project abc12b3e-a26c-41e5-a97c-f0a9be47fc8b,
+     file "Espaces par rôle.dc.html", screen "Censeur · Suivi des séquences" (spec F).
+     Palette tokens (K) and the screen's data logic follow the markup. Reference only. -->
+<section data-screen-label="Censeur · Suivi des séquences" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;align-items:start">
+          <div style="grid-column:span 2;min-width:0;display:flex;flex-direction:column;gap:10px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:14px 16px;overflow-x:auto">
+            <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Classes × disciplines</span>
+              <div style="display:flex;gap:12px;font-size:0.74rem;color:oklch(82% 0.02 155)">
+                <span style="display:flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:oklch(55% 0.09 162)"></i>Complet</span>
+                <span style="display:flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:oklch(55% 0.09 90)"></i>En cours</span>
+                <span style="display:flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:oklch(52% 0.1 35)"></i>Rien saisi</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:62px repeat(8,minmax(50px,1fr));gap:3px;min-width:520px">
+              <span></span>
+              <sc-for list="{{ subjects }}" as="sub" hint-placeholder-count="8">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.64rem;font-weight:600;text-align:center;padding:4px 0;color:oklch(78% 0.02 155)">{{ sub }}</span>
+              </sc-for>
+              <sc-for list="{{ matrix }}" as="row" hint-placeholder-count="10">
+                <span style="display:flex;align-items:center;font-size:0.82rem;font-weight:600">{{ row.label }}</span>
+                <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="8">
+                  <button onClick="{{ cell.onClick }}" title="{{ cell.title }}" style="height:34px;border-radius:0.35rem;cursor:{{ cell.cursor }};font:600 0.74rem/1 'IBM Plex Mono',monospace;border:{{ cell.ring }};background:{{ cell.bg }};color:{{ cell.fg }}">{{ cell.text }}</button>
+                </sc-for>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+            <sc-if value="{{ cellDetail }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;background:oklch(38% 0.04 164);border:1px solid oklch(80% 0.13 162);border-radius:0.7rem;padding:14px 16px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">{{ cellDetail.head }}</span>
+                <span style="font-family:Fraunces,Georgia,serif;font-size:1.15rem;font-weight:600">{{ cellDetail.teacher }}</span>
+                <sc-for list="{{ cellDetail.lines }}" as="ln" hint-placeholder-count="3">
+                  <div style="display:flex;justify-content:space-between;gap:8px;font-size:0.84rem"><span style="color:oklch(80% 0.02 155)">{{ ln.label }}</span><span style="font-family:'IBM Plex Mono',monospace">{{ ln.value }}</span></div>
+                </sc-for>
+                <button onClick="{{ cellDetail.onRemind }}" style="margin-top:4px;height:40px;border-radius:0.4rem;cursor:pointer;font:650 0.85rem/1 system-ui,sans-serif;border:1px solid oklch(80% 0.13 162);background:{{ cellDetail.btnBg }};color:{{ cellDetail.btnFg }}">{{ cellDetail.btn }}</button>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:4px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:14px 16px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">À relancer</span>
+              <sc-for list="{{ relances }}" as="rl" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid oklch(44% 0.035 164)">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                    <span style="font-size:0.88rem;font-weight:600">{{ rl.teacher }}</span>
+                    <span style="font-size:0.74rem;color:oklch(78% 0.02 155)">{{ rl.detail }}</span>
+                  </div>
+                  <button onClick="{{ rl.onClick }}" style="flex:none;cursor:pointer;border-radius:0.35rem;padding:6px 10px;font:600 0.75rem/1 system-ui,sans-serif;border:1px solid {{ rl.border }};background:transparent;color:{{ rl.fg }}">{{ rl.btn }}</button>
+                </div>
+              </sc-for>
+              <button onClick="{{ remindAll }}" style="margin-top:8px;height:40px;border:0;border-radius:0.4rem;cursor:pointer;font:650 0.85rem/1 system-ui,sans-serif;background:oklch(80% 0.13 162);color:oklch(26% 0.05 164)">Relancer tous</button>
+            </div>
+          </div>
+        </section>
+
+<script>
+const K={card:'oklch(38% 0.04 164)',line:'oklch(50% 0.035 164)',ink:'oklch(95% 0.012 150)',mute:'oklch(78% 0.02 155)',pri:'oklch(80% 0.13 162)',amb:'oklch(83% 0.13 85)',err:'oklch(73% 0.13 30)',on:'oklch(26% 0.05 164)'};
+// censeur
+    const matrix=CLASSES.map((cl,r)=>({label:cl,cells:SUBJ.map((_,c)=>{const p=this.pct(r,c),sel=s.cell&&s.cell.r===r&&s.cell.c===c;
+      if(p===null)return{text:'',bg:'transparent',fg:K.mute,ring:`1px dashed ${K.line}`,cursor:'default',title:'Non enseignée',onClick:()=>{}};
+      return{text:p+'%',bg:p===100?t(K.pri,30):p===0?t(K.err,38):t(K.amb,32),fg:K.ink,ring:sel?`2px solid ${K.ink}`:'1px solid transparent',cursor:'pointer',title:`${cl} · ${SUBJ_L[c]} · ${this.teacher(r,c)}`,onClick:()=>this.set({cell:{r,c}})};})}));
+    const all=[];CLASSES.forEach((_,r)=>SUBJ.forEach((_,c)=>{const p=this.pct(r,c);if(p!==null)all.push({r,c,p});}));
+    const glob=Math.round(all.reduce((x,y)=>x+y.p,0)/all.length);
+    const complete=CLASSES.filter((_,r)=>all.filter(x=>x.r===r).every(x=>x.p===100)).length;
+    const late={};all.filter(x=>x.p===0).forEach(x=>{const tn=this.teacher(x.r,x.c);(late[tn]=late[tn]||{subj:SUBJ_L[x.c],cls:[]}).cls.push(CLASSES[x.r]);});
+    const remind=tn=>this.setState(st=>({reminded:{...st.reminded,[tn]:true}}));
+    const relances=Object.entries(late).map(([tn,v])=>({teacher:tn,detail:`${v.subj} · ${v.cls.join(', ')} · rien saisi`,btn:s.reminded[tn]?'Relancé ✓':'Relancer',fg:s.reminded[tn]?K.pri:K.ink,border:s.reminded[tn]?K.pri:K.line,onClick:()=>remind(tn)}));
+    let cellDetail=false;
+    if(s.cell){const{r,c}=s.cell,p=this.pct(r,c),tn=this.teacher(r,c),tot=60*2,done=Math.round(p/100*tot),rem=s.reminded[tn];
+      cellDetail={head:`${CLASSES[r]} · ${SUBJ_L[c]}`,teacher:tn,lines:[{label:'Notes saisies',value:`${done} / ${tot}`},{label:'Évaluations',value:'Interro 1 · Devoir 1'},{label:'Dernière saisie',value:p===0?'—':p===100?'il y a 2 j':"aujourd'hui"}],
+        btn:p===100?'Complet':rem?'Relancé ✓':'Relancer cet enseignant',btnBg:p===100||rem?'transparent':K.pri,btnFg:p===100||rem?K.pri:K.on,onRemind:()=>{if(p<100)remind(tn);}};}
+    const remindAll=()=>this.setState(st=>{const m={...st.reminded};Object.keys(late).forEach(k=>m[k]=true);return{reminded:m};});
+    
+
+</script>
