@@ -46,6 +46,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
 
   test "homes and menus" do
     assert Spaces.space(:proviseur, facts([:head])).home == "/school"
+    assert Spaces.space(:censeur, facts([:vice_principal])).home == "/school/sequences"
     assert Spaces.space(:surveillant, facts([:discipline_master])).home == "/school/classes"
     assert Spaces.space(:enseignant, facts([:teacher], teaches?: true)).home == "/school/courses"
     assert Spaces.space(:ecole, facts([:hod])).home == "/school/classes"
@@ -53,6 +54,14 @@ defmodule TeacherAssistantWeb.SpacesTest do
     assert "nav-school-members" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-members" in item_ids(:censeur, facts([:vice_principal]))
     refute "nav-school-periods" in item_ids(:censeur, facts([:vice_principal]))
+
+    assert [%{items: [%{id: "nav-school-sequences", path: "/school/sequences"} | _]} | _] =
+             Spaces.space(:censeur, facts([:vice_principal])).sections
+
+    assert ["nav-school-dashboard", "nav-school-sequences" | _] =
+             item_ids(:proviseur, facts([:head]))
+
+    refute "nav-school-sequences" in item_ids(:enseignant, facts([:teacher], teaches?: true))
 
     assert item_ids(:enseignant, facts([:teacher], teaches?: true)) == [
              "nav-school-courses",

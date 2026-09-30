@@ -84,6 +84,7 @@ defmodule TeacherAssistantWeb.Spaces do
       sections: [
         section(gettext("Pilotage"), [
           dashboard(),
+          sequences(),
           classes(),
           members(),
           correction_review(facts.pending_corrections)
@@ -97,10 +98,10 @@ defmodule TeacherAssistantWeb.Spaces do
     %{
       key: :censeur,
       label: label(:censeur),
-      home: ~p"/school",
+      home: ~p"/school/sequences",
       sections: [
         section(gettext("Suivi pédagogique"), [
-          dashboard(),
+          sequences(),
           classes(),
           members(),
           correction_review(facts.pending_corrections)
@@ -182,6 +183,15 @@ defmodule TeacherAssistantWeb.Spaces do
       )
 
   defp dashboard, do: item("dashboard", gettext("Dashboard"), "hero-squares-2x2", ~p"/school")
+
+  defp sequences,
+    do:
+      item(
+        "sequences",
+        gettext("Suivi des séquences"),
+        "hero-chart-bar-square",
+        ~p"/school/sequences"
+      )
 
   defp courses,
     do: item("courses", gettext("Mes cours"), "hero-academic-cap", ~p"/school/courses")

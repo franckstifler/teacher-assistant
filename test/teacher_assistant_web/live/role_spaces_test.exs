@@ -42,6 +42,7 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#nav-school-courses")
     assert has_element?(view, "#nav-school-timetable-me")
     refute has_element?(view, "#nav-school-dashboard")
+    refute has_element?(view, "#nav-school-sequences")
     refute has_element?(view, "#nav-school-settings")
     refute has_element?(view, "#space-switcher")
   end
@@ -50,6 +51,7 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     {conn, _} = member_conn(ctx, [:vice_principal, :teacher], teaches?: true)
     {:ok, view, _} = live(conn, ~p"/school/classes")
     assert has_element?(view, "#space-switch-censeur[aria-current]")
+    assert has_element?(view, "#nav-school-sequences")
     assert has_element?(view, "#nav-school-members")
     assert has_element?(view, "#nav-school-coefficients")
 

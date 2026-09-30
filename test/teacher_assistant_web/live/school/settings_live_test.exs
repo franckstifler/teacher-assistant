@@ -173,7 +173,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
       |> Plug.Conn.put_session(:user_id, vp.id)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
-    {:ok, view, html} = live(conn, ~p"/school")
+    {:ok, view, html} = live(conn, ~p"/school/sequences")
     assert html =~ "nav-school-settings"
     assert has_element?(view, "#nav-school-settings")
 

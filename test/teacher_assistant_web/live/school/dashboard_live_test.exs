@@ -247,9 +247,19 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school")
     end
 
-    test "a censeur stays on the dashboard", %{school: school, lscope: scope} do
+    test "a censeur lands on sequence tracking", %{school: school, lscope: scope} do
       conn = conn_with_roles(school, scope, [:vice_principal])
-      assert {:ok, _view, _html} = live(conn, ~p"/school")
+      assert {:error, {:live_redirect, %{to: "/school/sequences"}}} = live(conn, ~p"/school")
+    end
+
+    test "a proviseur stays on the dashboard with the tracking item", %{
+      school: school,
+      lscope: scope
+    } do
+      conn = conn_with_roles(school, scope, [:head])
+      assert {:ok, view, _html} = live(conn, ~p"/school")
+      assert has_element?(view, "#school-dashboard")
+      assert has_element?(view, "#nav-school-sequences")
     end
   end
 end
