@@ -10,7 +10,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.Mark
+  alias TeacherAssistant.Academics.{Mark, MarkCorrection}
   alias TeacherAssistant.Academics.Mark.Journal
 
   @impl true
@@ -27,23 +27,36 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
     end)
   end
 
-  defp decide(%{data: %{status: :pending}} = changeset, decision, context) do
-    if decision == :approved and stale?(changeset.data, context) do
-      Ash.Changeset.add_error(changeset,
-        field: :status,
-        message: "stale: the mark changed since the request"
-      )
-    else
-      Ash.Changeset.force_change_attributes(changeset, %{
-        status: decision,
-        decider_user_id: context.actor.id,
-        decided_at: DateTime.utc_now()
-      })
+  # Decides from the row as it is now, locked for the transaction — never from the
+  # caller's copy, which may come from a page loaded before another admin decided.
+  defp decide(changeset, decision, context) do
+    case locked_row(changeset) do
+      %{status: :pending} = current ->
+        if decision == :approved and stale?(current, context) do
+          Ash.Changeset.add_error(changeset,
+            field: :status,
+            message: "stale: the mark changed since the request"
+          )
+        else
+          Ash.Changeset.force_change_attributes(changeset, %{
+            status: decision,
+            decider_user_id: context.actor.id,
+            decided_at: DateTime.utc_now()
+          })
+        end
+
+      _decided_or_gone ->
+        Ash.Changeset.add_error(changeset, field: :status, message: "already decided")
     end
   end
 
-  defp decide(changeset, _decision, _context),
-    do: Ash.Changeset.add_error(changeset, field: :status, message: "already decided")
+  # Internal read under the action's own authorization, hence `authorize?: false`.
+  defp locked_row(%{data: %{id: id}, tenant: tenant}) do
+    MarkCorrection
+    |> Ash.Query.filter(id == ^id)
+    |> Ash.Query.lock(:for_update)
+    |> Ash.read_one!(tenant: tenant, authorize?: false)
+  end
 
   defp stale?(correction, context) do
     current = correction |> current_mark(context) |> Journal.snapshot()

@@ -252,6 +252,9 @@ defmodule TeacherAssistant.Academics.Assessment do
           Map.new(contexts, fn ctx -> {ctx.id, assessments_for(ctx.id, seq.id, scope)} end)
 
         primary_labels = Enum.map(by_context_id[primary.id], & &1.label)
+        # A locked séquence takes no new assessments: a class missing a label stays out.
+        {:ok, seq} = TeacherAssistant.Academics.Lock.fetch_sequence(seq.id, scope)
+        backfill? = not TeacherAssistant.Academics.Lock.locked?(seq)
 
         extra_labels =
           rest
@@ -261,21 +264,24 @@ defmodule TeacherAssistant.Academics.Assessment do
           |> Enum.reject(&(&1 in primary_labels))
 
         (primary_labels ++ extra_labels)
-        |> Enum.map(&build_combined_entry(&1, contexts, primary, by_context_id, seq, scope))
+        |> Enum.map(
+          &build_combined_entry(&1, contexts, primary, by_context_id, seq, scope, backfill?)
+        )
     end
   end
 
-  defp build_combined_entry(label, contexts, primary, by_context_id, seq, scope) do
+  defp build_combined_entry(label, contexts, primary, by_context_id, seq, scope, backfill?) do
     by_class_group_id =
-      Map.new(contexts, fn ctx ->
-        assessment =
-          Enum.find(by_context_id[ctx.id], &(&1.label == label)) ||
-            backfill_assessment!(ctx, seq, label, scope)
+      for ctx <- contexts,
+          assessment =
+            Enum.find(by_context_id[ctx.id], &(&1.label == label)) ||
+              (backfill? && backfill_assessment!(ctx, seq, label, scope)),
+          into: %{},
+          do: {ctx.class_group_id, assessment}
 
-        {ctx.class_group_id, assessment}
-      end)
-
-    primary_assessment = Map.fetch!(by_class_group_id, primary.class_group_id)
+    primary_assessment =
+      Map.get(by_class_group_id, primary.class_group_id) ||
+        by_class_group_id |> Map.values() |> List.first()
 
     %{
       id: primary_assessment.id,
@@ -287,7 +293,7 @@ defmodule TeacherAssistant.Academics.Assessment do
   end
 
   defp backfill_assessment!(ctx, seq, label, scope) do
-    case create_assessment(ctx, seq, label, scope) do
+    case create_assessment(ctx, seq, %{label: label}, scope) do
       {:ok, assessment} ->
         assessment
 

@@ -47,4 +47,41 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
     [mark] = Assessment.list_marks(ctx.head, ctx.a)
     assert Decimal.equal?(mark.score, 12)
   end
+
+  test "a combined course with a class missing an assessment shows a locked séquence", ctx do
+    alias TeacherAssistant.{Curriculum, Enrollment}
+
+    {:ok, cg2} =
+      Enrollment.create_class_group(ctx.head, ctx.year, %{label: "6e Z", level: "6ème"})
+
+    {:ok, tc2} =
+      Curriculum.assign_teacher(ctx.head, cg2, ctx.t.current_user, %{subject: ctx.tc.subject})
+
+    {:ok, course} = Curriculum.combine_course(ctx.head, [ctx.tc, tc2])
+    # `Devoir 1` exists in the first class only; the second would need a backfill.
+    MarksFixtures.lock!(ctx, Date.add(Reference.today(), -1))
+
+    {:ok, view, _} =
+      live(ctx.conn, ~p"/teacher/contexts/#{ctx.tc.id}/marks?seq=#{ctx.seq.id}")
+
+    assert has_element?(view, "#locked-banner")
+    assert [%{label: "Devoir 1"}] = Assessment.combined_assessments_for(ctx.t, course, ctx.seq)
+  end
+
+  test "an open séquence backfills a missing member-class assessment", ctx do
+    alias TeacherAssistant.{Curriculum, Enrollment}
+
+    {:ok, cg2} =
+      Enrollment.create_class_group(ctx.head, ctx.year, %{label: "6e Y", level: "6ème"})
+
+    {:ok, tc2} =
+      Curriculum.assign_teacher(ctx.head, cg2, ctx.t.current_user, %{subject: ctx.tc.subject})
+
+    {:ok, course} = Curriculum.combine_course(ctx.head, [ctx.tc, tc2])
+
+    assert [%{by_class_group_id: by_class}] =
+             Assessment.combined_assessments_for(ctx.t, course, ctx.seq)
+
+    assert %{label: "Devoir 1"} = by_class[cg2.id]
+  end
 end

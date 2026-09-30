@@ -171,4 +171,22 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
                |> Ash.update()
     end
   end
+
+  test "a decision taken from a stale page cannot overturn another", ctx do
+    lock(ctx)
+    {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
+    {:ok, _} = Assessment.refuse_correction(ctx.head, c)
+
+    assert {:error, _} = Assessment.approve_correction(ctx.censeur, c)
+    assert Decimal.equal?(mark_of(ctx).score, 12)
+    assert [%{status: :refused}] = Assessment.list_corrections(ctx.censeur, :decided)
+
+    {:ok, c2} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(15)))
+    {:ok, _} = Assessment.approve_correction(ctx.head, c2)
+    assert {:error, _} = Assessment.refuse_correction(ctx.censeur, c2)
+    assert Decimal.equal?(mark_of(ctx).score, 15)
+
+    assert Enum.count(Assessment.list_mark_events(ctx.head), &(&1.action == :correction_refusee)) ==
+             1
+  end
 end
