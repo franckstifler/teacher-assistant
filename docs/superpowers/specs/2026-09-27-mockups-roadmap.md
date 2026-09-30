@@ -278,3 +278,59 @@ directly stays forbidden; the per-course menu still appears inside a course.
 Out of scope: new screens (Ma journée · appel → G; censeur follow-up → F; cahier de textes, coverage → H;
 corrections de notes, signaler une absence → D3/J; animateur pédagogique observations → J).
 
+
+## D3 — Lock and trace marks (spec)
+
+Mockup: `Espaces par rôle`: Enseignant → Saisie des notes (column "Interro 1 · verrouillée") and Démarches →
+Corrections de notes; Censeur → Corrections de notes (filters En attente / Traitées / Journal). Gaps, in build
+order: **N04** audit log, **N02** lock after the deadline, **N03** correction requests.
+
+Existing code: every mark write goes through `Mark` (`:upsert_all`, plus default create/update/destroy);
+`Assessment` belongs to a `Sequence`; `Sequence.grade_entry_deadline` = `entry_deadline` or
+`end_date + Reference.entry_grace_days/0` (fixed 5). A mark changes without any trace.
+
+User decisions (2026-09-30): no "reopen a course" in D3 (deferred); after the lock nobody edits the grid
+directly, admins included — only an approved correction changes a locked mark; one school setting, the grace
+days N in "fin + N jours" (default 5), locking always on; the teacher learns the decision in the app only
+(status + menu badge), no e-mail.
+
+### D3a — Marks journal (N04)
+
+1. A `MarkEvent` row is written in the same transaction as every mark change: author (user, or none for the
+   system), time, action (`saisie`, `correction_demandee`, `correction_approuvee`, `correction_refusee`),
+   assessment, student, value before, value after (score or `abs`/`abj`/blank), and the correction request
+   when there is one. A save that changes nothing writes nothing.
+2. The journal cannot be edited or deleted through any action.
+3. Readable by admins (Censeur/Proviseur); the Censeur's "Journal" tab lists it newest first, grouped per save
+   for display ("Devoir 1 · 4e B · 7 notes"), columns Horodatage / Auteur / Action / Détail.
+4. The lock itself is computed (point 5), so "Verrouillage" is shown as a derived line per sequence at its
+   deadline, not stored.
+
+### D3b — Lock after the deadline (N02)
+
+5. An assessment is locked when today (school's local date) is after its sequence's `grade_entry_deadline`.
+   `Mark` refuses create, update, destroy and `:upsert_all` on a locked assessment for every actor (policy or
+   validation in the resource, not only in the UI). Assessments of a locked sequence cannot be created,
+   edited or deleted either.
+6. The marks page shows locked columns read-only, labelled "verrouillée", with a link to "Nouvelle demande".
+7. `SchoolProfile` gets `entry_grace_days` (integer, 0–30, default 5), edited on Paramètres → Évaluations;
+   `grade_entry_deadline` uses it instead of the fixed `Reference` value.
+
+### D3c — Correction requests (N03)
+
+8. `MarkCorrection`: assessment, student, requested value, current value at request time, motive
+   (`Erreur de saisie`, `Copie mal corrigée`, `Réclamation de l'élève`, `Note de rattrapage` — an enum),
+   requester, status `pending | approved | refused`, decider, decided at. Only for a locked assessment; only
+   its course's teacher may request; one pending request per mark.
+9. Teacher, Démarches → Corrections de notes: list of their requests (Date, Élève, Classe, Avant → après,
+   Statut) and a "Nouvelle demande" form (classe, élève, nouvelle note 0–20 or abs/abj, motif) —
+   "Envoyer au censeur". Menu badge = requests decided since last visit.
+10. Censeur (admin axis), Corrections de notes: En attente / Traitées lists, a detail with note actuelle,
+    note demandée, motif, the student's resulting sequence average; "Approuver la correction" / "Refuser".
+    Approving writes the mark (bypassing the lock, only through this action) and journals it; if the mark
+    changed since the request, approval is refused and the request must be redone. Menu badge = pending count.
+11. Both spaces get the "Corrections de notes" item (Enseignant: Démarches; Censeur/Proviseur: Paramètres or a
+    new Suivi section).
+
+Out of scope: reopening a course, e-mail/SMS notification (N06/R03), a lock on/off switch, bulletin
+publication (N13).
