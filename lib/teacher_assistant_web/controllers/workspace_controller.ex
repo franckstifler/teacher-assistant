@@ -14,6 +14,7 @@ defmodule TeacherAssistantWeb.WorkspaceController do
       {:ok, _scope} ->
         conn
         |> put_session(:workspace_id, workspace_id)
+        |> delete_session(:space)
         |> put_flash(:info, gettext("Workspace selected"))
         |> redirect(to: ~p"/school")
 

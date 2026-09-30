@@ -57,33 +57,12 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   # The member's role spaces and the current one (spec E), for the layout and the
   # /school landing. Navigation only — never an authorization input.
   def on_mount(:assign_space, _params, session, socket) do
-    case socket.assigns.current_scope do
-      %{current_workspace: %{}} = scope ->
-        facts = TeacherAssistantWeb.Spaces.facts(scope)
-        keys = TeacherAssistantWeb.Spaces.keys_for(facts)
+    scope = TeacherAssistantWeb.Spaces.put_space(socket.assigns.current_scope, session["space"])
 
-        key =
-          TeacherAssistantWeb.Spaces.resolve(
-            keys,
-            TeacherAssistantWeb.Spaces.parse_key(session["space"])
-          )
-
-        capabilities =
-          Map.merge(scope.capabilities || %{}, %{
-            spaces: keys,
-            space: TeacherAssistantWeb.Spaces.space(key, facts)
-          })
-
-        scope = %{scope | capabilities: capabilities}
-
-        {:cont,
-         socket
-         |> Phoenix.Component.assign(:current_scope, scope)
-         |> Phoenix.Component.assign(:scope, scope)}
-
-      _ ->
-        {:cont, socket}
-    end
+    {:cont,
+     socket
+     |> Phoenix.Component.assign(:current_scope, scope)
+     |> Phoenix.Component.assign(:scope, scope)}
   end
 
   def on_mount(:require_operator, _params, _session, socket) do

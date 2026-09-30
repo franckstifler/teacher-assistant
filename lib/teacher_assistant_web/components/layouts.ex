@@ -43,20 +43,6 @@ defmodule TeacherAssistantWeb.Layouts do
     current_scope = assigns[:current_scope]
     current_user = current_scope && current_scope.current_user
 
-    space_info =
-      case current_scope do
-        %{current_workspace: %{}, capabilities: %{space: space, spaces: keys}} ->
-          {space, keys}
-
-        %{current_workspace: %{}} ->
-          facts = TeacherAssistantWeb.Spaces.facts(current_scope)
-          keys = TeacherAssistantWeb.Spaces.keys_for(facts)
-          {TeacherAssistantWeb.Spaces.space(hd(keys), facts), keys}
-
-        _ ->
-          {nil, []}
-      end
-
     units =
       case current_scope do
         %{current_workspace: %{}} ->
@@ -84,8 +70,8 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:units, units)
       |> assign(:workspaces, workspaces)
       |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
-      |> assign(:space, elem(space_info, 0))
-      |> assign(:space_keys, elem(space_info, 1))
+      |> assign(:space, current_scope && current_scope.capabilities[:space])
+      |> assign(:space_keys, (current_scope && current_scope.capabilities[:spaces]) || [])
       |> assign(:current_context, current_scope && current_scope.current_context)
       |> assign(:current_path, assigns[:current_path])
 

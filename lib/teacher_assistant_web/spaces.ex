@@ -36,6 +36,20 @@ defmodule TeacherAssistantWeb.Spaces do
   def parse_key(param) when is_binary(param), do: Map.get(@by_param, param)
   def parse_key(_), do: nil
 
+  @doc """
+  The school scope with the member's spaces and the current one (`stored`, the
+  session value, when still theirs) in its capabilities. Navigation only.
+  """
+  def put_space(%{current_workspace: %{}} = scope, stored) do
+    facts = facts(scope)
+    keys = keys_for(facts)
+    space = space(resolve(keys, parse_key(stored)), facts)
+
+    %{scope | capabilities: Map.merge(scope.capabilities || %{}, %{spaces: keys, space: space})}
+  end
+
+  def put_space(scope, _stored), do: scope
+
   @doc "What the space-deciding facts are for a school scope (DB reads, once per mount)."
   def facts(%{current_workspace: %{}} = scope) do
     year = scope.current_academic_year

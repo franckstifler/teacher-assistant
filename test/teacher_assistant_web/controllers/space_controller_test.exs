@@ -60,4 +60,19 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
     refute has_element?(view, "#nav-school-members")
     assert has_element?(view, "#nav-school-classes")
   end
+
+  test "switching school forgets the chosen space", ctx do
+    conn =
+      censeur_who_teaches(ctx)
+      |> Plug.Conn.put_session(:space, "enseignant")
+      |> get(~p"/workspaces/select/#{ctx.school.id}")
+
+    assert get_session(conn, :space) == nil
+  end
+
+  test "a controller page's menu follows the stored space", ctx do
+    conn = censeur_who_teaches(ctx) |> get(~p"/school/space/enseignant")
+    conn = conn |> recycle() |> get(~p"/school/space/whatever")
+    assert conn.assigns.current_scope.capabilities.space.key == :enseignant
+  end
 end
