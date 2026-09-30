@@ -111,4 +111,21 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
     view |> element("#rule-absence_rule-makeup") |> render_click()
     assert Assessment.grading_rules(scope).absence == :makeup
   end
+
+  test "the admin sets the grade-entry grace days", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+    assert has_element?(view, "#entry-grace-days-form")
+
+    html =
+      view |> form("#entry-grace-days-form", %{"entry_grace_days" => "7"}) |> render_submit()
+
+    assert html =~ "Délai de saisie enregistré."
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    assert profile.entry_grace_days == 7
+
+    html =
+      view |> form("#entry-grace-days-form", %{"entry_grace_days" => "40"}) |> render_submit()
+
+    assert html =~ "Réglage non enregistré."
+  end
 end

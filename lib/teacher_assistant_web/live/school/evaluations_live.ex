@@ -33,7 +33,8 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
          grading: Assessment.grading_rules(scope),
          rule_rows: @rules,
          types: Assessment.list_assessment_types(scope),
-         default_max: profile.default_max_score
+         default_max: profile.default_max_score,
+         grace_days: profile.entry_grace_days
        )}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}
@@ -118,6 +119,24 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
             value={Decimal.to_string(Decimal.normalize(@default_max), :normal)}
             label={gettext("Note maximale")}
             inputmode="decimal"
+            class="input input-sm w-24 text-right"
+          />
+          <button type="submit" class="btn btn-ghost btn-sm">{gettext("Enregistrer")}</button>
+        </.form>
+
+        <.form
+          for={%{}}
+          id="entry-grace-days-form"
+          phx-submit="save_entry_grace_days"
+          class="flex items-end gap-2"
+        >
+          <.input
+            type="number"
+            name="entry_grace_days"
+            value={@grace_days}
+            min="0"
+            max="30"
+            label={gettext("Délai de saisie après la fin de séquence (jours)")}
             class="input input-sm w-24 text-right"
           />
           <button type="submit" class="btn btn-ghost btn-sm">{gettext("Enregistrer")}</button>
@@ -224,6 +243,22 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
          socket
          |> assign(default_max: profile.default_max_score)
          |> put_flash(:info, gettext("Réglage enregistré."))}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Réglage non enregistré."))}
+    end
+  end
+
+  def handle_event("save_entry_grace_days", %{"entry_grace_days" => value}, socket) do
+    case Assessment.update_entry_grace_days(socket.assigns.current_scope, value) do
+      {:ok, profile} ->
+        {:noreply,
+         socket
+         |> assign(grace_days: profile.entry_grace_days)
+         |> put_flash(:info, gettext("Délai de saisie enregistré."))}
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}

@@ -83,7 +83,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :average_rounding,
         :shared_ranks?,
         :absence_rule,
-        :default_max_score
+        :default_max_score,
+        :entry_grace_days
       ]
 
       change fn changeset, _context ->
@@ -196,6 +197,13 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       allow_nil?: false,
       default: Decimal.new(20),
       public?: true
+
+    # "fin de séquence + N jours": the grade-entry deadline when a séquence sets none (spec D3b).
+    attribute :entry_grace_days, :integer,
+      allow_nil?: false,
+      default: 5,
+      public?: true,
+      constraints: [min: 0, max: 30]
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,

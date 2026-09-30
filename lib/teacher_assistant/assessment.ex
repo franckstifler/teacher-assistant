@@ -332,6 +332,20 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
+  @doc "Sets the school's grade-entry grace days (an integer in 0..30, spec D3b)."
+  def update_entry_grace_days(%Scope{} = scope, value) when is_binary(value) do
+    with {days, ""} <- Integer.parse(String.trim(value)),
+         {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      TeacherAssistant.Accounts.update_school_profile(profile, %{entry_grace_days: days},
+        scope: scope
+      )
+    else
+      :error -> {:error, :invalid_days}
+      {_days, _rest} -> {:error, :invalid_days}
+      other -> other
+    end
+  end
+
   defp parse_rule_params(params) do
     Enum.reduce_while(params, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
       case parse_rule(key, value) do

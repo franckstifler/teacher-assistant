@@ -58,8 +58,12 @@ defmodule TeacherAssistant.Academics.Reference do
   @sequence_weights [49, 35, 63, 35, 56, 40]
   @integration_weeks [false, true, false, true, false, true]
 
-  @doc "Days after a séquence's end during which marks may still be entered, when no explicit deadline is set."
+  @doc "A school's default number of days after a séquence's end during which marks may still be entered."
   def entry_grace_days, do: 5
+
+  @doc "The date in Cameroon (WAT, UTC+1, no daylight saving) at `now` — the marks lock's clock."
+  def today(%DateTime{} = now \\ DateTime.utc_now()),
+    do: now |> DateTime.add(3600) |> DateTime.to_date()
 
   @doc """
   The default academic calendar for a year running from `start_date` to
