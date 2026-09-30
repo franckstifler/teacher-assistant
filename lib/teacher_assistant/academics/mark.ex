@@ -47,18 +47,30 @@ defmodule TeacherAssistant.Academics.Mark do
   end
 
   actions do
-    defaults [
-      :read,
-      :destroy,
-      create: [:score, :status, :assessment_id, :student_id]
-    ]
+    defaults [:read]
+
+    # Every write is journaled (`Mark.Journal`, spec D3a).
+    create :create do
+      primary? true
+      accept [:score, :status, :assessment_id, :student_id]
+      change TeacherAssistant.Academics.Mark.Journal
+    end
 
     # Not atomic: `ScoreWithinMax` fetches the assessment with `Ash.get/2`,
     # which the atomic-update upgrade path cannot express as a single SQL
     # expression.
     update :update do
+      primary? true
       accept [:score, :status]
       require_atomic? false
+      change TeacherAssistant.Academics.Mark.Journal
+    end
+
+    # Not atomic: the journal snapshots the mark before it goes.
+    destroy :destroy do
+      primary? true
+      require_atomic? false
+      change TeacherAssistant.Academics.Mark.Journal
     end
 
     read :for_assessment do
@@ -97,10 +109,13 @@ defmodule TeacherAssistant.Academics.Mark do
       transaction? true
 
       run fn input, scope ->
+        # One journal batch per save.
+        batch = Ash.UUIDv7.generate()
+
         input.arguments.marks
         |> Enum.group_by(& &1.assessment_id)
         |> Enum.reduce_while({:ok, []}, fn {assessment_id, entries}, {:ok, acc} ->
-          case upsert_group(assessment_id, entries, scope) do
+          case upsert_group(assessment_id, entries, scope, batch) do
             {:ok, notifications} -> {:cont, {:ok, acc ++ notifications}}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -201,7 +216,9 @@ defmodule TeacherAssistant.Academics.Mark do
   # back the whole transaction. Deliberately without its own transaction — the
   # `:upsert_all` action wraps every group in one shared transaction, so a
   # failure here rolls back every group's writes, not just this one's.
-  defp upsert_group(assessment_id, entries, scope) do
+  defp upsert_group(assessment_id, entries, scope, batch) do
+    context = %{mark_batch_id: batch}
+
     existing =
       __MODULE__
       |> Ash.Query.for_read(:for_assessment, %{assessment_id: assessment_id}, scope: scope)
@@ -215,7 +232,7 @@ defmodule TeacherAssistant.Academics.Mark do
             {:ok, nil, []}
 
           {%__MODULE__{} = mark, :blank} ->
-            case Ash.destroy(mark, scope: scope, return_notifications?: true) do
+            case Ash.destroy(mark, scope: scope, context: context, return_notifications?: true) do
               {:ok, notifications} -> {:ok, nil, notifications}
               :ok -> {:ok, nil, []}
               {:error, reason} -> {:error, reason}
@@ -226,13 +243,14 @@ defmodule TeacherAssistant.Academics.Mark do
             |> Ash.Changeset.for_create(
               :create,
               Map.merge(attrs, %{assessment_id: assessment_id, student_id: entry.student_id}),
-              scope: scope
+              scope: scope,
+              context: context
             )
             |> Ash.create(return_notifications?: true)
 
           {%__MODULE__{} = mark, attrs} ->
             mark
-            |> Ash.Changeset.for_update(:update, attrs, scope: scope)
+            |> Ash.Changeset.for_update(:update, attrs, scope: scope, context: context)
             |> Ash.update(return_notifications?: true)
         end
 

@@ -18,6 +18,7 @@ defmodule TeacherAssistant.Assessment do
     CombinedCourse,
     GradingRules,
     Mark,
+    MarkEvent,
     Marks,
     Sequence,
     Term,
@@ -31,6 +32,7 @@ defmodule TeacherAssistant.Assessment do
     resource Assessment
     resource AssessmentType
     resource Mark
+    resource MarkEvent
   end
 
   authorization do
@@ -240,6 +242,19 @@ defmodule TeacherAssistant.Assessment do
     Mark
     |> Ash.Query.for_read(:for_assessments, %{assessment_ids: assessment_ids}, scope: scope)
     |> Ash.read!()
+  end
+
+  @doc "The marks journal, newest first (spec D3a). Admins only; anyone else gets []."
+  def list_mark_events(%Scope{} = scope, opts \\ []) do
+    MarkEvent
+    |> Ash.Query.sort(inserted_at: :desc, id: :desc)
+    |> Ash.Query.limit(Keyword.get(opts, :limit, 200))
+    |> Ash.Query.load([:actor, :student, assessment: [:teaching_context]])
+    |> Ash.read(scope: scope)
+    |> case do
+      {:ok, events} -> events
+      {:error, %Ash.Error.Forbidden{}} -> []
+    end
   end
 
   # The `:upsert_all` action does the all-or-nothing transactional upsert and
