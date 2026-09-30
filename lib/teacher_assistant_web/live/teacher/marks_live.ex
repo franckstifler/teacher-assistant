@@ -6,6 +6,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
   alias TeacherAssistant.Organization
 
+  alias TeacherAssistant.Academics.Lock
+
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
     ws = scope.current_workspace
@@ -43,6 +45,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
        |> assign(:grading_rules, Assessment.grading_rules(scope))
        |> assign(:sequences, sequences)
        |> assign(:seq, seq)
+       |> assign(:locked?, seq != nil and Lock.locked?(seq))
        |> assign(:assessments, assessments)
        |> assign(:assessment, assessment)
        |> assign(:students, students)
@@ -90,6 +93,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
          |> assign(:groups, groups)
          |> assign(:sequences, sequences)
          |> assign(:seq, seq)
+         |> assign(:locked?, seq != nil and Lock.locked?(seq))
          |> assign(:combined_assessments, combined)
          |> assign(:selected, selected)
          |> assign(:scores, combined_existing_scores(socket.assigns.current_scope, selected))
@@ -259,6 +263,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      )}
   end
 
+  def handle_event("new_assessment", _params, %{assigns: %{locked?: true}} = socket),
+    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
+
   def handle_event("new_assessment", %{"assessment" => p}, socket) do
     case socket.assigns[:course] do
       %CombinedCourse{} = course ->
@@ -272,6 +279,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   def handle_event("preview", %{"scores" => scores}, socket) do
     {:noreply, assign(socket, :scores, Map.new(scores, fn {k, v} -> {k, v} end))}
   end
+
+  def handle_event("save", _params, %{assigns: %{locked?: true}} = socket),
+    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
   def handle_event("save", %{"scores" => scores}, socket) do
     if not TeacherAssistant.Scope.school_verified?(socket.assigns.current_scope) do
@@ -527,6 +537,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         {:noreply,
          socket
          |> assign(:seq, seq)
+         |> assign(:locked?, seq != nil and Lock.locked?(seq))
          |> assign(:combined_assessments, combined)
          |> assign(:selected, selected)
          |> assign(:unsaved, unsaved)
@@ -543,6 +554,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         {:noreply,
          socket
          |> assign(:seq, seq)
+         |> assign(:locked?, seq != nil and Lock.locked?(seq))
          |> assign(:assessments, assessments)
          |> assign(:assessment, assessment)
          |> assign(:unsaved, unsaved)
@@ -669,7 +681,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           </form>
 
           <.form
-            :if={@seq}
+            :if={@seq && !@locked?}
             for={@new_assessment_form}
             id="new-assessment-form"
             phx-submit="new_assessment"
@@ -693,6 +705,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
           </.form>
         </div>
+
+        <.locked_banner :if={@locked?} seq={@seq} assessment={@selected} />
 
         <%= if @selected do %>
           <p class="text-xs text-base-content/55">
@@ -729,11 +743,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                   name={"scores[#{s.id}]"}
                   value={Map.get(@scores, s.id, "")}
                   phx-debounce="300"
+                  disabled={@locked?}
                   class="ta-num input input-bordered h-11 w-24 text-right"
                 />
               </div>
             </div>
-            <.button id="marks-submit" type="submit" class="btn btn-primary w-full">
+            <.button
+              :if={!@locked?}
+              id="marks-submit"
+              type="submit"
+              class="btn btn-primary w-full"
+            >
               {gettext("Save marks")}
             </.button>
           </.form>
@@ -789,7 +809,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           </form>
 
           <.form
-            :if={@seq}
+            :if={@seq && !@locked?}
             for={@new_assessment_form}
             id="new-assessment-form"
             phx-submit="new_assessment"
@@ -813,6 +833,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
           </.form>
         </div>
+
+        <.locked_banner :if={@locked?} seq={@seq} assessment={@assessment} />
 
         <%= if @assessment do %>
           <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -852,7 +874,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               >
                 {a.label}
               </span>
-              <span class="ta-eyebrow w-24 text-right">{@assessment.label}</span>
+              <span class="ta-eyebrow w-24 text-right">
+                {@assessment.label}<span :if={@locked?}> · {gettext("verrouillée")}</span>
+              </span>
             </div>
 
             <div
@@ -879,16 +903,47 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 name={"scores[#{s.id}]"}
                 value={Map.get(@scores, s.id, "")}
                 phx-debounce="300"
+                disabled={@locked?}
                 class="ta-num input input-bordered h-11 w-24 text-right"
               />
             </div>
-            <.button id="marks-submit" type="submit" class="btn btn-primary w-full">
+            <.button
+              :if={!@locked?}
+              id="marks-submit"
+              type="submit"
+              class="btn btn-primary w-full"
+            >
               {gettext("Save marks")}
             </.button>
           </.form>
         <% end %>
       </section>
     </Layouts.app>
+    """
+  end
+
+  attr :seq, :map, required: true
+  attr :assessment, :map, default: nil
+
+  defp locked_banner(assigns) do
+    ~H"""
+    <div id="locked-banner" class="alert alert-warning text-sm">
+      <.icon name="hero-lock-closed" class="size-4" />
+      <span class="flex-1">
+        {gettext(
+          "Séquence verrouillée depuis le %{date} : les notes ne se modifient plus que par une demande de correction.",
+          date: @seq.grade_entry_deadline |> Date.add(1) |> Calendar.strftime("%d/%m/%Y")
+        )}
+      </span>
+      <.link
+        :if={@assessment}
+        id="locked-request-link"
+        navigate={"/school/corrections/new?assessment=" <> @assessment.id}
+        class="btn btn-sm"
+      >
+        {gettext("Nouvelle demande")}
+      </.link>
+    </div>
     """
   end
 
