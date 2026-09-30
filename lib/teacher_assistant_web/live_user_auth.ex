@@ -61,7 +61,12 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
       %{current_workspace: %{}} = scope ->
         facts = TeacherAssistantWeb.Spaces.facts(scope)
         keys = TeacherAssistantWeb.Spaces.keys_for(facts)
-        key = TeacherAssistantWeb.Spaces.resolve(keys, TeacherAssistantWeb.Spaces.parse_key(session["space"]))
+
+        key =
+          TeacherAssistantWeb.Spaces.resolve(
+            keys,
+            TeacherAssistantWeb.Spaces.parse_key(session["space"])
+          )
 
         capabilities =
           Map.merge(scope.capabilities || %{}, %{
@@ -70,7 +75,11 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
           })
 
         scope = %{scope | capabilities: capabilities}
-        {:cont, socket |> Phoenix.Component.assign(:current_scope, scope) |> Phoenix.Component.assign(:scope, scope)}
+
+        {:cont,
+         socket
+         |> Phoenix.Component.assign(:current_scope, scope)
+         |> Phoenix.Component.assign(:scope, scope)}
 
       _ ->
         {:cont, socket}

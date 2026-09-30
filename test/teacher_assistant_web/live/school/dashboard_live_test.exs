@@ -217,7 +217,9 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
   describe "landing by role space" do
     setup %{actor: head} do
-      {:ok, school} = Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée L"})
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée L"})
+
       scope = school_scope(head, school)
       TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
       %{school: school, lscope: scope}
@@ -237,7 +239,10 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school")
     end
 
-    test "a member with no space of their own lands on the classes (École)", %{school: school, lscope: scope} do
+    test "a member with no space of their own lands on the classes (École)", %{
+      school: school,
+      lscope: scope
+    } do
       conn = conn_with_roles(school, scope, [:librarian])
       assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school")
     end

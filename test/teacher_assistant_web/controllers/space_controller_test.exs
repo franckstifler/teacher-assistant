@@ -7,7 +7,9 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
   setup :register_and_log_in_user
 
   setup %{actor: head} do
-    {:ok, school} = Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée S"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée S"})
+
     scope = school_scope(head, school)
     year = TeacherFixtures.complete_school_setup!(scope)
     %{school: school, scope: scope, year: year}
@@ -44,7 +46,11 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
   end
 
   test "a stored space whose role was removed falls back to the highest remaining one", ctx do
-    member = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:vice_principal, :discipline_master]})
+    member =
+      TeacherFixtures.member_scope_fixture(ctx.scope, %{
+        roles: [:vice_principal, :discipline_master]
+      })
+
     conn = conn_for(ctx.school, member.current_user) |> Plug.Conn.put_session(:space, "censeur")
 
     {:ok, membership} = Accounts.fetch_school_membership(ctx.scope, member.current_user)

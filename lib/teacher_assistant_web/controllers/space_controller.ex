@@ -5,7 +5,8 @@ defmodule TeacherAssistantWeb.SpaceController do
   alias TeacherAssistant.Accounts.Workspaces
   alias TeacherAssistantWeb.Spaces
 
-  def select(%{assigns: %{current_user: nil}} = conn, _params), do: redirect(conn, to: ~p"/sign-in")
+  def select(%{assigns: %{current_user: nil}} = conn, _params),
+    do: redirect(conn, to: ~p"/sign-in")
 
   def select(conn, %{"key" => param}) do
     scope =

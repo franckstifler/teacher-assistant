@@ -34,8 +34,9 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   # Proviseur and Censeur use the dashboard as their home; every other space lands
   # on its own home (spec E).
-  defp landing_elsewhere(%{capabilities: %{space: %{key: key}}}) when key in [:proviseur, :censeur],
-    do: nil
+  defp landing_elsewhere(%{capabilities: %{space: %{key: key}}})
+       when key in [:proviseur, :censeur],
+       do: nil
 
   defp landing_elsewhere(%{capabilities: %{space: %{home: home}}}), do: home
   defp landing_elsewhere(_scope), do: nil

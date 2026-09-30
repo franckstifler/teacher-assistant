@@ -7,7 +7,9 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
   setup :register_and_log_in_user
 
   setup %{actor: head} do
-    {:ok, school} = Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée R"})
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée R"})
+
     scope = school_scope(head, school)
     year = TeacherFixtures.complete_school_setup!(scope)
     [cg | _] = Enrollment.list_class_groups(scope, year)
@@ -19,7 +21,11 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
 
     tc =
       if opts[:teaches?],
-        do: elem(Curriculum.assign_teacher(ctx.scope, ctx.cg, member.current_user, %{subject: "Maths"}), 1)
+        do:
+          elem(
+            Curriculum.assign_teacher(ctx.scope, ctx.cg, member.current_user, %{subject: "Maths"}),
+            1
+          )
 
     conn =
       build_conn()

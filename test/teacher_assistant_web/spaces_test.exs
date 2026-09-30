@@ -3,14 +3,23 @@ defmodule TeacherAssistantWeb.SpacesTest do
   alias TeacherAssistantWeb.Spaces
 
   defp facts(roles, opts \\ []),
-    do: %{roles: roles, teaches?: Keyword.get(opts, :teaches?, false), form_master?: Keyword.get(opts, :form_master?, false)}
+    do: %{
+      roles: roles,
+      teaches?: Keyword.get(opts, :teaches?, false),
+      form_master?: Keyword.get(opts, :form_master?, false)
+    }
 
   defp item_ids(key, facts),
     do: for(section <- Spaces.space(key, facts).sections, item <- section.items, do: item.id)
 
   test "spaces follow the roles, in priority order" do
     assert Spaces.keys_for(facts([:head])) == [:proviseur]
-    assert Spaces.keys_for(facts([:teacher, :vice_principal], teaches?: true)) == [:censeur, :enseignant]
+
+    assert Spaces.keys_for(facts([:teacher, :vice_principal], teaches?: true)) == [
+             :censeur,
+             :enseignant
+           ]
+
     assert Spaces.keys_for(facts([:discipline_master, :bursar])) == [:surveillant, :intendant]
     assert Spaces.keys_for(facts([:teacher], teaches?: true)) == [:enseignant]
   end
