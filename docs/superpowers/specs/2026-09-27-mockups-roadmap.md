@@ -363,3 +363,36 @@ To pick up later; none blocks use.
   teacher's form shows one message for "not locked" / "unchanged" / "already pending".
 - [ ] `MarkCorrection.Decide` dereferences `context.actor.id`: an actor-less internal call would crash.
 - [ ] Gettext: ~150 pre-existing empty EN `msgstr` entries (not D3) remain untranslated.
+
+## F — Censeur follow-up: sequence entry tracking (spec)
+
+Mockup: `Espaces par rôle` → Censeur → "Suivi des séquences" (excerpt with layout, palette and data logic
+saved in `docs/superpowers/mockups/f-censeur-suivi-sequences.html`). Gap: **N05**. N06 (reminders) deferred.
+
+User decisions (2026-09-30): the "À relancer" list is shown as information, without "Relancer" buttons
+(N06 later); the grid is the **Censeur's** home, the Proviseur keeps the dashboard and gets the grid as a
+menu item; the screen **matches the mockup layout** (KPI tiles, sequence tabs, legend, grid, side panel).
+
+1. Page `/school/sequences`, admin axis only (Censeur, Proviseur); others are redirected to `/school`.
+2. Sequence tabs S1…S6 of the current year; default = the sequence whose dates contain today, else the last
+   one that has started, else S1. `?seq=<id>` selects.
+3. Grid rows = the year's classes; columns = the school's subjects taught in at least one class; a cell =
+   one course (teaching context). No course → dashed empty cell ("Non enseignée").
+4. Cell % = marks entered ÷ (students taking the subject × the course's assessments in that sequence),
+   rounded down so 100 % means complete. Students taking = the class's active enrollments minus that
+   course's subject exemptions. A mark row of any status (graded, abs, abj) counts as entered; a blank does
+   not. A course with no assessment in the sequence is 0 % ("Rien saisi"). Colors: 100 % primary, 0 % error,
+   otherwise amber, as in the mockup.
+5. Selecting a cell shows the side panel: "Classe · Matière", teacher, "Notes saisies x / y",
+   "Évaluations" (names), "Dernière saisie" (date of the latest mark change, "—" if none).
+6. KPI tiles: Saisie globale (mean of course %, "toutes classes, toutes disciplines"), Classes complètes
+   (classes whose every course is 100 %, "prêtes pour le conseil"), Enseignants à relancer (teachers with at
+   least one 0 % course, "aucune note saisie"), Conseils de classe (the sequence's term `class_council_date`,
+   "—" if unset).
+7. "À relancer" panel: one line per late teacher, "Matière · classes · rien saisi". No buttons.
+8. The data is computed with a fixed number of queries per page load, whatever the number of classes
+   (no per-course query — see R05).
+9. Spaces: Censeur home = `/school/sequences`, first item "Suivi des séquences" in its menu; Proviseur gets
+   the same item; `/school` no longer sends the Censeur to the dashboard.
+
+Out of scope: sending reminders and their log (N06), per-teacher view, export.
