@@ -18,6 +18,7 @@ defmodule TeacherAssistant.Assessment do
     Bulletins,
     ClassGroup,
     CombinedCourse,
+    EntryProgress,
     GradingRules,
     Mark,
     MarkCorrection,
@@ -122,6 +123,19 @@ defmodule TeacherAssistant.Assessment do
       _ -> {:error, :not_found}
     end
   end
+
+  # --- Séquence entry tracking (spec F) ---------------------------------------
+
+  @doc """
+  The classes × subjects mark-entry grid of a séquence, with its KPIs. See
+  `TeacherAssistant.Academics.EntryProgress.grid/3`.
+  """
+  def sequence_entry_grid(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq),
+    do: EntryProgress.grid(scope, year, seq)
+
+  @doc "The séquence shown by default on `today` (current, else last started, else first)."
+  def default_sequence(sequences, %Date{} = today),
+    do: EntryProgress.default_sequence(sequences, today)
 
   # --- Assessment types (spec D2b-2) -----------------------------------------------
 

@@ -1,0 +1,227 @@
+defmodule TeacherAssistant.Academics.EntryProgress do
+  @moduledoc """
+  Per-course mark-entry progress for one séquence (spec F, N05): a classes ×
+  subjects grid where each cell is one course (teaching context).
+
+  A cell's % is marks entered ÷ (students taking the course × the course's
+  assessments in the séquence), rounded down so 100 means complete. Students
+  taking = the class's enrollments minus the course's subject exemptions; only
+  their marks count, whatever the mark's status. Everything is loaded in a
+  fixed number of queries, whatever the number of classes or courses.
+  """
+
+  require Ash.Query
+
+  alias TeacherAssistant.Academics.{
+    AcademicYear,
+    Assessment,
+    Enrollment,
+    Mark,
+    Sequence,
+    SubjectExemption,
+    TeachingContext
+  }
+
+  alias TeacherAssistant.Scope
+
+  @doc "Rounded-down percentage; `nil` when nothing is expected."
+  def pct(_entered, 0), do: nil
+  def pct(entered, expected), do: div(entered * 100, expected)
+
+  def grid(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq) do
+    class_groups = TeacherAssistant.Enrollment.list_class_groups(scope, year)
+    contexts = load_contexts(scope, year)
+    enrolled = load_enrolled(scope, year)
+    exempt = load_exempt(scope, contexts)
+    assessments = load_assessments(scope, seq)
+    marks = load_marks(scope, assessments)
+
+    assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
+    marks_by_assessment = Enum.group_by(marks, & &1.assessment_id)
+
+    cells =
+      Map.new(contexts, fn tc ->
+        taking =
+          enrolled
+          |> Map.get(tc.class_group_id, MapSet.new())
+          |> MapSet.difference(Map.get(exempt, tc.id, MapSet.new()))
+
+        tc_assessments = Map.get(assessments_by_tc, tc.id, [])
+
+        {{tc.class_group_id, column_key(tc)},
+         cell(tc, taking, tc_assessments, marks_by_assessment)}
+      end)
+
+    subjects = subjects(contexts)
+
+    rows =
+      Enum.map(class_groups, fn cg ->
+        %{
+          class_group: cg,
+          cells: Map.new(subjects, &{&1.key, Map.get(cells, {cg.id, &1.key})})
+        }
+      end)
+
+    %{
+      subjects: subjects,
+      rows: rows,
+      overall_pct: overall_pct(rows),
+      complete_classes: {Enum.count(rows, &complete?/1), length(rows)},
+      late: late(rows, subjects),
+      council_date: council_date(scope, seq)
+    }
+  end
+
+  @doc """
+  The séquence to show by default: the one whose dates contain `today`, else
+  the last one already started, else the first.
+  """
+  def default_sequence([], _today), do: nil
+
+  def default_sequence(sequences, %Date{} = today) do
+    Enum.find(sequences, &within?(&1, today)) ||
+      sequences |> Enum.filter(&started?(&1, today)) |> List.last() ||
+      hd(sequences)
+  end
+
+  defp within?(seq, today), do: started?(seq, today) and Date.compare(today, seq.end_date) != :gt
+  defp started?(seq, today), do: Date.compare(seq.start_date, today) != :gt
+
+  # --- Queries (one each) ------------------------------------------------------
+
+  defp load_contexts(scope, %AcademicYear{id: year_id}) do
+    TeachingContext
+    |> Ash.Query.filter(academic_year_id == ^year_id and not is_nil(class_group_id))
+    |> Ash.Query.load([:teacher, :catalog_subject])
+    |> Ash.read!(scope: scope)
+  end
+
+  defp load_enrolled(scope, %AcademicYear{id: year_id}) do
+    Enrollment
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.Query.select([:class_group_id, :student_id])
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.class_group_id, & &1.student_id)
+    |> Map.new(fn {cg_id, ids} -> {cg_id, MapSet.new(ids)} end)
+  end
+
+  defp load_exempt(_scope, []), do: %{}
+
+  defp load_exempt(scope, contexts) do
+    ids = Enum.map(contexts, & &1.id)
+
+    SubjectExemption
+    |> Ash.Query.filter(teaching_context_id in ^ids)
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.teaching_context_id, & &1.student_id)
+    |> Map.new(fn {tc_id, ids} -> {tc_id, MapSet.new(ids)} end)
+  end
+
+  defp load_assessments(scope, %Sequence{id: seq_id}) do
+    Assessment
+    |> Ash.Query.filter(sequence_id == ^seq_id)
+    |> Ash.Query.select([:teaching_context_id, :label, :given_on, :inserted_at])
+    |> Ash.Query.sort(given_on: :asc_nils_last, inserted_at: :asc)
+    |> Ash.read!(scope: scope)
+  end
+
+  defp load_marks(_scope, []), do: []
+
+  defp load_marks(scope, assessments) do
+    ids = Enum.map(assessments, & &1.id)
+
+    Mark
+    |> Ash.Query.filter(assessment_id in ^ids)
+    |> Ash.Query.select([:assessment_id, :student_id, :updated_at])
+    |> Ash.read!(scope: scope)
+  end
+
+  defp council_date(scope, %Sequence{term: %Ash.NotLoaded{}} = seq),
+    do: council_date(scope, Ash.load!(seq, :term, scope: scope))
+
+  defp council_date(_scope, %Sequence{term: term}), do: term && term.class_council_date
+
+  # --- Pure computation ----------------------------------------------------------
+
+  defp cell(tc, taking, assessments, marks_by_assessment) do
+    marks =
+      assessments
+      |> Enum.flat_map(&Map.get(marks_by_assessment, &1.id, []))
+      |> Enum.filter(&MapSet.member?(taking, &1.student_id))
+
+    students = MapSet.size(taking)
+    expected = students * length(assessments)
+    entered = length(marks)
+
+    %{
+      teaching_context: tc,
+      teacher: tc.teacher,
+      entered: entered,
+      expected: expected,
+      # A course with students but no assessment yet is "Rien saisi" (0 %).
+      pct: if(assessments == [] and students > 0, do: 0, else: pct(entered, expected)),
+      assessments: Enum.map(assessments, & &1.label),
+      last_entry_at: marks |> Enum.map(& &1.updated_at) |> Enum.max(DateTime, fn -> nil end)
+    }
+  end
+
+  defp column_key(%TeachingContext{subject_id: nil, subject: subject}), do: subject
+  defp column_key(%TeachingContext{subject_id: id}), do: id
+
+  # Columns: the subjects taught in at least one class, catalog order then name.
+  defp subjects(contexts) do
+    contexts
+    |> Enum.uniq_by(&column_key/1)
+    |> Enum.map(fn tc ->
+      label = if tc.catalog_subject, do: tc.catalog_subject.name, else: tc.subject
+      position = if tc.catalog_subject, do: tc.catalog_subject.position, else: nil
+      %{key: column_key(tc), label: label, sort: {is_nil(position), position, label}}
+    end)
+    |> Enum.sort_by(& &1.sort)
+    |> Enum.map(&Map.delete(&1, :sort))
+  end
+
+  defp known_pcts(%{cells: cells}),
+    do:
+      cells
+      |> Map.values()
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(& &1.pct)
+      |> Enum.reject(&is_nil/1)
+
+  defp overall_pct(rows) do
+    case Enum.flat_map(rows, &known_pcts/1) do
+      [] -> nil
+      pcts -> div(Enum.sum(pcts), length(pcts))
+    end
+  end
+
+  # A class with no measurable course (no course, or no student) is not complete.
+  defp complete?(row) do
+    case known_pcts(row) do
+      [] -> false
+      pcts -> Enum.all?(pcts, &(&1 == 100))
+    end
+  end
+
+  # Courses with nothing entered, one line per teacher and subject, classes in row order.
+  defp late(rows, subjects) do
+    labels = Map.new(subjects, &{&1.key, &1.label})
+
+    rows
+    |> Enum.flat_map(fn %{class_group: cg, cells: cells} ->
+      for {key, %{pct: 0} = cell} <- cells, do: {key, cell, cg.label}
+    end)
+    |> Enum.group_by(
+      fn {key, cell, _} -> {cell.teaching_context.teacher_user_id, key} end,
+      fn {_, cell, label} -> {cell.teacher, label} end
+    )
+    |> Enum.map(fn {{_teacher_id, key}, [{teacher, _} | _] = entries} ->
+      %{teacher: teacher, subject: labels[key], classes: Enum.map(entries, &elem(&1, 1))}
+    end)
+    |> Enum.sort_by(&{teacher_name(&1.teacher), &1.subject})
+  end
+
+  defp teacher_name(nil), do: ""
+  defp teacher_name(teacher), do: to_string(teacher.name || teacher.email)
+end
