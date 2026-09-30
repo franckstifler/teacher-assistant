@@ -19,7 +19,7 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 | D2b-2 | Marks and absence: assessment types, default max, absent marker and rule, optional subjects | N07 (rest) | D2b-1 | M |
 | D3 | Lock and trace marks | N04 → N02 → N03 | D1 (deadline), N04 before N03 | M×3 |
 | E | Role-aware navigation and home | R01, R02 | authorization increment (done) | M |
-| F | Censeur follow-up | N05, then N06 (P2) | D1, E | S (+M) |
+| F | Censeur follow-up (N05 done) | N05, then N06 (P2) | D1, E | S (+M) |
 | G | School life, day view | V02, V01, V03, then V04, V06 (P2) | E | S×3 |
 | H | Pedagogy screens | P01, P02 (P2) | E | M |
 | I | Report card cycle | N09, N13, N12, N11, N10 | D2a, D2b-1, D2b-2, D3 | S…L |
@@ -365,6 +365,9 @@ To pick up later; none blocks use.
 - [ ] Gettext: ~150 pre-existing empty EN `msgstr` entries (not D3) remain untranslated.
 
 ## F — Censeur follow-up: sequence entry tracking (spec)
+
+Status: N05 implemented 2026-09-30 (branch `f-sequence-tracking`, plan
+`docs/superpowers/plans/2026-09-30-f-sequence-entry-tracking.md`); N06 deferred.
 
 Mockup: `Espaces par rôle` → Censeur → "Suivi des séquences" (excerpt with layout, palette and data logic
 saved in `docs/superpowers/mockups/f-censeur-suivi-sequences.html`). Gap: **N05**. N06 (reminders) deferred.
