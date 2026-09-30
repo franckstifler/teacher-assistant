@@ -281,6 +281,9 @@ corrections de notes, signaler une absence → D3/J; animateur pédagogique obse
 
 ## D3 — Lock and trace marks (spec)
 
+Status: implemented 2026-09-30 (branch `d3-lock-trace-marks`, plan
+`docs/superpowers/plans/2026-09-30-d3-lock-and-trace-marks.md`).
+
 Mockup: `Espaces par rôle`: Enseignant → Saisie des notes (column "Interro 1 · verrouillée") and Démarches →
 Corrections de notes; Censeur → Corrections de notes (filters En attente / Traitées / Journal). Gaps, in build
 order: **N04** audit log, **N02** lock after the deadline, **N03** correction requests.
