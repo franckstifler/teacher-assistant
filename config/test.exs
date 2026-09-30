@@ -8,6 +8,10 @@ config :teacher_assistant, token_signing_secret: "stzKJzc4mx3IO7M9Pw+9nK9sEIlPXc
 config :bcrypt_elixir, log_rounds: 1
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 
+# The marks lock's clock (`Reference.today/0`) is frozen early in the fixtures'
+# 2025-2026 year, so their séquences stay open unless a test locks one.
+config :teacher_assistant, school_clock_now: ~U[2025-09-15 12:00:00Z]
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

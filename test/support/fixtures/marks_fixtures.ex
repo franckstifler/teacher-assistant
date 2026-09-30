@@ -25,4 +25,22 @@ defmodule TeacherAssistant.MarksFixtures do
 
     %{head: head, t: t, tc: tc, cg: cg, year: year, seq: seq, a: a, s1: s1, s2: s2}
   end
+
+  @doc """
+  Moves the world's first séquence so its grade-entry deadline is `deadline` (before
+  the test clock's date = locked). The end date moves too, since a deadline never
+  precedes it.
+  """
+  def lock!(%{head: head, seq: seq}, %Date{} = deadline) do
+    end_date = Enum.max([seq.start_date, Date.add(deadline, -1)], Date)
+
+    {:ok, seq} =
+      seq
+      |> Ash.Changeset.for_update(:update, %{end_date: end_date, entry_deadline: deadline},
+        scope: head
+      )
+      |> Ash.update()
+
+    seq
+  end
 end

@@ -167,6 +167,11 @@ defmodule TeacherAssistant.Academics.Mark do
     validate {TeacherAssistant.Academics.Mark.ScoreWithinMax, []},
       on: [:create, :update],
       before_action?: true
+
+    # The lock (spec D3b), on every write path — `:upsert_all` goes through these.
+    validate {TeacherAssistant.Academics.Mark.AssessmentOpen, []},
+      on: [:create, :update, :destroy],
+      before_action?: true
   end
 
   multitenancy do

@@ -44,11 +44,19 @@ defmodule TeacherAssistant.Academics.Assessment do
   end
 
   actions do
-    defaults [
-      :read,
-      :destroy,
-      update: [:label, :weight, :max_score, :given_on]
-    ]
+    defaults [:read]
+
+    # Not atomic: `SequenceOpen` (the lock) reads the séquence before the write.
+    update :update do
+      primary? true
+      accept [:label, :weight, :max_score, :given_on]
+      require_atomic? false
+    end
+
+    destroy :destroy do
+      primary? true
+      require_atomic? false
+    end
 
     create :create do
       primary? true
@@ -171,6 +179,13 @@ defmodule TeacherAssistant.Academics.Assessment do
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
     end
+  end
+
+  validations do
+    # The lock (spec D3b). `before_action?`: reads the séquence in the action's scope.
+    validate {TeacherAssistant.Academics.Assessment.SequenceOpen, []},
+      on: [:create, :update, :destroy],
+      before_action?: true
   end
 
   multitenancy do

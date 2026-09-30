@@ -61,9 +61,16 @@ defmodule TeacherAssistant.Academics.Reference do
   @doc "A school's default number of days after a séquence's end during which marks may still be entered."
   def entry_grace_days, do: 5
 
-  @doc "The date in Cameroon (WAT, UTC+1, no daylight saving) at `now` — the marks lock's clock."
-  def today(%DateTime{} = now \\ DateTime.utc_now()),
+  @doc """
+  The date in Cameroon (WAT, UTC+1, no daylight saving) at `now` — the marks lock's
+  clock. `now` defaults to the current time, or to `:school_clock_now` when the
+  environment freezes it (tests).
+  """
+  def today(%DateTime{} = now \\ clock_now()),
     do: now |> DateTime.add(3600) |> DateTime.to_date()
+
+  defp clock_now,
+    do: Application.get_env(:teacher_assistant, :school_clock_now) || DateTime.utc_now()
 
   @doc """
   The default academic calendar for a year running from `start_date` to
