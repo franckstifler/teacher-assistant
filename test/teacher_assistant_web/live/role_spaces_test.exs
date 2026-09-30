@@ -74,4 +74,15 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#per-class-nav")
     assert has_element?(view, "#nav-school-courses")
   end
+
+  test "the rail shows correction counts", ctx do
+    {conn, _} = member_conn(ctx, [:vice_principal], [])
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    assert has_element?(view, "#nav-school-correction-review")
+    refute has_element?(view, "#nav-school-correction-review .badge")
+
+    {conn, _} = member_conn(ctx, [:teacher], teaches?: true)
+    {:ok, view, _} = live(conn, ~p"/school/courses")
+    assert has_element?(view, "#nav-school-corrections")
+  end
 end

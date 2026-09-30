@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.Spaces do
   use Gettext, backend: TeacherAssistantWeb.Gettext
   use TeacherAssistantWeb, :verified_routes
 
-  alias TeacherAssistant.{Curriculum, Enrollment}
+  alias TeacherAssistant.{Assessment, Curriculum, Enrollment}
 
   @order [:proviseur, :censeur, :surveillant, :intendant, :enseignant, :ecole]
   @by_role %{
@@ -53,11 +53,19 @@ defmodule TeacherAssistantWeb.Spaces do
   @doc "What the space-deciding facts are for a school scope (DB reads, once per mount)."
   def facts(%{current_workspace: %{}} = scope) do
     year = scope.current_academic_year
+    teaches? = Curriculum.list_units_for_scope(scope) != []
 
     %{
       roles: scope.current_roles || [],
-      teaches?: Curriculum.list_units_for_scope(scope) != [],
-      form_master?: year != nil and Enrollment.list_form_master_classes(scope, year) != []
+      teaches?: teaches?,
+      form_master?: year != nil and Enrollment.list_form_master_classes(scope, year) != [],
+      # Menu badges (spec D3c), counted only for whom the item shows.
+      pending_corrections:
+        if(Assessment.can_decide_corrections?(scope),
+          do: Assessment.pending_corrections_count(scope),
+          else: 0
+        ),
+      decided_corrections: if(teaches?, do: Assessment.unseen_decisions_count(scope), else: 0)
     }
   end
 
@@ -68,25 +76,35 @@ defmodule TeacherAssistantWeb.Spaces do
   def label(:enseignant), do: gettext("Enseignant")
   def label(:ecole), do: gettext("École")
 
-  def space(:proviseur, _facts) do
+  def space(:proviseur, facts) do
     %{
       key: :proviseur,
       label: label(:proviseur),
       home: ~p"/school",
       sections: [
-        section(gettext("Pilotage"), [dashboard(), classes(), members()]),
+        section(gettext("Pilotage"), [
+          dashboard(),
+          classes(),
+          members(),
+          correction_review(facts.pending_corrections)
+        ]),
         section(gettext("Paramètres"), [settings(), coefficients(), evaluations(), periods()])
       ]
     }
   end
 
-  def space(:censeur, _facts) do
+  def space(:censeur, facts) do
     %{
       key: :censeur,
       label: label(:censeur),
       home: ~p"/school",
       sections: [
-        section(gettext("Suivi pédagogique"), [dashboard(), classes(), members()]),
+        section(gettext("Suivi pédagogique"), [
+          dashboard(),
+          classes(),
+          members(),
+          correction_review(facts.pending_corrections)
+        ]),
         section(gettext("Paramètres"), [settings(), coefficients(), evaluations()])
       ]
     }
@@ -119,7 +137,13 @@ defmodule TeacherAssistantWeb.Spaces do
       key: :enseignant,
       label: label(:enseignant),
       home: if(facts.teaches?, do: ~p"/school/courses", else: ~p"/school/classes"),
-      sections: [section(gettext("Enseignement"), items)]
+      sections:
+        [
+          section(gettext("Enseignement"), items),
+          facts.teaches? &&
+            section(gettext("Démarches"), [corrections(facts.decided_corrections)])
+        ]
+        |> Enum.filter(& &1)
     }
   end
 
@@ -134,8 +158,28 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp section(label, items), do: %{label: label, items: items}
 
-  defp item(id, label, icon, path),
-    do: %{id: "nav-school-#{id}", label: label, icon: icon, path: path}
+  defp item(id, label, icon, path, badge \\ nil),
+    do: %{id: "nav-school-#{id}", label: label, icon: icon, path: path, badge: badge}
+
+  defp corrections(decided),
+    do:
+      item(
+        "corrections",
+        gettext("Corrections de notes"),
+        "hero-pencil-square",
+        ~p"/school/corrections",
+        decided
+      )
+
+  defp correction_review(pending),
+    do:
+      item(
+        "correction-review",
+        gettext("Corrections de notes"),
+        "hero-shield-check",
+        ~p"/school/corrections/review",
+        pending
+      )
 
   defp dashboard, do: item("dashboard", gettext("Dashboard"), "hero-squares-2x2", ~p"/school")
 

@@ -41,6 +41,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
 
   test "the censeur reviews and approves a request", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    assert has_element?(view, "#nav-school-correction-review .badge", "1")
     assert has_element?(view, "#review-tab-pending")
     assert has_element?(view, "#pending-#{ctx.c.id}", "Awa")
     assert has_element?(view, "#pending-#{ctx.c.id}", "12 → 14")

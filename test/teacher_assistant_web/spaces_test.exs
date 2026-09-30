@@ -6,7 +6,9 @@ defmodule TeacherAssistantWeb.SpacesTest do
     do: %{
       roles: roles,
       teaches?: Keyword.get(opts, :teaches?, false),
-      form_master?: Keyword.get(opts, :form_master?, false)
+      form_master?: Keyword.get(opts, :form_master?, false),
+      pending_corrections: Keyword.get(opts, :pending_corrections, 0),
+      decided_corrections: Keyword.get(opts, :decided_corrections, 0)
     }
 
   defp item_ids(key, facts),
@@ -54,10 +56,42 @@ defmodule TeacherAssistantWeb.SpacesTest do
 
     assert item_ids(:enseignant, facts([:teacher], teaches?: true)) == [
              "nav-school-courses",
-             "nav-school-timetable-me"
+             "nav-school-timetable-me",
+             "nav-school-corrections"
            ]
 
     assert item_ids(:enseignant, facts([:teacher], teaches?: true, form_master?: true)) ==
-             ["nav-school-courses", "nav-school-classes", "nav-school-timetable-me"]
+             [
+               "nav-school-courses",
+               "nav-school-classes",
+               "nav-school-timetable-me",
+               "nav-school-corrections"
+             ]
+
+    assert item_ids(:enseignant, facts([:teacher], form_master?: true)) ==
+             ["nav-school-classes", "nav-school-timetable-me"]
+  end
+
+  defp item(key, facts, id),
+    do:
+      Enum.find_value(Spaces.space(key, facts).sections, fn section ->
+        Enum.find(section.items, &(&1.id == id)) &&
+          {section.label, Enum.find(section.items, &(&1.id == id))}
+      end)
+
+  test "corrections of marks: teachers under Démarches, admins with the pending count" do
+    assert {"Démarches", %{badge: 2}} =
+             item(
+               :enseignant,
+               facts([:teacher], teaches?: true, decided_corrections: 2),
+               "nav-school-corrections"
+             )
+
+    for key <- [:proviseur, :censeur] do
+      assert {_, %{badge: 3, path: "/school/corrections/review"}} =
+               item(key, facts([:head], pending_corrections: 3), "nav-school-correction-review")
+    end
+
+    refute item(:surveillant, facts([:discipline_master]), "nav-school-correction-review")
   end
 end
