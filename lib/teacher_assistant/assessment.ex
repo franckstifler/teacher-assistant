@@ -272,6 +272,24 @@ defmodule TeacherAssistant.Assessment do
     |> Ash.create(load: @correction_loads)
   end
 
+  @doc """
+  Assessments whose marks the scope may ask to correct: the scope's own courses' in the
+  current year, once locked. Loads the class and the séquence.
+  """
+  def list_correctable_assessments(%Scope{current_user: %{id: user_id}} = scope) do
+    year_id = scope.current_academic_year && scope.current_academic_year.id
+
+    Assessment
+    |> Ash.Query.filter(
+      teaching_context.teacher_user_id == ^user_id and
+        sequence.term.academic_year_id == ^year_id
+    )
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.Query.load(sequence: [:grade_entry_deadline], teaching_context: [:class_group])
+    |> Ash.read!(scope: scope)
+    |> Enum.filter(&TeacherAssistant.Academics.Lock.locked?(&1.sequence))
+  end
+
   @doc "Approves a pending request: writes the mark, unless it changed since (\"stale\")."
   def approve_correction(%Scope{} = scope, %MarkCorrection{} = correction),
     do: decide_correction(scope, correction, :approve)

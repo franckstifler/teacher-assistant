@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
   alias TeacherAssistant.Organization
 
-  alias TeacherAssistant.Academics.Lock
+  alias TeacherAssistant.Academics.{Lock, MarkEntry}
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -224,7 +224,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp preview_average(students, assessment, scores, rules) do
     marks =
       Enum.flat_map(students, fn s ->
-        case parse_entry(Map.get(scores, s.id)) do
+        case MarkEntry.parse(Map.get(scores, s.id)) do
           {:ok, :blank} ->
             []
 
@@ -397,7 +397,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp save_solo(socket, scores) do
     parsed =
       Enum.map(socket.assigns.students, fn s ->
-        {s.id, parse_entry(Map.get(scores, s.id))}
+        {s.id, MarkEntry.parse(Map.get(scores, s.id))}
       end)
 
     if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
@@ -464,7 +464,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     parsed =
       Enum.map(all_students, fn s ->
-        {s.id, parse_entry(Map.get(scores, s.id))}
+        {s.id, MarkEntry.parse(Map.get(scores, s.id))}
       end)
 
     if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
@@ -585,36 +585,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp restore_combined_scores(scope, %{id: id} = selected, unsaved),
     do: Map.merge(combined_existing_scores(scope, selected), Map.get(unsaved, id, %{}))
 
-  # Parses a raw mark field: a number (French comma accepted), `a`/`abs` (absent),
-  # `abj` (justified absence), or blank ("not entered"). Anything else is :error, so a
-  # typo never becomes a silent absence.
-  defp parse_entry(nil), do: {:ok, :blank}
-
-  defp parse_entry(raw) do
-    case raw |> String.trim() |> String.downcase() |> String.replace(",", ".") do
-      "" ->
-        {:ok, :blank}
-
-      code when code in ["a", "abs"] ->
-        {:ok, :absent}
-
-      "abj" ->
-        {:ok, :excused}
-
-      normalized ->
-        case Decimal.parse(normalized) do
-          {d, ""} -> {:ok, {:graded, d}}
-          _ -> :error
-        end
-    end
-  end
-
   # Only the students whose field differs from what this page loaded: a stale page
   # (another teacher or device saved meanwhile) never overwrites or deletes a mark
   # its user did not touch.
   defp changed_entries(parsed, loaded) do
     for {id, {:ok, entry}} <- parsed,
-        not same_entry?(entry, parse_entry(Map.get(loaded, id))),
+        not same_entry?(entry, MarkEntry.parse(Map.get(loaded, id))),
         do: {id, entry}
   end
 
@@ -938,7 +914,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       <.link
         :if={@assessment}
         id="locked-request-link"
-        navigate={"/school/corrections/new?assessment=" <> @assessment.id}
+        navigate={~p"/school/corrections/new?assessment=#{@assessment.id}"}
         class="btn btn-sm"
       >
         {gettext("Nouvelle demande")}
