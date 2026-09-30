@@ -26,6 +26,7 @@ defmodule TeacherAssistant.Discipline do
         args: [:enrollment_id, :first, :last]
 
       define :delete_sanction, action: :destroy
+      define :recent_sanctions, action: :recent
     end
 
     resource ConductMark do
@@ -114,6 +115,13 @@ defmodule TeacherAssistant.Discipline do
         {:error, _error} -> {:error, :sanction_failed}
       end
     end
+  end
+
+  @doc "Records that the parents were told about `sanction`, today, by the scope's user (V06)."
+  def mark_parents_notified(%Scope{} = scope, %SanctionEntry{} = sanction) do
+    sanction
+    |> Ash.Changeset.for_update(:mark_parents_notified, %{}, scope: scope)
+    |> Ash.update()
   end
 
   defp validate_type(type) do

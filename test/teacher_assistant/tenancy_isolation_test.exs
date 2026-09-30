@@ -410,7 +410,8 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     {:ok, e} =
       TeacherAssistant.Enrollment.fetch_owned_enrollment(scope_of(a), entry.enrollment_id)
 
-    assert {:ok, _} = TeacherAssistant.Attendance.justify_day(scope_of(a), e, entry.date, "ok")
+    assert {:ok, _} =
+             TeacherAssistant.Attendance.justify_day(scope_of(a), e, entry.date, :autre, "ok")
 
     assert {:error, :not_found} =
              TeacherAssistant.Enrollment.fetch_owned_enrollment(scope_of(b), entry.enrollment_id)

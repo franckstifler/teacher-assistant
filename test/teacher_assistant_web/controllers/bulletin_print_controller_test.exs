@@ -102,7 +102,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     {:ok, _} =
       Attendance.record_period(scope, cg, period1, tc, date, [{enr.id, :absent}])
 
-    {:ok, _} = Attendance.justify_day(scope, enr, date, "Certificat médical")
+    {:ok, _} = Attendance.justify_day(scope, enr, date, :maladie, "Certificat médical")
 
     {:ok, _} =
       Attendance.record_period(scope, cg, period2, tc, date, [{enr.id, :late}])

@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.Academics.JustificationReason
 
   def mount(%{"id" => id} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -88,8 +89,9 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
 
     with %{} = student <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)) do
       note = presence(params["note"])
+      reason = parse_reason(params["reason"])
 
-      case Attendance.justify_day(scope, student.enrollment, socket.assigns.date, note) do
+      case Attendance.justify_day(scope, student.enrollment, socket.assigns.date, reason, note) do
         {:ok, _count} -> {:noreply, load_register(socket)}
         {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
         {:error, _reason} -> {:noreply, socket}
@@ -111,6 +113,10 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     else
       _ -> {:noreply, socket}
     end
+  end
+
+  defp parse_reason(value) do
+    Enum.find(JustificationReason.values(), &(Atom.to_string(&1) == value))
   end
 
   defp presence(nil), do: nil
@@ -187,10 +193,15 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
                     class="flex items-center gap-2"
                   >
                     <input type="hidden" name="enrollment_id" value={student.enrollment_id} />
+                    <select name="reason" class="select select-bordered select-xs" required>
+                      <option :for={r <- JustificationReason.values()} value={r}>
+                        {JustificationReason.label(r)}
+                      </option>
+                    </select>
                     <input
                       type="text"
                       name="note"
-                      placeholder={gettext("Motif (optionnel)")}
+                      placeholder={gettext("Précision (optionnelle)")}
                       class="input input-bordered input-xs"
                     />
                     <button

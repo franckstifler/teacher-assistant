@@ -31,7 +31,7 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
 
   test "a member switches to one of their spaces and lands on its home", ctx do
     conn = censeur_who_teaches(ctx) |> get(~p"/school/space/enseignant")
-    assert redirected_to(conn) == "/school/courses"
+    assert redirected_to(conn) == "/school/today"
     assert get_session(conn, :space) == "enseignant"
   end
 

@@ -69,6 +69,10 @@ defmodule TeacherAssistant.Academics.Reference do
   def today(%DateTime{} = now \\ clock_now()),
     do: now |> DateTime.add(3600) |> DateTime.to_date()
 
+  @doc "The school-local (WAT) wall-clock time at `now`, same clock as `today/1`."
+  def now(%DateTime{} = now \\ clock_now()),
+    do: now |> DateTime.add(3600) |> DateTime.to_naive()
+
   defp clock_now,
     do: Application.get_env(:teacher_assistant, :school_clock_now) || DateTime.utc_now()
 

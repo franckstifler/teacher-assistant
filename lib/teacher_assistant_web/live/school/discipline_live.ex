@@ -94,6 +94,20 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     end
   end
 
+  def handle_event("mark_parents_notified", %{"sanction_id" => sanction_id}, socket) do
+    scope = socket.assigns.current_scope
+
+    with %{} = sanction <- Enum.find(socket.assigns.sanctions, &(&1.id == sanction_id)) do
+      case Discipline.mark_parents_notified(scope, sanction) do
+        {:ok, _} -> {:noreply, select_period(socket, nil)}
+        {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+        {:error, _reason} -> {:noreply, socket}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
   def handle_event("delete_sanction", %{"sanction_id" => sanction_id}, socket) do
     scope = socket.assigns.current_scope
 
@@ -232,6 +246,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 <th>{gettext("Durée (jours)")}</th>
                 <th>{gettext("Motif")}</th>
                 <th>{gettext("Émis par")}</th>
+                <th>{gettext("Parents")}</th>
                 <th :if={@can_edit?}><span class="sr-only">{gettext("Actions")}</span></th>
               </tr>
             </thead>
@@ -245,6 +260,29 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 </td>
                 <td>{sanction.reason || "—"}</td>
                 <td>{sanction.issued_by_user_id || "—"}</td>
+                <td id={"parents-#{sanction.id}"}>
+                  <span :if={sanction.parents_notified_on} class="text-xs text-base-content/70">
+                    {gettext("Parents notifiés le %{date}",
+                      date: Date.to_string(sanction.parents_notified_on)
+                    )}
+                  </span>
+                  <button
+                    :if={is_nil(sanction.parents_notified_on) and @can_edit?}
+                    id={"notify-parents-#{sanction.id}"}
+                    type="button"
+                    class="btn btn-ghost btn-xs"
+                    phx-click="mark_parents_notified"
+                    phx-value-sanction_id={sanction.id}
+                  >
+                    {gettext("Marquer les parents notifiés")}
+                  </button>
+                  <span
+                    :if={is_nil(sanction.parents_notified_on) and not @can_edit?}
+                    class="text-xs text-warning"
+                  >
+                    {gettext("Parents à notifier")}
+                  </span>
+                </td>
                 <td :if={@can_edit?}>
                   <button
                     id={"delete-sanction-#{sanction.id}"}

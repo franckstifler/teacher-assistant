@@ -115,8 +115,8 @@ defmodule TeacherAssistantWeb.Spaces do
     %{
       key: :surveillant,
       label: label(:surveillant),
-      home: ~p"/school/classes",
-      sections: [section(gettext("Vie scolaire"), [classes()])]
+      home: ~p"/school/day",
+      sections: [section(gettext("Vie scolaire"), [school_day(), absences(), classes()])]
     }
   end
 
@@ -131,13 +131,18 @@ defmodule TeacherAssistantWeb.Spaces do
 
   def space(:enseignant, facts) do
     items =
-      [facts.teaches? && courses(), facts.form_master? && classes(), timetable()]
+      [
+        facts.teaches? && my_day(),
+        facts.teaches? && courses(),
+        facts.form_master? && classes(),
+        timetable()
+      ]
       |> Enum.filter(& &1)
 
     %{
       key: :enseignant,
       label: label(:enseignant),
-      home: if(facts.teaches?, do: ~p"/school/courses", else: ~p"/school/classes"),
+      home: if(facts.teaches?, do: ~p"/school/today", else: ~p"/school/classes"),
       sections:
         [
           section(gettext("Enseignement"), items),
@@ -192,6 +197,14 @@ defmodule TeacherAssistantWeb.Spaces do
         "hero-chart-bar-square",
         ~p"/school/sequences"
       )
+
+  defp my_day, do: item("today", gettext("Ma journée"), "hero-sun", ~p"/school/today")
+
+  defp school_day,
+    do: item("day", gettext("Aujourd'hui"), "hero-clipboard-document-check", ~p"/school/day")
+
+  defp absences,
+    do: item("absences", gettext("Absences"), "hero-user-minus", ~p"/school/absences")
 
   defp courses,
     do: item("courses", gettext("Mes cours"), "hero-academic-cap", ~p"/school/courses")

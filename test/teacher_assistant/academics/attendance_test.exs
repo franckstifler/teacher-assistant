@@ -265,7 +265,13 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
                )
 
       assert {:ok, 1} =
-               Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Sick note")
+               Attendance.justify_day(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 ~D[2025-09-15],
+                 :maladie,
+                 "Sick note"
+               )
 
       entry1 =
         AttendanceEntry
@@ -317,7 +323,14 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
         })
         |> Ash.create(scope: ctx.scope)
 
-      assert {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Note")
+      assert {:ok, 1} =
+               Attendance.justify_day(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 ~D[2025-09-15],
+                 :maladie,
+                 "Note"
+               )
 
       other_day_entry =
         Ash.get!(AttendanceEntry, other_day_entry.id, scope: ctx.scope)
@@ -340,7 +353,13 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
                )
 
       assert {:ok, 1} =
-               Attendance.justify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15], "Sick note")
+               Attendance.justify_day(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 ~D[2025-09-15],
+                 :maladie,
+                 "Sick note"
+               )
 
       assert {:ok, 1} = Attendance.unjustify_day(ctx.scope, ctx.enrollment1, ~D[2025-09-15])
 

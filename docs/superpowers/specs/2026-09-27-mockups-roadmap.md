@@ -402,7 +402,7 @@ Out of scope: sending reminders and their log (N06), per-teacher view, export.
 
 ## G — School life, day view (spec)
 
-Status: spec approved 2026-09-30, not implemented.
+Status: spec approved 2026-09-30, implemented 2026-09-30 (no visual check done).
 
 Mockup: `Espaces par rôle` → Enseignant → "Ma journée · appel", Surveillant général → "Aujourd'hui" and
 "Absences" (excerpt with markup, palette, sample data and data logic saved in

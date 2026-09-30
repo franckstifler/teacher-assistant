@@ -98,7 +98,10 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     assert has_element?(view, "#justify-#{enrollment.id}")
 
     view
-    |> form("#justify-form-#{enrollment.id}", %{"note" => "Certificat médical"})
+    |> form("#justify-form-#{enrollment.id}", %{
+      "reason" => "maladie",
+      "note" => "Certificat médical"
+    })
     |> render_submit()
 
     conduct =

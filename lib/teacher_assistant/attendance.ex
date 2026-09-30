@@ -12,6 +12,7 @@ defmodule TeacherAssistant.Attendance do
   # is always referenced fully qualified so the two never collide under one
   # bare `Enrollment` alias.
   alias TeacherAssistant.Academics.Enrollment
+  alias TeacherAssistant.Academics.JustificationReason
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Academics.TeachingContext
@@ -54,6 +55,17 @@ defmodule TeacherAssistant.Attendance do
     unjustified_hours: Decimal.new(0),
     retards: 0
   }
+
+  # --- School life, day view (spec G) -------------------------------------
+
+  defdelegate school_day(scope, date, now), to: TeacherAssistant.Academics.SchoolLife
+  defdelegate teacher_day(scope, user, date, now), to: TeacherAssistant.Academics.SchoolLife
+
+  defdelegate teacher_missed_this_week(scope, user, today, now),
+    to: TeacherAssistant.Academics.SchoolLife
+
+  defdelegate absence_days(scope, first, last, today), to: TeacherAssistant.Academics.SchoolLife
+  defdelegate current_sequence_range(scope, today), to: TeacherAssistant.Academics.SchoolLife
 
   # --- Periods -------------------------------------------------------------
 
@@ -381,39 +393,53 @@ defmodule TeacherAssistant.Attendance do
   end
 
   @doc """
-  Sets `justified: true` and `justification_note: note` on every `:absent`
-  `AttendanceEntry` for `enrollment` on `date`. Entries with another status,
-  or on another date, are left untouched. Returns `{:ok, count}`.
+  Justifies `enrollment`'s day: every `:absent` `AttendanceEntry` on `date` gets
+  `justified: true`, the `reason` (a `JustificationReason`, required), the
+  optional `note`, the scope's user and the time. Entries with another status,
+  or on another date, are left untouched. Returns `{:ok, count}`, or
+  `{:error, :invalid_reason}` without writing when `reason` is not a reason.
   """
-  def justify_day(%Scope{} = scope, %Enrollment{} = enrollment, %Date{} = date, note) do
-    set_justification(scope, enrollment, date, true, note)
+  def justify_day(
+        %Scope{} = scope,
+        %Enrollment{} = enrollment,
+        %Date{} = date,
+        reason,
+        note \\ nil
+      ) do
+    if reason in JustificationReason.values() do
+      set_justification(scope, enrollment, date, %{
+        justified: true,
+        justification_reason: reason,
+        justification_note: note,
+        justified_by_user_id: scope.current_user && scope.current_user.id,
+        justified_at: DateTime.utc_now()
+      })
+    else
+      {:error, :invalid_reason}
+    end
   end
 
   @doc """
-  Sets `justified: false` and clears `justification_note` on every `:absent`
-  `AttendanceEntry` for `enrollment` on `date`. Returns `{:ok, count}`.
+  Unjustifies `enrollment`'s day: clears the justification (reason, note, author,
+  time) on every `:absent` `AttendanceEntry` on `date`. Returns `{:ok, count}`.
   """
   def unjustify_day(%Scope{} = scope, %Enrollment{} = enrollment, %Date{} = date) do
-    set_justification(scope, enrollment, date, false, nil)
+    set_justification(scope, enrollment, date, %{
+      justified: false,
+      justification_reason: nil,
+      justification_note: nil,
+      justified_by_user_id: nil,
+      justified_at: nil
+    })
   end
 
-  defp set_justification(
-         %Scope{} = scope,
-         %Enrollment{id: id},
-         %Date{} = date,
-         justified,
-         note
-       ) do
+  defp set_justification(%Scope{} = scope, %Enrollment{id: id}, %Date{} = date, attrs) do
     entries = absences_for_day!(id, date, scope: scope)
 
     results =
       Enum.map(entries, fn entry ->
         entry
-        |> Ash.Changeset.for_update(
-          :update,
-          %{justified: justified, justification_note: note},
-          scope: scope
-        )
+        |> Ash.Changeset.for_update(:update, attrs, scope: scope)
         |> Ash.update()
       end)
 

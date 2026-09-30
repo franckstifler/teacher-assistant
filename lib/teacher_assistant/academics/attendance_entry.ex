@@ -78,6 +78,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         :status,
         :justified,
         :justification_note,
+        :justification_reason,
+        :justified_by_user_id,
+        :justified_at,
         :recorded_by_user_id
       ]
     ]
@@ -269,6 +272,13 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
     attribute :justified, :boolean, allow_nil?: false, default: false, public?: true
     attribute :justification_note, :string, allow_nil?: true, public?: true
+
+    attribute :justification_reason, TeacherAssistant.Academics.JustificationReason,
+      allow_nil?: true,
+      public?: true
+
+    attribute :justified_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :justified_at, :utc_datetime, allow_nil?: true, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()

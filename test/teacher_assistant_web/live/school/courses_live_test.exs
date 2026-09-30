@@ -157,15 +157,15 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
   end
 
   describe "landing rule" do
-    test "a plain teacher lands on their courses from /school", %{
+    test "a plain teacher lands on their day from /school", %{
       school: school,
       teacher: teacher
     } do
-      assert {:error, {:live_redirect, %{to: "/school/courses"}}} =
+      assert {:error, {:live_redirect, %{to: "/school/today"}}} =
                live(conn_for(school, teacher), ~p"/school")
     end
 
-    test "a teacher who is also a form master lands on their courses", %{
+    test "a teacher who is also a form master lands on their day", %{
       school: school,
       teacher: teacher,
       cg: cg,
@@ -173,15 +173,15 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     } do
       {:ok, _} = Enrollment.set_form_master(scope, cg, teacher.id)
 
-      assert {:error, {:live_redirect, %{to: "/school/courses"}}} =
+      assert {:error, {:live_redirect, %{to: "/school/today"}}} =
                live(conn_for(school, teacher), ~p"/school")
     end
 
-    test "staff without a teaching space land on the classes (bursar, discipline master)", %{
+    test "staff without a teaching space land on their space home (bursar, discipline master)", %{
       school: school,
       scope: scope
     } do
-      for role <- [:bursar, :discipline_master] do
+      for {role, home} <- [bursar: "/school/classes", discipline_master: "/school/day"] do
         staff = TeacherAssistant.TeacherFixtures.user_fixture()
 
         {:ok, inv} =
@@ -190,7 +190,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
         {:ok, _} =
           Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: staff}, inv.token)
 
-        assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
+        assert {:error, {:live_redirect, %{to: ^home}}} =
                  live(conn_for(school, staff), ~p"/school")
       end
     end

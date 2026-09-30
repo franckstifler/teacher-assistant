@@ -136,7 +136,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
         [{enr.id, :absent}]
       )
 
-    {:ok, _} = Attendance.justify_day(scope, enr, date, "Certificat médical")
+    {:ok, _} = Attendance.justify_day(scope, enr, date, :maladie, "Certificat médical")
 
     {:ok, _} =
       Attendance.record_period(

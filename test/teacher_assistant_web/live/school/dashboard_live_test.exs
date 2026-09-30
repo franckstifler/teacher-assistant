@@ -234,9 +234,9 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       |> Plug.Conn.put_session(:workspace_id, school.id)
     end
 
-    test "a surveillant général lands on the classes", %{school: school, lscope: scope} do
+    test "a surveillant général lands on today's school life", %{school: school, lscope: scope} do
       conn = conn_with_roles(school, scope, [:discipline_master])
-      assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school")
+      assert {:error, {:live_redirect, %{to: "/school/day"}}} = live(conn, ~p"/school")
     end
 
     test "a member with no space of their own lands on the classes (École)", %{

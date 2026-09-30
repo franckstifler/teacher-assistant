@@ -43,6 +43,33 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
       ]
     ]
 
+    # V06: the school told the parents about this sanction, today, by the actor.
+    update :mark_parents_notified do
+      accept []
+      require_atomic? false
+
+      change fn changeset, context ->
+        changeset
+        |> Ash.Changeset.force_change_attribute(
+          :parents_notified_on,
+          TeacherAssistant.Academics.Reference.today()
+        )
+        |> Ash.Changeset.force_change_attribute(
+          :parents_notified_by_user_id,
+          context.actor && context.actor.id
+        )
+      end
+    end
+
+    # The school's latest sanctions (spec G, "Sanctions récentes").
+    read :recent do
+      prepare build(
+                sort: [date: :desc, inserted_at: :desc],
+                limit: 5,
+                load: [enrollment: [:student, :class_group]]
+              )
+    end
+
     read :for_class_in_range do
       argument :class_group_id, :uuid, allow_nil?: false
       argument :first, :date, allow_nil?: false
@@ -97,6 +124,8 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     attribute :reason, :string, allow_nil?: true, public?: true
     attribute :duration_days, :integer, allow_nil?: true, public?: true
     attribute :issued_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :parents_notified_on, :date, allow_nil?: true, public?: true
+    attribute :parents_notified_by_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end
