@@ -21,7 +21,7 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 | E | Role-aware navigation and home | R01, R02 | authorization increment (done) | M |
 | F | Censeur follow-up (N05 done) | N05, then N06 (P2) | D1, E | S (+M) |
 | G | School life, day view | V02, V01, V03, then V04, V06 (P2) | E | S×3 |
-| H | Pedagogy screens | P01, P02 (P2) | E | M |
+| H | Pedagogy screens — **on hold** (2026-09-30: needs progression plans, which no screen creates since the teacher-personal pause) | P01, P02 (P2) | E | M |
 | I | Report card cycle | N09, N13, N12, N11, N10 | D2a, D2b-1, D2b-2, D3 | S…L |
 | J | Timetable and staff | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
 | K | Platform | R04, R05, S04, S06, R03 | E | S…L |
