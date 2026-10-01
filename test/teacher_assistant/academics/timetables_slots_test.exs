@@ -64,7 +64,8 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     assert slot.teaching_context_id == tc_a.id
   end
 
-  test "placing the same teacher in another class at the same cell clashes", ctx do
+  test "placing the same teacher in another class at the same cell is saved as a clash (spec J4)",
+       ctx do
     %{cg_a: cg_a, cg_b: cg_b, tc_a: tc_a, tc_b: tc_b, period: period, scope: scope} = ctx
 
     {:ok, _slot} =
@@ -74,17 +75,20 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
         teaching_context_id: tc_a.id
       })
 
-    assert {:error, {:teacher_clash, "6e A"}} =
+    assert {:ok, %TimetableSlot{}} =
              Timetabling.place_slot(scope, cg_b, %{
                day: :monday,
                period_id: period.id,
                teaching_context_id: tc_b.id
              })
 
-    refute Enum.any?(
+    assert Enum.any?(
              list_slots_for_cell(scope, :monday, period.id),
              &(&1.class_group_id == cg_b.id)
            )
+
+    slots = Timetabling.school_slots(%{scope | current_academic_year: ctx.year})
+    assert TeacherAssistant.Academics.TimetableConflicts.count(slots) == 1
   end
 
   test "placing a different teacher/subject in the other class at the same cell succeeds", ctx do

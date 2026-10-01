@@ -85,7 +85,7 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
     assert :ok = Timetabling.clear_combined_slot(ctx.scope, ctx.course, :monday, ctx.period.id)
   end
 
-  test "a genuine clash between an unrelated class and the combined course's teacher is still rejected",
+  test "a clash between an unrelated class and the combined course's teacher is saved and counted once (spec J4)",
        ctx do
     {:ok, tc_unrelated} =
       Curriculum.assign_teacher(ctx.scope, ctx.unrelated, ctx.head, %{subject: "Physique"})
@@ -97,14 +97,15 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
         teaching_context_id: tc_unrelated.id
       })
 
-    assert {:error, {:teacher_clash, "1ère C"}} =
+    assert {:ok, _} =
              Timetabling.place_combined_slot(ctx.scope, ctx.course, :monday, ctx.period.id)
 
-    assert list_slots_for_cell(ctx.scope, :monday, ctx.period.id)
-           |> Enum.reject(&(&1.class_group_id == ctx.unrelated.id)) == []
+    assert length(list_slots_for_cell(ctx.scope, :monday, ctx.period.id)) == 3
+    slots = Timetabling.school_slots(%{ctx.scope | current_academic_year: ctx.year})
+    assert TeacherAssistant.Academics.TimetableConflicts.count(slots) == 1
   end
 
-  test "a genuine clash between two unrelated ordinary classes is still rejected", ctx do
+  test "a clash between two ordinary classes is saved and counted (spec J4)", ctx do
     other_teacher = TeacherFixtures.user_fixture()
 
     {:ok, inv} =
@@ -136,12 +137,15 @@ defmodule TeacherAssistant.Academics.TimetablesCombinedTest do
                teaching_context_id: tc_other.id
              })
 
-    assert {:error, {:teacher_clash, "1ère MACO"}} =
+    assert {:ok, %TimetableSlot{}} =
              Timetabling.place_slot(ctx.scope, ctx.unrelated, %{
                day: :tuesday,
                period_id: ctx.period.id,
                teaching_context_id: tc_unrelated_head.id
              })
+
+    slots = Timetabling.school_slots(%{ctx.scope | current_academic_year: ctx.year})
+    assert TeacherAssistant.Academics.TimetableConflicts.count(slots) == 1
   end
 
   defp list_slots_for_cell(scope, day, period_id) do

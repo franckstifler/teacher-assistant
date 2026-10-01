@@ -3,6 +3,8 @@ defmodule TeacherAssistant.Timetabling do
 
   use Ash.Domain, otp_app: :teacher_assistant
 
+  require Ash.Query
+
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
@@ -23,10 +25,6 @@ defmodule TeacherAssistant.Timetabling do
 
       define :list_for_cell, action: :for_cell, args: [:class_group_id, :day, :period_id]
       define :list_for_period, action: :for_period, args: [:period_id]
-
-      define :list_for_clash_check,
-        action: :for_clash_check,
-        args: [:day, :period_id, :teacher_user_id, :exclude_class_group_ids]
     end
   end
 
@@ -38,18 +36,12 @@ defmodule TeacherAssistant.Timetabling do
   def can_edit_timetable?(scope), do: Ash.can?({TimetableSlot, :place}, scope)
 
   @doc """
-  Places a teaching context into a (day, period) cell of a class's timetable.
+  Places a teaching context into a (day, period) cell of a class's timetable,
+  replacing any current occupant, and returns `{:ok, slot}`.
 
-  Rejects a `teaching_context_id` that doesn't belong to `class_group` with
-  `{:error, :invalid}`. Rejects a placement that would double-book the
-  context's teacher in another class at the same (workspace, day, period)
-  with `{:error, {:teacher_clash, other_class_label}}`. Otherwise upserts the
-  cell (replacing any current occupant) and returns `{:ok, slot}`.
-  An optional `:exempt_class_group_ids` key lists other classes whose slots
-  should NOT count as a clash against this placement — used by
-  `place_combined_slot/4` so a combined course's sibling classes (the same
-  teacher, deliberately, at the same cell) don't trip the clash guard
-  against each other while a genuine clash with any other class still is.
+  Rejects a `teaching_context_id` that doesn't belong to `class_group`, or an unknown
+  period, with `{:error, :invalid}`, and a closed cell (spec J1) with
+  `{:error, :closed_cell}`. A teacher clash is saved (spec J4): the editor shows it.
   """
   def place_slot(
         %Scope{} = scope,
@@ -58,21 +50,13 @@ defmodule TeacherAssistant.Timetabling do
           day: day,
           period_id: period_id,
           teaching_context_id: teaching_context_id
-        } = attrs
+        }
       ) do
-    exempt_class_group_ids = Map.get(attrs, :exempt_class_group_ids, [])
-
-    with {:ok, %TeachingContext{class_group_id: cg_id} = tc} when cg_id == cg.id <-
+    with {:ok, %TeachingContext{class_group_id: cg_id}} when cg_id == cg.id <-
            Ash.get(TeachingContext, teaching_context_id, scope: scope),
          {:ok, %Period{} = period} <- Ash.get(Period, period_id, scope: scope),
          :open <- open_or_closed(scope, day, period) do
-      case teacher_clash(scope, cg, day, period_id, tc.teacher_user_id, exempt_class_group_ids) do
-        {:clash, class_label} ->
-          {:error, {:teacher_clash, class_label}}
-
-        :ok ->
-          upsert_slot(scope, cg, teaching_context_id, period_id, day)
-      end
+      upsert_slot(scope, cg, teaching_context_id, period_id, day)
     else
       :closed -> {:error, :closed_cell}
       _ -> {:error, :invalid}
@@ -102,20 +86,13 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   @doc """
-  Places a `TimetableSlot` for EVERY member class of a `CombinedCourse` at
-  the same `day`/`period_id`, each referencing that class's own
-  teaching_context — the combined course occupies one logical cell across
-  its classes. A combined course is deliberately the same teacher teaching
-  several classes at once, so the member classes are exempted from the
-  teacher-clash guard against each other (see `place_slot/3`'s
-  `:exempt_class_group_ids`); a genuine clash against any class OUTSIDE the
-  course is still rejected with `{:error, {:teacher_clash, class_label}}`.
-
-  The clash guard is evaluated for every member class before any write is
-  attempted; the writes themselves run inside `TimetableSlot`'s
-  `:place_combined` action (`transaction? true`), so on any write failure
-  nothing is persisted for any member class. Returns `{:ok, [slot, ...]}`
-  (one per member class) or `{:error, reason}`.
+  Places a `TimetableSlot` for EVERY member class of a `CombinedCourse` at the same
+  `day`/`period_id`, each referencing that class's own teaching context — the
+  combined course occupies one logical cell across its classes, and its classes never
+  clash with each other (spec J4 counts a clash with any other class, but saves it).
+  The writes run inside `TimetableSlot`'s `:place_combined` action (`transaction?
+  true`): on any failure nothing is persisted. Returns `{:ok, [slot, ...]}` or
+  `{:error, reason}` (`:invalid`, `:closed_cell`).
   """
   def place_combined_slot(%Scope{} = scope, %CombinedCourse{} = course, day, period_id) do
     contexts =
@@ -131,29 +108,25 @@ defmodule TeacherAssistant.Timetabling do
           {:error, :invalid}
 
         _ ->
-          member_class_ids = Enum.map(contexts, & &1.class_group_id)
-
-          with :ok <- validate_no_clash(scope, contexts, day, period_id, member_class_ids) do
-            placements =
-              Enum.map(contexts, fn tc ->
-                %{
-                  class_group_id: tc.class_group_id,
-                  teaching_context_id: tc.id
-                }
-              end)
-
-            TimetableSlot
-            |> Ash.ActionInput.for_action(
-              :place_combined,
+          placements =
+            Enum.map(contexts, fn tc ->
               %{
-                day: day,
-                period_id: period_id,
-                placements: placements
-              },
-              scope: scope
-            )
-            |> Ash.run_action()
-          end
+                class_group_id: tc.class_group_id,
+                teaching_context_id: tc.id
+              }
+            end)
+
+          TimetableSlot
+          |> Ash.ActionInput.for_action(
+            :place_combined,
+            %{
+              day: day,
+              period_id: period_id,
+              placements: placements
+            },
+            scope: scope
+          )
+          |> Ash.run_action()
       end
     else
       :closed -> {:error, :closed_cell}
@@ -278,46 +251,6 @@ defmodule TeacherAssistant.Timetabling do
     if class_label, do: Map.put(base, :class_label, class_label), else: base
   end
 
-  defp validate_no_clash(%Scope{} = scope, contexts, day, period_id, member_class_ids) do
-    Enum.reduce_while(contexts, :ok, fn tc, :ok ->
-      case teacher_clash(
-             scope,
-             tc.class_group,
-             day,
-             period_id,
-             tc.teacher_user_id,
-             member_class_ids
-           ) do
-        {:clash, class_label} -> {:halt, {:error, {:teacher_clash, class_label}}}
-        :ok -> {:cont, :ok}
-      end
-    end)
-  end
-
-  defp teacher_clash(
-         %Scope{} = scope,
-         %ClassGroup{id: cg_id},
-         day,
-         period_id,
-         teacher_user_id,
-         exempt_class_group_ids
-       ) do
-    excluded_ids = [cg_id | exempt_class_group_ids]
-
-    day
-    # `TimetableSlot` is multitenant — pass the scope.
-    |> list_for_clash_check!(period_id, teacher_user_id, excluded_ids, scope: scope)
-    |> List.first()
-    |> case do
-      nil ->
-        :ok
-
-      slot ->
-        {:ok, class_group} = Ash.get(ClassGroup, slot.class_group_id, scope: scope)
-        {:clash, class_group.label}
-    end
-  end
-
   defp upsert_slot(
          %Scope{} = scope,
          %ClassGroup{id: cg_id},
@@ -338,4 +271,85 @@ defmodule TeacherAssistant.Timetabling do
     )
     |> Ash.create()
   end
+
+  @doc "The active year's slots as plain maps for `TimetableConflicts` (spec J4)."
+  def school_slots(%Scope{current_academic_year: nil}), do: []
+
+  def school_slots(%Scope{current_academic_year: year} = scope) do
+    TimetableSlot
+    |> Ash.Query.filter(teaching_context.academic_year_id == ^year.id)
+    |> Ash.Query.load(:teaching_context)
+    |> Ash.read!(scope: scope)
+    |> Enum.map(fn s ->
+      %{
+        id: s.id,
+        class_group_id: s.class_group_id,
+        day: s.day,
+        period_id: s.period_id,
+        teaching_context_id: s.teaching_context_id,
+        teacher_id: s.teaching_context.teacher_user_id,
+        combined_course_id: s.teaching_context.combined_course_id
+      }
+    end)
+  end
+
+  @doc """
+  Moves the class's lesson at `from` to the empty, open cell `to` (spec J4). Refused
+  for a combined lesson (changed on all its classes from the editor's chips).
+  """
+  def move_slot(%Scope{} = scope, %ClassGroup{} = cg, {fd, fp} = _from, {td, tp} = _to) do
+    with {:ok, slot} <- single_slot(scope, cg, fd, fp),
+         [] <- list_for_cell!(cg.id, td, tp, scope: scope),
+         {:ok, %Period{} = period} <- Ash.get(Period, tp, scope: scope),
+         :open <- open_or_closed(scope, td, period) do
+      slot
+      |> Ash.Changeset.for_update(:update, %{day: td, period_id: tp}, scope: scope)
+      |> Ash.update()
+      |> ok()
+    else
+      [_ | _] -> {:error, :occupied}
+      :closed -> {:error, :closed_cell}
+      {:error, _} = error -> error
+      _ -> {:error, :invalid}
+    end
+  end
+
+  @doc "Exchanges the class's lessons at two cells, in one transaction (spec J4)."
+  def swap_slots(%Scope{} = scope, %ClassGroup{} = cg, {ad, ap}, {bd, bp}) do
+    with {:ok, a} <- single_slot(scope, cg, ad, ap),
+         {:ok, b} <- single_slot(scope, cg, bd, bp) do
+      Ash.transact([TimetableSlot], fn ->
+        with {:ok, _} <- set_context(scope, a, b.teaching_context_id),
+             {:ok, _} <- set_context(scope, b, a.teaching_context_id) do
+          :ok
+        end
+      end)
+      |> case do
+        {:ok, :ok} -> :ok
+        {:ok, {:error, _} = error} -> error
+        {:error, _} = error -> error
+      end
+    end
+  end
+
+  defp set_context(scope, slot, tc_id),
+    do:
+      slot
+      |> Ash.Changeset.for_update(:update, %{teaching_context_id: tc_id}, scope: scope)
+      |> Ash.update()
+
+  # The class's non-combined lesson at a cell.
+  defp single_slot(scope, cg, day, period_id) do
+    case list_for_cell!(cg.id, day, period_id, scope: scope) do
+      [slot] ->
+        slot = Ash.load!(slot, :teaching_context, scope: scope)
+        if slot.teaching_context.combined_course_id, do: {:error, :combined}, else: {:ok, slot}
+
+      _ ->
+        {:error, :invalid}
+    end
+  end
+
+  defp ok({:ok, _}), do: :ok
+  defp ok(error), do: error
 end
