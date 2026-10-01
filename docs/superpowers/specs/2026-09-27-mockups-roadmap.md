@@ -496,7 +496,7 @@ The template comes last so it is designed once, with council decisions and appre
 
 ## I1 — Appreciations and distinctions (spec)
 
-Status: spec approved 2026-10-01, not implemented.
+Status: implemented 2026-10-01 (branch `i1-appreciations`, plan `docs/superpowers/plans/2026-10-01-i1-appreciations-distinctions.md`); no visual check done.
 
 Mockup: `Paramètres école` → "Appréciations & distinctions" (excerpt in
 `docs/superpowers/mockups/i1-appreciations-distinctions.html`). Gap: **N09**.
