@@ -1017,6 +1017,63 @@ D2a grid, optional `combined_course_id`); `Curriculum.assign_teacher/4`, `reassi
 Out of scope: the « Enseignants » list (entry rates, « Relancer », N06); teacher subject qualifications;
 editing coefficients or combined courses from the grid.
 
+## J4 — Censeur timetable editor (spec)
+
+Mockup: `Espaces par rôle` → Censeur → « Emploi du temps » (class tabs, cells red on a teacher clash, side
+panel with « Conflit : … », « Déplacer au … » / « Échanger avec … », subject chips « MATH · 3/5 h », hours per
+subject, school-wide conflict count). Gap: **T01**. J3 (rooms, unavailability) is postponed: no room or
+unavailability check here.
+
+User decisions (2026-10-01): a teacher clash is **saved and shown in red**, no longer refused; the new editor
+**replaces** the per-class timetable page. Combined courses (« cours regroupés », e.g. 4e Année MACO and 4e
+Année ELEQ taking Informatique together with one teacher) keep working as today and are never a clash between
+their own classes.
+
+Existing code: `TimetableSlot` (class × day × period, one per cell), `Timetabling.place_slot/3` (refuses a
+clash today, refuses a closed cell since J1), `place_combined_slot/4`, `clear_slot/4`,
+`clear_combined_slot/4`, `class_timetable/2` (slots + hours tally against `weekly_hours`); the per-class page
+`/school/classes/:id/timetable` (`TimetableLive`); J1's `SchoolCalendar.open_cell?/3`.
+
+### Rules
+
+1. `place_slot/3` and `place_combined_slot/4` no longer refuse a teacher clash. Still refused: a course not of
+   the class, an unknown period, a closed cell (`{:error, :closed_cell}`).
+2. A **clash**: the same teacher in two or more classes at the same day and period of the active year, unless
+   all those slots belong to one combined course. A pure `Academics.TimetableConflicts` returns the clashing
+   cells (`{class_group_id, day, period_id}` ⇒ the other classes) and the school's clash count (one per
+   teacher × day × period).
+3. **Fix suggestions** for a clashing cell holding a non-combined lesson, at most 2 moves then 2 swaps:
+   - move: an empty open cell of the same class where the teacher has no lesson;
+   - swap: another non-combined lesson of the same class whose teacher is free at the clashing cell, while the
+     clashing teacher is free at that lesson's cell, and the swap creates no new clash.
+   `Timetabling.move_slot/…` and `swap_slots/…` apply a fix in one transaction.
+4. **Hours**: per course of the class, slots placed against `weekly_hours` — `:missing` (amber), `:ok` (green),
+   `:over` (red) — the existing tally.
+5. A teacher with a clash sees both lessons in « Ma journée » and « Mon emploi du temps »; roll calls stay per
+   class. Nothing else changes.
+
+### Screen
+
+6. **« Emploi du temps »** (`/school/timetable`, `?class=<id>` selects the tab; admin axis, others redirected;
+   in the Proviseur and Censeur menus). `/school/classes/:id/timetable` redirects to
+   `/school/timetable?class=:id`; the class page's link points there. Printing is unchanged.
+7. Header « Emploi du temps · <classe> » and « n conflits à résoudre » (red) or « Aucun conflit »; class tabs
+   (active year, usual order), a red dot on a class with a clash.
+8. Grid: lesson days × periods (breaks as thin rows); a cell shows subject and teacher, red border and fill
+   when it clashes, « Libre » dashed when empty, greyed when closed (J1); the selected cell outlined; horizontal
+   scroll on narrow screens.
+9. Side panel for the selected open cell: day · period · time · class; current subject and teacher or
+   « Créneau libre »; on a clash « Conflit : <enseignant> a aussi cours en <classes> à ce créneau. » then the
+   fix buttons or « Aucune solution automatique »; subject chips « <matière> · placées/prévues h », red with a
+   title « <enseignant> a déjà cours en <classe> » when that teacher is busy then; choosing a chip places or
+   replaces; « Vider le créneau ». A combined course is tagged « regroupé »; placing or clearing it changes all
+   its classes; no fix is offered for it.
+10. « Heures par matière » for the tab's class, coloured as in rule 4.
+11. Strings through gettext (FR and EN).
+
+Out of scope: rooms and teacher unavailability (J3); automatic timetable generation; teacher absences (J5);
+editing combined courses from the editor.
+
 ## Holes found on 2026-10-01 (not yet specified)
 
 Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.
