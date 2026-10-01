@@ -77,6 +77,10 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
     update :deactivate do
       change set_attribute(:active, false)
     end
+
+    update :set_statutory_hours do
+      accept [:statutory_hours]
+    end
   end
 
   policies do
@@ -88,8 +92,13 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
       authorize_if {Checks.SchoolRole, any_of: :member}
     end
 
-    policy action_type([:create, :update, :destroy]) do
+    policy action([:create, :update, :destroy, :deactivate]) do
       authorize_if {Checks.SchoolRole, any_of: :head}
+    end
+
+    # Spec J2: the Proviseur and the Censeur set a teacher's weekly service.
+    policy action(:set_statutory_hours) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
     end
   end
 
@@ -108,6 +117,10 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
 
     attribute :status, TeacherAssistant.Accounts.MembershipStatus, allow_nil?: true, public?: true
     attribute :active, :boolean, allow_nil?: false, default: true, public?: true
+
+    # Spec J2: this teacher's weekly service; nil = the school's.
+    attribute :statutory_hours, :integer, public?: true, constraints: [min: 1, max: 40]
+
     timestamps()
   end
 

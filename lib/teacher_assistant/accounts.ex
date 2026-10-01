@@ -231,4 +231,35 @@ defmodule TeacherAssistant.Accounts do
   end
 
   defp gen_token, do: 24 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
+
+  # --- Statutory service (spec J2) ------------------------------------------------
+
+  def update_school_service(%Scope{} = scope, value) do
+    with {:ok, hours} <- parse_hours(value),
+         {:ok, profile} <- fetch_school_profile(scope) do
+      update_school_profile(profile, %{statutory_hours: hours}, scope: scope)
+    end
+  end
+
+  def set_member_service(%Scope{} = scope, %SchoolMembership{} = m, value) do
+    with {:ok, hours} <- parse_optional_hours(value) do
+      m
+      |> Ash.Changeset.for_update(:set_statutory_hours, %{statutory_hours: hours}, scope: scope)
+      |> Ash.update()
+    end
+  end
+
+  def can_set_member_service?(scope), do: Ash.can?({SchoolMembership, :set_statutory_hours}, scope)
+
+  defp parse_optional_hours(value) when value in [nil, ""], do: {:ok, nil}
+  defp parse_optional_hours(value), do: parse_hours(value)
+
+  defp parse_hours(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {n, ""} when n in 1..40 -> {:ok, n}
+      _ -> {:error, :invalid_hours}
+    end
+  end
+
+  defp parse_hours(_), do: {:error, :invalid_hours}
 end

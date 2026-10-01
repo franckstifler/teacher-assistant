@@ -104,7 +104,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :grade_scale,
         :lesson_days,
         :wednesday_afternoon_off?,
-        :default_lesson_minutes
+        :default_lesson_minutes,
+        :statutory_hours
       ]
 
       validate TeacherAssistant.Accounts.SchoolProfile.ValidateAppreciations
@@ -293,6 +294,13 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       default: 50,
       public?: true,
       constraints: [min: 1, max: 240]
+
+    # Spec J2: the teaching load a full-time teacher owes per week.
+    attribute :statutory_hours, :integer,
+      allow_nil?: false,
+      default: 18,
+      public?: true,
+      constraints: [min: 1, max: 40]
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,
