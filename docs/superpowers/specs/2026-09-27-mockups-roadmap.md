@@ -872,6 +872,11 @@ Decided 2026-10-01. One spec, plan and branch per sub-increment, in this order:
 J1 first because every later piece needs to know which days have lessons; J3 before J4 so the editor checks
 rooms and unavailability from the start; J5 last because it reads the finished timetable.
 
+**Postponed 2026-10-01:** J3 (rooms, teacher unavailability) is done later, at the user's request. J4 and J5 may
+go ahead without it: J4's editor then checks only teacher clashes and hours, and gains the room and
+unavailability checks when J3 lands; J5 suggests free colleagues from the timetable alone, refined by
+unavailability later.
+
 ## J1 — School calendar (spec)
 
 Status: implemented 2026-10-01 (branch `j1-school-calendar`, plan `docs/superpowers/plans/2026-10-01-j1-school-calendar.md`); no visual check done.
