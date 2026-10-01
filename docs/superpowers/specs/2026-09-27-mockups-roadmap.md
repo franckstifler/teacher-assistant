@@ -770,6 +770,91 @@ are keyed like I2 publications, by `period_key` (`"trim:<term id>"` or `"annee"`
 Out of scope: moving students to next year's classes and repeat history across years (M1); orientation;
 per-level thresholds.
 
+## I5 — Report card template (spec)
+
+Mockup: `Paramètres école` → "Modèle de bulletin" (fields `modele`, `aff`) and the "grades anglophones (A–F)"
+toggle under "Appréciations". Gap: **N12**. Builds on I1 (bands, distinctions), I2 (snapshots), I3 and I4
+(council outcomes).
+
+User decisions (2026-10-01): the card's language **follows the class** (francophone class → French card,
+anglophone class → English card), with a school setting to make every card bilingual; anglophone classes get
+an **editable letter-grade scale**; the **official header** is built from the school profile, no signature
+or stamp (S04, K); the **mockup's eight elements plus the QR** can be hidden; publishing **freezes the look
+too**; the QR page only says « authentique, publié le … » with the student's name. Design choices: the
+template applies to the **printed card** only (screens keep the reader's language and show everything);
+"Publication par" stays as in I2 (Proviseur and Censeur); sending cards to parents is R03.
+
+### Data
+
+1. `SchoolProfile` gains (admin axis):
+   - `bulletin_language` (`Ash.Type.Enum` `:by_class | :bilingual`, default `:by_class`).
+   - `bulletin_elements` (array of `Ash.Type.Enum` `BulletinElement`: `:rank`, `:class_average`,
+     `:min_max`, `:subject_appreciation`, `:effectif`, `:absences`, `:conduct`, `:pp_signature`,
+     `:qr_code`), default all but `:qr_code`. Unknown or duplicate values are rejected.
+   - `grade_scale`: embedded array of `%{from, letter, remark}`, default A 16 Excellent, B 14 Very good,
+     C 12 Good, D 10 Pass, E 8 Weak, F 0 Fail. Same rules as the I1 bands: at least one band; the first
+     `from` is 0; `from` strictly increasing within 0..20; letter and remark non-empty (trimmed). A band
+     covers `from` ≤ mark < next `from`; the last includes 20. Saved as a whole.
+2. No new header fields: the header is derived from the profile (item 6).
+3. Migration with `mix ash.codegen --dev`. Existing profiles get the defaults.
+4. New dependency `eqrcode` (pure-Elixir QR encoder, inline SVG).
+
+### Template
+
+5. Pure `BulletinTemplate.resolve(profile, class_group)` → `%{language, elements, grade_scale, header}`:
+   `language` is `:bilingual` when `bulletin_language` is `:bilingual`, else `:fr` for a francophone class
+   and `:en` for an anglophone one. `BulletinTemplate.grade(scale, mark)` → `{letter, remark}` or nil.
+6. `header`, resolved once: République du Cameroun · Paix – Travail – Patrie and Republic of Cameroon ·
+   Peace – Work – Fatherland (per language; both when bilingual); Ministère des Enseignements secondaires /
+   Ministry of Secondary Education; Délégation régionale des Enseignements secondaires du `<région>` and,
+   when the profile has a département, the département delegation; then the school's name, address, phone,
+   authorisation number (`registration_number`), motto and logo. Missing optional fields are left out.
+7. Publishing stores the resolved template in the snapshot (`snapshot_version` 3, key `template`). A
+   published v3 card renders from its stored template, whatever the settings say later. A draft, and a v1
+   or v2 publication (no template), renders with `resolve/2` on the current settings.
+
+### Printed card
+
+8. Labels go through one helper: French or English card → that locale (`Gettext.with_locale`); bilingual →
+   « French / English ». The card's `<html lang>` follows the language (`fr`, `en`, `fr` for bilingual).
+9. Subject column: a francophone class keeps the I1 appreciation; an anglophone class prints **Grade** and
+   **Remark** from the grade scale (the general average gets a grade too). Distinctions, conduct warnings
+   and passage decisions keep their own labels, in the card's language.
+10. Hidden elements leave no empty column: `:rank` hides the rank; `:class_average` hides the class average (new on the card: the
+    class's general average, printed after the student's, from the same view);
+    `:min_max` hides « Cote classe »; `:subject_appreciation` hides the appreciation or grade/remark
+    columns; `:effectif` hides the class size (cartouche and after the rank); `:absences` hides the
+    attendance line; `:conduct` hides the discipline line (conduct mark, consignes, sanctions);
+    `:pp_signature` hides the PP visa slot; `:qr_code` hides the QR. Colspans follow the visible columns.
+    Subjects, coefficients, marks, totals, the general average, distinctions, the council's appreciation and
+    decision, and the head's visa always print.
+11. The QR prints only on **published** cards with `:qr_code` on, beside the visas.
+
+### Verification page
+
+12. QR target: `/verify/bulletin/:token`, `token` = `Phoenix.Token.sign(endpoint, "bulletin-verify",
+    {publication_id, student_id})`, no expiry; the same at every reprint. Rotating `secret_key_base`
+    invalidates printed codes (accepted).
+13. Public LiveView or controller page, no login, minimal layout, browser language:
+    - published publication containing the student → « ✓ Bulletin authentique », student name, school,
+      class, period, « Publié le … »;
+    - withdrawn → « Ce bulletin a été retiré le … » (no reason);
+    - bad or tampered token, unknown publication, student not in the snapshot → « Lien de vérification
+      invalide ».
+    No marks. The read bypasses policies (`authorize?: false`) with the tenant taken from the publication
+    row — the only such read outside authentication.
+
+### Settings screen
+
+14. **"Modèle de bulletin"** (`/school/settings/bulletin`, PassageLive pattern, admin axis; others
+    redirected), linked from Settings and the Proviseur/Censeur "Paramètres" menus: language (Suivre la
+    classe / Bilingue), the nine element checkboxes, the grade-scale editor (I1 band editor pattern), and
+    a header preview built by `resolve/2`.
+15. Strings through gettext (FR and EN).
+
+Out of scope: digitised signature and stamp, editable delegation text (S04, K); sending cards to parents
+(R03); publication by role setting; template on the screen views; séquence cards' publication.
+
 ## Holes found on 2026-10-01 (not yet specified)
 
 Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.
