@@ -361,6 +361,15 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
           </div>
         </div>
 
+        <p
+          :if={@data && @outcome && Map.get(@outcome, :passage)}
+          id="bulletin-passage"
+          class="ta-leaf flex items-center gap-2"
+        >
+          <span class="ta-eyebrow">{gettext("Décision de fin d'année")}</span>
+          <strong>{TeacherAssistant.Academics.PassageDecision.label(@outcome.passage)}</strong>
+        </p>
+
         <div
           :if={@data && @outcome && (@outcome.conduct_warning || @outcome.appreciation)}
           id="bulletin-council"

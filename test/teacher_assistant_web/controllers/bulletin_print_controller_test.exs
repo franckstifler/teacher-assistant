@@ -409,4 +409,16 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       assert html =~ "Très bon trimestre"
     end
   end
+
+  describe "passage (I4)" do
+    test "the annual print fills the Décision slot", %{conn: conn, cg: cg} do
+      html =
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=annee")
+        |> html_response(200)
+
+      assert html =~ ~s(class="decision")
+      assert html =~ "Admis"
+    end
+  end
 end

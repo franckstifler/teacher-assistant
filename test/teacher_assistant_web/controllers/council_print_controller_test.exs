@@ -30,7 +30,8 @@ defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
   defp pv(conn, cg, term), do: get(conn, ~p"/school/councils/#{cg.id}/print?term=#{term.id}")
 
   test "the procès-verbal lists the council and its decisions", ctx do
-    {:ok, _} = Councils.save_header(ctx.scope, ctx.cg, {:trimester, ctx.term}, %{"chair" => "M. Abena"})
+    {:ok, _} =
+      Councils.save_header(ctx.scope, ctx.cg, {:trimester, ctx.term}, %{"chair" => "M. Abena"})
 
     {:ok, _} =
       Councils.set_decision(ctx.scope, ctx.cg, {:trimester, ctx.term}, ctx.st.id, %{
@@ -81,5 +82,28 @@ defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
     html = ctx.conn |> pv(ctx.cg, ctx.term) |> html_response(200)
     assert html =~ "9.00"
     refute html =~ "16.00"
+  end
+
+  describe "annual council (I4)" do
+    test "the annual procès-verbal lists passage decisions and their counts", ctx do
+      url = ~p"/school/councils/#{ctx.cg.id}/print?period=annee"
+      html = ctx.conn |> get(url) |> html_response(200)
+      assert html =~ "Conseil de fin d"
+      assert html =~ "Redouble"
+      assert html =~ "Redouble : 1"
+
+      {:ok, _} =
+        Councils.set_decision(ctx.scope, ctx.cg, {:annual, ctx.year}, ctx.st.id, %{
+          "passage_decision" => "exclu"
+        })
+
+      html = ctx.conn |> get(url) |> html_response(200)
+      assert html =~ "Exclu : 1"
+    end
+
+    test "a trimester procès-verbal has no passage", ctx do
+      html = ctx.conn |> pv(ctx.cg, ctx.term) |> html_response(200)
+      refute html =~ "Redouble"
+    end
   end
 end

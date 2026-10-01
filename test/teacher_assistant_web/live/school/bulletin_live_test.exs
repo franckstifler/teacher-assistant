@@ -452,4 +452,23 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
       refute has_element?(view, "#bulletin-distinction", "Encouragements")
     end
   end
+
+  describe "passage (I4)" do
+    test "the annual card shows the passage decision; a séquence card does not", %{
+      conn: conn,
+      cg: cg,
+      enr: enr,
+      seq: seq
+    } do
+      {:ok, view, _} =
+        live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=annee")
+
+      assert has_element?(view, "#bulletin-passage", "Admis")
+
+      {:ok, view, _} =
+        live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+      refute has_element?(view, "#bulletin-passage")
+    end
+  end
 end

@@ -56,7 +56,7 @@
         <td class="k">{gettext("Classe")}</td>
         <td>{@cg.label}</td>
         <td class="k">{gettext("Période")}</td>
-        <td>{gettext("Trimestre %{n}", n: @term.position)}</td>
+        <td>{@period_title}</td>
       </tr>
       <tr>
         <td class="k">{gettext("Date du conseil")}</td>
@@ -105,6 +105,11 @@
       <li :if={@distinction_groups == [] and @warning_groups == []}>—</li>
     </ul>
 
+    <h2 :if={@annual?}>{gettext("Décisions de fin d'année")}</h2>
+    <ul :if={@annual?} class="groups">
+      <li :for={{label, count} <- @passage_counts}>{label} : {count}</li>
+    </ul>
+
     <h2>{gettext("Décisions par élève")}</h2>
     <table class="body">
       <tr>
@@ -114,6 +119,7 @@
         <th>{gettext("Décision")}</th>
         <th>{gettext("Conduite")}</th>
         <th>{gettext("Appréciation")}</th>
+        <th :if={@annual?}>{gettext("Passage")}</th>
       </tr>
       <tr :for={row <- @rows}>
         <td class="num">{(row.data && row.data.rank) || "—"}</td>
@@ -122,6 +128,7 @@
         <td>{distinction(row.outcome && row.outcome.distinction)}</td>
         <td>{warning(row.outcome && row.outcome.conduct_warning)}</td>
         <td>{(row.outcome && row.outcome.appreciation) || "—"}</td>
+        <td :if={@annual?}>{passage(row.outcome)}</td>
       </tr>
     </table>
 
