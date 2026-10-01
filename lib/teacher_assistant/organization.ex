@@ -1,7 +1,15 @@
 defmodule TeacherAssistant.Organization do
   use Ash.Domain, otp_app: :teacher_assistant
 
-  alias TeacherAssistant.Academics.{AcademicYear, CalendarRules, Sequence, Term, Workspace}
+  alias TeacherAssistant.Academics.{
+    AcademicYear,
+    CalendarRules,
+    Holiday,
+    SchoolCalendar,
+    Sequence,
+    Term,
+    Workspace
+  }
   alias TeacherAssistant.Accounts.SchoolMembership
   alias TeacherAssistant.Scope
 
@@ -30,6 +38,7 @@ defmodule TeacherAssistant.Organization do
     resource AcademicYear
     resource Term
     resource Sequence
+    resource Holiday
   end
 
   authorization do
@@ -323,6 +332,41 @@ defmodule TeacherAssistant.Organization do
     |> list_sequences(year)
     |> Enum.find(fn s ->
       Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
+    end)
+  end
+
+  # --- Holidays (spec J1) ---------------------------------------------------------
+
+  def list_holidays(%Scope{} = scope, %AcademicYear{id: year_id}) do
+    Holiday
+    |> Ash.Query.for_read(:for_year, %{academic_year_id: year_id}, scope: scope)
+    |> Ash.read!()
+  end
+
+  def create_holiday(%Scope{} = scope, %AcademicYear{id: year_id}, attrs) do
+    Holiday
+    |> Ash.Changeset.for_create(:create, Map.put(attrs, :academic_year_id, year_id), scope: scope)
+    |> Ash.create()
+  end
+
+  def update_holiday(%Scope{} = scope, %Holiday{} = holiday, attrs) do
+    holiday |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
+  end
+
+  def delete_holiday(%Scope{} = scope, %Holiday{} = holiday), do: Ash.destroy(holiday, scope: scope)
+
+  @doc "Adds the year's national holidays not already there (same label and start). `{:ok, added}`."
+  def prefill_holidays(%Scope{} = scope, %AcademicYear{} = year) do
+    existing = scope |> list_holidays(year) |> MapSet.new(&{&1.label, &1.start_date})
+
+    year.start_date
+    |> SchoolCalendar.national_holidays(year.end_date)
+    |> Enum.reject(&MapSet.member?(existing, {&1.label, &1.start_date}))
+    |> Enum.reduce_while({:ok, 0}, fn h, {:ok, n} ->
+      case create_holiday(scope, year, h) do
+        {:ok, _} -> {:cont, {:ok, n + 1}}
+        error -> {:halt, error}
+      end
     end)
   end
 end

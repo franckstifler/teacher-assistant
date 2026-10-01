@@ -62,6 +62,8 @@ defmodule TeacherAssistant.Academics.AcademicYear do
 
                changeset
              end)
+
+      change TeacherAssistant.Academics.AcademicYear.PrefillHolidays
     end
 
     # Tenant scoping (attribute multitenancy) already restricts these to the

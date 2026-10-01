@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.JustificationReason
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Organization
@@ -531,5 +532,18 @@ defmodule TeacherAssistant.Attendance do
       6 -> {:ok, :saturday}
       _ -> {:error, :no_slot}
     end
+  end
+
+  @doc "The school calendar: profile settings and the active year's holidays (spec J1)."
+  def school_calendar(%Scope{} = scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    holidays =
+      case scope.current_academic_year do
+        nil -> []
+        year -> scope |> TeacherAssistant.Organization.list_holidays(year) |> Enum.map(&Map.take(&1, [:label, :start_date, :end_date]))
+      end
+
+    SchoolCalendar.new(profile.lesson_days, profile.wednesday_afternoon_off?, holidays)
   end
 end

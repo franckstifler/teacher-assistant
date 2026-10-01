@@ -101,7 +101,10 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :exclusion_absence_hours,
         :bulletin_language,
         :bulletin_elements,
-        :grade_scale
+        :grade_scale,
+        :lesson_days,
+        :wednesday_afternoon_off?,
+        :default_lesson_minutes
       ]
 
       validate TeacherAssistant.Accounts.SchoolProfile.ValidateAppreciations
@@ -276,6 +279,20 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
 
     # nil/[] = `BulletinTemplate.default_grade_scale/0`.
     attribute :grade_scale, {:array, TeacherAssistant.Accounts.GradeBand}, public?: true
+
+    # Spec J1: the school calendar. nil lesson days = Monday to Saturday.
+    attribute :lesson_days, {:array, TeacherAssistant.Academics.DayOfWeek}, public?: true
+
+    attribute :wednesday_afternoon_off?, :boolean,
+      allow_nil?: false,
+      default: false,
+      public?: true
+
+    attribute :default_lesson_minutes, :integer,
+      allow_nil?: false,
+      default: 50,
+      public?: true,
+      constraints: [min: 1, max: 240]
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,
