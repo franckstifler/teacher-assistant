@@ -89,7 +89,13 @@ defmodule TeacherAssistantWeb.Spaces do
           members(),
           correction_review(facts.pending_corrections)
         ]),
-        section(gettext("Paramètres"), [settings(), coefficients(), evaluations(), periods()])
+        section(gettext("Paramètres"), [
+          settings(),
+          coefficients(),
+          evaluations(),
+          appreciations(),
+          periods()
+        ])
       ]
     }
   end
@@ -106,7 +112,12 @@ defmodule TeacherAssistantWeb.Spaces do
           members(),
           correction_review(facts.pending_corrections)
         ]),
-        section(gettext("Paramètres"), [settings(), coefficients(), evaluations()])
+        section(gettext("Paramètres"), [
+          settings(),
+          coefficients(),
+          evaluations(),
+          appreciations()
+        ])
       ]
     }
   end
@@ -242,6 +253,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Évaluations & moyennes"),
         "hero-calculator",
         ~p"/school/settings/evaluations"
+      )
+
+  defp appreciations,
+    do:
+      item(
+        "appreciations",
+        gettext("Appréciations & distinctions"),
+        "hero-academic-cap",
+        ~p"/school/settings/appreciations"
       )
 
   defp periods, do: item("periods", gettext("Périodes"), "hero-clock", ~p"/school/periods")

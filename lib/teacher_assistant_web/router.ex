@@ -134,6 +134,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/settings", School.SettingsLive, :index
       live "/school/settings/coefficients", School.CoefficientsLive, :index
       live "/school/settings/evaluations", School.EvaluationsLive, :index
+      live "/school/settings/appreciations", School.AppreciationsLive, :index
       live "/school/periods", School.PeriodsLive, :index
       live "/school/sequences", School.SequenceTrackingLive, :index
       live "/school/corrections", School.CorrectionsLive, :index
