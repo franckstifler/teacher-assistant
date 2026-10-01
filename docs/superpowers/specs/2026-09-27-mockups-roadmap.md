@@ -878,10 +878,10 @@ Mockup: `Paramètres école` → "Horaires" (fields `jours`, `mer`, `duree`) and
 **S03, S02**.
 
 User decisions (2026-10-01): lesson days are weekday chips plus **one toggle « Mercredi après-midi libre »**
-(the afternoon = every period starting at or after 12:00); holidays are a **per-year list, prefilled** with the
+(the afternoon = every period starting at or after 13:00); holidays are a **per-year list, prefilled** with the
 national holidays; closing a day or half-day that has placed lessons is **refused until those lessons are
 removed**; the default lesson length is **50 min**, and the generated default schedule moves to 50-minute
-lessons to match. Out of J1: the roll-call grace period (« Délai pour faire l'appel »).
+lessons with breaks at 10:00–10:15 and 13:00–13:30 (layout C: the 15 minutes 12:45–13:00 have no period). Out of J1: the roll-call grace period (« Délai pour faire l'appel »).
 
 Existing code: `Period` (position, label, start/end time, kind lesson/break) with a "Périodes" page that can
 generate the default schedule, edit and delete (no add); `DayOfWeek` Monday–Saturday; `TimetableSlot`
@@ -895,14 +895,14 @@ generate the default schedule, edit and delete (no add); `DayOfWeek` Monday–Sa
    - `wednesday_afternoon_off?`: boolean, default false.
    - `default_lesson_minutes`: integer 1..240, default 50.
 2. Saving the lesson days or the Wednesday toggle is refused when timetable slots sit on a day being removed
-   or, with the toggle on, on a Wednesday period starting at or after 12:00: « 12 cours sont placés le
+   or, with the toggle on, on a Wednesday period starting at or after 13:00: « 12 cours sont placés le
    samedi : retirez-les de l'emploi du temps d'abord. » Nothing is written.
 3. `Period` validation: `end_time > start_time`, and no overlap with another period of the school
    (`start < other.end and other.start < end`): « Cours 2 (08:20–09:10) chevauche Cours 1 (07:30–08:25). »
 4. `Reference.default_periods_preset/0` moves to 50-minute lessons: Cours 1 07:30–08:20, Cours 2 08:20–09:10,
-   Récréation 09:10–09:30, Cours 3 09:30–10:20, Cours 4 10:20–11:10, Cours 5 11:10–12:00, Pause déjeuner
-   12:00–13:00, Cours 6 13:00–13:50, Cours 7 13:50–14:40, Cours 8 14:40–15:30. Existing schools keep their
-   periods.
+   Cours 3 09:10–10:00, Récréation 10:00–10:15, Cours 4 10:15–11:05, Cours 5 11:05–11:55, Cours 6
+   11:55–12:45, Pause 13:00–13:30, Cours 7 13:30–14:20, Cours 8 14:20–15:10, Cours 9 15:10–16:00 (nine
+   lessons; nothing between 12:45 and 13:00). Existing schools keep their periods.
 5. New `Holiday` resource (tenant, admin axis to write, members read): `academic_year_id`, `label`
    (non-empty), `start_date`, `end_date`; `end_date >= start_date`; both inside the year's dates.
 6. Prefill: creating an academic year adds the national holidays falling inside it; a « Préremplir » action
@@ -917,7 +917,7 @@ generate the default schedule, edit and delete (no add); `DayOfWeek` Monday–Sa
 8. One pure module answers, from the profile and the year's holidays:
    - `lesson_day?(date)`: false when the weekday is not a lesson day or the date is in a holiday;
    - `holiday_on(date)`: the holiday or nil;
-   - `open_cell?(day, period)`: false for a Wednesday period starting at or after 12:00 when the toggle is
+   - `open_cell?(day, period)`: false for a Wednesday period starting at or after 13:00 when the toggle is
      on; true otherwise (for a lesson day).
    Easter is computed with the anonymous Gregorian algorithm.
 
