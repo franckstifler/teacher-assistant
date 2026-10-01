@@ -730,8 +730,8 @@ are keyed like I2 publications, by `period_key` (`"trim:<term id>"` or `"annee"`
    (class, period_key). Existing trimester councils keep working (their key is `"trim:<term id>"`).
 3. `CouncilDecision` gains `passage_decision` (`Ash.Type.Enum` `:admis | :admis_rachat | :redouble |
    :exclu`; nil = keep the proposal). Only meaningful on the annual council.
-4. Migrations with `mix ash.codegen --dev` (rename/backfill handled by the generated migration; no rows exist
-   outside dev and tests yet).
+4. Migrations with `mix ash.codegen --dev`. `class_councils` is empty everywhere (checked on the dev database
+   on 2026-10-01), so the new required `period_key` needs no backfill.
 
 ### Computation
 
