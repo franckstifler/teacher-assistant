@@ -595,6 +595,90 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
+  # --- Report card template (spec I5) ---------------------------------------------
+
+  @doc "The school's report card template settings, defaults applied."
+  def bulletin_settings(%Scope{} = scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    %{
+      language: profile.bulletin_language,
+      elements: TeacherAssistant.Academics.BulletinTemplate.elements(profile.bulletin_elements),
+      grade_scale: TeacherAssistant.Academics.BulletinTemplate.grade_scale(profile.grade_scale),
+      custom_scale?: profile.grade_scale not in [nil, []]
+    }
+  end
+
+  @doc """
+  Saves the language mode and the elements shown from string params. Values are
+  matched against the enums (never `String.to_atom`); blanks are dropped, duplicates
+  removed, order kept. `{:error, :invalid_setting}` on anything unknown.
+  """
+  def update_bulletin_settings(%Scope{} = scope, %{} = params) do
+    with {:ok, language} <-
+           enum_value(TeacherAssistant.Academics.BulletinLanguage, params["language"]),
+         {:ok, elements} <- parse_elements(Map.get(params, "elements", [])) do
+      update_profile(scope, %{bulletin_language: language, bulletin_elements: elements})
+    end
+  end
+
+  @doc """
+  Saves the grade scale from `[%{from: "0", letter: "F", remark: "Fail"}, …]`, lowest
+  band first; bounds accept a comma. `{:error, :invalid_number}` when a bound is not a
+  number; the profile validation enforces the scale's rules.
+  """
+  def update_grade_scale(%Scope{} = scope, rows) when is_list(rows) do
+    Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, acc} ->
+      case parse_score(row.from) do
+        {:ok, %Decimal{} = from} ->
+          band = %{
+            from: from,
+            letter: String.trim(row.letter || ""),
+            remark: String.trim(row.remark || "")
+          }
+
+          {:cont, {:ok, [band | acc]}}
+
+        _ ->
+          {:halt, {:error, :invalid_number}}
+      end
+    end)
+    |> case do
+      {:ok, bands} -> update_profile(scope, %{grade_scale: Enum.reverse(bands)})
+      error -> error
+    end
+  end
+
+  @doc "Goes back to the default grade scale."
+  def reset_grade_scale(%Scope{} = scope), do: update_profile(scope, %{grade_scale: nil})
+
+  defp enum_value(enum, value) when is_binary(value) do
+    case Enum.find(enum.values(), &(Atom.to_string(&1) == value)) do
+      nil -> {:error, :invalid_setting}
+      atom -> {:ok, atom}
+    end
+  end
+
+  defp enum_value(_enum, _value), do: {:error, :invalid_setting}
+
+  defp parse_elements(values) when is_list(values) do
+    values
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.uniq()
+    |> Enum.reduce_while({:ok, []}, fn value, {:ok, acc} ->
+      case enum_value(TeacherAssistant.Academics.BulletinElement, value) do
+        {:ok, atom} -> {:cont, {:ok, [atom | acc]}}
+        error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, list} -> {:ok, Enum.reverse(list)}
+      error -> error
+    end
+  end
+
+  defp parse_elements(_), do: {:error, :invalid_setting}
+
   defp update_profile(scope, attrs) do
     with {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
       TeacherAssistant.Accounts.update_school_profile(profile, attrs, scope: scope)

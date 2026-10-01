@@ -98,11 +98,15 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :exclusion_below,
         :one_repeat_per_cycle?,
         :exclusion_on_conduct?,
-        :exclusion_absence_hours
+        :exclusion_absence_hours,
+        :bulletin_language,
+        :bulletin_elements,
+        :grade_scale
       ]
 
       validate TeacherAssistant.Accounts.SchoolProfile.ValidateAppreciations
       validate TeacherAssistant.Accounts.SchoolProfile.ValidatePassage
+      validate TeacherAssistant.Accounts.SchoolProfile.ValidateGradeScale
 
       change fn changeset, _context ->
         if Ash.Changeset.get_data(changeset, :verification_status) == :rejected do
@@ -259,6 +263,19 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       public?: true
 
     attribute :exclusion_absence_hours, :integer, default: 60, public?: true
+
+    # Spec I5: the printed report card's template.
+    attribute :bulletin_language, TeacherAssistant.Academics.BulletinLanguage,
+      allow_nil?: false,
+      default: :by_class,
+      public?: true
+
+    # nil = `BulletinElement.defaults/0`; [] = no optional element.
+    attribute :bulletin_elements, {:array, TeacherAssistant.Academics.BulletinElement},
+      public?: true
+
+    # nil/[] = `BulletinTemplate.default_grade_scale/0`.
+    attribute :grade_scale, {:array, TeacherAssistant.Accounts.GradeBand}, public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,
