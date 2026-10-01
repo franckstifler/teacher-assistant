@@ -947,6 +947,69 @@ generate the default schedule, edit and delete (no add); `DayOfWeek` Monday–Sa
 Out of scope: the roll-call grace period; per-class lesson days; holidays per class or level; moving
 séquence dates or deadlines around holidays.
 
+## J2 — Assignments overview (spec)
+
+Mockup: `Paramètres école` → "Affectations enseignants" (grid classes × subjects, side panel with each
+teacher's load after the change, « Retirer l'affectation », load bars; fields `service`, `pp`, `combine`). Gap:
+**T04**.
+
+User decisions (2026-10-01): the grid is **editable**, as in the mockup; the statutory service is a **school
+default with a per-teacher override**; « Un professeur principal par classe » means **showing each class's PP,
+setting it from the grid and flagging classes without one** (no setting; a teacher may be PP of several classes).
+Design choices: changes go through the existing assignment rules; combined courses are shown but changed only
+on the class page; out of J2: the « Enseignants » list with entry rates and reminders (N06), and which subjects
+a teacher can teach.
+
+Existing code: `TeachingContext` (class × subject × teacher, `weekly_hours` default 4, `coefficient` nil = the
+D2a grid, optional `combined_course_id`); `Curriculum.assign_teacher/4`, `reassign_teacher/3`,
+`remove_assignment/2` (refused with `:has_data` when marks or a progression exist); the D2a coefficient grid
+(`Curriculum.coefficient_cells/1`, `CoefficientRules.resolve/2`); `ClassGroup.form_master_user_id` with
+`Enrollment.set_form_master/3`.
+
+### Data
+
+1. `SchoolProfile.statutory_hours`: integer 1..40, default 18 (admin axis).
+2. `SchoolMembership.statutory_hours`: integer 1..40, nullable; nil = the school's value (admin axis).
+3. Migrations with `mix ash.codegen --dev`.
+
+### Computation
+
+4. A teacher's **weekly load** = the sum of `weekly_hours` of their active-year assignments, a combined course
+   counted once (one delivery for several classes). **Over** when the load is above their own service
+   (membership value, else the school's).
+5. A grid cell (active-year class × subject) is:
+   - **assigned** — a `TeachingContext` exists: its teacher, `over?` from rule 4, `combined?`;
+   - **to assign** — none exists and the coefficient grid resolves the subject for the class's subsystem,
+     level and série (`CoefficientRules.resolve/2`);
+   - **not taught** — neither.
+   Columns are the subjects with at least one assigned or to-assign cell, in the catalog order; rows are the
+   active year's classes in the usual class order.
+6. Counts: cells to assign; classes without a form master.
+
+### Screen
+
+7. **« Affectations »** (`/school/settings/assignments`, admin axis, others redirected; linked from Settings
+   and the Proviseur/Censeur « Paramètres » menus):
+   - header: « n enseignements à affecter » (red) or « Tous les enseignements sont affectés »; « n classes sans
+     professeur principal » (amber) when any;
+   - grid: per row the class label and its PP (or « Sans professeur principal », amber), then one cell per
+     subject — assigned: the teacher's name (amber when over; a « regroupé » tag for a combined course);
+     to assign: « À affecter » (red); not taught: dashed, not clickable; horizontal scroll on narrow screens;
+   - side panel for a selected assigned or to-assign cell: « classe · matière », hours per week (an input,
+     default 4 for a new assignment), current teacher, the list of active members — those already teaching the
+     subject first — each with « x h / s h » (current) or « x h / s h après » (after the change), red when over;
+     choosing one assigns or reassigns; « Retirer l'affectation » removes (refused with « Impossible : des notes
+     ou une progression existent. »). A combined-course cell's panel is read-only with a link to the class page;
+   - PP panel for a selected class: the members, choose one or « Aucun » (`Enrollment.set_form_master/3`);
+   - « Charge des enseignants »: every teacher with an assignment, a bar of load against their service,
+     heaviest first, red when over;
+   - « Service statutaire » (h / semaine) on this page, saved with the school profile.
+8. Members page: a « Service (h/sem.) » field per teaching member, empty = the school's value.
+9. Strings through gettext (FR and EN).
+
+Out of scope: the « Enseignants » list (entry rates, « Relancer », N06); teacher subject qualifications;
+editing coefficients or combined courses from the grid.
+
 ## Holes found on 2026-10-01 (not yet specified)
 
 Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.
