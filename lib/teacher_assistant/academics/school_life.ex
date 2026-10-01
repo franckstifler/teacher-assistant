@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   alias TeacherAssistant.Academics.{
     AttendanceEntry,
     EntryProgress,
+    SchoolCalendar,
     SchoolTemplates,
     TimetableSlot
   }
@@ -33,7 +34,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   """
   def school_day(%Scope{} = scope, %Date{} = date, %NaiveDateTime{} = now) do
     periods = lesson_periods(scope)
-    slots = slots(scope, [weekday(date)], nil)
+    slots = day_slots(scope, date, nil)
     done = done_roll_calls(scope, slots, date, date)
     cells = Enum.map(slots, &cell(&1, date, now, done))
 
@@ -54,7 +55,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
   @doc "The user's slots on `date`, sorted by period, with the same statuses as `school_day/3`."
   def teacher_day(%Scope{} = scope, user, %Date{} = date, %NaiveDateTime{} = now) do
-    slots = slots(scope, [weekday(date)], user.id)
+    slots = day_slots(scope, date, user.id)
     done = done_roll_calls(scope, slots, date, date)
     slots |> Enum.map(&cell(&1, date, now, done)) |> sort_cells()
   end
@@ -70,14 +71,21 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     first =
       if year && Date.compare(year.start_date, monday) == :gt, do: year.start_date, else: monday
 
-    dates = Date.range(first, Date.add(today, -1), 1) |> Enum.to_list()
+    cal = Attendance.school_calendar(scope)
+
+    dates =
+      Date.range(first, Date.add(today, -1), 1)
+      |> Enum.filter(&SchoolCalendar.lesson_day?(cal, &1))
 
     case dates do
       [] ->
         []
 
       dates ->
-        slots = slots(scope, dates |> Enum.map(&weekday/1) |> Enum.uniq(), user.id)
+        slots =
+          scope
+          |> slots(dates |> Enum.map(&weekday/1) |> Enum.uniq(), user.id)
+          |> Enum.filter(&SchoolCalendar.open_cell?(cal, &1.day, &1.period))
         done = done_roll_calls(scope, slots, first, List.last(dates))
         slots_by_day = Enum.group_by(slots, & &1.day)
 
@@ -86,6 +94,19 @@ defmodule TeacherAssistant.Academics.SchoolLife do
             cell = cell(slot, date, now, done),
             cell.status == :missed,
             do: cell
+    end
+  end
+
+  # Spec J1: no roll call is expected on a day off, nor in a closed cell.
+  defp day_slots(scope, date, teacher_id) do
+    cal = Attendance.school_calendar(scope)
+
+    if SchoolCalendar.lesson_day?(cal, date) do
+      scope
+      |> slots([weekday(date)], teacher_id)
+      |> Enum.filter(&SchoolCalendar.open_cell?(cal, &1.day, &1.period))
+    else
+      []
     end
   end
 

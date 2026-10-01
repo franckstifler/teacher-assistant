@@ -32,6 +32,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     assign(socket,
       now: now,
       slots: Attendance.teacher_day(scope, user, today, now),
+      day_off: Attendance.day_off(scope, today),
       missed: Attendance.teacher_missed_this_week(scope, user, today, now)
     )
   end
@@ -86,6 +87,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   def handle_event("record", _params, socket), do: {:noreply, socket}
 
+  defp no_lessons_title({:holiday, label}), do: gettext("Jour férié : %{label}", label: label)
+  defp no_lessons_title(_), do: gettext("Pas de cours aujourd'hui")
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
@@ -110,7 +114,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         </.page_header>
 
         <div :if={@slots == []} id="no-lessons">
-          <.empty_state icon="hero-sun" title={gettext("Pas de cours aujourd'hui")} />
+          <.empty_state icon="hero-sun" title={no_lessons_title(@day_off)} />
         </div>
 
         <div

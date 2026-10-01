@@ -12,7 +12,7 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
 
   alias TeacherAssistant.TeacherFixtures
 
-  # 2025-09-15 is a Monday; lesson 1 runs 07:30–08:25, lesson 2 08:25–09:20.
+  # 2025-09-15 is a Monday; lesson 1 runs 07:30–08:20, lesson 2 08:20–09:10.
   @monday ~D[2025-09-15]
 
   setup do
@@ -128,5 +128,61 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
     assert s.parents_notified_by_user_id == ctx.head.id
     assert [%{id: id}] = Discipline.recent_sanctions!(scope: ctx.scope)
     assert id == s.id
+  end
+
+  describe "school calendar (spec J1)" do
+    test "a holiday expects no roll call", ctx do
+      {:ok, _} =
+        TeacherAssistant.Organization.create_holiday(
+          ctx.scope,
+          ctx.scope.current_academic_year,
+          %{
+            label: "Journée pédagogique",
+            start_date: @monday,
+            end_date: @monday
+          }
+        )
+
+      late = at(@monday, ~T[23:00:00])
+      assert Attendance.school_day(ctx.scope, @monday, late).rows == []
+      assert Attendance.school_day(ctx.scope, @monday, late).missed == []
+      assert Attendance.teacher_day(ctx.scope, ctx.head, @monday, late) == []
+      assert Attendance.day_off(ctx.scope, @monday) == {:holiday, "Journée pédagogique"}
+
+      tuesday = Date.add(@monday, 1)
+
+      assert Attendance.teacher_missed_this_week(
+               ctx.scope,
+               ctx.head,
+               tuesday,
+               at(tuesday, ~T[08:00:00])
+             ) == []
+    end
+
+    test "an unticked weekday is a day without lessons", ctx do
+      {:ok, _} =
+        Attendance.update_school_days(ctx.scope, %{
+          "lesson_days" => ~w(tuesday wednesday),
+          "default_lesson_minutes" => "50"
+        })
+        |> case do
+          {:error, {:slots_in_closed_cells, _}} ->
+            # The setup's Monday slot blocks closing Monday: clear it first.
+            for p <- [ctx.p1, ctx.p2],
+                do:
+                  :ok = TeacherAssistant.Timetabling.clear_slot(ctx.scope, ctx.cg, :monday, p.id)
+
+            Attendance.update_school_days(ctx.scope, %{
+              "lesson_days" => ~w(tuesday wednesday),
+              "default_lesson_minutes" => "50"
+            })
+
+          other ->
+            other
+        end
+
+      assert Attendance.day_off(ctx.scope, @monday) == :no_lessons
+      assert Attendance.day_off(ctx.scope, Date.add(@monday, 1)) == nil
+    end
   end
 end

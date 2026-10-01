@@ -614,4 +614,14 @@ defmodule TeacherAssistant.Attendance do
     |> Enum.frequencies_by(& &1.day)
     |> Enum.sort_by(fn {day, _} -> Enum.find_index(SchoolCalendar.all_days(), &(&1 == day)) end)
   end
+
+  @doc "Why `date` has no lessons: `{:holiday, label}`, `:no_lessons`, or nil (a lesson day)."
+  def day_off(%Scope{} = scope, %Date{} = date) do
+    cal = school_calendar(scope)
+
+    case SchoolCalendar.holiday_on(cal, date) do
+      %{label: label} -> {:holiday, label}
+      nil -> if SchoolCalendar.lesson_day?(cal, date), do: nil, else: :no_lessons
+    end
+  end
 end

@@ -145,4 +145,22 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     view |> element("#notify-parents-#{s.id}") |> render_click()
     assert view |> element("#parents-#{s.id}") |> render() =~ "Parents notifiés le 2025-09-15"
   end
+
+  test "on a holiday both day views say so and expect no roll call (spec J1)",
+       %{conn: conn} = ctx do
+    year = Organization.current_academic_year(ctx.scope)
+
+    {:ok, _} =
+      Organization.create_holiday(ctx.scope, year, %{
+        label: "Journée pédagogique",
+        start_date: @today,
+        end_date: @today
+      })
+
+    {:ok, _view, html} = live(conn, ~p"/school/day")
+    assert html =~ "Jour férié : Journée pédagogique"
+
+    {:ok, _view, html} = live(conn, ~p"/school/today")
+    assert html =~ "Jour férié : Journée pédagogique"
+  end
 end

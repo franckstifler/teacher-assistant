@@ -34,6 +34,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
       today: today,
       now: now,
       day: Attendance.school_day(scope, today, now),
+      day_off: Attendance.day_off(scope, today),
       absences: Attendance.absence_days(scope, today, today, today),
       sanctions: Discipline.recent_sanctions!(scope: scope),
       to_notify: length(Discipline.list_parents_to_notify!(scope: scope))
@@ -50,6 +51,9 @@ defmodule TeacherAssistantWeb.School.DayLive do
       {:error, _} -> {:noreply, socket}
     end
   end
+
+  defp no_lessons_title({:holiday, label}), do: gettext("Jour férié : %{label}", label: label)
+  defp no_lessons_title(_), do: gettext("Pas de cours aujourd'hui")
 
   def render(assigns) do
     assigns =
@@ -113,7 +117,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
         </.kpi_row>
 
         <div :if={@day.rows == []} id="no-lessons">
-          <.empty_state icon="hero-sun" title={gettext("Pas de cours aujourd'hui")} />
+          <.empty_state icon="hero-sun" title={no_lessons_title(@day_off)} />
         </div>
 
         <div :if={@day.rows != []} class="ta-panel flex flex-col gap-2.5 overflow-x-auto">
