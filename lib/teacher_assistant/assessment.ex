@@ -17,8 +17,10 @@ defmodule TeacherAssistant.Assessment do
     AverageRounding,
     BulletinPublication,
     Bulletins,
+    ClassCouncil,
     ClassGroup,
     CombinedCourse,
+    CouncilDecision,
     EntryProgress,
     GradingRules,
     Mark,
@@ -40,6 +42,8 @@ defmodule TeacherAssistant.Assessment do
     resource MarkEvent
     resource MarkCorrection
     resource BulletinPublication
+    resource ClassCouncil
+    resource CouncilDecision
   end
 
   authorization do

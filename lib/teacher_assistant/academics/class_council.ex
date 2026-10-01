@@ -1,0 +1,140 @@
+defmodule TeacherAssistant.Academics.ClassCouncil do
+  @moduledoc """
+  A class's trimester council (spec I3): its header (date, chair, attendees, general
+  remarks), its status and a decision per student (`CouncilDecision`). Created by the
+  first save; written only by the Proviseur and Censeur. `TeacherAssistant.Councils`
+  refuses writes while the class's trimester is published.
+  """
+  use Ash.Resource,
+    otp_app: :teacher_assistant,
+    domain: TeacherAssistant.Assessment,
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
+
+  alias TeacherAssistant.Accounts.Checks
+
+  postgres do
+    table "class_councils"
+    repo TeacherAssistant.Repo
+
+    custom_indexes do
+      # (workspace_id, id), the unique key that tenant-matched references need.
+      index [:id], unique: true
+    end
+
+    references do
+      reference :class_group,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
+      reference :term, on_delete: :delete
+      reference :held_by, on_delete: :nilify
+      reference :workspace, on_delete: :delete, index?: true
+    end
+  end
+
+  actions do
+    defaults [:read]
+
+    read :for_class_term do
+      argument :class_group_id, :uuid, allow_nil?: false
+      argument :term_id, :uuid, allow_nil?: false
+      get? true
+      filter expr(class_group_id == ^arg(:class_group_id) and term_id == ^arg(:term_id))
+      prepare build(load: [:decisions])
+    end
+
+    read :for_term do
+      argument :term_id, :uuid, allow_nil?: false
+      filter expr(term_id == ^arg(:term_id))
+    end
+
+    create :open do
+      accept [:class_group_id, :term_id, :held_on, :chair, :attendees, :observations]
+    end
+
+    update :edit do
+      accept [:held_on, :chair, :attendees, :observations]
+    end
+
+    update :hold do
+      change set_attribute(:status, :held)
+      change set_attribute(:held_at, &DateTime.utc_now/0)
+      change set_attribute(:held_by_user_id, actor(:id))
+    end
+
+    update :reopen do
+      change set_attribute(:status, :open)
+      change set_attribute(:held_at, nil)
+      change set_attribute(:held_by_user_id, nil)
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if {Checks.SchoolRole, any_of: :member}
+    end
+
+    policy action_type([:create, :update]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+    end
+  end
+
+  multitenancy do
+    strategy :attribute
+    attribute :workspace_id
+  end
+
+  attributes do
+    uuid_v7_primary_key :id
+
+    attribute :status, TeacherAssistant.Academics.CouncilStatus,
+      allow_nil?: false,
+      default: :open,
+      public?: true
+
+    attribute :held_on, :date, public?: true
+    attribute :chair, :string, public?: true, constraints: [max_length: 200]
+    attribute :attendees, :string, public?: true, constraints: [max_length: 2000]
+    attribute :observations, :string, public?: true, constraints: [max_length: 4000]
+    attribute :held_at, :utc_datetime_usec, public?: true
+
+    timestamps()
+  end
+
+  relationships do
+    belongs_to :workspace, TeacherAssistant.Academics.Workspace do
+      source_attribute :workspace_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
+      source_attribute :class_group_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :term, TeacherAssistant.Academics.Term do
+      source_attribute :term_id
+      allow_nil? false
+      public? true
+    end
+
+    belongs_to :held_by, TeacherAssistant.Accounts.User do
+      source_attribute :held_by_user_id
+      public? true
+    end
+
+    has_many :decisions, TeacherAssistant.Academics.CouncilDecision do
+      destination_attribute :class_council_id
+      public? true
+    end
+  end
+
+  identities do
+    identity :one_per_class_term, [:class_group_id, :term_id]
+  end
+end
