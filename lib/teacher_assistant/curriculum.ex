@@ -6,6 +6,7 @@ defmodule TeacherAssistant.Curriculum do
   alias TeacherAssistant.Academics.{
     AcademicYear,
     Assessment,
+    AssignmentGrid,
     ClassGroup,
     BulletinGroup,
     CoefficientRules,
@@ -1465,4 +1466,86 @@ defmodule TeacherAssistant.Curriculum do
     |> Ash.Query.sort(position: :asc)
     |> Ash.read!(scope: scope)
   end
+
+  # --- Assignments overview (spec J2) ----------------------------------------------
+
+  @doc "The school's classes × subjects grid, teacher loads and members (active year)."
+  def assignment_overview(%Scope{} = scope) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    members = Accounts.list_members(scope)
+
+    {classes, contexts} =
+      case TeacherAssistant.Organization.current_academic_year(scope) do
+        nil ->
+          {[], []}
+
+        year ->
+          {scope
+           |> Enrollment.list_class_groups(year)
+           |> Enum.sort_by(&SchoolTemplates.class_sort_key/1),
+           TeachingContext
+           |> Ash.Query.filter(academic_year_id == ^year.id)
+           |> Ash.read!(scope: scope)}
+      end
+
+    %{
+      classes: classes,
+      subjects: list_subjects(scope),
+      contexts: contexts,
+      cells: coefficient_cells(scope),
+      school_hours: profile.statutory_hours,
+      services: Map.new(members, &{&1.user_id, &1.statutory_hours})
+    }
+    |> AssignmentGrid.build()
+    |> Map.put(:members, members)
+  end
+
+  @doc "The class's assignment for a subject, or nil."
+  def assignment_at(%Scope{} = scope, %ClassGroup{} = cg, subject_id) do
+    scope |> list_assignments_for_class(cg) |> Enum.find(&(&1.subject_id == subject_id))
+  end
+
+  @doc """
+  Puts `user_id` on the class × subject cell with `hours` a week: assigns when the
+  cell is empty, else reassigns and updates the hours. A combined course is refused
+  here (it is changed on the class page).
+  """
+  def place_assignment(%Scope{} = scope, %ClassGroup{} = cg, %Subject{} = subject, user_id, hours) do
+    with {:ok, %ClassGroup{} = cg} <- Enrollment.fetch_owned_class_group(scope, cg.id),
+         {:ok, hours} <- parse_weekly_hours(hours),
+         {:ok, teacher} <- member_user(scope, user_id) do
+      case assignment_at(scope, cg, subject.id) do
+        nil ->
+          assign_teacher(scope, cg, teacher, %{subject: subject, weekly_hours: hours})
+
+        %TeachingContext{combined_course_id: cc} when not is_nil(cc) ->
+          {:error, :combined}
+
+        tc ->
+          with {:ok, tc} <- reassign_teacher(scope, tc, teacher) do
+            tc
+            |> Ash.Changeset.for_update(:update, %{weekly_hours: hours}, scope: scope)
+            |> Ash.update()
+          end
+      end
+    end
+  end
+
+  defp member_user(scope, user_id) when is_binary(user_id) do
+    case Accounts.fetch_school_membership(scope, %User{id: user_id}) do
+      {:ok, m} -> {:ok, m |> Ash.load!(:user, scope: scope) |> Map.fetch!(:user)}
+      _ -> {:error, :not_assignable}
+    end
+  end
+
+  defp member_user(_scope, _), do: {:error, :not_assignable}
+
+  defp parse_weekly_hours(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {n, ""} when n in 1..20 -> {:ok, n}
+      _ -> {:error, :invalid_hours}
+    end
+  end
+
+  defp parse_weekly_hours(_), do: {:error, :invalid_hours}
 end
