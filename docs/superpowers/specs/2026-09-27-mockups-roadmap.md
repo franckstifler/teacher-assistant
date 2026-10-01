@@ -637,7 +637,7 @@ setting and sending report cards to parents (I5, notifications); publishing séq
 
 ## I3 — Class councils (spec)
 
-Status: spec approved 2026-10-01, not implemented.
+Status: implemented 2026-10-01 (branch `i3-class-councils`, plan `docs/superpowers/plans/2026-10-01-i3-class-councils.md`); no visual check done.
 
 Mockup: `Espaces par rôle` → Censeur → "Conseils de classe" (logic in
 `docs/superpowers/mockups/i3-conseils-de-classe.html`; list + detail markup in
