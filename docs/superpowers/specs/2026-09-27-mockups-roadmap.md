@@ -635,6 +635,76 @@ changes a published card.
 Out of scope: council decisions and requiring a council before publishing (I3); the "Publication par"
 setting and sending report cards to parents (I5, notifications); publishing séquence report cards.
 
+## I3 — Class councils (spec)
+
+Status: spec approved 2026-10-01, not implemented.
+
+Mockup: `Espaces par rôle` → Censeur → "Conseils de classe" (logic in
+`docs/superpowers/mockups/i3-conseils-de-classe.html`; list + detail markup in
+`i2-bulletins-publication.html`). Gap: **N11** (trimester councils; the annual council and passage are I4).
+
+User decisions (2026-10-01): only the **Censeur and Proviseur** record councils; per student the council
+keeps a **work distinction** (pre-filled from I1, changeable), an optional **conduct warning** and a
+**free-text appreciation**; **publishing a trimester requires the class's council to be held** and a
+published term locks its council. Design choice: one `ClassCouncil` per class × term and one
+`CouncilDecision` row per student, created only when the council changes something.
+
+### Data
+
+1. `ClassCouncil` (attribute multitenancy): `class_group`, `term`, `status` (`Ash.Type.Enum`
+   `:open | :held`), `held_on` (date; defaults to the term's `class_council_date`), `chair` (text),
+   `attendees` (text), `observations` (text), `held_at`, `held_by_user_id`. One per (class, term). Created
+   on first visit or first edit.
+2. `CouncilDecision`: `class_council`, `student`, `distinction_choice` (`Ash.Type.Enum`: the five I1
+   `Distinction` values plus `:none`; nil = keep the I1 proposal), `conduct_warning` (`Ash.Type.Enum`
+   `:avertissement_conduite | :blame_conduite`, nil = none), `appreciation` (text, trimmed, ≤ 300
+   characters). One per (council, student).
+3. Writes (council fields, decisions, hold, reopen): admin axis only. Reads: school members (screens decide
+   what is shown). While the class's trimester is published (I2), every write is refused with
+   "Conseil verrouillé : bulletins publiés" — withdrawing the publication unlocks it.
+4. Migrations with `mix ash.codegen --dev`.
+
+### Computation
+
+5. A student's council outcome: `distinction` = the decision's choice (`:none` → nil) or, with no choice,
+   the I1 proposal for the trimester; `conduct_warning`; `appreciation`. Students with no decision row get
+   the proposal and empty fields.
+6. The I2 report-card view gains `council: %{held?, held_on, outcomes: %{student_id => outcome}}` for
+   trimester periods (nil for séquence and annual), so a publication freezes the council.
+7. I2 `publish` for a trimester requires the class's council for that term to be `:held`; otherwise
+   `{:error, :council_not_held}` and the Bulletins screen disables "Publier" with "Conseil de classe non
+   tenu". Annual publishing is unchanged until I4.
+
+### Screens
+
+8. **"Conseils de classe"** (`/school/councils?term=<id>`), menu item for the Proviseur and Censeur: term
+   tabs (default: the trimester covering today); one row per class — council date, mark-entry rate for the
+   term (I2 `entry_rate`), status "Saisie incomplète" (rate < 100), "Prêt" (100, not held), "Tenu",
+   "Publié"; header "n / N classes prêtes". A row opens the class's council.
+9. **Council page** (`/school/councils/:class_id?term=<id>`):
+   - header form: date, président, présents, observations générales (saved on submit);
+   - class statistics for the term: effectif, moyenne de la classe, taux de réussite, garçons / filles;
+   - student table, by rank: rang, élève, moyenne, proposed distinction (I1), decision select (Proposition
+     · the five distinctions · Aucune), conduct warning select (Aucun · Avertissement de conduite · Blâme de
+     conduite), appreciation input; each row saves on change, with a short "Enregistré" mark;
+   - "Marquer le conseil tenu" (confirmation « Saisie incomplète : n %. Marquer tenu quand même ? » below
+     100 %), "Rouvrir le conseil" while held and not published; when published, everything is read-only
+     with "Conseil verrouillé : bulletins publiés";
+   - "Imprimer le procès-verbal".
+10. **Procès-verbal** (A4 print, `/school/councils/:class_id/print?term=<id>`): school, class, term, date,
+    président, présents, the class statistics, observations générales, the lists of Félicitations,
+    Encouragements, Tableau d'honneur, Avertissement / Blâme travail and conduct warnings, then one line
+    per student (rang, élève, moyenne, décision, avertissement de conduite, appréciation); signature lines
+    "Le président du conseil" and "Le professeur principal". An open council prints "PROJET".
+11. **Report card** (screen and print), trimester only: the distinction shown is the council outcome; the
+    conduct warning when any; "Appréciation du conseil de classe" filled with the council's text (the
+    print's blank ruled line otherwise).
+12. Access: council screens and the procès-verbal require the admin axis; others are redirected. Strings
+    through gettext (FR and EN).
+
+Out of scope: the annual council and passage decisions (I4); the form master preparing decisions; sending
+the procès-verbal; electronic signatures.
+
 ## Holes found on 2026-10-01 (not yet specified)
 
 Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.

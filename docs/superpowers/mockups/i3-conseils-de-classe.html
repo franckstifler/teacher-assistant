@@ -1,0 +1,18 @@
+<!-- Excerpt of claude.ai/design project abc12b3e-a26c-41e5-a97c-f0a9be47fc8b, file "Espaces par rôle.dc.html":
+     Censeur "Conseils de classe" screen logic (spec I3). The generic list + detail markup is in i2-bulletins-publication.html. Reference only. -->
+<script type="text/x-reference">
+const K={card:'oklch(38% 0.04 164)',line:'oklch(50% 0.035 164)',ink:'oklch(95% 0.012 150)',mute:'oklch(78% 0.02 155)',pri:'oklch(80% 0.13 162)',amb:'oklch(83% 0.13 85)',err:'oklch(73% 0.13 30)',on:'oklch(26% 0.05 164)'};
+case 'conseils':{
+      const rows=CLASSES.map((cl,r)=>{const pc=this.rowPct(r),done=s.pvDone[cl];return row('c'+r,[cell(cl,{bold:true}),cell(`${12+Math.floor(r/3)} oct. · ${['08:00','10:30','14:00'][r%3]}`,{mono:true}),cell(pc+' %',{mono:true,right:true,color:pc===100?K.pri:K.amb}),cell(done?'Tenu ✓':pc===100?'Prêt':'Saisie incomplète',{color:done||pc===100?K.pri:K.amb})]);});
+      G([['Classe'],['Date'],['Saisie',1],['Statut']],'80px minmax(0,1fr) 80px 150px',rows);
+      const r=s.sel?Number(s.sel.slice(1)):4,cl=CLASSES[r],pc=this.rowPct(r),b=this.bull(cl),ci=cinfo(r),mc=b.reduce((a,x)=>a+x.mg,0)/b.length,succ=Math.round(b.filter(x=>x.mg>=10).length/b.length*100);
+      const grp=(x,opts)=>({label:`${x.name} · ${fr(x.mg)}`,options:opts.map(o=>{const key=cl+'|'+x.name;return chip(o,s.dec[key]===o,()=>this.setState(st=>({dec:{...st.dec,[key]:st.dec[key]===o?null:o}})));})});
+      X.detail=det({eyebrow:`Conseil de classe · ${12+Math.floor(r/3)} oct.`,title:cl,sub:`Prof. principal : ${ci.pp}`,status:s.pvDone[cl]?'Tenu':false,
+        lines:[{label:'Effectif',value:String(ci.eff)},{label:'Moyenne de la classe',value:fr(mc)},{label:'Taux de réussite (≥ 10)',value:succ+' %'},{label:'Saisie des notes S1',value:pc+' %'}],
+        groups:[...b.slice(0,2).map(x=>grp(x,['Félicitations','Encouragements',"Tableau d'honneur"])),...b.slice(-2).map(x=>grp(x,['Avertissement travail','Blâme travail','Avertissement conduite']))],
+        cta:pc<100?cta('Saisie incomplète — voir qui relancer',()=>go('censeur'),true):cta(s.pvDone[cl]?'Procès-verbal généré ✓':'Générer le procès-verbal',()=>this.setState(st=>({pvDone:{...st.pvDone,[cl]:true}})),!!s.pvDone[cl]),
+        note:'Décisions proposées pour les deux premiers et les deux derniers ; elles sont reportées sur les bulletins.'});
+      X.head={eyebrow:'Censorat · 1er trimestre',title:'Conseils de classe',side:`${CLASSES.filter((_,r)=>this.rowPct(r)===100).length} / ${CLASSES.length} classes prêtes`};
+      X.notes=["Un conseil n'est « prêt » que si la saisie de la classe est complète — lien direct avec le suivi des séquences.","À modéliser : décision du conseil par élève et procès-verbal (aucune ressource aujourd'hui)."];break;}
+    
+</script>
