@@ -135,9 +135,15 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   describe "class council (I3)" do
     test "publishing waits for the held council; the distinction follows it", ctx do
       {:ok, _} =
-        TeacherAssistant.Councils.set_decision(ctx.scope, ctx.cg, {:trimester, ctx.term}, ctx.dj.student.id, %{
-          "distinction_choice" => "tableau_honneur"
-        })
+        TeacherAssistant.Councils.set_decision(
+          ctx.scope,
+          ctx.cg,
+          {:trimester, ctx.term},
+          ctx.dj.student.id,
+          %{
+            "distinction_choice" => "tableau_honneur"
+          }
+        )
 
       {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
       assert has_element?(view, "#publish[disabled]")

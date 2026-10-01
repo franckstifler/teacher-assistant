@@ -707,7 +707,7 @@ the procès-verbal; electronic signatures.
 
 ## I4 — Passage rules and end-of-year decisions (spec)
 
-Status: spec approved 2026-10-01, not implemented.
+Status: implemented 2026-10-01 (branch `i4-passage`, plan `docs/superpowers/plans/2026-10-01-i4-passage.md`); no visual check done.
 
 Mockup: `Paramètres école` → "Passage & redoublement" (fields `mp`, `rachat`, `excl`, `redMax`, `condExcl`,
 `absExcl`). Gap: **N10**. Builds on I3's councils and I2's publication.
