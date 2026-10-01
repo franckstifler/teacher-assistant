@@ -140,6 +140,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/settings/passage", School.PassageLive, :index
       live "/school/settings/bulletin", School.BulletinTemplateLive, :index
       live "/school/settings/holidays", School.HolidaysLive, :index
+      live "/school/settings/assignments", School.AssignmentsLive, :index
       live "/school/periods", School.PeriodsLive, :index
       live "/school/sequences", School.SequenceTrackingLive, :index
       live "/school/bulletins", School.BulletinsLive, :index

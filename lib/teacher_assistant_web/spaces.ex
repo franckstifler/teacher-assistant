@@ -143,6 +143,7 @@ defmodule TeacherAssistantWeb.Spaces do
           passage(),
           bulletin_template(),
           holidays(),
+          assignments(),
           periods()
         ])
       ]
@@ -170,7 +171,8 @@ defmodule TeacherAssistantWeb.Spaces do
           appreciations(),
           passage(),
           bulletin_template(),
-          holidays()
+          holidays(),
+          assignments()
         ])
       ]
     }
@@ -375,6 +377,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Congés & jours fériés"),
         "hero-calendar",
         ~p"/school/settings/holidays"
+      )
+
+  defp assignments,
+    do:
+      item(
+        "assignments",
+        gettext("Affectations"),
+        "hero-squares-2x2",
+        ~p"/school/settings/assignments"
       )
 
   defp councils,

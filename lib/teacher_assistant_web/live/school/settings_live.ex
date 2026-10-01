@@ -383,6 +383,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             {gettext("Congés & jours fériés")}
           </.link>
 
+          <.link
+            id="assignments-link"
+            navigate={~p"/school/settings/assignments"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Affectations")}
+          </.link>
+
           <div class="overflow-x-auto">
             <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
               <thead>

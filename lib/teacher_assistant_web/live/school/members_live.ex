@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        socket
        |> assign(:scope, scope)
        |> assign(:can_manage_staff?, Accounts.can_manage_staff?(scope))
+       |> assign(:can_set_service?, Accounts.can_set_member_service?(scope))
        |> assign(:invite_form, invite_form())
        |> reload_members()}
     else
@@ -33,6 +34,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                 <th>{gettext("Nom")}</th>
                 <th>{gettext("Rôles")}</th>
                 <th>{gettext("Statut")}</th>
+                <th>{gettext("Service (h/sem.)")}</th>
                 <th :if={@can_manage_staff?}><span class="sr-only">{gettext("Actions")}</span></th>
               </tr>
             </thead>
@@ -79,6 +81,24 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                   <span :if={!@can_manage_staff?}>
                     {if m.status, do: MembershipStatus.label(m.status), else: "—"}
                   </span>
+                </td>
+                <td>
+                  <.form
+                    :if={@can_set_service?}
+                    for={%{}}
+                    id={"service-#{m.id}"}
+                    phx-submit="set_service"
+                  >
+                    <input type="hidden" name="id" value={m.id} />
+                    <input
+                      name="service"
+                      value={m.statutory_hours}
+                      placeholder={gettext("École")}
+                      inputmode="numeric"
+                      class="input input-bordered input-xs w-16 text-right"
+                    />
+                  </.form>
+                  <span :if={!@can_set_service?}>{m.statutory_hours || "—"}</span>
                 </td>
                 <td :if={@can_manage_staff?}>
                   <button
@@ -244,6 +264,25 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("set_service", %{"id" => id, "service" => value}, socket) do
+    scope = socket.assigns.scope
+
+    with %{} = m <- find_membership(scope, id),
+         {:ok, _} <- Accounts.set_member_service(scope, m, value) do
+      {:noreply, socket |> reload_members() |> put_flash(:info, gettext("Réglage enregistré."))}
+    else
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, :invalid_hours} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Indiquez un nombre d'heures entre 1 et 40."))}
 
       _ ->
         {:noreply, socket}

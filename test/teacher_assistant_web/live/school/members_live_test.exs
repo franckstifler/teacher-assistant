@@ -149,4 +149,20 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
     assert reloaded.status == nil
   end
+
+  test "the head sets a teacher's own weekly service (spec J2)", %{conn: conn, actor: user} do
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Service"
+      })
+
+    scope = school_scope(user, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
+    m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+    conn = enter_school(conn, school)
+    {:ok, view, _html} = live(conn, ~p"/school/members")
+
+    view |> form("#service-#{m.id}", %{service: "12"}) |> render_submit()
+    assert Enum.find(Accounts.list_members(scope), &(&1.id == m.id)).statutory_hours == 12
+  end
 end
