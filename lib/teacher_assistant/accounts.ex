@@ -249,7 +249,8 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
-  def can_set_member_service?(scope), do: Ash.can?({SchoolMembership, :set_statutory_hours}, scope)
+  def can_set_member_service?(scope),
+    do: Ash.can?({SchoolMembership, :set_statutory_hours}, scope)
 
   defp parse_optional_hours(value) when value in [nil, ""], do: {:ok, nil}
   defp parse_optional_hours(value), do: parse_hours(value)

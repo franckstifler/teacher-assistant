@@ -21,7 +21,8 @@ defmodule TeacherAssistantWeb.School.AssignmentsLiveTest do
     %{scope: scope, cg: cg, maths: maths, other: other}
   end
 
-  test "settings links to the grid; an unassigned grid subject reads À affecter", %{conn: conn} = ctx do
+  test "settings links to the grid; an unassigned grid subject reads À affecter",
+       %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/settings")
     assert has_element?(view, "#assignments-link")
     {:ok, view, _} = live(conn, ~p"/school/settings/assignments")
@@ -85,6 +86,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLiveTest do
       |> log_in_user(other.current_user)
       |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
 
-    assert {:error, {:live_redirect, %{to: "/school/settings"}}} = live(conn, ~p"/school/settings/assignments")
+    assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
+             live(conn, ~p"/school/settings/assignments")
   end
 end

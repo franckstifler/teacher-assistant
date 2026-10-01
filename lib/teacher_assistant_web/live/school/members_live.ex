@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     id={"service-#{m.id}"}
                     phx-submit="set_service"
                   >
-                    <input type="hidden" name="id" value={m.id} />
+                    <input type="hidden" name="membership_id" value={m.id} />
                     <input
                       name="service"
                       value={m.statutory_hours}
@@ -270,7 +270,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     end
   end
 
-  def handle_event("set_service", %{"id" => id, "service" => value}, socket) do
+  def handle_event("set_service", %{"membership_id" => id, "service" => value}, socket) do
     scope = socket.assigns.scope
 
     with %{} = m <- find_membership(scope, id),

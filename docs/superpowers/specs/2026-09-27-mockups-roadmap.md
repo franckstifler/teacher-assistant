@@ -949,6 +949,8 @@ séquence dates or deadlines around holidays.
 
 ## J2 — Assignments overview (spec)
 
+Status: implemented 2026-10-01 (branch `j2-assignments-overview`, plan `docs/superpowers/plans/2026-10-01-j2-assignments-overview.md`); no visual check done.
+
 Mockup: `Paramètres école` → "Affectations enseignants" (grid classes × subjects, side panel with each
 teacher's load after the change, « Retirer l'affectation », load bars; fields `service`, `pp`, `combine`). Gap:
 **T04**.
