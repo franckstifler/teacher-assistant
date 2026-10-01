@@ -559,3 +559,67 @@ honour distinctions have **two gates**, both school toggles. Design choice: the 
 
 Out of scope: anglophone A–F grades (I5), freezing bulletins (I2), council decisions and appreciations (I3),
 per-level or per-série scales.
+
+## I2 — Publish and freeze report cards (spec)
+
+Status: spec approved 2026-10-01, not implemented.
+
+Mockup: `Espaces par rôle` → Censeur → "Bulletins" (generic list + detail markup and the screen's logic in
+`docs/superpowers/mockups/i2-bulletins-publication.html`). Gap: **N13**.
+
+User decisions (2026-10-01): only **trimester and annual** report cards are published (séquence bulletins
+stay live); a publication can be **withdrawn with a mandatory reason**; teachers read the **published**
+report cards of the **classes they teach** (whole card); publishing is allowed **anytime**, with a
+confirmation when mark entry is incomplete. Design choice: publishing stores a **snapshot** of what the
+screens show, so nothing later (marks, coefficients, averaging rules, appreciation bands, roster, code)
+changes a published card.
+
+### Data
+
+1. `BulletinPublication` (school-scoped, attribute multitenancy): `class_group`, `academic_year`, `term`
+   (nil for annual), `period_kind` (`Ash.Type.Enum` `:trimester | :annual`), `status` (`Ash.Type.Enum`
+   `:published | :withdrawn`), `published_at`, `published_by_user_id`, `withdrawn_at`,
+   `withdrawn_by_user_id`, `withdrawal_reason`, `snapshot` (stored as an exact Erlang term, so decimals and
+   atoms round-trip), `snapshot_version` (integer, 1).
+2. At most one `:published` row per (class, period kind, term or year) — a partial unique identity. A
+   withdrawal sets the row to `:withdrawn` (reason required, trimmed, non-empty) and keeps it as history;
+   republishing creates a new row with a fresh snapshot.
+3. Publish and withdraw: admin axis (Proviseur, Censeur). Reading rows: school members (access to the
+   *content* is decided by the screens, point 9).
+4. The snapshot holds exactly what the report card, class results and print render: the
+   `Bulletins.aggregate` result (subject rows, groups, totals, moyenne, rank, appreciations, distinctions,
+   class statistics), the roster (student id, name, matricule, sex, repeater, enrollment id), conduct and
+   discipline per enrollment for the period, the group-subtotals flag, the period label, and the form
+   master's name. Plain maps only — no Ash records.
+
+### Computation
+
+5. One entry point `ReportCards.class_view(scope, class_group, period)` returns `{:published,
+   publication, view}` or `{:draft, view}`; `view` is the same map whether live or from the snapshot.
+   Séquence periods are always `{:draft, view}` (live). The report card, class results and print screens
+   use it instead of calling the calculators directly.
+6. `ReportCards.publish(scope, class_group, period)` builds the live view and stores it;
+   `ReportCards.withdraw(scope, publication, reason)`; `ReportCards.history(scope, class_group, period)`
+   (newest first).
+7. The period's mark-entry rate for a class: entered ÷ expected over the term's séquences (the year: all
+   séquences), computed with F's `EntryProgress` rules (exemptions, any mark status counts).
+
+### Screens
+
+8. **"Bulletins"** (`/school/bulletins`), menu item for the Proviseur and Censeur: class picker, period tabs
+   Trimestre 1–3 and Année; status ("Brouillon" or "Publié le … par …"); mark-entry rate; table Rang,
+   Élève, Moyenne générale, Appréciation, Distinction, each row linking to the report card; "Publier les
+   bulletins de la classe" — below 100 % entry it first asks « Saisie incomplète : n %. Publier quand même
+   ? »; on a published period "Dépublier" opens a required reason field; the history of the class and
+   period ("Publié le … par …", "Retiré le … par … : motif") is listed below.
+9. **Access:** drafts (live term/annual figures) stay as today — admin axis or the class's form master.
+   Published report cards are also open, read-only, to teachers who have a course in the class (solo or
+   combined). Teachers get a "Bulletins" item in the enseignant space listing only those classes and only
+   published periods; a draft period shows "Pas encore publiés". Report card, results and print enforce
+   the same rule.
+10. Report card and print of a published period show "Publié le …". A printed **draft** trimester or
+    annual card carries a "BROUILLON" watermark.
+11. All strings through gettext (FR and EN).
+
+Out of scope: council decisions and requiring a council before publishing (I3); the "Publication par"
+setting and sending report cards to parents (I5, notifications); publishing séquence report cards.

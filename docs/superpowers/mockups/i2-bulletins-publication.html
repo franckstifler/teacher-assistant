@@ -1,0 +1,110 @@
+<!-- Excerpt of claude.ai/design project abc12b3e-a26c-41e5-a97c-f0a9be47fc8b, file "Espaces par rôle.dc.html":
+     the generic list + detail screen markup and the Censeur "Bulletins" screen logic (spec I2).
+     The council screen logic is kept for I3. Reference only. -->
+<section data-screen-label="{{ head.title }}" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+          <div style="flex:1 1 560px;min-width:0;display:flex;flex-direction:column;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;overflow:hidden">
+            <sc-if value="{{ gen.hasBar }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:12px 14px;border-bottom:1px solid oklch(50% 0.035 164)">
+                <sc-for list="{{ gen.filters }}" as="f" hint-placeholder-count="3">
+                  <button onClick="{{ f.onClick }}" style="cursor:pointer;border-radius:999px;padding:6px 12px;font:600 0.78rem/1.2 system-ui,sans-serif;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.fg }}">{{ f.label }}</button>
+                </sc-for>
+                <sc-if value="{{ gen.search }}" hint-placeholder-val="{{ false }}">
+                  <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="Rechercher un nom ou un matricule" style="margin-left:auto;flex:1 1 200px;max-width:300px;height:36px;padding:0 12px;border-radius:0.4rem;font:0.85rem system-ui,sans-serif;color:oklch(95% 0.012 150);background:oklch(35% 0.04 164);border:1px solid oklch(50% 0.035 164);outline:none" style-focus="border-color:oklch(80% 0.13 162)">
+                </sc-if>
+                <sc-if value="{{ gen.barBtn }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ gen.barBtn.onClick }}" style="margin-left:auto;height:36px;padding:0 14px;border:0;border-radius:0.4rem;cursor:pointer;font:650 0.82rem/1 system-ui,sans-serif;background:oklch(80% 0.13 162);color:oklch(26% 0.05 164)">{{ gen.barBtn.label }}</button>
+                </sc-if>
+              </div>
+            </sc-if>
+            <div style="overflow-x:auto">
+              <div style="min-width:{{ gen.minW }}">
+                <div style="display:grid;grid-template-columns:{{ gen.grid }};gap:10px;padding:10px 14px;border-bottom:1px solid oklch(50% 0.035 164)">
+                  <sc-for list="{{ gen.cols }}" as="c" hint-placeholder-count="5">
+                    <span style="text-align:{{ c.al }};font-family:'IBM Plex Mono',monospace;font-size:0.65rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:oklch(78% 0.02 155)">{{ c.label }}</span>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ gen.rows }}" as="r" hint-placeholder-count="10">
+                  <button onClick="{{ r.onClick }}" style="display:grid;grid-template-columns:{{ gen.grid }};gap:10px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid oklch(44% 0.035 164);padding:9px 14px;cursor:pointer;background:{{ r.bg }};color:oklch(95% 0.012 150);font:inherit" style-hover="background:oklch(41% 0.045 164)">
+                    <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="5">
+                      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:0.86rem;text-align:{{ c.al }};color:{{ c.color }};font-family:{{ c.ff }};font-weight:{{ c.fw }}">{{ c.text }}</span>
+                    </sc-for>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ gen.empty }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:20px 14px;font-size:0.88rem;color:oklch(80% 0.02 155)">Aucun résultat.</div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+          <sc-if value="{{ detail }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1 1 300px;max-width:420px;min-width:0;display:flex;flex-direction:column;gap:10px;background:oklch(38% 0.04 164);border:1px solid oklch(80% 0.13 162);border-radius:0.7rem;padding:16px 18px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.66rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:oklch(82% 0.08 162)">{{ detail.eyebrow }}</span>
+                <sc-if value="{{ detail.status }}" hint-placeholder-val="{{ false }}">
+                  <span style="flex:none;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:600;padding:3px 8px;border-radius:999px;background:{{ detail.statusBg }};color:{{ detail.statusFg }}">{{ detail.status }}</span>
+                </sc-if>
+              </div>
+              <span style="font-family:Fraunces,Georgia,serif;font-size:1.3rem;font-weight:600;line-height:1.2">{{ detail.title }}</span>
+              <sc-if value="{{ detail.sub }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:0.82rem;color:oklch(80% 0.02 155)">{{ detail.sub }}</span></sc-if><sc-if value="{{ detail.text }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:0.9rem;line-height:1.55;text-wrap:pretty">{{ detail.text }}</p>
+              </sc-if>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ detail.lines }}" as="ln" hint-placeholder-count="4">
+                  <div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid oklch(44% 0.035 164);font-size:0.85rem"><span style="color:oklch(80% 0.02 155)">{{ ln.label }}</span><span style="text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600">{{ ln.value }}</span></div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ detail.groups }}" as="g" hint-placeholder-count="0">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span style="font-size:0.8rem;font-weight:600">{{ g.label }}</span>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ g.options }}" as="o" hint-placeholder-count="3">
+                      <button onClick="{{ o.onClick }}" style="cursor:pointer;border-radius:999px;padding:6px 11px;font:600 0.76rem/1.2 system-ui,sans-serif;border:1px solid {{ o.border }};background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-for list="{{ detail.inputs }}" as="fld" hint-placeholder-count="0">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span style="font-size:0.8rem;font-weight:600">{{ fld.label }}</span>
+                  <input value="{{ fld.value }}" onChange="{{ fld.onChange }}" placeholder="{{ fld.ph }}" inputMode="{{ fld.mode }}" style="height:40px;padding:0 12px;border-radius:0.4rem;font:0.9rem system-ui,sans-serif;color:oklch(95% 0.012 150);background:oklch(35% 0.04 164);border:1px solid oklch(50% 0.035 164);outline:none" style-focus="border-color:oklch(80% 0.13 162)">
+                </div>
+              </sc-for>
+              <sc-if value="{{ detail.cta }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ detail.cta.onClick }}" style="margin-top:4px;height:42px;border-radius:0.4rem;cursor:pointer;font:650 0.86rem/1 system-ui,sans-serif;border:1px solid oklch(80% 0.13 162);background:{{ detail.cta.bg }};color:{{ detail.cta.fg }}">{{ detail.cta.label }}</button></sc-if><sc-if value="{{ detail.cta2 }}" hint-placeholder-val="{{ false }}"><button onClick="{{ detail.cta2.onClick }}" style="height:40px;border-radius:0.4rem;cursor:pointer;font:650 0.86rem/1 system-ui,sans-serif;border:1px solid oklch(73% 0.13 30);background:transparent;color:oklch(73% 0.13 30)">{{ detail.cta2.label }}</button>
+              </sc-if>
+              <sc-if value="{{ detail.note }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:0.78rem;line-height:1.5;color:oklch(83% 0.13 85)">{{ detail.note }}</span>
+              </sc-if>
+            </div>
+          </sc-if>
+        </section>
+<script type="text/x-reference">
+const K={card:'oklch(38% 0.04 164)',line:'oklch(50% 0.035 164)',ink:'oklch(95% 0.012 150)',mute:'oklch(78% 0.02 155)',pri:'oklch(80% 0.13 162)',amb:'oklch(83% 0.13 85)',err:'oklch(73% 0.13 30)',on:'oklch(26% 0.05 164)'};
+// Censeur → Bulletins
+case 'bulletins':{
+      const cls=s.bclass,b=this.bull(cls),r=CLASSES.indexOf(cls),pub=!!s.published[cls],pc=this.rowPct(r);
+      const ment=m=>m>=16?'Félicitations':m>=14?'Encouragements':m>=12?"Tableau d'honneur":m<10?'Sous la moyenne':'';
+      G([['Rang'],['Élève'],['Moy. gén.',1],['Mention']],'56px minmax(0,1fr) 90px 150px',b.map(x=>row('b'+x.i,[cell(x.rank,{mono:true}),cell(x.name),cell(fr(x.mg),{mono:true,bold:true,right:true,color:x.mg<10?K.err:K.ink}),cell(ment(x.mg),{color:x.mg<10?K.err:x.mg>=12?K.pri:K.mute})])),{filters:['4e B','3e A'].map(c=>chip(c,c===cls,()=>up({bclass:c,sel:null})))});
+      const x=b.find(y=>'b'+y.i===s.sel)||b[0];
+      X.detail=det({eyebrow:`Bulletin · 1er trimestre · ${cls}`,title:x.name,status:pub?'Publié':'Brouillon',statusBg:pub?t(K.pri,22):t(K.amb,26),statusFg:pub?K.pri:K.amb,
+        lines:[...SUBJ.map((_,c)=>({label:`${SUBJ_L[c]} · coef ${COEF[c]}`,value:fr(x.sv[c])})),{label:'Moyenne générale',value:fr(x.mg)},{label:'Rang',value:`${x.rank} / ${b.length}`},{label:'Absences',value:`${(STU.find(y=>y.name===x.name)||{absH:0}).absH} h`}],
+        cta:ctx==='censeur'?cta(pub?'Bulletins publiés ✓':'Publier les bulletins de la classe',()=>this.setState(st=>({published:{...st.published,[cls]:true}})),pub):false,
+        note:ctx==='censeur'?`Saisie S1 de la classe : ${pc} %. Publier seulement après le conseil de classe.`:'Lecture seule — les bulletins sont publiés par le censeur après le conseil de classe.'});
+      X.head={eyebrow:ctx==='censeur'?'Censorat · bulletins':'Bulletins · lecture seule',title:`Bulletins · ${cls}`,side:'1er trimestre · S1 + S2'};
+      X.notes=["Classement calculé à partir des moyennes pondérées par les coefficients ; la note de Maths reprend la saisie de l'enseignante.","Coefficients affichés à titre d'exemple : ils doivent venir de la configuration de l'école."];break;}
+    
+// Censeur → Conseils de classe (I3)
+case 'conseils':{
+      const rows=CLASSES.map((cl,r)=>{const pc=this.rowPct(r),done=s.pvDone[cl];return row('c'+r,[cell(cl,{bold:true}),cell(`${12+Math.floor(r/3)} oct. · ${['08:00','10:30','14:00'][r%3]}`,{mono:true}),cell(pc+' %',{mono:true,right:true,color:pc===100?K.pri:K.amb}),cell(done?'Tenu ✓':pc===100?'Prêt':'Saisie incomplète',{color:done||pc===100?K.pri:K.amb})]);});
+      G([['Classe'],['Date'],['Saisie',1],['Statut']],'80px minmax(0,1fr) 80px 150px',rows);
+      const r=s.sel?Number(s.sel.slice(1)):4,cl=CLASSES[r],pc=this.rowPct(r),b=this.bull(cl),ci=cinfo(r),mc=b.reduce((a,x)=>a+x.mg,0)/b.length,succ=Math.round(b.filter(x=>x.mg>=10).length/b.length*100);
+      const grp=(x,opts)=>({label:`${x.name} · ${fr(x.mg)}`,options:opts.map(o=>{const key=cl+'|'+x.name;return chip(o,s.dec[key]===o,()=>this.setState(st=>({dec:{...st.dec,[key]:st.dec[key]===o?null:o}})));})});
+      X.detail=det({eyebrow:`Conseil de classe · ${12+Math.floor(r/3)} oct.`,title:cl,sub:`Prof. principal : ${ci.pp}`,status:s.pvDone[cl]?'Tenu':false,
+        lines:[{label:'Effectif',value:String(ci.eff)},{label:'Moyenne de la classe',value:fr(mc)},{label:'Taux de réussite (≥ 10)',value:succ+' %'},{label:'Saisie des notes S1',value:pc+' %'}],
+        groups:[...b.slice(0,2).map(x=>grp(x,['Félicitations','Encouragements',"Tableau d'honneur"])),...b.slice(-2).map(x=>grp(x,['Avertissement travail','Blâme travail','Avertissement conduite']))],
+        cta:pc<100?cta('Saisie incomplète — voir qui relancer',()=>go('censeur'),true):cta(s.pvDone[cl]?'Procès-verbal généré ✓':'Générer le procès-verbal',()=>this.setState(st=>({pvDone:{...st.pvDone,[cl]:true}})),!!s.pvDone[cl]),
+        note:'Décisions proposées pour les deux premiers et les deux derniers ; elles sont reportées sur les bulletins.'});
+      X.head={eyebrow:'Censorat · 1er trimestre',title:'Conseils de classe',side:`${CLASSES.filter((_,r)=>this.rowPct(r)===100).length} / ${CLASSES.length} classes prêtes`};
+      X.notes=["Un conseil n'est « prêt » que si la saisie de la classe est complète — lien direct avec le suivi des séquences.","À modéliser : décision du conseil par élève et procès-verbal (aucune ressource aujourd'hui)."];break;}
+    
+</script>
