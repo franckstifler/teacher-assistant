@@ -56,8 +56,9 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
       change set_attribute(:published_by_user_id, actor(:id))
     end
 
+    # Atomic: the status check runs against the stored row, so a stale page cannot
+    # withdraw an already-withdrawn publication or rewrite its reason.
     update :withdraw do
-      require_atomic? false
       argument :reason, :string, allow_nil?: false
       validate attribute_equals(:status, :published)
       change set_attribute(:status, :withdrawn)

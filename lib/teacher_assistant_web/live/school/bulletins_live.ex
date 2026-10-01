@@ -115,6 +115,13 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
          |> load(selected_id(socket))
          |> put_flash(:info, gettext("Bulletins dépubliés."))}
 
+      {:error, :not_published} ->
+        {:noreply,
+         socket
+         |> assign(withdrawing?: false)
+         |> load(selected_id(socket))
+         |> put_flash(:error, gettext("Ces bulletins ont déjà été dépubliés."))}
+
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
 

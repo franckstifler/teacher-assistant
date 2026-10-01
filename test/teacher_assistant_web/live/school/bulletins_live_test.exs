@@ -116,4 +116,18 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
     assert has_element?(view, "a[href='/school/bulletins']")
   end
+
+  test "withdrawing from a stale page says it was already withdrawn", ctx do
+    {:ok, pub} = ReportCards.publish(ctx.scope, ctx.cg, {:trimester, ctx.term})
+    {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+    view |> element("#ask-withdraw") |> render_click()
+
+    {:ok, _} = ReportCards.withdraw(ctx.scope, pub, "Another admin")
+    view |> form("#withdraw-form", %{reason: "Me too"}) |> render_submit()
+
+    assert render(view) =~ "Ces bulletins ont déjà été dépubliés."
+    assert has_element?(view, "#bulletins-status", "Brouillon")
+    assert has_element?(view, "#bulletins-history", "Another admin")
+    refute has_element?(view, "#bulletins-history", "Me too")
+  end
 end

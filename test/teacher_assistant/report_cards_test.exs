@@ -125,4 +125,26 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert ReportCards.published_on(%{pub | published_at: ~U[2026-01-10 23:30:00Z]}) ==
              ~D[2026-01-11]
   end
+
+  test "a stale withdrawal is refused and leaves the history alone", %{
+    scope: scope,
+    cg: cg,
+    term: term
+  } do
+    period = {:trimester, term}
+    {:ok, pub} = ReportCards.publish(scope, cg, period)
+    {:ok, _} = ReportCards.withdraw(scope, pub, "First reason")
+
+    # a second page still holding the published struct
+    assert {:error, :not_published} = ReportCards.withdraw(scope, pub, "Second reason")
+
+    assert [%{status: :withdrawn, withdrawal_reason: "First reason"}] =
+             ReportCards.history(scope, cg, period)
+
+    # republished meanwhile: the stale page must not report success on the old row
+    {:ok, republished} = ReportCards.publish(scope, cg, period)
+    assert {:error, :not_published} = ReportCards.withdraw(scope, pub, "Stale")
+    assert %{id: id} = ReportCards.current_publication(scope, cg, period)
+    assert id == republished.id
+  end
 end

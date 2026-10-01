@@ -112,6 +112,21 @@ defmodule TeacherAssistant.ReportCards do
     pub
     |> Ash.Changeset.for_update(:withdraw, %{reason: reason}, scope: scope)
     |> Ash.update()
+    |> case do
+      # Refused because the stored row is no longer published (another page withdrew it).
+      {:error, %Ash.Error.Invalid{}} = error ->
+        if still_published?(scope, pub), do: error, else: {:error, :not_published}
+
+      other ->
+        other
+    end
+  end
+
+  defp still_published?(scope, %BulletinPublication{id: id}) do
+    case Ash.get(BulletinPublication, id, scope: scope) do
+      {:ok, %{status: :published}} -> true
+      _ -> false
+    end
   end
 
   @doc "The school-local (WAT, UTC+1) date of a publication."
