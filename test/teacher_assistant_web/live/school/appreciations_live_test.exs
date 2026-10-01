@@ -39,6 +39,25 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
     assert render(element(view, "#band-test-result")) =~ "Assez bien"
   end
 
+  test "non-numbers in the editor are ignored, not crashed on", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
+    view |> form("#band-test-form", %{test: "NaN"}) |> render_change()
+    assert render(element(view, "#band-test-result")) =~ "—"
+
+    view |> form("#bands-form", %{"bands" => %{"0" => %{"to" => "1e999"}}}) |> render_change()
+    assert render(element(view, "#bands-form")) =~ "1e999"
+
+    view |> form("#bands-form", %{"bands" => %{"0" => %{"to" => "inf"}}}) |> render_change()
+    view |> element("#save-bands") |> render_click()
+    assert render(element(view, "#bands-error")) =~ "9,5"
+
+    view
+    |> form("#distinctions-form", %{"distinctions" => %{"felicitations_min" => "NaN"}})
+    |> render_submit()
+
+    assert render(element(view, "#distinctions-error")) =~ "9,5"
+  end
+
   test "edit, split, remove and save the scale", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
 

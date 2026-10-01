@@ -8,6 +8,8 @@ defmodule TeacherAssistant.Accounts.AppreciationBand do
 
   attributes do
     attribute :from, :decimal, allow_nil?: false, public?: true
-    attribute :label, :string, allow_nil?: false, public?: true
+    # Nullable so a blank label reaches `ValidateAppreciations` and its own message
+    # (Ash casts "" to nil before `allow_nil?` would reject it).
+    attribute :label, :string, public?: true
   end
 end

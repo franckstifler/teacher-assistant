@@ -562,7 +562,7 @@ defmodule TeacherAssistant.Assessment do
     end)
   end
 
-  # "" → nil; "9,5" → 9.5; anything else not a number → :error. Range checks are the
+  # "" → nil; "9,5" → 9.5; anything else not a finite number (incl. "NaN", "inf") → :error. Range checks are the
   # profile validation's job.
   defp parse_score(%Decimal{} = d), do: {:ok, d}
 
@@ -573,7 +573,8 @@ defmodule TeacherAssistant.Assessment do
 
       text ->
         case Decimal.parse(text) do
-          {dec, ""} -> {:ok, dec}
+          # NaN and ±Infinity carry an atom coefficient.
+          {%Decimal{coef: coef} = dec, ""} when is_integer(coef) -> {:ok, dec}
           _ -> :error
         end
     end

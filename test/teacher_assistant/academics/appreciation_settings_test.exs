@@ -55,6 +55,23 @@ defmodule TeacherAssistant.Academics.AppreciationSettingsTest do
     assert bands in [nil, []]
   end
 
+  test "non-finite numbers are refused, not crashed on", %{scope: scope} do
+    for bad <- ["NaN", "inf", "-Infinity"] do
+      assert {:error, :invalid_number} =
+               Assessment.update_appreciation_bands(scope, [band("0", "A"), band(bad, "B")])
+
+      assert {:error, :invalid_number} =
+               Assessment.update_distinction_rules(scope, %{"felicitations_min" => bad})
+    end
+  end
+
+  test "a blank label gets the scale's own message", %{scope: scope} do
+    assert {:error, %Ash.Error.Invalid{} = error} =
+             Assessment.update_appreciation_bands(scope, [band("0", "A"), band("10", "  ")])
+
+    assert Exception.message(error) =~ "Chaque tranche doit avoir une appréciation."
+  end
+
   test "thresholds: empty switches off, order is enforced", %{scope: scope} do
     params = %{
       "felicitations_min" => "17",

@@ -59,7 +59,8 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
 
   defp parse(text) when is_binary(text) do
     case text |> String.trim() |> String.replace(",", ".") |> Decimal.parse() do
-      {d, ""} -> d
+      # NaN and ±Infinity carry an atom coefficient.
+      {%Decimal{coef: coef} = d, ""} when is_integer(coef) -> d
       _ -> nil
     end
   end
@@ -97,7 +98,10 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
         uppers = bands |> Enum.drop(1) |> Enum.map(& &1.from)
 
         Enum.zip_with(bands, uppers ++ [@twenty], fn band, upper ->
-          width = upper |> Decimal.sub(band.from) |> Decimal.max(Decimal.new(0))
+          # Clamped to 0..20 so an out-of-range draft bound never overflows to_float.
+          width =
+            upper |> Decimal.sub(band.from) |> Decimal.max(Decimal.new(0)) |> Decimal.min(@twenty)
+
           {band.label, Decimal.to_float(width) / 20 * 100}
         end)
     end
