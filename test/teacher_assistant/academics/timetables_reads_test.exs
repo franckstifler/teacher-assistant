@@ -180,12 +180,12 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
 
       assert map_size(result) == 2
 
-      cell_a = Map.fetch!(result, {:monday, p1.id})
+      [cell_a] = Map.fetch!(result, {:monday, p1.id})
       assert cell_a.teaching_context_id == tc_maths.id
       assert cell_a.class_label == "6e A"
       assert cell_a.subject == "Maths"
 
-      cell_b = Map.fetch!(result, {:tuesday, p2.id})
+      [cell_b] = Map.fetch!(result, {:tuesday, p2.id})
       assert cell_b.teaching_context_id == tc_b.id
       assert cell_b.class_label == "6e B"
       assert cell_b.subject == "Histoire"

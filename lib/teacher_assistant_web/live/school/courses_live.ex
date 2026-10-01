@@ -85,7 +85,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   defp roll_call_period(class_group, %{day: day, lessons: lessons, own_slots: own_slots} = ctx) do
     own =
       Enum.find(lessons, fn p ->
-        match?(%{class_group_id: id} when id == class_group.id, Map.get(own_slots, {day, p.id}))
+        own_slots |> Map.get({day, p.id}, []) |> Enum.any?(&(&1.class_group_id == class_group.id))
       end)
 
     own || first_free_lesson(ctx.scope, class_group, day, lessons) || List.first(lessons)

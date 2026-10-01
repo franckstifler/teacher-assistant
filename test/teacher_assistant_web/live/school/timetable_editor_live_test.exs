@@ -138,4 +138,30 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
 
     assert has_element?(view, "#cell-wednesday-#{late.id}.closed-cell")
   end
+
+  test "the editor links to the class timetable print", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, ~s(a[href="/school/classes/#{ctx.a.id}/timetable/print"]))
+  end
+
+  test "a combined course is placed and cleared in every member class", %{conn: conn} = ctx do
+    {:ok, _course} = Curriculum.combine_course(ctx.scope, [ctx.ma, ctx.mb])
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#chip-#{ctx.ma.id}", "regroupé")
+    view |> element("#chip-#{ctx.ma.id}") |> render_click()
+
+    assert Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p1.id}].teaching_context_id ==
+             ctx.ma.id
+
+    assert Timetabling.class_timetable(ctx.scope, ctx.b).slots[{:monday, ctx.p1.id}].teaching_context_id ==
+             ctx.mb.id
+
+    assert has_element?(view, "#conflict-count", "Aucun conflit")
+
+    view |> element("#clear-cell") |> render_click()
+    refute Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p1.id}]
+    refute Timetabling.class_timetable(ctx.scope, ctx.b).slots[{:monday, ctx.p1.id}]
+  end
 end

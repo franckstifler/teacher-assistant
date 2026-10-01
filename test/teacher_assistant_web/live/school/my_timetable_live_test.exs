@@ -103,4 +103,27 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/school/timetable/me")
   end
+
+  test "a teacher with a clash sees both lessons in the cell (spec J4)", %{
+    conn: conn,
+    year: year,
+    period: period,
+    head: head,
+    school: school
+  } do
+    scope = school_scope(head, school)
+    {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
+    {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Maths"})
+
+    {:ok, _} =
+      Timetabling.place_slot(scope, cg_b, %{
+        day: :monday,
+        period_id: period.id,
+        teaching_context_id: tc_b.id
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/school/timetable/me")
+    assert has_element?(view, "#cell-monday-#{period.id}", "6e A")
+    assert has_element?(view, "#cell-monday-#{period.id}", "6e B")
+  end
 end

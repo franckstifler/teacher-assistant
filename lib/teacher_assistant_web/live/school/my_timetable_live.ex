@@ -26,8 +26,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
 
   defp day_label(d), do: DayOfWeek.label(d)
 
-  defp cell_text(nil), do: nil
-  defp cell_text(slot), do: "#{slot.class_label} · #{slot.subject}"
+  defp cell_slots(grid, day, period_id), do: Map.get(grid, {day, period_id}, [])
 
   def render(assigns) do
     ~H"""
@@ -73,17 +72,20 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                     <%= for day <- @days do %>
                       <%= if SchoolCalendar.open_cell?(@calendar, day, period) do %>
                         <td id={"cell-#{day}-#{period.id}"}>
-                          <% slot = @grid[{day, period.id}] %>
-                          {cell_text(slot)}
-                          <.link
-                            :if={slot}
-                            navigate={
-                              ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.to_iso8601(Date.utc_today())}"
-                            }
-                            class="link link-primary block text-xs"
+                          <div
+                            :for={slot <- cell_slots(@grid, day, period.id)}
+                            class={length(cell_slots(@grid, day, period.id)) > 1 && "text-error"}
                           >
-                            {gettext("Faire l'appel")}
-                          </.link>
+                            {slot.class_label} · {slot.subject}
+                            <.link
+                              navigate={
+                                ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.to_iso8601(Date.utc_today())}"
+                              }
+                              class="link link-primary block text-xs"
+                            >
+                              {gettext("Faire l'appel")}
+                            </.link>
+                          </div>
                         </td>
                       <% else %>
                         <td

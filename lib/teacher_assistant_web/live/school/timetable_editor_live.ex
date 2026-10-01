@@ -244,6 +244,15 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
           }
         >
           <:actions>
+            <a
+              :if={@cg}
+              id="print-timetable"
+              href={~p"/school/classes/#{@cg.id}/timetable/print"}
+              target="_blank"
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer")}
+            </a>
             <span
               id="conflict-count"
               class={["text-sm font-semibold", if(@count > 0, do: "text-error", else: "text-success")]}

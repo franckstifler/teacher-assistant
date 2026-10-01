@@ -220,7 +220,9 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   @doc """
-  All slots in the scope's school taught by `user`, keyed by `{day, period_id}`.
+  All slots in the scope's school taught by `user`, as `{day, period_id} => [slot_view]`:
+  a list, because a teacher may have several classes at once (a combined course, or a
+  clash the editor saved — spec J4).
 
   `slot_view` additionally carries `class_label` so a teacher can see which
   class each cell belongs to.
@@ -229,9 +231,8 @@ defmodule TeacherAssistant.Timetabling do
     user_id
     # `TimetableSlot` is multitenant — pass the scope.
     |> list_for_teacher!(scope: scope)
-    |> Map.new(fn slot ->
-      {{slot.day, slot.period_id}, slot_view(slot, slot.class_group.label)}
-    end)
+    |> Enum.group_by(&{&1.day, &1.period_id}, &slot_view(&1, &1.class_group.label))
+    |> Map.new(fn {cell, views} -> {cell, Enum.sort_by(views, & &1.class_label)} end)
   end
 
   defp tally_status(placed, required) when placed < required, do: :under

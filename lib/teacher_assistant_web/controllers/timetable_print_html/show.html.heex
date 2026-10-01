@@ -81,8 +81,7 @@
             <%= for day <- @days do %>
               <%= if SchoolCalendar.open_cell?(@calendar, day, period) do %>
                 <td>
-                  <% slot = @grid[{day, period.id}] %>
-                  <%= if slot do %>
+                  <%= for slot <- cell_slots(@grid, @mode, day, period.id) do %>
                     <span class="subject">{slot.subject}</span>
                     <span :if={@mode == :class} class="teacher">{slot.teacher_email}</span>
                     <span :if={@mode == :me} class="teacher">{slot.class_label}</span>
