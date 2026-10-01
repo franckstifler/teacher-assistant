@@ -29,13 +29,23 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
   def handle_params(params, _uri, socket) do
     %{terms: terms, classes: classes, year: year, current_scope: scope} = socket.assigns
 
-    term =
-      Enum.find(terms, &(&1.id == params["term"])) ||
-        Councils.default_term(terms, Reference.today())
+    {period, sequences} =
+      case params do
+        %{"period" => "annee"} ->
+          {{:annual, year}, Organization.list_sequences(scope, year)}
 
-    councils = Councils.for_period(scope, {:trimester, term})
-    rates = EntryProgress.class_rates(scope, year, term.sequences)
-    published = ReportCards.published_class_ids(scope, {:trimester, term})
+        _ ->
+          term =
+            Enum.find(terms, &(&1.id == params["term"])) ||
+              Councils.default_term(terms, Reference.today())
+
+          {{:trimester, term}, term.sequences}
+      end
+
+    councils = Councils.for_period(scope, period)
+    rates = EntryProgress.class_rates(scope, year, sequences)
+    published = ReportCards.published_class_ids(scope, period)
+    default_date = default_date(period, terms)
 
     rows =
       Enum.map(classes, fn cg ->
@@ -44,7 +54,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
 
         %{
           class_group: cg,
-          date: (council && council.held_on) || term.class_council_date,
+          date: (council && council.held_on) || default_date,
           rate: rate,
           status: status(MapSet.member?(published, cg.id), council, rate)
         }
@@ -52,11 +62,22 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
 
     {:noreply,
      assign(socket,
-       term: term,
+       period: period,
        rows: rows,
        ready: Enum.count(rows, &(&1.status != :incomplete))
      )}
   end
+
+  defp default_date({:trimester, term}, _terms), do: term.class_council_date
+  defp default_date({:annual, _}, terms), do: List.last(terms).class_council_date
+
+  defp period_params({:annual, _}), do: %{period: "annee"}
+  defp period_params({:trimester, term}), do: %{term: term.id}
+
+  defp period_title({:annual, _}), do: gettext("Censorat · Année")
+
+  defp period_title({:trimester, term}),
+    do: gettext("Censorat · Trimestre %{n}", n: term.position)
 
   defp status(true, _council, _rate), do: :published
   defp status(false, %{status: :held}, _rate), do: :held
@@ -82,7 +103,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="councils" class="space-y-4">
         <.page_header
-          eyebrow={gettext("Censorat · Trimestre %{n}", n: @term.position)}
+          eyebrow={period_title(@period)}
           title={gettext("Conseils de classe")}
         >
           <:actions>
@@ -98,9 +119,17 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
             id={"term-#{t.id}"}
             role="tab"
             patch={~p"/school/councils?term=#{t.id}"}
-            class={["tab", t.id == @term.id && "tab-active"]}
+            class={["tab", @period == {:trimester, t} && "tab-active"]}
           >
             {gettext("Trimestre %{n}", n: t.position)}
+          </.link>
+          <.link
+            id="term-annee"
+            role="tab"
+            patch={~p"/school/councils?period=annee"}
+            class={["tab", match?({:annual, _}, @period) && "tab-active"]}
+          >
+            {gettext("Année")}
           </.link>
         </div>
 
@@ -122,7 +151,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
               >
                 <td class="font-semibold">
                   <.link
-                    navigate={~p"/school/councils/#{row.class_group.id}?term=#{@term.id}"}
+                    navigate={~p"/school/councils/#{row.class_group.id}?#{period_params(@period)}"}
                     class="link link-hover"
                   >
                     {row.class_group.label}

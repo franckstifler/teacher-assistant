@@ -126,4 +126,32 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
     {:ok, view, _} = live(ctx.conn, ~p"/school/councils")
     assert has_element?(view, "a[href='/school/councils']")
   end
+
+  describe "annual council (I4)" do
+    test "the list has an Année tab", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?period=annee")
+      assert has_element?(view, "#term-annee.tab-active")
+      assert has_element?(view, "#council-row-#{ctx.cg.id}")
+    end
+
+    test "the annual page proposes passage decisions and saves overrides", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils/#{ctx.cg.id}?period=annee")
+      assert has_element?(view, "#passage-proposal-#{ctx.dj.id}", "Admis")
+      assert has_element?(view, "#passage-proposal-#{ctx.tch.id}", "Redouble")
+
+      view
+      |> form("#decision-#{ctx.tch.id}", %{decision: %{passage_decision: "admis_rachat"}})
+      |> render_change()
+
+      assert [d] =
+               Councils.council(ctx.scope, ctx.cg, {:annual, ctx.scope.current_academic_year}).decisions
+
+      assert d.passage_decision == :admis_rachat
+    end
+
+    test "trimester pages have no passage column", ctx do
+      {:ok, view, _} = live(ctx.conn, council_path(ctx.cg, ctx.term))
+      refute has_element?(view, "#passage-proposal-#{ctx.dj.id}")
+    end
+  end
 end

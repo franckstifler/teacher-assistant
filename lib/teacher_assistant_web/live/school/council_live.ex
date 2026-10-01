@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.School.CouncilLive do
   @moduledoc """
-  One class's trimester council (spec I3): the header (date, président, présents,
+  One class's council for a trimester (spec I3) or the year (spec I4, with a passage
+  column): the header (date, président, présents,
   observations générales), the class statistics, and a row per student — the I1
   proposal, the council's distinction choice, a conduct warning and an appreciation,
   each row saved on change. "Marquer le conseil tenu" (confirmation below complete
@@ -14,6 +15,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     ConductWarning,
     CouncilDistinctionChoice,
     EntryProgress,
+    PassageDecision,
     Reference
   }
 
@@ -31,26 +33,39 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
   end
 
   def handle_params(params, _uri, socket) do
-    %{terms: terms} = socket.assigns
+    %{terms: terms, year: year} = socket.assigns
 
-    term =
-      Enum.find(terms, &(&1.id == params["term"])) ||
-        Councils.default_term(terms, Reference.today())
+    period =
+      case params do
+        %{"period" => "annee"} ->
+          {:annual, year}
 
-    {:noreply, socket |> assign(term: term, saved: nil, confirm_hold?: false) |> load()}
+        _ ->
+          {:trimester,
+           Enum.find(terms, &(&1.id == params["term"])) ||
+             Councils.default_term(terms, Reference.today())}
+      end
+
+    {:noreply, socket |> assign(period: period, saved: nil, confirm_hold?: false) |> load()}
   end
 
   defp load(socket) do
-    %{current_scope: scope, cg: cg, term: term, year: year} = socket.assigns
-    council = Councils.council(scope, cg, {:trimester, term})
-    results = Assessment.class_results_for_period(scope, cg, {:trimester, term})
+    %{current_scope: scope, cg: cg, period: period, year: year} = socket.assigns
+    council = Councils.council(scope, cg, period)
+    results = Assessment.class_results_for_period(scope, cg, period)
     decisions = Map.new(council.decisions, &{&1.student_id, &1})
+    outcomes = passage_outcomes(scope, cg, period, council, results)
 
     rows =
       scope
       |> Enrollment.list_roster(cg)
       |> Enum.map(fn %{student: s} ->
-        %{student: s, data: results && results.per_student[s.id], decision: decisions[s.id]}
+        %{
+          student: s,
+          data: results && results.per_student[s.id],
+          decision: decisions[s.id],
+          outcome: outcomes[s.id]
+        }
       end)
       |> Enum.sort_by(
         &{(&1.data && &1.data.rank) || 9_999, String.downcase(&1.student.full_name)}
@@ -60,29 +75,38 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
       council: council,
       results: results,
       rows: rows,
-      rate: scope |> EntryProgress.class_rates(year, term.sequences) |> Map.get(cg.id),
-      locked?: Councils.locked?(scope, cg, {:trimester, term})
+      rate: scope |> EntryProgress.class_rates(year, sequences(scope, period)) |> Map.get(cg.id),
+      locked?: Councils.locked?(scope, cg, period)
     )
   end
 
+  # Spec I4: the annual council shows the passage proposal next to each student.
+  defp passage_outcomes(scope, cg, {:annual, _} = period, council, results) do
+    passage = %{
+      rules: Assessment.passage_rules(scope),
+      students: Councils.passage_inputs(scope, cg, period)
+    }
+
+    Councils.outcomes(council, results, passage)
+  end
+
+  defp passage_outcomes(_scope, _cg, _period, _council, _results), do: %{}
+
+  defp sequences(_scope, {:trimester, term}), do: term.sequences
+  defp sequences(scope, {:annual, year}), do: Organization.list_sequences(scope, year)
+
   def handle_event("save_header", %{"council" => params}, socket) do
-    %{current_scope: scope, cg: cg, term: term} = socket.assigns
+    %{current_scope: scope, cg: cg, period: period} = socket.assigns
 
     scope
-    |> Councils.save_header(cg, {:trimester, term}, params)
+    |> Councils.save_header(cg, period, params)
     |> after_write(socket, gettext("Conseil enregistré."))
   end
 
   def handle_event("decision", %{"student_id" => student_id} = params, socket) do
-    %{current_scope: scope, cg: cg, term: term} = socket.assigns
+    %{current_scope: scope, cg: cg, period: period} = socket.assigns
 
-    case Councils.set_decision(
-           scope,
-           cg,
-           {:trimester, term},
-           student_id,
-           Map.get(params, "decision", %{})
-         ) do
+    case Councils.set_decision(scope, cg, period, student_id, Map.get(params, "decision", %{})) do
       {:ok, _} -> {:noreply, socket |> load() |> assign(saved: student_id)}
       other -> after_write(other, socket, nil)
     end
@@ -96,18 +120,18 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     do: {:noreply, assign(socket, confirm_hold?: false)}
 
   def handle_event("reopen", _params, socket) do
-    %{current_scope: scope, cg: cg, term: term} = socket.assigns
+    %{current_scope: scope, cg: cg, period: period} = socket.assigns
 
     scope
-    |> Councils.reopen(cg, {:trimester, term})
+    |> Councils.reopen(cg, period)
     |> after_write(socket, gettext("Conseil rouvert."))
   end
 
   defp hold(socket) do
-    %{current_scope: scope, cg: cg, term: term} = socket.assigns
+    %{current_scope: scope, cg: cg, period: period} = socket.assigns
 
     scope
-    |> Councils.hold(cg, {:trimester, term})
+    |> Councils.hold(cg, period)
     |> after_write(assign(socket, confirm_hold?: false), gettext("Conseil marqué tenu."))
   end
 
@@ -132,6 +156,43 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
       Enum.map(CouncilDistinctionChoice.values(), &{CouncilDistinctionChoice.label(&1), &1})
   end
 
+  defp passage_options do
+    [{gettext("Proposition"), ""}] ++
+      Enum.map(PassageDecision.values(), &{PassageDecision.label(&1), &1})
+  end
+
+  # The engine's proposal (and its reason) when the council has not chosen; "—" otherwise.
+  defp proposal_text(%{passage: nil}), do: "—"
+
+  defp proposal_text(%{passage: passage, passage_reason: nil}),
+    do: gettext("Proposition : %{decision}", decision: PassageDecision.label(passage))
+
+  defp proposal_text(%{passage: passage, passage_reason: reason}),
+    do:
+      gettext("Proposition : %{decision} (%{reason})",
+        decision: PassageDecision.label(passage),
+        reason: reason
+      )
+
+  defp proposal_text(_), do: "—"
+
+  defp annual?({:annual, _}), do: true
+  defp annual?(_), do: false
+
+  defp period_title({:annual, _}), do: gettext("Conseil de fin d'année")
+
+  defp period_title({:trimester, term}),
+    do: gettext("Conseil de classe · Trimestre %{n}", n: term.position)
+
+  defp period_params({:annual, _}), do: %{period: "annee"}
+  defp period_params({:trimester, term}), do: %{term: term.id}
+
+  defp grid_cols({:annual, _}),
+    do: "lg:grid-cols-[3rem_minmax(0,1.4fr)_4rem_9rem_10rem_10rem_minmax(0,1.6fr)_11rem_4rem]"
+
+  defp grid_cols(_),
+    do: "lg:grid-cols-[3rem_minmax(0,1.4fr)_4rem_9rem_10rem_10rem_minmax(0,1.6fr)_4rem]"
+
   defp warning_options do
     [{gettext("Aucun"), ""}] ++
       Enum.map(ConductWarning.values(), &{ConductWarning.label(&1), &1})
@@ -151,7 +212,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="council" class="space-y-5">
         <.page_header
-          eyebrow={gettext("Conseil de classe · Trimestre %{n}", n: @term.position)}
+          eyebrow={period_title(@period)}
           title={@cg.label}
         >
           <:actions>
@@ -172,9 +233,16 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             :for={t <- @terms}
             role="tab"
             patch={~p"/school/councils/#{@cg.id}?term=#{t.id}"}
-            class={["tab", t.id == @term.id && "tab-active"]}
+            class={["tab", @period == {:trimester, t} && "tab-active"]}
           >
             {gettext("Trimestre %{n}", n: t.position)}
+          </.link>
+          <.link
+            role="tab"
+            patch={~p"/school/councils/#{@cg.id}?period=annee"}
+            class={["tab", annual?(@period) && "tab-active"]}
+          >
+            {gettext("Année")}
           </.link>
         </div>
 
@@ -259,7 +327,10 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         </div>
 
         <div class="rounded-box border border-base-300 bg-base-100">
-          <div class="hidden gap-3 border-b border-base-300 px-4 py-2 text-xs text-base-content/60 lg:grid lg:grid-cols-[3rem_minmax(0,1.4fr)_4rem_9rem_10rem_10rem_minmax(0,1.6fr)_4rem]">
+          <div class={[
+            "hidden gap-3 border-b border-base-300 px-4 py-2 text-xs text-base-content/60 lg:grid",
+            grid_cols(@period)
+          ]}>
             <span>{gettext("Rang")}</span>
             <span>{gettext("Élève")}</span>
             <span class="text-right">{gettext("Moy.")}</span>
@@ -267,6 +338,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             <span>{gettext("Décision")}</span>
             <span>{gettext("Conduite")}</span>
             <span>{gettext("Appréciation")}</span>
+            <span :if={annual?(@period)}>{gettext("Passage")}</span>
             <span></span>
           </div>
           <.form
@@ -275,7 +347,10 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             as={:decision}
             id={"decision-#{row.student.id}"}
             phx-change="decision"
-            class="grid items-center gap-3 border-b border-base-300 px-4 py-2 last:border-b-0 lg:grid-cols-[3rem_minmax(0,1.4fr)_4rem_9rem_10rem_10rem_minmax(0,1.6fr)_4rem]"
+            class={[
+              "grid items-center gap-3 border-b border-base-300 px-4 py-2 last:border-b-0",
+              grid_cols(@period)
+            ]}
           >
             <input type="hidden" name="student_id" value={row.student.id} />
             <span class="ta-num">{(row.data && row.data.rank) || "—"}</span>
@@ -307,6 +382,19 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
               class="input input-sm w-full"
               disabled={@locked?}
             />
+            <div :if={annual?(@period)} id={"passage-#{row.student.id}"} class="space-y-1">
+              <p id={"passage-proposal-#{row.student.id}"} class="text-xs text-base-content/70">
+                {proposal_text(row.outcome)}
+              </p>
+              <.input
+                type="select"
+                name="decision[passage_decision]"
+                value={row.decision && row.decision.passage_decision}
+                options={passage_options()}
+                class="select select-sm"
+                disabled={@locked?}
+              />
+            </div>
             <span
               :if={@saved == row.student.id}
               id={"saved-#{row.student.id}"}
@@ -320,7 +408,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         <div class="flex flex-wrap gap-2">
           <a
             id="print-pv"
-            href={~p"/school/councils/#{@cg.id}/print?term=#{@term.id}"}
+            href={~p"/school/councils/#{@cg.id}/print?#{period_params(@period)}"}
             target="_blank"
             class="btn btn-ghost btn-sm gap-1"
           >

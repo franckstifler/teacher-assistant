@@ -359,6 +359,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             {gettext("Appréciations & distinctions")}
           </.link>
 
+          <.link
+            id="passage-link"
+            navigate={~p"/school/settings/passage"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Passage & redoublement")}
+          </.link>
+
           <div class="overflow-x-auto">
             <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
               <thead>

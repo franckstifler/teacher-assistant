@@ -140,6 +140,7 @@ defmodule TeacherAssistantWeb.Spaces do
           coefficients(),
           evaluations(),
           appreciations(),
+          passage(),
           periods()
         ])
       ]
@@ -164,7 +165,8 @@ defmodule TeacherAssistantWeb.Spaces do
           settings(),
           coefficients(),
           evaluations(),
-          appreciations()
+          appreciations(),
+          passage()
         ])
       ]
     }
@@ -342,6 +344,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Appréciations & distinctions"),
         "hero-academic-cap",
         ~p"/school/settings/appreciations"
+      )
+
+  defp passage,
+    do:
+      item(
+        "passage",
+        gettext("Passage & redoublement"),
+        "hero-arrow-trending-up",
+        ~p"/school/settings/passage"
       )
 
   defp councils,
