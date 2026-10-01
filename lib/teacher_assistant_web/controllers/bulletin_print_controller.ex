@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
+  alias TeacherAssistantWeb.BulletinPrintHTML
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
     with_view(conn, id, params, fn scope, cg, period, status, pub, view ->
@@ -61,6 +62,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   defp render_bulletins(conn, scope, cg, period, status, pub, view, entries) do
     results = view.results
+    template = ReportCards.template_of(scope, cg, view)
+    lang = template.language
 
     bundles =
       Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
@@ -76,7 +79,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
               results && results.per_student[student.id]
             ),
           conduct: view.conduct[enrollment.id],
-          discipline: view.discipline[enrollment.id]
+          discipline: view.discipline[enrollment.id],
+          qr_svg: nil
         }
       end)
 
@@ -91,12 +95,15 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       professeur_principal: view.form_master && view.form_master.email,
       cg: cg,
       period_kind: kind,
-      period_heading: period_heading(period),
+      period_heading: BulletinPrintHTML.tr(lang, fn -> period_heading(period) end),
       effectif: (results && results.effectif) || 0,
       bundles: bundles,
       group_subtotals?: view.group_subtotals?,
       draft?: status == :draft and kind in [:trimester, :annual],
-      published_on: pub && Calendar.strftime(ReportCards.published_on(pub), "%d/%m/%Y")
+      published_on: pub && Calendar.strftime(ReportCards.published_on(pub), "%d/%m/%Y"),
+      template: template,
+      lang: lang,
+      class_average: results && results.class_average
     )
   end
 

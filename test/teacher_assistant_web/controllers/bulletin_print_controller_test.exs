@@ -118,7 +118,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       )
 
     body = html_response(conn, 200)
-    assert body =~ "Conduite"
+    assert body =~ "Assiduité"
     assert body =~ "Absences justifiées"
     assert body =~ "Absences non justifiées"
     assert body =~ "Retards"
@@ -419,6 +419,124 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
       assert html =~ ~s(class="decision")
       assert html =~ "Admis"
+    end
+  end
+
+  describe "template (spec I5)" do
+    defp print(conn, cg, seq),
+      do: conn |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}") |> html_response(200)
+
+    test "a francophone class prints in French with the official header", %{conn: conn, cg: cg, seq: seq, scope: scope} do
+      {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+      {:ok, _} =
+        TeacherAssistant.Accounts.update_school_profile(
+          profile,
+          %{region: :littoral, department: "Wouri", motto: "Discipline – Travail"},
+          scope: scope
+        )
+
+      html = print(conn, cg, seq)
+      assert html =~ ~s(<html lang="fr">)
+      assert html =~ "République du Cameroun"
+      assert html =~ "Ministère des Enseignements secondaires"
+      assert html =~ "Délégation régionale des Enseignements secondaires du Littoral"
+      assert html =~ "Wouri"
+      assert html =~ "Discipline – Travail"
+      assert html =~ "Matière"
+      refute html =~ "Subject"
+    end
+
+    test "an anglophone class prints in English with grades", %{conn: conn, scope: scope, seq: seq} do
+      {:ok, en} =
+        TeacherAssistant.Enrollment.create_class_group(scope, scope.current_academic_year || TeacherAssistant.Organization.current_academic_year(scope), %{
+          label: "Form 1 A",
+          level: "Form 1",
+          subsystem: :anglophone
+        })
+
+      {:ok, _} = TeacherAssistant.Enrollment.add_student(scope, en, %{full_name: "Ngum Che", sex: :f})
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, en, scope.current_user, %{
+          subject: "Biology",
+          coefficient: Decimal.new(2)
+        })
+
+      {:ok, a} =
+        TeacherAssistant.Assessment.create_assessment(scope, tc, seq, %{
+          label: "T1",
+          weight: Decimal.new(1),
+          max_score: Decimal.new(20)
+        })
+
+      [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, en)
+      TeacherAssistant.Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new(15)}])
+
+      html = print(conn, en, seq)
+      assert html =~ ~s(<html lang="en">)
+      assert html =~ "Republic of Cameroon"
+      assert html =~ "Subject"
+      assert html =~ "Grade"
+      # 15/20 on the default scale: B, Very good
+      assert html =~ "Very good"
+      refute html =~ "Matière"
+    end
+
+    test "bilingual: both labels, an identical word printed once", %{conn: conn, cg: cg, seq: seq, scope: scope} do
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+          "language" => "bilingual",
+          "elements" => Enum.map(TeacherAssistant.Academics.BulletinElement.defaults(), &Atom.to_string/1)
+        })
+
+      html = print(conn, cg, seq)
+      assert html =~ "Matière / Subject"
+      assert html =~ "République du Cameroun"
+      assert html =~ "Republic of Cameroon"
+      refute html =~ "Coefficient / Coefficient"
+    end
+
+    test "hidden elements disappear and rows stay balanced", %{conn: conn, cg: cg, seq: seq, scope: scope} do
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{"language" => "by_class", "elements" => [""]})
+
+      html = print(conn, cg, seq)
+      refute html =~ "Rang"
+      refute html =~ "Cote classe"
+      refute html =~ "Visa Professeur Principal"
+      refute html =~ "Moyenne de la classe"
+      refute html =~ "Absences non justifiées"
+      assert html =~ "Moyenne générale"
+      assert html =~ "Visa Chef d&#39;établissement"
+
+      # Every body row has as many cells as the header (3 columns: Matière, Coefficient, Note, Note×Coef → 4).
+      [thead | _] = Regex.run(~r/<thead>.*?<\/thead>/s, html)
+      header_cells = length(Regex.scan(~r/<th[ >]/, thead))
+      [tfoot | _] = Regex.run(~r/<tfoot>.*?<\/tfoot>/s, html)
+      assert length(Regex.scan(~r/<th[ >]/, tfoot)) == header_cells
+    end
+
+    test "the class average prints when shown", %{conn: conn, cg: cg, seq: seq} do
+      html = print(conn, cg, seq)
+      assert html =~ "Moyenne de la classe"
+    end
+
+    test "a published card ignores later template changes", %{conn: conn, cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{"language" => "bilingual", "elements" => [""]})
+
+      html =
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}")
+        |> html_response(200)
+
+      refute html =~ "Matière / Subject"
+      assert html =~ "Rang"
     end
   end
 end
