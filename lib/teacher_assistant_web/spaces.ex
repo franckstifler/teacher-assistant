@@ -142,6 +142,7 @@ defmodule TeacherAssistantWeb.Spaces do
           appreciations(),
           passage(),
           bulletin_template(),
+          holidays(),
           periods()
         ])
       ]
@@ -168,7 +169,8 @@ defmodule TeacherAssistantWeb.Spaces do
           evaluations(),
           appreciations(),
           passage(),
-          bulletin_template()
+          bulletin_template(),
+          holidays()
         ])
       ]
     }
@@ -366,11 +368,20 @@ defmodule TeacherAssistantWeb.Spaces do
         ~p"/school/settings/bulletin"
       )
 
+  defp holidays,
+    do:
+      item(
+        "holidays",
+        gettext("Congés & jours fériés"),
+        "hero-calendar",
+        ~p"/school/settings/holidays"
+      )
+
   defp councils,
     do: item("councils", gettext("Conseils de classe"), "hero-user-group", ~p"/school/councils")
 
   defp bulletins,
     do: item("bulletins", gettext("Bulletins"), "hero-document-text", ~p"/school/bulletins")
 
-  defp periods, do: item("periods", gettext("Périodes"), "hero-clock", ~p"/school/periods")
+  defp periods, do: item("periods", gettext("Horaires"), "hero-clock", ~p"/school/periods")
 end

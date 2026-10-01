@@ -122,4 +122,41 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
 
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/school/periods")
   end
+
+  describe "Horaires (spec J1)" do
+    test "the page is titled Horaires and saves the lesson days", %{conn: conn, scope: scope} do
+      {:ok, view, html} = live(conn, ~p"/school/periods")
+      assert html =~ "Horaires"
+
+      view
+      |> form("#days-form", %{days: %{"lesson_days" => ["monday", "tuesday", "wednesday", "thursday", "friday"], "wednesday_afternoon_off?" => "true", "default_lesson_minutes" => "50"}})
+      |> render_submit()
+
+      assert render(view) =~ "Réglage enregistré."
+      assert TeacherAssistant.Attendance.school_calendar(scope).wednesday_afternoon_off?
+    end
+
+    test "adding a period pre-fills the end from the default length", %{conn: conn, scope: scope} do
+      {:ok, view, _} = live(conn, ~p"/school/periods")
+      view |> form("#new-period-form", %{new_period: %{start_time: "16:00"}}) |> render_change()
+      assert has_element?(view, "#new-period-form input[name='new_period[end_time]'][value='16:50']")
+
+      view
+      |> form("#new-period-form", %{new_period: %{label: "Cours 10", start_time: "16:00", end_time: "16:50", kind: "lesson"}})
+      |> render_submit()
+
+      assert Enum.any?(TeacherAssistant.Attendance.list_periods(scope), &(&1.label == "Cours 10"))
+    end
+
+    test "an overlapping period shows the error", %{conn: conn, scope: scope} do
+      :ok = Attendance.build_default_periods(scope)
+      {:ok, view, _} = live(conn, ~p"/school/periods")
+
+      view
+      |> form("#new-period-form", %{new_period: %{label: "X", start_time: "08:00", end_time: "08:30", kind: "lesson"}})
+      |> render_submit()
+
+      assert has_element?(view, "#new-period-error", "Chevauche")
+    end
+  end
 end

@@ -375,6 +375,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             {gettext("Modèle de bulletin")}
           </.link>
 
+          <.link
+            id="holidays-link"
+            navigate={~p"/school/settings/holidays"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Congés & jours fériés")}
+          </.link>
+
           <div class="overflow-x-auto">
             <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
               <thead>
