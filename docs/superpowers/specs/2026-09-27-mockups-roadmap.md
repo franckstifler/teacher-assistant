@@ -23,7 +23,7 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 | G | School life, day view | V02, V01, V03, then V04, V06 (P2) | E | S×3 |
 | H | Pedagogy screens — **on hold** (2026-09-30: needs progression plans, which no screen creates since the teacher-personal pause) | P01, P02 (P2) | E | M |
 | I | Report card cycle, split I1 N09 → I2 N13 → I3 N11 → I4 N10 → I5 N12 (see §I) | N09, N13, N11, N10, N12 | D2a, D2b-1, D2b-2, D3 | S…L |
-| J | Timetable and staff | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
+| J | Timetable and staff, split J1 S03/S02 → J2 T04 → J3 T02/T03 → J4 T01 → J5 T05 (see §J) | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
 | K | Platform | R04, R05, S04, S06, R03 | E | S…L |
 | — | Marketing site | `Landing` mockup (not in the gap list) | — | M |
 | L | School life, rest (see §L) | V05, L1–L3 | G | M |
@@ -856,6 +856,94 @@ template applies to the **printed card** only (screens keep the reader's languag
 
 Out of scope: digitised signature and stamp, editable delegation text (S04, K); sending cards to parents
 (R03); publication by role setting; template on the screen views; séquence cards' publication.
+
+## J — Timetable and staff (split)
+
+Decided 2026-10-01. One spec, plan and branch per sub-increment, in this order:
+
+| # | Content | Gaps | Size |
+|---|---|---|---|
+| J1 | School calendar: lesson days, Wednesday afternoon off, period overlap check, default lesson length; holidays per year | S03, S02 | S–M |
+| J2 | Assignments overview: school grid teachers × classes, weekly hours vs statutory service, one form master per class | T04 | S |
+| J3 | Rooms (capacity, laboratory) and teacher unavailability | T02, T03 | M |
+| J4 | Censeur timetable editor: class tabs, conflicts shown (not refused), move/swap suggestions, hours placed vs planned, room and unavailability checks | T01 | L |
+| J5 | Teacher absences and replacements: declaration, cover per slot (colleague, étude, cancelled), hours owed | T05 | L |
+
+J1 first because every later piece needs to know which days have lessons; J3 before J4 so the editor checks
+rooms and unavailability from the start; J5 last because it reads the finished timetable.
+
+## J1 — School calendar (spec)
+
+Mockup: `Paramètres école` → "Horaires" (fields `jours`, `mer`, `duree`) and "Congés" (list `conges`). Gaps:
+**S03, S02**.
+
+User decisions (2026-10-01): lesson days are weekday chips plus **one toggle « Mercredi après-midi libre »**
+(the afternoon = every period starting at or after 12:00); holidays are a **per-year list, prefilled** with the
+national holidays; closing a day or half-day that has placed lessons is **refused until those lessons are
+removed**; the default lesson length is **50 min**, and the generated default schedule moves to 50-minute
+lessons to match. Out of J1: the roll-call grace period (« Délai pour faire l'appel »).
+
+Existing code: `Period` (position, label, start/end time, kind lesson/break) with a "Périodes" page that can
+generate the default schedule, edit and delete (no add); `DayOfWeek` Monday–Saturday; `TimetableSlot`
+(class × day × period); `Academics.SchoolLife` computes the day views of G from the slots of a weekday.
+
+### Data
+
+1. `SchoolProfile` gains (admin axis):
+   - `lesson_days`: array of `DayOfWeek`, default all six (Monday–Saturday — today's behaviour, so existing
+     schools see no change); at least one day.
+   - `wednesday_afternoon_off?`: boolean, default false.
+   - `default_lesson_minutes`: integer 1..240, default 50.
+2. Saving the lesson days or the Wednesday toggle is refused when timetable slots sit on a day being removed
+   or, with the toggle on, on a Wednesday period starting at or after 12:00: « 12 cours sont placés le
+   samedi : retirez-les de l'emploi du temps d'abord. » Nothing is written.
+3. `Period` validation: `end_time > start_time`, and no overlap with another period of the school
+   (`start < other.end and other.start < end`): « Cours 2 (08:20–09:10) chevauche Cours 1 (07:30–08:25). »
+4. `Reference.default_periods_preset/0` moves to 50-minute lessons: Cours 1 07:30–08:20, Cours 2 08:20–09:10,
+   Récréation 09:10–09:30, Cours 3 09:30–10:20, Cours 4 10:20–11:10, Cours 5 11:10–12:00, Pause déjeuner
+   12:00–13:00, Cours 6 13:00–13:50, Cours 7 13:50–14:40, Cours 8 14:40–15:30. Existing schools keep their
+   periods.
+5. New `Holiday` resource (tenant, admin axis to write, members read): `academic_year_id`, `label`
+   (non-empty), `start_date`, `end_date`; `end_date >= start_date`; both inside the year's dates.
+6. Prefill: creating an academic year adds the national holidays falling inside it; a « Préremplir » action
+   adds them later without duplicates (same label and start date). The list: Noël (25 Dec), Jour de l'an
+   (1 Jan), Fête de la Jeunesse (11 Feb), Vendredi saint and Ascension (computed from Easter), Fête du
+   Travail (1 May), Fête nationale (20 May). Breaks, Tabaski, Ramadan and exam periods are typed by the
+   school.
+7. Migrations with `mix ash.codegen --dev`.
+
+### Calendar
+
+8. One pure module answers, from the profile and the year's holidays:
+   - `lesson_day?(date)`: false when the weekday is not a lesson day or the date is in a holiday;
+   - `holiday_on(date)`: the holiday or nil;
+   - `open_cell?(day, period)`: false for a Wednesday period starting at or after 12:00 when the toggle is
+     on; true otherwise (for a lesson day).
+   Easter is computed with the anonymous Gregorian algorithm.
+
+### Effects
+
+9. Timetables (class editor and teacher view): columns are the lesson days only; closed cells are greyed and
+   cannot be filled; `Timetabling.place_slot` and `place_combined_slot` refuse a closed cell or a non-lesson
+   day with `{:error, :closed_cell}`.
+10. Day views (G): on a holiday or a non-lesson day, « Aujourd'hui » (SG) and « Ma journée » (teacher) show
+    « Jour férié : <label> » or « Pas de cours aujourd'hui » and expect no roll call; « Appels manquants cette
+    semaine » skips holidays, non-lesson days and closed cells.
+11. Unchanged: the roll-call page, séquence dates and mark-entry deadlines, absence and sanction lists.
+
+### Screens
+
+12. **« Horaires »** (the existing « Périodes » page, renamed; same route): lesson-day chips, the Wednesday
+    toggle, the default lesson length, then the periods with an « Ajouter une période » row whose end time
+    is pre-filled as start + default length; overlap and closing errors inline. Editable by the admin axis,
+    read-only for others who can open it today.
+13. **« Congés & jours fériés »** (`/school/settings/holidays`, admin axis, linked from Settings and the
+    Proviseur/Censeur "Paramètres" menus): the active year's holidays (label, dates, number of days),
+    add / edit / delete, « Préremplir les jours fériés nationaux ».
+14. Strings through gettext (FR and EN).
+
+Out of scope: the roll-call grace period; per-class lesson days; holidays per class or level; moving
+séquence dates or deadlines around holidays.
 
 ## Holes found on 2026-10-01 (not yet specified)
 
