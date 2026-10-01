@@ -654,7 +654,7 @@ published term locks its council. Design choice: one `ClassCouncil` per class ×
 1. `ClassCouncil` (attribute multitenancy): `class_group`, `term`, `status` (`Ash.Type.Enum`
    `:open | :held`), `held_on` (date; defaults to the term's `class_council_date`), `chair` (text),
    `attendees` (text), `observations` (text), `held_at`, `held_by_user_id`. One per (class, term). Created
-   on first visit or first edit.
+   by the first save (header, a decision, or marking it held); before that the page shows the defaults.
 2. `CouncilDecision`: `class_council`, `student`, `distinction_choice` (`Ash.Type.Enum`: the five I1
    `Distinction` values plus `:none`; nil = keep the I1 proposal), `conduct_warning` (`Ash.Type.Enum`
    `:avertissement_conduite | :blame_conduite`, nil = none), `appreciation` (text, trimmed, ≤ 300
