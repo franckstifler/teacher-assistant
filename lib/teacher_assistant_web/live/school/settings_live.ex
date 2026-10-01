@@ -367,6 +367,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             {gettext("Passage & redoublement")}
           </.link>
 
+          <.link
+            id="bulletin-template-link"
+            navigate={~p"/school/settings/bulletin"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Modèle de bulletin")}
+          </.link>
+
           <div class="overflow-x-auto">
             <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
               <thead>

@@ -141,6 +141,7 @@ defmodule TeacherAssistantWeb.Spaces do
           evaluations(),
           appreciations(),
           passage(),
+          bulletin_template(),
           periods()
         ])
       ]
@@ -166,7 +167,8 @@ defmodule TeacherAssistantWeb.Spaces do
           coefficients(),
           evaluations(),
           appreciations(),
-          passage()
+          passage(),
+          bulletin_template()
         ])
       ]
     }
@@ -353,6 +355,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Passage & redoublement"),
         "hero-arrow-trending-up",
         ~p"/school/settings/passage"
+      )
+
+  defp bulletin_template,
+    do:
+      item(
+        "bulletin_template",
+        gettext("Modèle de bulletin"),
+        "hero-document-duplicate",
+        ~p"/school/settings/bulletin"
       )
 
   defp councils,
