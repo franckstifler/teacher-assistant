@@ -109,7 +109,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
     do: {:noreply, assign(socket, panel_error: error_text(reason))}
 
   defp error_text(:has_data), do: gettext("Impossible : des notes ou une progression existent.")
-  defp error_text(:invalid_hours), do: gettext("Indiquez des heures entre 1 et 20.")
+  defp error_text(:invalid_hours), do: gettext("Indiquez des heures entre 1 et 40.")
   defp error_text(:not_assignable), do: gettext("Cette personne n'est pas membre de l'école.")
 
   defp error_text(:combined),
@@ -138,6 +138,9 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
       &{not MapSet.member?(teaching, &1.user_id), String.downcase(to_string(&1.user.email))}
     )
   end
+
+  defp old_hours(%{kind: :assigned, tc: tc}), do: tc.weekly_hours || 0
+  defp old_hours(_cell), do: 0
 
   defp hours_int(hours) do
     case Integer.parse(hours || "") do
@@ -302,7 +305,13 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
                   <ul class="space-y-1">
                     <li :for={m <- candidates(@grid, s_id)}>
                       <% after_load =
-                        AssignmentGrid.load_after(@grid, m.user_id, hours_int(@hours), current) %>
+                        AssignmentGrid.load_after(
+                          @grid,
+                          m.user_id,
+                          hours_int(@hours),
+                          current,
+                          old_hours(cell)
+                        ) %>
                       <% service = AssignmentGrid.service(@grid, m.user_id) %>
                       <button
                         id={"pick-#{m.user_id}"}

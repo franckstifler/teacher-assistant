@@ -1542,7 +1542,7 @@ defmodule TeacherAssistant.Curriculum do
 
   defp parse_weekly_hours(value) when is_binary(value) do
     case Integer.parse(String.trim(value)) do
-      {n, ""} when n in 1..20 -> {:ok, n}
+      {n, ""} when n in 1..40 -> {:ok, n}
       _ -> {:error, :invalid_hours}
     end
   end

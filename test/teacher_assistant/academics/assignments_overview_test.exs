@@ -69,4 +69,14 @@ defmodule TeacherAssistant.Academics.AssignmentsOverviewTest do
     assert {:error, %Ash.Error.Forbidden{}} =
              Curriculum.place_assignment(teacher, ctx.cg, ctx.maths, ctx.head.id, "4")
   end
+
+  test "hours up to 40 are accepted, as on the class page", ctx do
+    assert {:ok, tc} =
+             Curriculum.place_assignment(ctx.scope, ctx.cg, ctx.maths, ctx.head.id, "24")
+
+    assert tc.weekly_hours == 24
+
+    assert {:error, :invalid_hours} =
+             Curriculum.place_assignment(ctx.scope, ctx.cg, ctx.maths, ctx.head.id, "41")
+  end
 end

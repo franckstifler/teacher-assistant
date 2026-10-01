@@ -56,7 +56,7 @@ defmodule TeacherAssistant.Academics.AssignmentGridTest do
 
   test "load after a change does not double-count the current holder", %{input: input} do
     g = AssignmentGrid.build(input)
-    assert AssignmentGrid.load_after(g, "u1", 5, "u1") == 5
+    assert AssignmentGrid.load_after(g, "u1", 5, "u1", 5) == 5
     assert AssignmentGrid.load_after(g, "u2", 5, "u1") == 10
     assert AssignmentGrid.load_after(g, "u9", 4, nil) == 4
     assert AssignmentGrid.service(g, "u9") == 18
@@ -71,5 +71,24 @@ defmodule TeacherAssistant.Academics.AssignmentGridTest do
       })
 
     assert Enum.map(g.subjects, & &1.id) == ["maths"]
+  end
+
+  test "an inactive subject is never « à affecter »", %{input: input} do
+    g =
+      AssignmentGrid.build(%{
+        input
+        | subjects: [%{id: "maths", active?: false}, %{id: "svt"}, %{id: "eps"}]
+      })
+
+    assert %{kind: :not_taught} = g.cells[{"6b", "maths"}]
+    assert %{kind: :assigned} = g.cells[{"6a", "maths"}]
+    assert g.to_assign == 0
+  end
+
+  test "the holder's load after an hours edit replaces the old hours", %{input: input} do
+    g = AssignmentGrid.build(input)
+    # u1 holds 6a maths at 5 h; editing it to 8 h gives 8, not 5
+    assert AssignmentGrid.load_after(g, "u1", 8, "u1", 5) == 8
+    assert AssignmentGrid.load_after(g, "u2", 8, "u1", 5) == 13
   end
 end

@@ -45,6 +45,9 @@ defmodule TeacherAssistant.Academics.AssignmentGrid do
     }
   end
 
+  # An inactive subject is never to assign (the coefficient grid hides it).
+  defp cell(nil, _c, %{active?: false}, _cells, _loads), do: %{kind: :not_taught}
+
   defp cell(nil, c, s, cells, _loads) do
     key = %{subject_id: s.id, subsystem: c.subsystem, level: c.level, serie: c.serie}
     if CoefficientRules.resolve(cells, key), do: %{kind: :to_assign}, else: %{kind: :not_taught}
@@ -69,9 +72,15 @@ defmodule TeacherAssistant.Academics.AssignmentGrid do
   def service(%{services: services, school_hours: school}, teacher_id),
     do: Map.get(services, teacher_id) || school
 
-  @doc "The teacher's load if they took a cell of `hours` currently held by `current_id`."
-  def load_after(grid, teacher_id, hours, current_id) do
+  @doc """
+  The teacher's load if they took a cell of `hours`, currently held by `current_id`
+  at `old_hours`: the holder's old hours are replaced, anyone else's are added.
+  """
+  def load_after(grid, teacher_id, hours, current_id, old_hours \\ 0) do
     current = get_in(grid.loads, [teacher_id, :load]) || 0
-    if teacher_id == current_id, do: current, else: current + (hours || 0)
+
+    if teacher_id == current_id,
+      do: current - (old_hours || 0) + (hours || 0),
+      else: current + (hours || 0)
   end
 end
