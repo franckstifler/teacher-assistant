@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
 
   alias TeacherAssistant.{Attendance, Discipline}
   alias TeacherAssistant.Academics.Reference
-  alias TeacherAssistantWeb.Authz
+  alias TeacherAssistantWeb.{Authz, Dates}
 
   @filters ~w(unjustified justified all)
 
@@ -43,13 +43,11 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
       end
 
     selected = socket.assigns.selected && Enum.find(rows, &(&1.id == socket.assigns.selected.id))
-    assign(socket, rows: rows, selected: selected)
+    assign(socket, today: today, rows: rows, selected: selected)
   end
 
   def handle_event("select", %{"row" => row_id}, socket),
     do: {:noreply, assign(socket, selected: Enum.find(socket.assigns.rows, &(&1.id == row_id)))}
-
-  def handle_event("close", _params, socket), do: {:noreply, assign(socket, selected: nil)}
 
   def handle_event("justify", %{"row" => row_id, "reason" => reason}, socket) do
     case justify(socket.assigns.current_scope, socket.assigns.rows, row_id, reason) do
@@ -68,84 +66,137 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
   defp filter_label("all"), do: gettext("Toutes")
 
   def render(assigns) do
-    assigns = assign(assigns, filters: @filters, shown: visible(assigns.rows, assigns.filter))
+    shown = visible(assigns.rows, assigns.filter)
+
+    # As in the mockup, the panel shows the chosen row, else the first one listed.
+    selected =
+      (assigns.selected && Enum.find(shown, &(&1.id == assigns.selected.id))) || List.first(shown)
+
+    assigns = assign(assigns, filters: @filters, shown: shown, selected: selected)
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="absences" class="flex flex-col gap-5">
         <.page_header eyebrow={gettext("Vie scolaire")} title={gettext("Absences")}>
           <:actions>
-            <div role="tablist" class="tabs tabs-box tabs-sm">
+            <.side_chip id="unjustified-count">
+              {ngettext(
+                "%{count} non justifiée",
+                "%{count} non justifiées",
+                Enum.count(@rows, &(not &1.justified?))
+              )}
+            </.side_chip>
+          </:actions>
+        </.page_header>
+
+        <div class="flex flex-wrap items-start gap-4">
+          <div class="flex min-w-0 flex-[1_1_560px] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100">
+            <div class="flex flex-wrap items-center gap-1.5 border-b border-base-300 px-3.5 py-3">
               <.link
                 :for={f <- @filters}
                 id={"filter-#{f}"}
-                role="tab"
                 patch={~p"/school/absences?filter=#{f}"}
-                class={["tab", @filter == f && "tab-active"]}
+                aria-current={@filter == f && "page"}
+                class={[
+                  "rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors",
+                  if(@filter == f,
+                    do: "border-primary bg-primary/20 text-primary",
+                    else: "border-base-300 hover:border-primary/60"
+                  )
+                ]}
               >
                 {filter_label(f)}
               </.link>
             </div>
-          </:actions>
-        </.page_header>
-
-        <div class="grid gap-5 lg:grid-cols-[1fr_20rem]">
-          <div class="ta-leaf overflow-x-auto p-0">
-            <table id="absence-rows" class="table table-sm">
-              <thead>
-                <tr>
-                  <th>{gettext("Date")}</th>
-                  <th>{gettext("Élève")}</th>
-                  <th>{gettext("Classe")}</th>
-                  <th>{gettext("Créneaux")}</th>
-                  <th>{gettext("Statut")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
+            <div class="overflow-x-auto">
+              <div id="absence-rows" class="min-w-[640px]">
+                <div class={[row_grid(), "border-b border-base-300 py-2.5"]}>
+                  <span
+                    :for={
+                      label <- [
+                        gettext("Date"),
+                        gettext("Élève"),
+                        gettext("Classe"),
+                        gettext("Créneaux"),
+                        gettext("Statut")
+                      ]
+                    }
+                    class="ta-num text-[0.65rem] font-semibold uppercase tracking-[0.06em] text-base-content/75"
+                  >
+                    {label}
+                  </span>
+                </div>
+                <button
                   :for={row <- @shown}
                   id={"row-#{row.id}"}
+                  type="button"
                   phx-click="select"
                   phx-value-row={row.id}
+                  aria-pressed={to_string(@selected != nil and @selected.id == row.id)}
                   class={[
-                    "cursor-pointer transition hover:bg-base-200",
+                    row_grid(),
+                    "ta-row-rule w-full cursor-pointer items-center py-[9px] text-left text-[0.86rem] transition-colors hover:bg-base-content/5",
                     @selected && @selected.id == row.id && "bg-primary/10"
                   ]}
                 >
-                  <td class="ta-num">{Calendar.strftime(row.date, "%d/%m")}</td>
-                  <td>{row.student.full_name} <.repeated_badge row={row} /></td>
-                  <td>{row.class_group.label}</td>
-                  <td class="ta-num">{Enum.map_join(row.periods, ", ", & &1.label)}</td>
-                  <td><.absence_status row={row} /></td>
-                </tr>
-              </tbody>
-            </table>
-            <p :if={@shown == []} id="no-absences" class="p-4 text-sm text-base-content/60">
+                  <span class="ta-num truncate text-base-content/75">{Dates.relative(row.date, @today)}</span>
+                  <span class="flex min-w-0 items-center gap-1.5 font-semibold">
+                    <span class="truncate">{row.student.full_name}</span>
+                    <span
+                      :if={row.flagged?}
+                      title={gettext("Absences répétées")}
+                      class="ta-num flex-none rounded-full bg-error/20 px-1.5 text-[0.62rem] text-error"
+                    >
+                      {gettext("rép.")}
+                    </span>
+                  </span>
+                  <span class="truncate">{row.class_group.label}</span>
+                  <span class="truncate text-base-content/75">{periods_text(row.periods)}</span>
+                  <span class={[
+                    "truncate",
+                    if(row.justified?, do: "text-primary", else: "text-warning")
+                  ]}>
+                    {if row.justified?, do: justified_label(row), else: gettext("Non justifiée")}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <p :if={@shown == []} id="no-absences" class="px-3.5 py-5 text-sm text-base-content/75">
               {gettext("Aucune absence pour ce filtre.")}
             </p>
           </div>
 
-          <aside :if={@selected} id="absence-panel" class="ta-leaf flex flex-col gap-3 text-sm">
+          <aside
+            :if={@selected}
+            id="absence-panel"
+            class="ta-panel flex min-w-0 max-w-[420px] flex-[1_1_300px] flex-col gap-2.5 !border-primary !px-[18px] !py-4"
+          >
             <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="font-semibold">{@selected.student.full_name}</p>
-                <p class="text-base-content/70">
-                  {@selected.class_group.label} · {Calendar.strftime(@selected.date, "%d/%m/%Y")}
-                </p>
-              </div>
-              <button type="button" class="btn btn-ghost btn-xs" phx-click="close">
-                <.icon name="hero-x-mark" class="size-4" />
-              </button>
+              <span class="ta-num text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-primary/90">
+                {@selected.class_group.label} · {Dates.relative(@selected.date, @today)}
+              </span>
+              <.absence_status row={@selected} />
             </div>
-            <p>{periods_text(@selected.periods)}</p>
-            <.absence_status row={@selected} />
-            <p>
-              {gettext("Absences non justifiées : %{count} jour(s) dans la séquence",
-                count: @selected.unjustified_days
-              )}
-            </p>
-            <.reason_chips :if={not @selected.justified?} row={@selected} />
-            <p :if={@selected.flagged?} id="repeated-warning" class="text-error">
+            <span class="font-display text-[1.3rem] font-semibold leading-tight">
+              {@selected.student.full_name}
+            </span>
+            <span :if={@selected.flagged?} class="self-start"><.repeated_badge row={@selected} /></span>
+            <span class="text-[0.82rem] text-base-content/80">{periods_text(@selected.periods)}</span>
+            <div class="flex justify-between gap-2.5 border-b border-base-300/60 py-1.5 text-[0.85rem]">
+              <span class="text-base-content/80">{gettext("Absences non justifiées")}</span>
+              <span id="unjustified-days" class="ta-num font-semibold">
+                {ngettext("%{count} jour", "%{count} jours", @selected.unjustified_days)}
+              </span>
+            </div>
+            <div :if={not @selected.justified?} class="flex flex-col gap-1.5">
+              <span class="text-[0.8rem] font-semibold">{gettext("Motif de justification")}</span>
+              <.reason_chips row={@selected} />
+            </div>
+            <p
+              :if={@selected.flagged?}
+              id="repeated-warning"
+              class="rounded-[0.4rem] border border-dashed border-warning/60 px-3 py-2 text-[0.82rem] text-warning"
+            >
               {gettext("Absences répétées : convocation des parents recommandée.")}
             </p>
           </aside>
@@ -154,4 +205,7 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
     </Layouts.app>
     """
   end
+
+  defp row_grid,
+    do: "grid grid-cols-[110px_minmax(0,1fr)_70px_minmax(0,1fr)_150px] gap-2.5 px-3.5"
 end

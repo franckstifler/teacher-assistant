@@ -70,6 +70,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
               )
     end
 
+    # Sanctions whose parents have not been told yet (spec G, KPI "Sanctions à notifier").
+    read :parents_to_notify do
+      filter expr(is_nil(parents_notified_on))
+    end
+
     read :for_class_in_range do
       argument :class_group_id, :uuid, allow_nil?: false
       argument :first, :date, allow_nil?: false

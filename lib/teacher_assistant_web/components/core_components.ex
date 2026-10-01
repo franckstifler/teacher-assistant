@@ -524,6 +524,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
 
   attr :eyebrow, :string, required: true
   attr :title, :string, required: true
+  attr :subtitle, :string, default: nil
   slot :actions
 
   def page_header(assigns) do
@@ -531,10 +532,56 @@ defmodule TeacherAssistantWeb.CoreComponents do
     <header class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <p class="ta-eyebrow">{@eyebrow}</p>
-        <h1 class="mt-1 text-2xl font-bold sm:text-3xl">{@title}</h1>
+        <h1 class="mt-1.5 text-2xl font-semibold leading-[1.1] sm:text-[2rem]">{@title}</h1>
+        <p :if={@subtitle} class="mt-2 text-[0.95rem] text-base-content/80">{@subtitle}</p>
       </div>
       <div :if={@actions != []} class="flex items-center gap-2">{render_slot(@actions)}</div>
     </header>
+    """
+  end
+
+  @doc "The mono chip at the right of a page header (\"2 / 5 appels faits\")."
+  attr :id, :string, default: nil
+  slot :inner_block, required: true
+
+  def side_chip(assigns) do
+    ~H"""
+    <span
+      id={@id}
+      class="ta-num inline-flex items-center rounded-[0.4rem] border border-base-300 bg-base-100 px-[11px] py-[7px] text-[0.8rem]"
+    >
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  @doc "A KPI tile: mono label, big mono value in `tone`, short caption."
+  attr :id, :string, required: true
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :sub, :string, default: nil
+  attr :tone, :string, default: "text-base-content"
+
+  def kpi(assigns) do
+    ~H"""
+    <div id={@id} class="ta-panel flex flex-col gap-1 !py-3">
+      <span class="ta-num text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-base-content/70">
+        {@label}
+      </span>
+      <span class={["ta-num text-[1.6rem] font-semibold leading-tight", @tone]}>{@value}</span>
+      <span :if={@sub} class="text-[0.76rem] text-base-content/70">{@sub}</span>
+    </div>
+    """
+  end
+
+  @doc "A KPI row: as many columns as fit (min 190px), like the mockups."
+  slot :inner_block, required: true
+
+  def kpi_row(assigns) do
+    ~H"""
+    <div class="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
+      {render_slot(@inner_block)}
+    </div>
     """
   end
 

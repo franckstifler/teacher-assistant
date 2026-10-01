@@ -222,6 +222,7 @@ defmodule TeacherAssistantWeb.Layouts do
                   href={item.path}
                   icon={item.icon}
                   badge={item[:badge]}
+                  badge_tone={item[:badge_tone] || :warning}
                   current_path={@current_path}
                 >
                   {item.label}
@@ -326,6 +327,7 @@ defmodule TeacherAssistantWeb.Layouts do
   attr :icon, :string, required: true
   attr :current_path, :string, default: nil
   attr :badge, :integer, default: nil
+  attr :badge_tone, :atom, default: :warning
   slot :inner_block, required: true
 
   defp rail_link(assigns) do
@@ -335,7 +337,15 @@ defmodule TeacherAssistantWeb.Layouts do
     <.link id={@id} navigate={@href} aria-current={@active && "page"} class="ta-rail__item">
       <.icon name={@icon} class="size-[1.05rem] flex-none opacity-90" />
       <span class="flex-1">{render_slot(@inner_block)}</span>
-      <span :if={@badge && @badge > 0} class="badge badge-warning badge-sm ta-num">{@badge}</span>
+      <span
+        :if={@badge && @badge > 0}
+        class={[
+          "badge badge-sm ta-num",
+          if(@badge_tone == :error, do: "badge-error", else: "badge-warning")
+        ]}
+      >
+        {@badge}
+      </span>
     </.link>
     """
   end

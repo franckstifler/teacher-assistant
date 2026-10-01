@@ -27,6 +27,7 @@ defmodule TeacherAssistant.Discipline do
 
       define :delete_sanction, action: :destroy
       define :recent_sanctions, action: :recent
+      define :list_parents_to_notify, action: :parents_to_notify
     end
 
     resource ConductMark do

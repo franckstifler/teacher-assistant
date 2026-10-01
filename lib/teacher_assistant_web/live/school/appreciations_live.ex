@@ -3,7 +3,8 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
   Settings → Appréciations & distinctions (spec I1): the school's appreciation scale
   (editable bands, mockup "Paramètres · Appréciations") and the distinction and
   work-warning thresholds with their two gates. The scale is edited locally and saved
-  as a whole; the thresholds save as one form.
+  as a whole; the thresholds save as one form. Edits wait in the page until the
+  sticky bar's "Enregistrer" (or "Annuler").
   """
   use TeacherAssistantWeb, :live_view
 
@@ -29,15 +30,34 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
          true <- Accounts.can_edit_profile?(scope, profile) do
       {:ok,
        socket
-       |> assign(thresholds: @thresholds, test: "", bands_error: nil, distinctions_error: nil)
+       |> assign(thresholds: @thresholds, test: "13,5", bands_error: nil, distinctions_error: nil)
        |> load_rules(Assessment.grading_rules(scope))}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end
   end
 
-  defp load_rules(socket, %GradingRules{} = rules),
-    do: assign(socket, rules: rules, rows: rows_from(Appreciations.bands(rules)))
+  defp load_rules(socket, %GradingRules{} = rules) do
+    assign(socket,
+      rules: rules,
+      rows: rows_from(Appreciations.bands(rules)),
+      dist: dist_from(rules),
+      bands_dirty?: false,
+      dist_dirty?: false
+    )
+  end
+
+  # The thresholds and gates as the form shows them (strings / booleans).
+  defp dist_from(rules) do
+    @thresholds
+    |> Map.new(fn {_kind, field, _op} ->
+      {Atom.to_string(field), threshold_value(rules, field)}
+    end)
+    |> Map.merge(%{
+      "distinctions_require_all_passed?" => rules.distinctions_require_all_passed?,
+      "distinctions_require_conduct?" => rules.distinctions_require_conduct?
+    })
+  end
 
   # Editor rows hold what the user edits: each row's upper bound ("À (exclu)", a
   # string; nil on the last row) and its label. A row's lower bound is the previous
@@ -104,6 +124,34 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
 
           {band.label, Decimal.to_float(width) / 20 * 100}
         end)
+        |> Enum.with_index(fn {label, pct}, i -> {label, pct, band_color(i, length(bands))} end)
+    end
+  end
+
+  # Red to green along the scale, as in the mockup.
+  defp band_color(i, n) do
+    hue = if n > 1, do: round(30 + (162 - 30) * i / (n - 1)), else: 162
+    "oklch(70% 0.12 #{hue})"
+  end
+
+  # The colour of the band the test mark falls in, for the result pill.
+  defp test_color(rows, test) do
+    with %Decimal{} = mark <- parse(test),
+         %GradingRules{} = rules <- draft_rules(rows) do
+      bands = Appreciations.bands(rules)
+      i = Enum.find_index(bands, &(&1.label == Appreciations.appreciation(mark, rules).label))
+      i && band_color(i, length(bands))
+    else
+      _ -> nil
+    end
+  end
+
+  # A row's upper bound is wrong when it is not a number, not above the lower one, or ≥ 20.
+  defp bad_bound?(from, to) do
+    with %Decimal{} = lo <- parse(from), %Decimal{} = hi <- parse(to) do
+      Decimal.compare(hi, lo) != :gt or Decimal.compare(hi, @twenty) != :lt
+    else
+      _ -> true
     end
   end
 
@@ -117,51 +165,71 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="appreciations" class="space-y-6">
+      <section id="appreciations" class="flex flex-col gap-4 pb-4">
         <.page_header
-          eyebrow={gettext("Paramètres")}
+          eyebrow={gettext("Évaluation")}
           title={gettext("Appréciations & distinctions")}
+          subtitle={
+            gettext(
+              "Appréciation automatique selon la note, et seuils des distinctions et sanctions de travail."
+            )
+          }
         />
 
-        <div class="rounded-box border border-base-300 bg-base-100 p-4 space-y-4">
+        <div class="ta-panel flex flex-col gap-3 !px-[18px] !py-4">
           <h2 class="ta-eyebrow">{gettext("Appréciation selon la note (sur 20)")}</h2>
 
-          <div class="flex h-8 overflow-hidden rounded-field border border-base-300">
+          <div
+            id="band-bar"
+            class="flex h-[30px] overflow-hidden rounded-[0.4rem] border border-base-300"
+          >
             <div
-              :for={{label, pct} <- segments(@rows)}
-              class="flex items-center justify-center truncate border-r border-base-100 bg-primary/15 px-1 text-xs last:border-r-0"
-              style={"width: #{pct}%"}
+              :for={{label, pct, color} <- segments(@rows)}
+              class="ta-num grid place-items-center overflow-hidden whitespace-nowrap border-r border-base-200 text-[0.62rem] font-semibold text-[oklch(20%_0.03_164)] last:border-r-0"
+              style={"width: #{pct}%; background: #{color}"}
               title={label}
             >
               {if pct >= 10, do: label}
             </div>
           </div>
 
-          <.form for={%{}} as={:bands} id="bands-form" phx-change="edit_bands" class="space-y-2">
-            <div class="grid grid-cols-[4rem_1rem_5rem_1fr_2rem] gap-2 text-xs text-base-content/60">
+          <.form for={%{}} as={:bands} id="bands-form" phx-change="edit_bands" class="flex flex-col">
+            <div class={[
+              band_grid(),
+              "ta-num py-1 text-[0.64rem] font-semibold uppercase tracking-[0.06em] text-base-content/75"
+            ]}>
               <span>{gettext("De")}</span><span></span><span>{gettext("À (exclu)")}</span>
               <span>{gettext("Appréciation")}</span><span></span>
             </div>
             <div
               :for={{{row, from}, i} <- Enum.with_index(Enum.zip(@rows, lower_bounds(@rows)))}
-              class="grid grid-cols-[4rem_1rem_5rem_1fr_2rem] items-center gap-2"
+              class={[band_grid(), "ta-row-rule items-center py-1"]}
             >
-              <span class="ta-num text-sm">{from}</span>
-              <span class="text-base-content/40">→</span>
-              <.input
+              <span class="ta-num text-[0.88rem] font-semibold">{from}</span>
+              <i class="size-3 rounded-[3px]" style={"background: #{band_color(i, length(@rows))}"}></i>
+              <input
                 :if={row.to}
                 id={"band-#{i}-to"}
                 name={"bands[#{i}][to]"}
                 value={row.to}
                 inputmode="decimal"
-                class="input input-sm w-20 text-right"
+                class={[
+                  "input input-sm ta-num h-[34px] w-[90px] text-right",
+                  bad_bound?(from, row.to) && "!border-error"
+                ]}
               />
-              <span :if={is_nil(row.to)} class="ta-num text-sm">20</span>
-              <.input
+              <input
+                :if={is_nil(row.to)}
+                value="20"
+                disabled
+                aria-label={gettext("À (exclu)")}
+                class="input input-sm ta-num h-[34px] w-[90px] text-right"
+              />
+              <input
                 id={"band-#{i}-label"}
                 name={"bands[#{i}][label]"}
                 value={row.label}
-                class="input input-sm w-full"
+                class="input input-sm h-[34px] w-full min-w-0"
               />
               <button
                 :if={length(@rows) > 1}
@@ -169,10 +237,11 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
                 type="button"
                 phx-click="remove_band"
                 phx-value-index={i}
-                class="btn btn-ghost btn-xs"
+                class="size-[34px] cursor-pointer rounded-[0.4rem] border border-base-300 text-base-content/75 transition-colors hover:border-error hover:text-error"
+                title={gettext("Supprimer")}
                 aria-label={gettext("Supprimer")}
               >
-                <.icon name="hero-x-mark" class="size-4" />
+                ×
               </button>
             </div>
           </.form>
@@ -180,12 +249,12 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
           <p :if={@bands_error} id="bands-error" class="text-sm text-error">{@bands_error}</p>
 
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <button
                 id="split-last-band"
                 type="button"
                 phx-click="split_last"
-                class="btn btn-ghost btn-sm"
+                class="h-9 cursor-pointer rounded-[0.4rem] border border-primary px-3.5 text-[0.8rem] font-semibold text-primary transition-colors hover:bg-primary/10"
               >
                 {gettext("+ Scinder la dernière tranche")}
               </button>
@@ -193,33 +262,36 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
                 id="reset-bands"
                 type="button"
                 phx-click="reset_bands"
-                class="btn btn-ghost btn-sm"
+                class="h-9 cursor-pointer px-2 text-[0.8rem] text-base-content/70 underline-offset-2 hover:underline"
               >
                 {gettext("Rétablir le barème par défaut")}
-              </button>
-              <button
-                id="save-bands"
-                type="button"
-                phx-click="save_bands"
-                class="btn btn-primary btn-sm"
-              >
-                {gettext("Enregistrer le barème")}
               </button>
             </div>
             <.form
               for={%{}}
               id="band-test-form"
               phx-change="test_mark"
-              class="flex items-center gap-2"
+              class="flex items-center gap-2 text-[0.85rem]"
             >
-              <span class="text-xs text-base-content/60">{gettext("Tester une note")}</span>
-              <.input
+              <span class="text-base-content/80">{gettext("Tester une note")}</span>
+              <input
                 name="test"
                 value={@test}
                 inputmode="decimal"
-                class="input input-sm w-20 text-right"
+                aria-label={gettext("Tester une note")}
+                class="input input-sm ta-num h-[34px] w-20 text-right"
               />
-              <span id="band-test-result" class="text-sm font-semibold">
+              <span
+                id="band-test-result"
+                class={[
+                  "rounded-full px-2.5 py-[5px] font-semibold",
+                  if(test_color(@rows, @test),
+                    do: "text-[oklch(20%_0.03_164)]",
+                    else: "text-base-content/70"
+                  )
+                ]}
+                style={test_color(@rows, @test) && "background: #{test_color(@rows, @test)}"}
+              >
                 {test_result(@rows, @test) || "—"}
               </span>
             </.form>
@@ -230,44 +302,112 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
           for={%{}}
           as={:distinctions}
           id="distinctions-form"
+          phx-change="edit_distinctions"
           phx-submit="save_distinctions"
-          class="rounded-box border border-base-300 bg-base-100 p-4 space-y-3"
+          class="flex flex-col gap-4"
         >
-          <h2 class="ta-eyebrow">{gettext("Distinctions et sanctions de travail")}</h2>
-          <p class="text-xs text-base-content/60">
-            {gettext("Seuils sur la moyenne de la période. Laisser vide pour ne pas l'attribuer.")}
-          </p>
-          <div :for={{kind, field, op} <- @thresholds} class="flex items-center gap-3">
-            <span class="flex-1"><.distinction_badge distinction={kind} /></span>
-            <span class="ta-num text-sm text-base-content/60">{op}</span>
-            <.input
-              name={"distinctions[#{field}]"}
-              value={threshold_value(@rules, field)}
-              inputmode="decimal"
-              class="input input-sm w-20 text-right"
+          <div class="ta-panel flex flex-col gap-1.5 !px-[18px] !py-4">
+            <h2 class="ta-eyebrow">
+              {gettext("Distinctions et sanctions de travail (moyenne trimestrielle)")}
+            </h2>
+            <p class="text-[0.78rem] text-base-content/70">
+              {gettext("Laisser vide pour ne pas l'attribuer.")}
+            </p>
+            <div
+              :for={{kind, field, op} <- @thresholds}
+              class="ta-row-rule flex items-center gap-2.5 py-1.5"
+            >
+              <span class={["flex-1 text-[0.9rem] font-semibold", distinction_tone(kind)]}>
+                {TeacherAssistant.Academics.Distinction.label(kind)}
+              </span>
+              <span class="ta-num text-[0.9rem] text-base-content/80">{op}</span>
+              <input
+                name={"distinctions[#{field}]"}
+                value={@dist[Atom.to_string(field)]}
+                inputmode="decimal"
+                aria-label={TeacherAssistant.Academics.Distinction.label(kind)}
+                class="input input-sm ta-num h-[34px] w-[74px] text-right"
+              />
+            </div>
+          </div>
+
+          <div class="ta-panel flex flex-col !px-[18px] !py-2">
+            <.gate
+              name="distinctions_require_all_passed?"
+              on={@dist["distinctions_require_all_passed?"]}
+              label={gettext("Distinctions seulement si toutes les matières sont ≥ 10")}
+            />
+            <.gate
+              name="distinctions_require_conduct?"
+              on={@dist["distinctions_require_conduct?"]}
+              label={gettext("Distinctions soumises à une conduite ≥ 12")}
             />
           </div>
-          <.input
-            type="checkbox"
-            name="distinctions[distinctions_require_all_passed?]"
-            checked={@rules.distinctions_require_all_passed?}
-            label={gettext("Distinctions seulement si toutes les matières sont ≥ 10")}
-          />
-          <.input
-            type="checkbox"
-            name="distinctions[distinctions_require_conduct?]"
-            checked={@rules.distinctions_require_conduct?}
-            label={gettext("Distinctions soumises à une conduite ≥ 12")}
-          />
+
           <p :if={@distinctions_error} id="distinctions-error" class="text-sm text-error">
             {@distinctions_error}
           </p>
-          <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
         </.form>
       </section>
+
+      <div
+        :if={@bands_dirty? or @dist_dirty?}
+        id="unsaved-bar"
+        class="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-base-300 bg-[color-mix(in_oklch,var(--color-base-200)_85%,black)] px-7 py-3 sm:-mx-6"
+      >
+        <span class="text-[0.88rem] text-warning">{gettext("Modifications non enregistrées")}</span>
+        <div class="flex gap-2">
+          <button
+            id="discard-settings"
+            type="button"
+            phx-click="discard"
+            class="h-10 cursor-pointer rounded-[0.4rem] border border-base-300 px-4 text-[0.85rem] font-semibold transition-colors hover:border-base-content/60"
+          >
+            {gettext("Annuler")}
+          </button>
+          <button
+            id="save-settings"
+            type="button"
+            phx-click="save"
+            class="btn btn-primary h-10 px-[18px]"
+          >
+            {gettext("Enregistrer")}
+          </button>
+        </div>
+      </div>
     </Layouts.app>
     """
   end
+
+  attr :name, :string, required: true
+  attr :on, :boolean, required: true
+  attr :label, :string, required: true
+
+  defp gate(assigns) do
+    ~H"""
+    <label class="ta-row-rule flex cursor-pointer items-center gap-4 py-3 last:border-b-0">
+      <span class="flex-1 text-[0.9rem] font-semibold">{@label}</span>
+      <input type="hidden" name={"distinctions[#{@name}]"} value="false" form="distinctions-form" />
+      <input
+        type="checkbox"
+        name={"distinctions[#{@name}]"}
+        value="true"
+        checked={@on}
+        form="distinctions-form"
+        class="ta-switch"
+      />
+      <span class="w-8 text-[0.8rem] text-base-content/80">
+        {if @on, do: gettext("Oui"), else: gettext("Non")}
+      </span>
+    </label>
+    """
+  end
+
+  defp band_grid, do: "grid grid-cols-[70px_16px_90px_minmax(0,1fr)_34px] gap-2"
+
+  defp distinction_tone(:avertissement_travail), do: "text-warning"
+  defp distinction_tone(:blame_travail), do: "text-error"
+  defp distinction_tone(_), do: "text-primary"
 
   def handle_event("edit_bands", %{"bands" => params}, socket) do
     rows =
@@ -282,10 +422,38 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
         }
       end)
 
-    {:noreply, assign(socket, rows: rows, bands_error: nil)}
+    {:noreply, assign(socket, rows: rows, bands_error: nil, bands_dirty?: true)}
   end
 
   def handle_event("edit_bands", _params, socket), do: {:noreply, socket}
+
+  def handle_event("edit_distinctions", %{"distinctions" => params}, socket) do
+    dist =
+      Map.new(socket.assigns.dist, fn
+        {key, value} when is_boolean(value) ->
+          {key, Map.get(params, key, to_string(value)) == "true"}
+
+        {key, value} ->
+          {key, Map.get(params, key, value)}
+      end)
+
+    {:noreply, assign(socket, dist: dist, distinctions_error: nil, dist_dirty?: true)}
+  end
+
+  def handle_event("discard", _params, socket),
+    do:
+      {:noreply,
+       socket
+       |> load_rules(socket.assigns.rules)
+       |> assign(bands_error: nil, distinctions_error: nil)}
+
+  # The sticky bar's "Enregistrer": the scale, then the thresholds, each only when edited.
+  def handle_event("save", _params, socket) do
+    with {:noreply, socket} <- maybe_save(socket, :bands_dirty?, "save_bands"),
+         {:noreply, socket} <- maybe_save(socket, :dist_dirty?, "save_distinctions") do
+      {:noreply, socket}
+    end
+  end
 
   def handle_event("remove_band", %{"index" => index}, socket) do
     rows = socket.assigns.rows
@@ -299,7 +467,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
           rows
       end
 
-    {:noreply, assign(socket, rows: rows, bands_error: nil)}
+    {:noreply, assign(socket, rows: rows, bands_error: nil, bands_dirty?: true)}
   end
 
   def handle_event("split_last", _params, socket) do
@@ -313,7 +481,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
         new_rows =
           rest ++ [%{last | to: show_bound(mid)}, %{to: nil, label: gettext("Nouvelle tranche")}]
 
-        {:noreply, assign(socket, rows: new_rows, bands_error: nil)}
+        {:noreply, assign(socket, rows: new_rows, bands_error: nil, bands_dirty?: true)}
 
       nil ->
         {:noreply, assign(socket, bands_error: gettext("Corrigez d'abord les bornes."))}
@@ -339,19 +507,37 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
   end
 
   def handle_event("save_distinctions", %{"distinctions" => params}, socket) do
+    {:noreply, socket} = handle_event("edit_distinctions", %{"distinctions" => params}, socket)
+    handle_event("save_distinctions", %{}, socket)
+  end
+
+  def handle_event("save_distinctions", _params, socket) do
+    params =
+      Map.new(socket.assigns.dist, fn {key, value} -> {key, to_string(value)} end)
+
     socket.assigns.current_scope
     |> Assessment.update_distinction_rules(params)
     |> after_save(socket, :distinctions_error, gettext("Réglage enregistré."))
   end
 
-  defp after_save({:ok, _profile}, socket, error_key, message) do
-    rules = Assessment.grading_rules(socket.assigns.current_scope)
+  defp maybe_save(socket, dirty_key, event) do
+    if socket.assigns[dirty_key], do: handle_event(event, %{}, socket), else: {:noreply, socket}
+  end
 
-    {:noreply,
-     socket
-     |> load_rules(rules)
-     |> assign(error_key, nil)
-     |> put_flash(:info, message)}
+  # Reloads the saved rules but keeps the other section's unsaved edits.
+  defp after_save({:ok, _profile}, socket, error_key, message) do
+    %{rows: rows, dist: dist, bands_dirty?: bands_dirty?, dist_dirty?: dist_dirty?} =
+      socket.assigns
+
+    socket = load_rules(socket, Assessment.grading_rules(socket.assigns.current_scope))
+
+    socket =
+      case error_key do
+        :bands_error -> assign(socket, dist: dist, dist_dirty?: dist_dirty?)
+        :distinctions_error -> assign(socket, rows: rows, bands_dirty?: bands_dirty?)
+      end
+
+    {:noreply, socket |> assign(error_key, nil) |> put_flash(:info, message)}
   end
 
   defp after_save({:error, %Ash.Error.Forbidden{}}, socket, _key, _message),

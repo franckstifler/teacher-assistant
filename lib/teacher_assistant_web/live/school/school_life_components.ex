@@ -21,17 +21,38 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
 
   def hm(time), do: Calendar.strftime(time, "%H:%M")
 
+  @doc ~S|"Cours 1, Cours 2 · 1 h 50": the periods missed and their total length.|
   def periods_text(periods),
-    do: Enum.map_join(periods, ", ", &"#{&1.label} (#{hm(&1.start_time)})")
+    do: "#{Enum.map_join(periods, ", ", & &1.label)} · #{duration(periods)}"
+
+  defp duration(periods) do
+    minutes = Enum.sum_by(periods, &div(Time.diff(&1.end_time, &1.start_time), 60))
+
+    case {div(minutes, 60), rem(minutes, 60)} do
+      {0, m} -> "#{m} min"
+      {h, 0} -> "#{h} h"
+      {h, m} -> "#{h} h #{String.pad_leading(to_string(m), 2, "0")}"
+    end
+  end
+
+  @doc ~S|"Justifiée · Maladie" ("Motif non précisé" for older justifications).|
+  def justified_label(row),
+    do: gettext("Justifiée · %{reason}", reason: JustificationReason.label(row.reason))
 
   attr :row, :map, required: true
 
   def absence_status(assigns) do
     ~H"""
-    <span :if={@row.justified?} class="badge badge-success badge-sm">
-      {gettext("Justifiée · %{reason}", reason: JustificationReason.label(@row.reason))}
+    <span
+      :if={@row.justified?}
+      class="ta-num flex-none rounded-full bg-primary/30 px-2 py-[3px] text-[0.68rem] font-semibold text-primary"
+    >
+      {justified_label(@row)}
     </span>
-    <span :if={not @row.justified?} class="badge badge-warning badge-sm">
+    <span
+      :if={not @row.justified?}
+      class="ta-num flex-none rounded-full bg-warning/25 px-2 py-[3px] text-[0.68rem] font-semibold text-warning"
+    >
       {gettext("Non justifiée")}
     </span>
     """
@@ -41,7 +62,12 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
 
   def repeated_badge(assigns) do
     ~H"""
-    <span :if={@row.flagged?} class="badge badge-error badge-sm">{gettext("Absences répétées")}</span>
+    <span
+      :if={@row.flagged?}
+      class="ta-num rounded-full bg-error/20 px-1.5 py-px text-[0.62rem] font-semibold text-error"
+    >
+      {gettext("Absences répétées")}
+    </span>
     """
   end
 
@@ -54,7 +80,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
         :for={reason <- JustificationReason.values()}
         id={"justify-#{@row.id}-#{reason}"}
         type="button"
-        class="btn btn-outline btn-xs transition hover:btn-primary"
+        class="cursor-pointer rounded-full border border-primary px-3 py-1.5 text-[0.76rem] font-semibold text-primary transition-colors hover:bg-primary/15"
         phx-click="justify"
         phx-value-row={@row.id}
         phx-value-reason={reason}

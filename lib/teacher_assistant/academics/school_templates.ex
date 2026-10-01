@@ -60,6 +60,16 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
 
   # ---- levels --------------------------------------------------------------
 
+  @doc "Every known level, youngest first — the order classes are listed in."
+  def level_order,
+    do:
+      ~w(6ème 5ème 4ème 3ème) ++
+        @technical_levels ++ @lycee_streamed_levels ++ @anglophone_levels
+
+  @doc "Sort key for a class: its level's place in `level_order/0` (unknown last), then label."
+  def class_sort_key(%{level: level, label: label}),
+    do: {Enum.find_index(level_order(), &(&1 == level)) || 1000, String.downcase(label)}
+
   def levels_for(type, _) when type in [:cetic, :sar_sm, :gtc, :gths], do: @technical_levels
   def levels_for(:lycee_technique, _), do: ~w(2nde 1ère Terminale)
   def levels_for(:ces_ceg, _), do: @collège_levels

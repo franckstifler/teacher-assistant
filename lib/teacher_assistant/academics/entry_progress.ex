@@ -63,12 +63,15 @@ defmodule TeacherAssistant.Academics.EntryProgress do
         }
       end)
 
+    late = late(rows, subjects)
+
     %{
       subjects: subjects,
       rows: rows,
       overall_pct: overall_pct(rows),
       complete_classes: {Enum.count(rows, &complete?/1), length(rows)},
-      late: late(rows, subjects),
+      late: late,
+      late_teacher_count: late |> Enum.uniq_by(&(&1.teacher && &1.teacher.id)) |> length(),
       council_date: council_date(scope, seq)
     }
   end
@@ -203,11 +206,21 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> Enum.map(fn tc ->
       label = if tc.catalog_subject, do: tc.catalog_subject.name, else: tc.subject
       position = if tc.catalog_subject, do: tc.catalog_subject.position, else: nil
-      %{key: column_key(tc), label: label, sort: {is_nil(position), position, label}}
+
+      %{
+        key: column_key(tc),
+        label: label,
+        code: column_code(tc.catalog_subject, label),
+        sort: {is_nil(position), position, label}
+      }
     end)
     |> Enum.sort_by(& &1.sort)
     |> Enum.map(&Map.delete(&1, :sort))
   end
+
+  # The short column heading: the catalog code ("MATH"), else the label's first letters.
+  defp column_code(%{code: code}, _label) when is_binary(code) and code != "", do: code
+  defp column_code(_subject, label), do: label |> String.slice(0, 4) |> String.upcase()
 
   defp known_pcts(%{cells: cells}),
     do:

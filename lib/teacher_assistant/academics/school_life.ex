@@ -10,7 +10,13 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{AttendanceEntry, EntryProgress, TimetableSlot}
+  alias TeacherAssistant.Academics.{
+    AttendanceEntry,
+    EntryProgress,
+    SchoolTemplates,
+    TimetableSlot
+  }
+
   alias TeacherAssistant.{Attendance, Organization, Scope}
 
   @doc "Distinct days with an unjustified absence in the séquence from which a student is flagged (V04)."
@@ -37,7 +43,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       |> Enum.map(fn {_id, [first | _] = class_cells} ->
         %{class_group: first.class_group, cells: Map.new(class_cells, &{&1.period.id, &1})}
       end)
-      |> Enum.sort_by(&String.downcase(&1.class_group.label))
+      |> Enum.sort_by(&SchoolTemplates.class_sort_key(&1.class_group))
 
     %{
       periods: periods,
@@ -118,7 +124,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     Enum.sort_by(
       cells,
       &{Date.to_gregorian_days(&1.date), &1.period.position,
-       String.downcase(&1.class_group.label)}
+       SchoolTemplates.class_sort_key(&1.class_group)}
     )
   end
 
@@ -159,8 +165,8 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       }
     end)
     |> Enum.sort_by(
-      &{not &1.flagged?, -Date.to_gregorian_days(&1.date), String.downcase(&1.class_group.label),
-       String.downcase(&1.student.full_name)}
+      &{not &1.flagged?, -Date.to_gregorian_days(&1.date),
+       SchoolTemplates.class_sort_key(&1.class_group), String.downcase(&1.student.full_name)}
     )
   end
 

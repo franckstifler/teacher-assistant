@@ -47,8 +47,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
       html
       |> LazyHTML.from_fragment()
       |> LazyHTML.query("[data-subject]")
-      |> Enum.map(&LazyHTML.text/1)
-      |> Enum.map(&String.trim/1)
+      |> Enum.flat_map(&LazyHTML.attribute(&1, "title"))
 
     n = Enum.find_index(headers, &(&1 == label))
     "#cell-#{cg.id}-#{n}"
@@ -80,7 +79,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     assert view |> element(col(view, ctx.cg, "Maths")) |> render() =~ "50%"
     # 4e B does not take Maths: a dashed, non-clickable cell.
     assert has_element?(view, "#{col(view, ctx.cg2, "Maths")}.border-dashed")
-    refute has_element?(view, "#cell-detail")
+    # as in the mockup, the first incomplete course is selected on arrival
+    assert has_element?(view, "#cell-detail")
   end
 
   test "clicking a cell shows its detail", %{conn: conn} = ctx do
@@ -102,7 +102,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
 
     late = view |> element("#late-teachers") |> render()
     assert late =~ to_string(ctx.english.email)
-    assert late =~ "Anglais · 3e A, 4e B · rien saisi"
+    # classes in level order (4ème before 3ème)
+    assert late =~ "Anglais · 4e B, 3e A · rien saisi"
     refute late =~ "<button"
   end
 

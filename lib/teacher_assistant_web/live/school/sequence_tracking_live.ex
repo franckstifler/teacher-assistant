@@ -8,6 +8,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
 
   alias TeacherAssistant.{Assessment, Organization}
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistantWeb.Dates
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -39,12 +40,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         {:noreply, assign(socket, seq: nil, grid: nil, selected: nil)}
 
       seq ->
-        {:noreply,
-         assign(socket,
-           seq: seq,
-           grid: Assessment.sequence_entry_grid(scope, year, seq),
-           selected: nil
-         )}
+        grid = Assessment.sequence_entry_grid(scope, year, seq)
+        {:noreply, assign(socket, seq: seq, grid: grid, selected: default_selection(grid))}
     end
   end
 
@@ -66,6 +63,20 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     end
   end
 
+  # As in the mockup a course is selected on arrival: the first one not complete, else the first.
+  defp default_selection(grid) do
+    cells =
+      for row <- grid.rows,
+          {subject, n} <- Enum.with_index(grid.subjects),
+          match?(%{pct: pct} when is_integer(pct), row.cells[subject.key]),
+          do: {row.class_group.id, n, row.cells[subject.key].pct}
+
+    case Enum.find(cells, fn {_, _, pct} -> pct < 100 end) || List.first(cells) do
+      {cg_id, n, _} -> detail(grid, cg_id, n)
+      nil -> nil
+    end
+  end
+
   defp detail(grid, cg_id, n) do
     with %{} = subject <- Enum.at(grid.subjects, n),
          %{} = row <- Enum.find(grid.rows, &(&1.class_group.id == cg_id)),
@@ -80,11 +91,16 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="sequence-tracking" class="flex flex-col gap-5">
-        <.page_header eyebrow={gettext("Censorat")} title={gettext("Suivi des séquences")}>
-          <:actions :if={@year}>
-            <span class="ta-num inline-flex items-center rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-xs font-semibold text-base-content/70">
-              {@year.name}
-            </span>
+        <.page_header
+          eyebrow={
+            if @seq,
+              do: gettext("Censorat · Séquence %{n}", n: @seq.number),
+              else: gettext("Censorat")
+          }
+          title={gettext("Suivi de la saisie des notes")}
+        >
+          <:actions :if={@seq}>
+            <.side_chip id="entry-deadline">{deadline_text(@seq)}</.side_chip>
           </:actions>
         </.page_header>
 
@@ -102,7 +118,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         </div>
 
         <%= if @grid do %>
-          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <.kpi_row>
             <.kpi
               id="kpi-overall"
               label={gettext("Saisie globale")}
@@ -120,22 +136,17 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
             <.kpi
               id="kpi-late"
               label={gettext("Enseignants à relancer")}
-              value={to_string(late_teacher_count(@grid.late))}
+              value={to_string(@grid.late_teacher_count)}
               sub={gettext("aucune note saisie")}
               tone="text-error"
             />
             <.kpi
               id="kpi-council"
               label={gettext("Conseils de classe")}
-              value={
-                if @grid.council_date,
-                  do: Calendar.strftime(@grid.council_date, "%d/%m"),
-                  else: "—"
-              }
-              sub={council_sub(@seq)}
-              tone="text-base-content"
+              value={if @grid.council_date, do: Dates.day_month(@grid.council_date), else: "—"}
+              sub={council_sub(@seq, @sequences)}
             />
-          </div>
+          </.kpi_row>
 
           <nav
             id="seq-tabs"
@@ -160,7 +171,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           </nav>
 
           <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div class="flex min-w-0 flex-col gap-3 rounded-box border border-base-300 bg-base-200 px-4 py-3.5">
+            <div class="ta-panel flex min-w-0 flex-col gap-2.5">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <h2 class="ta-eyebrow">{gettext("Classes × disciplines")}</h2>
                 <div class="flex flex-wrap gap-3 text-xs text-base-content/70">
@@ -191,9 +202,9 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                     :for={subject <- @grid.subjects}
                     data-subject
                     title={subject.label}
-                    class="ta-num truncate py-1 text-center text-[0.64rem] font-semibold text-base-content/60"
+                    class="ta-num truncate py-1 text-center text-[0.64rem] font-semibold text-base-content/80"
                   >
-                    {subject.label}
+                    {subject.code}
                   </span>
 
                   <%= for row <- @grid.rows do %>
@@ -221,12 +232,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
               <div
                 :if={@selected}
                 id="cell-detail"
-                class="flex flex-col gap-2 rounded-box border border-primary bg-base-200 px-4 py-3.5"
+                class="ta-panel flex flex-col gap-2 !border-primary"
               >
                 <span class="ta-eyebrow">
                   {@selected.class_group.label} · {@selected.subject.label}
                 </span>
-                <span class="font-display text-lg font-semibold">
+                <span class="font-display text-[1.15rem] font-semibold">
                   {teacher_name(@selected.cell.teacher)}
                 </span>
                 <.detail_line
@@ -249,7 +260,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
 
               <div
                 id="late-teachers"
-                class="flex flex-col gap-1 rounded-box border border-base-300 bg-base-200 px-4 py-3.5"
+                class="ta-panel flex flex-col gap-1"
               >
                 <h2 class="ta-eyebrow">{gettext("À relancer")}</h2>
                 <p :if={@grid.late == []} class="py-2 text-sm text-base-content/60">
@@ -257,10 +268,10 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 </p>
                 <div
                   :for={late <- @grid.late}
-                  class="flex flex-col border-b border-base-300 py-2 last:border-b-0"
+                  class="ta-row-rule flex flex-col py-[7px]"
                 >
-                  <span class="text-sm font-semibold">{teacher_name(late.teacher)}</span>
-                  <span class="text-xs text-base-content/60">
+                  <span class="text-[0.88rem] font-semibold">{teacher_name(late.teacher)}</span>
+                  <span class="text-[0.74rem] text-base-content/75">
                     {gettext("%{subject} · %{classes} · rien saisi",
                       subject: late.subject,
                       classes: Enum.join(late.classes, ", ")
@@ -277,26 +288,6 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         <% end %>
       </section>
     </Layouts.app>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :sub, :string, default: nil
-  attr :tone, :string, required: true
-
-  defp kpi(assigns) do
-    ~H"""
-    <div id={@id} class="flex flex-col gap-1 rounded-box border border-base-300 bg-base-200 px-4 py-3">
-      <span class="ta-num text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-base-content/60">
-        {@label}
-      </span>
-      <span class={["ta-num text-2xl font-semibold leading-tight sm:text-3xl", @tone]}>
-        {@value}
-      </span>
-      <span :if={@sub} class="text-xs text-base-content/60">{@sub}</span>
-    </div>
     """
   end
 
@@ -369,13 +360,34 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   defp grid_style(n),
     do: "grid-template-columns: 72px repeat(#{n}, minmax(56px, 1fr)); min-width: #{72 + n * 59}px"
 
-  defp late_teacher_count(late),
-    do: late |> Enum.uniq_by(&(&1.teacher && &1.teacher.id)) |> length()
+  # "1er trimestre · S1 + S2": the term of the séquence and the séquences it holds.
+  defp council_sub(%{term: %{id: term_id, position: position}}, sequences) do
+    numbers =
+      sequences |> Enum.filter(&(&1.term_id == term_id)) |> Enum.map_join(" + ", &"S#{&1.number}")
 
-  defp council_sub(%{term: %{position: position}}),
-    do: gettext("Trimestre %{n}", n: position)
+    "#{term_name(position)} · #{numbers}"
+  end
 
-  defp council_sub(_seq), do: nil
+  defp council_sub(_seq, _sequences), do: nil
+
+  defp term_name(1), do: gettext("1er trimestre")
+  defp term_name(n), do: gettext("%{n}e trimestre", n: n)
+
+  # "Clôture ven. 2 oct. · J-3" before the grade-entry deadline, "Clôturée le …" after.
+  defp deadline_text(%{grade_entry_deadline: %Date{} = deadline}) do
+    case Date.diff(deadline, Reference.today()) do
+      days when days > 0 ->
+        gettext("Clôture %{date} · J-%{n}", date: Dates.short(deadline), n: days)
+
+      0 ->
+        gettext("Clôture aujourd'hui")
+
+      _ ->
+        gettext("Clôturée le %{date}", date: Dates.short(deadline))
+    end
+  end
+
+  defp deadline_text(_seq), do: "—"
 
   defp teacher_name(nil), do: "—"
   defp teacher_name(teacher), do: to_string(teacher.name || teacher.email)

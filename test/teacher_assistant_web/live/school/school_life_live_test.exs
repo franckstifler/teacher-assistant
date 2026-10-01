@@ -74,9 +74,21 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/today")
 
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "Fait · 1 abs."
-    html = view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render()
-    assert html =~ "Non fait"
-    assert html =~ ~p"/school/classes/#{ctx.cg.id}/attendance/#{ctx.p2.id}"
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Non fait"
+    assert view |> element("#calls-done") |> render() =~ "1 / 2"
+    # the missed slot is selected on arrival, its roll call beside the list
+    assert view |> element("#roll-panel") |> render() =~ ctx.p2.label
+  end
+
+  test "Ma journée records the selected slot's roll call in place", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
+
+    view |> element("#att-#{ctx.e.id}-late") |> render_click()
+    view |> element("#record-roll") |> render_click()
+
+    assert view |> element("#roll-status") |> render() =~ "Appel enregistré"
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Fait · 0 abs."
+    assert view |> element("#calls-done") |> render() =~ "2 / 2"
   end
 
   test "Ma journée sends non-teachers to their space home", ctx do
@@ -109,6 +121,15 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
 
     {:ok, view, _} = live(conn, ~p"/school/absences?filter=justified")
     assert view |> element("#row-#{row_id}") |> render() =~ "Raison familiale"
+  end
+
+  test "the surveillant's menu counts missed roll calls and unjustified absences", ctx do
+    conn = conn_with_roles(ctx.school, ctx.scope, [:discipline_master])
+    {:ok, view, _} = live(conn, ~p"/school/day")
+
+    # p2's roll call is missed; Awa's absence at p1 is not justified
+    assert view |> element("#nav-school-day .badge") |> render() =~ "1"
+    assert view |> element("#nav-school-absences .badge") |> render() =~ "1"
   end
 
   test "school-life screens need the conduct axis", ctx do

@@ -48,7 +48,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
     assert render(element(view, "#bands-form")) =~ "1e999"
 
     view |> form("#bands-form", %{"bands" => %{"0" => %{"to" => "inf"}}}) |> render_change()
-    view |> element("#save-bands") |> render_click()
+    view |> element("#save-settings") |> render_click()
     assert render(element(view, "#bands-error")) =~ "9,5"
 
     view
@@ -68,7 +68,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
     |> form("#bands-form", %{"bands" => %{"7" => %{"label" => "Remarquable"}}})
     |> render_change()
 
-    view |> element("#save-bands") |> render_click()
+    view |> element("#save-settings") |> render_click()
     assert render(view) =~ "Barème enregistré."
 
     labels = Assessment.grading_rules(scope) |> Appreciations.bands() |> Enum.map(& &1.label)
@@ -88,7 +88,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
     |> form("#bands-form", %{"bands" => %{"0" => %{"to" => "12"}, "1" => %{"to" => "9"}}})
     |> render_change()
 
-    view |> element("#save-bands") |> render_click()
+    view |> element("#save-settings") |> render_click()
     assert render(element(view, "#bands-error")) =~ "croissantes"
     assert {:ok, %{appreciation_bands: bands}} = Accounts.fetch_school_profile(scope)
     assert bands in [nil, []]

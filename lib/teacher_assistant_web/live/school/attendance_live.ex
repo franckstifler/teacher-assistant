@@ -1,359 +1,65 @@
 defmodule TeacherAssistantWeb.School.AttendanceLive do
+  @moduledoc "The roll call of one class at one period on one date (`?date=`, default today)."
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Curriculum
-  alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Academics.AttendanceStatus
-  alias TeacherAssistant.Academics.CombinedCourse
-  alias TeacherAssistant.Academics.TeachingContext
-  alias TeacherAssistant.Academics.TimetableSlot
-
-  @valid_statuses %{"present" => :present, "absent" => :absent, "late" => :late}
-  @statuses [:present, :absent, :late]
+  alias TeacherAssistant.Academics.{CombinedCourse, Reference}
+  alias TeacherAssistantWeb.Dates
+  alias TeacherAssistantWeb.School.RollCall
 
   def mount(%{"id" => id, "period_id" => period_id} = params, _session, socket) do
-    scope = socket.assigns.current_scope
-    date = parse_date(params["date"])
+    case RollCall.open(socket.assigns.current_scope, id, period_id, parse_date(params["date"])) do
+      {:ok, roll} ->
+        {:ok, assign(socket, :roll, roll)}
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         {:ok, period} <- fetch_period(period_id, scope),
-         {:ok, slot_or_nil} <- resolve_slot(scope, cg, date, period.id),
-         teaching_context = resolve_teaching_context(scope, cg, slot_or_nil),
-         true <- authorized?(scope, teaching_context) do
-      course = combined_course_for(scope, teaching_context)
-
-      socket =
-        socket
-        |> assign(
-          cg: cg,
-          period: period,
-          date: date,
-          slot: slot_or_nil,
-          teaching_context: teaching_context,
-          statuses: @statuses,
-          course: course
-        )
-        |> reload_roll()
-
-      {:ok, socket}
-    else
-      false ->
+      {:error, :forbidden} ->
         {:ok,
          socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
 
-      _ ->
+      {:error, :not_found} ->
         {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
 
-  # The teaching context this roll call is recorded under: the placed
-  # timetable slot's when one exists, otherwise the signed-in teacher's own
-  # assignment on the class (assignment-based roll call, Increment 2). `nil`
-  # when neither applies (a conduct manager can still record without one).
-  defp resolve_teaching_context(_scope, _cg, %TimetableSlot{teaching_context: ctx}), do: ctx
-
-  defp resolve_teaching_context(scope, cg, nil) do
-    case {scope.current_workspace, scope.current_academic_year} do
-      {%{} = _ws, %{} = year} ->
-        scope
-        |> Curriculum.list_assignments_for_user(year, scope.current_user)
-        |> Enum.find(&(&1.class_group_id == cg.id))
-
-      _ ->
-        nil
-    end
-  end
-
-  # Combined mode: the resolved teaching context belongs to a
-  # `CombinedCourse` — the attendance session then covers the union of every
-  # member class's roster (see `load_combined_roll/1`), while recording still
-  # writes each `AttendanceEntry` to the student's own class exactly as
-  # before (`Attendance.record_combined_period/5`). Falls back to solo mode
-  # (returns `nil`) when there's no teaching context or the course can't be
-  # resolved.
-  defp combined_course_for(scope, %TeachingContext{combined_course_id: course_id})
-       when not is_nil(course_id) do
-    case Curriculum.get_course(scope, course_id) do
-      {:ok, course} -> course
-      _ -> nil
-    end
-  end
-
-  defp combined_course_for(_scope, _ctx_or_nil), do: nil
-
-  defp parse_date(nil), do: Date.utc_today()
+  defp parse_date(nil), do: Reference.today()
 
   defp parse_date(str) do
     case Date.from_iso8601(str) do
       {:ok, date} -> date
-      {:error, _} -> Date.utc_today()
+      {:error, _} -> Reference.today()
     end
   end
 
-  defp fetch_period(period_id, scope) do
-    scope
-    |> Attendance.list_periods()
-    |> Enum.find(&(&1.id == period_id))
-    |> case do
-      nil -> {:error, :not_found}
-      period -> {:ok, period}
-    end
-  end
-
-  defp resolve_slot(scope, cg, date, period_id) do
-    case Attendance.slot_for(scope, cg, date, period_id) do
-      {:ok, slot} -> {:ok, slot}
-      {:error, :no_slot} -> {:ok, nil}
-    end
-  end
-
-  # Owning the slot or holding the assignment both resolve to "this teaching
-  # context is mine"; conduct managers may record any class.
-  defp authorized?(scope, teaching_context) do
-    owns_context?(scope, teaching_context) or
-      TeacherAssistant.Discipline.can_manage_conduct?(scope)
-  end
-
-  defp owns_context?(_scope, nil), do: false
-
-  defp owns_context?(scope, %TeachingContext{teacher_user_id: teacher_id}),
-    do: teacher_id == scope.current_user.id
-
-  # Roll starts with every student PRESENT (the cahier d'appel default); the
-  # teacher only taps the absent/late few. `taken?` records whether the roll has
-  # already been saved, so "all present" is distinguishable from "not yet done".
-  defp load_roll(socket) do
-    %{students: roster} =
-      Attendance.period_roll(
-        socket.assigns.current_scope,
-        socket.assigns.cg,
-        socket.assigns.period,
-        socket.assigns.date
-      )
-
-    taken? = Enum.any?(roster, &(&1.status != nil))
-    roll = Map.new(roster, fn s -> {s.enrollment_id, s.status || :present} end)
-
-    students =
-      Enum.map(roster, &%{enrollment_id: &1.enrollment_id, student_name: &1.student_name})
-
-    assign(socket, students: students, roll: roll, taken?: taken?)
-  end
-
-  # Combined mode: same roll shape as `load_roll/1` (a flat `students` list
-  # plus an `enrollment_id => status` `roll` map, so `set`/`record` work
-  # unchanged), but sourced from `combined_period_roll/4` and keeping the
-  # per-class `groups` around for the grouped render.
-  defp load_combined_roll(socket) do
-    groups =
-      Attendance.combined_period_roll(
-        socket.assigns.current_scope,
-        socket.assigns.course,
-        socket.assigns.period,
-        socket.assigns.date
-      )
-
-    all_students = Enum.flat_map(groups, & &1.students)
-    taken? = Enum.any?(all_students, &(&1.status != nil))
-    roll = Map.new(all_students, fn s -> {s.enrollment_id, s.status || :present} end)
-
-    students =
-      Enum.map(all_students, &%{enrollment_id: &1.enrollment_id, student_name: &1.student_name})
-
-    assign(socket, groups: groups, students: students, roll: roll, taken?: taken?)
-  end
-
-  defp reload_roll(%{assigns: %{course: %CombinedCourse{}}} = socket),
-    do: load_combined_roll(socket)
-
-  defp reload_roll(socket), do: load_roll(socket)
-
-  def handle_event("set", %{"enrollment_id" => enrollment_id, "status" => status_str}, socket) do
-    with %{} <- Enum.find(socket.assigns.students, &(&1.enrollment_id == enrollment_id)),
-         status when not is_nil(status) <- Map.get(@valid_statuses, status_str) do
-      {:noreply, assign(socket, :roll, Map.put(socket.assigns.roll, enrollment_id, status))}
-    else
-      _ -> {:noreply, socket}
-    end
-  end
+  def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
+    do: {:noreply, update(socket, :roll, &RollCall.set(&1, id, status))}
 
   def handle_event("record", _params, socket) do
-    scope = socket.assigns.current_scope
+    case RollCall.record(socket.assigns.current_scope, socket.assigns.roll) do
+      {:ok, roll} ->
+        {:noreply, socket |> assign(:roll, roll) |> put_flash(:info, gettext("Appel enregistré"))}
 
-    cond do
-      not TeacherAssistant.Scope.school_verified?(scope) ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("École en attente de vérification — enregistrement indisponible.")
-         )}
-
-      authorized?(scope, socket.assigns.teaching_context) ->
-        marks =
-          Enum.map(socket.assigns.students, fn s ->
-            {s.enrollment_id, Map.fetch!(socket.assigns.roll, s.enrollment_id)}
-          end)
-
-        case record_marks(socket, marks, scope) do
-          {:ok, _count} ->
-            {:noreply, socket |> put_flash(:info, gettext("Appel enregistré")) |> reload_roll()}
-
-          {:error, %Ash.Error.Forbidden{}} ->
-            {:noreply, Authz.put_not_allowed(socket)}
-
-          {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, gettext("Impossible d'enregistrer l'appel"))}
-        end
-
-      true ->
-        {:noreply, socket}
+      {:error, reason} ->
+        {:noreply, RollCall.put_error(socket, reason)}
     end
-  end
-
-  defp record_marks(%{assigns: %{course: %CombinedCourse{} = course}} = socket, marks, scope) do
-    Attendance.record_combined_period(
-      scope,
-      course,
-      socket.assigns.period,
-      socket.assigns.date,
-      marks
-    )
-  end
-
-  defp record_marks(socket, marks, scope) do
-    Attendance.record_period(
-      scope,
-      socket.assigns.cg,
-      socket.assigns.period,
-      socket.assigns.teaching_context,
-      socket.assigns.date,
-      marks
-    )
-  end
-
-  defp status_label(s), do: AttendanceStatus.label(s)
-
-  defp status_short(:present), do: "P"
-  defp status_short(:absent), do: "A"
-  defp status_short(:late), do: "R"
-
-  defp active_class(:present), do: "btn-success"
-  defp active_class(:absent), do: "btn-error"
-  defp active_class(:late), do: "btn-warning"
-
-  defp count(roll, status), do: Enum.count(roll, fn {_id, s} -> s == status end)
-
-  # Combined mode: one session over the union of every member class's roll,
-  # grouped under a class heading (mirrors `Teacher.MarksLive`'s combined
-  # render) — the teacher records once, and each `AttendanceEntry` still
-  # lands on the student's own class via `record_combined_period/5`.
-  def render(%{course: %CombinedCourse{}} = assigns) do
-    ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-attendance" class="mx-auto max-w-2xl space-y-4">
-        <.page_header
-          eyebrow={gettext("École")}
-          title={"#{@course.label} — #{gettext("Appel")} — #{@period.label}"}
-        />
-
-        <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <p class="text-base-content/70">{Date.to_string(@date)}</p>
-          <p id="roll-status" class={["badge", (@taken? && "badge-success") || "badge-ghost"]}>
-            {if @taken?, do: gettext("Appel enregistré"), else: gettext("Appel non fait")}
-          </p>
-        </div>
-
-        <p id="roll-summary" class="ta-num text-sm text-base-content/70">
-          {gettext("%{p} présents · %{a} absents · %{r} retards",
-            p: count(@roll, :present),
-            a: count(@roll, :absent),
-            r: count(@roll, :late)
-          )}
-        </p>
-
-        <div :for={group <- @groups} id={"attendance-class-#{group.class_group.id}"} class="space-y-1">
-          <h3 class="ta-eyebrow">{group.class_group.label}</h3>
-          <.roster_list students={group.students} roll={@roll} statuses={@statuses} />
-        </div>
-
-        <.button id="record-roll" phx-click="record" class="btn btn-primary w-full">
-          {if @taken?, do: gettext("Mettre à jour l'appel"), else: gettext("Enregistrer l'appel")}
-        </.button>
-      </section>
-    </Layouts.app>
-    """
   end
 
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-attendance" class="mx-auto max-w-2xl space-y-4">
+      <section id="class-attendance" class="mx-auto flex max-w-2xl flex-col gap-5">
         <.page_header
-          eyebrow={gettext("École")}
-          title={"#{@cg.label} — #{gettext("Appel")} — #{@period.label}"}
+          eyebrow={gettext("Appel · %{date}", date: Dates.long(@roll.date))}
+          title={unit_label(@roll)}
         />
-
-        <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <p class="text-base-content/70">{Date.to_string(@date)}</p>
-          <p id="roll-status" class={["badge", (@taken? && "badge-success") || "badge-ghost"]}>
-            {if @taken?, do: gettext("Appel enregistré"), else: gettext("Appel non fait")}
-          </p>
-        </div>
-
-        <p id="roll-summary" class="ta-num text-sm text-base-content/70">
-          {gettext("%{p} présents · %{a} absents · %{r} retards",
-            p: count(@roll, :present),
-            a: count(@roll, :absent),
-            r: count(@roll, :late)
-          )}
-        </p>
-
-        <.roster_list students={@students} roll={@roll} statuses={@statuses} />
-
-        <.button id="record-roll" phx-click="record" class="btn btn-primary w-full">
-          {if @taken?, do: gettext("Mettre à jour l'appel"), else: gettext("Enregistrer l'appel")}
-        </.button>
+        <RollCall.roll_panel roll={@roll} title={panel_title(@roll)} />
       </section>
     </Layouts.app>
     """
   end
 
-  attr :students, :list, required: true
-  attr :roll, :map, required: true
-  attr :statuses, :list, required: true
+  defp unit_label(%{course: %CombinedCourse{label: label}}), do: label
+  defp unit_label(%{cg: cg}), do: cg.label
 
-  defp roster_list(assigns) do
-    ~H"""
-    <ul class="space-y-1">
-      <li
-        :for={student <- @students}
-        id={"student-row-#{student.enrollment_id}"}
-        class="ta-leaf flex items-center justify-between gap-3"
-      >
-        <span class="min-w-0 flex-1 truncate">{student.student_name}</span>
-        <div class="join" role="group" aria-label={student.student_name}>
-          <button
-            :for={status <- @statuses}
-            type="button"
-            id={"att-#{student.enrollment_id}-#{status}"}
-            phx-click="set"
-            phx-value-enrollment_id={student.enrollment_id}
-            phx-value-status={status}
-            aria-pressed={to_string(Map.get(@roll, student.enrollment_id) == status)}
-            title={status_label(status)}
-            class={[
-              "join-item btn btn-sm",
-              (Map.get(@roll, student.enrollment_id) == status && active_class(status)) ||
-                "btn-ghost"
-            ]}
-          >
-            {status_short(status)}
-          </button>
-        </div>
-      </li>
-    </ul>
-    """
-  end
+  defp panel_title(roll),
+    do:
+      "#{roll.period.label} · #{unit_label(roll)} — #{Calendar.strftime(roll.period.start_time, "%H:%M")}"
 end

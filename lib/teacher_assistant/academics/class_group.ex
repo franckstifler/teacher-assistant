@@ -42,7 +42,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
 
       filter expr(academic_year_id == ^arg(:academic_year_id))
 
-      prepare build(sort: [label: :asc])
+      prepare build(sort: [level_rank: :asc, label: :asc])
     end
 
     read :owned do
@@ -113,6 +113,19 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     end
 
     has_many :enrollments, TeacherAssistant.Academics.Enrollment
+  end
+
+  calculations do
+    # Position of `level` in the school ladder (6ème first); unknown levels last.
+    calculate :level_rank,
+              :integer,
+              expr(
+                fragment(
+                  "coalesce(array_position(?::text[], ?), 1000)",
+                  ^TeacherAssistant.Academics.SchoolTemplates.level_order(),
+                  level
+                )
+              )
   end
 
   identities do

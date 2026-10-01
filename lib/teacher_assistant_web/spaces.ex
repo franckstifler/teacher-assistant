@@ -8,7 +8,8 @@ defmodule TeacherAssistantWeb.Spaces do
   use Gettext, backend: TeacherAssistantWeb.Gettext
   use TeacherAssistantWeb, :verified_routes
 
-  alias TeacherAssistant.{Assessment, Curriculum, Enrollment}
+  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Enrollment, Organization}
+  alias TeacherAssistant.Academics.Reference
 
   @order [:proviseur, :censeur, :surveillant, :intendant, :enseignant, :ecole]
   @by_role %{
@@ -43,7 +44,8 @@ defmodule TeacherAssistantWeb.Spaces do
   def put_space(%{current_workspace: %{}} = scope, stored) do
     facts = facts(scope)
     keys = keys_for(facts)
-    space = space(resolve(keys, parse_key(stored)), facts)
+    key = resolve(keys, parse_key(stored))
+    space = space(key, Map.merge(facts, counts(key, scope)))
 
     %{scope | capabilities: Map.merge(scope.capabilities || %{}, %{spaces: keys, space: space})}
   end
@@ -69,6 +71,48 @@ defmodule TeacherAssistantWeb.Spaces do
     }
   end
 
+  @doc """
+  The menu counts of the space `key` (mockup badges), computed only for the space
+  shown: late teachers on "Suivi des séquences", missed roll calls on "Aujourd'hui"
+  and "Ma journée", unjustified absences on "Absences".
+  """
+  def counts(key, %{current_academic_year: %{} = year} = scope)
+      when key in [:proviseur, :censeur] do
+    case Assessment.default_sequence(Organization.list_sequences(scope, year), Reference.today()) do
+      nil -> %{}
+      seq -> %{late_teachers: Assessment.sequence_entry_grid(scope, year, seq).late_teacher_count}
+    end
+  end
+
+  def counts(:surveillant, scope) do
+    today = Reference.today()
+
+    unjustified =
+      case Attendance.current_sequence_range(scope, today) do
+        nil ->
+          0
+
+        {first, last} ->
+          scope |> Attendance.absence_days(first, last, today) |> Enum.count(&(not &1.justified?))
+      end
+
+    %{
+      missed_calls: length(Attendance.school_day(scope, today, Reference.now()).missed),
+      unjustified_absences: unjustified
+    }
+  end
+
+  def counts(:enseignant, %{current_user: user} = scope) do
+    calls =
+      scope
+      |> Attendance.teacher_day(user, Reference.today(), Reference.now())
+      |> Enum.count(&(&1.status in [:in_progress, :missed]))
+
+    %{calls_to_do: calls}
+  end
+
+  def counts(_key, _scope), do: %{}
+
   def label(:proviseur), do: gettext("Proviseur")
   def label(:censeur), do: gettext("Censeur")
   def label(:surveillant), do: gettext("Surveillant général")
@@ -84,7 +128,7 @@ defmodule TeacherAssistantWeb.Spaces do
       sections: [
         section(gettext("Pilotage"), [
           dashboard(),
-          sequences(),
+          sequences(facts[:late_teachers]),
           bulletins(),
           classes(),
           members(),
@@ -108,7 +152,7 @@ defmodule TeacherAssistantWeb.Spaces do
       home: ~p"/school/sequences",
       sections: [
         section(gettext("Suivi pédagogique"), [
-          sequences(),
+          sequences(facts[:late_teachers]),
           bulletins(),
           classes(),
           members(),
@@ -124,12 +168,18 @@ defmodule TeacherAssistantWeb.Spaces do
     }
   end
 
-  def space(:surveillant, _facts) do
+  def space(:surveillant, facts) do
     %{
       key: :surveillant,
       label: label(:surveillant),
       home: ~p"/school/day",
-      sections: [section(gettext("Vie scolaire"), [school_day(), absences(), classes()])]
+      sections: [
+        section(gettext("Vie scolaire"), [
+          school_day(facts[:missed_calls]),
+          absences(facts[:unjustified_absences]),
+          classes()
+        ])
+      ]
     }
   end
 
@@ -145,7 +195,7 @@ defmodule TeacherAssistantWeb.Spaces do
   def space(:enseignant, facts) do
     items =
       [
-        facts.teaches? && my_day(),
+        facts.teaches? && my_day(facts[:calls_to_do]),
         facts.teaches? && courses(),
         facts.form_master? && classes(),
         (facts.teaches? or facts.form_master?) && bulletins(),
@@ -178,8 +228,15 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp section(label, items), do: %{label: label, items: items}
 
-  defp item(id, label, icon, path, badge \\ nil),
-    do: %{id: "nav-school-#{id}", label: label, icon: icon, path: path, badge: badge}
+  defp item(id, label, icon, path, badge \\ nil, badge_tone \\ :warning),
+    do: %{
+      id: "nav-school-#{id}",
+      label: label,
+      icon: icon,
+      path: path,
+      badge: badge,
+      badge_tone: badge_tone
+    }
 
   defp corrections(decided),
     do:
@@ -203,22 +260,40 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp dashboard, do: item("dashboard", gettext("Dashboard"), "hero-squares-2x2", ~p"/school")
 
-  defp sequences,
+  defp sequences(late),
     do:
       item(
         "sequences",
         gettext("Suivi des séquences"),
         "hero-chart-bar-square",
-        ~p"/school/sequences"
+        ~p"/school/sequences",
+        late,
+        :error
       )
 
-  defp my_day, do: item("today", gettext("Ma journée"), "hero-sun", ~p"/school/today")
+  defp my_day(to_do),
+    do: item("today", gettext("Ma journée"), "hero-sun", ~p"/school/today", to_do)
 
-  defp school_day,
-    do: item("day", gettext("Aujourd'hui"), "hero-clipboard-document-check", ~p"/school/day")
+  defp school_day(missed),
+    do:
+      item(
+        "day",
+        gettext("Aujourd'hui"),
+        "hero-clipboard-document-check",
+        ~p"/school/day",
+        missed,
+        :error
+      )
 
-  defp absences,
-    do: item("absences", gettext("Absences"), "hero-user-minus", ~p"/school/absences")
+  defp absences(unjustified),
+    do:
+      item(
+        "absences",
+        gettext("Absences"),
+        "hero-user-minus",
+        ~p"/school/absences",
+        unjustified
+      )
 
   defp courses,
     do: item("courses", gettext("Mes cours"), "hero-academic-cap", ~p"/school/courses")
