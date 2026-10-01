@@ -64,4 +64,21 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
              live(conn, ~p"/school/settings/holidays")
   end
+
+  test "edits a holiday in place", %{conn: conn, scope: scope, year: year} do
+    h = scope |> Organization.list_holidays(year) |> Enum.find(&(&1.label == "Fête nationale"))
+    {:ok, view, _} = live(conn, ~p"/school/settings/holidays")
+    view |> element("#edit-holiday-#{h.id}") |> render_click()
+
+    view
+    |> form("#holiday-form", %{
+      holiday: %{label: "Fête nationale (pont)", start_date: "2026-05-20", end_date: "2026-05-22"}
+    })
+    |> render_submit()
+
+    updated = scope |> Organization.list_holidays(year) |> Enum.find(&(&1.id == h.id))
+    assert updated.label == "Fête nationale (pont)"
+    assert updated.end_date == ~D[2026-05-22]
+    assert length(Organization.list_holidays(scope, year)) == 7
+  end
 end

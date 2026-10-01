@@ -77,4 +77,24 @@ defmodule TeacherAssistant.Academics.HolidaysTest do
                end_date: ~D[2025-10-01]
              })
   end
+
+  test "Préremplir skips a date already covered, whatever its label or the locale", %{
+    scope: scope,
+    year: year
+  } do
+    noel = scope |> Organization.list_holidays(year) |> Enum.find(&(&1.label == "Noël"))
+
+    {:ok, _} =
+      Organization.update_holiday(scope, noel, %{
+        label: "Congés de Noël",
+        start_date: ~D[2025-12-19],
+        end_date: ~D[2026-01-04]
+      })
+
+    Gettext.with_locale(TeacherAssistantWeb.Gettext, "en", fn ->
+      assert {:ok, 0} = Organization.prefill_holidays(scope, year)
+    end)
+
+    assert length(Organization.list_holidays(scope, year)) == 7
+  end
 end

@@ -220,19 +220,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
          |> put_flash(:info, gettext("Réglage enregistré."))}
 
       {:error, {:slots_in_closed_cells, counts}} ->
-        detail =
-          Enum.map_join(counts, ", ", fn {day, n} ->
-            "#{n} #{String.downcase(DayOfWeek.label(day))}"
-          end)
-
-        {:noreply,
-         assign(socket,
-           days_error:
-             gettext(
-               "Des cours sont placés sur les créneaux fermés (%{detail}) : retirez-les de l'emploi du temps d'abord.",
-               detail: detail
-             )
-         )}
+        {:noreply, assign(socket, days_error: closed_message(counts))}
 
       {:error, :invalid_setting} ->
         {:noreply,
@@ -310,19 +298,11 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
         {:noreply, socket}
 
       period ->
-        form = AshPhoenix.Form.for_update(period, :update, as: "period", scope: scope)
+        params = normalize_period_params(params)
 
-        case AshPhoenix.Form.submit(form, params: normalize_period_params(params)) do
-          {:ok, _period} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, gettext("Période mise à jour."))
-             |> load_periods()}
-
-          {:error, form} ->
-            if Authz.forbidden_form?(form),
-              do: {:noreply, Authz.put_not_allowed(socket)},
-              else: {:noreply, put_flash(socket, :error, update_error(form))}
+        case moved_slots(scope, period, params) do
+          [] -> submit_period(socket, scope, period, params)
+          counts -> {:noreply, put_flash(socket, :error, closed_message(counts))}
         end
     end
   end
@@ -348,6 +328,46 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
     end
+  end
+
+  defp submit_period(socket, scope, period, params) do
+    form = AshPhoenix.Form.for_update(period, :update, as: "period", scope: scope)
+
+    case AshPhoenix.Form.submit(form, params: params) do
+      {:ok, _period} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Période mise à jour."))
+         |> load_periods()}
+
+      {:error, form} ->
+        if Authz.forbidden_form?(form),
+          do: {:noreply, Authz.put_not_allowed(socket)},
+          else: {:noreply, put_flash(socket, :error, update_error(form))}
+    end
+  end
+
+  # Spec J1: a new start time must not push the period's Wednesday lessons into the
+  # closed afternoon.
+  defp moved_slots(scope, period, %{"start_time" => start}) when is_binary(start) do
+    case Time.from_iso8601(start) do
+      {:ok, new_start} -> Attendance.slots_closed_by_period_move(scope, period, new_start)
+      _ -> []
+    end
+  end
+
+  defp moved_slots(_scope, _period, _params), do: []
+
+  defp closed_message(counts) do
+    detail =
+      Enum.map_join(counts, ", ", fn {day, n} ->
+        "#{n} #{String.downcase(DayOfWeek.label(day))}"
+      end)
+
+    gettext(
+      "Des cours sont placés sur les créneaux fermés (%{detail}) : retirez-les de l'emploi du temps d'abord.",
+      detail: detail
+    )
   end
 
   # The validation's own message (overlap, end before start), else the generic one.

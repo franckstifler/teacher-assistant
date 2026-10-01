@@ -357,13 +357,20 @@ defmodule TeacherAssistant.Organization do
   def delete_holiday(%Scope{} = scope, %Holiday{} = holiday),
     do: Ash.destroy(holiday, scope: scope)
 
-  @doc "Adds the year's national holidays not already there (same label and start). `{:ok, added}`."
+  @doc "Adds the year's national holidays whose date no holiday covers yet. `{:ok, added}`."
   def prefill_holidays(%Scope{} = scope, %AcademicYear{} = year) do
-    existing = scope |> list_holidays(year) |> MapSet.new(&{&1.label, &1.start_date})
+    # A date any existing holiday already covers is skipped, whatever its label or
+    # the language it was typed in (« Noël » folded into « Congés de Noël », …).
+    existing =
+      SchoolCalendar.new(
+        nil,
+        false,
+        Enum.map(list_holidays(scope, year), &Map.take(&1, [:label, :start_date, :end_date]))
+      )
 
     year.start_date
     |> SchoolCalendar.national_holidays(year.end_date)
-    |> Enum.reject(&MapSet.member?(existing, {&1.label, &1.start_date}))
+    |> Enum.reject(&SchoolCalendar.holiday_on(existing, &1.start_date))
     |> Enum.reduce_while({:ok, 0}, fn h, {:ok, n} ->
       case create_holiday(scope, year, h) do
         {:ok, _} -> {:cont, {:ok, n + 1}}

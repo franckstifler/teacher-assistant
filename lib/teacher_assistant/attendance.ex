@@ -624,6 +624,29 @@ defmodule TeacherAssistant.Attendance do
     |> Enum.sort_by(fn {day, _} -> Enum.find_index(SchoolCalendar.all_days(), &(&1 == day)) end)
   end
 
+  @doc """
+  The active year's lessons on `period` that moving its start to `new_start` would
+  put in a closed cell (Wednesday afternoon off), as `[{day, count}]` — empty when
+  the move is safe (spec J1).
+  """
+  def slots_closed_by_period_move(%Scope{current_academic_year: nil}, _period, _new_start), do: []
+
+  def slots_closed_by_period_move(
+        %Scope{current_academic_year: year} = scope,
+        period,
+        %Time{} = new_start
+      ) do
+    cal = school_calendar(scope)
+    moved = %{period | start_time: new_start}
+
+    TimetableSlot
+    |> Ash.Query.filter(teaching_context.academic_year_id == ^year.id and period_id == ^period.id)
+    |> Ash.read!(scope: scope)
+    |> Enum.reject(&SchoolCalendar.open_cell?(cal, &1.day, moved))
+    |> Enum.frequencies_by(& &1.day)
+    |> Enum.sort_by(fn {day, _} -> Enum.find_index(SchoolCalendar.all_days(), &(&1 == day)) end)
+  end
+
   @doc "Why `date` has no lessons: `{:holiday, label}`, `:no_lessons`, or nil (a lesson day)."
   def day_off(%Scope{} = scope, %Date{} = date) do
     cal = school_calendar(scope)

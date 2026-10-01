@@ -609,6 +609,7 @@ msgstr "Email"
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:142
 #: lib/teacher_assistant_web/live/school/fees_live.ex:414
 #: lib/teacher_assistant_web/live/school/fees_live.ex:464
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:185
 #: lib/teacher_assistant_web/live/school/passage_live.ex:114
 #: lib/teacher_assistant_web/live/school/periods_live.ex:77
 #: lib/teacher_assistant_web/live/school/periods_live.ex:138
@@ -693,7 +694,7 @@ msgstr "School name"
 
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:40
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:48
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:96
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:118
 #: lib/teacher_assistant_web/live/school/passage_live.ex:57
 #: lib/teacher_assistant_web/live/school/settings_live.ex:50
 #: lib/teacher_assistant_web/spaces.ex:138
@@ -1544,7 +1545,7 @@ msgstr "No classes scheduled yet"
 msgid "Aucune période définie"
 msgstr "No periods yet"
 
-#: lib/teacher_assistant_web/live/school/periods_live.ex:345
+#: lib/teacher_assistant_web/live/school/periods_live.ex:325
 #, elixir-autogen, elixir-format
 msgid "Cette période a des cours à l'emploi du temps et ne peut pas être supprimée."
 msgstr "This period has timetable entries and cannot be deleted."
@@ -1578,7 +1579,7 @@ msgstr "Seed default schedule"
 msgid "Heures par matière"
 msgstr "Hours by subject"
 
-#: lib/teacher_assistant_web/live/school/periods_live.ex:356
+#: lib/teacher_assistant_web/live/school/periods_live.ex:376
 #, elixir-autogen, elixir-format
 msgid "Impossible de mettre à jour la période."
 msgstr "Could not update the period."
@@ -1591,8 +1592,8 @@ msgstr "Thursday"
 #: lib/teacher_assistant_web/live/school/fees_live.ex:342
 #: lib/teacher_assistant_web/live/school/fees_live.ex:395
 #: lib/teacher_assistant_web/live/school/fees_live.ex:452
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:105
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:139
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:127
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:170
 #: lib/teacher_assistant_web/live/school/periods_live.ex:85
 #: lib/teacher_assistant_web/live/school/periods_live.ex:113
 #: lib/teacher_assistant_web/live/school/periods_live.ex:166
@@ -1627,7 +1628,7 @@ msgstr "My timetable"
 msgid "Position"
 msgstr "Position"
 
-#: lib/teacher_assistant_web/live/school/periods_live.ex:319
+#: lib/teacher_assistant_web/live/school/periods_live.ex:340
 #, elixir-autogen, elixir-format
 msgid "Période mise à jour."
 msgstr "Period updated."
@@ -1648,7 +1649,7 @@ msgstr "Saturday"
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:80
 #: lib/teacher_assistant_web/live/school/fees_live.ex:375
 #: lib/teacher_assistant_web/live/school/fees_live.ex:620
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:124
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:155
 #: lib/teacher_assistant_web/live/school/periods_live.ex:148
 #: lib/teacher_assistant_web/live/school/settings_live.ex:453
 #, elixir-autogen, elixir-format
@@ -1722,6 +1723,7 @@ msgstr "Show"
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:473
 #: lib/teacher_assistant_web/live/school/council_live.ex:454
 #: lib/teacher_assistant_web/live/school/fees_live.ex:421
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:194
 #: lib/teacher_assistant_web/live/school/register_live.ex:221
 #, elixir-autogen, elixir-format
 msgid "Annuler"
@@ -2162,7 +2164,7 @@ msgstr ""
 msgid "Adresse"
 msgstr "Adresse"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:142
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:185
 #: lib/teacher_assistant_web/live/school/settings_live.ex:485
 #, elixir-autogen, elixir-format
 msgid "Ajouter"
@@ -3347,7 +3349,7 @@ msgstr "Editable from the class page."
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:267
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:306
 #: lib/teacher_assistant_web/live/school/passage_live.ex:45
-#: lib/teacher_assistant_web/live/school/periods_live.ex:247
+#: lib/teacher_assistant_web/live/school/periods_live.ex:235
 #, elixir-autogen, elixir-format
 msgid "Réglage non enregistré."
 msgstr "Setting not saved."
@@ -5551,7 +5553,7 @@ msgstr "From"
 msgid "Éléments affichés"
 msgstr "Elements shown"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:74
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:85
 #, elixir-autogen, elixir-format
 msgid "%{n} jour(s) ajouté(s)."
 msgstr "%{n} day(s) added."
@@ -5566,12 +5568,12 @@ msgstr "Add a period"
 msgid "Ascension"
 msgstr "Ascension Day"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:105
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:127
 #, elixir-autogen, elixir-format
 msgid "Au"
 msgstr "To"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:141
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:181
 #, elixir-autogen, elixir-format
 msgid "Au (facultatif)"
 msgstr "To (optional)"
@@ -5587,19 +5589,19 @@ msgstr "This slot is closed (a day without lessons or Wednesday afternoon)."
 msgid "Chevauche %{label} (%{start}–%{end})."
 msgstr "Overlaps %{label} (%{start}–%{end})."
 
-#: lib/teacher_assistant_web/live/school/periods_live.ex:240
+#: lib/teacher_assistant_web/live/school/periods_live.ex:228
 #, elixir-autogen, elixir-format
 msgid "Choisissez au moins un jour et une durée entre 1 et 240 minutes."
 msgstr "Choose at least one day and a length between 1 and 240 minutes."
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:97
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:119
 #: lib/teacher_assistant_web/live/school/settings_live.ex:383
 #: lib/teacher_assistant_web/spaces.ex:375
 #, elixir-autogen, elixir-format
 msgid "Congés & jours fériés"
 msgstr "Holidays & breaks"
 
-#: lib/teacher_assistant_web/live/school/periods_live.ex:231
+#: lib/teacher_assistant_web/live/school/periods_live.ex:367
 #, elixir-autogen, elixir-format
 msgid "Des cours sont placés sur les créneaux fermés (%{detail}) : retirez-les de l'emploi du temps d'abord."
 msgstr "Lessons are placed in the slots being closed (%{detail}): remove them from the timetable first."
@@ -5609,8 +5611,8 @@ msgstr "Lessons are placed in the slots being closed (%{detail}): remove them fr
 msgid "Donnez un libellé."
 msgstr "Enter a label."
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:105
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:140
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:127
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:175
 #, elixir-autogen, elixir-format
 msgid "Du"
 msgstr "From"
@@ -5641,15 +5643,10 @@ msgstr "National Day"
 msgid "Horaires"
 msgstr "School hours"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:53
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:56
 #, elixir-autogen, elixir-format
 msgid "Indiquez des dates valides."
 msgstr "Enter valid dates."
-
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:41
-#, elixir-autogen, elixir-format
-msgid "Jour ajouté."
-msgstr "Day added."
 
 #: lib/teacher_assistant/academics/school_calendar.ex:70
 #, elixir-autogen, elixir-format
@@ -5662,7 +5659,7 @@ msgstr "New Year's Day"
 msgid "Jour férié : %{label}"
 msgstr "Public holiday: %{label}"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:106
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:128
 #, elixir-autogen, elixir-format
 msgid "Jours"
 msgstr "Days"
@@ -5699,12 +5696,12 @@ msgstr "Wednesday afternoon off (periods from 1 pm)"
 msgid "Noël"
 msgstr "Christmas"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:147
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:201
 #, elixir-autogen, elixir-format
 msgid "Préremplir les jours fériés nationaux"
 msgstr "Prefill the national holidays"
 
-#: lib/teacher_assistant_web/live/school/holidays_live.ex:122
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:153
 #, elixir-autogen, elixir-format
 msgid "Supprimer ce jour ?"
 msgstr "Delete this day?"
@@ -5713,3 +5710,13 @@ msgstr "Delete this day?"
 #, elixir-autogen, elixir-format
 msgid "Vendredi saint"
 msgstr "Good Friday"
+
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:44
+#, elixir-autogen, elixir-format
+msgid "Jour enregistré."
+msgstr "Day saved."
+
+#: lib/teacher_assistant_web/live/school/holidays_live.ex:145
+#, elixir-autogen, elixir-format
+msgid "Modifier"
+msgstr "Edit"

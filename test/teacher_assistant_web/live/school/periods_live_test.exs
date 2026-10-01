@@ -173,4 +173,56 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       assert has_element?(view, "#new-period-error", "Chevauche")
     end
   end
+
+  test "moving a period with a Wednesday lesson into the closed afternoon is refused", %{
+    conn: conn,
+    scope: scope
+  } do
+    scope = %{
+      scope
+      | current_academic_year: TeacherAssistant.Organization.current_academic_year(scope)
+    }
+
+    :ok = Attendance.build_default_periods(scope)
+    cours6 = scope |> Attendance.list_periods() |> Enum.find(&(&1.label == "Cours 6"))
+    [cg | _] = TeacherAssistant.Enrollment.list_class_groups(scope, scope.current_academic_year)
+
+    {:ok, tc} =
+      TeacherAssistant.Curriculum.assign_teacher(scope, cg, scope.current_user, %{
+        subject: "Maths"
+      })
+
+    {:ok, _} =
+      TeacherAssistant.Timetabling.place_slot(scope, cg, %{
+        day: :wednesday,
+        period_id: cours6.id,
+        teaching_context_id: tc.id
+      })
+
+    {:ok, _} =
+      Attendance.update_school_days(scope, %{
+        "lesson_days" => ~w(monday tuesday wednesday thursday friday saturday),
+        "wednesday_afternoon_off?" => "true",
+        "default_lesson_minutes" => "50"
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/periods")
+
+    view
+    |> form("#period-form-#{cours6.id}", %{
+      "period" => %{
+        "label" => "Cours 6",
+        "start_time" => "16:10",
+        "end_time" => "17:00",
+        "kind" => "lesson",
+        "position" => to_string(cours6.position)
+      }
+    })
+    |> render_submit()
+
+    assert render(view) =~ "retirez-les de l&#39;emploi du temps d&#39;abord"
+
+    assert Enum.find(Attendance.list_periods(scope), &(&1.id == cours6.id)).start_time ==
+             ~T[11:55:00]
+  end
 end
