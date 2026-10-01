@@ -10,13 +10,13 @@ defmodule TeacherAssistant.Academics.GradingSettingsTest do
   end
 
   test "defaults are the official rules, rounded to the hundredth, shared ranks", %{scope: scope} do
-    assert Assessment.grading_rules(scope) == %GradingRules{
+    assert %GradingRules{
              trimester: :mean_of_sequences,
              annual: :mean_of_sequences,
              rounding: :hundredth,
              shared_ranks?: true,
              absence: :zero
-           }
+           } = Assessment.grading_rules(scope)
   end
 
   test "an admin changes the rules", %{scope: scope} do

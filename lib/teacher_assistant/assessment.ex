@@ -445,7 +445,15 @@ defmodule TeacherAssistant.Assessment do
       annual: profile.annual_average_rule,
       rounding: profile.average_rounding,
       shared_ranks?: profile.shared_ranks?,
-      absence: profile.absence_rule
+      absence: profile.absence_rule,
+      appreciation_bands: profile.appreciation_bands,
+      felicitations_min: profile.felicitations_min,
+      encouragements_min: profile.encouragements_min,
+      tableau_honneur_min: profile.tableau_honneur_min,
+      avertissement_travail_below: profile.avertissement_travail_below,
+      blame_travail_below: profile.blame_travail_below,
+      distinctions_require_all_passed?: profile.distinctions_require_all_passed?,
+      distinctions_require_conduct?: profile.distinctions_require_conduct?
     }
   end
 
@@ -495,6 +503,84 @@ defmodule TeacherAssistant.Assessment do
       other -> other
     end
   end
+
+  # --- Appreciations and distinctions (spec I1) -----------------------------------
+
+  @threshold_fields ~w(felicitations_min encouragements_min tableau_honneur_min avertissement_travail_below blame_travail_below)a
+  @distinction_gates ~w(distinctions_require_all_passed? distinctions_require_conduct?)a
+
+  @doc """
+  Saves the school's appreciation scale from `[%{from: "0", label: "…"}, …]`, lowest
+  band first; bounds accept a comma. `{:error, :invalid_number}` when a bound is not a
+  number; the profile validation enforces the scale's rules.
+  """
+  def update_appreciation_bands(%Scope{} = scope, rows) when is_list(rows) do
+    with {:ok, bands} <- parse_bands(rows) do
+      update_profile(scope, %{appreciation_bands: bands})
+    end
+  end
+
+  @doc "Goes back to the default appreciation scale."
+  def reset_appreciation_bands(%Scope{} = scope),
+    do: update_profile(scope, %{appreciation_bands: nil})
+
+  @doc """
+  Saves the distinction thresholds and gates from string params. An empty threshold
+  switches it off; a missing gate is false; a non-number gives `{:error, :invalid_number}`.
+  """
+  def update_distinction_rules(%Scope{} = scope, %{} = params) do
+    with {:ok, thresholds} <- parse_thresholds(params) do
+      gates = Map.new(@distinction_gates, &{&1, Map.get(params, Atom.to_string(&1)) == "true"})
+      update_profile(scope, Map.merge(thresholds, gates))
+    end
+  end
+
+  defp update_profile(scope, attrs) do
+    with {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      TeacherAssistant.Accounts.update_school_profile(profile, attrs, scope: scope)
+    end
+  end
+
+  defp parse_bands(rows) do
+    Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, acc} ->
+      case parse_score(row.from) do
+        {:ok, %Decimal{} = from} ->
+          {:cont, {:ok, acc ++ [%{from: from, label: String.trim(row.label || "")}]}}
+
+        _ ->
+          {:halt, {:error, :invalid_number}}
+      end
+    end)
+  end
+
+  defp parse_thresholds(params) do
+    Enum.reduce_while(@threshold_fields, {:ok, %{}}, fn field, {:ok, acc} ->
+      case parse_score(Map.get(params, Atom.to_string(field), "")) do
+        {:ok, value} -> {:cont, {:ok, Map.put(acc, field, value)}}
+        :error -> {:halt, {:error, :invalid_number}}
+      end
+    end)
+  end
+
+  # "" → nil; "9,5" → 9.5; anything else not a number → :error. Range checks are the
+  # profile validation's job.
+  defp parse_score(%Decimal{} = d), do: {:ok, d}
+
+  defp parse_score(value) when is_binary(value) do
+    case value |> String.trim() |> String.replace(",", ".") do
+      "" ->
+        {:ok, nil}
+
+      text ->
+        case Decimal.parse(text) do
+          {dec, ""} -> {:ok, dec}
+          _ -> :error
+        end
+    end
+  end
+
+  defp parse_score(nil), do: {:ok, nil}
+  defp parse_score(_), do: :error
 
   defp parse_rule_params(params) do
     Enum.reduce_while(params, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
@@ -569,12 +655,9 @@ defmodule TeacherAssistant.Assessment do
         nil
 
       subjects ->
-        students =
-          scope
-          |> TeacherAssistant.Enrollment.list_students(cg)
-          |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
-
-        Bulletins.compile(students, subjects, grading_rules(scope))
+        rules = grading_rules(scope)
+        students = bulletin_students(scope, cg, {:sequence, seq}, rules)
+        Bulletins.compile(students, subjects, rules)
     end
   end
 
@@ -593,7 +676,7 @@ defmodule TeacherAssistant.Assessment do
 
   def class_results_for_period(%Scope{} = scope, %ClassGroup{} = cg, {:trimester, %Term{} = term}) do
     seqs = Enum.sort_by(term.sequences, & &1.position_in_term)
-    period_result(scope, cg, seqs, :sequences)
+    period_result(scope, cg, {:trimester, term}, seqs, :sequences)
   end
 
   def class_results_for_period(
@@ -602,19 +685,34 @@ defmodule TeacherAssistant.Assessment do
         {:annual, %AcademicYear{} = year}
       ) do
     seqs = TeacherAssistant.Organization.list_sequences(scope, year)
-    period_result(scope, cg, seqs, :trimesters)
+    period_result(scope, cg, {:annual, year}, seqs, :trimesters)
+  end
+
+  # The roster as bulletin inputs. With the conduct gate on (spec I1), each student
+  # carries the period's note de conduite, read once for the class.
+  defp bulletin_students(scope, cg, period, %GradingRules{distinctions_require_conduct?: true}) do
+    conduct = TeacherAssistant.Discipline.class_discipline(scope, cg, period)
+
+    scope
+    |> TeacherAssistant.Enrollment.list_roster(cg)
+    |> Enum.map(fn %{student: s, enrollment: e} ->
+      note = conduct |> Map.get(e.id, %{}) |> Map.get(:note_de_conduite)
+      %{id: s.id, sex: s.sex, name: s.full_name, conduct: note}
+    end)
+  end
+
+  defp bulletin_students(scope, cg, _period, _rules) do
+    scope
+    |> TeacherAssistant.Enrollment.list_students(cg)
+    |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
   end
 
   # Builds a Bulletins result over a set of séquences. `component_kind` selects the
   # breakdown carried on each subject row: :sequences (per séquence, for trimester)
   # or :trimesters (per term, for annual).
-  defp period_result(%Scope{} = scope, cg, seqs, component_kind) do
+  defp period_result(%Scope{} = scope, cg, period, seqs, component_kind) do
     rules = grading_rules(scope)
-
-    students =
-      scope
-      |> TeacherAssistant.Enrollment.list_students(cg)
-      |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
+    students = bulletin_students(scope, cg, period, rules)
 
     # per séquence: %{context_id => %{label, coefficient, per_student_avg}}
     per_seq =

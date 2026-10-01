@@ -84,8 +84,18 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :shared_ranks?,
         :absence_rule,
         :default_max_score,
-        :entry_grace_days
+        :entry_grace_days,
+        :appreciation_bands,
+        :felicitations_min,
+        :encouragements_min,
+        :tableau_honneur_min,
+        :avertissement_travail_below,
+        :blame_travail_below,
+        :distinctions_require_all_passed?,
+        :distinctions_require_conduct?
       ]
+
+      validate TeacherAssistant.Accounts.SchoolProfile.ValidateAppreciations
 
       change fn changeset, _context ->
         if Ash.Changeset.get_data(changeset, :verification_status) == :rejected do
@@ -204,6 +214,27 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       default: 5,
       public?: true,
       constraints: [min: 0, max: 30]
+
+    # Spec I1: the school's appreciation scale; nil = the default scale.
+    attribute :appreciation_bands, {:array, TeacherAssistant.Accounts.AppreciationBand},
+      public?: true
+
+    # Spec I1: distinction and work-warning thresholds (/20); nil = switched off.
+    attribute :felicitations_min, :decimal, default: Decimal.new(16), public?: true
+    attribute :encouragements_min, :decimal, default: Decimal.new(14), public?: true
+    attribute :tableau_honneur_min, :decimal, default: Decimal.new(12), public?: true
+    attribute :avertissement_travail_below, :decimal, default: Decimal.new(8), public?: true
+    attribute :blame_travail_below, :decimal, default: Decimal.new(6), public?: true
+
+    attribute :distinctions_require_all_passed?, :boolean,
+      allow_nil?: false,
+      default: true,
+      public?: true
+
+    attribute :distinctions_require_conduct?, :boolean,
+      allow_nil?: false,
+      default: false,
+      public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,
