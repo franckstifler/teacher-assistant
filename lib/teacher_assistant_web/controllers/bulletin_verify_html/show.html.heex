@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Vérification d'un bulletin")}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #f6f7f6; color: #111; margin: 0; padding: 24px 16px; }
+      main { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 24px; }
+      h1 { font-size: 1.3rem; margin: 0 0 12px; }
+      .ok { color: #11663a; } .ko { color: #9b2c1f; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+      dt { color: #555; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <%= case @result do %>
+        <% {:published, info} -> %>
+          <h1 class="ok">✓ {gettext("Bulletin authentique")}</h1>
+          <dl>
+            <dt>{gettext("Élève")}</dt><dd>{info.student_name}</dd>
+            <dt>{gettext("Établissement")}</dt><dd>{info.school_name}</dd>
+            <dt>{gettext("Classe")}</dt><dd>{info.class_label}</dd>
+            <dt>{gettext("Période")}</dt><dd>{period(info)}</dd>
+            <dt>{gettext("Publié le")}</dt><dd>{date(info.published_on)}</dd>
+          </dl>
+        <% {:withdrawn, info} -> %>
+          <h1 class="ko">{gettext("Ce bulletin a été retiré le %{date}", date: date(info.withdrawn_on))}</h1>
+          <dl>
+            <dt>{gettext("Élève")}</dt><dd>{info.student_name}</dd>
+            <dt>{gettext("Établissement")}</dt><dd>{info.school_name}</dd>
+          </dl>
+        <% :invalid -> %>
+          <h1 class="ko">{gettext("Lien de vérification invalide")}</h1>
+      <% end %>
+    </main>
+  </body>
+</html>

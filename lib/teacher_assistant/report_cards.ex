@@ -150,6 +150,35 @@ defmodule TeacherAssistant.ReportCards do
     end
   end
 
+  @doc """
+  What the public verification page may say about a student's card in a publication
+  (spec I5). The one read outside authentication: it bypasses policies, scoped to the
+  workspace the signed token names, and returns no marks.
+  """
+  def verification(workspace_id, publication_id, student_id) do
+    with {:ok, pub} <-
+           Ash.get(BulletinPublication, publication_id,
+             tenant: workspace_id,
+             authorize?: false,
+             load: [:workspace, :class_group, :term]
+           ),
+         %{student: student} <-
+           Enum.find(pub.snapshot.roster, &(&1.student.id == student_id)) do
+      {pub.status,
+       %{
+         student_name: student.full_name,
+         school_name: pub.workspace.name,
+         class_label: pub.class_group.label,
+         period_kind: pub.period_kind,
+         term_position: pub.term && pub.term.position,
+         published_on: published_on(pub),
+         withdrawn_on: pub.withdrawn_at && pub.withdrawn_at |> DateTime.add(3600) |> DateTime.to_date()
+       }}
+    else
+      _ -> :invalid
+    end
+  end
+
   @doc "The school-local (WAT, UTC+1) date of a publication."
   def published_on(%{published_at: at}), do: at |> DateTime.add(3600) |> DateTime.to_date()
 

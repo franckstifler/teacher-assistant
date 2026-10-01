@@ -39,6 +39,7 @@ defmodule TeacherAssistantWeb.Router do
       ]
 
     get "/locale/:locale", LocaleController, :set
+    get "/verify/bulletin/:token", BulletinVerifyController, :show
 
     sign_in_route register_path: "/register",
                   reset_path: "/reset",

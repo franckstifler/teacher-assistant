@@ -538,5 +538,17 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       refute html =~ "Matière / Subject"
       assert html =~ "Rang"
     end
+
+    test "the QR prints on published cards only, when chosen", %{conn: conn, cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      url = ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}"
+      elements = ["qr_code" | Enum.map(TeacherAssistant.Academics.BulletinElement.defaults(), &Atom.to_string/1)]
+      {:ok, _} = TeacherAssistant.Assessment.update_bulletin_settings(scope, %{"language" => "by_class", "elements" => elements})
+
+      refute conn |> get(url) |> html_response(200) =~ "<svg"
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+      assert conn |> get(url) |> html_response(200) =~ "<svg"
+    end
   end
 end

@@ -4,7 +4,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
-  alias TeacherAssistantWeb.BulletinPrintHTML
+  alias TeacherAssistant.Academics.BulletinTemplate
+  alias TeacherAssistantWeb.{BulletinPrintHTML, BulletinVerification}
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
     with_view(conn, id, params, fn scope, cg, period, status, pub, view ->
@@ -80,7 +81,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
             ),
           conduct: view.conduct[enrollment.id],
           discipline: view.discipline[enrollment.id],
-          qr_svg: nil
+          qr_svg: qr_svg(pub, template, student.id)
         }
       end)
 
@@ -105,6 +106,16 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       lang: lang,
       class_average: results && results.class_average
     )
+  end
+
+  # Spec I5: only published cards carry a verification code, and only when chosen.
+  defp qr_svg(nil, _template, _student_id), do: nil
+
+  defp qr_svg(pub, template, student_id) do
+    if BulletinTemplate.show?(template, :qr_code) do
+      token = BulletinVerification.token(pub, student_id)
+      BulletinVerification.qr_svg(url(~p"/verify/bulletin/#{token}"))
+    end
   end
 
   defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"
