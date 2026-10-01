@@ -86,6 +86,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
           scope
           |> slots(dates |> Enum.map(&weekday/1) |> Enum.uniq(), user.id)
           |> Enum.filter(&SchoolCalendar.open_cell?(cal, &1.day, &1.period))
+
         done = done_roll_calls(scope, slots, first, List.last(dates))
         slots_by_day = Enum.group_by(slots, & &1.day)
 

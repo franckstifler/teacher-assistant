@@ -35,13 +35,21 @@ defmodule TeacherAssistant.Academics.HolidaysTest do
 
     assert h.label == "Congés de Noël"
 
-    for {s, e} <- [{~D[2025-12-20], ~D[2025-12-19]}, {~D[2025-09-01], ~D[2025-09-02]}, {~D[2026-07-30], ~D[2026-08-02]}] do
+    for {s, e} <- [
+          {~D[2025-12-20], ~D[2025-12-19]},
+          {~D[2025-09-01], ~D[2025-09-02]},
+          {~D[2026-07-30], ~D[2026-08-02]}
+        ] do
       assert {:error, %Ash.Error.Invalid{}} =
                Organization.create_holiday(scope, year, %{label: "X", start_date: s, end_date: e})
     end
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Organization.create_holiday(scope, year, %{label: " ", start_date: ~D[2025-10-01], end_date: ~D[2025-10-01]})
+             Organization.create_holiday(scope, year, %{
+               label: " ",
+               start_date: ~D[2025-10-01],
+               end_date: ~D[2025-10-01]
+             })
   end
 
   test "school_calendar combines the profile and the active year's holidays", %{scope: scope} do
@@ -63,6 +71,10 @@ defmodule TeacherAssistant.Academics.HolidaysTest do
     teacher = %{TeacherFixtures.member_scope_fixture(scope) | current_academic_year: year}
 
     assert {:error, %Ash.Error.Forbidden{}} =
-             Organization.create_holiday(teacher, year, %{label: "X", start_date: ~D[2025-10-01], end_date: ~D[2025-10-01]})
+             Organization.create_holiday(teacher, year, %{
+               label: "X",
+               start_date: ~D[2025-10-01],
+               end_date: ~D[2025-10-01]
+             })
   end
 end

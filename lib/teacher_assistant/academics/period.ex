@@ -42,13 +42,6 @@ defmodule TeacherAssistant.Academics.Period do
     end
   end
 
-  validations do
-    # In the before-action hook, so the tenant is known even when set after for_create.
-    validate TeacherAssistant.Academics.Period.ValidateTimes,
-      on: [:create, :update],
-      before_action?: true
-  end
-
   policies do
     policy action_type(:read) do
       authorize_if {Checks.SchoolRole, any_of: :member}
@@ -57,6 +50,13 @@ defmodule TeacherAssistant.Academics.Period do
     policy action_type([:create, :update, :destroy]) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
     end
+  end
+
+  validations do
+    # In the before-action hook, so the tenant is known even when set after for_create.
+    validate TeacherAssistant.Academics.Period.ValidateTimes,
+      on: [:create, :update],
+      before_action?: true
   end
 
   multitenancy do

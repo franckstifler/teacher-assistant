@@ -10,6 +10,7 @@ defmodule TeacherAssistant.Organization do
     Term,
     Workspace
   }
+
   alias TeacherAssistant.Accounts.SchoolMembership
   alias TeacherAssistant.Scope
 
@@ -353,7 +354,8 @@ defmodule TeacherAssistant.Organization do
     holiday |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
   end
 
-  def delete_holiday(%Scope{} = scope, %Holiday{} = holiday), do: Ash.destroy(holiday, scope: scope)
+  def delete_holiday(%Scope{} = scope, %Holiday{} = holiday),
+    do: Ash.destroy(holiday, scope: scope)
 
   @doc "Adds the year's national holidays not already there (same label and start). `{:ok, added}`."
   def prefill_holidays(%Scope{} = scope, %AcademicYear{} = year) do

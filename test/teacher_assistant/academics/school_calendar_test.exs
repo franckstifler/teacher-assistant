@@ -19,6 +19,7 @@ defmodule TeacherAssistant.Academics.SchoolCalendarTest do
 
   test "a holiday range is a day off on every date, both ends included" do
     cal = SchoolCalendar.new(nil, false, [@noel])
+
     for d <- [~D[2025-12-19], ~D[2025-12-25], ~D[2026-01-03], ~D[2026-01-04]] do
       refute SchoolCalendar.lesson_day?(cal, d)
       assert SchoolCalendar.holiday_on(cal, d) == @noel

@@ -540,8 +540,13 @@ defmodule TeacherAssistant.Attendance do
 
     holidays =
       case scope.current_academic_year do
-        nil -> []
-        year -> scope |> TeacherAssistant.Organization.list_holidays(year) |> Enum.map(&Map.take(&1, [:label, :start_date, :end_date]))
+        nil ->
+          []
+
+        year ->
+          scope
+          |> TeacherAssistant.Organization.list_holidays(year)
+          |> Enum.map(&Map.take(&1, [:label, :start_date, :end_date]))
       end
 
     SchoolCalendar.new(profile.lesson_days, profile.wednesday_afternoon_off?, holidays)
@@ -584,10 +589,14 @@ defmodule TeacherAssistant.Attendance do
     known = Map.new(SchoolCalendar.all_days(), &{Atom.to_string(&1), &1})
 
     cond do
-      days == [] -> {:error, :invalid_setting}
+      days == [] ->
+        {:error, :invalid_setting}
+
       Enum.all?(days, &Map.has_key?(known, &1)) ->
         {:ok, Enum.filter(SchoolCalendar.all_days(), &(Atom.to_string(&1) in days))}
-      true -> {:error, :invalid_setting}
+
+      true ->
+        {:error, :invalid_setting}
     end
   end
 

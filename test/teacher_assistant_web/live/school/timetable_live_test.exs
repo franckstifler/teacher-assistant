@@ -258,7 +258,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
              live(conn, ~p"/school/classes/#{ocg.id}/timetable")
   end
 
-  test "the grid shows lesson days only and greys Wednesday afternoon (spec J1)", %{conn: conn} = ctx do
+  test "the grid shows lesson days only and greys Wednesday afternoon (spec J1)",
+       %{conn: conn} = ctx do
     {:ok, _} =
       TeacherAssistant.Attendance.update_school_days(ctx.scope, %{
         "lesson_days" => ~w(monday tuesday wednesday thursday friday),
@@ -268,7 +269,13 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{ctx.cg.id}/timetable")
     refute has_element?(view, "th", "Samedi")
-    late = Enum.find(TeacherAssistant.Attendance.list_periods(ctx.scope), &(&1.kind == :lesson and Time.compare(&1.start_time, ~T[13:00:00]) != :lt))
+
+    late =
+      Enum.find(
+        TeacherAssistant.Attendance.list_periods(ctx.scope),
+        &(&1.kind == :lesson and Time.compare(&1.start_time, ~T[13:00:00]) != :lt)
+      )
+
     assert has_element?(view, "#cell-wednesday-#{late.id}.closed-cell")
     refute has_element?(view, "#place-wednesday-#{late.id}")
   end

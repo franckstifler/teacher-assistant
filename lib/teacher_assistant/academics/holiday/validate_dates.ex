@@ -20,10 +20,12 @@ defmodule TeacherAssistant.Academics.Holiday.ValidateDates do
         :ok
 
       Date.compare(e, s) == :lt ->
-        {:error, field: :end_date, message: gettext("La fin doit être le même jour ou après le début.")}
+        {:error,
+         field: :end_date, message: gettext("La fin doit être le même jour ou après le début.")}
 
       not inside_year?(changeset.tenant, year_id, s, e) ->
-        {:error, field: :start_date, message: gettext("Les dates doivent être dans l'année scolaire.")}
+        {:error,
+         field: :start_date, message: gettext("Les dates doivent être dans l'année scolaire.")}
 
       true ->
         :ok

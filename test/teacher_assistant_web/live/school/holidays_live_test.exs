@@ -17,11 +17,17 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
     assert has_element?(view, "#holidays-table", "Fête nationale")
   end
 
-  test "adds, then deletes a holiday; a bad range shows the error", %{conn: conn, scope: scope, year: year} do
+  test "adds, then deletes a holiday; a bad range shows the error", %{
+    conn: conn,
+    scope: scope,
+    year: year
+  } do
     {:ok, view, _} = live(conn, ~p"/school/settings/holidays")
 
     view
-    |> form("#holiday-form", %{holiday: %{label: "Congés de Noël", start_date: "2025-12-19", end_date: "2026-01-04"}})
+    |> form("#holiday-form", %{
+      holiday: %{label: "Congés de Noël", start_date: "2025-12-19", end_date: "2026-01-04"}
+    })
     |> render_submit()
 
     h = scope |> Organization.list_holidays(year) |> Enum.find(&(&1.label == "Congés de Noël"))
@@ -31,7 +37,9 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
     refute has_element?(view, "#holiday-row-#{h.id}")
 
     view
-    |> form("#holiday-form", %{holiday: %{label: "X", start_date: "2026-01-04", end_date: "2025-12-19"}})
+    |> form("#holiday-form", %{
+      holiday: %{label: "X", start_date: "2026-01-04", end_date: "2025-12-19"}
+    })
     |> render_submit()
 
     assert has_element?(view, "#holiday-error")
@@ -53,6 +61,7 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
       |> log_in_user(other.current_user)
       |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
 
-    assert {:error, {:live_redirect, %{to: "/school/settings"}}} = live(conn, ~p"/school/settings/holidays")
+    assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
+             live(conn, ~p"/school/settings/holidays")
   end
 end

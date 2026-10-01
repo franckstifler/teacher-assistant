@@ -76,7 +76,9 @@ defmodule TeacherAssistant.Academics.SchoolCalendar do
         {Date.new!(y, 12, 25), gettext("Noël")}
       ]
     end)
-    |> Enum.filter(fn {d, _} -> Date.compare(d, first) != :lt and Date.compare(d, last) != :gt end)
+    |> Enum.filter(fn {d, _} ->
+      Date.compare(d, first) != :lt and Date.compare(d, last) != :gt
+    end)
     |> Enum.sort_by(fn {d, _} -> Date.to_gregorian_days(d) end)
     |> Enum.map(fn {d, label} -> %{label: label, start_date: d, end_date: d} end)
   end

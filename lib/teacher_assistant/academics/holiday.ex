@@ -42,10 +42,6 @@ defmodule TeacherAssistant.Academics.Holiday do
     end
   end
 
-  validations do
-    validate TeacherAssistant.Academics.Holiday.ValidateDates
-  end
-
   policies do
     policy action_type(:read) do
       authorize_if {Checks.SchoolRole, any_of: :member}
@@ -54,6 +50,10 @@ defmodule TeacherAssistant.Academics.Holiday do
     policy action_type([:create, :update, :destroy]) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
     end
+  end
+
+  validations do
+    validate TeacherAssistant.Academics.Holiday.ValidateDates
   end
 
   multitenancy do

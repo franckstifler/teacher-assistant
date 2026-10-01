@@ -874,6 +874,8 @@ rooms and unavailability from the start; J5 last because it reads the finished t
 
 ## J1 — School calendar (spec)
 
+Status: implemented 2026-10-01 (branch `j1-school-calendar`, plan `docs/superpowers/plans/2026-10-01-j1-school-calendar.md`); no visual check done.
+
 Mockup: `Paramètres école` → "Horaires" (fields `jours`, `mer`, `duree`) and "Congés" (list `conges`). Gaps:
 **S03, S02**.
 

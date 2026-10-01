@@ -188,7 +188,12 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     test "a closed cell or an unticked day refuses a lesson", ctx do
       %{scope: scope, cg_a: cg, tc_a: tc} = ctx
       periods = TeacherAssistant.Attendance.list_periods(scope)
-      late = Enum.find(periods, &(&1.kind == :lesson and Time.compare(&1.start_time, ~T[13:00:00]) != :lt))
+
+      late =
+        Enum.find(
+          periods,
+          &(&1.kind == :lesson and Time.compare(&1.start_time, ~T[13:00:00]) != :lt)
+        )
 
       {:ok, _} =
         TeacherAssistant.Attendance.update_school_days(scope, %{
@@ -198,13 +203,25 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
         })
 
       assert {:error, :closed_cell} =
-               TeacherAssistant.Timetabling.place_slot(scope, cg, %{day: :wednesday, period_id: late.id, teaching_context_id: tc.id})
+               TeacherAssistant.Timetabling.place_slot(scope, cg, %{
+                 day: :wednesday,
+                 period_id: late.id,
+                 teaching_context_id: tc.id
+               })
 
       assert {:error, :closed_cell} =
-               TeacherAssistant.Timetabling.place_slot(scope, cg, %{day: :saturday, period_id: late.id, teaching_context_id: tc.id})
+               TeacherAssistant.Timetabling.place_slot(scope, cg, %{
+                 day: :saturday,
+                 period_id: late.id,
+                 teaching_context_id: tc.id
+               })
 
       assert {:ok, _} =
-               TeacherAssistant.Timetabling.place_slot(scope, cg, %{day: :thursday, period_id: late.id, teaching_context_id: tc.id})
+               TeacherAssistant.Timetabling.place_slot(scope, cg, %{
+                 day: :thursday,
+                 period_id: late.id,
+                 teaching_context_id: tc.id
+               })
     end
   end
 end

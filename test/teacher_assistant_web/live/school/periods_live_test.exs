@@ -129,7 +129,13 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       assert html =~ "Horaires"
 
       view
-      |> form("#days-form", %{days: %{"lesson_days" => ["monday", "tuesday", "wednesday", "thursday", "friday"], "wednesday_afternoon_off?" => "true", "default_lesson_minutes" => "50"}})
+      |> form("#days-form", %{
+        days: %{
+          "lesson_days" => ["monday", "tuesday", "wednesday", "thursday", "friday"],
+          "wednesday_afternoon_off?" => "true",
+          "default_lesson_minutes" => "50"
+        }
+      })
       |> render_submit()
 
       assert render(view) =~ "Réglage enregistré."
@@ -139,10 +145,16 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     test "adding a period pre-fills the end from the default length", %{conn: conn, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/periods")
       view |> form("#new-period-form", %{new_period: %{start_time: "16:00"}}) |> render_change()
-      assert has_element?(view, "#new-period-form input[name='new_period[end_time]'][value='16:50']")
+
+      assert has_element?(
+               view,
+               "#new-period-form input[name='new_period[end_time]'][value='16:50']"
+             )
 
       view
-      |> form("#new-period-form", %{new_period: %{label: "Cours 10", start_time: "16:00", end_time: "16:50", kind: "lesson"}})
+      |> form("#new-period-form", %{
+        new_period: %{label: "Cours 10", start_time: "16:00", end_time: "16:50", kind: "lesson"}
+      })
       |> render_submit()
 
       assert Enum.any?(TeacherAssistant.Attendance.list_periods(scope), &(&1.label == "Cours 10"))
@@ -153,7 +165,9 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/periods")
 
       view
-      |> form("#new-period-form", %{new_period: %{label: "X", start_time: "08:00", end_time: "08:30", kind: "lesson"}})
+      |> form("#new-period-form", %{
+        new_period: %{label: "X", start_time: "08:00", end_time: "08:30", kind: "lesson"}
+      })
       |> render_submit()
 
       assert has_element?(view, "#new-period-error", "Chevauche")
