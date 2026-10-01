@@ -127,76 +127,20 @@ defmodule TeacherAssistant.Academics.Reference do
   @doc "Standard Cameroonian bell schedule: 8 lessons + mid-morning/lunch breaks (docs/domain)."
   def default_periods_preset do
     [
-      %{
-        position: 1,
-        label: "Cours 1",
-        start_time: ~T[07:30:00],
-        end_time: ~T[08:25:00],
-        kind: :lesson
-      },
-      %{
-        position: 2,
-        label: "Cours 2",
-        start_time: ~T[08:25:00],
-        end_time: ~T[09:20:00],
-        kind: :lesson
-      },
-      %{
-        position: 3,
-        label: "Récréation",
-        start_time: ~T[09:20:00],
-        end_time: ~T[09:40:00],
-        kind: :break
-      },
-      %{
-        position: 4,
-        label: "Cours 3",
-        start_time: ~T[09:40:00],
-        end_time: ~T[10:35:00],
-        kind: :lesson
-      },
-      %{
-        position: 5,
-        label: "Cours 4",
-        start_time: ~T[10:35:00],
-        end_time: ~T[11:30:00],
-        kind: :lesson
-      },
-      %{
-        position: 6,
-        label: "Cours 5",
-        start_time: ~T[11:30:00],
-        end_time: ~T[12:25:00],
-        kind: :lesson
-      },
-      %{
-        position: 7,
-        label: "Pause déjeuner",
-        start_time: ~T[12:25:00],
-        end_time: ~T[13:25:00],
-        kind: :break
-      },
-      %{
-        position: 8,
-        label: "Cours 6",
-        start_time: ~T[13:25:00],
-        end_time: ~T[14:20:00],
-        kind: :lesson
-      },
-      %{
-        position: 9,
-        label: "Cours 7",
-        start_time: ~T[14:20:00],
-        end_time: ~T[15:15:00],
-        kind: :lesson
-      },
-      %{
-        position: 10,
-        label: "Cours 8",
-        start_time: ~T[15:15:00],
-        end_time: ~T[16:10:00],
-        kind: :lesson
-      }
+      {1, "Cours 1", ~T[07:30:00], ~T[08:20:00], :lesson},
+      {2, "Cours 2", ~T[08:20:00], ~T[09:10:00], :lesson},
+      {3, "Cours 3", ~T[09:10:00], ~T[10:00:00], :lesson},
+      {4, "Récréation", ~T[10:00:00], ~T[10:15:00], :break},
+      {5, "Cours 4", ~T[10:15:00], ~T[11:05:00], :lesson},
+      {6, "Cours 5", ~T[11:05:00], ~T[11:55:00], :lesson},
+      {7, "Cours 6", ~T[11:55:00], ~T[12:45:00], :lesson},
+      {8, "Pause", ~T[13:00:00], ~T[13:30:00], :break},
+      {9, "Cours 7", ~T[13:30:00], ~T[14:20:00], :lesson},
+      {10, "Cours 8", ~T[14:20:00], ~T[15:10:00], :lesson},
+      {11, "Cours 9", ~T[15:10:00], ~T[16:00:00], :lesson}
     ]
+    |> Enum.map(fn {position, label, start_time, end_time, kind} ->
+      %{position: position, label: label, start_time: start_time, end_time: end_time, kind: kind}
+    end)
   end
 end

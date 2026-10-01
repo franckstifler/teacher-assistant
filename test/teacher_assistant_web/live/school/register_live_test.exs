@@ -128,9 +128,9 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, _view, html} =
       live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
 
-    # 55-minute period absence = 55/60 h; must display as 0.92, never 0.91666…
-    refute html =~ "0.9166"
-    assert html =~ "0.92"
+    # 50-minute period absence = 50/60 h; must display as 0.83, never 0.8333…
+    refute html =~ "0.8333"
+    assert html =~ "0.83"
   end
 
   test "the date picker reloads a different day's grid", %{

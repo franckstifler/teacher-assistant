@@ -52,8 +52,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     |> form("#period-form-#{period.id}", %{
       "period" => %{
         "label" => "Cours modifié",
-        "start_time" => "08:00",
-        "end_time" => "08:55",
+        "start_time" => "07:40",
+        "end_time" => "08:20",
         "kind" => "lesson",
         "position" => to_string(period.position)
       }
@@ -62,7 +62,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
 
     [updated | _] = Attendance.list_periods(scope)
     assert updated.label == "Cours modifié"
-    assert updated.start_time == ~T[08:00:00]
+    assert updated.start_time == ~T[07:40:00]
   end
 
   test "deleting a period with a referencing slot shows a friendly message and keeps it", ctx do

@@ -26,15 +26,27 @@ defmodule TeacherAssistant.Academics.Period do
     defaults [
       :read,
       :destroy,
-      create: [:position, :label, :start_time, :end_time, :kind],
-      update: [:position, :label, :start_time, :end_time, :kind]
+      create: [:position, :label, :start_time, :end_time, :kind]
     ]
+
+    # Not atomic: ValidateTimes reads the school's other periods.
+    update :update do
+      require_atomic? false
+      accept [:position, :label, :start_time, :end_time, :kind]
+    end
 
     # Tenant scoping (attribute multitenancy) already restricts this to the
     # given workspace; no `workspace_id` argument is needed any more.
     read :for_workspace do
       prepare build(sort: [position: :asc])
     end
+  end
+
+  validations do
+    # In the before-action hook, so the tenant is known even when set after for_create.
+    validate TeacherAssistant.Academics.Period.ValidateTimes,
+      on: [:create, :update],
+      before_action?: true
   end
 
   policies do

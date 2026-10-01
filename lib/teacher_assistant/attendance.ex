@@ -546,4 +546,72 @@ defmodule TeacherAssistant.Attendance do
 
     SchoolCalendar.new(profile.lesson_days, profile.wednesday_afternoon_off?, holidays)
   end
+
+  @doc "Adds a period to the school's schedule (admin axis)."
+  def create_period(%Scope{} = scope, attrs) do
+    Period |> Ash.Changeset.for_create(:create, attrs, scope: scope) |> Ash.create()
+  end
+
+  @doc """
+  Saves the lesson days, the Wednesday-afternoon toggle and the default lesson length
+  (spec J1). Refused with `{:error, {:slots_in_closed_cells, [{day, count}]}}` when the
+  active year's timetable has lessons in a cell the change would close.
+  """
+  def update_school_days(%Scope{} = scope, %{} = params) do
+    with {:ok, days} <- parse_days(Map.get(params, "lesson_days", [])),
+         {:ok, minutes} <- parse_minutes(params["default_lesson_minutes"]),
+         wed_off? = params["wednesday_afternoon_off?"] == "true",
+         cal = SchoolCalendar.new(days, wed_off?, []),
+         [] <- closed_slot_counts(scope, cal),
+         {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      TeacherAssistant.Accounts.update_school_profile(
+        profile,
+        %{
+          lesson_days: if(days == SchoolCalendar.all_days(), do: nil, else: days),
+          wednesday_afternoon_off?: wed_off?,
+          default_lesson_minutes: minutes
+        },
+        scope: scope
+      )
+    else
+      [_ | _] = counts -> {:error, {:slots_in_closed_cells, counts}}
+      other -> other
+    end
+  end
+
+  defp parse_days(values) when is_list(values) do
+    days = values |> Enum.reject(&(&1 in [nil, ""])) |> Enum.uniq()
+    known = Map.new(SchoolCalendar.all_days(), &{Atom.to_string(&1), &1})
+
+    cond do
+      days == [] -> {:error, :invalid_setting}
+      Enum.all?(days, &Map.has_key?(known, &1)) ->
+        {:ok, Enum.filter(SchoolCalendar.all_days(), &(Atom.to_string(&1) in days))}
+      true -> {:error, :invalid_setting}
+    end
+  end
+
+  defp parse_days(_), do: {:error, :invalid_setting}
+
+  defp parse_minutes(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {n, ""} when n in 1..240 -> {:ok, n}
+      _ -> {:error, :invalid_setting}
+    end
+  end
+
+  defp parse_minutes(_), do: {:error, :invalid_setting}
+
+  # [{day, count}] of the active year's slots in cells `cal` closes, in weekday order.
+  defp closed_slot_counts(%Scope{current_academic_year: nil}, _cal), do: []
+
+  defp closed_slot_counts(%Scope{current_academic_year: year} = scope, cal) do
+    TimetableSlot
+    |> Ash.Query.filter(teaching_context.academic_year_id == ^year.id)
+    |> Ash.Query.load(:period)
+    |> Ash.read!(scope: scope)
+    |> Enum.reject(&SchoolCalendar.open_cell?(cal, &1.day, &1.period))
+    |> Enum.frequencies_by(& &1.day)
+    |> Enum.sort_by(fn {day, _} -> Enum.find_index(SchoolCalendar.all_days(), &(&1 == day)) end)
+  end
 end
