@@ -38,6 +38,12 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
     assign(socket, settings: settings, rows: Enum.map(settings.grade_scale, &row/1))
   end
 
+  # Saving the language and elements keeps grade rows the user has not saved yet.
+  defp reload(socket, scope, :settings_error),
+    do: assign(socket, settings: Assessment.bulletin_settings(scope))
+
+  defp reload(socket, scope, :scale_error), do: load(socket, scope)
+
   defp row(band), do: %{from: shown(band.from), letter: band.letter, remark: band.remark}
 
   defp shown(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal)
@@ -84,7 +90,7 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
       {:ok, _} ->
         {:noreply,
          socket
-         |> load(scope)
+         |> reload(scope, error_key)
          |> assign(settings_error: nil, scale_error: nil)
          |> put_flash(:info, gettext("Réglage enregistré."))}
 

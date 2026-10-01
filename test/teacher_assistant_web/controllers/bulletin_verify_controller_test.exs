@@ -82,15 +82,23 @@ defmodule TeacherAssistantWeb.BulletinVerifyControllerTest do
 
     %{workspace: other} = TeacherFixtures.school_fixture()
 
-    foreign =
-      Phoenix.Token.sign(
-        TeacherAssistantWeb.Endpoint,
-        "bulletin-verify",
-        {other.id, pub.id, student.id}
-      )
+    # A correctly signed token naming another school's tenant for this publication.
+    foreign = BulletinVerification.token(%{workspace_id: other.id, id: pub.id}, student.id)
 
     assert invalid.(foreign)
 
     assert invalid.(BulletinVerification.token(pub, Ecto.UUID.generate()))
+  end
+
+  test "the token stays short enough for a small printed QR", %{pub: pub, student: student} do
+    assert byte_size(BulletinVerification.token(pub, student.id)) <= 120
+  end
+
+  test "the right ids with a forged tag are invalid", %{pub: pub, student: student} do
+    {:ok, raw} = Base.url_decode64(BulletinVerification.token(pub, student.id), padding: false)
+    forged = Base.url_encode64(binary_part(raw, 0, 48) <> :binary.copy(<<0>>, 16), padding: false)
+
+    assert build_conn() |> get(~p"/verify/bulletin/#{forged}") |> html_response(200) =~
+             "Lien de vérification invalide"
   end
 end

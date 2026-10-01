@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.BulletinPrintController do
   use TeacherAssistantWeb, :controller
 
+  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
@@ -103,9 +104,15 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       draft?: status == :draft and kind in [:trimester, :annual],
       published_on: pub && Calendar.strftime(ReportCards.published_on(pub), "%d/%m/%Y"),
       template: template,
+      # A frozen card keeps its logo only while the school still has one (never a broken image).
+      logo?: template.header.logo? and logo_present?(scope),
       lang: lang,
       class_average: results && results.class_average
     )
+  end
+
+  defp logo_present?(scope) do
+    match?({:ok, %{logo_path: path}} when is_binary(path), Accounts.fetch_school_profile(scope))
   end
 
   # Spec I5: only published cards carry a verification code, and only when chosen.

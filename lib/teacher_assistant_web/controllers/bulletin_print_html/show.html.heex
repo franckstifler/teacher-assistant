@@ -67,7 +67,7 @@
         </div>
       </div>
       <div class="school">
-        <img :if={@template.header.logo?} src={~p"/school/logo"} alt="" />
+        <img :if={@logo?} src={~p"/school/logo"} alt="" />
         <div
           :for={{line, i} <- Enum.with_index(school_lines(@lang, @template.header))}
           class={if i == 0, do: "name"}

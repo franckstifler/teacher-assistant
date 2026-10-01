@@ -71,4 +71,16 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
              live(conn, ~p"/school/settings/bulletin")
   end
+
+  test "saving the language keeps grade rows not yet saved", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/bulletin")
+    view |> element("#add-grade") |> render_click()
+    assert has_element?(view, "#remove-grade-6")
+
+    view
+    |> form("#settings-form", %{bulletin: %{language: "bilingual", elements: [""]}})
+    |> render_submit()
+
+    assert has_element?(view, "#remove-grade-6")
+  end
 end
