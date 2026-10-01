@@ -13,7 +13,9 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Enrollment.class_manager?(scope, cg) do
+         true <- Enrollment.class_manager?(scope, cg),
+         # Spec J4: editors work in the school-wide editor; others keep this read-only grid.
+         false <- Timetabling.can_edit_timetable?(scope) && {:editor, cg} do
       calendar = Attendance.school_calendar(scope)
 
       {:ok,
@@ -28,6 +30,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
        )
        |> load_timetable()}
     else
+      {:editor, cg} -> {:ok, push_navigate(socket, to: ~p"/school/timetable?class=#{cg.id}")}
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
@@ -75,9 +78,6 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
       {:ok, _slots} ->
         {:noreply, load_timetable(socket)}
 
-      {:error, {:teacher_clash, class_label}} ->
-        {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
-
       {:error, :closed_cell} ->
         {:noreply,
          socket
@@ -103,9 +103,6 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
          }) do
       {:ok, _slot} ->
         {:noreply, load_timetable(socket)}
-
-      {:error, {:teacher_clash, class_label}} ->
-        {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
 
       {:error, :closed_cell} ->
         {:noreply,
@@ -159,14 +156,6 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
     else
       _ -> nil
     end
-  end
-
-  defp flash_clash(socket, class_label) do
-    put_flash(
-      socket,
-      :error,
-      gettext("This teacher already has a class in %{class} at this period.", class: class_label)
-    )
   end
 
   defp day_atom(day) when day in ~w(monday tuesday wednesday thursday friday saturday),

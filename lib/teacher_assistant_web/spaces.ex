@@ -132,6 +132,7 @@ defmodule TeacherAssistantWeb.Spaces do
           bulletins(),
           councils(),
           classes(),
+          timetable_editor(),
           members(),
           correction_review(facts.pending_corrections)
         ]),
@@ -161,6 +162,7 @@ defmodule TeacherAssistantWeb.Spaces do
           bulletins(),
           councils(),
           classes(),
+          timetable_editor(),
           members(),
           correction_review(facts.pending_corrections)
         ]),
@@ -386,6 +388,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Affectations"),
         "hero-squares-2x2",
         ~p"/school/settings/assignments"
+      )
+
+  defp timetable_editor,
+    do:
+      item(
+        "timetable-editor",
+        gettext("Emploi du temps"),
+        "hero-table-cells",
+        ~p"/school/timetable"
       )
 
   defp councils,
