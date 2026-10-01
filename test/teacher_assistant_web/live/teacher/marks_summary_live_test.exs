@@ -62,10 +62,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     # ungraded student shows "—" and no mention badge at all
     ungraded_row = render(element(view, "#summary-row-#{ungraded.id}"))
     assert ungraded_row =~ "—"
-    refute ungraded_row =~ "Insuffisant"
+    refute ungraded_row =~ "hero-x-circle"
 
-    # graded failing student (score 8 < 10) is still badged "Insuffisant"
-    assert render(element(view, "#summary-row-#{s2.id}")) =~ "Insuffisant"
+    # graded failing student (score 8 < 10) is badged with its band, as failing
+    s2_row = render(element(view, "#summary-row-#{s2.id}"))
+    assert s2_row =~ "Médiocre"
+    assert s2_row =~ "hero-x-circle"
   end
 
   test "shows mention distribution, sex bars and missing-marks line", %{
@@ -80,9 +82,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
 
-    # Awa 14 => Bien; Beba 8 => Insuffisant
+    # Awa 14 => Bien; Beba 8 => Médiocre
     assert render(element(view, "#summary-mentions")) =~ "Bien"
-    assert render(element(view, "#summary-mentions")) =~ "Insuffisant"
+    assert render(element(view, "#summary-mentions")) =~ "Médiocre"
     assert has_element?(view, "#summary-sex-bars", "Filles")
     assert has_element?(view, "#summary-sex-bars", "Garçons")
     # 1 of 3 students has no marks

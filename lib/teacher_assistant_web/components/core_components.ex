@@ -598,29 +598,45 @@ defmodule TeacherAssistantWeb.CoreComponents do
     """
   end
 
-  attr :mention, :atom, default: nil
+  attr :mention, :map,
+    default: nil,
+    doc: "an appreciation `%{label, passed?}` (`Marks.mention/2`)"
 
   def mention_badge(assigns) do
-    assigns = assign(assigns, :label, mention_label(assigns.mention))
-
     ~H"""
     <span class={[
       "inline-flex items-center gap-1 text-sm font-semibold",
-      @mention == nil && "text-accent",
-      @mention == :passable && "text-warning",
-      @mention not in [nil, :passable] && "text-primary"
+      if(@mention && @mention.passed?, do: "text-primary", else: "text-accent")
     ]}>
-      <.icon name={if @mention, do: "hero-check-circle", else: "hero-x-circle"} class="size-4" />
-      {@label}
+      <.icon
+        :if={@mention}
+        name={if @mention.passed?, do: "hero-check-circle", else: "hero-x-circle"}
+        class="size-4"
+      />
+      {if @mention, do: @mention.label, else: "—"}
     </span>
     """
   end
 
-  defp mention_label(:excellent), do: gettext("Excellent")
-  defp mention_label(:tres_bien), do: gettext("Très bien")
-  defp mention_label(:bien), do: gettext("Bien")
-  defp mention_label(:assez_bien), do: gettext("Assez bien")
-  defp mention_label(:passable), do: gettext("Passable")
-  defp mention_label(nil), do: gettext("Insuffisant")
-  defp mention_label(_), do: gettext("Insuffisant")
+  attr :distinction, :atom,
+    default: nil,
+    doc: "a `TeacherAssistant.Academics.Distinction` value"
+
+  def distinction_badge(assigns) do
+    ~H"""
+    <span
+      :if={@distinction}
+      class={[
+        "badge badge-sm",
+        case @distinction do
+          :blame_travail -> "badge-error"
+          :avertissement_travail -> "badge-warning"
+          _ -> "badge-success"
+        end
+      ]}
+    >
+      {TeacherAssistant.Academics.Distinction.label(@distinction)}
+    </span>
+    """
+  end
 end

@@ -46,7 +46,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     [%{student: student, enrollment: enr}] = Enrollment.list_roster(scope, cg)
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head, scope: scope}
+    %{conn: conn, school: school, cg: cg, seq: seq, enr: enr, head: head, scope: scope, tc: tc}
   end
 
   test "renders the student's bulletin", %{conn: conn, cg: cg, enr: enr, seq: seq} do
@@ -297,5 +297,40 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     assert has_element?(view, "#makeup-#{tc.id}", "R")
     assert has_element?(view, "#makeup-legend")
     _ = head
+  end
+
+  test "the bulletin shows each subject's appreciation and the student's distinction", %{
+    conn: conn,
+    cg: cg,
+    enr: enr,
+    seq: seq,
+    tc: tc
+  } do
+    {:ok, view, _} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+    assert view |> element("#bulletin-subject-#{tc.id} [data-role=appreciation]") |> render() =~
+             "Bien"
+
+    assert render(element(view, "#bulletin-distinction")) =~ "Encouragements"
+  end
+
+  test "the bulletin uses the school's own scale", %{
+    conn: conn,
+    cg: cg,
+    enr: enr,
+    seq: seq,
+    scope: scope
+  } do
+    {:ok, _} =
+      Assessment.update_appreciation_bands(scope, [
+        %{from: "0", label: "À revoir"},
+        %{from: "14", label: "Réussi"}
+      ])
+
+    {:ok, _view, html} =
+      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+    assert html =~ "Réussi"
   end
 end

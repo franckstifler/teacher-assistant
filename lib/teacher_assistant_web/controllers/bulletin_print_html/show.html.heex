@@ -99,12 +99,13 @@
                   <th class="num">{gettext("Note")}/20</th>
               <% end %>
               <th class="num">{gettext("Note×Coef")}</th>
+              <th class="num">{gettext("Appréciation")}</th>
               <th class="num">{gettext("Cote classe")}</th>
             </tr>
           </thead>
           <tbody :for={g <- b.data.groups} id={"bulletin-group-#{g.group}"}>
             <tr class="group">
-              <th colspan={period_cols(@period_kind) + 4}>
+              <th colspan={period_cols(@period_kind) + 5}>
                 {BulletinGroup.label(g.group)}
               </th>
             </tr>
@@ -125,6 +126,7 @@
                   <td class="num">{fmt(row.average)}<sup :if={row.makeup_pending}>R</sup></td>
               <% end %>
               <td class="num">{fmt(row.note_x_coef)}</td>
+              <td>{row.mention && row.mention.label}</td>
               <td class="num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
             </tr>
             <tr :if={@group_subtotals?} id={"bulletin-group-total-#{g.group}"} class="group-total">
@@ -134,6 +136,7 @@
               <td class="num">{fmt(g.average)}</td>
               <td class="num">{fmt(g.total_points)}</td>
               <td></td>
+              <td></td>
             </tr>
           </tbody>
           <tfoot>
@@ -142,6 +145,7 @@
               <th class="num">{fmt(b.data.total_coef)}</th>
               <th></th>
               <th class="num">{fmt(b.data.total_points)}</th>
+              <th></th>
               <th></th>
             </tr>
           </tfoot>
@@ -153,6 +157,11 @@
         <p class="totals">
           <strong>{gettext("Moyenne générale")} : {fmt(b.data.moyenne_generale)}/20</strong>
           &nbsp;·&nbsp; {gettext("Rang")} : {b.data.rank || "—"} / {@effectif}
+          <span :if={b.data.mention}>&nbsp;·&nbsp; {b.data.mention.label}</span>
+          <span :if={b.data.distinction}>
+            &nbsp;·&nbsp;
+            <strong>{TeacherAssistant.Academics.Distinction.label(b.data.distinction)}</strong>
+          </span>
         </p>
       <% else %>
         <p>{gettext("No marks for this séquence yet.")}</p>

@@ -51,10 +51,23 @@ defmodule TeacherAssistantWeb.KitTest do
     assert html =~ "START"
   end
 
-  test "mention_badge shows word + a check for passing, x for failing, dash for nil" do
-    assert render_component(&mention_badge/1, %{mention: :bien}) =~ "Bien"
-    assert render_component(&mention_badge/1, %{mention: :bien}) =~ "hero-check-circle"
-    assert render_component(&mention_badge/1, %{mention: nil}) =~ "Insuffisant"
-    assert render_component(&mention_badge/1, %{mention: nil}) =~ "hero-x-circle"
+  test "mention_badge shows the appreciation with a check when passed, an x otherwise" do
+    passed = render_component(&mention_badge/1, %{mention: %{label: "Bien", passed?: true}})
+    assert passed =~ "Bien"
+    assert passed =~ "hero-check-circle"
+
+    failed = render_component(&mention_badge/1, %{mention: %{label: "Médiocre", passed?: false}})
+    assert failed =~ "Médiocre"
+    assert failed =~ "hero-x-circle"
+
+    assert render_component(&mention_badge/1, %{mention: nil}) =~ "—"
+  end
+
+  test "distinction_badge names the distinction" do
+    assert render_component(&distinction_badge/1, %{distinction: :tableau_honneur}) =~
+             "Tableau d&#39;honneur"
+
+    assert render_component(&distinction_badge/1, %{distinction: :blame_travail}) =~
+             "Blâme travail"
   end
 end

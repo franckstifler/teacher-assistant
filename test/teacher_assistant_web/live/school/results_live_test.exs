@@ -42,7 +42,17 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     [student] = Enrollment.list_students(scope, cg)
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: student.id, score: Decimal.new(15)}])
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, school: school, cg: cg, seq: seq, student: student, head: head, scope: scope}
+
+    %{
+      conn: conn,
+      school: school,
+      cg: cg,
+      seq: seq,
+      student: student,
+      head: head,
+      scope: scope,
+      assessment: a
+    }
   end
 
   test "renders the ranked results with the moyenne générale", %{conn: conn, cg: cg} do
@@ -206,5 +216,14 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     {:ok, _} = Assessment.update_grading_rules(scope, %{"absence_rule" => "makeup"})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results?period=seq:#{seq.id}")
     assert has_element?(view, "#results-makeups", "1")
+  end
+
+  test "distinctions list work warnings", %{conn: conn, cg: cg, scope: scope, assessment: a} do
+    {:ok, bob} = Enrollment.add_student(scope, cg, %{full_name: "Bob", sex: :m})
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: bob.id, score: Decimal.new(7)}])
+
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/results")
+    assert render(element(view, "#results-distinctions")) =~ "Avertissement travail"
+    assert render(element(view, "#distinction-avertissement_travail")) =~ "Bob"
   end
 end

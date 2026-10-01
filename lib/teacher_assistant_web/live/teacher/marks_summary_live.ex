@@ -6,8 +6,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Curriculum
 
-  @mention_order [:excellent, :tres_bien, :bien, :assez_bien, :passable, nil]
-
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
 
@@ -85,14 +83,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
   defp pct(rate), do: "#{round(rate * 100)}%"
 
+  # Appreciation counts, best band first.
   defp mention_distribution(summary) do
-    freq =
-      summary.per_student
-      |> Map.values()
-      |> Enum.reject(&is_nil(&1.average))
-      |> Enum.frequencies_by(& &1.mention)
-
-    for m <- @mention_order, count = Map.get(freq, m, 0), count > 0, do: {m, count}
+    summary.per_student
+    |> Map.values()
+    |> Enum.reject(&is_nil(&1.mention))
+    |> Enum.frequencies_by(& &1.mention)
+    |> Enum.sort_by(fn {mention, _count} -> mention.position end, :desc)
   end
 
   defp missing_count(students, summary), do: length(students) - summary.graded_count

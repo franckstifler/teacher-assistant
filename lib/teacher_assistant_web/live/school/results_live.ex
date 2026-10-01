@@ -180,17 +180,13 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           </div>
 
           <div id="results-distinctions" class="space-y-1 text-sm">
-            <p :if={@results.distinctions.felicitations != []}>
-              <span class="badge badge-success">{gettext("Félicitations")}</span>
-              {Enum.join(names(@results.distinctions.felicitations, @roster), ", ")}
-            </p>
-            <p :if={@results.distinctions.encouragements != []}>
-              <span class="badge badge-info">{gettext("Encouragements")}</span>
-              {Enum.join(names(@results.distinctions.encouragements, @roster), ", ")}
-            </p>
-            <p :if={@results.distinctions.tableau_honneur != []}>
-              <span class="badge badge-ghost">{gettext("Tableau d'honneur")}</span>
-              {Enum.join(names(@results.distinctions.tableau_honneur, @roster), ", ")}
+            <p
+              :for={kind <- TeacherAssistant.Academics.Distinction.values()}
+              :if={@results.distinctions[kind] != []}
+              id={"distinction-#{kind}"}
+            >
+              <.distinction_badge distinction={kind} />
+              {Enum.join(names(@results.distinctions[kind], @roster), ", ")}
             </p>
           </div>
 

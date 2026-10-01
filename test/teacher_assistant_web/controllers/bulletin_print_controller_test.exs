@@ -74,6 +74,10 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "Lycée Print"
     assert body =~ "Awa Ngo"
     assert body =~ "Maths"
+    # 14/20: appreciation "Bien", moyenne 14 earns Encouragements
+    assert body =~ "Appréciation"
+    assert body =~ "Bien"
+    assert body =~ "Encouragements"
   end
 
   test "single bulletin print shows the conduct figures", %{

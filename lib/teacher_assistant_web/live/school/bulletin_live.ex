@@ -238,13 +238,14 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                       <th>{gettext("Note")}/20</th>
                   <% end %>
                   <th>{gettext("Note×Coef")}</th>
+                  <th>{gettext("Appréciation")}</th>
                   <th>{gettext("Cote classe")}</th>
                 </tr>
               </thead>
               <tbody :for={g <- @data.groups} id={"bulletin-group-#{g.group}"}>
                 <tr class="bg-base-200/60">
                   <th
-                    colspan={period_cols(@period_kind) + 4}
+                    colspan={period_cols(@period_kind) + 5}
                     class="text-xs uppercase tracking-wide text-base-content/70"
                   >
                     {BulletinGroup.label(g.group)}
@@ -297,6 +298,9 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                       </td>
                   <% end %>
                   <td class="ta-num">{fmt(row.note_x_coef)}</td>
+                  <td data-role="appreciation">
+                    <.mention_badge :if={row.mention} mention={row.mention} />
+                  </td>
                   <td class="ta-num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
                 </tr>
                 <tr
@@ -310,6 +314,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                   <td class="ta-num">{fmt(g.average)}</td>
                   <td class="ta-num">{fmt(g.total_points)}</td>
                   <td></td>
+                  <td></td>
                 </tr>
               </tbody>
               <tfoot>
@@ -318,6 +323,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                   <th class="ta-num">{fmt(@data.total_coef)}</th>
                   <th></th>
                   <th class="ta-num">{fmt(@data.total_points)}</th>
+                  <th></th>
                   <th></th>
                 </tr>
               </tfoot>
@@ -339,8 +345,11 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
               tone={:primary}
             />
             <.stat label={gettext("Rang")} value={"#{@data.rank || "—"} / #{@effectif}"} />
-            <div class="ta-leaf flex items-center">
+            <div class="ta-leaf flex flex-wrap items-center gap-2">
               <.mention_badge :if={@data.mention} mention={@data.mention} />
+              <span id="bulletin-distinction">
+                <.distinction_badge distinction={@data.distinction} />
+              </span>
             </div>
           </div>
         </div>
