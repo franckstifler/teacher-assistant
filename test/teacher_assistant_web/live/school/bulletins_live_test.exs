@@ -61,6 +61,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   end
 
   test "incomplete entry asks for confirmation, then publishes", ctx do
+    {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, ctx.term)
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
     assert has_element?(view, "#bulletins-rate", "25 %")
     view |> element("#publish") |> render_click()
@@ -74,7 +75,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   end
 
   test "withdraw needs a reason and is kept in the history", ctx do
-    {:ok, _} = ReportCards.publish(ctx.scope, ctx.cg, {:trimester, ctx.term})
+    {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
     view |> element("#ask-withdraw") |> render_click()
 
@@ -98,7 +99,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     refute has_element?(view, "#publish")
     refute has_element?(view, "#bulletins-rate")
 
-    {:ok, _} = ReportCards.publish(ctx.scope, ctx.cg, {:trimester, ctx.term})
+    {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
     {:ok, view, _} = live(tconn, bulletins_path(ctx.cg, ctx.term))
     assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}")
     refute has_element?(view, "#ask-withdraw")
@@ -118,7 +119,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   end
 
   test "withdrawing from a stale page says it was already withdrawn", ctx do
-    {:ok, pub} = ReportCards.publish(ctx.scope, ctx.cg, {:trimester, ctx.term})
+    {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
     view |> element("#ask-withdraw") |> render_click()
 

@@ -261,4 +261,16 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
       assert EntryProgress.class_rate(ctx.head, ctx.year, ctx.empty_cg, [ctx.seq]) == nil
     end
   end
+
+  test "class_rates gives every class's rate in one pass", ctx do
+    [seq1, seq2 | _] = Organization.list_sequences(ctx.head, ctx.year)
+    rates = EntryProgress.class_rates(ctx.head, ctx.year, [seq1, seq2])
+
+    for cg <- [ctx.cg, ctx.cg2, ctx.empty_cg] do
+      assert Map.get(rates, cg.id) ==
+               EntryProgress.class_rate(ctx.head, ctx.year, cg, [seq1, seq2])
+    end
+
+    assert rates[ctx.cg2.id] == 25
+  end
 end

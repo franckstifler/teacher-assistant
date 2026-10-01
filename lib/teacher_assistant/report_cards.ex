@@ -34,9 +34,11 @@ defmodule TeacherAssistant.ReportCards do
   @doc "What the report card, class results and print render, computed now."
   def live_view(%Scope{} = scope, %ClassGroup{} = cg, period) do
     fm = Enrollment.form_master(scope, cg)
+    results = Assessment.class_results_for_period(scope, cg, period)
 
     %{
-      results: Assessment.class_results_for_period(scope, cg, period),
+      results: results,
+      council: council_entry(scope, cg, period, results),
       roster: scope |> Enrollment.list_roster(cg) |> Enum.map(&plain_entry/1),
       conduct: Attendance.class_conduct(scope, cg, period),
       discipline:
@@ -79,31 +81,38 @@ defmodule TeacherAssistant.ReportCards do
 
   def publish(%Scope{} = scope, %ClassGroup{} = cg, {kind, _} = period)
       when kind in [:trimester, :annual] do
-    if current_publication(scope, cg, period) do
-      {:error, :already_published}
-    else
-      BulletinPublication
-      |> Ash.Changeset.for_create(
-        :publish,
-        %{
-          class_group_id: cg.id,
-          academic_year_id: cg.academic_year_id,
-          term_id: term_id(period),
-          period_kind: kind,
-          period_key: Organization.period_param(period),
-          snapshot: live_view(scope, cg, period)
-        },
-        scope: scope
-      )
-      |> Ash.create()
-      |> case do
-        # A concurrent publish won the race: the partial unique identity refused this one.
-        {:error, %Ash.Error.Invalid{}} = error ->
-          if current_publication(scope, cg, period), do: {:error, :already_published}, else: error
+    cond do
+      current_publication(scope, cg, period) ->
+        {:error, :already_published}
 
-        other ->
-          other
-      end
+      not council_ready?(scope, cg, period) ->
+        {:error, :council_not_held}
+
+      true ->
+        BulletinPublication
+        |> Ash.Changeset.for_create(
+          :publish,
+          %{
+            class_group_id: cg.id,
+            academic_year_id: cg.academic_year_id,
+            term_id: term_id(period),
+            period_kind: kind,
+            period_key: Organization.period_param(period),
+            snapshot: live_view(scope, cg, period)
+          },
+          scope: scope
+        )
+        |> Ash.create()
+        |> case do
+          # A concurrent publish won the race: the partial unique identity refused this one.
+          {:error, %Ash.Error.Invalid{}} = error ->
+            if current_publication(scope, cg, period),
+              do: {:error, :already_published},
+              else: error
+
+          other ->
+            other
+        end
     end
   end
 
@@ -219,6 +228,51 @@ defmodule TeacherAssistant.ReportCards do
   end
 
   defp taught_class_ids(_scope, _year), do: MapSet.new()
+
+  @doc "The council outcome of a student in a view, or nil (no council, version-1 snapshot)."
+  def outcome(view, student_id) do
+    case Map.get(view, :council) do
+      %{outcomes: outcomes} -> Map.get(outcomes, student_id)
+      _ -> nil
+    end
+  end
+
+  @doc "The distinction to show: the council's outcome when there is one, else the computed one."
+  def final_distinction(view, student_id, data) do
+    case outcome(view, student_id) do
+      %{distinction: distinction} -> distinction
+      nil -> data && data.distinction
+    end
+  end
+
+  @doc "Classes whose report cards for `period` are published, in one query."
+  def published_class_ids(%Scope{} = scope, period) do
+    key = Organization.period_param(period)
+
+    BulletinPublication
+    |> Ash.Query.for_read(:read, %{}, scope: scope)
+    |> Ash.Query.filter(period_key == ^key and status == :published)
+    |> Ash.read!()
+    |> MapSet.new(& &1.class_group_id)
+  end
+
+  # Spec I3: a trimester's report cards carry its class council.
+  defp council_entry(scope, cg, {:trimester, %Term{} = term}, results) do
+    council = TeacherAssistant.Councils.council(scope, cg, term)
+
+    %{
+      held?: council.status == :held,
+      held_on: council.held_on,
+      outcomes: TeacherAssistant.Councils.outcomes(council, results)
+    }
+  end
+
+  defp council_entry(_scope, _cg, _period, _results), do: nil
+
+  defp council_ready?(scope, cg, {:trimester, %Term{} = term}),
+    do: TeacherAssistant.Councils.held?(scope, cg, term)
+
+  defp council_ready?(_scope, _cg, _period), do: true
 
   defp term_id({:trimester, %Term{id: id}}), do: id
   defp term_id(_), do: nil

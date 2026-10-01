@@ -193,4 +193,13 @@ defmodule TeacherAssistant.TeacherFixtures do
 
     cg
   end
+
+  @doc """
+  Holds the class's council for `term` (spec I3, ignoring the result) then publishes the
+  trimester's report cards; returns `ReportCards.publish/3`'s result.
+  """
+  def publish_trimester(%Scope{} = scope, class_group, term) do
+    _ = TeacherAssistant.Councils.hold(scope, class_group, term)
+    TeacherAssistant.ReportCards.publish(scope, class_group, {:trimester, term})
+  end
 end

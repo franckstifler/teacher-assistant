@@ -250,7 +250,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     test "a published trimester is marked as such", %{conn: conn, cg: cg, scope: scope} do
       scope = with_year(scope)
       term = first_term(scope)
-      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results?period=trim:#{term.id}")
       assert has_element?(view, "#results-published")
       assert has_element?(view, "#results-table")
@@ -266,7 +266,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
       assert has_element?(view, "#results-not-published")
       refute has_element?(view, "#results-table")
 
-      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       {:ok, view, _} = live(tconn, url)
       assert has_element?(view, "#results-table")
     end

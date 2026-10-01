@@ -5,7 +5,6 @@ defmodule TeacherAssistant.Councils do
   is created by its first save. While the class's trimester is published (I2), every
   write is refused with `{:error, :locked}`.
   """
-  require Ash.Query
 
   alias TeacherAssistant.Academics.{
     ClassCouncil,

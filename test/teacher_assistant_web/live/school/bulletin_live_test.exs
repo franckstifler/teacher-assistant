@@ -362,7 +362,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     } do
       scope = with_year(scope)
       term = first_term(scope)
-      {:ok, pub} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
 
       {:ok, view, _} =
         live(
@@ -394,7 +394,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
       assert has_element?(view, "#bulletin-not-published")
 
-      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       {:ok, view, _} = live(tconn, url)
       assert has_element?(view, "#bulletin-subjects")
       assert has_element?(view, "#bulletin-published")
@@ -407,7 +407,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     } do
       scope = with_year(scope)
       term = first_term(scope)
-      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Zoé Late", sex: :f})
 
       %{enrollment: late} =

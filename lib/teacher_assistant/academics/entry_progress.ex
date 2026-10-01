@@ -77,31 +77,32 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   end
 
   @doc """
-  One class's mark-entry rate over `sequences` (spec I2: a trimester's or the year's
-  séquences): the mean of its course cells' % across those séquences, with the cell
-  rules of `grid/3` (a course with students but no assessment is 0 %); rounded down,
-  nil when no cell has a %.
+  Every class's mark-entry rate over `sequences` (spec I2/I3: a trimester's or the year's
+  séquences): per class, the mean of its course cells' % across those séquences, with the
+  cell rules of `grid/3` (a course with students but no assessment is 0 %); rounded down,
+  nil when no cell has a %. One grid per séquence, whatever the number of classes.
   """
-  def class_rate(%Scope{} = scope, %AcademicYear{} = year, %ClassGroup{id: cg_id}, sequences) do
-    pcts =
-      sequences
-      |> Enum.flat_map(fn seq ->
-        scope
-        |> grid(year, seq)
-        |> Map.fetch!(:rows)
-        |> Enum.find(&(&1.class_group.id == cg_id))
-        |> case do
-          nil -> []
-          row -> row.cells |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.map(& &1.pct)
-        end
+  def class_rates(%Scope{} = scope, %AcademicYear{} = year, sequences) do
+    sequences
+    |> Enum.flat_map(fn seq ->
+      scope
+      |> grid(year, seq)
+      |> Map.fetch!(:rows)
+      |> Enum.map(fn row ->
+        {row.class_group.id,
+         row.cells |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.map(& &1.pct)}
       end)
-      |> Enum.reject(&is_nil/1)
-
-    case pcts do
-      [] -> nil
-      _ -> div(Enum.sum(pcts), length(pcts))
-    end
+    end)
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {cg_id, lists} ->
+      pcts = lists |> List.flatten() |> Enum.reject(&is_nil/1)
+      {cg_id, if(pcts == [], do: nil, else: div(Enum.sum(pcts), length(pcts)))}
+    end)
   end
+
+  @doc "One class's mark-entry rate over `sequences` (see `class_rates/3`)."
+  def class_rate(%Scope{} = scope, %AcademicYear{} = year, %ClassGroup{id: cg_id}, sequences),
+    do: scope |> class_rates(year, sequences) |> Map.get(cg_id)
 
   @doc """
   The séquence to show by default: the one whose dates contain `today`, else

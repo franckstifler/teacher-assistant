@@ -46,7 +46,7 @@ defmodule TeacherAssistant.ReportCardsAccessTest do
     assert ReportCards.view_for(ctx.tscope, ctx.other, period) == :forbidden
 
     assert {:draft, _} = ReportCards.view_for(ctx.scope, ctx.cg, period)
-    {:ok, pub} = ReportCards.publish(ctx.scope, ctx.cg, period)
+    {:ok, pub} = TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
     assert {:published, %{id: id}, _view} = ReportCards.view_for(ctx.tscope, ctx.cg, period)
     assert id == pub.id
   end

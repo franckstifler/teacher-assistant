@@ -51,7 +51,7 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
     create :publish do
       accept [:class_group_id, :academic_year_id, :term_id, :period_kind, :period_key, :snapshot]
       change set_attribute(:status, :published)
-      change set_attribute(:snapshot_version, 1)
+      change set_attribute(:snapshot_version, 2)
       change set_attribute(:published_at, &DateTime.utc_now/0)
       change set_attribute(:published_by_user_id, actor(:id))
     end
@@ -99,7 +99,8 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
       public?: true
 
     attribute :snapshot, :term, allow_nil?: false, public?: true
-    attribute :snapshot_version, :integer, allow_nil?: false, default: 1, public?: true
+    # 1: I2; 2: adds `council` (spec I3).
+    attribute :snapshot_version, :integer, allow_nil?: false, default: 2, public?: true
     attribute :published_at, :utc_datetime_usec, allow_nil?: false, public?: true
     attribute :withdrawn_at, :utc_datetime_usec, public?: true
     attribute :withdrawal_reason, :string, public?: true

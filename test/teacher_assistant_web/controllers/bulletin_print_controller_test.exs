@@ -359,7 +359,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
       assert conn |> get(url) |> html_response(200) =~ "BROUILLON"
 
-      {:ok, pub} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       html = conn |> get(url) |> html_response(200)
       refute html =~ "BROUILLON"
       assert html =~ Calendar.strftime(TeacherAssistant.ReportCards.published_on(pub), "%d/%m/%Y")

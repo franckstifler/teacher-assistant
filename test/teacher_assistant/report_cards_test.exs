@@ -50,7 +50,7 @@ defmodule TeacherAssistant.ReportCardsTest do
 
   test "publishing freezes the report cards", ctx do
     %{scope: scope, cg: cg, term: term, a: a, st: st} = ctx
-    assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+    assert {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
     assert pub.status == :published
     assert pub.period_key == "trim:" <> term.id
     assert pub.published_by_user_id == scope.current_user.id
@@ -80,7 +80,9 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert {:draft, live} = ReportCards.class_view(scope, cg, {:trimester, term})
     assert Decimal.equal?(moyenne(live), 4)
 
-    assert {:ok, republished} = ReportCards.publish(scope, cg, {:trimester, term})
+    assert {:ok, republished} =
+             TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+
     assert [first, second] = ReportCards.history(scope, cg, {:trimester, term})
     assert first.id == republished.id
     assert first.status == :published
@@ -93,7 +95,7 @@ defmodule TeacherAssistant.ReportCardsTest do
     term: term,
     year: year
   } do
-    assert {:ok, _} = ReportCards.publish(scope, cg, {:trimester, term})
+    assert {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
     assert {:error, :already_published} = ReportCards.publish(scope, cg, {:trimester, term})
     assert {:ok, annual} = ReportCards.publish(scope, cg, {:annual, year})
     assert annual.period_key == "annee"
@@ -102,7 +104,7 @@ defmodule TeacherAssistant.ReportCardsTest do
   end
 
   test "a withdrawal needs a reason", %{scope: scope, cg: cg, term: term} do
-    {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+    {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
     assert {:error, %Ash.Error.Invalid{}} = ReportCards.withdraw(scope, pub, "   ")
     assert {:published, _, _} = ReportCards.class_view(scope, cg, {:trimester, term})
   end
@@ -111,15 +113,17 @@ defmodule TeacherAssistant.ReportCardsTest do
     teacher_scope = TeacherFixtures.member_scope_fixture(scope)
     teacher_scope = %{teacher_scope | current_academic_year: scope.current_academic_year}
 
+    {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, term)
+
     assert {:error, %Ash.Error.Forbidden{}} =
              ReportCards.publish(teacher_scope, cg, {:trimester, term})
 
-    {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+    {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
     assert {:error, %Ash.Error.Forbidden{}} = ReportCards.withdraw(teacher_scope, pub, "Non")
   end
 
   test "published_on is the school-local date", %{scope: scope, cg: cg, term: term} do
-    {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+    {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
     assert %Date{} = ReportCards.published_on(pub)
 
     assert ReportCards.published_on(%{pub | published_at: ~U[2026-01-10 23:30:00Z]}) ==
@@ -132,7 +136,7 @@ defmodule TeacherAssistant.ReportCardsTest do
     term: term
   } do
     period = {:trimester, term}
-    {:ok, pub} = ReportCards.publish(scope, cg, period)
+    {:ok, pub} = TeacherFixtures.publish_trimester(scope, cg, term)
     {:ok, _} = ReportCards.withdraw(scope, pub, "First reason")
 
     # a second page still holding the published struct
@@ -142,9 +146,72 @@ defmodule TeacherAssistant.ReportCardsTest do
              ReportCards.history(scope, cg, period)
 
     # republished meanwhile: the stale page must not report success on the old row
-    {:ok, republished} = ReportCards.publish(scope, cg, period)
+    {:ok, republished} = TeacherFixtures.publish_trimester(scope, cg, term)
     assert {:error, :not_published} = ReportCards.withdraw(scope, pub, "Stale")
     assert %{id: id} = ReportCards.current_publication(scope, cg, period)
     assert id == republished.id
+  end
+
+  describe "class council (I3)" do
+    test "publishing a trimester needs a held council; annual does not", ctx do
+      %{scope: scope, cg: cg, term: term, year: year} = ctx
+      assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, term)
+      assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+      assert pub.snapshot_version == 2
+      assert {:ok, _} = ReportCards.publish(scope, cg, {:annual, year})
+    end
+
+    test "the snapshot freezes the council", ctx do
+      %{scope: scope, cg: cg, term: term, st: st} = ctx
+      alias TeacherAssistant.Councils
+
+      {:ok, _} =
+        Councils.set_decision(scope, cg, term, st.id, %{
+          "distinction_choice" => "tableau_honneur",
+          "appreciation" => "Bon trimestre"
+        })
+
+      {:ok, _} = Councils.hold(scope, cg, term)
+      {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+      assert pub.snapshot.council.held?
+      assert pub.snapshot.council.outcomes[st.id].distinction == :tableau_honneur
+      assert {:error, :locked} = Councils.reopen(scope, cg, term)
+
+      {:ok, _} = ReportCards.withdraw(scope, pub, "Appréciation à revoir")
+      {:ok, _} = Councils.set_decision(scope, cg, term, st.id, %{"appreciation" => "Nouveau"})
+      {:ok, _} = ReportCards.publish(scope, cg, {:trimester, term})
+
+      assert [current, old] = ReportCards.history(scope, cg, {:trimester, term})
+      assert current.snapshot.council.outcomes[st.id].appreciation == "Nouveau"
+      assert old.snapshot.council.outcomes[st.id].appreciation == "Bon trimestre"
+    end
+
+    test "final_distinction follows the council, else the computed one", ctx do
+      %{scope: scope, cg: cg, term: term, seq: seq, st: st} = ctx
+
+      {:ok, _} =
+        TeacherAssistant.Councils.set_decision(scope, cg, term, st.id, %{
+          "distinction_choice" => "none"
+        })
+
+      {:draft, view} = ReportCards.class_view(scope, cg, {:trimester, term})
+      data = view.results.per_student[st.id]
+      assert data.distinction == :encouragements
+      assert ReportCards.final_distinction(view, st.id, data) == nil
+
+      {:draft, seq_view} = ReportCards.class_view(scope, cg, {:sequence, seq})
+      assert seq_view.council == nil
+      seq_data = seq_view.results.per_student[st.id]
+      assert ReportCards.final_distinction(seq_view, st.id, seq_data) == seq_data.distinction
+      assert ReportCards.outcome(Map.delete(view, :council), st.id) == nil
+    end
+
+    test "published_class_ids lists the published classes of a period", ctx do
+      %{scope: scope, cg: cg, term: term} = ctx
+      assert ReportCards.published_class_ids(scope, {:trimester, term}) == MapSet.new()
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+      assert ReportCards.published_class_ids(scope, {:trimester, term}) == MapSet.new([cg.id])
+    end
   end
 end
