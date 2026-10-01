@@ -1019,6 +1019,8 @@ editing coefficients or combined courses from the grid.
 
 ## J4 — Censeur timetable editor (spec)
 
+Status: implemented 2026-10-01 (branch `j4-timetable-editor`, plan `docs/superpowers/plans/2026-10-01-j4-timetable-editor.md`); no visual check done.
+
 Mockup: `Espaces par rôle` → Censeur → « Emploi du temps » (class tabs, cells red on a teacher clash, side
 panel with « Conflit : … », « Déplacer au … » / « Échanger avec … », subject chips « MATH · 3/5 h », hours per
 subject, school-wide conflict count). Gap: **T01**. J3 (rooms, unavailability) is postponed: no room or
