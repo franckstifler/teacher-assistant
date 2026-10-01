@@ -1,15 +1,18 @@
 defmodule TeacherAssistant.Academics.Bulletins do
   @moduledoc """
-  Pure, deterministic cross-subject bulletin computation (Francophone /20).
+  Pure, deterministic cross-subject bulletin computation (Francophone /20, spec I1 scale and distinctions).
   No database access — operates on plain maps, like `Academics.Marks`. Reuses
   `Marks.subject_average/2` for the per-subject figure so the two never drift.
   """
-  alias TeacherAssistant.Academics.{BulletinGroup, GradingRules, Marks}
+  alias TeacherAssistant.Academics.{
+    Appreciations,
+    BulletinGroup,
+    Distinction,
+    GradingRules,
+    Marks
+  }
 
   @pass Decimal.new(10)
-  @felicitations Decimal.new(16)
-  @encouragements Decimal.new(14)
-  @tableau Decimal.new(12)
 
   def compile(students, subjects, rules \\ %GradingRules{}) do
     inputs =
@@ -113,6 +116,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
               label: sv.label,
               coefficient: sv.coefficient,
               average: avg,
+              mention: Marks.mention(avg, rules),
               note_x_coef: avg && Decimal.mult(avg, sv.coefficient),
               subject_rank: sv.ranks[s.id],
               class_min: sv.class_min,
@@ -141,7 +145,7 @@ defmodule TeacherAssistant.Academics.Bulletins do
            total_points: if(graded_rows == [], do: nil, else: total_points),
            total_coef: total_coef,
            moyenne_generale: moy,
-           mention: Marks.mention(moy),
+           mention: Marks.mention(moy, rules),
            precise_moyenne: precise,
            rank: nil
          }}
@@ -162,9 +166,11 @@ defmodule TeacherAssistant.Academics.Bulletins do
       |> GradingRules.ranks(rules)
 
     per_student =
-      Map.new(per_student_core, fn {id, d} ->
+      per_student_core
+      |> Map.new(fn {id, d} ->
         {id, d |> Map.delete(:precise_moyenne) |> Map.put(:rank, class_ranks[id])}
       end)
+      |> put_distinctions(students, rules)
 
     graded =
       per_student |> Map.values() |> Enum.map(& &1.moyenne_generale) |> Enum.reject(&is_nil/1)
@@ -222,24 +228,32 @@ defmodule TeacherAssistant.Academics.Bulletins do
     |> GradingRules.ranks(rules)
   end
 
-  defp distinctions(students, per_student) do
-    base = %{felicitations: [], encouragements: [], tableau_honneur: []}
-
-    Enum.reduce(students, base, fn s, acc ->
+  defp put_distinctions(per_student, students, rules) do
+    Map.new(students, fn s ->
       d = per_student[s.id]
-      all_pass? = Enum.all?(d.subjects, fn r -> is_nil(r.average) or gte(r.average, @pass) end)
 
-      cond do
-        is_nil(d.moyenne_generale) or not all_pass? -> acc
-        gte(d.moyenne_generale, @felicitations) -> prepend(acc, :felicitations, s.id)
-        gte(d.moyenne_generale, @encouragements) -> prepend(acc, :encouragements, s.id)
-        gte(d.moyenne_generale, @tableau) -> prepend(acc, :tableau_honneur, s.id)
-        true -> acc
-      end
+      distinction =
+        Appreciations.distinction(
+          d.moyenne_generale,
+          Enum.map(d.subjects, & &1.average),
+          Map.get(s, :conduct),
+          rules
+        )
+
+      {s.id, Map.put(d, :distinction, distinction)}
     end)
   end
 
-  defp prepend(acc, key, id), do: Map.update!(acc, key, &(&1 ++ [id]))
+  defp distinctions(students, per_student) do
+    base = Map.new(Distinction.values(), &{&1, []})
+
+    Enum.reduce(students, base, fn s, acc ->
+      case per_student[s.id].distinction do
+        nil -> acc
+        kind -> Map.update!(acc, kind, &(&1 ++ [s.id]))
+      end
+    end)
+  end
 
   defp sex_stats(students, per_student, sex) do
     graded =

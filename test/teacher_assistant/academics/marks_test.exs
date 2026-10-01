@@ -4,14 +4,11 @@ defmodule TeacherAssistant.Academics.MarksTest do
 
   defp d(n), do: Decimal.new(n)
 
-  describe "mention/1" do
-    test "bands per domain doc" do
-      assert Marks.mention(d("9")) == nil
-      assert Marks.mention(d("10")) == :passable
-      assert Marks.mention(d("12")) == :assez_bien
-      assert Marks.mention(d("14")) == :bien
-      assert Marks.mention(d("16")) == :tres_bien
-      assert Marks.mention(d("18")) == :excellent
+  describe "mention/2" do
+    test "uses the default bands" do
+      assert Marks.mention(d("9")).label == "Médiocre"
+      assert Marks.mention(d("10")).label == "Passable"
+      assert Marks.mention(d("18")).label == "Excellent"
       assert Marks.mention(nil) == nil
     end
   end
@@ -67,7 +64,7 @@ defmodule TeacherAssistant.Academics.MarksTest do
 
     test "weighted per-student averages and mentions", %{result: r} do
       assert Decimal.equal?(r.per_student["s1"].average, d("12"))
-      assert r.per_student["s1"].mention == :assez_bien
+      assert r.per_student["s1"].mention.label == "Assez bien"
       assert Decimal.equal?(r.per_student["s2"].average, d("8"))
       assert r.per_student["s3"].average == nil
       assert r.per_student["s3"].mention == nil

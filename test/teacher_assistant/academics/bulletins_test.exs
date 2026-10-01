@@ -31,7 +31,9 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     assert Decimal.equal?(r.per_student["s1"].moyenne_generale, Decimal.new(14))
     assert Decimal.equal?(r.per_student["s1"].total_points, Decimal.new(70))
     assert Decimal.equal?(r.per_student["s1"].total_coef, Decimal.new(5))
-    assert r.per_student["s1"].mention == :bien
+    assert r.per_student["s1"].mention.label == "Bien"
+    maths = Enum.find(r.per_student["s1"].subjects, &(&1.context_id == "maths"))
+    assert maths.mention.label == "Bien"
   end
 
   test "a subject with no mark is excluded from the moyenne générale, not counted as 0" do
@@ -298,5 +300,34 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     r = Bulletins.aggregate(students, [input], rules)
     assert [%{subject_rank: 1}] = r.per_student["z"].subjects
     assert [%{subject_rank: 2}] = r.per_student["a"].subjects
+  end
+
+  test "distinctions include work warnings and follow the rules' thresholds" do
+    students = [%{id: "top", sex: :m}, %{id: "low", sex: :f}, %{id: "vlow", sex: :f}]
+
+    subjects = [
+      subject("maths", "Maths", "1", [{"top", "15"}, {"low", "7"}, {"vlow", "5"}])
+    ]
+
+    r = Bulletins.compile(students, subjects)
+    assert r.per_student["top"].distinction == :encouragements
+    assert r.per_student["low"].distinction == :avertissement_travail
+    assert r.per_student["vlow"].distinction == :blame_travail
+    assert r.distinctions.avertissement_travail == ["low"]
+    assert r.distinctions.blame_travail == ["vlow"]
+
+    strict = %GradingRules{encouragements_min: Decimal.new(16)}
+    r = Bulletins.compile(students, subjects, strict)
+    assert r.per_student["top"].distinction == :tableau_honneur
+  end
+
+  test "a student's conduct gates honours when the school requires it" do
+    students = [%{id: "a", sex: :m, conduct: Decimal.new(10)}, %{id: "b", sex: :m}]
+    subjects = [subject("maths", "Maths", "1", [{"a", "17"}, {"b", "17"}])]
+    rules = %GradingRules{distinctions_require_conduct?: true}
+
+    r = Bulletins.compile(students, subjects, rules)
+    assert r.per_student["a"].distinction == nil
+    assert r.per_student["b"].distinction == :felicitations
   end
 end

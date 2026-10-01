@@ -4,24 +4,13 @@ defmodule TeacherAssistant.Academics.Marks do
   No database access — operates on plain maps, like `Academics.Coverage`.
   """
 
-  alias TeacherAssistant.Academics.GradingRules
+  alias TeacherAssistant.Academics.{Appreciations, GradingRules}
 
   @pass Decimal.new(10)
   @scale Decimal.new(20)
 
-  @doc "Mention label for a /20 average, per domain doc bands (10/12/14/16/18)."
-  def mention(nil), do: nil
-
-  def mention(%Decimal{} = avg) do
-    cond do
-      Decimal.compare(avg, Decimal.new(18)) != :lt -> :excellent
-      Decimal.compare(avg, Decimal.new(16)) != :lt -> :tres_bien
-      Decimal.compare(avg, Decimal.new(14)) != :lt -> :bien
-      Decimal.compare(avg, Decimal.new(12)) != :lt -> :assez_bien
-      Decimal.compare(avg, @pass) != :lt -> :passable
-      true -> nil
-    end
-  end
+  @doc "The appreciation of a /20 average under the school's scale (`Academics.Appreciations`)."
+  def mention(avg, rules \\ %GradingRules{}), do: Appreciations.appreciation(avg, rules)
 
   @doc "Unweighted mean of the non-nil séquence averages (Cameroon annual rule)."
   def annual_average(sequence_averages) do
@@ -54,7 +43,7 @@ defmodule TeacherAssistant.Academics.Marks do
     per_student =
       Map.new(students, fn s ->
         avg = GradingRules.round_average(precise[s.id], rules)
-        {s.id, %{average: avg, mention: mention(avg), rank: ranks[s.id]}}
+        {s.id, %{average: avg, mention: mention(avg, rules), rank: ranks[s.id]}}
       end)
 
     graded = graded_averages(students, per_student)

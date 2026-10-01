@@ -6,13 +6,25 @@ defmodule TeacherAssistant.Academics.GradingRules do
   (`rounding: :none`) reproduces the historical unrounded computation for callers
   that pass no rules. `absence` (`:zero | :excluded | :makeup`) decides what an
   unjustified absence counts; its struct default is the historic `:excluded`.
+  Spec I1 adds the appreciation scale and the distinction thresholds and gates,
+  applied by `Academics.Appreciations`.
   """
 
   defstruct trimester: :mean_of_sequences,
             annual: :mean_of_sequences,
             rounding: :none,
             shared_ranks?: true,
-            absence: :excluded
+            absence: :excluded,
+            # Spec I1: nil/[] = default scale (`Academics.Appreciations.default_bands/0`).
+            appreciation_bands: nil,
+            # Spec I1: a nil threshold switches that distinction off.
+            felicitations_min: Decimal.new(16),
+            encouragements_min: Decimal.new(14),
+            tableau_honneur_min: Decimal.new(12),
+            avertissement_travail_below: Decimal.new(8),
+            blame_travail_below: Decimal.new(6),
+            distinctions_require_all_passed?: true,
+            distinctions_require_conduct?: false
 
   @four Decimal.new(4)
 
