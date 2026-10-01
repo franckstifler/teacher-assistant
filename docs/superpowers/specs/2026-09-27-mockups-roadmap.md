@@ -935,8 +935,8 @@ generate the default schedule, edit and delete (no add); `DayOfWeek` Monday–Sa
 
 12. **« Horaires »** (the existing « Périodes » page, renamed; same route): lesson-day chips, the Wednesday
     toggle, the default lesson length, then the periods with an « Ajouter une période » row whose end time
-    is pre-filled as start + default length; overlap and closing errors inline. Editable by the admin axis,
-    read-only for others who can open it today.
+    is pre-filled as start + default length; overlap and closing errors inline. Access unchanged: admin
+    axis only (others are redirected, as today).
 13. **« Congés & jours fériés »** (`/school/settings/holidays`, admin axis, linked from Settings and the
     Proviseur/Censeur "Paramètres" menus): the active year's holidays (label, dates, number of days),
     add / edit / delete, « Préremplir les jours fériés nationaux ».
