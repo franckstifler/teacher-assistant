@@ -92,10 +92,17 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :avertissement_travail_below,
         :blame_travail_below,
         :distinctions_require_all_passed?,
-        :distinctions_require_conduct?
+        :distinctions_require_conduct?,
+        :passage_min,
+        :rachat_min,
+        :exclusion_below,
+        :one_repeat_per_cycle?,
+        :exclusion_on_conduct?,
+        :exclusion_absence_hours
       ]
 
       validate TeacherAssistant.Accounts.SchoolProfile.ValidateAppreciations
+      validate TeacherAssistant.Accounts.SchoolProfile.ValidatePassage
 
       change fn changeset, _context ->
         if Ash.Changeset.get_data(changeset, :verification_status) == :rejected do
@@ -235,6 +242,23 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       allow_nil?: false,
       default: false,
       public?: true
+
+    # Spec I4: passage rules for the annual council's proposals; nil = rule off.
+    attribute :passage_min, :decimal, allow_nil?: false, default: Decimal.new(10), public?: true
+    attribute :rachat_min, :decimal, default: Decimal.new("9.5"), public?: true
+    attribute :exclusion_below, :decimal, default: Decimal.new(7), public?: true
+
+    attribute :one_repeat_per_cycle?, :boolean,
+      allow_nil?: false,
+      default: true,
+      public?: true
+
+    attribute :exclusion_on_conduct?, :boolean,
+      allow_nil?: false,
+      default: true,
+      public?: true
+
+    attribute :exclusion_absence_hours, :integer, default: 60, public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,

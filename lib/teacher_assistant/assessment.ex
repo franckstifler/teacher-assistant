@@ -541,6 +541,60 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
+  # --- Passage rules (spec I4) ------------------------------------------------------
+
+  @passage_decimals ~w(passage_min rachat_min exclusion_below)a
+  @passage_toggles ~w(one_repeat_per_cycle? exclusion_on_conduct?)a
+
+  @doc "The school's passage rules, from its profile."
+  def passage_rules(%Scope{} = scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    %TeacherAssistant.Academics.PassageRules{
+      passage_min: profile.passage_min,
+      rachat_min: profile.rachat_min,
+      exclusion_below: profile.exclusion_below,
+      one_repeat_per_cycle?: profile.one_repeat_per_cycle?,
+      exclusion_on_conduct?: profile.exclusion_on_conduct?,
+      exclusion_absence_hours: profile.exclusion_absence_hours
+    }
+  end
+
+  @doc """
+  Saves the passage rules from string params: an empty rachat, exclusion or hours value
+  switches that rule off; the passing average is required; a missing toggle is false.
+  """
+  def update_passage_rules(%Scope{} = scope, %{} = params) do
+    with {:ok, decimals} <- parse_passage_decimals(params),
+         {:ok, hours} <- parse_hours(Map.get(params, "exclusion_absence_hours", "")) do
+      toggles = Map.new(@passage_toggles, &{&1, Map.get(params, Atom.to_string(&1)) == "true"})
+
+      update_profile(
+        scope,
+        decimals |> Map.merge(toggles) |> Map.put(:exclusion_absence_hours, hours)
+      )
+    end
+  end
+
+  defp parse_passage_decimals(params) do
+    Enum.reduce_while(@passage_decimals, {:ok, %{}}, fn field, {:ok, acc} ->
+      case {field, parse_score(Map.get(params, Atom.to_string(field), ""))} do
+        {:passage_min, {:ok, nil}} -> {:halt, {:error, :invalid_number}}
+        {_, {:ok, value}} -> {:cont, {:ok, Map.put(acc, field, value)}}
+        {_, :error} -> {:halt, {:error, :invalid_number}}
+      end
+    end)
+  end
+
+  defp parse_hours(value) when value in [nil, ""], do: {:ok, nil}
+
+  defp parse_hours(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {hours, ""} -> {:ok, hours}
+      _ -> {:error, :invalid_number}
+    end
+  end
+
   defp update_profile(scope, attrs) do
     with {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
       TeacherAssistant.Accounts.update_school_profile(profile, attrs, scope: scope)
