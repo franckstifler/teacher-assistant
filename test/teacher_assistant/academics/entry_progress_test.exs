@@ -242,4 +242,22 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
       0 -> n
     end
   end
+
+  describe "class_rate/4" do
+    test "mean of the class's course cells over the séquences", ctx do
+      [seq1, seq2 | _] = Organization.list_sequences(ctx.head, ctx.year)
+      # 4e B: Allemand complete in S1 (100), Anglais without assessment (0); nothing in S2
+      assert EntryProgress.class_rate(ctx.head, ctx.year, ctx.cg2, [seq1, seq2]) == 25
+      assert EntryProgress.class_rate(ctx.head, ctx.year, ctx.cg2, [seq1]) == 50
+    end
+
+    test "nil when no cell has a %", ctx do
+      {:ok, bare} =
+        Enrollment.create_class_group(ctx.head, ctx.year, %{label: "6e Z", level: "6ème"})
+
+      assert EntryProgress.class_rate(ctx.head, ctx.year, bare, [ctx.seq]) == nil
+      # students-less class: its course cell has no %
+      assert EntryProgress.class_rate(ctx.head, ctx.year, ctx.empty_cg, [ctx.seq]) == nil
+    end
+  end
 end

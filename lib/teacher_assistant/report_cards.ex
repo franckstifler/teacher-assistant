@@ -3,12 +3,32 @@ defmodule TeacherAssistant.ReportCards do
   Report-card publication (spec I2). A class's trimester or annual report cards are a
   draft (live figures) until the Proviseur or Censeur publishes them; publishing stores
   `live_view/3` as a snapshot, which every screen then renders instead of live figures.
-  Séquence report cards are always live.
+  Séquence report cards are always live. `view_for/3` decides what a user may see:
+  class managers see drafts and publications, teachers of the class publications only.
   """
+  use Gettext, backend: TeacherAssistantWeb.Gettext
   require Ash.Query
 
-  alias TeacherAssistant.{Accounts, Assessment, Attendance, Discipline, Enrollment, Organization}
-  alias TeacherAssistant.Academics.{BulletinPublication, ClassGroup, Term}
+  alias TeacherAssistant.{
+    Accounts,
+    Assessment,
+    Attendance,
+    Curriculum,
+    Discipline,
+    Enrollment,
+    Organization
+  }
+
+  alias TeacherAssistant.Accounts.Checks
+
+  alias TeacherAssistant.Academics.{
+    AcademicYear,
+    BulletinPublication,
+    ClassGroup,
+    EntryProgress,
+    Term
+  }
+
   alias TeacherAssistant.Scope
 
   @doc "What the report card, class results and print render, computed now."
@@ -96,6 +116,94 @@ defmodule TeacherAssistant.ReportCards do
 
   @doc "The school-local (WAT, UTC+1) date of a publication."
   def published_on(%{published_at: at}), do: at |> DateTime.add(3600) |> DateTime.to_date()
+
+  @doc "`:full` (drafts and published), `:published` (published only) or `:none`."
+  def access(%Scope{} = scope, %ClassGroup{} = cg) do
+    cond do
+      Enrollment.class_manager?(scope, cg) -> :full
+      teaches_class?(scope, cg) -> :published
+      true -> :none
+    end
+  end
+
+  @doc """
+  What `scope` may see of the class's report cards for `period`. Live figures are only
+  ever computed for `:full` access.
+  """
+  def view_for(%Scope{} = scope, %ClassGroup{} = cg, period) do
+    case access(scope, cg) do
+      :none ->
+        :forbidden
+
+      :full ->
+        class_view(scope, cg, period)
+
+      :published ->
+        case current_publication(scope, cg, period) do
+          nil -> :not_published
+          pub -> {:published, pub, pub.snapshot}
+        end
+    end
+  end
+
+  @doc "Whether the scope may publish and withdraw (Proviseur, Censeur)."
+  def can_publish?(%Scope{current_user: %{} = user, current_workspace: %{id: ws_id}}),
+    do: Checks.SchoolRole.holds?(user, ws_id, :admin)
+
+  def can_publish?(_scope), do: false
+
+  @doc "The classes whose report cards the scope may open this year."
+  def visible_classes(%Scope{current_user: user} = scope, %AcademicYear{} = year) do
+    classes = Enrollment.list_class_groups(scope, year)
+
+    if can_publish?(scope) do
+      classes
+    else
+      taught = taught_class_ids(scope, year)
+      Enum.filter(classes, &(&1.form_master_user_id == user.id or MapSet.member?(taught, &1.id)))
+    end
+  end
+
+  @doc "The publishable periods of the year: its trimesters, then the year."
+  def periods(%Scope{} = scope, %AcademicYear{} = year) do
+    terms =
+      scope
+      |> Organization.list_terms(year)
+      |> Enum.map(fn t ->
+        period = {:trimester, t}
+        {Organization.period_param(period), gettext("Trimestre %{n}", n: t.position), period}
+      end)
+
+    terms ++ [{"annee", gettext("Année"), {:annual, year}}]
+  end
+
+  @doc "The class's mark-entry rate over the period's séquences (rounded down; nil = nothing to measure)."
+  def entry_rate(%Scope{} = scope, %ClassGroup{} = cg, {:trimester, %Term{} = term}),
+    do: EntryProgress.class_rate(scope, year_of(scope, cg), cg, term.sequences)
+
+  def entry_rate(%Scope{} = scope, %ClassGroup{} = cg, {:annual, %AcademicYear{} = year}),
+    do: EntryProgress.class_rate(scope, year, cg, Organization.list_sequences(scope, year))
+
+  defp year_of(%Scope{current_academic_year: %AcademicYear{id: id} = year}, %ClassGroup{
+         academic_year_id: id
+       }),
+       do: year
+
+  defp year_of(_scope, %ClassGroup{academic_year_id: id, workspace_id: ws}),
+    do: %AcademicYear{id: id, workspace_id: ws}
+
+  defp teaches_class?(%Scope{current_academic_year: %AcademicYear{} = year} = scope, cg),
+    do: MapSet.member?(taught_class_ids(scope, year), cg.id)
+
+  defp teaches_class?(_scope, _cg), do: false
+
+  defp taught_class_ids(%Scope{current_user: %{} = user} = scope, year) do
+    scope
+    |> Curriculum.list_assignments_for_user(year, user)
+    |> MapSet.new(& &1.class_group_id)
+  end
+
+  defp taught_class_ids(_scope, _year), do: MapSet.new()
 
   defp term_id({:trimester, %Term{id: id}}), do: id
   defp term_id(_), do: nil

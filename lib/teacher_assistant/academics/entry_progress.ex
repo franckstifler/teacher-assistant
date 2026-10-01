@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   alias TeacherAssistant.Academics.{
     AcademicYear,
     Assessment,
+    ClassGroup,
     Enrollment,
     Mark,
     Sequence,
@@ -70,6 +71,33 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       late: late(rows, subjects),
       council_date: council_date(scope, seq)
     }
+  end
+
+  @doc """
+  One class's mark-entry rate over `sequences` (spec I2: a trimester's or the year's
+  séquences): the mean of its course cells' % across those séquences, with the cell
+  rules of `grid/3` (a course with students but no assessment is 0 %); rounded down,
+  nil when no cell has a %.
+  """
+  def class_rate(%Scope{} = scope, %AcademicYear{} = year, %ClassGroup{id: cg_id}, sequences) do
+    pcts =
+      sequences
+      |> Enum.flat_map(fn seq ->
+        scope
+        |> grid(year, seq)
+        |> Map.fetch!(:rows)
+        |> Enum.find(&(&1.class_group.id == cg_id))
+        |> case do
+          nil -> []
+          row -> row.cells |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.map(& &1.pct)
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    case pcts do
+      [] -> nil
+      _ -> div(Enum.sum(pcts), length(pcts))
+    end
   end
 
   @doc """
