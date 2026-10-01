@@ -199,7 +199,13 @@ defmodule TeacherAssistant.TeacherFixtures do
   trimester's report cards; returns `ReportCards.publish/3`'s result.
   """
   def publish_trimester(%Scope{} = scope, class_group, term) do
-    _ = TeacherAssistant.Councils.hold(scope, class_group, term)
+    _ = TeacherAssistant.Councils.hold(scope, class_group, {:trimester, term})
     TeacherAssistant.ReportCards.publish(scope, class_group, {:trimester, term})
+  end
+
+  @doc "Holds the class's annual council (spec I4) then publishes the year's report cards."
+  def publish_annual(%Scope{} = scope, class_group, year) do
+    _ = TeacherAssistant.Councils.hold(scope, class_group, {:annual, year})
+    TeacherAssistant.ReportCards.publish(scope, class_group, {:annual, year})
   end
 end

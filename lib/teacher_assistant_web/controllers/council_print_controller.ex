@@ -17,7 +17,7 @@ defmodule TeacherAssistantWeb.CouncilPrintController do
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          %{} = term <-
            Enum.find(Organization.list_terms(scope, year), &(&1.id == params["term"])) do
-      council = Councils.council(scope, cg, term)
+      council = Councils.council(scope, cg, {:trimester, term})
       {results, outcomes, roster} = figures(scope, cg, term, council)
 
       rows =

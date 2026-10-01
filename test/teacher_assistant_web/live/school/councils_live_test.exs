@@ -64,7 +64,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
     |> form("#council-header-form", %{council: %{chair: "M. Fotso", attendees: "Censeur, PP"}})
     |> render_submit()
 
-    assert Councils.council(ctx.scope, ctx.cg, ctx.term).chair == "M. Fotso"
+    assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).chair == "M. Fotso"
   end
 
   test "changing a row saves the student's decision", ctx do
@@ -78,7 +78,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
 
     assert has_element?(view, "#saved-#{ctx.tch.id}")
 
-    assert [d] = Councils.council(ctx.scope, ctx.cg, ctx.term).decisions
+    assert [d] = Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions
     assert d.student_id == ctx.tch.id
     assert d.conduct_warning == :avertissement_conduite
     assert d.appreciation == "Doit se ressaisir"
@@ -88,11 +88,11 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
     {:ok, view, _} = live(ctx.conn, council_path(ctx.cg, ctx.term))
     view |> element("#hold-council") |> render_click()
     assert has_element?(view, "#hold-confirm", "Saisie incomplète")
-    refute Councils.held?(ctx.scope, ctx.cg, ctx.term)
+    refute Councils.held?(ctx.scope, ctx.cg, {:trimester, ctx.term})
 
     view |> element("#confirm-hold") |> render_click()
     assert has_element?(view, "#council-status", "Tenu")
-    assert Councils.held?(ctx.scope, ctx.cg, ctx.term)
+    assert Councils.held?(ctx.scope, ctx.cg, {:trimester, ctx.term})
 
     view |> element("#reopen-council") |> render_click()
     assert has_element?(view, "#council-status", "Ouvert")
@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
     })
 
     assert render(view) =~ "Conseil verrouillé : bulletins publiés."
-    assert Councils.council(ctx.scope, ctx.cg, ctx.term).decisions == []
+    assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
   end
 
   test "only the admin axis opens council screens; the head has the menu item", ctx do

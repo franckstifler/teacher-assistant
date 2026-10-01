@@ -256,23 +256,33 @@ defmodule TeacherAssistant.ReportCards do
     |> MapSet.new(& &1.class_group_id)
   end
 
-  # Spec I3: a trimester's report cards carry its class council.
-  defp council_entry(scope, cg, {:trimester, %Term{} = term}, results) do
-    council = TeacherAssistant.Councils.council(scope, cg, term)
+  # Spec I3/I4: trimester and annual report cards carry their class council; the
+  # annual one adds each student's passage decision.
+  defp council_entry(scope, cg, {:trimester, %Term{}} = period, results),
+    do: council_map(scope, cg, period, results, nil)
 
-    %{
-      held?: council.status == :held,
-      held_on: council.held_on,
-      outcomes: TeacherAssistant.Councils.outcomes(council, results)
+  defp council_entry(scope, cg, {:annual, %AcademicYear{}} = period, results) do
+    passage = %{
+      rules: Assessment.passage_rules(scope),
+      students: TeacherAssistant.Councils.passage_inputs(scope, cg, period)
     }
+
+    council_map(scope, cg, period, results, passage)
   end
 
   defp council_entry(_scope, _cg, _period, _results), do: nil
 
-  defp council_ready?(scope, cg, {:trimester, %Term{} = term}),
-    do: TeacherAssistant.Councils.held?(scope, cg, term)
+  defp council_map(scope, cg, period, results, passage) do
+    council = TeacherAssistant.Councils.council(scope, cg, period)
 
-  defp council_ready?(_scope, _cg, _period), do: true
+    %{
+      held?: council.status == :held,
+      held_on: council.held_on,
+      outcomes: TeacherAssistant.Councils.outcomes(council, results, passage)
+    }
+  end
+
+  defp council_ready?(scope, cg, period), do: TeacherAssistant.Councils.held?(scope, cg, period)
 
   defp term_id({:trimester, %Term{id: id}}), do: id
   defp term_id(_), do: nil

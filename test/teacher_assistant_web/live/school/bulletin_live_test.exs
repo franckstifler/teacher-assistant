@@ -435,7 +435,7 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
       [%{student: st}] = Enrollment.list_roster(scope, cg)
 
       {:ok, _} =
-        TeacherAssistant.Councils.set_decision(scope, cg, term, st.id, %{
+        TeacherAssistant.Councils.set_decision(scope, cg, {:trimester, term}, st.id, %{
           "distinction_choice" => "none",
           "conduct_warning" => "blame_conduite",
           "appreciation" => "Trimestre fragile"

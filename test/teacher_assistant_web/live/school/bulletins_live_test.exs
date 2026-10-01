@@ -61,7 +61,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   end
 
   test "incomplete entry asks for confirmation, then publishes", ctx do
-    {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, ctx.term)
+    {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
     assert has_element?(view, "#bulletins-rate", "25 %")
     view |> element("#publish") |> render_click()
@@ -135,7 +135,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   describe "class council (I3)" do
     test "publishing waits for the held council; the distinction follows it", ctx do
       {:ok, _} =
-        TeacherAssistant.Councils.set_decision(ctx.scope, ctx.cg, ctx.term, ctx.dj.student.id, %{
+        TeacherAssistant.Councils.set_decision(ctx.scope, ctx.cg, {:trimester, ctx.term}, ctx.dj.student.id, %{
           "distinction_choice" => "tableau_honneur"
         })
 
@@ -145,7 +145,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
       assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Tableau d")
       refute has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Encouragements")
 
-      {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, ctx.term)
+      {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
       {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
       refute has_element?(view, "#publish[disabled]")
       refute has_element?(view, "#council-not-held")

@@ -41,12 +41,20 @@ defmodule TeacherAssistant.Academics.CouncilDecision do
         :student_id,
         :distinction_choice,
         :conduct_warning,
-        :appreciation
+        :appreciation,
+        :passage_decision
       ]
 
       upsert? true
       upsert_identity :one_per_student
-      upsert_fields [:distinction_choice, :conduct_warning, :appreciation, :updated_at]
+
+      upsert_fields [
+        :distinction_choice,
+        :conduct_warning,
+        :appreciation,
+        :passage_decision,
+        :updated_at
+      ]
     end
   end
 
@@ -73,6 +81,9 @@ defmodule TeacherAssistant.Academics.CouncilDecision do
 
     attribute :conduct_warning, TeacherAssistant.Academics.ConductWarning, public?: true
     attribute :appreciation, :string, public?: true, constraints: [max_length: 300]
+
+    # Annual council only (spec I4); nil keeps the proposal.
+    attribute :passage_decision, TeacherAssistant.Academics.PassageDecision, public?: true
 
     timestamps()
   end

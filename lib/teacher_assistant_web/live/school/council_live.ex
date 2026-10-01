@@ -42,7 +42,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
 
   defp load(socket) do
     %{current_scope: scope, cg: cg, term: term, year: year} = socket.assigns
-    council = Councils.council(scope, cg, term)
+    council = Councils.council(scope, cg, {:trimester, term})
     results = Assessment.class_results_for_period(scope, cg, {:trimester, term})
     decisions = Map.new(council.decisions, &{&1.student_id, &1})
 
@@ -61,7 +61,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
       results: results,
       rows: rows,
       rate: scope |> EntryProgress.class_rates(year, term.sequences) |> Map.get(cg.id),
-      locked?: Councils.locked?(scope, cg, term)
+      locked?: Councils.locked?(scope, cg, {:trimester, term})
     )
   end
 
@@ -69,14 +69,20 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     %{current_scope: scope, cg: cg, term: term} = socket.assigns
 
     scope
-    |> Councils.save_header(cg, term, params)
+    |> Councils.save_header(cg, {:trimester, term}, params)
     |> after_write(socket, gettext("Conseil enregistré."))
   end
 
   def handle_event("decision", %{"student_id" => student_id} = params, socket) do
     %{current_scope: scope, cg: cg, term: term} = socket.assigns
 
-    case Councils.set_decision(scope, cg, term, student_id, Map.get(params, "decision", %{})) do
+    case Councils.set_decision(
+           scope,
+           cg,
+           {:trimester, term},
+           student_id,
+           Map.get(params, "decision", %{})
+         ) do
       {:ok, _} -> {:noreply, socket |> load() |> assign(saved: student_id)}
       other -> after_write(other, socket, nil)
     end
@@ -93,7 +99,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     %{current_scope: scope, cg: cg, term: term} = socket.assigns
 
     scope
-    |> Councils.reopen(cg, term)
+    |> Councils.reopen(cg, {:trimester, term})
     |> after_write(socket, gettext("Conseil rouvert."))
   end
 
@@ -101,7 +107,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     %{current_scope: scope, cg: cg, term: term} = socket.assigns
 
     scope
-    |> Councils.hold(cg, term)
+    |> Councils.hold(cg, {:trimester, term})
     |> after_write(assign(socket, confirm_hold?: false), gettext("Conseil marqué tenu."))
   end
 

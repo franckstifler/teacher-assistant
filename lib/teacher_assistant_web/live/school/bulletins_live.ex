@@ -83,11 +83,14 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     )
   end
 
-  # Spec I3: a trimester is published only once its class council is held.
-  defp council_held?(true, scope, cg, {:trimester, term}),
-    do: TeacherAssistant.Councils.held?(scope, cg, term)
+  # Spec I3/I4: a trimester or the year is published only once its class council is held.
+  defp council_held?(true, scope, cg, {kind, _} = period) when kind in [:trimester, :annual],
+    do: TeacherAssistant.Councils.held?(scope, cg, period)
 
   defp council_held?(_can_publish?, _scope, _cg, _period), do: true
+
+  defp council_path(cg, {:trimester, term}), do: ~p"/school/councils/#{cg.id}?term=#{term.id}"
+  defp council_path(cg, {:annual, _year}), do: ~p"/school/councils/#{cg.id}?period=annee"
 
   defp rows(nil), do: []
   defp rows(%{results: nil}), do: []
@@ -415,7 +418,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
           >
             {gettext("Conseil de classe non tenu")} ·
             <.link
-              navigate={~p"/school/councils/#{@cg.id}?term=#{elem(@period, 1).id}"}
+              navigate={council_path(@cg, @period)}
               class="link"
             >
               {gettext("Ouvrir le conseil")}

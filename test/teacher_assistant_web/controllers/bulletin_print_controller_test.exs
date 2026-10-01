@@ -397,7 +397,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       [%{student: st} | _] = roster
 
       {:ok, _} =
-        TeacherAssistant.Councils.set_decision(scope, cg, term, st.id, %{
+        TeacherAssistant.Councils.set_decision(scope, cg, {:trimester, term}, st.id, %{
           "appreciation" => "Très bon trimestre"
         })
 

@@ -1,6 +1,6 @@
 defmodule TeacherAssistant.Academics.ClassCouncil do
   @moduledoc """
-  A class's trimester council (spec I3): its header (date, chair, attendees, general
+  A class's council for a trimester (spec I3) or the year (spec I4): its header (date, chair, attendees, general
   remarks), its status and a decision per student (`CouncilDecision`). Created by the
   first save; written only by the Proviseur and Censeur. `TeacherAssistant.Councils`
   refuses writes while the class's trimester is published.
@@ -29,6 +29,11 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
         match_type: :full,
         index?: true
 
+      reference :academic_year,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full
+
       reference :term, on_delete: :delete
       reference :held_by, on_delete: :nilify
       reference :workspace, on_delete: :delete, index?: true
@@ -38,21 +43,30 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
   actions do
     defaults [:read]
 
-    read :for_class_term do
+    read :for_class_period do
       argument :class_group_id, :uuid, allow_nil?: false
-      argument :term_id, :uuid, allow_nil?: false
+      argument :period_key, :string, allow_nil?: false
       get? true
-      filter expr(class_group_id == ^arg(:class_group_id) and term_id == ^arg(:term_id))
+      filter expr(class_group_id == ^arg(:class_group_id) and period_key == ^arg(:period_key))
       prepare build(load: [:decisions])
     end
 
-    read :for_term do
-      argument :term_id, :uuid, allow_nil?: false
-      filter expr(term_id == ^arg(:term_id))
+    read :for_period do
+      argument :period_key, :string, allow_nil?: false
+      filter expr(period_key == ^arg(:period_key))
     end
 
     create :open do
-      accept [:class_group_id, :term_id, :held_on, :chair, :attendees, :observations]
+      accept [
+        :class_group_id,
+        :academic_year_id,
+        :term_id,
+        :period_key,
+        :held_on,
+        :chair,
+        :attendees,
+        :observations
+      ]
     end
 
     update :edit do
@@ -95,6 +109,8 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
       default: :open,
       public?: true
 
+    # `Organization.period_param/1` of the period: "trim:<term id>" or "annee" (spec I4).
+    attribute :period_key, :string, allow_nil?: false, public?: true
     attribute :held_on, :date, public?: true
     attribute :chair, :string, public?: true, constraints: [max_length: 200]
     attribute :attendees, :string, public?: true, constraints: [max_length: 2000]
@@ -117,9 +133,15 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
       public? true
     end
 
+    belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear do
+      source_attribute :academic_year_id
+      allow_nil? false
+      public? true
+    end
+
+    # nil for the annual council (spec I4).
     belongs_to :term, TeacherAssistant.Academics.Term do
       source_attribute :term_id
-      allow_nil? false
       public? true
     end
 
@@ -135,6 +157,6 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
   end
 
   identities do
-    identity :one_per_class_term, [:class_group_id, :term_id]
+    identity :one_per_class_period, [:class_group_id, :period_key]
   end
 end

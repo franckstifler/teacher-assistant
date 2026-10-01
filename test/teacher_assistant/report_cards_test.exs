@@ -97,7 +97,7 @@ defmodule TeacherAssistant.ReportCardsTest do
   } do
     assert {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
     assert {:error, :already_published} = ReportCards.publish(scope, cg, {:trimester, term})
-    assert {:ok, annual} = ReportCards.publish(scope, cg, {:annual, year})
+    assert {:ok, annual} = TeacherAssistant.TeacherFixtures.publish_annual(scope, cg, year)
     assert annual.period_key == "annee"
     assert annual.term_id == nil
     assert length(ReportCards.history(scope, cg, {:trimester, term})) == 1
@@ -113,7 +113,7 @@ defmodule TeacherAssistant.ReportCardsTest do
     teacher_scope = TeacherFixtures.member_scope_fixture(scope)
     teacher_scope = %{teacher_scope | current_academic_year: scope.current_academic_year}
 
-    {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, term)
+    {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
 
     assert {:error, %Ash.Error.Forbidden{}} =
              ReportCards.publish(teacher_scope, cg, {:trimester, term})
@@ -153,13 +153,17 @@ defmodule TeacherAssistant.ReportCardsTest do
   end
 
   describe "class council (I3)" do
-    test "publishing a trimester needs a held council; annual does not", ctx do
+    test "publishing a trimester or the year needs its held council", ctx do
       %{scope: scope, cg: cg, term: term, year: year} = ctx
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:trimester, term})
-      {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, term)
+      {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
       assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
       assert pub.snapshot_version == 2
-      assert {:ok, _} = ReportCards.publish(scope, cg, {:annual, year})
+      assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:annual, year})
+      {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:annual, year})
+      assert {:ok, annual} = ReportCards.publish(scope, cg, {:annual, year})
+      [%{student: %{id: id}}] = annual.snapshot.roster
+      assert annual.snapshot.council.outcomes[id].passage == :admis
     end
 
     test "the snapshot freezes the council", ctx do
@@ -167,19 +171,22 @@ defmodule TeacherAssistant.ReportCardsTest do
       alias TeacherAssistant.Councils
 
       {:ok, _} =
-        Councils.set_decision(scope, cg, term, st.id, %{
+        Councils.set_decision(scope, cg, {:trimester, term}, st.id, %{
           "distinction_choice" => "tableau_honneur",
           "appreciation" => "Bon trimestre"
         })
 
-      {:ok, _} = Councils.hold(scope, cg, term)
+      {:ok, _} = Councils.hold(scope, cg, {:trimester, term})
       {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
       assert pub.snapshot.council.held?
       assert pub.snapshot.council.outcomes[st.id].distinction == :tableau_honneur
-      assert {:error, :locked} = Councils.reopen(scope, cg, term)
+      assert {:error, :locked} = Councils.reopen(scope, cg, {:trimester, term})
 
       {:ok, _} = ReportCards.withdraw(scope, pub, "Appréciation à revoir")
-      {:ok, _} = Councils.set_decision(scope, cg, term, st.id, %{"appreciation" => "Nouveau"})
+
+      {:ok, _} =
+        Councils.set_decision(scope, cg, {:trimester, term}, st.id, %{"appreciation" => "Nouveau"})
+
       {:ok, _} = ReportCards.publish(scope, cg, {:trimester, term})
 
       assert [current, old] = ReportCards.history(scope, cg, {:trimester, term})
@@ -191,7 +198,7 @@ defmodule TeacherAssistant.ReportCardsTest do
       %{scope: scope, cg: cg, term: term, seq: seq, st: st} = ctx
 
       {:ok, _} =
-        TeacherAssistant.Councils.set_decision(scope, cg, term, st.id, %{
+        TeacherAssistant.Councils.set_decision(scope, cg, {:trimester, term}, st.id, %{
           "distinction_choice" => "none"
         })
 

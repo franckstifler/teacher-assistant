@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
       Enum.find(terms, &(&1.id == params["term"])) ||
         Councils.default_term(terms, Reference.today())
 
-    councils = Councils.for_term(scope, term)
+    councils = Councils.for_period(scope, {:trimester, term})
     rates = EntryProgress.class_rates(scope, year, term.sequences)
     published = ReportCards.published_class_ids(scope, {:trimester, term})
 

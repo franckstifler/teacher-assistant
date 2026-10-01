@@ -30,10 +30,10 @@ defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
   defp pv(conn, cg, term), do: get(conn, ~p"/school/councils/#{cg.id}/print?term=#{term.id}")
 
   test "the procès-verbal lists the council and its decisions", ctx do
-    {:ok, _} = Councils.save_header(ctx.scope, ctx.cg, ctx.term, %{"chair" => "M. Abena"})
+    {:ok, _} = Councils.save_header(ctx.scope, ctx.cg, {:trimester, ctx.term}, %{"chair" => "M. Abena"})
 
     {:ok, _} =
-      Councils.set_decision(ctx.scope, ctx.cg, ctx.term, ctx.st.id, %{
+      Councils.set_decision(ctx.scope, ctx.cg, {:trimester, ctx.term}, ctx.st.id, %{
         "conduct_warning" => "avertissement_conduite",
         "appreciation" => "Peut mieux faire"
       })
@@ -46,7 +46,7 @@ defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
     assert html =~ "Peut mieux faire"
     assert html =~ "Avertissement de conduite"
 
-    {:ok, _} = Councils.hold(ctx.scope, ctx.cg, ctx.term)
+    {:ok, _} = Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
     refute ctx.conn |> pv(ctx.cg, ctx.term) |> html_response(200) =~ "PROJET"
   end
 
