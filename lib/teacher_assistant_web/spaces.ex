@@ -85,6 +85,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Pilotage"), [
           dashboard(),
           sequences(),
+          bulletins(),
           classes(),
           members(),
           correction_review(facts.pending_corrections)
@@ -108,6 +109,7 @@ defmodule TeacherAssistantWeb.Spaces do
       sections: [
         section(gettext("Suivi pédagogique"), [
           sequences(),
+          bulletins(),
           classes(),
           members(),
           correction_review(facts.pending_corrections)
@@ -146,6 +148,7 @@ defmodule TeacherAssistantWeb.Spaces do
         facts.teaches? && my_day(),
         facts.teaches? && courses(),
         facts.form_master? && classes(),
+        (facts.teaches? or facts.form_master?) && bulletins(),
         timetable()
       ]
       |> Enum.filter(& &1)
@@ -263,6 +266,9 @@ defmodule TeacherAssistantWeb.Spaces do
         "hero-academic-cap",
         ~p"/school/settings/appreciations"
       )
+
+  defp bulletins,
+    do: item("bulletins", gettext("Bulletins"), "hero-document-text", ~p"/school/bulletins")
 
   defp periods, do: item("periods", gettext("Périodes"), "hero-clock", ~p"/school/periods")
 end

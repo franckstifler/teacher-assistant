@@ -69,6 +69,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
     assert item_ids(:enseignant, facts([:teacher], teaches?: true)) == [
              "nav-school-today",
              "nav-school-courses",
+             "nav-school-bulletins",
              "nav-school-timetable-me",
              "nav-school-corrections"
            ]
@@ -78,12 +79,13 @@ defmodule TeacherAssistantWeb.SpacesTest do
                "nav-school-today",
                "nav-school-courses",
                "nav-school-classes",
+               "nav-school-bulletins",
                "nav-school-timetable-me",
                "nav-school-corrections"
              ]
 
     assert item_ids(:enseignant, facts([:teacher], form_master?: true)) ==
-             ["nav-school-classes", "nav-school-timetable-me"]
+             ["nav-school-classes", "nav-school-bulletins", "nav-school-timetable-me"]
   end
 
   defp item(key, facts, id),
