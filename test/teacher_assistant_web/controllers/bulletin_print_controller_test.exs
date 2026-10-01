@@ -330,4 +330,58 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     {:ok, _} = Curriculum.set_bulletin_group_subtotals(scope, true)
     assert conn |> get(path) |> html_response(200) =~ "Total groupe"
   end
+
+  defp with_year(scope) do
+    %{scope | current_academic_year: TeacherAssistant.Organization.current_academic_year(scope)}
+  end
+
+  defp teacher_conn(scope, cg) do
+    %{teacher: teacher} =
+      TeacherAssistant.TeacherFixtures.school_teacher_fixture(scope, %{
+        class_group: cg,
+        subject: "SVT"
+      })
+
+    build_conn()
+    |> log_in_user(teacher)
+    |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
+  end
+
+  defp first_term(scope),
+    do: scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
+
+  describe "publication" do
+    test "a draft trimester prints with the BROUILLON watermark; a published one with its date",
+         %{conn: conn, cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      url = ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}"
+
+      assert conn |> get(url) |> html_response(200) =~ "BROUILLON"
+
+      {:ok, pub} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      html = conn |> get(url) |> html_response(200)
+      refute html =~ "BROUILLON"
+      assert html =~ Calendar.strftime(TeacherAssistant.ReportCards.published_on(pub), "%d/%m/%Y")
+    end
+
+    test "a séquence print has no watermark", %{conn: conn, cg: cg, seq: seq} do
+      html =
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
+        |> html_response(200)
+
+      refute html =~ "BROUILLON"
+    end
+
+    test "a teacher cannot print an unpublished period", %{cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      tconn = teacher_conn(scope, cg)
+      conn = get(tconn, ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}")
+
+      assert URI.decode(redirected_to(conn)) ==
+               "/school/classes/#{cg.id}/results?period=trim:#{term.id}"
+    end
+  end
 end

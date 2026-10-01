@@ -1,19 +1,17 @@
 defmodule TeacherAssistantWeb.School.BulletinLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Academics.{BulletinGroup, Sex}
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.ReportCards
   alias TeacherAssistantWeb.SanctionLabels
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Enrollment.class_manager?(scope, cg),
+         access when access != :none <- ReportCards.access(scope, cg),
          roster = Enrollment.list_roster(scope, cg),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
@@ -28,30 +26,19 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             [] -> nil
           end
 
-      results = period && Assessment.class_results_for_period(scope, cg, period)
-      data = results && results.per_student[student.id]
-      conduct = period && Attendance.student_conduct(scope, enrollment, period)
-      discipline = period && Discipline.discipline_summary(scope, enrollment, period)
-
       {:ok,
-       assign(socket,
+       socket
+       |> assign(
          cg: cg,
          student: student,
          enrollment: enrollment,
          year: year,
          sequences: sequences,
-         terms: terms,
-         period: period,
-         period_param: period && Organization.period_param(period),
-         period_kind: period && Organization.period_kind(period),
-         effectif: (results && results.effectif) || 0,
-         data: data,
-         conduct: conduct,
-         discipline: discipline,
-         group_subtotals?: group_subtotals?(scope)
-       )}
+         terms: terms
+       )
+       |> load_period(period)}
     else
-      false -> {:ok, push_navigate(socket, to: ~p"/school")}
+      :none -> {:ok, push_navigate(socket, to: ~p"/school")}
       nil -> {:ok, push_navigate(socket, to: ~p"/school/classes/#{id}/results")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
@@ -72,43 +59,39 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       (year && Organization.resolve_period(socket.assigns.current_scope, year, params["period"])) ||
         socket.assigns.period
 
-    results =
-      period &&
-        Assessment.class_results_for_period(
-          socket.assigns.current_scope,
-          socket.assigns.cg,
-          period
-        )
-
-    conduct =
-      period &&
-        Attendance.student_conduct(
-          socket.assigns.current_scope,
-          socket.assigns.enrollment,
-          period
-        )
-
-    discipline =
-      period &&
-        Discipline.discipline_summary(
-          socket.assigns.current_scope,
-          socket.assigns.enrollment,
-          period
-        )
-
-    {:noreply,
-     assign(socket,
-       period: period,
-       period_param: period && Organization.period_param(period),
-       period_kind: period && Organization.period_kind(period),
-       effectif: (results && results.effectif) || 0,
-       data: results && results.per_student[socket.assigns.student.id],
-       conduct: conduct,
-       discipline: discipline
-     )}
+    {:noreply, load_period(socket, period)}
   end
 
   def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
+  # One place decides what is shown: a published snapshot, a live draft (class
+  # managers only) or nothing yet (teachers before publication).
+  defp load_period(socket, period) do
+    %{current_scope: scope, cg: cg, student: student, enrollment: enrollment} = socket.assigns
+
+    {status, publication, view} =
+      case period && ReportCards.view_for(scope, cg, period) do
+        {:published, pub, view} -> {:published, pub, view}
+        {:draft, view} -> {:draft, nil, view}
+        _ -> {:not_published, nil, nil}
+      end
+
+    results = view && view.results
+
+    assign(socket,
+      period: period,
+      period_param: period && Organization.period_param(period),
+      period_kind: period && Organization.period_kind(period),
+      status: if(period, do: status, else: :draft),
+      publication: publication,
+      in_view?: is_nil(view) or Enum.any?(view.roster, &(&1.student.id == student.id)),
+      effectif: (results && results.effectif) || 0,
+      data: results && results.per_student[student.id],
+      conduct: view && view.conduct[enrollment.id],
+      discipline: view && view.discipline[enrollment.id],
+      group_subtotals?: (view && view.group_subtotals?) || false
+    )
+  end
 
   defp component_at(row, key, idx) do
     case row.components do
@@ -129,13 +112,6 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   defp period_cols(:trimester), do: 3
   defp period_cols(:annual), do: 4
   defp period_cols(_), do: 1
-
-  defp group_subtotals?(scope) do
-    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
-      {:ok, profile} -> profile.bulletin_group_subtotals?
-      _ -> false
-    end
-  end
 
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
@@ -173,7 +149,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
               />
             </form>
             <a
-              :if={@period}
+              :if={@period && @status != :not_published}
               id="bulletin-print"
               href={
                 ~p"/school/classes/#{@cg.id}/students/#{@enrollment.id}/bulletin/print?period=#{@period_param}"
@@ -210,8 +186,31 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
           </div>
         </dl>
 
+        <p :if={@status == :published} id="bulletin-published" class="badge badge-success gap-1">
+          <.icon name="hero-check-badge" class="size-4" />
+          {gettext("Publié le %{date}",
+            date: Calendar.strftime(ReportCards.published_on(@publication), "%d/%m/%Y")
+          )}
+        </p>
+
+        <div :if={@status == :not_published} id="bulletin-not-published">
+          <.empty_state
+            icon="hero-lock-closed"
+            title={gettext("Pas encore publiés")}
+            message={gettext("Les bulletins de cette période n'ont pas encore été publiés.")}
+          />
+        </div>
+
+        <div :if={@status != :not_published and not @in_view?} id="bulletin-absent">
+          <.empty_state
+            icon="hero-user-minus"
+            title={gettext("Absent des bulletins publiés")}
+            message={gettext("Absent des bulletins publiés de cette période.")}
+          />
+        </div>
+
         <.empty_state
-          :if={is_nil(@data)}
+          :if={@status != :not_published and @in_view? and is_nil(@data)}
           icon="hero-document-text"
           title={gettext("Aucune donnée")}
           message={no_data_message(@period_kind)}

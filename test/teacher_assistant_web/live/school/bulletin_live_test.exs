@@ -333,4 +333,93 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
 
     assert html =~ "Réussi"
   end
+
+  defp with_year(scope) do
+    %{scope | current_academic_year: TeacherAssistant.Organization.current_academic_year(scope)}
+  end
+
+  defp teacher_conn(scope, cg) do
+    %{teacher: teacher} =
+      TeacherAssistant.TeacherFixtures.school_teacher_fixture(scope, %{
+        class_group: cg,
+        subject: "SVT"
+      })
+
+    build_conn()
+    |> log_in_user(teacher)
+    |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
+  end
+
+  defp first_term(scope),
+    do: scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
+
+  describe "publication" do
+    test "a published trimester shows its publication date", %{
+      conn: conn,
+      cg: cg,
+      enr: enr,
+      scope: scope
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      {:ok, pub} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+
+      {:ok, view, _} =
+        live(
+          conn,
+          ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=trim:#{term.id}"
+        )
+
+      assert render(element(view, "#bulletin-published")) =~
+               Calendar.strftime(TeacherAssistant.ReportCards.published_on(pub), "%d/%m/%Y")
+    end
+
+    test "a teacher of the class reads published cards only", %{
+      cg: cg,
+      enr: enr,
+      scope: scope,
+      seq: seq
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      tconn = teacher_conn(scope, cg)
+      url = ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=trim:#{term.id}"
+
+      {:ok, view, _} = live(tconn, url)
+      assert has_element?(view, "#bulletin-not-published")
+      refute has_element?(view, "#bulletin-subjects")
+
+      {:ok, view, _} =
+        live(tconn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+
+      assert has_element?(view, "#bulletin-not-published")
+
+      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, view, _} = live(tconn, url)
+      assert has_element?(view, "#bulletin-subjects")
+      assert has_element?(view, "#bulletin-published")
+    end
+
+    test "a student enrolled after publication is absent from it", %{
+      conn: conn,
+      cg: cg,
+      scope: scope
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Zoé Late", sex: :f})
+
+      %{enrollment: late} =
+        Enum.find(Enrollment.list_roster(scope, cg), &(&1.student.full_name == "Zoé Late"))
+
+      {:ok, view, _} =
+        live(
+          conn,
+          ~p"/school/classes/#{cg.id}/students/#{late.id}/bulletin?period=trim:#{term.id}"
+        )
+
+      assert has_element?(view, "#bulletin-absent")
+    end
+  end
 end

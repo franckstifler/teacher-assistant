@@ -226,4 +226,61 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     assert render(element(view, "#results-distinctions")) =~ "Avertissement travail"
     assert render(element(view, "#distinction-avertissement_travail")) =~ "Bob"
   end
+
+  defp with_year(scope) do
+    %{scope | current_academic_year: TeacherAssistant.Organization.current_academic_year(scope)}
+  end
+
+  defp teacher_conn(scope, cg) do
+    %{teacher: teacher} =
+      TeacherAssistant.TeacherFixtures.school_teacher_fixture(scope, %{
+        class_group: cg,
+        subject: "SVT"
+      })
+
+    build_conn()
+    |> log_in_user(teacher)
+    |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
+  end
+
+  defp first_term(scope),
+    do: scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
+
+  describe "publication" do
+    test "a published trimester is marked as such", %{conn: conn, cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/results?period=trim:#{term.id}")
+      assert has_element?(view, "#results-published")
+      assert has_element?(view, "#results-table")
+    end
+
+    test "a teacher of the class sees published results only", %{cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      tconn = teacher_conn(scope, cg)
+      url = ~p"/school/classes/#{cg.id}/results?period=trim:#{term.id}"
+
+      {:ok, view, _} = live(tconn, url)
+      assert has_element?(view, "#results-not-published")
+      refute has_element?(view, "#results-table")
+
+      {:ok, _} = TeacherAssistant.ReportCards.publish(scope, cg, {:trimester, term})
+      {:ok, view, _} = live(tconn, url)
+      assert has_element?(view, "#results-table")
+    end
+
+    test "a member with no course in the class is sent home", %{cg: cg, scope: scope} do
+      other = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope)
+
+      oconn =
+        build_conn()
+        |> log_in_user(other.current_user)
+        |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
+
+      assert {:error, {:live_redirect, %{to: "/school"}}} =
+               live(oconn, ~p"/school/classes/#{cg.id}/results")
+    end
+  end
 end

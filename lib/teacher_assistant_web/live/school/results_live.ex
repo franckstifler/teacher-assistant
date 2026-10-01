@@ -1,15 +1,15 @@
 defmodule TeacherAssistantWeb.School.ResultsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.ReportCards
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Enrollment.class_manager?(scope, cg) do
+         access when access != :none <- ReportCards.access(scope, cg) do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
@@ -25,7 +25,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
        )
        |> select_period(nil)}
     else
-      false -> {:ok, push_navigate(socket, to: ~p"/school")}
+      :none -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
@@ -45,19 +45,21 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
       (year && param && Organization.resolve_period(socket.assigns.current_scope, year, param)) ||
         default_period(socket.assigns.sequences)
 
-    results =
-      period &&
-        Assessment.class_results_for_period(
-          socket.assigns.current_scope,
-          socket.assigns.cg,
-          period
-        )
+    {status, publication, view} =
+      case period && ReportCards.view_for(socket.assigns.current_scope, socket.assigns.cg, period) do
+        {:published, pub, view} -> {:published, pub, view}
+        {:draft, view} -> {:draft, nil, view}
+        _ -> {:not_published, nil, nil}
+      end
 
-    roster = Enrollment.list_roster(socket.assigns.current_scope, socket.assigns.cg)
+    results = view && view.results
+    roster = (view && view.roster) || []
 
     assign(socket,
       period: period,
       period_param: period && Organization.period_param(period),
+      status: if(period, do: status, else: :draft),
+      publication: publication,
       results: results,
       roster: roster,
       rows: ranked_rows(results, roster)
@@ -132,8 +134,23 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           message={gettext("Create an academic year and its calendar first.")}
         />
 
+        <p :if={@status == :published} id="results-published" class="badge badge-success gap-1">
+          <.icon name="hero-check-badge" class="size-4" />
+          {gettext("Publié le %{date}",
+            date: Calendar.strftime(ReportCards.published_on(@publication), "%d/%m/%Y")
+          )}
+        </p>
+
+        <div :if={@status == :not_published} id="results-not-published">
+          <.empty_state
+            icon="hero-lock-closed"
+            title={gettext("Pas encore publiés")}
+            message={gettext("Les bulletins de cette période n'ont pas encore été publiés.")}
+          />
+        </div>
+
         <.empty_state
-          :if={@period != nil and @results == nil}
+          :if={@period != nil and @status != :not_published and @results == nil}
           icon="hero-academic-cap"
           title={gettext("Aucun enseignant affecté")}
           message={gettext("Assign subjects to this class to compute bulletins.")}

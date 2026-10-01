@@ -1,44 +1,50 @@
 defmodule TeacherAssistantWeb.BulletinPrintController do
   use TeacherAssistantWeb, :controller
 
-  alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Organization
+  alias TeacherAssistant.ReportCards
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
-    with_class(conn, id, params, fn scope, cg, period, results ->
-      roster = Enrollment.list_roster(scope, cg)
-
-      case Enum.find(roster, &(&1.enrollment.id == eid)) do
-        %{} = entry -> render_bulletins(conn, scope, cg, period, results, [entry])
+    with_view(conn, id, params, fn scope, cg, period, status, pub, view ->
+      case Enum.find(view.roster, &(&1.enrollment.id == eid)) do
+        %{} = entry -> render_bulletins(conn, scope, cg, period, status, pub, view, [entry])
         nil -> redirect(conn, to: ~p"/school/classes/#{id}/results")
       end
     end)
   end
 
   def class(conn, %{"id" => id} = params) do
-    with_class(conn, id, params, fn scope, cg, period, results ->
-      entries =
-        scope
-        |> Enrollment.list_roster(cg)
-        |> Enum.sort_by(&String.downcase(&1.student.full_name))
-
-      render_bulletins(conn, scope, cg, period, results, entries)
+    with_view(conn, id, params, fn scope, cg, period, status, pub, view ->
+      entries = Enum.sort_by(view.roster, &String.downcase(&1.student.full_name))
+      render_bulletins(conn, scope, cg, period, status, pub, view, entries)
     end)
   end
 
-  # Resolves scope + admin + class + period, then hands off to `fun`.
-  defp with_class(conn, id, params, fun) do
+  # Resolves scope + class + period, then what the user may see (spec I2): a
+  # published snapshot, a live draft (class managers), or nothing yet.
+  defp with_view(conn, id, params, fun) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Enrollment.class_manager?(scope, cg),
          {:operating, true} <- {:operating, TeacherAssistant.Scope.school_verified?(scope)},
          year when not is_nil(year) <- scope.current_academic_year,
          period when not is_nil(period) <-
            Organization.resolve_period(scope, year, params["period"]) do
-      fun.(scope, cg, period, Assessment.class_results_for_period(scope, cg, period))
+      case ReportCards.view_for(scope, cg, period) do
+        {:published, pub, view} ->
+          fun.(scope, cg, period, :published, pub, view)
+
+        {:draft, view} ->
+          fun.(scope, cg, period, :draft, nil, view)
+
+        :not_published ->
+          conn
+          |> put_flash(:error, gettext("Pas encore publiés"))
+          |> redirect(to: ~p"/school/classes/#{cg.id}/results?period=#{params["period"]}")
+
+        :forbidden ->
+          redirect(conn, to: ~p"/school")
+      end
     else
       {:operating, false} ->
         conn
@@ -53,9 +59,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     end
   end
 
-  defp render_bulletins(conn, scope, cg, period, results, entries) do
-    conduct_by_enrollment = Attendance.class_conduct(scope, cg, period)
-    discipline_by_enrollment = Discipline.class_discipline(scope, cg, period)
+  defp render_bulletins(conn, scope, cg, period, status, pub, view, entries) do
+    results = view.results
 
     bundles =
       Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
@@ -63,12 +68,12 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           student: student,
           enrollment: enrollment,
           data: results && results.per_student[student.id],
-          conduct: conduct_by_enrollment[enrollment.id],
-          discipline: discipline_by_enrollment[enrollment.id]
+          conduct: view.conduct[enrollment.id],
+          discipline: view.discipline[enrollment.id]
         }
       end)
 
-    fm = Enrollment.form_master(scope, cg)
+    kind = Organization.period_kind(period)
 
     conn
     |> put_layout(false)
@@ -76,21 +81,16 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     |> render(:show,
       etablissement: scope.current_workspace.name,
       annee: scope.current_academic_year && scope.current_academic_year.name,
-      professeur_principal: fm && fm.email,
+      professeur_principal: view.form_master && view.form_master.email,
       cg: cg,
-      period_kind: Organization.period_kind(period),
+      period_kind: kind,
       period_heading: period_heading(period),
       effectif: (results && results.effectif) || 0,
       bundles: bundles,
-      group_subtotals?: group_subtotals?(scope)
+      group_subtotals?: view.group_subtotals?,
+      draft?: status == :draft and kind in [:trimester, :annual],
+      published_on: pub && Calendar.strftime(ReportCards.published_on(pub), "%d/%m/%Y")
     )
-  end
-
-  defp group_subtotals?(scope) do
-    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
-      {:ok, profile} -> profile.bulletin_group_subtotals?
-      _ -> false
-    end
   end
 
   defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"
