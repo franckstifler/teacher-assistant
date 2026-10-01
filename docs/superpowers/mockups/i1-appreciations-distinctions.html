@@ -1,0 +1,66 @@
+<!-- Excerpt of claude.ai/design project abc12b3e-a26c-41e5-a97c-f0a9be47fc8b,
+     file "Paramètres école.dc.html", screen "Paramètres · Appréciations" (spec I1). Reference only. -->
+<section data-screen-label="Paramètres · Appréciations" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:12px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:16px 18px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Appréciation selon la note (sur 20)</span>
+            <div style="display:flex;height:30px;border-radius:0.4rem;overflow:hidden;border:1px solid oklch(50% 0.035 164)">
+              <sc-for list="{{ men.segs }}" as="sg" hint-placeholder-count="8">
+                <div title="{{ sg.title }}" style="flex:{{ sg.flex }};background:{{ sg.bg }};display:grid;place-items:center;overflow:hidden;white-space:nowrap;font:600 0.62rem/1 'IBM Plex Mono',monospace;color:oklch(20% 0.03 164);border-right:1px solid oklch(33% 0.035 164)">{{ sg.short }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:grid;grid-template-columns:70px 16px 90px minmax(0,1fr) 34px;gap:8px;padding:4px 0;font:600 0.64rem 'IBM Plex Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:oklch(78% 0.02 155)"><span>De</span><span></span><span>À (exclu)</span><span>Appréciation</span><span></span></div>
+              <sc-for list="{{ men.rows }}" as="m" hint-placeholder-count="8">
+                <div style="display:grid;grid-template-columns:70px 16px 90px minmax(0,1fr) 34px;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid oklch(44% 0.035 164)">
+                  <span style="font:600 0.88rem 'IBM Plex Mono',monospace">{{ m.from }}</span>
+                  <i style="width:12px;height:12px;border-radius:3px;background:{{ m.color }}"></i>
+                  <input value="{{ m.to }}" onChange="{{ m.onTo }}" disabled="{{ m.last }}" inputMode="decimal" style="width:90px;height:34px;padding:0 10px;text-align:right;border-radius:0.4rem;font:0.88rem 'IBM Plex Mono',monospace;color:oklch(95% 0.012 150);background:oklch(35% 0.04 164);border:1px solid {{ m.border }};outline:none">
+                  <input value="{{ m.label }}" onChange="{{ m.onLabel }}" style="min-width:0;height:34px;padding:0 10px;border-radius:0.4rem;font:0.88rem system-ui,sans-serif;color:oklch(95% 0.012 150);background:oklch(35% 0.04 164);border:1px solid oklch(50% 0.035 164);outline:none">
+                  <button onClick="{{ m.onRemove }}" title="Supprimer" style="width:34px;height:34px;border-radius:0.4rem;cursor:pointer;border:1px solid oklch(50% 0.035 164);background:transparent;color:oklch(78% 0.02 155)">×</button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+              <button onClick="{{ men.add }}" style="height:36px;padding:0 14px;border-radius:0.4rem;cursor:pointer;font:650 0.8rem/1 system-ui,sans-serif;border:1px solid oklch(80% 0.13 162);background:transparent;color:oklch(80% 0.13 162)">+ Scinder la dernière tranche</button>
+              <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem">
+                <span style="color:oklch(82% 0.02 155)">Tester une note</span>
+                <input value="{{ men.test }}" onChange="{{ men.onTest }}" inputMode="decimal" style="width:80px;height:34px;padding:0 10px;text-align:right;border-radius:0.4rem;font:0.88rem 'IBM Plex Mono',monospace;color:oklch(95% 0.012 150);background:oklch(35% 0.04 164);border:1px solid oklch(50% 0.035 164);outline:none">
+                <span style="padding:5px 10px;border-radius:999px;font-weight:600;background:{{ men.resBg }};color:oklch(20% 0.03 164)">{{ men.res }}</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+            <div style="flex:1 1 360px;display:flex;flex-direction:column;gap:6px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:16px 18px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Distinctions et sanctions de travail (moyenne trimestrielle)</span>
+              <sc-for list="{{ men.dist }}" as="d" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid oklch(44% 0.035 164)">
+                  <span style="flex:1;font-size:0.9rem;font-weight:600;color:{{ d.color }}">{{ d.name }}</span>
+                  <span style="font:0.9rem 'IBM Plex Mono',monospace;color:oklch(80% 0.02 155)">{{ d.op }}</span>
+                  <input value="{{ d.val }}" onChange="{{ d.onChange }}" inputMode="decimal" style="width:74px;height:34px;padding:0 10px;text-align:right;border-radius:0.4rem;font:0.88rem 'IBM Plex Mono',monospace;color:oklch(95% 0.012 150);background:oklch(35% 0.04 164);border:1px solid oklch(50% 0.035 164);outline:none">
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ men.anglo }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:6px;background:oklch(38% 0.04 164);border:1px solid oklch(50% 0.035 164);border-radius:0.7rem;padding:16px 18px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:oklch(82% 0.08 162)">Grades anglophones · exemple</span>
+                <sc-for list="{{ men.grades }}" as="gr" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:36px 110px minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid oklch(44% 0.035 164);font-size:0.88rem"><b style="font-family:'IBM Plex Mono',monospace">{{ gr.g }}</b><span style="font-family:'IBM Plex Mono',monospace;color:oklch(82% 0.02 155)">{{ gr.r }}</span><span>{{ gr.l }}</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </section>
+<script type="text/x-reference">
+const K={card:'oklch(38% 0.04 164)',line:'oklch(50% 0.035 164)',ink:'oklch(95% 0.012 150)',mute:'oklch(78% 0.02 155)',pri:'oklch(80% 0.13 162)',amb:'oklch(83% 0.13 85)',err:'oklch(73% 0.13 30)',on:'oklch(26% 0.05 164)'};
+const MENTIONS0=[['5','Très insuffisant'],['8','Insuffisant'],['10','Médiocre'],['12','Passable'],['14','Assez bien'],['16','Bien'],['18','Très bien'],['20','Excellent']].map(([to,label])=>({to,label}));
+const DIST0=[['Félicitations','≥','16',K.pri],['Encouragements','≥','14',K.pri],["Tableau d'honneur",'≥','12',K.pri],['Avertissement travail','<','8',K.amb],['Blâme travail','<','6',K.err]].map(([name,op,val,color])=>({name,op,val,color}));
+const GRADES=[['A','16 – 20','Excellent'],['B','14 – 15,99','Very good'],['C','12 – 13,99','Good'],['D','10 – 11,99','Average'],['E','8 – 9,99','Weak'],['F','0 – 7,99','Fail']];
+mentions:[tg('anglo','Afficher aussi les grades anglophones (A–F)',false),tg('condDist','Distinctions soumises à une conduite ≥ 12',true)],
+mentions:["Aucun barème d'appréciation aujourd'hui : les bulletins n'affichent pas d'appréciation automatique."],
+// screen logic
+const fresh=()=>({vals:initVals(),periods:PERIODS0.map(p=>({...p})),mentions:MENTIONS0.map(m=>({...m})),dist:DIST0.map(d=>({...d})),types:TYPES0.map(x=>({...x})),coef:{},groups:{},assign:initAssign(),seqs:SEQS0.map(x=>({...x})),caps:{},fees:FEES0.map(x=>({...x}))});
+      save:()=>{this.saved={vals:s.vals,periods:s.periods,mentions:s.mentions,dist:s.dist,types:s.types,coef:s.coef,groups:s.groups,assign:s.assign,seqs:s.seqs,caps:s.caps,fees:s.fees};this.setState({dirty:false});},
+    const mrows=ms.map((m,i)=>{const last=i===n-1,to=last?20:num(m.to),hue=Math.round(30+(162-30)*(n>1?i/(n-1):1)),bad=!last&&(to===null||to<=from||to>=20);const r={from:fr(from,from%1?2:0),fromN:from,toN:to,last,label:m.label,to:last?'20':m.to,color:`oklch(70% 0.12 ${hue})`,border:bad?K.err:K.line,
+    const tn=num(s.test),hit=tn===null?null:mrows.find(r=>tn>=r.fromN&&(r.last?tn<=20:tn<r.toN));
+    out.men={rows:mrows,segs:mrows.map(r=>{const w=Math.max(0,(r.last?20:r.toN||r.fromN)-r.fromN);return{flex:String(w||0.001),bg:r.color,short:w>=2?r.label:'',title:`${r.from} – ${r.last?'20':r.to} · ${r.label}`};}),
+</script>

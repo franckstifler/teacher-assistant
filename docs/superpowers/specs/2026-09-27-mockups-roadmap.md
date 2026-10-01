@@ -22,7 +22,7 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 | F | Censeur follow-up (N05 done) | N05, then N06 (P2) | D1, E | S (+M) |
 | G | School life, day view | V02, V01, V03, then V04, V06 (P2) | E | S×3 |
 | H | Pedagogy screens — **on hold** (2026-09-30: needs progression plans, which no screen creates since the teacher-personal pause) | P01, P02 (P2) | E | M |
-| I | Report card cycle | N09, N13, N12, N11, N10 | D2a, D2b-1, D2b-2, D3 | S…L |
+| I | Report card cycle, split I1 N09 → I2 N13 → I3 N11 → I4 N10 → I5 N12 (see §I) | N09, N13, N11, N10, N12 | D2a, D2b-1, D2b-2, D3 | S…L |
 | J | Timetable and staff | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
 | K | Platform | R04, R05, S04, S06, R03 | E | S…L |
 | — | Marketing site | `Landing` mockup (not in the gap list) | — | M |
@@ -479,3 +479,83 @@ come with notifications, N06/R03, as in F); V04 uses a fixed threshold, no setti
 
 Out of scope: reminders to teachers (N06/R03), SMS to parents, holidays (S02), a school-wide sanctions
 page, conduct mark proposal (V05), configurable V04 threshold.
+
+## I — Report card cycle (split)
+
+Decided 2026-10-01. One spec, plan and branch per sub-increment, in this order:
+
+| # | Content | Gaps | Size |
+|---|---|---|---|
+| I1 | Appreciation bands and distinction / work-warning thresholds in settings; shown on the bulletin | N09 | S–M |
+| I2 | Publish bulletins per class and period; publishing freezes them; Censeur "Bulletins" screen; teacher read-only | N13 | M |
+| I3 | Class council per class × term: decision and appreciation per student, printable minutes, carried to the bulletin | N11 | L |
+| I4 | Passage rules in settings; annual decisions (admis, redouble, rachat, exclu) proposed at the end-of-year council | N10 | M |
+| I5 | Bulletin template (francophone / anglophone / bilingual), elements shown, full official header, anglophone grades | N12 | M |
+
+The template comes last so it is designed once, with council decisions and appreciations available.
+
+## I1 — Appreciations and distinctions (spec)
+
+Status: spec approved 2026-10-01, not implemented.
+
+Mockup: `Paramètres école` → "Appréciations & distinctions" (excerpt in
+`docs/superpowers/mockups/i1-appreciations-distinctions.html`). Gap: **N09**.
+
+User decisions (2026-10-01): bands are **fully editable** as in the mockup (free-text labels, split/remove
+bands) — this overrides `docs/domain/04` §9, which marked the 10/12/14/16/18 bands as safe to hard-code;
+honour distinctions have **two gates**, both school toggles. Design choice: the bands live on
+`SchoolProfile` as an embedded list, beside the D2b grading rules.
+
+### Data
+
+1. `SchoolProfile.appreciation_bands`: embedded array of `%{from, label}` (`from` decimal). Rules: at least
+   one band; the first `from` is 0; `from` strictly increasing, all in 0..20; labels non-empty (trimmed).
+   A band covers `from` ≤ average < next `from`; the last band includes 20. Saving replaces the whole list
+   atomically.
+2. No saved list (nil or empty) = the default bands, labels through gettext (FR/EN): 0 Très insuffisant,
+   5 Insuffisant, 8 Médiocre, 10 Passable, 12 Assez bien, 14 Bien, 16 Très bien, 18 Excellent. Saved labels
+   are shown as typed, in every locale.
+3. `SchoolProfile` thresholds (decimal, nullable = that distinction or warning is off), defaults:
+   `felicitations_min` 16, `encouragements_min` 14, `tableau_honneur_min` 12, `avertissement_travail_below`
+   8, `blame_travail_below` 6. Validation among the set ones: Félicitations ≥ Encouragements ≥ Tableau
+   d'honneur; Blâme travail < Avertissement travail; Avertissement travail ≤ Tableau d'honneur.
+4. Toggles: `distinctions_require_all_passed?` (default true — every graded subject ≥ 10, today's rule) and
+   `distinctions_require_conduct?` (default false — note de conduite of the period ≥ 12; a student with no
+   conduct mark for the period is not blocked).
+5. Saved through the profile's update action (admin axis), with a domain function per form like D2b's
+   `update_*`; migrations with `mix ash.codegen --dev`.
+
+### Computation
+
+6. `GradingRules` carries the bands and the distinction rules; `Assessment.grading_rules/1` fills them from
+   the profile, so `Bulletins` and `Marks` stay pure.
+7. `Marks.mention/1` (fixed atoms) is replaced by an appreciation lookup on the rules' bands returning the
+   label; nil average → no appreciation. The private `mention_label/1` and `mention_badge` labels go.
+8. `Bulletins.distinctions` uses the configured thresholds and gates. Honour rolls: the highest applicable
+   one wins (Félicitations > Encouragements > Tableau d'honneur), gates applied. Work warnings, no gate:
+   average < `blame_travail_below` → Blâme travail, else average < `avertissement_travail_below` →
+   Avertissement travail. Each student gets one `distinction` (or nil); the class summary lists the five
+   groups. Applies to the period shown (séquence, trimestre, année), as today. The conduct gate needs the
+   period's note de conduite per student, loaded once per class.
+
+### Screens
+
+9. `/school/settings/appreciations` ("Appréciations & distinctions"), `EvaluationsLive` pattern, gate
+   `Accounts.can_edit_profile?` (Proviseur, Censeur); others go back to `/school/settings`.
+   - Band editor: one row per band — "De" (read-only, previous bound), "À (exclu)" input (the last row reads
+     20, not editable), label input, × to remove (not on the only band); "+ Scinder la dernière tranche"
+     splits the last band in two at its midpoint; colored bar of the bands; "Tester une note" input shows
+     the matching label; "Enregistrer" saves the list, errors shown inline; "Rétablir le barème par défaut".
+   - Distinctions card "Distinctions et sanctions de travail": five rows name · ≥ or < · value (empty =
+     off), the two toggles; saved with flash "Réglage enregistré." / errors inline.
+   - Linked from the settings page (beside coefficients and evaluations) and in the Proviseur's and
+     Censeur's "Paramètres" menu sections.
+10. Bulletin (`BulletinLive` and print): an "Appréciation" column per subject row; under the moyenne
+    générale, the overall appreciation and the distinction or work warning when there is one.
+11. Class results: the distinctions block lists the five groups (warnings in amber/red); the per-student
+    appreciation uses the school's bands.
+12. Teacher marks summary: appreciation distribution by the school's bands, in band order.
+13. All strings through gettext (FR and EN).
+
+Out of scope: anglophone A–F grades (I5), freezing bulletins (I2), council decisions and appreciations (I3),
+per-level or per-série scales.
