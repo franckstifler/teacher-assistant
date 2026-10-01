@@ -130,6 +130,7 @@ defmodule TeacherAssistantWeb.Spaces do
           dashboard(),
           sequences(facts[:late_teachers]),
           bulletins(),
+          councils(),
           classes(),
           members(),
           correction_review(facts.pending_corrections)
@@ -154,6 +155,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Suivi pédagogique"), [
           sequences(facts[:late_teachers]),
           bulletins(),
+          councils(),
           classes(),
           members(),
           correction_review(facts.pending_corrections)
@@ -341,6 +343,9 @@ defmodule TeacherAssistantWeb.Spaces do
         "hero-academic-cap",
         ~p"/school/settings/appreciations"
       )
+
+  defp councils,
+    do: item("councils", gettext("Conseils de classe"), "hero-user-group", ~p"/school/councils")
 
   defp bulletins,
     do: item("bulletins", gettext("Bulletins"), "hero-document-text", ~p"/school/bulletins")

@@ -138,6 +138,8 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/periods", School.PeriodsLive, :index
       live "/school/sequences", School.SequenceTrackingLive, :index
       live "/school/bulletins", School.BulletinsLive, :index
+      live "/school/councils", School.CouncilsLive, :index
+      live "/school/councils/:class_id", School.CouncilLive, :show
       live "/school/corrections", School.CorrectionsLive, :index
       live "/school/corrections/new", School.CorrectionsLive, :new
       live "/school/corrections/review", School.CorrectionReviewLive, :index
