@@ -224,7 +224,9 @@ defmodule TeacherAssistant.ReportCardsTest do
 
   describe "template (spec I5)" do
     test "a published card keeps the template it was issued with", %{scope: scope, cg: cg} do
-      term = scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
+      term =
+        scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
+
       {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       assert pub.snapshot_version == 3
       assert %{language: :fr, elements: elements} = pub.snapshot.template
@@ -236,11 +238,15 @@ defmodule TeacherAssistant.ReportCardsTest do
           "elements" => ["qr_code"]
         })
 
-      {:published, pub, view} = TeacherAssistant.ReportCards.class_view(scope, cg, {:trimester, term})
+      {:published, pub, view} =
+        TeacherAssistant.ReportCards.class_view(scope, cg, {:trimester, term})
+
       assert %{language: :fr} = TeacherAssistant.ReportCards.template_of(scope, cg, view)
       assert pub.snapshot.template.elements == elements
 
-      [_, term2 | _] = TeacherAssistant.Organization.list_terms(scope, scope.current_academic_year)
+      [_, term2 | _] =
+        TeacherAssistant.Organization.list_terms(scope, scope.current_academic_year)
+
       {:draft, draft} = TeacherAssistant.ReportCards.class_view(scope, cg, {:trimester, term2})
       assert %{language: :bilingual, elements: [:qr_code]} = draft.template
     end

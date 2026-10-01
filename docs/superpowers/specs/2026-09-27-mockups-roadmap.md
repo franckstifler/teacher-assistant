@@ -772,6 +772,8 @@ per-level thresholds.
 
 ## I5 — Report card template (spec)
 
+Status: implemented 2026-10-01 (branch `i5-bulletin-template`, plan `docs/superpowers/plans/2026-10-01-i5-bulletin-template.md`); no visual check done.
+
 Mockup: `Paramètres école` → "Modèle de bulletin" (fields `modele`, `aff`) and the "grades anglophones (A–F)"
 toggle under "Appréciations". Gap: **N12**. Builds on I1 (bands, distinctions), I2 (snapshots), I3 and I4
 (council outcomes).

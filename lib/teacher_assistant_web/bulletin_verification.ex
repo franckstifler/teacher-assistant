@@ -9,7 +9,12 @@ defmodule TeacherAssistantWeb.BulletinVerification do
   @salt "bulletin-verify"
 
   def token(pub, student_id),
-    do: Phoenix.Token.sign(TeacherAssistantWeb.Endpoint, @salt, {pub.workspace_id, pub.id, student_id})
+    do:
+      Phoenix.Token.sign(
+        TeacherAssistantWeb.Endpoint,
+        @salt,
+        {pub.workspace_id, pub.id, student_id}
+      )
 
   def verify(token) when is_binary(token) do
     case Phoenix.Token.verify(TeacherAssistantWeb.Endpoint, @salt, token, max_age: :infinity) do

@@ -8,7 +8,9 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     %{scope: scope}
   end
 
-  test "defaults: follow the class, all elements but the QR, the common grade scale", %{scope: scope} do
+  test "defaults: follow the class, all elements but the QR, the common grade scale", %{
+    scope: scope
+  } do
     s = Assessment.bulletin_settings(scope)
     assert s.language == :by_class
     refute :qr_code in s.elements
@@ -30,14 +32,20 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     assert s.elements == [:rank, :qr_code]
 
     assert {:ok, _} =
-             Assessment.update_bulletin_settings(scope, %{"language" => "by_class", "elements" => [""]})
+             Assessment.update_bulletin_settings(scope, %{
+               "language" => "by_class",
+               "elements" => [""]
+             })
 
     assert Assessment.bulletin_settings(scope).elements == []
   end
 
   test "unknown language or element is refused and nothing is written", %{scope: scope} do
     assert {:error, :invalid_setting} =
-             Assessment.update_bulletin_settings(scope, %{"language" => "klingon", "elements" => []})
+             Assessment.update_bulletin_settings(scope, %{
+               "language" => "klingon",
+               "elements" => []
+             })
 
     assert {:error, :invalid_setting} =
              Assessment.update_bulletin_settings(scope, %{
@@ -48,7 +56,9 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     assert Assessment.bulletin_settings(scope).language == :by_class
   end
 
-  test "saves a grade scale; bounds accept a comma; reset goes back to the default", %{scope: scope} do
+  test "saves a grade scale; bounds accept a comma; reset goes back to the default", %{
+    scope: scope
+  } do
     rows = [
       %{from: "0", letter: "F", remark: "Fail"},
       %{from: "9,5", letter: "P", remark: "Pass"},
@@ -58,6 +68,7 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     assert {:ok, _} = Assessment.update_grade_scale(scope, rows)
     s = Assessment.bulletin_settings(scope)
     assert s.custom_scale?
+
     assert Enum.map(s.grade_scale, &{Decimal.to_string(&1.from), &1.letter}) ==
              [{"0", "F"}, {"9.5", "P"}, {"15", "A"}]
 
@@ -86,6 +97,9 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     teacher = TeacherFixtures.member_scope_fixture(scope)
 
     assert {:error, %Ash.Error.Forbidden{}} =
-             Assessment.update_bulletin_settings(teacher, %{"language" => "bilingual", "elements" => []})
+             Assessment.update_bulletin_settings(teacher, %{
+               "language" => "bilingual",
+               "elements" => []
+             })
   end
 end

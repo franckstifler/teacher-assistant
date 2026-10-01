@@ -424,9 +424,17 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
   describe "template (spec I5)" do
     defp print(conn, cg, seq),
-      do: conn |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}") |> html_response(200)
+      do:
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
+        |> html_response(200)
 
-    test "a francophone class prints in French with the official header", %{conn: conn, cg: cg, seq: seq, scope: scope} do
+    test "a francophone class prints in French with the official header", %{
+      conn: conn,
+      cg: cg,
+      seq: seq,
+      scope: scope
+    } do
       {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
 
       {:ok, _} =
@@ -447,15 +455,25 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       refute html =~ "Subject"
     end
 
-    test "an anglophone class prints in English with grades", %{conn: conn, scope: scope, seq: seq} do
+    test "an anglophone class prints in English with grades", %{
+      conn: conn,
+      scope: scope,
+      seq: seq
+    } do
       {:ok, en} =
-        TeacherAssistant.Enrollment.create_class_group(scope, scope.current_academic_year || TeacherAssistant.Organization.current_academic_year(scope), %{
-          label: "Form 1 A",
-          level: "Form 1",
-          subsystem: :anglophone
-        })
+        TeacherAssistant.Enrollment.create_class_group(
+          scope,
+          scope.current_academic_year ||
+            TeacherAssistant.Organization.current_academic_year(scope),
+          %{
+            label: "Form 1 A",
+            level: "Form 1",
+            subsystem: :anglophone
+          }
+        )
 
-      {:ok, _} = TeacherAssistant.Enrollment.add_student(scope, en, %{full_name: "Ngum Che", sex: :f})
+      {:ok, _} =
+        TeacherAssistant.Enrollment.add_student(scope, en, %{full_name: "Ngum Che", sex: :f})
 
       {:ok, tc} =
         TeacherAssistant.Curriculum.assign_teacher(scope, en, scope.current_user, %{
@@ -471,7 +489,10 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
         })
 
       [%{student: s}] = TeacherAssistant.Enrollment.list_roster(scope, en)
-      TeacherAssistant.Assessment.upsert_marks(scope, a, [%{student_id: s.id, score: Decimal.new(15)}])
+
+      TeacherAssistant.Assessment.upsert_marks(scope, a, [
+        %{student_id: s.id, score: Decimal.new(15)}
+      ])
 
       html = print(conn, en, seq)
       assert html =~ ~s(<html lang="en">)
@@ -483,11 +504,17 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       refute html =~ "Matière"
     end
 
-    test "bilingual: both labels, an identical word printed once", %{conn: conn, cg: cg, seq: seq, scope: scope} do
+    test "bilingual: both labels, an identical word printed once", %{
+      conn: conn,
+      cg: cg,
+      seq: seq,
+      scope: scope
+    } do
       {:ok, _} =
         TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
           "language" => "bilingual",
-          "elements" => Enum.map(TeacherAssistant.Academics.BulletinElement.defaults(), &Atom.to_string/1)
+          "elements" =>
+            Enum.map(TeacherAssistant.Academics.BulletinElement.defaults(), &Atom.to_string/1)
         })
 
       html = print(conn, cg, seq)
@@ -497,9 +524,17 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       refute html =~ "Coefficient / Coefficient"
     end
 
-    test "hidden elements disappear and rows stay balanced", %{conn: conn, cg: cg, seq: seq, scope: scope} do
+    test "hidden elements disappear and rows stay balanced", %{
+      conn: conn,
+      cg: cg,
+      seq: seq,
+      scope: scope
+    } do
       {:ok, _} =
-        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{"language" => "by_class", "elements" => [""]})
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => [""]
+        })
 
       html = print(conn, cg, seq)
       refute html =~ "Rang"
@@ -528,7 +563,10 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
 
       {:ok, _} =
-        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{"language" => "bilingual", "elements" => [""]})
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+          "language" => "bilingual",
+          "elements" => [""]
+        })
 
       html =
         conn
@@ -543,8 +581,17 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       scope = with_year(scope)
       term = first_term(scope)
       url = ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}"
-      elements = ["qr_code" | Enum.map(TeacherAssistant.Academics.BulletinElement.defaults(), &Atom.to_string/1)]
-      {:ok, _} = TeacherAssistant.Assessment.update_bulletin_settings(scope, %{"language" => "by_class", "elements" => elements})
+
+      elements = [
+        "qr_code"
+        | Enum.map(TeacherAssistant.Academics.BulletinElement.defaults(), &Atom.to_string/1)
+      ]
+
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => elements
+        })
 
       refute conn |> get(url) |> html_response(200) =~ "<svg"
       {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)

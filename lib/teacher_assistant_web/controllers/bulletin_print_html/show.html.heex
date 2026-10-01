@@ -211,7 +211,9 @@
             }> / {@effectif}</span>
           </span>
           <span :if={show?(@template, :class_average) and @class_average}>
-            &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Moyenne de la classe") end)} : {fmt(@class_average)}
+            &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Moyenne de la classe") end)} : {fmt(
+              @class_average
+            )}
           </span>
           <%= if @template.grading == :grade do %>
             <% g = grade(@template, b.data.moyenne_generale) %>
@@ -249,10 +251,12 @@
 
       <p :if={b.discipline && show?(@template, :conduct)} class="totals">
         <strong>{tr(@lang, fn -> gettext("Discipline") end)}</strong>
-        &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Consignes") end)} : {b.discipline.consignes_count}
-        &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Note de conduite") end)} : {fmt(
-          b.discipline.note_de_conduite
-        )}/20 &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Sanctions") end)} : {tr(@lang, fn ->
+        &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Consignes") end)} : {b.discipline.consignes_count} &nbsp;·&nbsp; {tr(
+          @lang,
+          fn -> gettext("Note de conduite") end
+        )} : {fmt(b.discipline.note_de_conduite)}/20 &nbsp;·&nbsp; {tr(@lang, fn ->
+          gettext("Sanctions")
+        end)} : {tr(@lang, fn ->
           sanctions_line(b.discipline.sanctions)
         end)}
       </p>
@@ -268,7 +272,9 @@
       <div class="visa">
         <div class="slot">
           <div :if={b.outcome && Map.get(b.outcome, :passage)} class="decision">
-            {tr(@lang, fn -> TeacherAssistant.Academics.PassageDecision.label(b.outcome.passage) end)}
+            {tr(@lang, fn ->
+              TeacherAssistant.Academics.PassageDecision.label(b.outcome.passage)
+            end)}
           </div>
           <div class="line">{tr(@lang, fn -> gettext("Décision") end)}</div>
         </div>

@@ -38,7 +38,8 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
   end
 
   test "a class without a sub-system is francophone" do
-    assert %{language: :fr} = BulletinTemplate.resolve(profile(), "L", %ClassGroup{subsystem: nil})
+    assert %{language: :fr} =
+             BulletinTemplate.resolve(profile(), "L", %ClassGroup{subsystem: nil})
   end
 
   test "elements: nil is the defaults, [] stays empty" do

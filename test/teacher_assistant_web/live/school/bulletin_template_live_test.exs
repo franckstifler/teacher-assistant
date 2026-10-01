@@ -68,6 +68,7 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLiveTest do
       |> log_in_user(other.current_user)
       |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
 
-    assert {:error, {:live_redirect, %{to: "/school/settings"}}} = live(conn, ~p"/school/settings/bulletin")
+    assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
+             live(conn, ~p"/school/settings/bulletin")
   end
 end

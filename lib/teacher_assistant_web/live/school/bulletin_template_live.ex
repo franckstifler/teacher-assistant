@@ -7,7 +7,13 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.{Accounts, Assessment}
-  alias TeacherAssistant.Academics.{BulletinElement, BulletinLanguage, BulletinTemplate, ClassGroup}
+
+  alias TeacherAssistant.Academics.{
+    BulletinElement,
+    BulletinLanguage,
+    BulletinTemplate,
+    ClassGroup
+  }
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -15,7 +21,8 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
     with %{} <- scope.current_workspace,
          {:ok, profile} <- Accounts.fetch_school_profile(scope),
          true <- Accounts.can_edit_profile?(scope, profile) do
-      header = BulletinTemplate.resolve(profile, scope.current_workspace.name, %ClassGroup{}).header
+      header =
+        BulletinTemplate.resolve(profile, scope.current_workspace.name, %ClassGroup{}).header
 
       {:ok,
        socket
@@ -53,7 +60,9 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
     rows =
       grades
       |> Enum.sort_by(fn {i, _} -> String.to_integer(i) end)
-      |> Enum.map(fn {_, r} -> %{from: r["from"] || "", letter: r["letter"], remark: r["remark"]} end)
+      |> Enum.map(fn {_, r} ->
+        %{from: r["from"] || "", letter: r["letter"], remark: r["remark"]}
+      end)
 
     socket = assign(socket, rows: rows)
 
@@ -83,7 +92,8 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
         {:noreply, Authz.put_not_allowed(socket)}
 
       {:error, :invalid_number} ->
-        {:noreply, assign(socket, [{error_key, gettext("Utilisez des nombres, par exemple 9,5.")}])}
+        {:noreply,
+         assign(socket, [{error_key, gettext("Utilisez des nombres, par exemple 9,5.")}])}
 
       {:error, %Ash.Error.Invalid{errors: errors}} ->
         message = Enum.map_join(errors, " ", &(Map.get(&1, :message) || Exception.message(&1)))
@@ -146,7 +156,9 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
               </label>
             </div>
           </fieldset>
-          <p :if={@settings_error} id="settings-error" class="text-sm text-error">{@settings_error}</p>
+          <p :if={@settings_error} id="settings-error" class="text-sm text-error">
+            {@settings_error}
+          </p>
           <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
         </.form>
 
@@ -166,7 +178,12 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
             :for={{row, i} <- Enum.with_index(@rows)}
             class="grid grid-cols-[90px_70px_minmax(0,1fr)_34px] items-center gap-2"
           >
-            <input name={"grades[#{i}][from]"} value={row.from} inputmode="decimal" class="input input-sm ta-num text-right" />
+            <input
+              name={"grades[#{i}][from]"}
+              value={row.from}
+              inputmode="decimal"
+              class="input input-sm ta-num text-right"
+            />
             <input name={"grades[#{i}][letter]"} value={row.letter} class="input input-sm" />
             <input name={"grades[#{i}][remark]"} value={row.remark} class="input input-sm w-full" />
             <button
@@ -199,7 +216,10 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
           </div>
         </.form>
 
-        <div id="header-preview" class="rounded-box border border-base-300 bg-base-100 p-4 text-center text-sm">
+        <div
+          id="header-preview"
+          class="rounded-box border border-base-300 bg-base-100 p-4 text-center text-sm"
+        >
           <h2 class="ta-eyebrow mb-2">{gettext("En-tête officiel")}</h2>
           <div :for={line <- BulletinTemplate.official_lines(@header)}>{line}</div>
           <div class="mt-2 font-semibold">

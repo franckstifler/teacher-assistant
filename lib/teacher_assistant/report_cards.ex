@@ -172,7 +172,8 @@ defmodule TeacherAssistant.ReportCards do
          period_kind: pub.period_kind,
          term_position: pub.term && pub.term.position,
          published_on: published_on(pub),
-         withdrawn_on: pub.withdrawn_at && pub.withdrawn_at |> DateTime.add(3600) |> DateTime.to_date()
+         withdrawn_on:
+           pub.withdrawn_at && pub.withdrawn_at |> DateTime.add(3600) |> DateTime.to_date()
        }}
     else
       _ -> :invalid

@@ -26,11 +26,13 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
   defp header_langs(:bilingual), do: [:fr, :en]
   defp header_langs(lang), do: [lang]
 
-  defp official_lines(lang, header), do: tr_list(lang, fn -> BulletinTemplate.official_lines(header) end)
+  defp official_lines(lang, header),
+    do: tr_list(lang, fn -> BulletinTemplate.official_lines(header) end)
 
   # The school block is one column: a bilingual card uses French for its few words.
   defp school_lines(lang, header),
-    do: tr_list(if(lang == :en, do: :en, else: :fr), fn -> BulletinTemplate.school_lines(header) end)
+    do:
+      tr_list(if(lang == :en, do: :en, else: :fr), fn -> BulletinTemplate.school_lines(header) end)
 
   defp tr_list(lang, fun) when lang in [:fr, :en],
     do: Gettext.with_locale(@backend, Atom.to_string(lang), fun)
