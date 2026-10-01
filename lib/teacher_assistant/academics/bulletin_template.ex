@@ -32,4 +32,109 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
 
   def grade_scale(bands),
     do: Enum.map(bands, &%{from: &1.from, letter: &1.letter, remark: &1.remark})
+
+  @doc "The template for `class_group`'s printed cards under `profile`."
+  def resolve(profile, school_name, class_group) do
+    anglophone? = class_group.subsystem == :anglophone
+
+    %{
+      language:
+        cond do
+          profile.bulletin_language == :bilingual -> :bilingual
+          anglophone? -> :en
+          true -> :fr
+        end,
+      grading: if(anglophone?, do: :grade, else: :appreciation),
+      elements: elements(profile.bulletin_elements),
+      grade_scale: grade_scale(profile.grade_scale),
+      header: %{
+        name: school_name,
+        address: profile.address,
+        town: profile.town,
+        phone: profile.phone,
+        motto: profile.motto,
+        registration_number: profile.registration_number,
+        region: profile.region,
+        department: profile.department,
+        logo?: is_binary(profile.logo_path)
+      }
+    }
+  end
+
+  def show?(%{elements: elements}, element), do: element in elements
+
+  @doc "`%{letter, remark}` for `mark`, or nil when there is no mark."
+  def grade(_scale, nil), do: nil
+
+  def grade(scale, %Decimal{} = mark) do
+    scale
+    |> Enum.filter(&(Decimal.compare(mark, &1.from) != :lt))
+    |> List.last()
+    |> case do
+      nil -> nil
+      band -> %{letter: band.letter, remark: band.remark}
+    end
+  end
+
+  @doc "The national lines of the header, in the current locale."
+  def official_lines(header) do
+    [
+      gettext("République du Cameroun"),
+      gettext("Paix – Travail – Patrie"),
+      gettext("Ministère des Enseignements secondaires"),
+      header.region && regional_delegation(header.region),
+      present(header.department) &&
+        gettext("Délégation départementale des Enseignements secondaires : %{department}",
+          department: header.department
+        )
+    ]
+    |> Enum.filter(& &1)
+  end
+
+  @doc "The school's own lines (name, address, phone, authorisation, motto), in the current locale."
+  def school_lines(header) do
+    address = [header.address, header.town] |> Enum.filter(&present/1) |> Enum.join(" · ")
+
+    [
+      header.name,
+      present(address) && address,
+      present(header.phone) && gettext("Tél. %{phone}", phone: header.phone),
+      present(header.registration_number) &&
+        gettext("Autorisation n° %{number}", number: header.registration_number),
+      present(header.motto) && header.motto
+    ]
+    |> Enum.filter(& &1)
+  end
+
+  def regional_delegation(:adamawa),
+    do: gettext("Délégation régionale des Enseignements secondaires de l'Adamaoua")
+
+  def regional_delegation(:centre),
+    do: gettext("Délégation régionale des Enseignements secondaires du Centre")
+
+  def regional_delegation(:east),
+    do: gettext("Délégation régionale des Enseignements secondaires de l'Est")
+
+  def regional_delegation(:far_north),
+    do: gettext("Délégation régionale des Enseignements secondaires de l'Extrême-Nord")
+
+  def regional_delegation(:littoral),
+    do: gettext("Délégation régionale des Enseignements secondaires du Littoral")
+
+  def regional_delegation(:north),
+    do: gettext("Délégation régionale des Enseignements secondaires du Nord")
+
+  def regional_delegation(:northwest),
+    do: gettext("Délégation régionale des Enseignements secondaires du Nord-Ouest")
+
+  def regional_delegation(:south),
+    do: gettext("Délégation régionale des Enseignements secondaires du Sud")
+
+  def regional_delegation(:southwest),
+    do: gettext("Délégation régionale des Enseignements secondaires du Sud-Ouest")
+
+  def regional_delegation(:west),
+    do: gettext("Délégation régionale des Enseignements secondaires de l'Ouest")
+
+  defp present(text), do: is_binary(text) and String.trim(text) != ""
 end
