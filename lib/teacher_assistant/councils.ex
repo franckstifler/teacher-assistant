@@ -121,8 +121,8 @@ defmodule TeacherAssistant.Councils do
   Each graded student's council outcome: the council's distinction choice (`:none` → nil)
   or the I1 proposal, the conduct warning and the appreciation. With `passage`
   (`%{rules: %PassageRules{}, students: %{student_id => inputs}}`, annual council), also
-  the passage decision — the council's, or the engine's proposal — and the proposal's
-  reason when it stands. Decisions for students no longer in the results are ignored.
+  the passage decision — the council's, or the engine's proposal — with the proposal's
+  reason when it stands, and always the engine's `proposal` and `proposal_reason`. Decisions for students no longer in the results are ignored.
   """
   def outcomes(_council, nil, _passage), do: %{}
 
@@ -184,22 +184,18 @@ defmodule TeacherAssistant.Councils do
   defp add_passage(outcome, _decision, _data, _inputs, nil), do: outcome
 
   defp add_passage(outcome, decision, data, inputs, %{rules: %PassageRules{} = rules}) do
-    proposal =
-      PassageRules.propose(
-        Map.merge(inputs || %{}, %{average: data.moyenne_generale}),
-        rules
-      )
+    {proposal, reason} =
+      PassageRules.propose(Map.merge(inputs || %{}, %{average: data.moyenne_generale}), rules) ||
+        {nil, nil}
 
-    case {decision && decision.passage_decision, proposal} do
-      {nil, {proposed, reason}} ->
-        Map.merge(outcome, %{passage: proposed, passage_reason: reason})
+    chosen = decision && decision.passage_decision
 
-      {nil, nil} ->
-        Map.merge(outcome, %{passage: nil, passage_reason: nil})
-
-      {chosen, _} ->
-        Map.merge(outcome, %{passage: chosen, passage_reason: nil})
-    end
+    Map.merge(outcome, %{
+      passage: chosen || proposal,
+      passage_reason: if(chosen, do: nil, else: reason),
+      proposal: proposal,
+      proposal_reason: reason
+    })
   end
 
   defp passage_students(nil), do: %{}

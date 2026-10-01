@@ -146,6 +146,10 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
       assert [d] =
                Councils.council(ctx.scope, ctx.cg, {:annual, ctx.scope.current_academic_year}).decisions
 
+      # the engine's proposal stays visible next to the council's choice
+      assert has_element?(view, "#passage-proposal-#{ctx.tch.id}", "Redouble")
+      refute has_element?(view, "#passage-proposal-#{ctx.tch.id}", "Admis par rachat")
+
       assert d.passage_decision == :admis_rachat
     end
 

@@ -206,6 +206,7 @@ defmodule TeacherAssistant.CouncilsTest do
         })
 
       assert annual_outcomes(ctx)[ctx.bob.id].passage == :admis_rachat
+      assert annual_outcomes(ctx)[ctx.bob.id].proposal == :redouble
 
       assert {:error, :invalid_choice} =
                Councils.set_decision(ctx.scope, ctx.cg, {:annual, ctx.year}, ctx.bob.id, %{

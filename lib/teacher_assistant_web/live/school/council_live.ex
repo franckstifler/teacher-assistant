@@ -161,16 +161,16 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
       Enum.map(PassageDecision.values(), &{PassageDecision.label(&1), &1})
   end
 
-  # The engine's proposal (and its reason) when the council has not chosen; "—" otherwise.
-  defp proposal_text(%{passage: nil}), do: "—"
+  # The engine's proposal and its reason, shown even after the council chose otherwise.
+  defp proposal_text(%{proposal: nil}), do: "—"
 
-  defp proposal_text(%{passage: passage, passage_reason: nil}),
-    do: gettext("Proposition : %{decision}", decision: PassageDecision.label(passage))
+  defp proposal_text(%{proposal: proposal, proposal_reason: nil}),
+    do: gettext("Proposition : %{decision}", decision: PassageDecision.label(proposal))
 
-  defp proposal_text(%{passage: passage, passage_reason: reason}),
+  defp proposal_text(%{proposal: proposal, proposal_reason: reason}),
     do:
       gettext("Proposition : %{decision} (%{reason})",
-        decision: PassageDecision.label(passage),
+        decision: PassageDecision.label(proposal),
         reason: reason
       )
 
