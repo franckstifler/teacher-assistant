@@ -422,4 +422,34 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
       assert has_element?(view, "#bulletin-absent")
     end
   end
+
+  describe "class council (I3)" do
+    test "a trimester card shows the council's outcome", %{
+      conn: conn,
+      cg: cg,
+      enr: enr,
+      scope: scope
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      [%{student: st}] = Enrollment.list_roster(scope, cg)
+
+      {:ok, _} =
+        TeacherAssistant.Councils.set_decision(scope, cg, term, st.id, %{
+          "distinction_choice" => "none",
+          "conduct_warning" => "blame_conduite",
+          "appreciation" => "Trimestre fragile"
+        })
+
+      {:ok, view, _} =
+        live(
+          conn,
+          ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=trim:#{term.id}"
+        )
+
+      assert has_element?(view, "#bulletin-council", "Blâme de conduite")
+      assert has_element?(view, "#bulletin-council", "Trimestre fragile")
+      refute has_element?(view, "#bulletin-distinction", "Encouragements")
+    end
+  end
 end

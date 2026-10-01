@@ -168,9 +168,15 @@
           <strong>{gettext("Moyenne générale")} : {fmt(b.data.moyenne_generale)}/20</strong>
           &nbsp;·&nbsp; {gettext("Rang")} : {b.data.rank || "—"} / {@effectif}
           <span :if={b.data.mention}>&nbsp;·&nbsp; {b.data.mention.label}</span>
-          <span :if={b.data.distinction}>
+          <span :if={b.distinction}>
             &nbsp;·&nbsp;
-            <strong>{TeacherAssistant.Academics.Distinction.label(b.data.distinction)}</strong>
+            <strong>{TeacherAssistant.Academics.Distinction.label(b.distinction)}</strong>
+          </span>
+          <span :if={b.outcome && b.outcome.conduct_warning}>
+            &nbsp;·&nbsp;
+            <strong>
+              {TeacherAssistant.Academics.ConductWarning.label(b.outcome.conduct_warning)}
+            </strong>
           </span>
         </p>
       <% else %>
@@ -196,7 +202,10 @@
 
       <div class="appreciation">
         <span class="k">{gettext("Appréciation du conseil de classe")}</span>
-        <div class="rule"></div>
+        <p :if={b.outcome && b.outcome.appreciation} class="council-text">
+          {b.outcome.appreciation}
+        </p>
+        <div :if={!(b.outcome && b.outcome.appreciation)} class="rule"></div>
       </div>
 
       <div class="visa">

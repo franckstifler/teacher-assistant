@@ -311,6 +311,17 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
           </.form>
         </div>
 
+        <div class="flex flex-wrap gap-2">
+          <a
+            id="print-pv"
+            href={~p"/school/councils/#{@cg.id}/print?term=#{@term.id}"}
+            target="_blank"
+            class="btn btn-ghost btn-sm gap-1"
+          >
+            <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer le procès-verbal")}
+          </a>
+        </div>
+
         <div :if={not @locked?} class="flex flex-wrap gap-2">
           <button
             :if={@council.status != :held}

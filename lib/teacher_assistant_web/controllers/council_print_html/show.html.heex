@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Procès-verbal du conseil de classe")} — {@cg.label}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111; background: #fff; margin: 0; padding: 24px;
+        font-size: 11pt; line-height: 1.4; position: relative;
+      }
+      .watermark {
+        position: fixed; inset: 40% 0 auto 0; text-align: center;
+        font-size: 96px; font-weight: 700; letter-spacing: 0.2em;
+        color: rgba(0, 0, 0, 0.08); transform: rotate(-24deg); pointer-events: none;
+      }
+      .national { text-align: center; margin-bottom: 8px; }
+      .national .fr { font-variant: small-caps; font-weight: bold; }
+      .national .en { font-size: 9pt; color: #444; }
+      h1 { font-size: 15pt; margin: 8px 0 4px; text-align: center; }
+      .cartouche { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+      .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
+      .cartouche .k { font-variant: small-caps; color: #444; width: 18%; }
+      h2 { font-size: 11pt; font-variant: small-caps; margin: 14px 0 4px; }
+      table.body { width: 100%; border-collapse: collapse; margin-top: 6px; }
+      table.body th, table.body td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+      table.body th { background: #f0f0f0; font-variant: small-caps; }
+      table.body td.num, table.body th.num { text-align: right; }
+      ul.groups { margin: 4px 0; padding-left: 18px; }
+      .visa { margin-top: 28px; display: flex; justify-content: space-between; gap: 16px; }
+      .visa .slot { flex: 1; }
+      .visa .line { border-top: 1px solid #999; margin-top: 36px; padding-top: 2px;
+                    font-variant: small-caps; font-size: 9pt; color: #444; }
+      @page { size: A4; margin: 15mm; }
+      @media print { body { padding: 0; } tr { break-inside: avoid; } }
+    </style>
+  </head>
+  <body>
+    <div :if={@draft?} class="watermark">{gettext("PROJET")}</div>
+    <div class="national">
+      <div class="fr">République du Cameroun — Paix · Travail · Patrie</div>
+      <div class="en">Republic of Cameroon — Peace · Work · Fatherland</div>
+    </div>
+    <h1>{gettext("Procès-verbal du conseil de classe")}</h1>
+
+    <table class="cartouche">
+      <tr>
+        <td class="k">{gettext("Établissement")}</td>
+        <td>{@etablissement}</td>
+        <td class="k">{gettext("Année scolaire")}</td>
+        <td>{@annee}</td>
+      </tr>
+      <tr>
+        <td class="k">{gettext("Classe")}</td>
+        <td>{@cg.label}</td>
+        <td class="k">{gettext("Période")}</td>
+        <td>{gettext("Trimestre %{n}", n: @term.position)}</td>
+      </tr>
+      <tr>
+        <td class="k">{gettext("Date du conseil")}</td>
+        <td>{date(@council.held_on)}</td>
+        <td class="k">{gettext("Président")}</td>
+        <td>{@council.chair || "—"}</td>
+      </tr>
+      <tr>
+        <td class="k">{gettext("Présents")}</td>
+        <td colspan="3">{@council.attendees || "—"}</td>
+      </tr>
+    </table>
+
+    <h2>{gettext("Résultats de la classe")}</h2>
+    <table class="body">
+      <tr>
+        <th>{gettext("Effectif")}</th>
+        <th class="num">{gettext("Moyenne de la classe")}</th>
+        <th class="num">{gettext("Taux de réussite")}</th>
+        <th class="num">{gettext("Plus forte / plus faible")}</th>
+        <th class="num">{gettext("Garçons / Filles")}</th>
+      </tr>
+      <tr>
+        <td>{(@results && @results.effectif) || "—"}</td>
+        <td class="num">{fmt(@results && @results.class_average)}</td>
+        <td class="num">{pct(@results && @results.pass_rate)}</td>
+        <td class="num">
+          {fmt(@results && @results.highest)} / {fmt(@results && @results.lowest)}
+        </td>
+        <td class="num">
+          {fmt(@results && @results.by_sex.m.class_average)} / {fmt(
+            @results && @results.by_sex.f.class_average
+          )}
+        </td>
+      </tr>
+    </table>
+
+    <h2>{gettext("Observations générales")}</h2>
+    <p>{@council.observations || "—"}</p>
+
+    <h2>{gettext("Distinctions et avertissements")}</h2>
+    <ul class="groups">
+      <li :for={{label, names} <- @distinction_groups ++ @warning_groups}>
+        <strong>{label}</strong> : {Enum.join(names, ", ")}
+      </li>
+      <li :if={@distinction_groups == [] and @warning_groups == []}>—</li>
+    </ul>
+
+    <h2>{gettext("Décisions par élève")}</h2>
+    <table class="body">
+      <tr>
+        <th class="num">{gettext("Rang")}</th>
+        <th>{gettext("Élève")}</th>
+        <th class="num">{gettext("Moyenne")}</th>
+        <th>{gettext("Décision")}</th>
+        <th>{gettext("Conduite")}</th>
+        <th>{gettext("Appréciation")}</th>
+      </tr>
+      <tr :for={row <- @rows}>
+        <td class="num">{(row.data && row.data.rank) || "—"}</td>
+        <td>{row.student.full_name}</td>
+        <td class="num">{fmt(row.data && row.data.moyenne_generale)}</td>
+        <td>{distinction(row.outcome && row.outcome.distinction)}</td>
+        <td>{warning(row.outcome && row.outcome.conduct_warning)}</td>
+        <td>{(row.outcome && row.outcome.appreciation) || "—"}</td>
+      </tr>
+    </table>
+
+    <div class="visa">
+      <div class="slot">
+        <div class="line">{gettext("Le président du conseil")}</div>
+      </div>
+      <div class="slot">
+        <div class="line">{gettext("Le professeur principal")}</div>
+      </div>
+    </div>
+  </body>
+</html>

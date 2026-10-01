@@ -78,9 +78,16 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
       rows: rows,
       selected: Enum.find(rows, &(&1.student.id == student_id)) || List.first(rows),
       rate: if(can_publish?, do: ReportCards.entry_rate(scope, cg, period)),
+      council_held?: council_held?(can_publish?, scope, cg, period),
       history: if(can_publish?, do: ReportCards.history(scope, cg, period), else: [])
     )
   end
+
+  # Spec I3: a trimester is published only once its class council is held.
+  defp council_held?(true, scope, cg, {:trimester, term}),
+    do: TeacherAssistant.Councils.held?(scope, cg, term)
+
+  defp council_held?(_can_publish?, _scope, _cg, _period), do: true
 
   defp rows(nil), do: []
   defp rows(%{results: nil}), do: []
@@ -140,6 +147,13 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
          |> assign(confirm?: false)
          |> load(selected_id(socket))
          |> put_flash(:info, gettext("Bulletins publiés."))}
+
+      {:error, :council_not_held} ->
+        {:noreply,
+         socket
+         |> assign(confirm?: false)
+         |> load(selected_id(socket))
+         |> put_flash(:error, gettext("Conseil de classe non tenu."))}
 
       {:error, :already_published} ->
         {:noreply,
@@ -299,7 +313,11 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
                     {fmt(row.data.moyenne_generale)}
                   </td>
                   <td><.mention_badge :if={row.data.mention} mention={row.data.mention} /></td>
-                  <td><.distinction_badge distinction={row.data.distinction} /></td>
+                  <td>
+                    <.distinction_badge distinction={
+                      ReportCards.final_distinction(@view, row.student.id, row.data)
+                    } />
+                  </td>
                   <td>
                     <a
                       id={"print-#{row.student.id}"}
@@ -347,7 +365,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
             </dl>
             <div class="flex flex-wrap gap-2">
               <.mention_badge :if={@selected.data.mention} mention={@selected.data.mention} />
-              <.distinction_badge distinction={@selected.data.distinction} />
+              <.distinction_badge distinction={
+                ReportCards.final_distinction(@view, @selected.student.id, @selected.data)
+              } />
             </div>
             <div class="flex flex-wrap gap-2">
               <.link
@@ -383,10 +403,24 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
             id="publish"
             type="button"
             phx-click="publish"
+            disabled={not @council_held?}
             class="btn btn-primary btn-sm"
           >
             {gettext("Publier les bulletins de la classe")}
           </button>
+          <span
+            :if={@can_publish? and @status == :draft and not @council_held?}
+            id="council-not-held"
+            class="text-sm text-warning"
+          >
+            {gettext("Conseil de classe non tenu")} ·
+            <.link
+              navigate={~p"/school/councils/#{@cg.id}?term=#{elem(@period, 1).id}"}
+              class="link"
+            >
+              {gettext("Ouvrir le conseil")}
+            </.link>
+          </span>
           <button
             :if={@can_publish? and @status == :published and not @withdrawing?}
             id="ask-withdraw"

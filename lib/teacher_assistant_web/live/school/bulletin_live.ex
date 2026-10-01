@@ -87,6 +87,14 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       in_view?: is_nil(view) or Enum.any?(view.roster, &(&1.student.id == student.id)),
       effectif: (results && results.effectif) || 0,
       data: results && results.per_student[student.id],
+      outcome: view && ReportCards.outcome(view, student.id),
+      distinction:
+        view &&
+          ReportCards.final_distinction(
+            view,
+            student.id,
+            results && results.per_student[student.id]
+          ),
       conduct: view && view.conduct[enrollment.id],
       discipline: view && view.discipline[enrollment.id],
       group_subtotals?: (view && view.group_subtotals?) || false
@@ -347,10 +355,22 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             <div class="ta-leaf flex flex-wrap items-center gap-2">
               <.mention_badge :if={@data.mention} mention={@data.mention} />
               <span id="bulletin-distinction">
-                <.distinction_badge distinction={@data.distinction} />
+                <.distinction_badge distinction={@distinction} />
               </span>
             </div>
           </div>
+        </div>
+
+        <div
+          :if={@data && @outcome && (@outcome.conduct_warning || @outcome.appreciation)}
+          id="bulletin-council"
+          class="ta-leaf space-y-1"
+        >
+          <p class="ta-eyebrow">{gettext("Appréciation du conseil de classe")}</p>
+          <p :if={@outcome.conduct_warning} class="badge badge-error badge-sm">
+            {TeacherAssistant.Academics.ConductWarning.label(@outcome.conduct_warning)}
+          </p>
+          <p :if={@outcome.appreciation}>{@outcome.appreciation}</p>
         </div>
 
         <div :if={@conduct} id="bulletin-conduct" class="space-y-2">

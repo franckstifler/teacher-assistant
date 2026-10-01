@@ -68,6 +68,13 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           student: student,
           enrollment: enrollment,
           data: results && results.per_student[student.id],
+          outcome: ReportCards.outcome(view, student.id),
+          distinction:
+            ReportCards.final_distinction(
+              view,
+              student.id,
+              results && results.per_student[student.id]
+            ),
           conduct: view.conduct[enrollment.id],
           discipline: view.discipline[enrollment.id]
         }

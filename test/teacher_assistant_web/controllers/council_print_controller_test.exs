@@ -1,0 +1,73 @@
+defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
+  use TeacherAssistantWeb.ConnCase, async: true
+  alias TeacherAssistant.{Assessment, Councils, Curriculum, Enrollment, Organization}
+  alias TeacherAssistant.TeacherFixtures
+
+  setup :register_and_log_in_user
+
+  setup %{scope: scope, year: year, actor: head} do
+    scope = %{scope | current_academic_year: year}
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e A", level: "3ème"})
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Ekani Paul", sex: :m})
+
+    {:ok, tc} =
+      Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths", coefficient: Decimal.new(2)})
+
+    [term | _] = Organization.list_terms(scope, year)
+
+    {:ok, a} =
+      Assessment.create_assessment(scope, tc, hd(term.sequences), %{
+        label: "D1",
+        weight: Decimal.new(1),
+        max_score: Decimal.new(20)
+      })
+
+    [%{student: st}] = Enrollment.list_roster(scope, cg)
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: st.id, score: Decimal.new(9)}])
+    %{scope: scope, year: year, cg: cg, term: term, st: st}
+  end
+
+  defp pv(conn, cg, term), do: get(conn, ~p"/school/councils/#{cg.id}/print?term=#{term.id}")
+
+  test "the procès-verbal lists the council and its decisions", ctx do
+    {:ok, _} = Councils.save_header(ctx.scope, ctx.cg, ctx.term, %{"chair" => "M. Abena"})
+
+    {:ok, _} =
+      Councils.set_decision(ctx.scope, ctx.cg, ctx.term, ctx.st.id, %{
+        "conduct_warning" => "avertissement_conduite",
+        "appreciation" => "Peut mieux faire"
+      })
+
+    html = ctx.conn |> pv(ctx.cg, ctx.term) |> html_response(200)
+    assert html =~ "3e A"
+    assert html =~ "PROJET"
+    assert html =~ "M. Abena"
+    assert html =~ "Ekani Paul"
+    assert html =~ "Peut mieux faire"
+    assert html =~ "Avertissement de conduite"
+
+    {:ok, _} = Councils.hold(ctx.scope, ctx.cg, ctx.term)
+    refute ctx.conn |> pv(ctx.cg, ctx.term) |> html_response(200) =~ "PROJET"
+  end
+
+  test "a class with no subjects still prints", ctx do
+    {:ok, bare} =
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e Z", level: "6ème"})
+
+    html = ctx.conn |> pv(bare, ctx.term) |> html_response(200)
+    assert html =~ "6e Z"
+    assert html =~ "—"
+  end
+
+  test "only the admin axis prints it", ctx do
+    other = TeacherFixtures.member_scope_fixture(ctx.scope)
+
+    conn =
+      build_conn()
+      |> log_in_user(other.current_user)
+      |> Plug.Conn.put_session(:workspace_id, ctx.scope.current_workspace.id)
+      |> pv(ctx.cg, ctx.term)
+
+    assert redirected_to(conn) == "/school"
+  end
+end

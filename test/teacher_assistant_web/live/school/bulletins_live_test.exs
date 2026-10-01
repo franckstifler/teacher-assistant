@@ -131,4 +131,24 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     assert has_element?(view, "#bulletins-history", "Another admin")
     refute has_element?(view, "#bulletins-history", "Me too")
   end
+
+  describe "class council (I3)" do
+    test "publishing waits for the held council; the distinction follows it", ctx do
+      {:ok, _} =
+        TeacherAssistant.Councils.set_decision(ctx.scope, ctx.cg, ctx.term, ctx.dj.student.id, %{
+          "distinction_choice" => "tableau_honneur"
+        })
+
+      {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+      assert has_element?(view, "#publish[disabled]")
+      assert has_element?(view, "#council-not-held", "Conseil de classe non tenu")
+      assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Tableau d")
+      refute has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Encouragements")
+
+      {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, ctx.term)
+      {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+      refute has_element?(view, "#publish[disabled]")
+      refute has_element?(view, "#council-not-held")
+    end
+  end
 end

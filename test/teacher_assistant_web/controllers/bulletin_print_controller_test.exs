@@ -384,4 +384,29 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
                "/school/classes/#{cg.id}/results?period=trim:#{term.id}"
     end
   end
+
+  describe "class council (I3)" do
+    test "a trimester print carries the council's appreciation", %{
+      conn: conn,
+      cg: cg,
+      scope: scope,
+      roster: roster
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      [%{student: st} | _] = roster
+
+      {:ok, _} =
+        TeacherAssistant.Councils.set_decision(scope, cg, term, st.id, %{
+          "appreciation" => "Très bon trimestre"
+        })
+
+      html =
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}")
+        |> html_response(200)
+
+      assert html =~ "Très bon trimestre"
+    end
+  end
 end
