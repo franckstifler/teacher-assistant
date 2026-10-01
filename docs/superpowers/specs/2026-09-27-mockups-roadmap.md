@@ -705,6 +705,71 @@ published term locks its council. Design choice: one `ClassCouncil` per class ×
 Out of scope: the annual council and passage decisions (I4); the form master preparing decisions; sending
 the procès-verbal; electronic signatures.
 
+## I4 — Passage rules and end-of-year decisions (spec)
+
+Status: spec approved 2026-10-01, not implemented.
+
+Mockup: `Paramètres école` → "Passage & redoublement" (fields `mp`, `rachat`, `excl`, `redMax`, `condExcl`,
+`absExcl`). Gap: **N10**. Builds on I3's councils and I2's publication.
+
+User decisions (2026-10-01): a **separate annual council** per class (an "Année" council next to the three
+trimester councils); the engine uses the **mockup's rule set** — passing, rachat and exclusion averages, one
+repeat per cycle, exclusion for conduct below 10 and for unjustified absences above a threshold — every
+threshold editable. Design choices: the engine only **proposes**; the council confirms or overrides. Councils
+are keyed like I2 publications, by `period_key` (`"trim:<term id>"` or `"annee"`).
+
+### Data
+
+1. `SchoolProfile` gains (admin axis, validated together): `passage_min` (decimal, default 10, required),
+   `rachat_min` (decimal, default 9.5, nil = off), `exclusion_below` (decimal, default 7, nil = off),
+   `one_repeat_per_cycle?` (boolean, default true), `exclusion_on_conduct?` (boolean, default true; fixed
+   conduct minimum 10), `exclusion_absence_hours` (integer, default 60, nil = off). Rules among the set
+   values: 0 ≤ exclusion_below < rachat_min ≤ passage_min ≤ 20; absence hours > 0.
+2. `ClassCouncil` gains `period_key` (string, required; `"trim:<term id>"` or `"annee"`) and
+   `academic_year_id`; `term_id` becomes optional (nil for the annual council); the uniqueness moves to
+   (class, period_key). Existing trimester councils keep working (their key is `"trim:<term id>"`).
+3. `CouncilDecision` gains `passage_decision` (`Ash.Type.Enum` `:admis | :admis_rachat | :redouble |
+   :exclu`; nil = keep the proposal). Only meaningful on the annual council.
+4. Migrations with `mix ash.codegen --dev` (rename/backfill handled by the generated migration; no rows exist
+   outside dev and tests yet).
+
+### Computation
+
+5. Pure `PassageRules.propose(%{average, repeater?, conduct, unjustified_hours}, rules)` →
+   `{decision, reason}` or nil (no average):
+   - **Exclu** when the average < `exclusion_below` (« Moyenne < 7 »), or `exclusion_on_conduct?` and conduct
+     < 10 (« Conduite < 10 »; no conduct mark = not applied), or unjustified hours ≥
+     `exclusion_absence_hours` (« 60 h d'absences non justifiées »);
+   - else **Admis** when the average ≥ `passage_min`;
+   - else **Admis par rachat** when `rachat_min` is set and the average ≥ it;
+   - else **Redouble**, or **Exclu** (« Déjà redoublant ») when the student is a repeater this year and
+     `one_repeat_per_cycle?` is on.
+   Reasons are gettext strings with the threshold values.
+6. The annual council's outcome per student adds `passage` (the decision or, without one, the proposal) and
+   `passage_reason` (the proposal's reason when the proposal stands). Inputs: the annual average (I2), the
+   enrollment's `repeater`, the annual note de conduite and unjustified absence hours (existing
+   discipline/attendance functions, read once per class).
+7. Annual report-card views carry the annual council like trimester views do (`council` entry); annual
+   publishing requires the class's annual council to be held (`{:error, :council_not_held}`).
+
+### Screens
+
+8. **"Passage & redoublement"** settings page (`/school/settings/passage`, EvaluationsLive pattern, admin
+   axis), linked from Settings and the Proviseur/Censeur "Paramètres" menus: the three averages, the two
+   toggles and the absence hours, with inline validation errors.
+9. **Conseils de classe**: the term tabs gain "Année"; the list's rate is over all séquences.
+10. **Annual council page** (`/school/councils/:class_id?period=annee`; trimester pages keep `?term=`):
+    the I3 page with annual figures plus a "Passage" column — the proposal with its reason, and a select
+    (Proposition · Admis · Admis par rachat · Redouble · Exclu). Hold, reopen, lock as in I3.
+11. **Procès-verbal** of the annual council adds the passage decision per student and the counts (Admis,
+    Admis par rachat, Redouble, Exclu).
+12. **Annual report card** (screen and print): the "Décision" line shows the passage decision; frozen at
+    publication.
+13. Strings through gettext (FR and EN).
+
+Out of scope: moving students to next year's classes and repeat history across years (M1); orientation;
+per-level thresholds.
+
 ## Holes found on 2026-10-01 (not yet specified)
 
 Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.
