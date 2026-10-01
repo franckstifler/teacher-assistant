@@ -2,10 +2,9 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics.DayOfWeek
+  alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Timetabling
-
-  @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -13,11 +12,14 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
     if scope.current_workspace == nil do
       {:ok, push_navigate(socket, to: ~p"/school")}
     else
+      calendar = Attendance.school_calendar(scope)
+
       {:ok,
        assign(socket,
          periods: Attendance.list_periods(scope),
          grid: Timetabling.teacher_timetable(scope, scope.current_user),
-         days: @days
+         calendar: calendar,
+         days: calendar.lesson_days
        )}
     end
   end
@@ -68,19 +70,30 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                     </td>
                   <% else %>
                     <td class="font-semibold">{period.label}</td>
-                    <td :for={day <- @days} id={"cell-#{day}-#{period.id}"}>
-                      <% slot = @grid[{day, period.id}] %>
-                      {cell_text(slot)}
-                      <.link
-                        :if={slot}
-                        navigate={
-                          ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.to_iso8601(Date.utc_today())}"
-                        }
-                        class="link link-primary block text-xs"
-                      >
-                        {gettext("Faire l'appel")}
-                      </.link>
-                    </td>
+                    <%= for day <- @days do %>
+                      <%= if SchoolCalendar.open_cell?(@calendar, day, period) do %>
+                        <td id={"cell-#{day}-#{period.id}"}>
+                          <% slot = @grid[{day, period.id}] %>
+                          {cell_text(slot)}
+                          <.link
+                            :if={slot}
+                            navigate={
+                              ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.to_iso8601(Date.utc_today())}"
+                            }
+                            class="link link-primary block text-xs"
+                          >
+                            {gettext("Faire l'appel")}
+                          </.link>
+                        </td>
+                      <% else %>
+                        <td
+                          id={"cell-#{day}-#{period.id}"}
+                          class="closed-cell bg-base-200/60 text-center text-xs text-base-content/50"
+                        >
+                          {gettext("Libre")}
+                        </td>
+                      <% end %>
+                    <% end %>
                   <% end %>
                 </tr>
               </tbody>

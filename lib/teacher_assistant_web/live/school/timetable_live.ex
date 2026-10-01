@@ -5,16 +5,17 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.DayOfWeek
+  alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Timetabling
-
-  @days [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Enrollment.class_manager?(scope, cg) do
+      calendar = Attendance.school_calendar(scope)
+
       {:ok,
        socket
        |> assign(
@@ -22,7 +23,8 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
          can_edit_timetable?: Timetabling.can_edit_timetable?(scope),
          periods: Attendance.list_periods(scope),
          assignments: Curriculum.list_assignments_for_class(scope, cg),
-         days: @days
+         calendar: calendar,
+         days: calendar.lesson_days
        )
        |> load_timetable()}
     else
@@ -76,6 +78,15 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
       {:error, {:teacher_clash, class_label}} ->
         {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
 
+      {:error, :closed_cell} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           gettext("Ce créneau est fermé (jour sans cours ou mercredi après-midi).")
+         )
+         |> load_timetable()}
+
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
 
@@ -95,6 +106,15 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
 
       {:error, {:teacher_clash, class_label}} ->
         {:noreply, socket |> flash_clash(class_label) |> load_timetable()}
+
+      {:error, :closed_cell} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           gettext("Ce créneau est fermé (jour sans cours ou mercredi après-midi).")
+         )
+         |> load_timetable()}
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
@@ -197,32 +217,43 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                   </td>
                 <% else %>
                   <td class="font-semibold">{period.label}</td>
-                  <td :for={day <- @days} id={"cell-#{day}-#{period.id}"}>
-                    <% slot = @slots[{day, period.id}] %>
-                    <%= if @can_edit_timetable? do %>
-                      <form id={"place-#{day}-#{period.id}"} phx-change="place">
-                        <input type="hidden" name="day" value={day} />
-                        <input type="hidden" name="period_id" value={period.id} />
-                        <select
-                          name="teaching_context_id"
-                          class="select select-bordered select-xs w-full"
-                        >
-                          <option value="">{gettext("—")}</option>
-                          <option
-                            :for={a <- @assignments}
-                            value={a.id}
-                            selected={slot && slot.teaching_context_id == a.id}
-                          >
-                            {a.subject} — {a.teacher.email}{if a.combined_course,
-                              do: " (#{gettext("combiné")})",
-                              else: ""}
-                          </option>
-                        </select>
-                      </form>
+                  <%= for day <- @days do %>
+                    <%= if SchoolCalendar.open_cell?(@calendar, day, period) do %>
+                      <td id={"cell-#{day}-#{period.id}"}>
+                        <% slot = @slots[{day, period.id}] %>
+                        <%= if @can_edit_timetable? do %>
+                          <form id={"place-#{day}-#{period.id}"} phx-change="place">
+                            <input type="hidden" name="day" value={day} />
+                            <input type="hidden" name="period_id" value={period.id} />
+                            <select
+                              name="teaching_context_id"
+                              class="select select-bordered select-xs w-full"
+                            >
+                              <option value="">{gettext("—")}</option>
+                              <option
+                                :for={a <- @assignments}
+                                value={a.id}
+                                selected={slot && slot.teaching_context_id == a.id}
+                              >
+                                {a.subject} — {a.teacher.email}{if a.combined_course,
+                                  do: " (#{gettext("combiné")})",
+                                  else: ""}
+                              </option>
+                            </select>
+                          </form>
+                        <% else %>
+                          <span :if={slot}>{slot.subject}</span>
+                        <% end %>
+                      </td>
                     <% else %>
-                      <span :if={slot}>{slot.subject}</span>
+                      <td
+                        id={"cell-#{day}-#{period.id}"}
+                        class="closed-cell bg-base-200/60 text-center text-xs text-base-content/50"
+                      >
+                        {gettext("Libre")}
+                      </td>
                     <% end %>
-                  </td>
+                  <% end %>
                 <% end %>
               </tr>
             </tbody>

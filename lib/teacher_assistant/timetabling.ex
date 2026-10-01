@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Timetabling do
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Period
+  alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Accounts.User
@@ -63,7 +64,8 @@ defmodule TeacherAssistant.Timetabling do
 
     with {:ok, %TeachingContext{class_group_id: cg_id} = tc} when cg_id == cg.id <-
            Ash.get(TeachingContext, teaching_context_id, scope: scope),
-         {:ok, %Period{}} <- Ash.get(Period, period_id, scope: scope) do
+         {:ok, %Period{} = period} <- Ash.get(Period, period_id, scope: scope),
+         :open <- open_or_closed(scope, day, period) do
       case teacher_clash(scope, cg, day, period_id, tc.teacher_user_id, exempt_class_group_ids) do
         {:clash, class_label} ->
           {:error, {:teacher_clash, class_label}}
@@ -72,6 +74,7 @@ defmodule TeacherAssistant.Timetabling do
           upsert_slot(scope, cg, teaching_context_id, period_id, day)
       end
     else
+      :closed -> {:error, :closed_cell}
       _ -> {:error, :invalid}
     end
   end
@@ -121,7 +124,8 @@ defmodule TeacherAssistant.Timetabling do
       # `:class_group` is also multitenant — Ash needs a scope to resolve the load.
       |> Ash.load!(:class_group, scope: scope)
 
-    with {:ok, %Period{}} <- Ash.get(Period, period_id, scope: scope) do
+    with {:ok, %Period{} = period} <- Ash.get(Period, period_id, scope: scope),
+         :open <- open_or_closed(scope, day, period) do
       case contexts do
         [] ->
           {:error, :invalid}
@@ -152,8 +156,16 @@ defmodule TeacherAssistant.Timetabling do
           end
       end
     else
+      :closed -> {:error, :closed_cell}
       _ -> {:error, :invalid}
     end
+  end
+
+  # Spec J1: lessons only in open cells of the school calendar.
+  defp open_or_closed(scope, day, period) do
+    if SchoolCalendar.open_cell?(TeacherAssistant.Attendance.school_calendar(scope), day, period),
+      do: :open,
+      else: :closed
   end
 
   @doc """

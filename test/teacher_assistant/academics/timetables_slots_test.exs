@@ -183,4 +183,28 @@ defmodule TeacherAssistant.Academics.TimetablesSlotsTest do
     |> Ash.Query.filter(day == ^day and period_id == ^period_id)
     |> Ash.read!(scope: scope)
   end
+
+  describe "school calendar (spec J1)" do
+    test "a closed cell or an unticked day refuses a lesson", ctx do
+      %{scope: scope, cg_a: cg, tc_a: tc} = ctx
+      periods = TeacherAssistant.Attendance.list_periods(scope)
+      late = Enum.find(periods, &(&1.kind == :lesson and Time.compare(&1.start_time, ~T[13:00:00]) != :lt))
+
+      {:ok, _} =
+        TeacherAssistant.Attendance.update_school_days(scope, %{
+          "lesson_days" => ~w(monday tuesday wednesday thursday friday),
+          "wednesday_afternoon_off?" => "true",
+          "default_lesson_minutes" => "50"
+        })
+
+      assert {:error, :closed_cell} =
+               TeacherAssistant.Timetabling.place_slot(scope, cg, %{day: :wednesday, period_id: late.id, teaching_context_id: tc.id})
+
+      assert {:error, :closed_cell} =
+               TeacherAssistant.Timetabling.place_slot(scope, cg, %{day: :saturday, period_id: late.id, teaching_context_id: tc.id})
+
+      assert {:ok, _} =
+               TeacherAssistant.Timetabling.place_slot(scope, cg, %{day: :thursday, period_id: late.id, teaching_context_id: tc.id})
+    end
+  end
 end

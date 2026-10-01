@@ -78,14 +78,25 @@
               {period.label}
               <span class="bell">{fmt_time(period.start_time)}–{fmt_time(period.end_time)}</span>
             </td>
-            <td :for={day <- @days}>
-              <% slot = @grid[{day, period.id}] %>
-              <%= if slot do %>
-                <span class="subject">{slot.subject}</span>
-                <span :if={@mode == :class} class="teacher">{slot.teacher_email}</span>
-                <span :if={@mode == :me} class="teacher">{slot.class_label}</span>
+            <%= for day <- @days do %>
+              <%= if SchoolCalendar.open_cell?(@calendar, day, period) do %>
+                <td>
+                  <% slot = @grid[{day, period.id}] %>
+                  <%= if slot do %>
+                    <span class="subject">{slot.subject}</span>
+                    <span :if={@mode == :class} class="teacher">{slot.teacher_email}</span>
+                    <span :if={@mode == :me} class="teacher">{slot.class_label}</span>
+                  <% end %>
+                </td>
+              <% else %>
+                <td
+                  id={"cell-#{day}-#{period.id}"}
+                  class="closed-cell bg-base-200/60 text-center text-xs text-base-content/50"
+                >
+                  {gettext("Libre")}
+                </td>
               <% end %>
-            </td>
+            <% end %>
           <% end %>
         </tr>
       </tbody>
