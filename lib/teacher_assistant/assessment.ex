@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Assessment do
     Assessment,
     AssessmentType,
     AverageRounding,
+    BulletinPublication,
     Bulletins,
     ClassGroup,
     CombinedCourse,
@@ -38,6 +39,7 @@ defmodule TeacherAssistant.Assessment do
     resource Mark
     resource MarkEvent
     resource MarkCorrection
+    resource BulletinPublication
   end
 
   authorization do
