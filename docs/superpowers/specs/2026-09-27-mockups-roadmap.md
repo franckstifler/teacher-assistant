@@ -26,6 +26,9 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 | J | Timetable and staff | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
 | K | Platform | R04, R05, S04, S06, R03 | E | S…L |
 | — | Marketing site | `Landing` mockup (not in the gap list) | — | M |
+| L | School life, rest (see §L) | V05, L1–L3 | G | M |
+| M | School registers and new year (see §M) | M1–M4 | — | M…L |
+| V | Visual checks still owed (see §V) | — | — | S each |
 
 Deferred by the gap list: P03, P04, S05.
 
@@ -367,7 +370,8 @@ To pick up later; none blocks use.
 ## F — Censeur follow-up: sequence entry tracking (spec)
 
 Status: N05 implemented 2026-09-30 (branch `f-sequence-tracking`, plan
-`docs/superpowers/plans/2026-09-30-f-sequence-entry-tracking.md`); N06 deferred.
+`docs/superpowers/plans/2026-09-30-f-sequence-entry-tracking.md`); N06 deferred. Visual check against the
+mockup done 2026-10-01 (branch `visual-f-g-i1`); the S1…S6 tabs are kept although the mockup has none.
 
 Mockup: `Espaces par rôle` → Censeur → "Suivi des séquences" (excerpt with layout, palette and data logic
 saved in `docs/superpowers/mockups/f-censeur-suivi-sequences.html`). Gap: **N05**. N06 (reminders) deferred.
@@ -402,7 +406,8 @@ Out of scope: sending reminders and their log (N06), per-teacher view, export.
 
 ## G — School life, day view (spec)
 
-Status: spec approved 2026-09-30, implemented 2026-09-30 (no visual check done).
+Status: spec approved 2026-09-30, implemented 2026-09-30. Visual check done 2026-10-01 (branch
+`visual-f-g-i1`): Ma journée now shows the selected slot's roll call beside the list, as in the mockup.
 
 Mockup: `Espaces par rôle` → Enseignant → "Ma journée · appel", Surveillant général → "Aujourd'hui" and
 "Absences" (excerpt with markup, palette, sample data and data logic saved in
@@ -496,7 +501,8 @@ The template comes last so it is designed once, with council decisions and appre
 
 ## I1 — Appreciations and distinctions (spec)
 
-Status: implemented 2026-10-01 (branch `i1-appreciations`, plan `docs/superpowers/plans/2026-10-01-i1-appreciations-distinctions.md`); no visual check done.
+Status: implemented 2026-10-01 (branch `i1-appreciations`, plan `docs/superpowers/plans/2026-10-01-i1-appreciations-distinctions.md`). Visual check done 2026-10-01
+(branch `visual-f-g-i1`): one sticky "Modifications non enregistrées" save bar, as in the mockup.
 
 Mockup: `Paramètres école` → "Appréciations & distinctions" (excerpt in
 `docs/superpowers/mockups/i1-appreciations-distinctions.html`). Gap: **N09**.
@@ -628,3 +634,48 @@ changes a published card.
 
 Out of scope: council decisions and requiring a council before publishing (I3); the "Publication par"
 setting and sending report cards to parents (I5, notifications); publishing séquence report cards.
+
+## Holes found on 2026-10-01 (not yet specified)
+
+Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.
+Each needs a spec before a plan.
+
+### L — School life, rest
+
+- **V05** — suggested conduct mark (SG → *Conduite*): computed from unjustified absence hours, lates and
+  sanctions, adjusted then confirmed by the SG. In the gap list but in no increment until now.
+- **L1** — school-wide sanctions page (SG → *Sanctions*): list with a parents column, three-tap entry
+  (student, type, reason), detail panel with "Marquer les parents notifiés". Today sanctions live only on
+  each class's discipline page; G left this page out.
+- **L2** — settings *Assiduité & discipline* (`Paramètres école` → *Vie scolaire*): late counted as an
+  absence beyond N minutes, justification deadline, parent alert after N unjustified hours, conduct scale
+  (points per absence hour, per late, per sanction), sanctions in use. G hard-codes the repeated-absence
+  threshold (3 days); V05 needs the scale.
+- **L3** — school-wide student list (Censeur and SG → *École → Élèves*), searchable by name or
+  `matricule` (the field exists). The app has only per-class rosters.
+
+### M — School registers and new year
+
+No mockup and no code for:
+- **M1** — starting the next school year: carrying classes over, moving students up after the passage
+  decisions (N10/I4), archiving the old year.
+- **M2** — parents and guardians: contacts on the student, used by V06 and later R03. Today "parents
+  notifiés" records only the date.
+- **M3** — a student profile page (identity, guardian, class history).
+- **M4** — settings fields shown in `Paramètres école` but in no gap: maximum class size and class naming
+  rule (*Niveaux, séries & classes*), short school name (*Établissement*), statutory teaching hours and
+  "one form master per class" (*Affectations*, next to T04).
+
+### Screens in the app with no current mockup
+
+`Espaces par rôle` has no Proviseur and no Intendant space (`Proviseur.dc.html` is in the older paper
+style). No mockup covers: the Proviseur dashboard, fees and payments, the class page and its tabs
+(results, register, discipline, timetable placement, bulletins and print), CSV enrolment import, members
+and invitations, periods, combined courses, subject exemptions. Ask for mockups before redesigning these.
+
+### V — Visual checks still owed
+
+Screens with a mockup that have never been compared with it: *Saisie des notes* (course and séquence
+tabs, Enter to the next student, row average), *Mes classes* (the app's "Mes cours"), the teacher's
+*Emploi du temps*, both *Corrections* screens (D3), and the I2 *Bulletins* screen. Dev data for this:
+`mix run priv/repo/demo_school_seeds.exs`.
