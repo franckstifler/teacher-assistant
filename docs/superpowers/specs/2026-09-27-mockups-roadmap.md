@@ -562,7 +562,7 @@ per-level or per-série scales.
 
 ## I2 — Publish and freeze report cards (spec)
 
-Status: spec approved 2026-10-01, not implemented.
+Status: implemented 2026-10-01 (branch `i2-publish-report-cards`, plan `docs/superpowers/plans/2026-10-01-i2-publish-report-cards.md`); no visual check done.
 
 Mockup: `Espaces par rôle` → Censeur → "Bulletins" (generic list + detail markup and the screen's logic in
 `docs/superpowers/mockups/i2-bulletins-publication.html`). Gap: **N13**.

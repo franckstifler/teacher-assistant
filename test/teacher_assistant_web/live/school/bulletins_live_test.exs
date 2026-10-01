@@ -27,7 +27,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
 
     # Djoumessi 15, Tchinda not marked: entry incomplete; nothing in séquence 2
     [dj, tch] = Enrollment.list_roster(scope, cg)
-    :ok = Assessment.upsert_marks(scope, a, [%{student_id: dj.student.id, score: Decimal.new(15)}])
+
+    :ok =
+      Assessment.upsert_marks(scope, a, [%{student_id: dj.student.id, score: Decimal.new(15)}])
 
     %{scope: scope, cg: cg, term: term, tc: tc, dj: dj, tch: tch}
   end
