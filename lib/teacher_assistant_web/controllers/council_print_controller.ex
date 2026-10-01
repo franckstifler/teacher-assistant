@@ -18,12 +18,10 @@ defmodule TeacherAssistantWeb.CouncilPrintController do
          %{} = term <-
            Enum.find(Organization.list_terms(scope, year), &(&1.id == params["term"])) do
       council = Councils.council(scope, cg, term)
-      results = Assessment.class_results_for_period(scope, cg, {:trimester, term})
-      outcomes = Councils.outcomes(council, results)
+      {results, outcomes, roster} = figures(scope, cg, term, council)
 
       rows =
-        scope
-        |> Enrollment.list_roster(cg)
+        roster
         |> Enum.map(fn %{student: s} ->
           %{
             student: s,
@@ -63,6 +61,19 @@ defmodule TeacherAssistantWeb.CouncilPrintController do
 
       _ ->
         redirect(conn, to: ~p"/school")
+    end
+  end
+
+  # A published term prints the figures frozen with its report cards (I2 snapshot);
+  # otherwise the live ones.
+  defp figures(scope, cg, term, council) do
+    case ReportCards.current_publication(scope, cg, {:trimester, term}) do
+      %{snapshot: %{council: %{outcomes: outcomes}} = view} ->
+        {view.results, outcomes, view.roster}
+
+      _ ->
+        results = Assessment.class_results_for_period(scope, cg, {:trimester, term})
+        {results, Councils.outcomes(council, results), Enrollment.list_roster(scope, cg)}
     end
   end
 

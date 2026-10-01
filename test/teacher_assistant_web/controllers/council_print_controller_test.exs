@@ -24,7 +24,7 @@ defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
 
     [%{student: st}] = Enrollment.list_roster(scope, cg)
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: st.id, score: Decimal.new(9)}])
-    %{scope: scope, year: year, cg: cg, term: term, st: st}
+    %{scope: scope, year: year, cg: cg, term: term, st: st, tc: tc}
   end
 
   defp pv(conn, cg, term), do: get(conn, ~p"/school/councils/#{cg.id}/print?term=#{term.id}")
@@ -69,5 +69,17 @@ defmodule TeacherAssistantWeb.CouncilPrintControllerTest do
       |> pv(ctx.cg, ctx.term)
 
     assert redirected_to(conn) == "/school"
+  end
+
+  test "a published term's procès-verbal prints the frozen figures", ctx do
+    {:ok, _} = TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
+    [a] = Assessment.list_assessments(ctx.scope, ctx.tc, hd(ctx.term.sequences))
+
+    :ok =
+      Assessment.upsert_marks(ctx.scope, a, [%{student_id: ctx.st.id, score: Decimal.new(16)}])
+
+    html = ctx.conn |> pv(ctx.cg, ctx.term) |> html_response(200)
+    assert html =~ "9.00"
+    refute html =~ "16.00"
   end
 end
