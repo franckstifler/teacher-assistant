@@ -158,7 +158,7 @@ defmodule TeacherAssistant.ReportCardsTest do
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:trimester, term})
       {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
       assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
-      assert pub.snapshot_version == 2
+      assert pub.snapshot_version == 3
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:annual, year})
       {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:annual, year})
       assert {:ok, annual} = ReportCards.publish(scope, cg, {:annual, year})
@@ -219,6 +219,35 @@ defmodule TeacherAssistant.ReportCardsTest do
       assert ReportCards.published_class_ids(scope, {:trimester, term}) == MapSet.new()
       {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       assert ReportCards.published_class_ids(scope, {:trimester, term}) == MapSet.new([cg.id])
+    end
+  end
+
+  describe "template (spec I5)" do
+    test "a published card keeps the template it was issued with", %{scope: scope, cg: cg} do
+      term = scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
+      {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+      assert pub.snapshot_version == 3
+      assert %{language: :fr, elements: elements} = pub.snapshot.template
+      assert :rank in elements
+
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+          "language" => "bilingual",
+          "elements" => ["qr_code"]
+        })
+
+      {:published, pub, view} = TeacherAssistant.ReportCards.class_view(scope, cg, {:trimester, term})
+      assert %{language: :fr} = TeacherAssistant.ReportCards.template_of(scope, cg, view)
+      assert pub.snapshot.template.elements == elements
+
+      [_, term2 | _] = TeacherAssistant.Organization.list_terms(scope, scope.current_academic_year)
+      {:draft, draft} = TeacherAssistant.ReportCards.class_view(scope, cg, {:trimester, term2})
+      assert %{language: :bilingual, elements: [:qr_code]} = draft.template
+    end
+
+    test "a snapshot from before I5 renders with the current settings", %{scope: scope, cg: cg} do
+      old_view = %{results: nil, roster: []}
+      assert %{language: :fr} = TeacherAssistant.ReportCards.template_of(scope, cg, old_view)
     end
   end
 end

@@ -24,6 +24,7 @@ defmodule TeacherAssistant.ReportCards do
   alias TeacherAssistant.Academics.{
     AcademicYear,
     BulletinPublication,
+    BulletinTemplate,
     ClassGroup,
     EntryProgress,
     Term
@@ -46,9 +47,20 @@ defmodule TeacherAssistant.ReportCards do
         |> Discipline.class_discipline(cg, period)
         |> Map.new(fn {id, summary} -> {id, plain_discipline(summary)} end),
       form_master: fm && %{name: fm.name, email: to_string(fm.email)},
-      group_subtotals?: group_subtotals?(scope)
+      group_subtotals?: group_subtotals?(scope),
+      template: template(scope, cg)
     }
   end
+
+  @doc "The class's printed-card template under the school's current settings (spec I5)."
+  def template(%Scope{} = scope, %ClassGroup{} = cg) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    BulletinTemplate.resolve(profile, scope.current_workspace.name, cg)
+  end
+
+  @doc "The template a view renders with: its own (drafts, v3 snapshots), else the current settings."
+  def template_of(%Scope{} = scope, %ClassGroup{} = cg, view),
+    do: Map.get(view, :template) || template(scope, cg)
 
   @doc "The published snapshot when there is one, else the live draft."
   def class_view(%Scope{} = scope, %ClassGroup{} = cg, period) do
