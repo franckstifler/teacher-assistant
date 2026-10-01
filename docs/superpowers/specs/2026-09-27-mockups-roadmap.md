@@ -608,8 +608,11 @@ changes a published card.
 
 8. **"Bulletins"** (`/school/bulletins`), menu item for the Proviseur and Censeur: class picker, period tabs
    Trimestre 1–3 and Année; status ("Brouillon" or "Publié le … par …"); mark-entry rate; table Rang,
-   Élève, Moyenne générale, Appréciation, Distinction, each row linking to the report card; "Publier les
-   bulletins de la classe" — below 100 % entry it first asks « Saisie incomplète : n %. Publier quand même
+   Élève, Moyenne générale, Appréciation, Distinction, and a print icon per row (that student's report card
+   alone). Selecting a row shows the **side panel** (mockup): the student's subject averages with
+   coefficients, moyenne générale, rank / effectif, absences (hours), appreciation and distinction, the
+   status badge, and buttons "Ouvrir le bulletin" and "Imprimer"; the first student is selected by default.
+   "Imprimer toute la classe" sits next to "Publier les bulletins de la classe" — below 100 % entry it first asks « Saisie incomplète : n %. Publier quand même
    ? »; on a published period "Dépublier" opens a required reason field; the history of the class and
    period ("Publié le … par …", "Retiré le … par … : motif") is listed below.
 9. **Access:** drafts (live term/annual figures) stay as today — admin axis or the class's form master.
@@ -617,7 +620,9 @@ changes a published card.
    combined). Teachers get a "Bulletins" item in the enseignant space listing only those classes and only
    published periods; a draft period shows "Pas encore publiés". Report card, results and print enforce
    the same rule.
-10. Report card and print of a published period show "Publié le …". A printed **draft** trimester or
+10. Printing goes through the existing print routes (one student, whole class) for the selected period:
+    a published period prints from the snapshot, a draft from live figures. Report card and print of a
+    published period show "Publié le …". A printed **draft** trimester or
     annual card carries a "BROUILLON" watermark.
 11. All strings through gettext (FR and EN).
 
