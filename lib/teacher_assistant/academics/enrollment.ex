@@ -58,6 +58,30 @@ defmodule TeacherAssistant.Academics.Enrollment do
       prepare build(load: [:student])
     end
 
+    # Spec KLM1 (L3): the school-wide student list, class order then name, paginated.
+    read :school_list do
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :class_group_id, :uuid
+      # Lower-cased by the caller.
+      argument :query, :string
+
+      pagination offset?: true, countable: true, required?: false, default_limit: 50
+
+      filter expr(academic_year_id == ^arg(:academic_year_id))
+      filter expr(is_nil(^arg(:class_group_id)) or class_group_id == ^arg(:class_group_id))
+
+      filter expr(
+               is_nil(^arg(:query)) or
+                 contains(string_downcase(student.full_name), ^arg(:query)) or
+                 string_downcase(student.matricule) == ^arg(:query)
+             )
+
+      prepare build(
+                load: [:class_group, student: [primary_guardian_link: :guardian]],
+                sort: [class_rank: :asc, class_label: :asc, student_name: :asc]
+              )
+    end
+
     read :for_student_and_year do
       argument :student_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false
@@ -179,6 +203,12 @@ defmodule TeacherAssistant.Academics.Enrollment do
       allow_nil? false
       public? true
     end
+  end
+
+  calculations do
+    calculate :class_rank, :integer, expr(class_group.level_rank)
+    calculate :class_label, :string, expr(class_group.label)
+    calculate :student_name, :string, expr(string_downcase(student.full_name))
   end
 
   identities do

@@ -132,6 +132,7 @@ defmodule TeacherAssistantWeb.Spaces do
           bulletins(),
           councils(),
           classes(),
+          students(),
           timetable_editor(),
           members(),
           correction_review(facts.pending_corrections)
@@ -162,6 +163,7 @@ defmodule TeacherAssistantWeb.Spaces do
           bulletins(),
           councils(),
           classes(),
+          students(),
           timetable_editor(),
           members(),
           correction_review(facts.pending_corrections)
@@ -189,7 +191,8 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Vie scolaire"), [
           school_day(facts[:missed_calls]),
           absences(facts[:unjustified_absences]),
-          classes()
+          classes(),
+          students()
         ])
       ]
     }
@@ -312,6 +315,9 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp classes,
     do: item("classes", gettext("Classes"), "hero-rectangle-group", ~p"/school/classes")
+
+  defp students,
+    do: item("students", gettext("Élèves"), "hero-identification", ~p"/school/students")
 
   defp timetable,
     do:

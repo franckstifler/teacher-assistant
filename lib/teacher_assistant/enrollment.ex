@@ -304,6 +304,27 @@ defmodule TeacherAssistant.Enrollment do
     |> Enum.sort_by(&String.downcase(&1.student.full_name))
   end
 
+  @doc """
+  Spec KLM1 (L3): one page (50) of `year`'s enrollments, class order then name,
+  with the student's main contact. `opts`: `query` (name fragment or exact
+  matricule), `class_group_id`, `offset`.
+  """
+  def list_school_students(%Scope{} = scope, %AcademicYear{id: year_id}, opts \\ []) do
+    query =
+      case opts[:query] |> to_string() |> String.trim() do
+        "" -> nil
+        q -> String.downcase(q)
+      end
+
+    Enrollment
+    |> Ash.Query.for_read(
+      :school_list,
+      %{academic_year_id: year_id, class_group_id: opts[:class_group_id], query: query},
+      scope: scope
+    )
+    |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
+  end
+
   defp roster_query(cg_id, %Scope{} = scope) do
     Enrollment
     |> Ash.Query.for_read(:for_class_group, %{class_group_id: cg_id}, scope: scope)

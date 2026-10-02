@@ -62,7 +62,10 @@ defmodule TeacherAssistantWeb.SpacesTest do
              item_ids(:proviseur, facts([:head]))
 
     assert item_ids(:surveillant, facts([:discipline_master])) ==
-             ["nav-school-day", "nav-school-absences", "nav-school-classes"]
+             ["nav-school-day", "nav-school-absences", "nav-school-classes", "nav-school-students"]
+
+    assert "nav-school-students" in item_ids(:proviseur, facts([:head]))
+    assert "nav-school-students" in item_ids(:censeur, facts([:vice_principal]))
 
     refute "nav-school-sequences" in item_ids(:enseignant, facts([:teacher], teaches?: true))
 
