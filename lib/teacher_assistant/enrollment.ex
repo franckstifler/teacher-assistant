@@ -3,7 +3,7 @@ defmodule TeacherAssistant.Enrollment do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Student}
+  alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Guardian, Student, StudentGuardian}
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.Checks
@@ -204,6 +204,89 @@ defmodule TeacherAssistant.Enrollment do
       Enum.uniq_by(by_matricule ++ by_name, & &1.id) |> Enum.take(10)
     end
   end
+
+  # --- Guardians (spec KLM1) ---------------------------------------------------
+
+  @doc "Whether the scope edits the school register: students' identity and guardians (admin or SG)."
+  def can_manage_register?(%Scope{current_user: %{} = user, current_workspace: %{id: ws_id}}),
+    do: Checks.SchoolRole.holds?(user, ws_id, :admin) or Checks.SchoolRole.holds?(user, ws_id, :conduct)
+
+  def can_manage_register?(_scope), do: false
+
+  @doc "The student's guardian links with their guardian, main contact first."
+  def list_guardian_links(%Scope{} = scope, %Student{id: id}) do
+    StudentGuardian
+    |> Ash.Query.for_read(:for_student, %{student_id: id}, scope: scope)
+    |> Ash.read!()
+  end
+
+  @doc "The school's guardians whose phone matches `phone` once normalised; `[]` for an invalid number."
+  def find_guardians_by_phone(%Scope{} = scope, phone) do
+    if Guardian.Phone.valid?(phone) do
+      Guardian
+      |> Ash.Query.for_read(:by_phone_key, %{phone_key: Guardian.Phone.key(phone)}, scope: scope)
+      |> Ash.read!()
+    else
+      []
+    end
+  end
+
+  @doc "Creates a guardian and links it to `student` in one transaction."
+  def add_guardian(%Scope{} = scope, %Student{} = student, attrs) do
+    Ash.transact([Guardian, StudentGuardian], fn ->
+      with {:ok, guardian} <-
+             Guardian |> Ash.Changeset.for_create(:create, attrs, scope: scope) |> Ash.create(),
+           {:ok, _link} <- link_guardian(scope, student, guardian) do
+        guardian
+      else
+        {:error, error} -> Ash.DataLayer.rollback(Guardian, error)
+      end
+    end)
+  end
+
+  @doc "Links an existing guardian to `student`; the student's first link becomes the main contact."
+  def link_guardian(%Scope{} = scope, %Student{id: student_id}, %Guardian{id: guardian_id}) do
+    StudentGuardian
+    |> Ash.Changeset.for_create(:link, %{student_id: student_id, guardian_id: guardian_id},
+      scope: scope
+    )
+    |> Ash.create()
+    |> case do
+      {:ok, link} ->
+        {:ok, link}
+
+      {:error, error} ->
+        if identity_error?(error, "unique_link"), do: {:error, :already_linked}, else: {:error, error}
+    end
+  end
+
+  def update_guardian(%Scope{} = scope, %Guardian{} = guardian, attrs) do
+    guardian
+    |> Ash.Changeset.for_update(:update, attrs, scope: scope)
+    |> Ash.update()
+  end
+
+  def make_primary_guardian(%Scope{} = scope, %StudentGuardian{} = link) do
+    link
+    |> Ash.Changeset.for_update(:make_primary, %{}, scope: scope)
+    |> Ash.update()
+  end
+
+  def unlink_guardian(%Scope{} = scope, %StudentGuardian{} = link) do
+    link
+    |> Ash.Changeset.for_destroy(:unlink, %{}, scope: scope)
+    |> Ash.destroy()
+  end
+
+  defp identity_error?(%Ash.Error.Invalid{errors: errors}, name),
+    do: Enum.any?(errors, &identity_error?(&1, name))
+
+  defp identity_error?(%Ash.Error.Changes.InvalidAttribute{private_vars: vars}, name) do
+    constraint = vars[:constraint]
+    is_binary(constraint) and String.contains?(constraint, name)
+  end
+
+  defp identity_error?(_error, _name), do: false
 
   # --- Enrollment / roster -------------------------------------------------
 
