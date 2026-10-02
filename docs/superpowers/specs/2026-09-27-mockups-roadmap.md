@@ -24,10 +24,10 @@ starts by re-checking the "Existe" claims for its own gaps against `lib/`. Mocku
 | H | Pedagogy screens — **on hold** (2026-09-30: needs progression plans, which no screen creates since the teacher-personal pause) | P01, P02 (P2) | E | M |
 | I | Report card cycle, split I1 N09 → I2 N13 → I3 N11 → I4 N10 → I5 N12 (see §I) | N09, N13, N11, N10, N12 | D2a, D2b-1, D2b-2, D3 | S…L |
 | J | Timetable and staff, split J1 S03/S02 → J2 T04 → J3 T02/T03 → J4 T01 → J5 T05 (see §J) | S03, S02, T04, T01, T03, T02, T05 | — | S…L |
-| K | Platform | R04, R05, S04, S06, R03 | E | S…L |
+| K | Platform, split with L and M into KLM1…KLM9 (see §K, L, M); R04 dropped 2026-10-02 | R05, S04, S06, R03 (staff part) | E | S…M |
 | — | Marketing site | `Landing` mockup (not in the gap list) | — | M |
-| L | School life, rest (see §L) | V05, L1–L3 | G | M |
-| M | School registers and new year (see §M) | M1–M4 | — | M…L |
+| L | School life, rest (see §K, L, M) | V05, L1–L3 | G | M |
+| M | School registers and new year (see §K, L, M) | M1–M4 | — | M…L |
 | V | Visual checks still owed (see §V) | — | — | S each |
 
 Deferred by the gap list: P03, P04, S05.
@@ -1076,12 +1076,360 @@ clash today, refuses a closed cell since J1), `place_combined_slot/4`, `clear_sl
 Out of scope: rooms and teacher unavailability (J3); automatic timetable generation; teacher absences (J5);
 editing combined courses from the editor.
 
+## K, L, M — Platform, school life rest, registers and new year (split)
+
+Decided 2026-10-02. **R04 (teacher solo mode and joining a school) is dropped**: nothing teacher-solo for now.
+R03 is reduced to **staff in-app notifications** (no parent messages until an SMS provider is chosen). One
+spec section below per sub-increment; one plan, branch and `mix precommit` each, in this order:
+
+| # | Content | Gaps | Size |
+|---|---|---|---|
+| KLM1 | Students and guardians: guardian records, birth date and place, student profile, school-wide student list | M2, M3, L3 | M |
+| KLM2 | Settings « Assiduité & discipline », late minutes, alert in hours | L2 | S–M |
+| KLM3 | Suggested conduct mark | V05 | M |
+| KLM4 | School-wide sanctions page | L1 | S–M |
+| KLM5 | Class size, class naming rule, enrolment counts in one query | M4, R05 | S |
+| KLM6 | Official header, signature and stamp | S04 | S |
+| KLM7 | Rights matrix (read only) | S06 | S |
+| KLM8 | Staff in-app notifications, correction notices, entry reminders | R03 (part), N06 | M |
+| KLM9 | Next school year and closed years | M1 | L |
+
+KLM1 first: guardians feed the sanctions page (KLM4) and later parent messages. KLM2 before KLM3 (the conduct
+scale). KLM9 last: it reads the class size and naming rule (KLM5) and closes years for every year-bound
+resource built before it.
+
+## KLM1 — Students and guardians (spec)
+
+Gaps: **M2** (parents and guardians), **M3** (student profile), **L3** (school-wide student list, Censeur and
+SG → *École → Élèves*). No mockup for M2/M3.
+
+User decisions (2026-10-02): a guardian is a **separate record shared by siblings**, one **main contact** per
+student; guardians have **no login**; the student gains **optional date and place of birth**; no photo.
+
+Existing code: `Academics.Student` (`full_name`, `sex`, `matricule`; reads `:owned`, `:by_matricule`,
+`:search_by_name`) in the Enrollment domain; `Enrollment` (student × class × year, `status`, `repeater`); CSV
+import `/school/classes/:id/import`; per-enrolment bulletin route; no student page, no school-wide list.
+
+### Data
+
+1. `Student` gains `birth_date` (date, nullable, not in the future) and `birth_place` (string, nullable).
+2. **`Guardian`** (Enrollment domain, tenant-scoped like `Student`): `full_name` (required), `relationship`
+   (enum `:pere | :mere | :tuteur | :autre`, an `Ash.Type.Enum`), `phone` (required), `phone_2`, `email`,
+   `language` (enum `:fr | :en`, default `:fr`).
+3. **`StudentGuardian`** join: `student`, `guardian`, `primary?` (boolean). Identity on `[student_id,
+   guardian_id]`; at most one `primary?` per student (partial unique index). The first guardian linked to a
+   student becomes primary; making another primary unsets the previous one in the same action; unlinking the
+   primary promotes none (the profile then shows « Aucun contact principal »).
+4. Linking looks up an existing guardian of the school by phone first (normalised: digits only, leading `237`
+   dropped) and offers « Lier <nom> » instead of creating a duplicate. A guardian with no linked student left
+   is deleted with the last unlink.
+5. Policies: read on the member axis for admins, the SG (`:conduct`) and the student's teachers and form
+   master; create/update/link/unlink for admins and `:conduct`.
+
+### Screens
+
+6. **« Élèves »** (`/school/students`; admin or `:conduct`; in the Proviseur, Censeur and Surveillant menus,
+   under *École*): students enrolled in the active year, search by name or matricule (one field), class filter;
+   columns name, matricule, class, sex, main contact and phone (`tel:` link); usual class order then name;
+   paginated (50). A row opens the profile.
+7. **Student profile** (`/school/students/:id`; same readers as rule 5):
+   - *Identité*: name, sex, matricule, date and place of birth; « Modifier » for admins and `:conduct`.
+   - *Parents et tuteurs*: each guardian with relationship, phones, e-mail, language, « Contact principal »
+     badge; add (with the phone lookup of rule 4), set as main contact, edit, unlink.
+   - *Scolarité*: one row per enrolment, newest first: year, class, « Redoublant », passage decision when
+     decided (I4), link to that year's bulletin.
+   - *Cette année*: justified and unjustified absence hours, lates, sanctions, conduct marks per séquence,
+     links to the class's register and discipline pages.
+8. Class roster rows (`ClassLive`) link to the profile.
+9. CSV import gains optional columns `date_naissance` (JJ/MM/AAAA), `lieu_naissance`, `parent_nom`,
+   `parent_telephone`; a parent with an existing phone is linked, not duplicated, and becomes main contact.
+10. I5's bulletin template gains an element « Date et lieu de naissance » (on by default), printed « Né(e) le
+    … à … » when known.
+11. Strings through gettext (FR and EN).
+
+Out of scope: guardian accounts and logins, student photo, parent messages (R03), moving a student between
+classes.
+
+## KLM2 — Settings « Assiduité & discipline » (spec)
+
+Mockup: `Paramètres école` → *Vie scolaire* → « Assiduité & discipline ». Gap: **L2**.
+
+User decisions (2026-10-02): a late can carry **optional minutes**; the repeated-absence alert is in **hours**
+(replaces G's 3 days); empty justification deadline = **any time**.
+
+Existing code: `AttendanceEntry` (`status :present | :absent | :late`, `justified`, `justification_reason`,
+`justified_at`); `Conduct.totals/1` (absence hours from period length, lates counted); G's
+`SchoolLife.repeated_absence_threshold/0` = 3 distinct days in the current séquence; `SanctionType`
+(`:avertissement, :blame, :exclusion_temporaire, :exclusion_definitive, :consigne`);
+`SchoolProfile.exclusion_absence_hours`.
+
+### Data
+
+1. `SchoolProfile` gains (editable by admins and `:conduct`, through one action `:update_school_life`):
+   - `late_as_absence_minutes`: integer 1..240, nullable (nil = a late is never an absence);
+   - `justification_deadline_days`: integer 1..60, nullable (nil = any time), in lesson days (J1 calendar);
+   - `absence_alert_hours`: integer 1..200, default 10;
+   - `conduct_points_per_absence_hour`: decimal 0..5, default 0.5;
+   - `conduct_points_per_late`: decimal 0..5, default 0.25;
+   - `sanction_points`: embedded resource with one decimal 0..20 per sanction type — consigne 1,
+     avertissement 2, blâme 4, exclusion temporaire 6, exclusion définitive 0 (it ends schooling);
+   - `sanction_types_in_use`: list of `SanctionType`, default all.
+2. `AttendanceEntry` gains `late_minutes`: integer 1..240, nullable, only with `status: :late` (cleared when
+   the status changes).
+
+### Computation
+
+3. `Conduct.totals/2` takes the school's `late_as_absence_minutes`: a late whose `late_minutes` exceeds it
+   counts as an **unjustified absence** of that period's hours (or justified, when justified), not as a late. A
+   late without minutes stays a late. Every caller (bulletin, register, V05) passes the profile value.
+4. V04: a student is flagged when their **unjustified absence hours in the current séquence** reach
+   `absence_alert_hours`; `repeated_absence_threshold/0` is removed. Labels change from « n jours » to « n h ».
+5. With a deadline, an unjustified absence is **« Délai dépassé »** once more than N lesson days have passed
+   since its date (holidays and closed days not counted). It is a flag only: the SG can still justify.
+
+### Screens
+
+6. **« Assiduité & discipline »** (`/school/settings/school-life`; in the Proviseur and Censeur *Paramètres*
+   menus and the Surveillant menu): three blocks — *Retards et absences* (late threshold, justification
+   deadline, alert hours), *Barème de conduite* (points per absence hour, per late, per sanction type, with a
+   worked example « 6 h non justifiées, 2 retards, 1 avertissement → 14,5/20 » recomputed live), *Sanctions
+   utilisées* (one switch per type). Empty fields read « jamais » / « à tout moment ».
+7. Roll call (`RollCall`, used by the attendance page and « Ma journée »): choosing « Retard » shows an optional
+   « min » field next to the student.
+8. Absences page (`/school/absences`): « Délai dépassé » tag on late unjustified absences; flagged students
+   show « n h ».
+9. Sanction entry forms (class discipline page, and KLM4) offer only the types in use; existing records keep
+   their type.
+10. Strings through gettext (FR and EN).
+
+Out of scope: blocking justification after the deadline, parent alerts (R03), using `exclusion_absence_hours`
+for anything new.
+
+## KLM3 — Suggested conduct mark (spec)
+
+Mockup: `Espaces par rôle` → SG → « Conduite ». Gap: **V05**.
+
+User decisions (2026-10-02): the scale is **points per sanction type** (KLM2); the mark starts at 20 per
+séquence, only unjustified absences cost points.
+
+Existing code: `ConductMark` (one per enrolment × séquence, `value` 0..20, `:set` upserts, `:conduct` axis);
+`Discipline.set_conduct_mark/4`, `class_discipline/3`; `Attendance.class_conduct/…`; sanctions per enrolment
+in a date range.
+
+### Computation
+
+1. Pure `Academics.ConductSuggestion.suggest/2` (no database): given a student's séquence facts
+   (`unjustified_hours`, `retards`, sanction types) and the scale, returns `20 − hours × p_hour − retards ×
+   p_late − Σ sanction points`, clamped to 0..20, rounded **down** to the nearest 0.25, plus the itemised
+   deductions.
+2. `Discipline.conduct_sheet/3` (scope, class, séquence) loads for every enrolment of the class: the séquence's
+   attendance totals (KLM2 rule 3), its sanctions (by `date` within the séquence dates), the current
+   `ConductMark` and the suggestion — one query per kind, not per student.
+
+### Screen
+
+3. **« Conduite »** (`/school/conduct`; `:conduct` axis, admins read; in the Surveillant menu, and the
+   Proviseur and Censeur *Vie scolaire*): class picker (usual order) and séquence picker (default: current
+   séquence). Table: student, h non justifiées, retards, sanctions (chips with their points), **proposée**,
+   actuelle, and an input pre-filled with the current mark, else the suggestion. A row whose input differs
+   from the suggestion shows « ajustée ». A row's deductions open on tap.
+4. « Valider la classe » saves every row with an input value through `set_conduct_mark` in one transaction,
+   then shows « n notes de conduite enregistrées ». « Appliquer les propositions » refills every input with
+   its suggestion.
+5. A closed séquence keeps working (conduct marks are not under the D3 lock); a closed year (KLM9) is read
+   only.
+6. Strings through gettext (FR and EN).
+
+Out of scope: per-trimester entry (trimester and year conduct stay means of séquences), automatic saving of
+suggestions.
+
+## KLM4 — School-wide sanctions page (spec)
+
+Mockup: `Espaces par rôle` → SG → « Sanctions ». Gap: **L1** (V06 parents-notified tracking already exists).
+
+Existing code: `SanctionEntry` (`type`, `date`, `reason`, `duration_days`, `parents_notified_on`,
+`parents_notified_by_user_id`), actions `:mark_parents_notified`, reads `:recent`, `:parents_to_notify`;
+`Discipline.add_sanction/…`, `delete_sanction`; per-class discipline page.
+
+### Screen
+
+1. **« Sanctions »** (`/school/sanctions`; `:conduct` axis, admins read; Surveillant menu, rail badge = parents
+   to notify): active year's sanctions, newest first, paginated (50); filters class, type, « À notifier ».
+   Columns: student, class, type, date, reason, parents (« notifiés le … » or « À notifier »).
+2. **Quick entry** at the top: student search (same search as KLM1's list), type chips (types in use, KLM2),
+   duration in days for an exclusion temporaire, optional reason, date (default today) → « Enregistrer »,
+   through `add_sanction`.
+3. **Detail panel** for the selected row: student (link to the profile), class, type, date, duration, reason,
+   issued by; main guardian's name and phone(s) as `tel:` links, « Aucun contact » with a link to the profile
+   otherwise; « Marquer les parents notifiés » (existing action); « Supprimer » with confirmation.
+4. The class discipline page is unchanged.
+5. Strings through gettext (FR and EN).
+
+Out of scope: messages to parents (R03), printing a sanction notice.
+
+## KLM5 — Class size, naming rule, enrolment counts (spec)
+
+Gaps: **M4** (the two fields not yet built: maximum class size, class naming rule — the short school name
+already exists, and J2 built statutory hours and one form master per class) and **R05** (dashboard counts).
+
+User decision (2026-10-02): the maximum class size is a **warning, never a block**.
+
+Existing code: `SchoolProfile.short_name`, `statutory_hours`; `ClassGroup` (`label`, level, série, per year);
+`DashboardLive` counts with one roster query per class (`dashboard_live.ex:179`).
+
+1. `SchoolProfile` gains `max_class_size` (integer 1..200, nullable = no limit) and `class_suffix` (enum
+   `:letters | :numbers`, default `:letters`), admin axis, in the *Classes* block of the settings page.
+2. `ClassGroup` gains an aggregate `enrollment_count` (enrolments of the class). The dashboard, the class list
+   and the class page load it instead of reading rosters; the dashboard total is one query.
+3. Over the limit, the class list and class page show « 68 / 60 » in the warning colour; enrolment and CSV
+   import still succeed and show « La classe dépasse l'effectif maximum (60) ».
+4. The add-class form proposes the next free label for the chosen level from the suffix rule (« 6e C » after
+   6e A and 6e B; « 6e 3 » with numbers). The label stays editable.
+5. Strings through gettext (FR and EN).
+
+## KLM6 — Official header, signature and stamp (spec)
+
+Mockup: `Paramètres école` → *Établissement*. Gap: **S04**.
+
+Existing code: `BulletinTemplate.official_lines/1` (fixed: République du Cameroun, Paix – Travail – Patrie,
+ministry, regional and departmental delegation from the profile), `school_lines/1`; logo upload
+(`settings_live.ex`, `SchoolLogoController`); I5 template elements with on/off switches.
+
+1. `SchoolProfile` gains `official_header_lines` (list of strings, max 6, each ≤ 120 characters; nil = today's
+   generated lines) and `signature_path`, `stamp_path` (stored like `logo_path`). Head axis.
+2. `official_lines/1` returns the saved lines when set, else today's generated ones.
+3. *Établissement* settings: « En-tête officiel » — the lines pre-filled with the generated ones, edit, reset
+   to default; « Signature du chef d'établissement » and « Cachet » — upload (PNG or JPEG, ≤ 1 MB), preview,
+   remove. Served by the logo controller (`/school/logo?kind=signature|stamp`), members only.
+4. I5 template gains « Signature » and « Cachet » elements (on by default, shown only when an image exists),
+   printed in the head's signature block; the template preview shows them.
+5. Strings through gettext (FR and EN).
+
+Out of scope: signatures of other roles, signing council minutes.
+
+## KLM7 — Rights matrix, read only (spec)
+
+Mockup: `Paramètres école` → *Rôles*. Gap: **S06**.
+
+Existing code: `SchoolRole` (eight roles) and `SchoolRole.axis/1` (`:member`, `:admin`, `:head`, `:conduct`,
+`:fees`), used by every policy as `{Checks.SchoolRole, any_of: axis}`; row-level rules (form master, a
+teacher's own courses).
+
+1. `SchoolRole.rights/0`: one list of `%{key, label, axis, note_by_role}` in plain words (saisir les notes de
+   ses cours, valider les corrections, gérer la discipline et la conduite, frais et paiements, paramètres de
+   l'école, membres et invitations, emploi du temps, bulletins et conseils de classe, affectations). `note_by_role`
+   carries row-level nuances (« ses cours », « sa classe » for a form master).
+2. A test asserts every `axis` in `rights/0` is one of `axis/1`'s axes and that each right's axis matches the
+   axis used by a named policy (one representative action per right).
+3. **« Rôles et droits »** (`/school/settings/roles`; admin axis; *Paramètres* menus): table rights × roles,
+   ✓ or the note; a line « Les droits suivent le rôle ; ils ne sont pas modifiables pour l'instant. »
+4. Strings through gettext (FR and EN).
+
+Out of scope: editing rights.
+
+## KLM8 — Staff in-app notifications (spec)
+
+Gaps: **R03** (staff part only) and **N06** (reminders to teachers late with marks).
+
+User decisions (2026-10-02): **in-app only, staff only**; parent messages and SMS wait for a provider; no
+per-school message templates.
+
+Existing code: D3 `MarkCorrection` request / approve / refuse; F's sequence tracking `/school/sequences`
+(`EntryProgress.grid`); rail badges (`Spaces.counts/2`); no notification resource.
+
+### Data
+
+1. **`Notification`** (Accounts domain, tenant-scoped): `recipient_user_id`, `kind` (enum
+   `:correction_requested | :correction_decided | :entry_reminder`), `params` (map of short strings for the
+   text), `link` (path), `read_at`, timestamps. Read and mark-read by the recipient only; created only through
+   `Notifications.deliver/2` (`authorize?: false` inside, like `Mark.Journal.record!/2`).
+2. `Notifications.deliver(kind, recipients, params, link)` inserts one row per recipient and broadcasts on
+   `"notifications:<user_id>"`. It is the single place a future e-mail or SMS channel plugs into.
+3. **`EntryReminder`** log: course, séquence, sent by, `inserted_at`; at most one per course × séquence × day
+   (identity on a date column).
+
+### Triggers
+
+4. A correction request notifies every member holding `:head` or `:vice_principal`; a decision notifies the
+   requesting teacher, with the decision.
+5. « Relancer » on a lagging course of the sequence tracking grid (and « Relancer tous les retards » for the
+   séquence) records an `EntryReminder` and notifies the course's teacher(s): « Saisie en retard : <matière> ·
+   <classe> · <séquence> ». The grid cell shows « relancé le … ». A second reminder the same day is refused
+   quietly.
+
+### Screens
+
+6. A bell in the app header with the unread count (live through PubSub); its menu shows the 8 newest; « Tout
+   voir » opens **`/school/notifications`** (all members): list newest first, unread in bold, « Tout marquer
+   comme lu »; opening one marks it read and follows its link.
+7. Strings through gettext (FR and EN); the text is built at display time from `kind` and `params`, so it
+   follows the reader's language.
+
+Out of scope: parent messages, e-mail and SMS delivery, message templates, notification preferences.
+
+## KLM9 — Next school year and closed years (spec)
+
+Gap: **M1**. No mockup.
+
+User decisions (2026-10-02): carry over **classes, courses and teacher assignments** (with form masters) as an
+editable starting point, **not** the timetable; the old year becomes **closed, read only**, with no reopening.
+
+Existing code: `AcademicYear` (`name`, `start_date`, `end_date`, `active`; `:activate` deactivates the
+others); `ClassGroup` per year; `Enrollment` (`status :inscription | :reinscription`, `repeater`); passage
+decisions on `CouncilDecision.passage_decision` (`:admis, :admis_rachat, :redouble, :exclu`); setup wizard
+generates trimesters and séquences; nothing copies a year.
+
+### Data
+
+1. `AcademicYear` gains `status` (enum `:open | :closed`, default `:open`).
+2. **`YearOpen`** validation (like D3's `AssessmentOpen`): refuses create, update and destroy on any record of
+   a closed year — assessments and marks, mark corrections, attendance, sanctions, conduct marks and warnings,
+   enrolments, classes, courses and assignments, timetable slots, councils and decisions, bulletin publication,
+   holidays and calendar. Error « L'année <nom> est clôturée. »
+
+### Starting the next year
+
+3. Generic action `AcademicYear.start_next_year` (head and vice_principal), run **in one transaction**:
+   creates the new year and its trimesters and séquences; recreates each class with label, level, série,
+   courses (subject, coefficient, weekly hours, teachers, combined courses) and form master; creates
+   enrolments per the mapping (`status: :reinscription`, `repeater: true` for repeaters); sets the old year
+   `:closed` and activates the new one. Any failure rolls everything back.
+4. **Placement** from each student's final passage decision:
+   - `:admis` and `:admis_rachat` → the class's admis target (rule 6), or not re-enrolled when the target is
+     « Ne pas réinscrire »;
+   - `:redouble` → the class with the same label in the new year;
+   - `:exclu`, or no decision → not re-enrolled (listed on the summary).
+5. Default admis target: the class of the next level (level order, as in `level_rank`) with the same suffix
+   (`class_suffix`, KLM5) and série; none when no such class exists (last level, or no next level in the
+   school) — the admin then picks a class or « Ne pas réinscrire ».
+
+### Screen
+
+6. **« Préparer l'année suivante »** (`/school/settings/new-year`; head and vice_principal; link from
+   *Paramètres → Année*), four steps:
+   1. *Vérification*: classes whose end-of-year council is not closed, students without a decision (count per
+      class), a warning when today is before the year's end date. Never blocking.
+   2. *Nouvelle année*: name (default « 2026-2027 »), start and end dates (default: the old ones + 1 year).
+   3. *Classes*: one row per class — new label (editable), admis target (select), repeaters stay, projected
+      size against `max_class_size` (warning colour above it).
+   4. *Confirmation*: classes created, students re-enrolled, of which repeaters, not re-enrolled (by reason);
+      « Démarrer l'année 2026-2027 », then a redirect to the new year's classes.
+7. *Paramètres → Année* lists closed years; each opens a read-only list of its classes linking to their
+   results and bulletins pages. The student profile (KLM1) links to past bulletins. Edit buttons are hidden on
+   a closed year's pages.
+8. Strings through gettext (FR and EN).
+
+Out of scope: copying the timetable or holidays, moving single students during the wizard, reopening a closed
+year, a general year switcher, archiving files.
+
 ## Holes found on 2026-10-01 (not yet specified)
 
 Found by comparing the app's routes with every claude.ai/design screen and with `Écarts avec le code`.
 Each needs a spec before a plan.
 
 ### L — School life, rest
+
+Specified 2026-10-02 in §K, L, M (KLM1–KLM4).
 
 - **V05** — suggested conduct mark (SG → *Conduite*): computed from unjustified absence hours, lates and
   sanctions, adjusted then confirmed by the SG. In the gap list but in no increment until now.
@@ -1096,6 +1444,8 @@ Each needs a spec before a plan.
   `matricule` (the field exists). The app has only per-class rosters.
 
 ### M — School registers and new year
+
+Specified 2026-10-02 in §K, L, M (KLM1, KLM5, KLM9).
 
 No mockup and no code for:
 - **M1** — starting the next school year: carrying classes over, moving students up after the passage
