@@ -288,6 +288,39 @@ defmodule TeacherAssistant.Enrollment do
 
   defp identity_error?(_error, _name), do: false
 
+  @doc """
+  Spec KLM1 (M3): `:manage` for admins and the SG, `:read` for a form master or
+  teacher of a class the student is enrolled in this year, else `:none`.
+  """
+  def student_access(%Scope{} = scope, %Student{} = student) do
+    cond do
+      can_manage_register?(scope) -> :manage
+      teaches_or_masters?(scope, student) -> :read
+      true -> :none
+    end
+  end
+
+  defp teaches_or_masters?(%Scope{current_user: %{id: uid}, current_academic_year: %{id: year_id}} = scope, student) do
+    Enrollment
+    |> Ash.Query.for_read(:for_student, %{student_id: student.id}, scope: scope)
+    |> Ash.Query.filter(
+      academic_year_id == ^year_id and
+        (class_group.form_master_user_id == ^uid or
+           exists(class_group.teaching_contexts, teacher_user_id == ^uid))
+    )
+    |> Ash.exists?()
+  end
+
+  defp teaches_or_masters?(_scope, _student), do: false
+
+  @doc "Spec KLM1 (M3): the student's enrollments with class and year, newest year first."
+  def student_history(%Scope{} = scope, %Student{id: id}) do
+    Enrollment
+    |> Ash.Query.for_read(:for_student, %{student_id: id}, scope: scope)
+    |> Ash.read!()
+    |> Enum.sort_by(& &1.academic_year.start_date, {:desc, Date})
+  end
+
   # --- Enrollment / roster -------------------------------------------------
 
   def list_students(%Scope{} = scope, %ClassGroup{id: cg_id}) do

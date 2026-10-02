@@ -9,6 +9,8 @@ defmodule TeacherAssistant.Councils do
   `{:error, :locked}`.
   """
 
+  require Ash.Query
+
   alias TeacherAssistant.Academics.{
     AcademicYear,
     ClassCouncil,
@@ -147,6 +149,18 @@ defmodule TeacherAssistant.Councils do
          passage
        )}
     end)
+  end
+
+  @doc "Spec KLM1 (M3): the student's end-of-year passage decisions, by class group."
+  def annual_decisions(%Scope{} = scope, student_id) do
+    CouncilDecision
+    |> Ash.Query.filter(
+      student_id == ^student_id and class_council.period_key == "annee" and
+        not is_nil(passage_decision)
+    )
+    |> Ash.Query.load(:class_council)
+    |> Ash.read!(scope: scope)
+    |> Map.new(&{&1.class_council.class_group_id, &1.passage_decision})
   end
 
   @doc """

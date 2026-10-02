@@ -82,6 +82,12 @@ defmodule TeacherAssistant.Academics.Enrollment do
               )
     end
 
+    read :for_student do
+      argument :student_id, :uuid, allow_nil?: false
+      filter expr(student_id == ^arg(:student_id))
+      prepare build(load: [:class_group, :academic_year])
+    end
+
     read :for_student_and_year do
       argument :student_id, :uuid, allow_nil?: false
       argument :academic_year_id, :uuid, allow_nil?: false

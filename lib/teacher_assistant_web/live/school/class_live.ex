@@ -111,7 +111,11 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             </thead>
             <tbody>
               <tr :for={row <- @roster} id={"roster-row-#{row.enrollment.id}"}>
-                <td>{row.student.full_name}</td>
+                <td>
+                  <.link navigate={~p"/school/students/#{row.student.id}"} class="hover:text-primary">
+                    {row.student.full_name}
+                  </.link>
+                </td>
                 <td>{row.student.sex}</td>
                 <td>{row.student.matricule}</td>
                 <td>
