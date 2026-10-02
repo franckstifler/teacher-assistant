@@ -176,6 +176,13 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             <dt class="ta-eyebrow">{gettext("Matricule")}</dt>
             <dd>{@student.matricule || "—"}</dd>
           </div>
+          <div :if={Map.get(@student, :birth_date) || Map.get(@student, :birth_place)}>
+            <dt class="ta-eyebrow">{gettext("Né(e) le")}</dt>
+            <dd>
+              {Map.get(@student, :birth_date) && Calendar.strftime(@student.birth_date, "%d/%m/%Y")}
+              <span :if={Map.get(@student, :birth_place)}>{gettext("à")} {@student.birth_place}</span>
+            </dd>
+          </div>
           <div>
             <dt class="ta-eyebrow">{gettext("Classe")}</dt>
             <dd>{@cg.label} — {@cg.level}</dd>

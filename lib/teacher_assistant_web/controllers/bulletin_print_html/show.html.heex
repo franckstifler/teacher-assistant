@@ -97,6 +97,19 @@
           <td class="k">{tr(@lang, fn -> gettext("Sexe") end)}</td>
           <td>{tr(@lang, fn -> sex_label(b.student.sex) end)}</td>
         </tr>
+        <%!-- Snapshots published before KLM1 carry no birth keys. --%>
+        <tr :if={
+          show?(@template, :birth) and
+            (Map.get(b.student, :birth_date) || Map.get(b.student, :birth_place))
+        }>
+          <td class="k">{tr(@lang, fn -> gettext("Né(e) le") end)}</td>
+          <td>
+            {Map.get(b.student, :birth_date) &&
+              Calendar.strftime(b.student.birth_date, "%d/%m/%Y")}
+          </td>
+          <td class="k">{tr(@lang, fn -> gettext("à") end)}</td>
+          <td>{Map.get(b.student, :birth_place)}</td>
+        </tr>
         <tr :if={show?(@template, :effectif)}>
           <td class="k">{tr(@lang, fn -> gettext("Effectif") end)}</td>
           <td>{@effectif}</td>

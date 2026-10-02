@@ -480,24 +480,57 @@ defmodule TeacherAssistant.Enrollment do
   def import_rows(%Scope{} = scope, %ClassGroup{} = cg, rows) do
     scope
     |> preview_rows(cg, rows)
-    |> Enum.reduce(%{created: 0, reenrolled: 0, conflicts: []}, fn {row, action}, acc ->
-      case action do
-        :create ->
-          case enroll_new(scope, cg, Map.take(row, [:full_name, :sex, :matricule, :repeater])) do
-            {:ok, _} -> %{acc | created: acc.created + 1}
-            {:error, reason} -> conflict(acc, row, reason)
-          end
+    |> Enum.reduce(
+      %{created: 0, reenrolled: 0, conflicts: [], guardian_issues: []},
+      fn {row, action}, acc ->
+        case action do
+          :create ->
+            attrs =
+              Map.take(row, [:full_name, :sex, :matricule, :repeater, :birth_date, :birth_place])
 
-        {:reenroll, student} ->
-          case enroll_existing(scope, cg, student, %{repeater: row[:repeater] || false}) do
-            {:ok, _} -> %{acc | reenrolled: acc.reenrolled + 1}
-            {:error, reason} -> conflict(acc, row, reason)
-          end
+            case enroll_new(scope, cg, attrs) do
+              {:ok, %{student: student}} ->
+                attach_guardian(%{acc | created: acc.created + 1}, scope, student, row)
 
-        {:conflict, reason} ->
-          conflict(acc, row, reason)
+              {:error, reason} ->
+                conflict(acc, row, reason)
+            end
+
+          {:reenroll, student} ->
+            case enroll_existing(scope, cg, student, %{repeater: row[:repeater] || false}) do
+              {:ok, _} ->
+                attach_guardian(%{acc | reenrolled: acc.reenrolled + 1}, scope, student, row)
+
+              {:error, reason} ->
+                conflict(acc, row, reason)
+            end
+
+          {:conflict, reason} ->
+            conflict(acc, row, reason)
+        end
       end
-    end)
+    )
+  end
+
+  # Spec KLM1: the row's parent, matched by phone or created, becomes a guardian.
+  defp attach_guardian(acc, _scope, _student, %{guardian: nil}), do: acc
+  defp attach_guardian(acc, _scope, _student, row) when not is_map_key(row, :guardian), do: acc
+
+  defp attach_guardian(acc, scope, student, %{guardian: %{full_name: name, phone: phone}}) do
+    result =
+      case find_guardians_by_phone(scope, phone) do
+        [guardian | _] ->
+          link_guardian(scope, student, guardian)
+
+        [] ->
+          add_guardian(scope, student, %{full_name: name, relationship: :autre, phone: phone})
+      end
+
+    case result do
+      {:ok, _} -> acc
+      {:error, :already_linked} -> acc
+      {:error, reason} -> %{acc | guardian_issues: acc.guardian_issues ++ [%{full_name: student.full_name, reason: reason}]}
+    end
   end
 
   defp classify_row(_scope, _cg, %{matricule: nil}), do: :create

@@ -331,7 +331,14 @@ defmodule TeacherAssistant.ReportCards do
 
   defp plain_entry(%{student: s, enrollment: e}) do
     %{
-      student: %{id: s.id, full_name: s.full_name, matricule: s.matricule, sex: s.sex},
+      student: %{
+        id: s.id,
+        full_name: s.full_name,
+        matricule: s.matricule,
+        sex: s.sex,
+        birth_date: s.birth_date,
+        birth_place: s.birth_place
+      },
       enrollment: %{id: e.id, repeater: e.repeater}
     }
   end

@@ -622,4 +622,20 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       refute conn |> get(url) |> html_response(200) =~ ~s(src="/school/logo")
     end
   end
+
+  test "prints date and place of birth when known", %{conn: conn, cg: cg, seq: seq, roster: roster, scope: scope} do
+    %{student: awa, enrollment: enr} = Enum.find(roster, &(&1.student.full_name == "Awa Ngo"))
+
+    {:ok, _} =
+      Enrollment.update_student(awa, %{birth_date: ~D[2013-04-02], birth_place: "Yaoundé"}, scope: scope)
+
+    body =
+      conn
+      |> get(~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}")
+      |> html_response(200)
+
+    assert body =~ "Né(e) le"
+    assert body =~ "02/04/2013"
+    assert body =~ "Yaoundé"
+  end
 end

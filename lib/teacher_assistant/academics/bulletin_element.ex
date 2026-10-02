@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Academics.BulletinElement do
       :min_max,
       :subject_appreciation,
       :effectif,
+      :birth,
       :absences,
       :conduct,
       :pp_signature,
@@ -23,6 +24,7 @@ defmodule TeacherAssistant.Academics.BulletinElement do
   def label(:min_max), do: gettext("Min / max de la classe")
   def label(:subject_appreciation), do: gettext("Appréciation (ou grade) par matière")
   def label(:effectif), do: gettext("Effectif")
+  def label(:birth), do: gettext("Date et lieu de naissance")
   def label(:absences), do: gettext("Absences")
   def label(:conduct), do: gettext("Conduite (note, consignes, sanctions)")
   def label(:pp_signature), do: gettext("Signature du professeur principal")

@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Academics.RosterLine
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -42,7 +43,9 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
 
         <div :if={@stage == :paste} class="ta-leaf space-y-3">
           <p class="text-sm text-base-content/70">
-            {gettext("Paste one student per line: name;sex (m/f);matricule (optional).")}
+            {gettext(
+              "Une ligne par élève : nom;sexe (m/f);matricule;date de naissance (JJ/MM/AAAA);lieu de naissance;nom du parent;téléphone du parent. Seul le nom est obligatoire."
+            )}
           </p>
           <.form for={%{}} id="import-form" phx-submit="parse" class="space-y-3">
             <textarea
@@ -67,6 +70,12 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
               <span class="text-sm">
                 {row.full_name}
                 <span :if={row.matricule} class="text-base-content/60">— {row.matricule}</span>
+                <span :if={row[:birth_date]} class="text-base-content/60">
+                  · {Calendar.strftime(row.birth_date, "%d/%m/%Y")}
+                </span>
+                <span :if={row[:guardian]} class="text-base-content/60">
+                  · {gettext("Parent : %{name}", name: row.guardian.full_name)}
+                </span>
               </span>
               <span class={["badge", badge_class(action)]}>{action_label(action)}</span>
             </li>
@@ -104,6 +113,15 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
             </ul>
           </div>
 
+          <div :if={@result.guardian_issues != []} id="guardian-issues" class="space-y-1">
+            <p class="font-semibold text-warning">
+              {gettext("Parents non enregistrés (numéro invalide) :")}
+            </p>
+            <ul class="space-y-1">
+              <li :for={i <- @result.guardian_issues} class="text-sm">{i.full_name}</li>
+            </ul>
+          </div>
+
           <.link navigate={~p"/school/classes/#{@cg.id}"} class="btn btn-primary w-full">
             {gettext("Back to class")}
           </.link>
@@ -114,7 +132,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   end
 
   def handle_event("parse", %{"import" => %{"raw" => raw}}, socket) do
-    rows = parse_rows(raw)
+    rows = RosterLine.parse(raw)
     preview = Enrollment.preview_rows(socket.assigns.current_scope, socket.assigns.cg, rows)
 
     {:noreply,
@@ -129,7 +147,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   end
 
   def handle_event("confirm", _params, socket) do
-    rows = parse_rows(socket.assigns.raw)
+    rows = RosterLine.parse(socket.assigns.raw)
     result = Enrollment.import_rows(socket.assigns.current_scope, socket.assigns.cg, rows)
 
     {:noreply,
@@ -137,34 +155,6 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
      |> assign(:result, result)
      |> assign(:stage, :done)}
   end
-
-  defp parse_rows(raw) do
-    raw
-    |> String.split(["\r\n", "\n"], trim: true)
-    |> Enum.map(&String.split(&1, ";"))
-    |> Enum.map(fn fields ->
-      fields = fields ++ List.duplicate("", max(3 - length(fields), 0))
-      [full_name, sex, matricule] = Enum.take(fields, 3)
-
-      %{
-        full_name: String.trim(full_name),
-        sex: parse_sex(sex),
-        matricule: blank_to_nil(String.trim(matricule)),
-        repeater: false
-      }
-    end)
-    |> Enum.reject(&(&1.full_name == ""))
-  end
-
-  defp parse_sex(v) do
-    case v |> to_string() |> String.trim() |> String.downcase() do
-      "m" -> :m
-      _ -> :f
-    end
-  end
-
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(v), do: v
 
   defp badge_class(:create), do: "badge-success"
   defp badge_class({:reenroll, _}), do: "badge-info"
