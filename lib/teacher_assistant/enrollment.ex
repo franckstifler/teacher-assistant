@@ -22,6 +22,9 @@ defmodule TeacherAssistant.Enrollment do
     resource Enrollment do
       define :update_enrollment, action: :update
     end
+
+    resource TeacherAssistant.Academics.Guardian
+    resource TeacherAssistant.Academics.StudentGuardian
   end
 
   authorization do

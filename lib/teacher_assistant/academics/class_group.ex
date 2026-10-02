@@ -113,6 +113,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     end
 
     has_many :enrollments, TeacherAssistant.Academics.Enrollment
+    has_many :teaching_contexts, TeacherAssistant.Academics.TeachingContext
   end
 
   calculations do

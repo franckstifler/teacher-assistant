@@ -32,8 +32,8 @@ defmodule TeacherAssistant.Academics.Student do
     defaults [
       :read,
       :destroy,
-      create: [:full_name, :sex, :matricule],
-      update: [:full_name, :sex, :matricule]
+      create: [:full_name, :sex, :matricule, :birth_date, :birth_place],
+      update: [:full_name, :sex, :matricule, :birth_date, :birth_place]
     ]
 
     read :owned do
@@ -55,6 +55,12 @@ defmodule TeacherAssistant.Academics.Student do
     end
   end
 
+  validations do
+    validate compare(:birth_date, less_than_or_equal_to: &Date.utc_today/0),
+      where: [present(:birth_date)],
+      message: "la date de naissance ne peut pas être dans le futur"
+  end
+
   policies do
     policy action_type(:read) do
       authorize_if {Checks.SchoolRole, any_of: :member}
@@ -68,6 +74,7 @@ defmodule TeacherAssistant.Academics.Student do
       # Row rules name a user, not a membership: require an active one.
       forbid_unless {Checks.SchoolRole, any_of: :member}
       authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
       authorize_if expr(exists(enrollments, class_group.form_master_user_id == ^actor(:id)))
     end
   end
@@ -82,6 +89,8 @@ defmodule TeacherAssistant.Academics.Student do
     attribute :full_name, :string, allow_nil?: false, public?: true
     attribute :sex, TeacherAssistant.Academics.Sex, allow_nil?: false, public?: true
     attribute :matricule, :string, allow_nil?: true, public?: true
+    attribute :birth_date, :date, allow_nil?: true, public?: true
+    attribute :birth_place, :string, allow_nil?: true, public?: true, constraints: [max_length: 120]
     timestamps()
   end
 
@@ -93,5 +102,10 @@ defmodule TeacherAssistant.Academics.Student do
     end
 
     has_many :enrollments, TeacherAssistant.Academics.Enrollment
+    has_many :guardian_links, TeacherAssistant.Academics.StudentGuardian
+
+    has_one :primary_guardian_link, TeacherAssistant.Academics.StudentGuardian do
+      filter expr(primary_contact == true)
+    end
   end
 end
