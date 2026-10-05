@@ -3,7 +3,15 @@ defmodule TeacherAssistant.Enrollment do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{AcademicYear, ClassGroup, Enrollment, Guardian, Student, StudentGuardian}
+  alias TeacherAssistant.Academics.{
+    AcademicYear,
+    ClassGroup,
+    Enrollment,
+    Guardian,
+    Student,
+    StudentGuardian
+  }
+
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.Checks
@@ -209,7 +217,9 @@ defmodule TeacherAssistant.Enrollment do
 
   @doc "Whether the scope edits the school register: students' identity and guardians (admin or SG)."
   def can_manage_register?(%Scope{current_user: %{} = user, current_workspace: %{id: ws_id}}),
-    do: Checks.SchoolRole.holds?(user, ws_id, :admin) or Checks.SchoolRole.holds?(user, ws_id, :conduct)
+    do:
+      Checks.SchoolRole.holds?(user, ws_id, :admin) or
+        Checks.SchoolRole.holds?(user, ws_id, :conduct)
 
   def can_manage_register?(_scope), do: false
 
@@ -256,7 +266,9 @@ defmodule TeacherAssistant.Enrollment do
         {:ok, link}
 
       {:error, error} ->
-        if identity_error?(error, "unique_link"), do: {:error, :already_linked}, else: {:error, error}
+        if identity_error?(error, "unique_link"),
+          do: {:error, :already_linked},
+          else: {:error, error}
     end
   end
 
@@ -300,7 +312,10 @@ defmodule TeacherAssistant.Enrollment do
     end
   end
 
-  defp teaches_or_masters?(%Scope{current_user: %{id: uid}, current_academic_year: %{id: year_id}} = scope, student) do
+  defp teaches_or_masters?(
+         %Scope{current_user: %{id: uid}, current_academic_year: %{id: year_id}} = scope,
+         student
+       ) do
     Enrollment
     |> Ash.Query.for_read(:for_student, %{student_id: student.id}, scope: scope)
     |> Ash.Query.filter(
@@ -527,9 +542,18 @@ defmodule TeacherAssistant.Enrollment do
       end
 
     case result do
-      {:ok, _} -> acc
-      {:error, :already_linked} -> acc
-      {:error, reason} -> %{acc | guardian_issues: acc.guardian_issues ++ [%{full_name: student.full_name, reason: reason}]}
+      {:ok, _} ->
+        acc
+
+      {:error, :already_linked} ->
+        acc
+
+      {:error, reason} ->
+        %{
+          acc
+          | guardian_issues:
+              acc.guardian_issues ++ [%{full_name: student.full_name, reason: reason}]
+        }
     end
   end
 

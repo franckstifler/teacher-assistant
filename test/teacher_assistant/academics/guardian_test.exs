@@ -61,7 +61,13 @@ defmodule TeacherAssistant.Academics.GuardianTest do
     awa: awa
   } do
     {:ok, g1} = create_guardian(scope, %{})
-    {:ok, g2} = create_guardian(scope, %{full_name: "Marie Nkolo", relationship: :mere, phone: "699 00 00 01"})
+
+    {:ok, g2} =
+      create_guardian(scope, %{
+        full_name: "Marie Nkolo",
+        relationship: :mere,
+        phone: "699 00 00 01"
+      })
 
     link = fn g ->
       StudentGuardian
@@ -101,7 +107,11 @@ defmodule TeacherAssistant.Academics.GuardianTest do
     assert_forbidden(create_guardian(stranger, %{phone: "699 11 22 33"}))
   end
 
-  test "the student's form master reads them; the SG writes them", %{scope: scope, cg: cg, awa: awa} do
+  test "the student's form master reads them; the SG writes them", %{
+    scope: scope,
+    cg: cg,
+    awa: awa
+  } do
     {:ok, g} = create_guardian(scope, %{})
 
     {:ok, _} =

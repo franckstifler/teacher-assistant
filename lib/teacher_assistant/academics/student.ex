@@ -55,12 +55,6 @@ defmodule TeacherAssistant.Academics.Student do
     end
   end
 
-  validations do
-    validate compare(:birth_date, less_than_or_equal_to: &Date.utc_today/0),
-      where: [present(:birth_date)],
-      message: "la date de naissance ne peut pas être dans le futur"
-  end
-
   policies do
     policy action_type(:read) do
       authorize_if {Checks.SchoolRole, any_of: :member}
@@ -79,6 +73,12 @@ defmodule TeacherAssistant.Academics.Student do
     end
   end
 
+  validations do
+    validate compare(:birth_date, less_than_or_equal_to: &Date.utc_today/0),
+      where: [present(:birth_date)],
+      message: "la date de naissance ne peut pas être dans le futur"
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id
@@ -90,7 +90,12 @@ defmodule TeacherAssistant.Academics.Student do
     attribute :sex, TeacherAssistant.Academics.Sex, allow_nil?: false, public?: true
     attribute :matricule, :string, allow_nil?: true, public?: true
     attribute :birth_date, :date, allow_nil?: true, public?: true
-    attribute :birth_place, :string, allow_nil?: true, public?: true, constraints: [max_length: 120]
+
+    attribute :birth_place, :string,
+      allow_nil?: true,
+      public?: true,
+      constraints: [max_length: 120]
+
     timestamps()
   end
 

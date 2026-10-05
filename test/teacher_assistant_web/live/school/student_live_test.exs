@@ -63,7 +63,13 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
     awa: awa
   } do
     {:ok, paul} = Enrollment.add_student(scope, cg, %{full_name: "Paul Nkolo", sex: :m})
-    {:ok, _} = Enrollment.add_guardian(scope, paul, %{full_name: "Jean Nkolo", relationship: :pere, phone: "677123456"})
+
+    {:ok, _} =
+      Enrollment.add_guardian(scope, paul, %{
+        full_name: "Jean Nkolo",
+        relationship: :pere,
+        phone: "677123456"
+      })
 
     {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
 
@@ -75,7 +81,12 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
 
     view
     |> form("#guardian-form",
-      guardian: %{full_name: "Marie Nkolo", relationship: "mere", phone: "699000001", language: "fr"}
+      guardian: %{
+        full_name: "Marie Nkolo",
+        relationship: "mere",
+        phone: "699000001",
+        language: "fr"
+      }
     )
     |> render_submit()
 
@@ -112,7 +123,12 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
     refute has_element?(view, "#guardian-form")
   end
 
-  test "a teacher of another class is sent back", %{school: school, scope: scope, other: other, awa: awa} do
+  test "a teacher of another class is sent back", %{
+    school: school,
+    scope: scope,
+    other: other,
+    awa: awa
+  } do
     %{teacher: teacher} = school_teacher_fixture(scope, %{class_group: other})
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =

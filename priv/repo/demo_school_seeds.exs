@@ -141,11 +141,44 @@ roster =
   for {cg, r} <- Enum.with_index(classes), into: %{} do
     for i <- 0..11 do
       name = "#{Enum.at(last, rem(i + r * 5, 12))} #{Enum.at(first, rem(i + r, 12))}"
-      {:ok, _} = Enrollment.add_student(hs, cg, %{full_name: name, sex: Enum.random([:f, :m])})
+      # KLM1: about a third of the students get a birth date and place.
+      birth =
+        if rem(i, 3) == 0,
+          do: %{birth_date: Date.new!(2014 - r, rem(i, 12) + 1, 10 + i), birth_place: Enum.at(~w(Yaoundé Douala Bafoussam Garoua), rem(i, 4))},
+          else: %{}
+
+      {:ok, _} =
+        Enrollment.add_student(
+          hs,
+          cg,
+          Map.merge(%{full_name: name, sex: Enum.random([:f, :m])}, birth)
+        )
     end
 
     {cg.id, Enrollment.list_roster(hs, cg)}
   end
+
+# KLM1: guardians for every other student of each class; the first two students
+# of 6e A share the same father (siblings).
+for {cg, _r} <- Enum.with_index(classes) do
+  roster[cg.id]
+  |> Enum.with_index()
+  |> Enum.filter(fn {_, i} -> rem(i, 2) == 0 end)
+  |> Enum.each(fn {%{student: s}, i} ->
+    family = s.full_name |> String.split() |> hd()
+
+    {:ok, _} =
+      Enrollment.add_guardian(hs, s, %{
+        full_name: "#{family} #{Enum.at(~w(Jean Marie Paul Rose), rem(i, 4))}",
+        relationship: Enum.at([:pere, :mere, :tuteur, :mere], rem(i, 4)),
+        phone: "6#{String.pad_leading(to_string(:erlang.phash2({cg.id, i}, 100_000_000)), 8, "0")}"
+      })
+  end)
+end
+
+[%{student: elder}, %{student: younger} | _] = roster[hd(classes).id]
+[%{guardian: shared} | _] = Enrollment.list_guardian_links(hs, elder)
+{:ok, _} = Enrollment.link_guardian(hs, younger, shared)
 
 subjects = [
   "Mathématiques",

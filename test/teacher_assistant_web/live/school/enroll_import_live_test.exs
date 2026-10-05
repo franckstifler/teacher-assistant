@@ -105,15 +105,24 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     assert length(Enrollment.list_roster(scope, cg)) == 2
   end
 
-  test "imports birth details and links a sibling's parent by phone", %{conn: conn, scope: scope, cg: cg} do
+  test "imports birth details and links a sibling's parent by phone", %{
+    conn: conn,
+    scope: scope,
+    cg: cg
+  } do
     {:ok, paul} = Enrollment.add_student(scope, cg, %{full_name: "Paul Nkolo", sex: :m})
 
     {:ok, jean} =
-      Enrollment.add_guardian(scope, paul, %{full_name: "Jean Nkolo", relationship: :pere, phone: "677123456"})
+      Enrollment.add_guardian(scope, paul, %{
+        full_name: "Jean Nkolo",
+        relationship: :pere,
+        phone: "677123456"
+      })
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/import")
 
-    raw = "Awa Nkolo;f;M-9;02/04/2013;Yaoundé;Jean Nkolo;+237 677 12 34 56\nZoé;f;;31/02/2010;;Papa Zoé;12"
+    raw =
+      "Awa Nkolo;f;M-9;02/04/2013;Yaoundé;Jean Nkolo;+237 677 12 34 56\nZoé;f;;31/02/2010;;Papa Zoé;12"
 
     view |> form("#import-form", %{"import" => %{"raw" => raw}}) |> render_submit()
     assert render(view) =~ "02/04/2013"
@@ -122,7 +131,10 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     awa = Enrollment.list_students(scope, cg) |> Enum.find(&(&1.full_name == "Awa Nkolo"))
     assert awa.birth_date == ~D[2013-04-02]
     assert awa.birth_place == "Yaoundé"
-    assert [%{guardian: %{id: id}, primary_contact: true}] = Enrollment.list_guardian_links(scope, awa)
+
+    assert [%{guardian: %{id: id}, primary_contact: true}] =
+             Enrollment.list_guardian_links(scope, awa)
+
     assert id == jean.id
 
     zoe = Enrollment.list_students(scope, cg) |> Enum.find(&(&1.full_name == "Zoé"))

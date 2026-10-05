@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
+defmodule TeacherAssistant.Repo.Migrations.Klm1StudentsGuardians do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -40,21 +40,59 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
             on_delete: :delete_all
           ), null: false
 
-      add :guardian_id,
-          references(:guardians,
+      add :guardian_id, :uuid, null: false
+    end
+
+    create unique_index(:student_guardians, [:workspace_id, :student_id, :guardian_id],
+             name: "student_guardians_unique_link_index"
+           )
+
+    create index(:student_guardians, [:workspace_id, :id], unique: true)
+
+    create table(:guardians, primary_key: false) do
+      add :id, :uuid, null: false, default: fragment("uuid_generate_v7()"), primary_key: true
+      add :full_name, :text, null: false
+      add :relationship, :text, null: false
+      add :phone, :text, null: false
+      add :phone_key, :text, null: false
+      add :phone_2, :text
+      add :email, :citext
+      add :language, :text, null: false, default: "fr"
+
+      add :inserted_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :updated_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :workspace_id,
+          references(:workspaces,
             column: :id,
-            with: [workspace_id: :workspace_id],
-            match: :full,
-            name: "student_guardians_guardian_id_fkey",
+            name: "guardians_workspace_id_fkey",
             type: :uuid,
             prefix: "public",
             on_delete: :delete_all
           ), null: false
     end
 
-    create unique_index(:student_guardians, [:workspace_id, :student_id, :guardian_id],
-             name: "student_guardians_unique_link_index"
-           )
+    create index(:guardians, [:workspace_id])
+
+    create index(:guardians, [:workspace_id, :id], unique: true)
+
+    alter table(:student_guardians) do
+      modify :guardian_id,
+             references(:guardians,
+               column: :id,
+               with: [workspace_id: :workspace_id],
+               match: :full,
+               name: "student_guardians_guardian_id_fkey",
+               type: :uuid,
+               prefix: "public",
+               on_delete: :delete_all
+             )
+    end
 
     create index(:student_guardians, [:workspace_id])
 
@@ -62,21 +100,31 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
 
     create index(:student_guardians, [:workspace_id, :guardian_id])
 
-    create index(:student_guardians, [:workspace_id, :id], unique: true)
-
     create index(:student_guardians, [:workspace_id, :student_id],
              name: "student_guardians_one_primary_index",
              unique: true,
              where: "primary_contact"
            )
+
+    create index(:guardians, [:workspace_id, :phone_key])
+
+    alter table(:students) do
+      add :birth_date, :date
+      add :birth_place, :text
+    end
   end
 
   def down do
+    alter table(:students) do
+      remove :birth_place
+      remove :birth_date
+    end
+
+    drop_if_exists index(:guardians, [:workspace_id, :phone_key])
+
     drop_if_exists index(:student_guardians, [:workspace_id, :student_id],
                      name: "student_guardians_one_primary_index"
                    )
-
-    drop_if_exists index(:student_guardians, [:workspace_id, :id])
 
     drop_if_exists index(:student_guardians, [:workspace_id, :guardian_id])
 
@@ -89,6 +137,20 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
     drop constraint(:student_guardians, "student_guardians_student_id_fkey")
 
     drop constraint(:student_guardians, "student_guardians_workspace_id_fkey")
+
+    alter table(:student_guardians) do
+      modify :guardian_id, :uuid
+    end
+
+    drop_if_exists index(:guardians, [:workspace_id, :id])
+
+    drop_if_exists index(:guardians, [:workspace_id])
+
+    drop constraint(:guardians, "guardians_workspace_id_fkey")
+
+    drop table(:guardians)
+
+    drop_if_exists index(:student_guardians, [:workspace_id, :id])
 
     drop_if_exists unique_index(:student_guardians, [:workspace_id, :student_id, :guardian_id],
                      name: "student_guardians_unique_link_index"

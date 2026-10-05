@@ -54,7 +54,13 @@ defmodule TeacherAssistant.Academics.Guardian do
       forbid_unless {Checks.SchoolRole, any_of: :member}
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if {Checks.SchoolRole, any_of: :conduct}
-      authorize_if expr(exists(student_links.student.enrollments, class_group.form_master_user_id == ^actor(:id)))
+
+      authorize_if expr(
+                     exists(
+                       student_links.student.enrollments,
+                       class_group.form_master_user_id == ^actor(:id)
+                     )
+                   )
 
       authorize_if expr(
                      exists(

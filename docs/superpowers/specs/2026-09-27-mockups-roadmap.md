@@ -1100,6 +1100,10 @@ resource built before it.
 
 ## KLM1 — Students and guardians (spec)
 
+Status: implemented 2026-10-02 (branch `klm1-students-guardians`, plan
+`docs/superpowers/plans/2026-10-02-klm1-students-guardians.md`); no visual check done. The import is the
+existing semicolon paste with positional columns (rule 9), not a CSV with named headers.
+
 Gaps: **M2** (parents and guardians), **M3** (student profile), **L3** (school-wide student list, Censeur and
 SG → *École → Élèves*). No mockup for M2/M3.
 

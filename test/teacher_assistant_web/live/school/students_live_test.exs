@@ -28,7 +28,13 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
       Enrollment.add_student(scope, fifth, %{full_name: "Awa Nkolo", sex: :f, matricule: "M-001"})
 
     {:ok, _} = Enrollment.add_student(scope, sixth, %{full_name: "Zoé Abena", sex: :f})
-    {:ok, _} = Enrollment.add_guardian(scope, awa, %{full_name: "Jean Nkolo", relationship: :pere, phone: "677123456"})
+
+    {:ok, _} =
+      Enrollment.add_guardian(scope, awa, %{
+        full_name: "Jean Nkolo",
+        relationship: :pere,
+        phone: "677123456"
+      })
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
     %{conn: conn, scope: scope, school: school, sixth: sixth, awa: awa}

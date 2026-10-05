@@ -33,7 +33,31 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "sex",
+      "source": "relationship",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "phone",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "phone_key",
       "type": "text"
     },
     {
@@ -45,7 +69,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "matricule",
+      "source": "phone_2",
       "type": "text"
     },
     {
@@ -57,19 +81,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "birth_date",
-      "type": "date"
+      "source": "email",
+      "type": "citext"
     },
     {
-      "allow_nil?": true,
-      "default": "nil",
+      "allow_nil?": false,
+      "default": "\"fr\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "birth_place",
+      "source": "language",
       "type": "text"
     },
     {
@@ -117,7 +141,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "students_workspace_id_fkey",
+        "name": "guardians_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -134,34 +158,6 @@
   "check_constraints": [],
   "create_table_options": null,
   "custom_indexes": [
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "workspace_id",
-        "matricule"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "workspace_id"
-        },
-        {
-          "type": "atom",
-          "value": "matricule"
-        }
-      ],
-      "include": null,
-      "include_base_filter?": true,
-      "message": "matricule already used in this workspace",
-      "name": "students_unique_matricule_index",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": true,
-      "using": null,
-      "where": "matricule IS NOT NULL"
-    },
     {
       "all_tenants?": false,
       "concurrently": false,
@@ -184,11 +180,39 @@
       "unique": true,
       "using": null,
       "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "workspace_id",
+        "phone_key"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "workspace_id"
+        },
+        {
+          "type": "atom",
+          "value": "phone_key"
+        }
+      ],
+      "include": null,
+      "include_base_filter?": true,
+      "message": null,
+      "name": null,
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "90A725D704024AA846B090905F5043CBED5858F705D5B19BDCEE032E0EDE8449",
+  "hash": "6F2AFA4205C93DB5DEC0BB77979ABF1D5D1D8F885E83F0BCF49D1A5A81832E80",
   "identities": [],
   "multitenancy": {
     "attribute": "workspace_id",
@@ -197,5 +221,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "students"
+  "table": "guardians"
 }

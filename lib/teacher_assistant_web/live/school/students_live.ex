@@ -80,7 +80,13 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
           </:actions>
         </.page_header>
 
-        <.form for={%{}} id="students-filter" phx-change="filter" phx-submit="filter" class="flex flex-wrap gap-2">
+        <.form
+          for={%{}}
+          id="students-filter"
+          phx-change="filter"
+          phx-submit="filter"
+          class="flex flex-wrap gap-2"
+        >
           <input
             type="search"
             name="q"
@@ -107,9 +113,16 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               </tr>
             </thead>
             <tbody id="student-rows">
-              <tr :for={e <- @page.results} id={"student-#{e.student.id}"} class="hover:bg-base-200/60">
+              <tr
+                :for={e <- @page.results}
+                id={"student-#{e.student.id}"}
+                class="hover:bg-base-200/60"
+              >
                 <td>
-                  <.link navigate={~p"/school/students/#{e.student.id}"} class="font-semibold hover:text-primary">
+                  <.link
+                    navigate={~p"/school/students/#{e.student.id}"}
+                    class="font-semibold hover:text-primary"
+                  >
                     {e.student.full_name}
                   </.link>
                 </td>

@@ -14,87 +14,15 @@
     },
     {
       "allow_nil?": false,
-      "default": "nil",
+      "default": "false",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "full_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "relationship",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "phone",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "phone_key",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "phone_2",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "email",
-      "type": "citext"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"fr\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "language",
-      "type": "text"
+      "source": "primary_contact",
+      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -141,7 +69,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "guardians_workspace_id_fkey",
+        "name": "student_guardians_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -151,6 +79,76 @@
       "scale": null,
       "size": null,
       "source": "workspace_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": true,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": "full",
+        "match_with": {
+          "workspace_id": "workspace_id"
+        },
+        "multitenancy": {
+          "attribute": "workspace_id",
+          "global": false,
+          "strategy": "attribute"
+        },
+        "name": "student_guardians_student_id_fkey",
+        "on_delete": "delete",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "students"
+      },
+      "scale": null,
+      "size": null,
+      "source": "student_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": true,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": "full",
+        "match_with": {
+          "workspace_id": "workspace_id"
+        },
+        "multitenancy": {
+          "attribute": "workspace_id",
+          "global": false,
+          "strategy": "attribute"
+        },
+        "name": "student_guardians_guardian_id_fkey",
+        "on_delete": "delete",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "guardians"
+      },
+      "scale": null,
+      "size": null,
+      "source": "guardian_id",
       "type": "uuid"
     }
   ],
@@ -186,7 +184,7 @@
       "concurrently": false,
       "error_fields": [
         "workspace_id",
-        "phone_key"
+        "student_id"
       ],
       "fields": [
         {
@@ -195,25 +193,44 @@
         },
         {
           "type": "atom",
-          "value": "phone_key"
+          "value": "student_id"
         }
       ],
       "include": null,
       "include_base_filter?": true,
-      "message": null,
-      "name": null,
+      "message": "a student has only one main contact",
+      "name": "student_guardians_one_primary_index",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
-      "unique": false,
+      "unique": true,
       "using": null,
-      "where": null
+      "where": "primary_contact"
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "347B3573A471CDB11520177BEADCCC2DA5F203F6CBABCBE65DEE9B3D32BE7B0A",
-  "identities": [],
+  "hash": "64D98F6ECFAF4CAF22F95FC1111CB29E9644770B7A88E1C9E6DC9D6D9E0CD02E",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "student_guardians_unique_link_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "student_id"
+        },
+        {
+          "type": "atom",
+          "value": "guardian_id"
+        }
+      ],
+      "name": "unique_link",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": "workspace_id",
     "global": false,
@@ -221,5 +238,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "guardians"
+  "table": "student_guardians"
 }

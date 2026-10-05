@@ -32,7 +32,10 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
     assert {:error, :already_linked} = Enrollment.link_guardian(scope, paul, jean)
   end
 
-  test "making another guardian the main contact unsets the previous one", %{scope: scope, awa: awa} do
+  test "making another guardian the main contact unsets the previous one", %{
+    scope: scope,
+    awa: awa
+  } do
     {:ok, _} = Enrollment.add_guardian(scope, awa, @father)
 
     {:ok, _} =
@@ -48,7 +51,10 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
 
     assert {:ok, _} = Enrollment.make_primary_guardian(scope, second)
 
-    assert [%{guardian: %{full_name: "Marie Nkolo"}, primary_contact: true}, %{primary_contact: false}] =
+    assert [
+             %{guardian: %{full_name: "Marie Nkolo"}, primary_contact: true},
+             %{primary_contact: false}
+           ] =
              Enrollment.list_guardian_links(scope, awa)
   end
 
@@ -82,7 +88,11 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
 
   test "can_manage_register? is true for admins and the SG only", %{scope: scope} do
     assert Enrollment.can_manage_register?(scope)
-    assert Enrollment.can_manage_register?(member_scope_fixture(scope, %{roles: [:discipline_master]}))
+
+    assert Enrollment.can_manage_register?(
+             member_scope_fixture(scope, %{roles: [:discipline_master]})
+           )
+
     refute Enrollment.can_manage_register?(member_scope_fixture(scope, %{roles: [:teacher]}))
   end
 end
