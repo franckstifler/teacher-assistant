@@ -1399,53 +1399,94 @@ Gap: **M1**. No mockup.
 User decisions (2026-10-02): carry over **classes, courses and teacher assignments** (with form masters) as an
 editable starting point, **not** the timetable; the old year becomes **closed, read only**, with no reopening.
 
+User decisions (2026-10-06): one branch, tasks grouped **9a** (closed years and the lock) → **9b** (starting
+the next year) → **9c** (viewing past years); a student's decision is the annual council's choice **or else
+the engine's proposal**; **payments stay open** on a closed year (arrears), fee tranches and adjustments are
+locked; teachers' **planning is locked** with the rest.
+
 Existing code: `AcademicYear` (`name`, `start_date`, `end_date`, `active`; `:activate` deactivates the
-others); `ClassGroup` per year; `Enrollment` (`status :inscription | :reinscription`, `repeater`); passage
-decisions on `CouncilDecision.passage_decision` (`:admis, :admis_rachat, :redouble, :exclu`); setup wizard
-generates trimesters and séquences; nothing copies a year.
+others; one active year per school = `scope.current_academic_year`); `ClassGroup` per year
+(`form_master_user_id`); `TeachingContext` (course) and `CombinedCourse` per year; `Enrollment`
+(`status :inscription | :reinscription`, `repeater`); passage decisions on `CouncilDecision.passage_decision`
+(`:admis, :admis_rachat, :redouble, :exclu`) with the engine's proposal from `PassageRules.propose/2`
+(`Councils.outcomes/3`); `Reference.default_calendar_preset/2` (3 trimesters × 2 séquences); D3's
+`Mark.AssessmentOpen` / `Assessment.SequenceOpen` validations; nothing copies a year. Most class pages read
+the calendar of `scope.current_academic_year`, not of the class's own year.
 
-### Data
+### 9a — Closed years and the lock
 
-1. `AcademicYear` gains `status` (enum `:open | :closed`, default `:open`).
-2. **`YearOpen`** validation (like D3's `AssessmentOpen`): refuses create, update and destroy on any record of
-   a closed year — assessments and marks, mark corrections, attendance, sanctions, conduct marks and warnings,
-   enrolments, classes, courses and assignments, timetable slots, councils and decisions, bulletin publication,
-   holidays and calendar. Error « L'année <nom> est clôturée. »
+1. `AcademicYear` gains `status` (enum `:open | :closed`, default `:open`). A closed year cannot be
+   activated, updated or destroyed (no reopening).
+2. **`YearOpen`** validation (pattern of D3's `AssessmentOpen`): each year-bound resource declares the path to
+   its year (e.g. `path: [:class_group]`, `path: [:sequence, :term]`); on create, update and destroy it reads
+   the first step's foreign key from the changeset (or the record), loads that record's year and refuses a
+   closed one with « L'année <nom> est clôturée. ». A record moved between two parents (an enrolment changing
+   class) is checked against both. Generic actions are covered through the create, update and destroy actions
+   they call.
+3. Covered: every resource of the year, directly or indirectly — terms and séquences, classes, enrolments,
+   courses, combined courses, subject exemptions, assessments, marks, mark corrections (request and
+   decisions), entry reminders, attendance, sanctions, conduct marks, councils and decisions, bulletin
+   publications, holidays, timetable slots, fee tranches and fee adjustments, progression plans, modules,
+   entries, lesson plans, lesson steps and teaching-log entries.
+4. Not covered: **`Payment`** (arrears are cashed after the year), `MarkCorrection :mark_seen` (a read
+   receipt), `MarkEvent` (the journal) and everything school-wide (students, guardians, subject catalog and
+   coefficient grid, periods, school profile, memberships, notifications).
+5. A test lists every resource whose data belongs to a year and fails when one of its create, update or
+   destroy actions lacks `YearOpen` (exceptions of rule 4 named in the test).
+6. *Paramètres → Année* loses the free « créer une année » and « activer » controls: a new year is started
+   only through rule 10. The setup wizard still creates the very first year.
 
-### Starting the next year
+### 9b — Starting the next year
 
-3. Generic action `AcademicYear.start_next_year` (head and vice_principal), run **in one transaction**:
-   creates the new year and its trimesters and séquences; recreates each class with label, level, série,
-   courses (subject, coefficient, weekly hours, teachers, combined courses) and form master; creates
-   enrolments per the mapping (`status: :reinscription`, `repeater: true` for repeaters); sets the old year
-   `:closed` and activates the new one. Any failure rolls everything back.
-4. **Placement** from each student's final passage decision:
-   - `:admis` and `:admis_rachat` → the class's admis target (rule 6), or not re-enrolled when the target is
-     « Ne pas réinscrire »;
-   - `:redouble` → the class with the same label in the new year;
-   - `:exclu`, or no decision → not re-enrolled (listed on the summary).
-5. Default admis target: the class of the next level (level order, as in `level_rank`) with the same suffix
-   (`class_suffix`, KLM5) and série; none when no such class exists (last level, or no next level in the
+7. `TeacherAssistant.Academics.NewYear` builds a **plan** from the open year (pure, used by the screen and the
+   action). Per class: new label (default: the same), **admis target** and projected size. Default admis
+   target: the class of the next level (level order, as in `level_rank`) with the same série and the same
+   suffix — the label's last word when it is letters or a number (« 6ème A » → A, « 3e 2 » → 2; KLM5's
+   `class_suffix`), no suffix otherwise; none when no such class exists (last level, or no next level in the
    school) — the admin then picks a class or « Ne pas réinscrire ».
+8. **Placement** from each student's decision = the annual council's choice, else the engine's proposal:
+   - `:admis` and `:admis_rachat` → the class's admis target; not re-enrolled when the target is « Ne pas
+     réinscrire »;
+   - `:redouble` → the copy of the same class;
+   - `:exclu`, or no decision (no proposal either) → not re-enrolled.
+   Each not re-enrolled student keeps a reason for the summary. Projected size of a new class = its repeaters +
+   the admis of the classes targeting it, shown against `max_class_size` (warning only).
+9. Generic action `AcademicYear.start_next_year` (head and vice_principal; `Organization.start_next_year/2`),
+   **in one transaction**, in this order: creates the new year (inactive) with the default calendar and the
+   prefilled national holidays; recreates each class (label, level, série, form master), its courses
+   (subject, coefficient, weekly hours, teacher) and the combined courses joining them; creates the enrolments
+   (`status: :reinscription`, `repeater: true` for repeaters); then closes the old year and activates the new
+   one. The old year is read under a row lock: a second run fails (« déjà clôturée »). Any failure rolls
+   everything back.
+10. Not carried over: timetable, holidays (beyond the national prefill), subject exemptions, fee tranches and
+    adjustments, councils, bulletins. A course whose teacher left the school is copied as is.
+11. **« Préparer l'année suivante »** (`/school/settings/new-year`; head and vice_principal; link from
+    *Paramètres → Année*), four steps, the plan held in the LiveView (no draft saved):
+    1. *Vérification*: classes whose annual council is not closed, students whose decision is only a proposal
+       (count per class), courses of teachers who left the school, a warning when today is before the year's
+       end date. Never blocking.
+    2. *Nouvelle année*: name (« 2025-2026 » → « 2026-2027 »; empty when the name has another form), start and
+       end dates (default: the old ones + 1 year).
+    3. *Classes*: one row per class — new label (editable), admis target (select), projected size against
+       `max_class_size` (warning colour above it).
+    4. *Confirmation*: classes created, students re-enrolled, of which repeaters, not re-enrolled (by reason);
+       « Démarrer l'année 2026-2027 », then a redirect to `/school/classes` (the new year).
 
-### Screen
+### 9c — Viewing past years
 
-6. **« Préparer l'année suivante »** (`/school/settings/new-year`; head and vice_principal; link from
-   *Paramètres → Année*), four steps:
-   1. *Vérification*: classes whose end-of-year council is not closed, students without a decision (count per
-      class), a warning when today is before the year's end date. Never blocking.
-   2. *Nouvelle année*: name (default « 2026-2027 »), start and end dates (default: the old ones + 1 year).
-   3. *Classes*: one row per class — new label (editable), admis target (select), repeaters stay, projected
-      size against `max_class_size` (warning colour above it).
-   4. *Confirmation*: classes created, students re-enrolled, of which repeaters, not re-enrolled (by reason);
-      « Démarrer l'année 2026-2027 », then a redirect to the new year's classes.
-7. *Paramètres → Année* lists closed years; each opens a read-only list of its classes linking to their
-   results and bulletins pages. The student profile (KLM1) links to past bulletins. Edit buttons are hidden on
-   a closed year's pages.
-8. Strings through gettext (FR and EN).
+12. *Paramètres → Année* lists the years: the open one with « Préparer l'année suivante », each closed one with
+    « Consulter » → **`/school/years/:id`** (admins): its classes, each linking to its results page and to
+    its printed bulletins.
+13. The results page, the student bulletin page and the bulletin print controllers read the calendar
+    (séquences, terms) of the **class's own year**; `ReportCards` access rules (teacher of the class, form
+    master) are checked against that year too. On a closed year they show « Année <nom> · clôturée » and no
+    edit or publish controls; a published bulletin keeps showing its snapshot.
+14. The student profile (KLM1) links each past enrolment to its bulletin.
+15. Strings through gettext (FR and EN).
 
-Out of scope: copying the timetable or holidays, moving single students during the wizard, reopening a closed
-year, a general year switcher, archiving files.
+Out of scope: copying the timetable, holidays, fee tranches or planning; moving single students during the
+wizard; reopening a closed year; a general year switcher (register, discipline, fees, class and council pages
+stay current-year pages, protected by the lock); archiving files.
 
 ## Holes found on 2026-10-01 (not yet specified)
 
