@@ -197,7 +197,16 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                       {gettext("Inactive")}
                     </span>
                   </td>
-                  <td class="text-right"></td>
+                  <td class="text-right">
+                    <.link
+                      :if={year.status == :open and year.active}
+                      id="new-year-link"
+                      navigate={~p"/school/settings/new-year"}
+                      class="btn btn-primary btn-xs"
+                    >
+                      {gettext("Préparer l'année suivante")}
+                    </.link>
+                  </td>
                 </tr>
               </tbody>
             </table>
