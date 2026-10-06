@@ -15,36 +15,42 @@ defmodule TeacherAssistant.Academics.Conduct do
   end
 
   @doc """
-  Reduces a list of `%{status, justified, period: %Period{}}` entries into
-  `%{justified_hours: Decimal, unjustified_hours: Decimal, retards: integer}`.
-  Absence hours are summed via `period_hours/1`, split by the `justified`
-  flag; `:late` entries are counted as retards; `:present` entries are
-  ignored.
+  Reduces `%{status, justified, period}` entries (optionally `late_minutes`)
+  into `%{justified_hours, unjustified_hours, retards}`. With
+  `late_as_absence_minutes`, a late of more minutes counts as an absence of
+  that period (spec KLM2); a late without minutes stays a late.
   """
-  def totals(entries) do
+  def totals(entries, late_as_absence_minutes \\ nil) do
     zero = Decimal.new(0)
 
     Enum.reduce(
       entries,
       %{justified_hours: zero, unjustified_hours: zero, retards: 0},
       fn entry, acc ->
-        case entry.status do
+        case kind(entry, late_as_absence_minutes) do
           :absent ->
-            hours = period_hours(entry.period)
-
-            if entry.justified do
-              Map.update!(acc, :justified_hours, &Decimal.add(&1, hours))
-            else
-              Map.update!(acc, :unjustified_hours, &Decimal.add(&1, hours))
-            end
+            key = if entry.justified, do: :justified_hours, else: :unjustified_hours
+            Map.update!(acc, key, &Decimal.add(&1, period_hours(entry.period)))
 
           :late ->
             Map.update!(acc, :retards, &(&1 + 1))
 
-          _ ->
+          :ignore ->
             acc
         end
       end
     )
   end
+
+  defp kind(%{status: :absent}, _threshold), do: :absent
+
+  defp kind(%{status: :late} = entry, threshold) do
+    minutes = Map.get(entry, :late_minutes)
+
+    if is_integer(threshold) and is_integer(minutes) and minutes > threshold,
+      do: :absent,
+      else: :late
+  end
+
+  defp kind(_entry, _threshold), do: :ignore
 end

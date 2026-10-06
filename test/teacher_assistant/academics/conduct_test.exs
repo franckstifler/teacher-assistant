@@ -21,7 +21,25 @@ defmodule TeacherAssistant.Academics.ConductTest do
     end
   end
 
-  describe "totals/1" do
+  describe "totals/2" do
+    test "a late beyond the threshold counts as an absence of the period's hours" do
+      hour = %Period{start_time: ~T[08:00:00], end_time: ~T[09:00:00]}
+
+      entries = [
+        %{status: :late, justified: false, period: hour, late_minutes: 20},
+        %{status: :late, justified: true, period: hour, late_minutes: 20},
+        %{status: :late, justified: false, period: hour, late_minutes: 15},
+        %{status: :late, justified: false, period: hour, late_minutes: nil}
+      ]
+
+      totals = Conduct.totals(entries, 15)
+      assert Decimal.equal?(totals.unjustified_hours, Decimal.new(1))
+      assert Decimal.equal?(totals.justified_hours, Decimal.new(1))
+      assert totals.retards == 2
+
+      assert Conduct.totals(entries).retards == 4
+    end
+
     test "sums justified/unjustified absence hours and counts retards" do
       one_hour_period = %Period{start_time: ~T[08:00:00], end_time: ~T[09:00:00]}
 

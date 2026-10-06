@@ -68,6 +68,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp slot_key(slot), do: "#{slot.class_group.id}-#{slot.period.id}"
 
+  def handle_event("minutes", %{"minutes" => minutes}, socket),
+    do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_minutes(&1, minutes)))}
+
   def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.set(&1, id, status)))}
 

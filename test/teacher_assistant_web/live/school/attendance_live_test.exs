@@ -298,4 +298,28 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, att_path(ocg, period, date))
   end
+
+  test "a late can carry minutes, saved with the roll call", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date,
+    scope: scope,
+    enrollment: enrollment
+  } do
+    {:ok, view, _} = live(conn, att_path(cg, period, date))
+    refute has_element?(view, "#late-minutes-#{enrollment.id}")
+
+    view |> element("#att-#{enrollment.id}-late") |> render_click()
+    assert has_element?(view, "#late-minutes-#{enrollment.id}")
+
+    view
+    |> form("#late-minutes-form-#{enrollment.id}", %{"minutes" => %{enrollment.id => "25"}})
+    |> render_change()
+
+    view |> element("#record-roll") |> render_click()
+
+    %{students: [%{status: :late, late_minutes: 25}]} =
+      Attendance.period_roll(scope, cg, period, date)
+  end
 end

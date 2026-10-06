@@ -66,6 +66,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       create: [
         :date,
         :status,
+        :late_minutes,
         :justified,
         :justification_note,
         :recorded_by_user_id,
@@ -88,6 +89,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     create :record do
       accept [
         :status,
+        :late_minutes,
         :justified,
         :justification_note,
         :teaching_context_id,
@@ -99,6 +101,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
       upsert? true
       upsert_identity :unique_mark
+      change TeacherAssistant.Academics.AttendanceEntry.Changes.ClearLateMinutes
     end
 
     read :for_period_date_class do
@@ -273,6 +276,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     attribute :justified, :boolean, allow_nil?: false, default: false, public?: true
     attribute :justification_note, :string, allow_nil?: true, public?: true
 
+    # Spec KLM2: how late, only on a `:late` entry (`ClearLateMinutes`).
+    attribute :late_minutes, :integer, public?: true, constraints: [min: 1, max: 240]
+
     attribute :justification_reason, TeacherAssistant.Academics.JustificationReason,
       allow_nil?: true,
       public?: true
@@ -324,7 +330,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         _ -> nil
       end
 
-    statuses =
+    entries =
       __MODULE__
       |> Ash.Query.for_read(
         :for_period_date_class,
@@ -336,7 +342,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         scope: scope
       )
       |> Ash.read!()
-      |> Map.new(&{&1.enrollment_id, &1.status})
+      |> Map.new(&{&1.enrollment_id, &1})
 
     students =
       TeacherAssistant.Academics.Enrollment
@@ -347,7 +353,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         %{
           enrollment_id: enrollment.id,
           student_name: enrollment.student.full_name,
-          status: Map.get(statuses, enrollment.id)
+          status: entries[enrollment.id] && entries[enrollment.id].status,
+          late_minutes: entries[enrollment.id] && entries[enrollment.id].late_minutes
         }
       end)
 
@@ -420,13 +427,14 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
          scope
        ) do
     results =
-      Enum.map(marks, fn %{enrollment_id: enrollment_id, status: status} ->
+      Enum.map(marks, fn %{enrollment_id: enrollment_id, status: status} = mark ->
         __MODULE__
         |> Ash.Changeset.for_create(
           :record,
           %{
             date: date,
             status: status,
+            late_minutes: Map.get(mark, :late_minutes),
             enrollment_id: enrollment_id,
             period_id: period_id,
             teaching_context_id: tc_id,

@@ -215,7 +215,7 @@ defmodule TeacherAssistant.Attendance do
 
   @doc """
   Records one combined attendance session: `marks` (`{enrollment_id, status}`
-  pairs covering every member class's roster, as returned by
+  or `{enrollment_id, status, late_minutes}` tuples covering every member class's roster, as returned by
   `combined_period_roll/4`) are routed to each enrollment's own class and
   written via the `AttendanceEntry` `:record_combined_period` action — one
   group per member class. Every mark is validated (roster membership + status)
@@ -240,7 +240,8 @@ defmodule TeacherAssistant.Attendance do
         group_enrollment_ids = MapSet.new(students, & &1.enrollment_id)
 
         group_marks =
-          Enum.filter(marks, fn {enrollment_id, _status} ->
+          Enum.filter(marks, fn mark ->
+            {enrollment_id, _status, _minutes} = mark_parts(mark)
             MapSet.member?(group_enrollment_ids, enrollment_id)
           end)
 
@@ -284,8 +285,9 @@ defmodule TeacherAssistant.Attendance do
         %{
           teaching_context_id: teaching_context_id(tc),
           marks:
-            Enum.map(group_marks, fn {enrollment_id, status} ->
-              %{enrollment_id: enrollment_id, status: status}
+            Enum.map(group_marks, fn mark ->
+              {enrollment_id, status, minutes} = mark_parts(mark)
+              %{enrollment_id: enrollment_id, status: status, late_minutes: minutes}
             end)
         }
       end)
@@ -310,7 +312,8 @@ defmodule TeacherAssistant.Attendance do
   end
 
   @doc """
-  Upserts one `AttendanceEntry` per `{enrollment_id, status}` mark for
+  Upserts one `AttendanceEntry` per `{enrollment_id, status}` or
+  `{enrollment_id, status, late_minutes}` mark (spec KLM2) for
   `class_group`/`period`/`date`. Rejects the whole batch with `{:error, term}`
   if any enrollment doesn't belong to `class_group` or any status is invalid.
   Marks omitted from the list are left untouched. Returns `{:ok, count}`.
@@ -333,13 +336,16 @@ defmodule TeacherAssistant.Attendance do
 
     with :ok <- validate_marks(marks, valid_enrollment_ids) do
       results =
-        Enum.map(marks, fn {enrollment_id, status} ->
+        Enum.map(marks, fn mark ->
+          {enrollment_id, status, minutes} = mark_parts(mark)
+
           AttendanceEntry
           |> Ash.Changeset.for_create(
             :record,
             %{
               date: date,
               status: status,
+              late_minutes: minutes,
               enrollment_id: enrollment_id,
               period_id: period_id,
               teaching_context_id: teaching_context_id,
@@ -466,8 +472,7 @@ defmodule TeacherAssistant.Attendance do
       {first, last} ->
         id
         |> for_enrollment_range!(first, last, scope: scope)
-        |> Enum.map(&%{status: &1.status, justified: &1.justified, period: &1.period})
-        |> Conduct.totals()
+        |> Conduct.totals(school_life_rules(scope).late_as_absence_minutes)
     end
   end
 
@@ -489,15 +494,14 @@ defmodule TeacherAssistant.Attendance do
         zero_map
 
       {first, last} ->
+        threshold = school_life_rules(scope).late_as_absence_minutes
+
         totals_by_enrollment =
           class_group.id
           |> for_class_range!(first, last, scope: scope)
           |> Enum.group_by(& &1.enrollment_id)
           |> Map.new(fn {enrollment_id, entries} ->
-            totals =
-              entries
-              |> Enum.map(&%{status: &1.status, justified: &1.justified, period: &1.period})
-              |> Conduct.totals()
+            totals = Conduct.totals(entries, threshold)
 
             {enrollment_id, totals}
           end)
@@ -510,7 +514,9 @@ defmodule TeacherAssistant.Attendance do
   defp teaching_context_id(nil), do: nil
 
   defp validate_marks(marks, valid_enrollment_ids) do
-    Enum.reduce_while(marks, :ok, fn {enrollment_id, status}, :ok ->
+    Enum.reduce_while(marks, :ok, fn mark, :ok ->
+      {enrollment_id, status, _minutes} = mark_parts(mark)
+
       cond do
         not MapSet.member?(valid_enrollment_ids, enrollment_id) ->
           {:halt, {:error, :invalid_enrollment}}
@@ -523,6 +529,10 @@ defmodule TeacherAssistant.Attendance do
       end
     end)
   end
+
+  # A mark is `{enrollment_id, status}` or `{enrollment_id, status, late_minutes}`.
+  defp mark_parts({enrollment_id, status}), do: {enrollment_id, status, nil}
+  defp mark_parts({enrollment_id, status, minutes}), do: {enrollment_id, status, minutes}
 
   defp day_of_week(%Date{} = date) do
     case Date.day_of_week(date) do

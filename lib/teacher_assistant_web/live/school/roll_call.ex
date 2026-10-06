@@ -50,9 +50,31 @@ defmodule TeacherAssistantWeb.School.RollCall do
   def set(roll, enrollment_id, status) do
     status = Map.get(@valid_statuses, status)
 
-    if status && Enum.any?(roll.students, &(&1.enrollment_id == enrollment_id)),
-      do: put_in(roll, [:marks, enrollment_id], status),
-      else: roll
+    if status && Enum.any?(roll.students, &(&1.enrollment_id == enrollment_id)) do
+      roll = put_in(roll, [:marks, enrollment_id], status)
+      # Minutes belong to a late only (spec KLM2).
+      if status == :late, do: roll, else: put_in(roll, [:minutes, enrollment_id], nil)
+    else
+      roll
+    end
+  end
+
+  @doc "Sets late minutes from the row inputs (`%{enrollment_id => \"25\"}`); blanks and bad values clear them."
+  def set_minutes(roll, %{} = params) do
+    Enum.reduce(params, roll, fn {enrollment_id, value}, roll ->
+      if Map.has_key?(roll.marks, enrollment_id) do
+        put_in(roll, [:minutes, enrollment_id], parse_minutes(value))
+      else
+        roll
+      end
+    end)
+  end
+
+  defp parse_minutes(value) do
+    case Integer.parse(String.trim(to_string(value))) do
+      {n, ""} when n in 1..240 -> n
+      _ -> nil
+    end
   end
 
   @doc "Records the roll: `{:ok, roll}` (reloaded) or `{:error, :unverified | :forbidden | :failed}`."
@@ -66,7 +88,10 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
       true ->
         marks =
-          Enum.map(roll.students, &{&1.enrollment_id, Map.fetch!(roll.marks, &1.enrollment_id)})
+          Enum.map(roll.students, fn %{enrollment_id: id} ->
+            status = Map.fetch!(roll.marks, id)
+            {id, status, if(status == :late, do: roll.minutes[id])}
+          end)
 
         case write(scope, roll, marks) do
           {:ok, _count} -> {:ok, reload(scope, roll)}
@@ -109,6 +134,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
     Map.merge(roll, %{
       students: Enum.map(students, &Map.take(&1, [:enrollment_id, :student_name])),
       marks: Map.new(students, &{&1.enrollment_id, &1.status || :present}),
+      minutes: Map.new(students, &{&1.enrollment_id, Map.get(&1, :late_minutes)}),
       taken?: Enum.any?(students, &(&1.status != nil)),
       groups: extra[:groups],
       flags: extra[:flags]
@@ -295,6 +321,26 @@ defmodule TeacherAssistantWeb.School.RollCall do
             {short(status)}
           </button>
         </div>
+        <form
+          :if={@roll.marks[student.enrollment_id] == :late}
+          id={"late-minutes-form-#{student.enrollment_id}"}
+          phx-change="minutes"
+          class="flex items-center gap-1"
+        >
+          <input
+            id={"late-minutes-#{student.enrollment_id}"}
+            type="number"
+            min="1"
+            max="240"
+            inputmode="numeric"
+            name={"minutes[#{student.enrollment_id}]"}
+            value={@roll.minutes[student.enrollment_id]}
+            placeholder={gettext("min")}
+            aria-label={gettext("Minutes de retard")}
+            class="input input-xs w-16 text-right"
+          />
+          <span class="text-[0.72rem] text-base-content/70">{gettext("min")}</span>
+        </form>
       </li>
     </ol>
     """
