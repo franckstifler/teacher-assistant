@@ -128,7 +128,9 @@ defmodule TeacherAssistant.NewYear do
           # back from `Ash.transact/2` wrapped in an `Ash.Error.Unknown`.
           {:error, reason} -> {:refused, reason}
         end
-      end
+      end,
+      # A large school copies thousands of rows; Ecto's 15 s default would roll it all back.
+      timeout: :timer.minutes(5)
     )
     |> case do
       {:ok, {:ok, new}} -> {:ok, new}
