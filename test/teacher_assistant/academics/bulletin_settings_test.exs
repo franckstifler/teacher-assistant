@@ -16,7 +16,8 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     refute :qr_code in s.elements
     assert :rank in s.elements and :pp_signature in s.elements
     assert :birth in s.elements
-    assert length(s.elements) == 9
+    assert :signature in s.elements and :stamp in s.elements
+    assert length(s.elements) == 11
     assert Enum.map(s.grade_scale, & &1.letter) == ~w(F E D C B A)
     refute s.custom_scale?
   end

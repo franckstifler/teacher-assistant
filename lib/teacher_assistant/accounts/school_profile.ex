@@ -140,6 +140,10 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       ]
     end
 
+    update :update_official_header do
+      accept [:official_header_lines, :signature_path, :stamp_path]
+    end
+
     update :verify do
       accept [:verified_by_user_id]
       change set_attribute(:verification_status, :verified)
@@ -177,6 +181,10 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     policy action(:update_school_life) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if {Checks.SchoolRole, any_of: :conduct}
+    end
+
+    policy action(:update_official_header) do
+      authorize_if {Checks.SchoolRole, any_of: :head}
     end
 
     policy action([:verify, :reject]) do
@@ -329,6 +337,14 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       allow_nil?: false,
       default: :letters,
       public?: true
+
+    # Spec KLM6: the bulletin's official header (nil = generated) and the head's signature and stamp.
+    attribute :official_header_lines, {:array, :string},
+      public?: true,
+      constraints: [max_length: 6, items: [max_length: 120]]
+
+    attribute :signature_path, :string, public?: true
+    attribute :stamp_path, :string, public?: true
 
     # Spec KLM2: attendance and discipline settings (« Assiduité & discipline »).
     attribute :late_as_absence_minutes, :integer, public?: true, constraints: [min: 1, max: 240]

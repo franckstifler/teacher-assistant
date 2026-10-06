@@ -71,6 +71,22 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
+  @doc "Spec KLM6: saves the official header lines and the signature and stamp paths (head only)."
+  def update_official_header(%Scope{} = scope, attrs) do
+    with {:ok, profile} <- fetch_school_profile(scope) do
+      profile
+      |> Ash.Changeset.for_update(:update_official_header, attrs, scope: scope)
+      |> Ash.update()
+    end
+  end
+
+  def can_edit_official_header?(%Scope{} = scope) do
+    case fetch_school_profile(scope) do
+      {:ok, profile} -> Ash.can?({profile, :update_official_header}, scope)
+      _ -> false
+    end
+  end
+
   def list_unverified_schools(%Scope{} = scope) do
     SchoolProfile |> Ash.Query.for_read(:unverified, %{}, scope: scope) |> Ash.read!()
   end

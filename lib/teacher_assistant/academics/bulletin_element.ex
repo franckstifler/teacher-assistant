@@ -11,6 +11,8 @@ defmodule TeacherAssistant.Academics.BulletinElement do
       :absences,
       :conduct,
       :pp_signature,
+      :signature,
+      :stamp,
       :qr_code
     ]
 
@@ -28,5 +30,7 @@ defmodule TeacherAssistant.Academics.BulletinElement do
   def label(:absences), do: gettext("Absences")
   def label(:conduct), do: gettext("Conduite (note, consignes, sanctions)")
   def label(:pp_signature), do: gettext("Signature du professeur principal")
+  def label(:signature), do: gettext("Signature du chef d'établissement")
+  def label(:stamp), do: gettext("Cachet")
   def label(:qr_code), do: gettext("QR de vérification")
 end

@@ -56,7 +56,10 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
         registration_number: profile.registration_number,
         region: profile.region,
         department: profile.department,
-        logo?: is_binary(profile.logo_path)
+        logo?: is_binary(profile.logo_path),
+        official_lines: profile.official_header_lines,
+        signature?: is_binary(profile.signature_path),
+        stamp?: is_binary(profile.stamp_path)
       }
     }
   end
@@ -76,8 +79,16 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
     end
   end
 
-  @doc "The national lines of the header, in the current locale."
+  @doc "The header's official lines: the school's own when saved (spec KLM6), else the generated ones."
   def official_lines(header) do
+    case Map.get(header, :official_lines) do
+      [_ | _] = lines -> lines
+      _ -> generated_official_lines(header)
+    end
+  end
+
+  @doc "The national lines generated from the region and department, in the current locale."
+  def generated_official_lines(header) do
     [
       gettext("République du Cameroun"),
       gettext("Paix – Travail – Patrie"),
