@@ -15,13 +15,41 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
     TeacherFixtures
   }
 
-  alias TeacherAssistant.Academics.Student
+  alias TeacherAssistant.Academics.{Reference, SanctionEntry, Student}
 
+  # The year is closed by each test (`close/1`), after the records it needs exist.
   setup do
     world = MarksFixtures.marks_world()
     [%{enrollment: e} | _] = Enrollment.list_roster(world.head, world.cg)
-    TeacherFixtures.close_year!(world.head, world.year)
+
+    :ok =
+      Assessment.upsert_marks(world.t, world.a, [
+        %{student_id: world.s1.id, score: Decimal.new(12)}
+      ])
+
     Map.put(world, :enrollment, e)
+  end
+
+  defp close(ctx), do: TeacherFixtures.close_year!(ctx.head, ctx.year)
+
+  defp mark_of(ctx, student) do
+    ctx.head |> Assessment.list_marks(ctx.a) |> Enum.find(&(&1.student_id == student.id))
+  end
+
+  # A pending correction on s1's mark, requested while the séquence is locked.
+  defp pending_correction!(ctx) do
+    MarksFixtures.lock!(ctx, Date.add(Reference.today(), -1))
+
+    {:ok, correction} =
+      Assessment.request_correction(ctx.t, %{
+        assessment_id: ctx.a.id,
+        student_id: ctx.s1.id,
+        requested_status: :graded,
+        requested_score: Decimal.new(14),
+        motive: :erreur_saisie
+      })
+
+    correction
   end
 
   defp closed_error?({:error, error}) when is_exception(error),
@@ -31,9 +59,16 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
   defp closed_error?(_), do: false
 
   test "marks, assessments and council decisions of a closed year are refused", ctx do
+    close(ctx)
+
     assert {:error, _} =
              Assessment.upsert_marks(ctx.t, ctx.a, [
                %{student_id: ctx.s1.id, score: Decimal.new(15)}
+             ])
+
+    assert {:error, _} =
+             Assessment.upsert_marks(ctx.t, ctx.a, [
+               %{student_id: ctx.s2.id, score: Decimal.new(15)}
              ])
 
     assert closed_error?(
@@ -48,12 +83,18 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
   end
 
   test "school life, courses and the calendar of a closed year are refused", ctx do
+    close(ctx)
+    sanctions = fn -> SanctionEntry |> Ash.count!(scope: ctx.head) end
+    before = sanctions.()
+
     # `Discipline.add_sanction/3` flattens a non-forbidden failure to `:sanction_failed`.
     assert {:error, _} =
              Discipline.add_sanction(ctx.head, ctx.enrollment, %{
                type: :avertissement,
                date: ~D[2025-09-10]
              })
+
+    assert sanctions.() == before
 
     assert closed_error?(
              Curriculum.assign_teacher(ctx.head, ctx.cg, ctx.head.current_user, %{subject: "SVT"})
@@ -69,6 +110,7 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
   end
 
   test "enrolling into a closed year writes nothing at all", ctx do
+    close(ctx)
     students = fn -> Student |> Ash.Query.filter(true) |> Ash.count!(scope: ctx.head) end
     before = students.()
 
@@ -77,11 +119,50 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
   end
 
   test "a payment on a closed year's enrolment is still recorded (arrears)", ctx do
+    close(ctx)
+
     assert {:ok, _} =
              Fees.record_payment(ctx.head, ctx.enrollment, %{
                amount: 5_000,
                paid_on: ~D[2026-09-10],
                method: :cash
              })
+  end
+
+  test "an existing mark and assessment of a closed year can be neither changed nor deleted",
+       ctx do
+    mark = mark_of(ctx, ctx.s1)
+    assert mark
+    close(ctx)
+
+    assert closed_error?(Ash.destroy(mark, scope: ctx.head))
+
+    assert closed_error?(
+             ctx.a
+             |> Ash.Changeset.for_update(:update, %{label: "Renommée"}, scope: ctx.head)
+             |> Ash.update()
+           )
+
+    assert closed_error?(Ash.destroy(ctx.a, scope: ctx.head))
+    assert mark_of(ctx, ctx.s1)
+  end
+
+  test "correction requests and decisions of a closed year are refused", ctx do
+    pending = pending_correction!(ctx)
+    close(ctx)
+
+    assert closed_error?(Assessment.approve_correction(ctx.head, pending))
+    assert closed_error?(Assessment.refuse_correction(ctx.head, pending))
+
+    assert closed_error?(
+             Assessment.request_correction(ctx.t, %{
+               assessment_id: ctx.a.id,
+               student_id: ctx.s2.id,
+               requested_status: :absent,
+               motive: :erreur_saisie
+             })
+           )
+
+    assert Decimal.equal?(mark_of(ctx, ctx.s1).score, 12)
   end
 end
