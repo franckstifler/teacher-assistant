@@ -5,6 +5,7 @@ defmodule TeacherAssistantWeb.Layouts do
   """
   use TeacherAssistantWeb, :html
   alias TeacherAssistant.Organization
+  alias TeacherAssistantWeb.NotificationText
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -73,6 +74,7 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:space, current_scope && current_scope.capabilities[:space])
       |> assign(:space_keys, (current_scope && current_scope.capabilities[:spaces]) || [])
       |> assign(:current_context, current_scope && current_scope.current_context)
+      |> assign(:bell, current_scope && (current_scope.capabilities || %{})[:notifications])
       |> assign(:current_path, assigns[:current_path])
 
     ~H"""
@@ -95,6 +97,21 @@ defmodule TeacherAssistantWeb.Layouts do
             <span class="min-w-0 truncate text-sm font-semibold ta-display">
               {@workspace_name || gettext("Teacher Assistant")}
             </span>
+            <.link
+              :if={@bell}
+              id="notification-bell-mobile"
+              navigate={~p"/school/notifications"}
+              aria-label={gettext("Notifications")}
+              class="btn btn-ghost btn-sm btn-square relative ml-auto"
+            >
+              <.icon name="hero-bell" class="size-5" />
+              <span
+                :if={@bell.unread > 0}
+                class="badge badge-error badge-xs ta-num absolute -right-1 -top-1"
+              >
+                {@bell.unread}
+              </span>
+            </.link>
           </header>
 
           <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
@@ -108,51 +125,54 @@ defmodule TeacherAssistantWeb.Layouts do
             class="ta-rail flex min-h-screen w-64 flex-col gap-4 p-3"
             aria-label={gettext("Sidebar")}
           >
-            <div id="workspace-switcher" class="dropdown w-full">
-              <div
-                tabindex="0"
-                role="button"
-                class="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-[color:var(--ta-rail-hover)]"
-              >
-                <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-                  TA
-                </span>
-                <span class="min-w-0 flex-1 leading-tight">
-                  <span class="block truncate text-sm font-semibold ta-display">
-                    {@workspace_name}
+            <div class="flex items-start gap-1">
+              <div id="workspace-switcher" class="dropdown min-w-0 flex-1">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-[color:var(--ta-rail-hover)]"
+                >
+                  <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
+                    TA
                   </span>
-                  <span class="ta-num block truncate text-[0.6rem] uppercase tracking-widest text-[color:var(--ta-rail-faint)]">
-                    {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
+                  <span class="min-w-0 flex-1 leading-tight">
+                    <span class="block truncate text-sm font-semibold ta-display">
+                      {@workspace_name}
+                    </span>
+                    <span class="ta-num block truncate text-[0.6rem] uppercase tracking-widest text-[color:var(--ta-rail-faint)]">
+                      {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
+                    </span>
                   </span>
-                </span>
-                <.icon
-                  name="hero-chevron-up-down"
-                  class="size-4 flex-none text-[color:var(--ta-rail-faint)]"
-                />
-              </div>
-              <div
-                tabindex="0"
-                class="dropdown-content menu z-50 mt-1 w-60 rounded-box border border-base-300 bg-base-100 p-1 text-base-content shadow"
-              >
-                <ul>
-                  <li :for={ws <- @workspaces} id={"workspace-switcher-item-#{ws.id}"}>
-                    <.link
-                      href={~p"/workspaces/select/#{ws.id}"}
-                      class="flex items-center justify-between gap-2"
-                    >
-                      <span>{ws.name}</span>
-                      <span class="badge badge-sm badge-primary">
-                        {gettext("École")}
-                      </span>
+                  <.icon
+                    name="hero-chevron-up-down"
+                    class="size-4 flex-none text-[color:var(--ta-rail-faint)]"
+                  />
+                </div>
+                <div
+                  tabindex="0"
+                  class="dropdown-content menu z-50 mt-1 w-60 rounded-box border border-base-300 bg-base-100 p-1 text-base-content shadow"
+                >
+                  <ul>
+                    <li :for={ws <- @workspaces} id={"workspace-switcher-item-#{ws.id}"}>
+                      <.link
+                        href={~p"/workspaces/select/#{ws.id}"}
+                        class="flex items-center justify-between gap-2"
+                      >
+                        <span>{ws.name}</span>
+                        <span class="badge badge-sm badge-primary">
+                          {gettext("École")}
+                        </span>
+                      </.link>
+                    </li>
+                  </ul>
+                  <div class="mt-1 border-t border-base-300 p-2">
+                    <.link navigate={~p"/schools/new"} class="btn btn-primary btn-xs w-full">
+                      {gettext("Créer un établissement")}
                     </.link>
-                  </li>
-                </ul>
-                <div class="mt-1 border-t border-base-300 p-2">
-                  <.link navigate={~p"/schools/new"} class="btn btn-primary btn-xs w-full">
-                    {gettext("Créer un établissement")}
-                  </.link>
+                  </div>
                 </div>
               </div>
+              <.notification_bell :if={@bell} bell={@bell} />
             </div>
 
             <div :if={@units != []} id="class-switcher" class="dropdown w-full">
@@ -319,6 +339,82 @@ defmodule TeacherAssistantWeb.Layouts do
     <% end %>
 
     <.flash_group flash={@flash} />
+    """
+  end
+
+  attr :bell, :map, required: true
+
+  defp notification_bell(assigns) do
+    ~H"""
+    <div id="notification-bell" class="dropdown dropdown-bottom">
+      <div
+        tabindex="0"
+        role="button"
+        aria-label={gettext("Notifications")}
+        class="relative grid size-9 place-items-center rounded-lg text-[color:var(--ta-rail-muted)] transition-colors hover:bg-[color:var(--ta-rail-hover)] hover:text-[color:var(--ta-rail-fg)]"
+      >
+        <.icon name="hero-bell" class="size-5" />
+        <span
+          :if={@bell.unread > 0}
+          id="notification-bell-count"
+          class="badge badge-error badge-xs ta-num absolute -right-0.5 -top-0.5"
+        >
+          {@bell.unread}
+        </span>
+      </div>
+      <div
+        tabindex="0"
+        class="dropdown-content z-50 mt-1 w-80 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
+      >
+        <div class="flex items-center justify-between gap-2 px-2 pb-2">
+          <span class="ta-eyebrow">{gettext("Notifications")}</span>
+          <button
+            :if={@bell.unread > 0}
+            id="bell-read-all"
+            type="button"
+            phx-click="notification:read_all"
+            class="text-xs font-semibold text-primary hover:underline"
+          >
+            {gettext("Tout marquer comme lu")}
+          </button>
+        </div>
+        <p :if={@bell.latest == []} class="px-2 py-3 text-sm text-base-content/60">
+          {gettext("Aucune notification.")}
+        </p>
+        <ul class="flex flex-col gap-0.5">
+          <li :for={n <- @bell.latest}>
+            <button
+              type="button"
+              id={"bell-item-#{n.id}"}
+              phx-click="notification:open"
+              phx-value-id={n.id}
+              class={[
+                "flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-base-200",
+                is_nil(n.read_at) && "font-semibold"
+              ]}
+            >
+              <span class={[
+                "mt-1.5 size-2 shrink-0 rounded-full",
+                if(is_nil(n.read_at), do: "bg-primary", else: "bg-transparent")
+              ]}></span>
+              <span class="min-w-0 flex-1">
+                <span class="block">{NotificationText.text(n)}</span>
+                <span class="ta-num block text-[0.7rem] font-normal text-base-content/50">
+                  {NotificationText.when_text(n)}
+                </span>
+              </span>
+            </button>
+          </li>
+        </ul>
+        <.link
+          id="bell-see-all"
+          navigate={~p"/school/notifications"}
+          class="mt-1 block rounded-lg px-2 py-1.5 text-center text-xs font-semibold text-primary transition-colors hover:bg-base-200"
+        >
+          {gettext("Tout voir")}
+        </.link>
+      </div>
+    </div>
     """
   end
 
