@@ -153,7 +153,8 @@ defmodule TeacherAssistantWeb.Spaces do
           bulletin_template(),
           holidays(),
           assignments(),
-          periods()
+          periods(),
+          roles()
         ])
       ]
     }
@@ -185,7 +186,8 @@ defmodule TeacherAssistantWeb.Spaces do
           school_life_settings(),
           bulletin_template(),
           holidays(),
-          assignments()
+          assignments(),
+          roles()
         ])
       ]
     }
@@ -395,6 +397,8 @@ defmodule TeacherAssistantWeb.Spaces do
         "hero-scale",
         ~p"/school/settings/school-life"
       )
+
+  defp roles, do: item("roles", gettext("Rôles et droits"), "hero-key", ~p"/school/settings/roles")
 
   defp bulletin_template,
     do:

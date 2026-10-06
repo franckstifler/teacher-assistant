@@ -78,6 +78,8 @@ defmodule TeacherAssistantWeb.SpacesTest do
     assert "nav-school-school-life" in item_ids(:censeur, facts([:vice_principal]))
     assert "nav-school-conduct" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-conduct" in item_ids(:censeur, facts([:vice_principal]))
+    assert "nav-school-roles" in item_ids(:proviseur, facts([:head]))
+    assert "nav-school-roles" in item_ids(:censeur, facts([:vice_principal]))
 
     refute "nav-school-sequences" in item_ids(:enseignant, facts([:teacher], teaches?: true))
 

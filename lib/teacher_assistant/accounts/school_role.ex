@@ -34,4 +34,41 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
   def label(:teacher), do: gettext("Enseignant")
   def label(:guidance_counsellor), do: gettext("Conseiller d'orientation")
   def label(:librarian), do: gettext("Documentaliste")
+
+  @doc """
+  Spec KLM7: what each role may do, in plain words, for the read-only rights
+  matrix. `axis` is the policy axis that grants the right; `resource` is one
+  resource whose policies use that axis (checked by a test); `notes` carries
+  row-level rules (a teacher's own courses, a form master's class).
+  """
+  def rights do
+    alias TeacherAssistant.Academics, as: A
+    alias TeacherAssistant.Accounts, as: Acc
+
+    [
+      %{key: :marks, label: gettext("Saisir les notes"), axis: :admin, resource: A.Mark,
+        notes: %{teacher: gettext("ses cours"), hod: gettext("ses cours")}},
+      %{key: :corrections, label: gettext("Valider les corrections de notes"), axis: :admin, resource: A.MarkCorrection,
+        notes: %{teacher: gettext("demander, pour ses cours")}},
+      %{key: :discipline, label: gettext("Gérer la discipline et la conduite"), axis: :conduct, resource: A.SanctionEntry,
+        notes: %{teacher: gettext("sa classe, en lecture (professeur principal)")}},
+      %{key: :fees, label: gettext("Frais et paiements"), axis: :fees, resource: A.Payment, notes: %{}},
+      %{key: :settings, label: gettext("Paramètres de l'école"), axis: :admin, resource: Acc.SchoolProfile,
+        notes: %{discipline_master: gettext("assiduité et discipline")}},
+      %{key: :members, label: gettext("Membres et invitations"), axis: :head, resource: Acc.SchoolInvitation, notes: %{}},
+      %{key: :timetable, label: gettext("Emploi du temps"), axis: :admin, resource: A.TimetableSlot, notes: %{}},
+      %{key: :bulletins, label: gettext("Bulletins et conseils de classe"), axis: :admin, resource: A.ClassCouncil,
+        notes: %{teacher: gettext("sa classe (professeur principal)")}},
+      %{key: :assignments, label: gettext("Affectations"), axis: :admin, resource: A.TeachingContext, notes: %{}}
+    ]
+  end
+
+  @doc "A matrix cell: `{:note, text}` for a row rule, else `:yes` when the role is on the axis, else `:no`."
+  def cell(%{notes: notes, axis: axis}, role) do
+    cond do
+      Map.has_key?(notes, role) -> {:note, notes[role]}
+      role in axis(axis) -> :yes
+      true -> :no
+    end
+  end
 end
