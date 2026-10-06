@@ -125,6 +125,19 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       end
     end
 
+    # Spec KLM2: the SG edits these too, so not through the admin-only `:update`.
+    update :update_school_life do
+      accept [
+        :late_as_absence_minutes,
+        :justification_deadline_days,
+        :absence_alert_hours,
+        :conduct_points_per_absence_hour,
+        :conduct_points_per_late,
+        :sanction_points,
+        :sanction_types_in_use
+      ]
+    end
+
     update :verify do
       accept [:verified_by_user_id]
       change set_attribute(:verification_status, :verified)
@@ -157,6 +170,11 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
 
     policy action(:update) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
+    end
+
+    policy action(:update_school_life) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
     end
 
     policy action([:verify, :reject]) do
@@ -301,6 +319,35 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       default: 18,
       public?: true,
       constraints: [min: 1, max: 40]
+
+    # Spec KLM2: attendance and discipline settings (« Assiduité & discipline »).
+    attribute :late_as_absence_minutes, :integer, public?: true, constraints: [min: 1, max: 240]
+    attribute :justification_deadline_days, :integer, public?: true, constraints: [min: 1, max: 60]
+
+    attribute :absence_alert_hours, :integer,
+      allow_nil?: false,
+      default: 10,
+      public?: true,
+      constraints: [min: 1, max: 200]
+
+    attribute :conduct_points_per_absence_hour, :decimal,
+      allow_nil?: false,
+      default: Decimal.new("0.5"),
+      public?: true,
+      constraints: [min: 0, max: 5]
+
+    attribute :conduct_points_per_late, :decimal,
+      allow_nil?: false,
+      default: Decimal.new("0.25"),
+      public?: true,
+      constraints: [min: 0, max: 5]
+
+    # nil = `SanctionPoints` defaults.
+    attribute :sanction_points, TeacherAssistant.Accounts.SanctionPoints, public?: true
+
+    # nil = every sanction type.
+    attribute :sanction_types_in_use, {:array, TeacherAssistant.Academics.SanctionType},
+      public?: true
 
     attribute :verification_status, TeacherAssistant.Accounts.SchoolVerificationStatus,
       allow_nil?: false,

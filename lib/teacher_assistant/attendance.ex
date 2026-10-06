@@ -15,7 +15,9 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.JustificationReason
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.SanctionType
   alias TeacherAssistant.Academics.SchoolCalendar
+  alias TeacherAssistant.Academics.SchoolLifeRules
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Organization
@@ -656,4 +658,96 @@ defmodule TeacherAssistant.Attendance do
       nil -> if SchoolCalendar.lesson_day?(cal, date), do: nil, else: :no_lessons
     end
   end
+
+  # --- School-life settings (spec KLM2) ------------------------------------------
+
+  @doc "The school's attendance and discipline settings."
+  def school_life_rules(%Scope{} = scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    SchoolLifeRules.from_profile(profile)
+  end
+
+  @doc "Whether the scope may change them (admins and the SG)."
+  def can_edit_school_life?(%Scope{} = scope) do
+    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      {:ok, profile} -> Ash.can?({profile, :update_school_life}, scope)
+      _ -> false
+    end
+  end
+
+  @doc """
+  Saves the settings from the page's string params. Blank minutes or deadline
+  switch that rule off; the alert hours are required; decimals take a comma or
+  a dot; at least one sanction type stays in use.
+  """
+  def update_school_life_rules(%Scope{} = scope, %{} = params) do
+    with {:ok, late} <- parse_integer(params["late_as_absence_minutes"], :optional),
+         {:ok, deadline} <- parse_integer(params["justification_deadline_days"], :optional),
+         {:ok, alert} <- parse_integer(params["absence_alert_hours"], :required),
+         {:ok, per_hour} <- parse_decimal(params["conduct_points_per_absence_hour"]),
+         {:ok, per_late} <- parse_decimal(params["conduct_points_per_late"]),
+         {:ok, points} <- parse_points(params["sanction_points"] || %{}),
+         {:ok, types} <- parse_types(params["sanction_types_in_use"]),
+         {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      profile
+      |> Ash.Changeset.for_update(
+        :update_school_life,
+        %{
+          late_as_absence_minutes: late,
+          justification_deadline_days: deadline,
+          absence_alert_hours: alert,
+          conduct_points_per_absence_hour: per_hour,
+          conduct_points_per_late: per_late,
+          sanction_points: points,
+          sanction_types_in_use: types
+        },
+        scope: scope
+      )
+      |> Ash.update()
+    end
+  end
+
+  defp parse_integer(value, mode) do
+    case {String.trim(to_string(value || "")), mode} do
+      {"", :optional} ->
+        {:ok, nil}
+
+      {"", :required} ->
+        {:error, :invalid_number}
+
+      {text, _} ->
+        case Integer.parse(text) do
+          {n, ""} -> {:ok, n}
+          _ -> {:error, :invalid_number}
+        end
+    end
+  end
+
+  defp parse_decimal(value) do
+    case value |> to_string() |> String.trim() |> String.replace(",", ".") |> Decimal.parse() do
+      # NaN and ±Infinity carry an atom coefficient.
+      {%Decimal{coef: coef} = d, ""} when is_integer(coef) -> {:ok, d}
+      _ -> {:error, :invalid_number}
+    end
+  end
+
+  defp parse_points(%{} = params) do
+    Enum.reduce_while(SanctionType.values(), {:ok, %{}}, fn type, {:ok, acc} ->
+      case parse_decimal(Map.get(params, Atom.to_string(type), "")) do
+        {:ok, d} -> {:cont, {:ok, Map.put(acc, type, d)}}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp parse_types(values) when is_list(values) do
+    by_string = Map.new(SanctionType.values(), &{Atom.to_string(&1), &1})
+
+    case values |> Enum.map(&Map.get(by_string, &1)) |> Enum.reject(&is_nil/1) do
+      [] -> {:error, :no_sanction_type}
+      types -> {:ok, Enum.filter(SanctionType.values(), &(&1 in types))}
+    end
+  end
+
+  defp parse_types(_), do: {:error, :no_sanction_type}
 end
