@@ -76,9 +76,10 @@ defmodule TeacherAssistant.Enrollment do
     end
   end
 
-  def list_class_groups(%Scope{} = scope, %AcademicYear{id: year_id}) do
+  def list_class_groups(%Scope{} = scope, %AcademicYear{id: year_id}, opts \\ []) do
     ClassGroup
     |> Ash.Query.for_read(:for_workspace_and_year, %{academic_year_id: year_id}, scope: scope)
+    |> Ash.Query.load(opts[:load] || [])
     |> Ash.read!()
   end
 

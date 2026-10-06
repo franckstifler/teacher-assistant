@@ -122,4 +122,17 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
       [%{label: level, level: level, serie: nil}]
     end
   end
+
+  @doc "Spec KLM5: the first free label `base <suffix>` for a level, given the existing labels."
+  def next_class_label(base, existing, suffix) do
+    taken = MapSet.new(existing)
+
+    suffix
+    |> candidates()
+    |> Enum.map(&"#{base} #{&1}")
+    |> Enum.find(&(not MapSet.member?(taken, &1)))
+  end
+
+  defp candidates(:letters), do: Enum.map(?A..?Z, &<<&1>>)
+  defp candidates(:numbers), do: Enum.map(1..99, &Integer.to_string/1)
 end

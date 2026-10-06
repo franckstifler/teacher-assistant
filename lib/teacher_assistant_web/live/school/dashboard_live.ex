@@ -175,12 +175,10 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     year = scope.current_academic_year
 
     classes =
-      if year, do: Enrollment.list_class_groups(scope, year), else: []
+      if year, do: Enrollment.list_class_groups(scope, year, load: [:enrollment_count]), else: []
 
-    students_count =
-      classes
-      |> Enum.map(&length(Enrollment.list_roster(scope, &1)))
-      |> Enum.sum()
+    # Spec KLM5 (R05): the headcount comes with the classes, one query.
+    students_count = classes |> Enum.map(& &1.enrollment_count) |> Enum.sum()
 
     teachers_count =
       classes

@@ -105,7 +105,9 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :lesson_days,
         :wednesday_afternoon_off?,
         :default_lesson_minutes,
-        :statutory_hours
+        :statutory_hours,
+        :max_class_size,
+        :class_suffix
       ]
 
       validate TeacherAssistant.Accounts.SchoolProfile.ValidateAppreciations
@@ -319,6 +321,14 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       default: 18,
       public?: true,
       constraints: [min: 1, max: 40]
+
+    # Spec KLM5: a warning above it, never a block; nil = no limit.
+    attribute :max_class_size, :integer, public?: true, constraints: [min: 1, max: 200]
+
+    attribute :class_suffix, TeacherAssistant.Academics.ClassSuffix,
+      allow_nil?: false,
+      default: :letters,
+      public?: true
 
     # Spec KLM2: attendance and discipline settings (« Assiduité & discipline »).
     attribute :late_as_absence_minutes, :integer, public?: true, constraints: [min: 1, max: 240]

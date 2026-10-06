@@ -129,6 +129,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
               )
   end
 
+  aggregates do
+    # Spec KLM5 (R05): one query for every class's headcount.
+    count :enrollment_count, :enrollments
+  end
+
   identities do
     identity :unique_class_group, [:workspace_id, :academic_year_id, :label]
   end
