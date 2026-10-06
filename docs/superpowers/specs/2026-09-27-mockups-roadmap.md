@@ -1156,6 +1156,9 @@ classes.
 
 ## KLM2 — Settings « Assiduité & discipline » (spec)
 
+Status: implemented 2026-10-06 (branch `klm2-school-life-settings`, plan
+`docs/superpowers/plans/2026-10-06-klm2-school-life-settings.md`); no visual check done.
+
 Mockup: `Paramètres école` → *Vie scolaire* → « Assiduité & discipline ». Gap: **L2**.
 
 User decisions (2026-10-02): a late can carry **optional minutes**; the repeated-absence alert is in **hours**

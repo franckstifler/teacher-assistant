@@ -116,7 +116,9 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
     assert Decimal.equal?(hours, Decimal.new("2.5"))
 
     set_school_life(ctx.scope, %{absence_alert_hours: 2})
-    assert [%{flagged?: true} | _] = Attendance.absence_days(ctx.scope, ~D[2025-09-08], today, today)
+
+    assert [%{flagged?: true} | _] =
+             Attendance.absence_days(ctx.scope, ~D[2025-09-08], today, today)
 
     assert {:error, :invalid_reason} = Attendance.justify_day(ctx.scope, ctx.e, @monday, nil)
     assert {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.e, @monday, :maladie)

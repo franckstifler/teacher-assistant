@@ -322,7 +322,10 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
 
     # Spec KLM2: attendance and discipline settings (« Assiduité & discipline »).
     attribute :late_as_absence_minutes, :integer, public?: true, constraints: [min: 1, max: 240]
-    attribute :justification_deadline_days, :integer, public?: true, constraints: [min: 1, max: 60]
+
+    attribute :justification_deadline_days, :integer,
+      public?: true,
+      constraints: [min: 1, max: 60]
 
     attribute :absence_alert_hours, :integer,
       allow_nil?: false,

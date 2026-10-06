@@ -24,7 +24,8 @@ defmodule TeacherAssistant.Academics.SchoolLifeRulesTest do
       "exclusion_temporaire" => "6",
       "exclusion_definitive" => "0"
     },
-    "sanction_types_in_use" => ~w(consigne avertissement blame exclusion_temporaire exclusion_definitive)
+    "sanction_types_in_use" =>
+      ~w(consigne avertissement blame exclusion_temporaire exclusion_definitive)
   }
 
   test "defaults", %{scope: scope} do
@@ -36,7 +37,10 @@ defmodule TeacherAssistant.Academics.SchoolLifeRulesTest do
     assert Decimal.equal?(rules.points_per_late, Decimal.new("0.25"))
     assert Decimal.equal?(rules.sanction_points[:blame], Decimal.new(4))
     assert Decimal.equal?(rules.sanction_points[:exclusion_definitive], Decimal.new(0))
-    assert Enum.sort(rules.sanction_types_in_use) == Enum.sort(TeacherAssistant.Academics.SanctionType.values())
+
+    assert Enum.sort(rules.sanction_types_in_use) ==
+             Enum.sort(TeacherAssistant.Academics.SanctionType.values())
+
     # 20 − 6 × 0.5 − 2 × 0.25 − 2
     assert Decimal.equal?(SchoolLifeRules.example_mark(rules), Decimal.new("14.5"))
   end
@@ -80,10 +84,16 @@ defmodule TeacherAssistant.Academics.SchoolLifeRulesTest do
              Attendance.update_school_life_rules(scope, %{@blank | "absence_alert_hours" => ""})
 
     assert {:error, :no_sanction_type} =
-             Attendance.update_school_life_rules(scope, Map.delete(@blank, "sanction_types_in_use"))
+             Attendance.update_school_life_rules(
+               scope,
+               Map.delete(@blank, "sanction_types_in_use")
+             )
 
     assert {:error, %Ash.Error.Invalid{}} =
-             Attendance.update_school_life_rules(scope, %{@blank | "late_as_absence_minutes" => "500"})
+             Attendance.update_school_life_rules(scope, %{
+               @blank
+               | "late_as_absence_minutes" => "500"
+             })
 
     assert Attendance.school_life_rules(scope).absence_alert_hours == 10
   end

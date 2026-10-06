@@ -16,7 +16,9 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
 
     if scope.current_workspace && Attendance.can_edit_school_life?(scope) do
       rules = Attendance.school_life_rules(scope)
-      {:ok, assign(socket, rules: rules, example: SchoolLifeRules.example_mark(rules), error: nil)}
+
+      {:ok,
+       assign(socket, rules: rules, example: SchoolLifeRules.example_mark(rules), error: nil)}
     else
       {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end
@@ -59,7 +61,11 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
   # The example recomputed from what is typed; unreadable values keep the saved ones.
   defp preview(rules, params) do
     number = fn key, saved ->
-      case params |> Map.get(key, "") |> to_string() |> String.replace(",", ".") |> Decimal.parse() do
+      case params
+           |> Map.get(key, "")
+           |> to_string()
+           |> String.replace(",", ".")
+           |> Decimal.parse() do
         {%Decimal{coef: coef} = d, ""} when is_integer(coef) -> d
         _ -> saved
       end
@@ -69,11 +75,16 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
 
     SchoolLifeRules.example_mark(%{
       rules
-      | points_per_absence_hour: number.("conduct_points_per_absence_hour", rules.points_per_absence_hour),
+      | points_per_absence_hour:
+          number.("conduct_points_per_absence_hour", rules.points_per_absence_hour),
         points_per_late: number.("conduct_points_per_late", rules.points_per_late),
         sanction_points:
           Map.update!(rules.sanction_points, :avertissement, fn saved ->
-            case points |> Map.get("avertissement", "") |> to_string() |> String.replace(",", ".") |> Decimal.parse() do
+            case points
+                 |> Map.get("avertissement", "")
+                 |> to_string()
+                 |> String.replace(",", ".")
+                 |> Decimal.parse() do
               {%Decimal{coef: coef} = d, ""} when is_integer(coef) -> d
               _ -> saved
             end
@@ -82,7 +93,10 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
   end
 
   defp shown(nil), do: ""
-  defp shown(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.replace(".", ",")
+
+  defp shown(%Decimal{} = d),
+    do: d |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.replace(".", ",")
+
   defp shown(n) when is_integer(n), do: Integer.to_string(n)
 
   def render(assigns) do

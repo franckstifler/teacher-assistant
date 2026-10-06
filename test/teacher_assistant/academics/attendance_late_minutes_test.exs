@@ -33,7 +33,11 @@ defmodule TeacherAssistant.Academics.AttendanceLateMinutesTest do
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 
     {:ok, _} =
-      Timetabling.place_slot(scope, cg, %{day: :monday, period_id: p1.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p1.id,
+        teaching_context_id: tc.id
+      })
 
     %{scope: scope, cg: cg, tc: tc, e: e, p1: p1, year: year}
   end
@@ -46,7 +50,9 @@ defmodule TeacherAssistant.Academics.AttendanceLateMinutesTest do
       Attendance.period_roll(ctx.scope, ctx.cg, ctx.p1, @monday)
 
     {:ok, 1} =
-      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :absent, 20}])
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [
+        {ctx.e.id, :absent, 20}
+      ])
 
     %{students: [%{status: :absent, late_minutes: nil}]} =
       Attendance.period_roll(ctx.scope, ctx.cg, ctx.p1, @monday)
@@ -63,12 +69,18 @@ defmodule TeacherAssistant.Academics.AttendanceLateMinutesTest do
 
     {:ok, _} =
       profile
-      |> Ash.Changeset.for_update(:update_school_life, %{late_as_absence_minutes: 15}, scope: ctx.scope)
+      |> Ash.Changeset.for_update(:update_school_life, %{late_as_absence_minutes: 15},
+        scope: ctx.scope
+      )
       |> Ash.update()
 
     totals = Attendance.student_conduct(ctx.scope, ctx.e, period)
     assert totals.retards == 0
     assert Decimal.gt?(totals.unjustified_hours, 0)
-    assert Decimal.gt?(Attendance.class_conduct(ctx.scope, ctx.cg, period)[ctx.e.id].unjustified_hours, 0)
+
+    assert Decimal.gt?(
+             Attendance.class_conduct(ctx.scope, ctx.cg, period)[ctx.e.id].unjustified_hours,
+             0
+           )
   end
 end

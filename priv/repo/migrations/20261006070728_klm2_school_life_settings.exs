@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
+defmodule TeacherAssistant.Repo.Migrations.Klm2SchoolLifeSettings do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
   use Ecto.Migration
 
   def up do
+    alter table(:attendance_entries) do
+      add :late_minutes, :bigint
+    end
+
     alter table(:school_profiles) do
       add :late_as_absence_minutes, :bigint
       add :justification_deadline_days, :bigint
@@ -28,6 +32,10 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
       remove :absence_alert_hours
       remove :justification_deadline_days
       remove :late_as_absence_minutes
+    end
+
+    alter table(:attendance_entries) do
+      remove :late_minutes
     end
   end
 end

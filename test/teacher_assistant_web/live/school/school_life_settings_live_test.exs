@@ -19,8 +19,17 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLiveTest do
     assert has_element?(view, "#school-life-link")
 
     {:ok, view, _} = live(conn, ~p"/school/settings/school-life")
-    assert has_element?(view, "#school-life-form input[name='school_life[absence_alert_hours]'][value='10']")
-    assert has_element?(view, "#school-life-form input[name='school_life[late_as_absence_minutes]'][value='']")
+
+    assert has_element?(
+             view,
+             "#school-life-form input[name='school_life[absence_alert_hours]'][value='10']"
+           )
+
+    assert has_element?(
+             view,
+             "#school-life-form input[name='school_life[late_as_absence_minutes]'][value='']"
+           )
+
     assert view |> element("#conduct-example") |> render() =~ "14,5"
   end
 
@@ -36,7 +45,9 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLiveTest do
     assert view |> element("#conduct-example") |> render() =~ "11,5"
 
     view
-    |> form("#school-life-form", %{school_life: %{late_as_absence_minutes: "15", absence_alert_hours: "8"}})
+    |> form("#school-life-form", %{
+      school_life: %{late_as_absence_minutes: "15", absence_alert_hours: "8"}
+    })
     |> render_submit()
 
     assert render(view) =~ "Réglage enregistré."
@@ -44,14 +55,22 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLiveTest do
     assert Attendance.school_life_rules(scope).absence_alert_hours == 8
   end
 
-  test "an unchecked type is saved as not in use; none checked is refused", %{conn: conn, scope: scope} do
+  test "an unchecked type is saved as not in use; none checked is refused", %{
+    conn: conn,
+    scope: scope
+  } do
     {:ok, view, _} = live(conn, ~p"/school/settings/school-life")
 
     view
-    |> form("#school-life-form", %{school_life: %{sanction_types_in_use: ["avertissement", "blame"]}})
+    |> form("#school-life-form", %{
+      school_life: %{sanction_types_in_use: ["avertissement", "blame"]}
+    })
     |> render_submit()
 
-    assert Enum.sort(Attendance.school_life_rules(scope).sanction_types_in_use) == [:avertissement, :blame]
+    assert Enum.sort(Attendance.school_life_rules(scope).sanction_types_in_use) == [
+             :avertissement,
+             :blame
+           ]
 
     view
     |> form("#school-life-form", %{school_life: %{sanction_types_in_use: []}})
