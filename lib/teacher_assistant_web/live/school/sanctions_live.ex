@@ -54,7 +54,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
         offset: (f.page - 1) * 50
       )
 
-    selected = socket.assigns.selected && Enum.find(page.results, &(&1.id == socket.assigns.selected.id))
+    selected =
+      socket.assigns.selected && Enum.find(page.results, &(&1.id == socket.assigns.selected.id))
+
     assign(socket, page: page, selected: selected)
   end
 
@@ -67,13 +69,16 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
   end
 
   def handle_event("select", %{"id" => id}, socket),
-    do: {:noreply, assign(socket, selected: Enum.find(socket.assigns.page.results, &(&1.id == id)))}
+    do:
+      {:noreply, assign(socket, selected: Enum.find(socket.assigns.page.results, &(&1.id == id)))}
 
   def handle_event("search", %{"q" => q}, socket) do
     matches =
       if String.length(String.trim(q)) >= 2 do
         scope = socket.assigns.current_scope
-        Enrollment.list_school_students(scope, scope.current_academic_year, query: q).results |> Enum.take(8)
+
+        Enrollment.list_school_students(scope, scope.current_academic_year, query: q).results
+        |> Enum.take(8)
       else
         []
       end
@@ -83,7 +88,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
 
   def handle_event("pick", %{"id" => id}, socket) do
     enrollment = Enum.find(socket.assigns.matches, &(&1.id == id))
-    {:noreply, assign(socket, entry: %{socket.assigns.entry | enrollment: enrollment}, matches: [], q: "")}
+
+    {:noreply,
+     assign(socket, entry: %{socket.assigns.entry | enrollment: enrollment}, matches: [], q: "")}
   end
 
   def handle_event("type", %{"type" => type}, socket) do
@@ -119,7 +126,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
           {:noreply, put_flash(socket, :error, gettext("Sanction non enregistrée."))}
       end
     else
-      _ -> {:noreply, put_flash(socket, :error, gettext("Choisissez un élève, un type et une date."))}
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Choisissez un élève, un type et une date."))}
     end
   end
 
@@ -227,8 +236,17 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
               placeholder={gettext("jours")}
               class="input input-sm w-20"
             />
-            <input name="entry[reason]" placeholder={gettext("Motif (facultatif)")} class="input input-sm w-full sm:w-64" />
-            <input type="date" name="entry[date]" value={Date.to_iso8601(Reference.today())} class="input input-sm" />
+            <input
+              name="entry[reason]"
+              placeholder={gettext("Motif (facultatif)")}
+              class="input input-sm w-full sm:w-64"
+            />
+            <input
+              type="date"
+              name="entry[date]"
+              value={Date.to_iso8601(Reference.today())}
+              class="input input-sm"
+            />
             <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
           </form>
         </div>
@@ -236,7 +254,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
         <form id="sanction-filters" phx-change="filter" class="flex flex-wrap items-center gap-2">
           <select name="class" class="select select-sm">
             <option value="">{gettext("Toutes les classes")}</option>
-            <option :for={c <- @classes} value={c.id} selected={c.id == @filters.class}>{c.label}</option>
+            <option :for={c <- @classes} value={c.id} selected={c.id == @filters.class}>
+              {c.label}
+            </option>
           </select>
           <select name="type" class="select select-sm">
             <option value="">{gettext("Tous les types")}</option>
@@ -245,7 +265,13 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
             </option>
           </select>
           <label class="flex items-center gap-1.5 text-sm">
-            <input type="checkbox" name="notify" value="1" checked={@filters.notify} class="checkbox checkbox-sm" />
+            <input
+              type="checkbox"
+              name="notify"
+              value="1"
+              checked={@filters.notify}
+              class="checkbox checkbox-sm"
+            />
             {gettext("À notifier")}
           </label>
         </form>
@@ -269,7 +295,10 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                   id={"sanction-#{s.id}"}
                   phx-click="select"
                   phx-value-id={s.id}
-                  class={["cursor-pointer hover:bg-base-200/60", @selected && @selected.id == s.id && "bg-primary/10"]}
+                  class={[
+                    "cursor-pointer hover:bg-base-200/60",
+                    @selected && @selected.id == s.id && "bg-primary/10"
+                  ]}
                 >
                   <td class="font-semibold">{s.enrollment.student.full_name}</td>
                   <td>{s.enrollment.class_group.label}</td>
@@ -285,14 +314,25 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                 </tr>
               </tbody>
             </table>
-            <p :if={@page.results == []} class="p-4 text-sm text-base-content/60">{gettext("Aucune sanction.")}</p>
+            <p :if={@page.results == []} class="p-4 text-sm text-base-content/60">
+              {gettext("Aucune sanction.")}
+            </p>
           </div>
 
-          <aside :if={@selected} id="sanction-panel" class="ta-panel flex min-w-0 max-w-[420px] flex-[1_1_300px] flex-col gap-2">
-            <.link navigate={~p"/school/students/#{@selected.enrollment.student_id}"} class="font-display text-lg font-semibold hover:text-primary">
+          <aside
+            :if={@selected}
+            id="sanction-panel"
+            class="ta-panel flex min-w-0 max-w-[420px] flex-[1_1_300px] flex-col gap-2"
+          >
+            <.link
+              navigate={~p"/school/students/#{@selected.enrollment.student_id}"}
+              class="font-display text-lg font-semibold hover:text-primary"
+            >
               {@selected.enrollment.student.full_name}
             </.link>
-            <span class="text-sm">{@selected.enrollment.class_group.label} · {SanctionType.label(@selected.type)} · {date(@selected.date)}</span>
+            <span class="text-sm">{@selected.enrollment.class_group.label} · {SanctionType.label(
+              @selected.type
+            )} · {date(@selected.date)}</span>
             <span :if={@selected.duration_days} class="text-sm">
               {ngettext("%{count} jour", "%{count} jours", @selected.duration_days)}
             </span>
@@ -302,7 +342,10 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
             </span>
             <%= case guardian(@selected) do %>
               <% nil -> %>
-                <.link navigate={~p"/school/students/#{@selected.enrollment.student_id}"} class="link text-sm text-warning">
+                <.link
+                  navigate={~p"/school/students/#{@selected.enrollment.student_id}"}
+                  class="link text-sm text-warning"
+                >
                   {gettext("Aucun contact")}
                 </.link>
               <% g -> %>

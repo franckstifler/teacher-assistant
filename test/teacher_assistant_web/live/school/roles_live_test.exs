@@ -26,6 +26,7 @@ defmodule TeacherAssistantWeb.School.RolesLiveTest do
       |> Plug.Conn.put_session(:user_id, teacher.current_user.id)
       |> Plug.Conn.put_session(:workspace_id, ws.id)
 
-    assert {:error, {:live_redirect, %{to: "/school/settings"}}} = live(conn, ~p"/school/settings/roles")
+    assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
+             live(conn, ~p"/school/settings/roles")
   end
 end

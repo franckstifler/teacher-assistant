@@ -15,7 +15,10 @@ defmodule TeacherAssistant.Accounts.SchoolRoleRightsTest do
             check <- policy.policies,
             do: check
 
-      assert Enum.any?(checks, &(&1.check_module == Checks.SchoolRole and &1.check_opts[:any_of] == right.axis)),
+      assert Enum.any?(
+               checks,
+               &(&1.check_module == Checks.SchoolRole and &1.check_opts[:any_of] == right.axis)
+             ),
              "#{right.key}: #{inspect(right.resource)} has no #{right.axis} check"
     end
   end
@@ -24,6 +27,8 @@ defmodule TeacherAssistant.Accounts.SchoolRoleRightsTest do
     discipline = Enum.find(SchoolRole.rights(), &(&1.key == :discipline))
     assert SchoolRole.cell(discipline, :discipline_master) == :yes
     assert SchoolRole.cell(discipline, :bursar) == :no
-    assert {:note, _} = SchoolRole.cell(Enum.find(SchoolRole.rights(), &(&1.key == :marks)), :teacher)
+
+    assert {:note, _} =
+             SchoolRole.cell(Enum.find(SchoolRole.rights(), &(&1.key == :marks)), :teacher)
   end
 end

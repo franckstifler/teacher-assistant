@@ -18,8 +18,16 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
     if scope.current_workspace && Accounts.can_edit_official_header?(scope) do
       {:ok,
        socket
-       |> allow_upload(:signature, accept: ~w(.png .jpg .jpeg), max_entries: 1, max_file_size: 1_000_000)
-       |> allow_upload(:stamp, accept: ~w(.png .jpg .jpeg), max_entries: 1, max_file_size: 1_000_000)
+       |> allow_upload(:signature,
+         accept: ~w(.png .jpg .jpeg),
+         max_entries: 1,
+         max_file_size: 1_000_000
+       )
+       |> allow_upload(:stamp,
+         accept: ~w(.png .jpg .jpeg),
+         max_entries: 1,
+         max_file_size: 1_000_000
+       )
        |> load()}
     else
       {:ok, push_navigate(socket, to: ~p"/school/settings")}
@@ -39,8 +47,14 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
   end
 
   def handle_event("save_lines", %{"lines" => text}, socket) do
-    lines = text |> String.split(["\r\n", "\n"]) |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-    save(socket, %{official_header_lines: if(lines == [], do: nil, else: lines)}, gettext("En-tête enregistré."))
+    lines =
+      text |> String.split(["\r\n", "\n"]) |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+
+    save(
+      socket,
+      %{official_header_lines: if(lines == [], do: nil, else: lines)},
+      gettext("En-tête enregistré.")
+    )
   end
 
   def handle_event("reset_lines", _params, socket),
@@ -69,7 +83,13 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
     ws = socket.assigns.current_scope.current_workspace.id
 
     consume_uploaded_entries(socket, kind, fn %{path: tmp}, entry ->
-      relative = Path.join(["school_signatures", ws, Ash.UUIDv7.generate() <> Path.extname(entry.client_name)])
+      relative =
+        Path.join([
+          "school_signatures",
+          ws,
+          Ash.UUIDv7.generate() <> Path.extname(entry.client_name)
+        ])
+
       dest = Path.join(uploads_dir, relative)
       dest |> Path.dirname() |> File.mkdir_p!()
       File.cp!(tmp, dest)
@@ -79,9 +99,14 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
 
   defp save(socket, attrs, message) do
     case Accounts.update_official_header(socket.assigns.current_scope, attrs) do
-      {:ok, _} -> {:noreply, socket |> load() |> put_flash(:info, message)}
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      {:error, _} -> {:noreply, assign(socket, error: gettext("Au plus 6 lignes de 120 caractères."))}
+      {:ok, _} ->
+        {:noreply, socket |> load() |> put_flash(:info, message)}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, assign(socket, error: gettext("Au plus 6 lignes de 120 caractères."))}
     end
   end
 
@@ -93,12 +118,20 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
 
         <.form for={%{}} id="header-lines-form" phx-submit="save_lines" class="ta-panel space-y-3">
           <h2 class="ta-eyebrow">{gettext("En-tête officiel")}</h2>
-          <p class="text-xs text-base-content/60">{gettext("Une ligne par ligne d'en-tête, 6 au plus.")}</p>
+          <p class="text-xs text-base-content/60">
+            {gettext("Une ligne par ligne d'en-tête, 6 au plus.")}
+          </p>
           <textarea name="lines" rows="6" class="textarea textarea-bordered w-full">{Enum.join(@lines, "\n")}</textarea>
           <p :if={@error} id="header-error" class="text-sm text-error">{@error}</p>
           <div class="flex gap-2">
             <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-            <button :if={@custom?} type="button" id="reset-header" phx-click="reset_lines" class="btn btn-ghost btn-sm">
+            <button
+              :if={@custom?}
+              type="button"
+              id="reset-header"
+              phx-click="reset_lines"
+              class="btn btn-ghost btn-sm"
+            >
               {gettext("Rétablir l'en-tête par défaut")}
             </button>
           </div>
@@ -106,7 +139,12 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
 
         <div class="grid gap-4 sm:grid-cols-2">
           <.form
-            :for={{kind, title} <- [signature: gettext("Signature du chef d'établissement"), stamp: gettext("Cachet")]}
+            :for={
+              {kind, title} <- [
+                signature: gettext("Signature du chef d'établissement"),
+                stamp: gettext("Cachet")
+              ]
+            }
             for={%{}}
             id={"#{kind}-form"}
             phx-submit="upload"
@@ -116,7 +154,12 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
             <input type="hidden" name="kind" value={kind} />
             <h2 class="ta-eyebrow">{title}</h2>
             <img
-              :if={Map.fetch!(@profile, Keyword.fetch!([signature: :signature_path, stamp: :stamp_path], kind))}
+              :if={
+                Map.fetch!(
+                  @profile,
+                  Keyword.fetch!([signature: :signature_path, stamp: :stamp_path], kind)
+                )
+              }
               src={~p"/school/logo?kind=#{kind}"}
               alt={title}
               class="h-20 object-contain"
@@ -125,7 +168,12 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
             <div class="flex gap-2">
               <button type="submit" class="btn btn-secondary btn-sm">{gettext("Téléverser")}</button>
               <button
-                :if={Map.fetch!(@profile, Keyword.fetch!([signature: :signature_path, stamp: :stamp_path], kind))}
+                :if={
+                  Map.fetch!(
+                    @profile,
+                    Keyword.fetch!([signature: :signature_path, stamp: :stamp_path], kind)
+                  )
+                }
                 type="button"
                 id={"remove-#{kind}"}
                 phx-click="remove"

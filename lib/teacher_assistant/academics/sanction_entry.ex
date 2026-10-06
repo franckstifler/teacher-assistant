@@ -85,7 +85,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
       pagination offset?: true, countable: true, required?: false, default_limit: 50
 
       filter expr(enrollment.academic_year_id == ^arg(:academic_year_id))
-      filter expr(is_nil(^arg(:class_group_id)) or enrollment.class_group_id == ^arg(:class_group_id))
+
+      filter expr(
+               is_nil(^arg(:class_group_id)) or enrollment.class_group_id == ^arg(:class_group_id)
+             )
+
       filter expr(is_nil(^arg(:type)) or type == ^arg(:type))
       filter expr(^arg(:to_notify) == false or is_nil(parents_notified_on))
 

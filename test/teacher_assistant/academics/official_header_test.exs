@@ -16,11 +16,16 @@ defmodule TeacherAssistant.Academics.OfficialHeaderTest do
     assert hd(BulletinTemplate.official_lines(header)) == "République du Cameroun"
 
     assert {:ok, _} =
-             Accounts.update_official_header(scope, %{official_header_lines: ["République du Cameroun", "Délégation X"]})
+             Accounts.update_official_header(scope, %{
+               official_header_lines: ["République du Cameroun", "Délégation X"]
+             })
 
     {:ok, profile} = Accounts.fetch_school_profile(scope)
     assert profile.official_header_lines == ["République du Cameroun", "Délégation X"]
-    assert BulletinTemplate.official_lines(Map.put(header, :official_lines, profile.official_header_lines)) ==
+
+    assert BulletinTemplate.official_lines(
+             Map.put(header, :official_lines, profile.official_header_lines)
+           ) ==
              ["République du Cameroun", "Délégation X"]
 
     assert {:ok, _} = Accounts.update_official_header(scope, %{official_header_lines: nil})
@@ -29,8 +34,15 @@ defmodule TeacherAssistant.Academics.OfficialHeaderTest do
   end
 
   test "at most six lines of 120 characters", %{scope: scope} do
-    assert {:error, _} = Accounts.update_official_header(scope, %{official_header_lines: List.duplicate("x", 7)})
-    assert {:error, _} = Accounts.update_official_header(scope, %{official_header_lines: [String.duplicate("x", 121)]})
+    assert {:error, _} =
+             Accounts.update_official_header(scope, %{
+               official_header_lines: List.duplicate("x", 7)
+             })
+
+    assert {:error, _} =
+             Accounts.update_official_header(scope, %{
+               official_header_lines: [String.duplicate("x", 121)]
+             })
   end
 
   test "only the head may change the header or the images", %{scope: scope} do

@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
+defmodule TeacherAssistant.Repo.Migrations.Klm47ClassesHeader do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -11,11 +11,17 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
     alter table(:school_profiles) do
       add :max_class_size, :bigint
       add :class_suffix, :text, null: false, default: "letters"
+      add :official_header_lines, {:array, :text}
+      add :signature_path, :text
+      add :stamp_path, :text
     end
   end
 
   def down do
     alter table(:school_profiles) do
+      remove :stamp_path
+      remove :signature_path
+      remove :official_header_lines
       remove :class_suffix
       remove :max_class_size
     end

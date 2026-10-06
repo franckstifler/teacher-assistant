@@ -8,7 +8,9 @@ defmodule TeacherAssistant.Academics.ClassSizeTest do
 
   describe "next_class_label/3" do
     test "letters take the first free one" do
-      assert SchoolTemplates.next_class_label("6ème", ["6ème A", "6ème C", "5ème B"], :letters) == "6ème B"
+      assert SchoolTemplates.next_class_label("6ème", ["6ème A", "6ème C", "5ème B"], :letters) ==
+               "6ème B"
+
       assert SchoolTemplates.next_class_label("6ème", [], :letters) == "6ème A"
       assert SchoolTemplates.next_class_label("2nde C", ["2nde C A"], :letters) == "2nde C B"
     end
@@ -34,9 +36,13 @@ defmodule TeacherAssistant.Academics.ClassSizeTest do
     assert profile.class_suffix == :letters
 
     {:ok, profile} =
-      Accounts.update_school_profile(profile, %{max_class_size: 60, class_suffix: :numbers}, scope: scope)
+      Accounts.update_school_profile(profile, %{max_class_size: 60, class_suffix: :numbers},
+        scope: scope
+      )
 
     assert profile.max_class_size == 60
-    assert {:error, _} = Accounts.update_school_profile(profile, %{max_class_size: 0}, scope: scope)
+
+    assert {:error, _} =
+             Accounts.update_school_profile(profile, %{max_class_size: 0}, scope: scope)
   end
 end

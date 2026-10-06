@@ -647,9 +647,20 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "Yaoundé"
   end
 
-  test "the head's slot prints the signature and the stamp when set", %{conn: conn, cg: cg, seq: seq, roster: roster, scope: scope} do
+  test "the head's slot prints the signature and the stamp when set", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    roster: roster,
+    scope: scope
+  } do
     %{enrollment: enr} = hd(roster)
-    {:ok, _} = TeacherAssistant.Accounts.update_official_header(scope, %{signature_path: "s.png", stamp_path: "c.png"})
+
+    {:ok, _} =
+      TeacherAssistant.Accounts.update_official_header(scope, %{
+        signature_path: "s.png",
+        stamp_path: "c.png"
+      })
 
     body =
       conn

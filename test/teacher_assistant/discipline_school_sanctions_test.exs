@@ -17,9 +17,14 @@ defmodule TeacherAssistant.DisciplineSchoolSanctionsTest do
   end
 
   test "the school list filters by class, type and parents to notify, newest first", ctx do
-    {:ok, s1} = Discipline.add_sanction(ctx.scope, ctx.awa, %{type: :avertissement, date: ~D[2025-09-10]})
+    {:ok, s1} =
+      Discipline.add_sanction(ctx.scope, ctx.awa, %{type: :avertissement, date: ~D[2025-09-10]})
+
     {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.awa, %{type: :blame, date: ~D[2025-09-12]})
-    {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.bob, %{type: :consigne, date: ~D[2025-09-11]})
+
+    {:ok, _} =
+      Discipline.add_sanction(ctx.scope, ctx.bob, %{type: :consigne, date: ~D[2025-09-11]})
+
     {:ok, _} = Discipline.mark_parents_notified(ctx.scope, s1)
 
     page = Discipline.list_school_sanctions(ctx.scope, ctx.year, [])
@@ -56,6 +61,11 @@ defmodule TeacherAssistant.DisciplineSchoolSanctionsTest do
              Discipline.add_sanction(ctx.scope, ctx.awa, %{type: :blame, date: ~D[2025-09-10]})
 
     assert Discipline.list_school_sanctions(ctx.scope, ctx.year, []).count == 0
-    assert {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.awa, %{type: :avertissement, date: ~D[2025-09-10]})
+
+    assert {:ok, _} =
+             Discipline.add_sanction(ctx.scope, ctx.awa, %{
+               type: :avertissement,
+               date: ~D[2025-09-10]
+             })
   end
 end

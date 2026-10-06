@@ -1255,6 +1255,9 @@ suggestions.
 
 ## KLM4 — School-wide sanctions page (spec)
 
+Status: implemented 2026-10-06 (branch `klm4-7-sanctions-classes-header-roles`, plan
+`docs/superpowers/plans/2026-10-06-klm4-7-sanctions-classes-header-roles.md`); no visual check done.
+
 Mockup: `Espaces par rôle` → SG → « Sanctions ». Gap: **L1** (V06 parents-notified tracking already exists).
 
 Existing code: `SanctionEntry` (`type`, `date`, `reason`, `duration_days`, `parents_notified_on`,
@@ -1279,6 +1282,9 @@ Out of scope: messages to parents (R03), printing a sanction notice.
 
 ## KLM5 — Class size, naming rule, enrolment counts (spec)
 
+Status: implemented 2026-10-06 (branch `klm4-7-sanctions-classes-header-roles`, plan
+`docs/superpowers/plans/2026-10-06-klm4-7-sanctions-classes-header-roles.md`); no visual check done.
+
 Gaps: **M4** (the two fields not yet built: maximum class size, class naming rule — the short school name
 already exists, and J2 built statutory hours and one form master per class) and **R05** (dashboard counts).
 
@@ -1299,6 +1305,9 @@ Existing code: `SchoolProfile.short_name`, `statutory_hours`; `ClassGroup` (`lab
 
 ## KLM6 — Official header, signature and stamp (spec)
 
+Status: implemented 2026-10-06 (branch `klm4-7-sanctions-classes-header-roles`, plan
+`docs/superpowers/plans/2026-10-06-klm4-7-sanctions-classes-header-roles.md`); no visual check done.
+
 Mockup: `Paramètres école` → *Établissement*. Gap: **S04**.
 
 Existing code: `BulletinTemplate.official_lines/1` (fixed: République du Cameroun, Paix – Travail – Patrie,
@@ -1318,6 +1327,9 @@ ministry, regional and departmental delegation from the profile), `school_lines/
 Out of scope: signatures of other roles, signing council minutes.
 
 ## KLM7 — Rights matrix, read only (spec)
+
+Status: implemented 2026-10-06 (branch `klm4-7-sanctions-classes-header-roles`, plan
+`docs/superpowers/plans/2026-10-06-klm4-7-sanctions-classes-header-roles.md`); no visual check done.
 
 Mockup: `Paramètres école` → *Rôles*. Gap: **S06**.
 

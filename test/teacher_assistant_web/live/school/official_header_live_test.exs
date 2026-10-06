@@ -15,11 +15,18 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
     assert render(view) =~ "République du Cameroun"
 
     view
-    |> form("#header-lines-form", %{"lines" => "République du Cameroun\nPaix – Travail – Patrie\nDélégation X"})
+    |> form("#header-lines-form", %{
+      "lines" => "République du Cameroun\nPaix – Travail – Patrie\nDélégation X"
+    })
     |> render_submit()
 
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    assert profile.official_header_lines == ["République du Cameroun", "Paix – Travail – Patrie", "Délégation X"]
+
+    assert profile.official_header_lines == [
+             "République du Cameroun",
+             "Paix – Travail – Patrie",
+             "Délégation X"
+           ]
 
     view |> element("#reset-header") |> render_click()
     {:ok, profile} = Accounts.fetch_school_profile(scope)
@@ -31,7 +38,11 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
 
     upload =
       file_input(view, "#signature-form", :signature, [
-        %{name: "sig.png", content: File.read!("test/support/fixtures/files/1x1.png"), type: "image/png"}
+        %{
+          name: "sig.png",
+          content: File.read!("test/support/fixtures/files/1x1.png"),
+          type: "image/png"
+        }
       ])
 
     render_upload(upload, "sig.png")
@@ -53,6 +64,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
       |> Plug.Conn.put_session(:user_id, censeur.current_user.id)
       |> Plug.Conn.put_session(:workspace_id, ws.id)
 
-    assert {:error, {:live_redirect, %{to: "/school/settings"}}} = live(conn, ~p"/school/settings/header")
+    assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
+             live(conn, ~p"/school/settings/header")
   end
 end

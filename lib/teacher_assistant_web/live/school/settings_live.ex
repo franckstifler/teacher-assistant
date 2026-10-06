@@ -391,7 +391,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             {gettext("Passage & redoublement")}
           </.link>
 
-          <.link id="roles-link" navigate={~p"/school/settings/roles"} class="link link-primary text-sm">
+          <.link
+            id="roles-link"
+            navigate={~p"/school/settings/roles"}
+            class="link link-primary text-sm"
+          >
             {gettext("Rôles et droits")}
           </.link>
 

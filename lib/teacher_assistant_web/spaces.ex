@@ -8,7 +8,15 @@ defmodule TeacherAssistantWeb.Spaces do
   use Gettext, backend: TeacherAssistantWeb.Gettext
   use TeacherAssistantWeb, :verified_routes
 
-  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Discipline, Enrollment, Organization}
+  alias TeacherAssistant.{
+    Assessment,
+    Attendance,
+    Curriculum,
+    Discipline,
+    Enrollment,
+    Organization
+  }
+
   alias TeacherAssistant.Academics.Reference
 
   @order [:proviseur, :censeur, :surveillant, :intendant, :enseignant, :ecole]
@@ -398,7 +406,8 @@ defmodule TeacherAssistantWeb.Spaces do
         ~p"/school/settings/school-life"
       )
 
-  defp roles, do: item("roles", gettext("Rôles et droits"), "hero-key", ~p"/school/settings/roles")
+  defp roles,
+    do: item("roles", gettext("Rôles et droits"), "hero-key", ~p"/school/settings/roles")
 
   defp bulletin_template,
     do:

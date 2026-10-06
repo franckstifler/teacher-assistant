@@ -13,8 +13,21 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     {:ok, _} = Enrollment.add_student(scope, cg_b, %{full_name: "Bob Eyong", sex: :m})
     [%{enrollment: awa_e}] = Enrollment.list_roster(scope, cg_a)
     [%{enrollment: bob_e}] = Enrollment.list_roster(scope, cg_b)
-    {:ok, _} = Enrollment.add_guardian(scope, awa, %{full_name: "Jean Nkolo", relationship: :pere, phone: "677123456"})
-    {:ok, s1} = Discipline.add_sanction(scope, awa_e, %{type: :blame, date: ~D[2025-09-12], reason: "Insolence"})
+
+    {:ok, _} =
+      Enrollment.add_guardian(scope, awa, %{
+        full_name: "Jean Nkolo",
+        relationship: :pere,
+        phone: "677123456"
+      })
+
+    {:ok, s1} =
+      Discipline.add_sanction(scope, awa_e, %{
+        type: :blame,
+        date: ~D[2025-09-12],
+        reason: "Insolence"
+      })
+
     {:ok, _} = Discipline.add_sanction(scope, bob_e, %{type: :consigne, date: ~D[2025-09-11]})
     %{cg_a: cg_a, awa_e: awa_e, s1: s1}
   end
@@ -32,7 +45,8 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     refute view |> element("#sanction-rows") |> render() =~ "Awa Nkolo"
   end
 
-  test "the panel shows the guardian; notifying removes the row from « À notifier »", %{conn: conn} = ctx do
+  test "the panel shows the guardian; notifying removes the row from « À notifier »",
+       %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sanctions?notify=1&class=#{ctx.cg_a.id}")
     view |> element("#sanction-#{ctx.s1.id}") |> render_click()
 
@@ -65,7 +79,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
 
     {:ok, _} =
       profile
-      |> Ash.Changeset.for_update(:update_school_life, %{sanction_types_in_use: [:blame]}, scope: scope)
+      |> Ash.Changeset.for_update(:update_school_life, %{sanction_types_in_use: [:blame]},
+        scope: scope
+      )
       |> Ash.update()
 
     {:ok, view, _} = live(conn, ~p"/school/sanctions")

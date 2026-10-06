@@ -63,7 +63,10 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
              registration_number: "123/MINESEC",
              region: :littoral,
              department: "Wouri",
-             logo?: false
+             logo?: false,
+             official_lines: nil,
+             signature?: false,
+             stamp?: false
            }
   end
 

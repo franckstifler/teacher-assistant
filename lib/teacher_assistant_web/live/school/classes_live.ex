@@ -94,9 +94,14 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
                   <td>{row.cg.subsystem}</td>
                   <td
                     id={"class-size-#{row.cg.id}"}
-                    class={[@max_class_size && row.effectif > @max_class_size && "text-warning font-semibold"]}
+                    class={[
+                      @max_class_size && row.effectif > @max_class_size &&
+                        "text-warning font-semibold"
+                    ]}
                   >
-                    {if @max_class_size, do: "#{row.effectif} / #{@max_class_size}", else: row.effectif}
+                    {if @max_class_size,
+                      do: "#{row.effectif} / #{@max_class_size}",
+                      else: row.effectif}
                   </td>
                   <td :if={@can_manage_classes?}>
                     <button

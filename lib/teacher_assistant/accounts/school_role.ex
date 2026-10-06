@@ -46,20 +46,69 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
     alias TeacherAssistant.Accounts, as: Acc
 
     [
-      %{key: :marks, label: gettext("Saisir les notes"), axis: :admin, resource: A.Mark,
-        notes: %{teacher: gettext("ses cours"), hod: gettext("ses cours")}},
-      %{key: :corrections, label: gettext("Valider les corrections de notes"), axis: :admin, resource: A.MarkCorrection,
-        notes: %{teacher: gettext("demander, pour ses cours")}},
-      %{key: :discipline, label: gettext("Gérer la discipline et la conduite"), axis: :conduct, resource: A.SanctionEntry,
-        notes: %{teacher: gettext("sa classe, en lecture (professeur principal)")}},
-      %{key: :fees, label: gettext("Frais et paiements"), axis: :fees, resource: A.Payment, notes: %{}},
-      %{key: :settings, label: gettext("Paramètres de l'école"), axis: :admin, resource: Acc.SchoolProfile,
-        notes: %{discipline_master: gettext("assiduité et discipline")}},
-      %{key: :members, label: gettext("Membres et invitations"), axis: :head, resource: Acc.SchoolInvitation, notes: %{}},
-      %{key: :timetable, label: gettext("Emploi du temps"), axis: :admin, resource: A.TimetableSlot, notes: %{}},
-      %{key: :bulletins, label: gettext("Bulletins et conseils de classe"), axis: :admin, resource: A.ClassCouncil,
-        notes: %{teacher: gettext("sa classe (professeur principal)")}},
-      %{key: :assignments, label: gettext("Affectations"), axis: :admin, resource: A.TeachingContext, notes: %{}}
+      %{
+        key: :marks,
+        label: gettext("Saisir les notes"),
+        axis: :admin,
+        resource: A.Mark,
+        notes: %{teacher: gettext("ses cours"), hod: gettext("ses cours")}
+      },
+      %{
+        key: :corrections,
+        label: gettext("Valider les corrections de notes"),
+        axis: :admin,
+        resource: A.MarkCorrection,
+        notes: %{teacher: gettext("demander, pour ses cours")}
+      },
+      %{
+        key: :discipline,
+        label: gettext("Gérer la discipline et la conduite"),
+        axis: :conduct,
+        resource: A.SanctionEntry,
+        notes: %{teacher: gettext("sa classe, en lecture (professeur principal)")}
+      },
+      %{
+        key: :fees,
+        label: gettext("Frais et paiements"),
+        axis: :fees,
+        resource: A.Payment,
+        notes: %{}
+      },
+      %{
+        key: :settings,
+        label: gettext("Paramètres de l'école"),
+        axis: :admin,
+        resource: Acc.SchoolProfile,
+        notes: %{discipline_master: gettext("assiduité et discipline")}
+      },
+      %{
+        key: :members,
+        label: gettext("Membres et invitations"),
+        axis: :head,
+        resource: Acc.SchoolInvitation,
+        notes: %{}
+      },
+      %{
+        key: :timetable,
+        label: gettext("Emploi du temps"),
+        axis: :admin,
+        resource: A.TimetableSlot,
+        notes: %{}
+      },
+      %{
+        key: :bulletins,
+        label: gettext("Bulletins et conseils de classe"),
+        axis: :admin,
+        resource: A.ClassCouncil,
+        notes: %{teacher: gettext("sa classe (professeur principal)")}
+      },
+      %{
+        key: :assignments,
+        label: gettext("Affectations"),
+        axis: :admin,
+        resource: A.TeachingContext,
+        notes: %{}
+      }
     ]
   end
 

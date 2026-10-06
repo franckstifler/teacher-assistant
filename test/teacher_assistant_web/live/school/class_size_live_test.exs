@@ -19,7 +19,11 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     {:ok, _} = Accounts.update_school_profile(profile, %{max_class_size: max}, scope: scope)
   end
 
-  test "no limit: plain count; over the limit: « n / max » as a warning", %{conn: conn, scope: scope, cg: cg} do
+  test "no limit: plain count; over the limit: « n / max » as a warning", %{
+    conn: conn,
+    scope: scope,
+    cg: cg
+  } do
     {:ok, view, _} = live(conn, ~p"/school/classes")
     refute render(view) =~ "2 / "
 
@@ -57,7 +61,9 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/settings")
 
     view
-    |> form("#school-profile-form", %{"profile" => %{"max_class_size" => "55", "class_suffix" => "numbers"}})
+    |> form("#school-profile-form", %{
+      "profile" => %{"max_class_size" => "55", "class_suffix" => "numbers"}
+    })
     |> render_submit()
 
     {:ok, profile} = Accounts.fetch_school_profile(scope)
