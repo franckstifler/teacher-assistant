@@ -118,6 +118,27 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
     assert students.() == before
   end
 
+  test "an enrolment of the open year cannot be moved into a class of a closed year", ctx do
+    %{closed: closed, next: next} = close(ctx)
+    [closed_cg | _] = Enrollment.list_class_groups(ctx.head, closed)
+    [next_cg | _] = Enrollment.list_class_groups(ctx.head, next)
+    {:ok, student} = Enrollment.add_student(ctx.head, next_cg, %{full_name: "Zoé", sex: :f})
+
+    enrollment =
+      ctx.head
+      |> Enrollment.list_roster(next_cg)
+      |> Enum.find(&(&1.student.id == student.id))
+      |> Map.fetch!(:enrollment)
+
+    assert closed_error?(
+             enrollment
+             |> Ash.Changeset.for_update(:update, %{class_group_id: closed_cg.id},
+               scope: ctx.head
+             )
+             |> Ash.update()
+           )
+  end
+
   test "a payment on a closed year's enrolment is still recorded (arrears)", ctx do
     close(ctx)
 

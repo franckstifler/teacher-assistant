@@ -16,13 +16,17 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
 
     {:ok, course} =
       CombinedCourse
-      |> Ash.Changeset.for_create(:create, %{
-        subject: "Maths",
-        label: "Maths · combined",
-        academic_year_id: year.id,
-        teacher_user_id: head.id
-      })
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          subject: "Maths",
+          label: "Maths · combined",
+          academic_year_id: year.id,
+          teacher_user_id: head.id
+        },
+        scope: scope
+      )
+      |> Ash.create()
 
     %{ws: ws, year: year, scope: scope, ctx: ctx, course: course}
   end
@@ -62,11 +66,15 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
     } do
       assert {:error, error} =
                ProgressionPlan
-               |> Ash.Changeset.for_create(:create, %{
-                 title: "Orphan",
-                 academic_year_id: year.id
-               })
-               |> Ash.create(scope: scope)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   title: "Orphan",
+                   academic_year_id: year.id
+                 },
+                 scope: scope
+               )
+               |> Ash.create()
 
       assert error_on_field?(error, :teaching_context_id)
     end
@@ -79,13 +87,17 @@ defmodule TeacherAssistant.Academics.ProgressionPlanUnitTest do
     } do
       assert {:error, error} =
                ProgressionPlan
-               |> Ash.Changeset.for_create(:create, %{
-                 title: "Double owner",
-                 academic_year_id: year.id,
-                 teaching_context_id: ctx.id,
-                 combined_course_id: course.id
-               })
-               |> Ash.create(scope: scope)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   title: "Double owner",
+                   academic_year_id: year.id,
+                   teaching_context_id: ctx.id,
+                   combined_course_id: course.id
+                 },
+                 scope: scope
+               )
+               |> Ash.create()
 
       assert error_on_field?(error, :teaching_context_id)
     end

@@ -30,13 +30,14 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
 
     {:ok, course} =
       CombinedCourse
-      |> Ash.Changeset.for_create(:create, %{
-        subject: "Mathématiques",
-        label: "Maths · 1A MACO+MENU",
-        academic_year_id: year.id,
-        teacher_user_id: head.id
-      })
-      |> Ash.Changeset.set_tenant(ws.id)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          subject: "Mathématiques",
+          label: "Maths · 1A MACO+MENU",
+          academic_year_id: year.id,
+          teacher_user_id: head.id
+        }, tenant: ws.id)
       |> Ash.create(authorize?: false)
 
     %{head: head, ws: ws, year: year, cg: cg, tc: tc, course: course}
@@ -49,8 +50,9 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
   test "a context can be linked to a combined course", %{tc: tc, course: course} do
     {:ok, updated} =
       tc
-      |> Ash.Changeset.for_update(:update, %{combined_course_id: course.id})
-      |> Ash.Changeset.set_tenant(tc.workspace_id)
+      |> Ash.Changeset.for_update(:update, %{combined_course_id: course.id},
+        tenant: tc.workspace_id
+      )
       |> Ash.update(authorize?: false)
 
     assert updated.combined_course_id == course.id

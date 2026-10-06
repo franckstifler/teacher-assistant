@@ -49,6 +49,11 @@ defmodule TeacherAssistant.Academics.YearOpen do
   @doc "The refusal for a write touching the closed year `name`."
   def message(name), do: "L'année #{name} est clôturée."
 
+  # A lookup that errors (a database error, no tenant) refuses the write: a lock that
+  # cannot read the year must not let the write through. A parent that does not exist
+  # (`{:ok, nil}`) passes — its foreign key rejects the write anyway.
+  defp check({:error, _} = error, _tenant), do: error
+
   defp check(year_ids, tenant), do: Enum.find_value(year_ids, :ok, &closed_error(&1, tenant))
 
   defp year_ids(%{resource: AcademicYear, data: %{id: id}}, []) when is_binary(id), do: [id]
@@ -61,8 +66,14 @@ defmodule TeacherAssistant.Academics.YearOpen do
     changeset
     |> values(rel.source_attribute)
     |> Enum.map(&parent_year_id(rel.destination, &1, rest, changeset.tenant))
-    |> Enum.filter(&is_binary/1)
-    |> Enum.uniq()
+    |> collect()
+  end
+
+  defp collect(results) do
+    case Enum.find(results, &match?({:error, _}, &1)) do
+      nil -> results |> Enum.filter(&is_binary/1) |> Enum.uniq()
+      error -> error
+    end
   end
 
   defp parent_year_id(resource, id, rest, tenant) do
@@ -74,8 +85,11 @@ defmodule TeacherAssistant.Academics.YearOpen do
       {:ok, %{} = record} ->
         rest |> Enum.reduce(record, &(&2 && Map.get(&2, &1))) |> year_of()
 
-      _ ->
+      {:ok, nil} ->
         nil
+
+      {:error, _} ->
+        unreadable()
     end
   end
 
@@ -97,8 +111,14 @@ defmodule TeacherAssistant.Academics.YearOpen do
       {:ok, %{status: :closed, name: name}} ->
         {:error, field: :academic_year_id, message: message(name)}
 
-      _ ->
+      {:ok, _open} ->
         nil
+
+      {:error, _} ->
+        unreadable()
     end
   end
+
+  defp unreadable,
+    do: {:error, field: :academic_year_id, message: "Impossible de vérifier l'année scolaire."}
 end

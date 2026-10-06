@@ -32,12 +32,16 @@ defmodule TeacherAssistant.Academics.ProgressionModuleTest do
   test "creates a module belonging to a plan", %{plan: plan, scope: scope} do
     {:ok, m} =
       ProgressionModule
-      |> Ash.Changeset.for_create(:create, %{
-        title: "M1",
-        position: 1,
-        progression_plan_id: plan.id
-      })
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          title: "M1",
+          position: 1,
+          progression_plan_id: plan.id
+        },
+        scope: scope
+      )
+      |> Ash.create()
 
     assert m.title == "M1"
     assert m.position == 1

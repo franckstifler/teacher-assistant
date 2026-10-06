@@ -31,13 +31,17 @@ defmodule TeacherAssistant.Academics.CombinedCourseTest do
   test "creates a combined course", %{head: head, year: year, scope: scope} do
     {:ok, c} =
       CombinedCourse
-      |> Ash.Changeset.for_create(:create, %{
-        subject: "Mathématiques",
-        label: "Maths · 1A MACO+MENU",
-        academic_year_id: year.id,
-        teacher_user_id: head.id
-      })
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          subject: "Mathématiques",
+          label: "Maths · 1A MACO+MENU",
+          academic_year_id: year.id,
+          teacher_user_id: head.id
+        },
+        scope: scope
+      )
+      |> Ash.create()
 
     assert c.subject == "Mathématiques"
     assert c.teacher_user_id == head.id

@@ -56,8 +56,8 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
   test "creating a sanction entry persists type/date/reason/duration_days/workspace_id", ctx do
     assert {:ok, %SanctionEntry{} = entry} =
              SanctionEntry
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+             |> Ash.create()
 
     assert entry.type == :avertissement
     assert entry.date == ~D[2025-09-15]
@@ -69,15 +69,17 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
   test "type rejects a value outside the five enum atoms", ctx do
     assert {:error, %Ash.Error.Invalid{}} =
              SanctionEntry
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{type: :suspension}))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{type: :suspension}),
+               scope: ctx.scope
+             )
+             |> Ash.create()
   end
 
   test "deleting the enrollment cascades to delete its sanctions", ctx do
     {:ok, entry} =
       SanctionEntry
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
@@ -88,13 +90,13 @@ defmodule TeacherAssistant.Academics.SanctionEntryTest do
   test "two entries of the same type for one enrollment both persist", ctx do
     {:ok, entry1} =
       SanctionEntry
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     {:ok, entry2} =
       SanctionEntry
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     assert entry1.id != entry2.id
 

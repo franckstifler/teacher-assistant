@@ -313,15 +313,19 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       # 2025-09-22 is also a Monday; seed an absence there directly via :record
       {:ok, other_day_entry} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: ~D[2025-09-22],
-          status: :absent,
-          enrollment_id: ctx.enrollment1.id,
-          period_id: ctx.period.id,
-          teaching_context_id: ctx.tc.id,
-          recorded_by_user_id: ctx.head.id
-        })
-        |> Ash.create(scope: ctx.scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: ~D[2025-09-22],
+            status: :absent,
+            enrollment_id: ctx.enrollment1.id,
+            period_id: ctx.period.id,
+            teaching_context_id: ctx.tc.id,
+            recorded_by_user_id: ctx.head.id
+          },
+          scope: ctx.scope
+        )
+        |> Ash.create()
 
       assert {:ok, 1} =
                Attendance.justify_day(
@@ -401,42 +405,54 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
       # Inside the séquence: one justified absence, one late.
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: in_range_date,
-          status: :absent,
-          justified: true,
-          enrollment_id: enrollment1.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: in_range_date,
+            status: :absent,
+            justified: true,
+            enrollment_id: enrollment1.id,
+            period_id: period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: in_range_date,
-          status: :late,
-          enrollment_id: enrollment1.id,
-          period_id: ctx.other_period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: in_range_date,
+            status: :late,
+            enrollment_id: enrollment1.id,
+            period_id: ctx.other_period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       # Outside the séquence: must be excluded entirely.
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: outside_date,
-          status: :absent,
-          justified: false,
-          enrollment_id: enrollment1.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: outside_date,
+            status: :absent,
+            justified: false,
+            enrollment_id: enrollment1.id,
+            period_id: period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       totals = Attendance.student_conduct(scope, enrollment1, {:sequence, seq1})
 
@@ -466,29 +482,37 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: seq1.start_date,
-          status: :absent,
-          justified: true,
-          enrollment_id: enrollment1.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: seq1.start_date,
+            status: :absent,
+            justified: true,
+            enrollment_id: enrollment1.id,
+            period_id: period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: seq2.start_date,
-          status: :absent,
-          justified: false,
-          enrollment_id: enrollment1.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: seq2.start_date,
+            status: :absent,
+            justified: false,
+            enrollment_id: enrollment1.id,
+            period_id: period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       totals = Attendance.student_conduct(scope, enrollment1, {:trimester, term1})
 
@@ -543,28 +567,36 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: seq1.start_date,
-          status: :absent,
-          justified: true,
-          enrollment_id: enrollment1.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: seq1.start_date,
+            status: :absent,
+            justified: true,
+            enrollment_id: enrollment1.id,
+            period_id: period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       {:ok, _} =
         AttendanceEntry
-        |> Ash.Changeset.for_create(:record, %{
-          date: seq1.start_date,
-          status: :late,
-          enrollment_id: enrollment2.id,
-          period_id: period.id,
-          teaching_context_id: tc.id,
-          recorded_by_user_id: head.id
-        })
-        |> Ash.create(scope: scope)
+        |> Ash.Changeset.for_create(
+          :record,
+          %{
+            date: seq1.start_date,
+            status: :late,
+            enrollment_id: enrollment2.id,
+            period_id: period.id,
+            teaching_context_id: tc.id,
+            recorded_by_user_id: head.id
+          },
+          scope: scope
+        )
+        |> Ash.create()
 
       results = Attendance.class_conduct(scope, cg, {:sequence, seq1})
 

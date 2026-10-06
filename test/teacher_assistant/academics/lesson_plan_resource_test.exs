@@ -32,11 +32,15 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
   test "a lesson plan persists and links to its entry", %{entry: entry, scope: scope} do
     {:ok, lp} =
       LessonPlan
-      |> Ash.Changeset.for_create(:create, %{
-        progression_entry_id: entry.id,
-        titre: "Les entiers"
-      })
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          progression_entry_id: entry.id,
+          titre: "Les entiers"
+        },
+        scope: scope
+      )
+      |> Ash.create()
 
     assert lp.progression_entry_id == entry.id
     assert lp.duration_minutes == 55
@@ -45,29 +49,33 @@ defmodule TeacherAssistant.Academics.LessonPlanResourceTest do
   test "the entry↔plan link is 1:1 (unique)", %{entry: entry, scope: scope} do
     {:ok, _} =
       LessonPlan
-      |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id}, scope: scope)
+      |> Ash.create()
 
     assert {:error, _} =
              LessonPlan
-             |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
-             |> Ash.create(scope: scope)
+             |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id}, scope: scope)
+             |> Ash.create()
   end
 
   test "steps persist against a lesson plan", %{entry: entry, scope: scope} do
     {:ok, lp} =
       LessonPlan
-      |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id})
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(:create, %{progression_entry_id: entry.id}, scope: scope)
+      |> Ash.create()
 
     {:ok, step} =
       LessonStep
-      |> Ash.Changeset.for_create(:create, %{
-        lesson_plan_id: lp.id,
-        position: 1,
-        etape: "Découverte"
-      })
-      |> Ash.create(scope: scope)
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          lesson_plan_id: lp.id,
+          position: 1,
+          etape: "Découverte"
+        },
+        scope: scope
+      )
+      |> Ash.create()
 
     assert step.position == 1
     assert step.etape == "Découverte"

@@ -64,8 +64,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   test "creating an entry persists status/date/justified", ctx do
     assert {:ok, %AttendanceEntry{} = entry} =
              AttendanceEntry
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+             |> Ash.create()
 
     assert entry.status == :present
     assert entry.date == ~D[2025-09-15]
@@ -76,13 +76,15 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
        ctx do
     {:ok, entry1} =
       AttendanceEntry
-      |> Ash.Changeset.for_create(:record, base_attrs(ctx, %{status: :present}))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:record, base_attrs(ctx, %{status: :present}), scope: ctx.scope)
+      |> Ash.create()
 
     assert {:ok, entry2} =
              AttendanceEntry
-             |> Ash.Changeset.for_create(:record, base_attrs(ctx, %{status: :absent}))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:record, base_attrs(ctx, %{status: :absent}),
+               scope: ctx.scope
+             )
+             |> Ash.create()
 
     assert entry2.id == entry1.id
     assert entry2.status == :absent
@@ -96,8 +98,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   test "deleting the enrollment cascades to delete its entries", ctx do
     {:ok, entry} =
       AttendanceEntry
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
@@ -108,8 +110,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   test "deleting the period cascades to delete its entries", ctx do
     {:ok, entry} =
       AttendanceEntry
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.period, scope: ctx.scope)
 
@@ -120,8 +122,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   test "justified defaults to false", ctx do
     {:ok, entry} =
       AttendanceEntry
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     assert entry.justified == false
   end
@@ -129,7 +131,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntryTest do
   test "status rejects a value outside [:present, :absent, :late]", ctx do
     assert {:error, %Ash.Error.Invalid{}} =
              AttendanceEntry
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{status: :tardy}))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{status: :tardy}),
+               scope: ctx.scope
+             )
+             |> Ash.create()
   end
 end

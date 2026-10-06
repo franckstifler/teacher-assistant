@@ -40,8 +40,8 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
   test "creating an adjustment persists amount/reason", ctx do
     assert {:ok, %FeeAdjustment{} = adj} =
              FeeAdjustment
-             |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:set, base_attrs(ctx), scope: ctx.scope)
+             |> Ash.create()
 
     assert adj.amount == 5_000
     assert adj.reason == "Bourse partielle"
@@ -52,16 +52,17 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
        ctx do
     {:ok, adj1} =
       FeeAdjustment
-      |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{amount: 5_000}))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{amount: 5_000}), scope: ctx.scope)
+      |> Ash.create()
 
     assert {:ok, adj2} =
              FeeAdjustment
              |> Ash.Changeset.for_create(
                :set,
-               base_attrs(ctx, %{amount: 8_000, reason: "Bourse totale"})
+               base_attrs(ctx, %{amount: 8_000, reason: "Bourse totale"}),
+               scope: ctx.scope
              )
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.create()
 
     assert adj2.id == adj1.id
     assert adj2.amount == 8_000
@@ -76,8 +77,8 @@ defmodule TeacherAssistant.Academics.FeeAdjustmentTest do
   test "deleting the enrollment cascades to delete its adjustments", ctx do
     {:ok, adj} =
       FeeAdjustment
-      |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:set, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 

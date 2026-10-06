@@ -48,8 +48,8 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
   test "creating a fee tranche persists label/amount/due_date/position/workspace_id", ctx do
     assert {:ok, %FeeTranche{} = tranche} =
              FeeTranche
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+             |> Ash.create()
 
     assert tranche.label == "1ère tranche"
     assert tranche.amount == 25_000
@@ -61,8 +61,8 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
   test "amount accepts 0", ctx do
     assert {:ok, %FeeTranche{} = tranche} =
              FeeTranche
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{amount: 0}))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{amount: 0}), scope: ctx.scope)
+             |> Ash.create()
 
     assert tranche.amount == 0
   end
@@ -70,8 +70,10 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
   test "amount accepts a large integer", ctx do
     assert {:ok, %FeeTranche{} = tranche} =
              FeeTranche
-             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{amount: 1_000_000_000}))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:create, base_attrs(ctx, %{amount: 1_000_000_000}),
+               scope: ctx.scope
+             )
+             |> Ash.create()
 
     assert tranche.amount == 1_000_000_000
   end
@@ -79,8 +81,8 @@ defmodule TeacherAssistant.Academics.FeeTrancheTest do
   test "deleting the class group cascades to delete its tranches", ctx do
     {:ok, tranche} =
       FeeTranche
-      |> Ash.Changeset.for_create(:create, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:create, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.cg, scope: ctx.scope)
 

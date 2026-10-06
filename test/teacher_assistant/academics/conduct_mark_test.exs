@@ -43,8 +43,8 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
   test "creating a mark persists value/sequence/enrollment", ctx do
     assert {:ok, %ConductMark{} = mark} =
              ConductMark
-             |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:set, base_attrs(ctx), scope: ctx.scope)
+             |> Ash.create()
 
     assert Decimal.equal?(mark.value, Decimal.new(18))
     assert mark.sequence_id == ctx.seq.id
@@ -55,13 +55,17 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
        ctx do
     {:ok, mark1} =
       ConductMark
-      |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(18)}))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(18)}),
+        scope: ctx.scope
+      )
+      |> Ash.create()
 
     assert {:ok, mark2} =
              ConductMark
-             |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(12)}))
-             |> Ash.create(scope: ctx.scope)
+             |> Ash.Changeset.for_create(:set, base_attrs(ctx, %{value: Decimal.new(12)}),
+               scope: ctx.scope
+             )
+             |> Ash.create()
 
     assert mark2.id == mark1.id
     assert Decimal.equal?(mark2.value, Decimal.new(12))
@@ -75,8 +79,8 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
   test "deleting the enrollment cascades to delete its marks", ctx do
     {:ok, mark} =
       ConductMark
-      |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:set, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.enrollment, scope: ctx.scope)
 
@@ -87,8 +91,8 @@ defmodule TeacherAssistant.Academics.ConductMarkTest do
   test "deleting the sequence cascades to delete its marks", ctx do
     {:ok, mark} =
       ConductMark
-      |> Ash.Changeset.for_create(:set, base_attrs(ctx))
-      |> Ash.create(scope: ctx.scope)
+      |> Ash.Changeset.for_create(:set, base_attrs(ctx), scope: ctx.scope)
+      |> Ash.create()
 
     :ok = Ash.destroy!(ctx.seq, scope: ctx.scope)
 
