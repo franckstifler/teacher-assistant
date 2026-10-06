@@ -368,6 +368,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           </.link>
 
           <.link
+            id="school-life-link"
+            navigate={~p"/school/settings/school-life"}
+            class="link link-primary text-sm"
+          >
+            {gettext("Assiduité & discipline")}
+          </.link>
+
+          <.link
             id="bulletin-template-link"
             navigate={~p"/school/settings/bulletin"}
             class="link link-primary text-sm"

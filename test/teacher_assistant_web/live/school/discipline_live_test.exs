@@ -324,4 +324,43 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/discipline")
   end
+
+  test "a type not in use is not offered and a crafted one is refused", %{
+    conn: conn,
+    cg: cg,
+    scope: scope,
+    year: year,
+    enrollment: enrollment
+  } do
+    {:ok, _} =
+      Discipline.add_sanction(scope, enrollment, %{type: :consigne, date: ~D[2025-09-10]})
+
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+
+    {:ok, _} =
+      profile
+      |> Ash.Changeset.for_update(
+        :update_school_life,
+        %{sanction_types_in_use: [:avertissement, :blame]},
+        scope: scope
+      )
+      |> Ash.update()
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/discipline?period=annee")
+    refute has_element?(view, "#discipline-type-select option[value='consigne']")
+    assert has_element?(view, "#discipline-type-select option[value='blame']")
+
+    count = fn -> length(Discipline.list_sanctions(scope, enrollment, {:annual, year})) end
+    before = count.()
+
+    view
+    |> element("#discipline-add-form")
+    |> render_submit(%{
+      "enrollment_id" => enrollment.id,
+      "type" => "consigne",
+      "date" => "2025-09-12"
+    })
+
+    assert count.() == before
+  end
 end

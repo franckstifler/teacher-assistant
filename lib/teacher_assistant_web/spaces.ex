@@ -143,6 +143,7 @@ defmodule TeacherAssistantWeb.Spaces do
           evaluations(),
           appreciations(),
           passage(),
+          school_life_settings(),
           bulletin_template(),
           holidays(),
           assignments(),
@@ -174,6 +175,7 @@ defmodule TeacherAssistantWeb.Spaces do
           evaluations(),
           appreciations(),
           passage(),
+          school_life_settings(),
           bulletin_template(),
           holidays(),
           assignments()
@@ -192,7 +194,8 @@ defmodule TeacherAssistantWeb.Spaces do
           school_day(facts[:missed_calls]),
           absences(facts[:unjustified_absences]),
           classes(),
-          students()
+          students(),
+          school_life_settings()
         ])
       ]
     }
@@ -367,6 +370,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Passage & redoublement"),
         "hero-arrow-trending-up",
         ~p"/school/settings/passage"
+      )
+
+  defp school_life_settings,
+    do:
+      item(
+        "school-life",
+        gettext("Assiduité & discipline"),
+        "hero-scale",
+        ~p"/school/settings/school-life"
       )
 
   defp bulletin_template,

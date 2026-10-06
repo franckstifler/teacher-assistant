@@ -66,11 +66,14 @@ defmodule TeacherAssistantWeb.SpacesTest do
                "nav-school-day",
                "nav-school-absences",
                "nav-school-classes",
-               "nav-school-students"
+               "nav-school-students",
+               "nav-school-school-life"
              ]
 
     assert "nav-school-students" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-students" in item_ids(:censeur, facts([:vice_principal]))
+    assert "nav-school-school-life" in item_ids(:proviseur, facts([:head]))
+    assert "nav-school-school-life" in item_ids(:censeur, facts([:vice_principal]))
 
     refute "nav-school-sequences" in item_ids(:enseignant, facts([:teacher], teaches?: true))
 

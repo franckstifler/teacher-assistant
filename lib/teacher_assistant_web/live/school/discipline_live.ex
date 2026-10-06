@@ -2,19 +2,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
+  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.SanctionLabels
-
-  @sanction_types [
-    :avertissement,
-    :blame,
-    :exclusion_temporaire,
-    :exclusion_definitive,
-    :consigne
-  ]
-
-  @type_strings Map.new(@sanction_types, &{Atom.to_string(&1), &1})
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -34,7 +25,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          terms: terms,
          can_edit?: Discipline.can_manage_conduct?(scope),
          roster: Enrollment.list_roster(scope, cg),
-         sanction_types: @sanction_types
+         sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use
        )
        |> select_period(nil)}
     else
@@ -66,7 +57,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
     with %{} = row <-
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
-         {:ok, type} <- fetch_type(params["type"]),
+         {:ok, type} <- fetch_type(socket.assigns.sanction_types, params["type"]),
          {:ok, date} <- Date.from_iso8601(params["date"] || "") do
       duration_days =
         if type == :exclusion_temporaire, do: parse_duration(params["duration_days"])
@@ -90,7 +81,11 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
           {:noreply, put_flash(socket, :error, gettext("Could not record the sanction."))}
       end
     else
-      _ -> {:noreply, socket}
+      {:error, :invalid_type} ->
+        {:noreply, put_flash(socket, :error, gettext("Ce type de sanction n'est pas utilisé."))}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -151,14 +146,13 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     end
   end
 
-  defp fetch_type(str) when is_binary(str) do
-    case Map.fetch(@type_strings, str) do
-      {:ok, type} -> {:ok, type}
-      :error -> {:error, :invalid_type}
+  # Only the school's sanction types in use (spec KLM2).
+  defp fetch_type(types, str) do
+    case Enum.find(types, &(Atom.to_string(&1) == str)) do
+      nil -> {:error, :invalid_type}
+      type -> {:ok, type}
     end
   end
-
-  defp fetch_type(_), do: {:error, :invalid_type}
 
   defp parse_duration(nil), do: nil
   defp parse_duration(""), do: nil
