@@ -46,6 +46,17 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
       {:error, :invalid_number} ->
         {:noreply, assign(socket, error: gettext("Utilisez des nombres, par exemple 0,5."))}
 
+      {:error, {:out_of_range, field, min, max}} ->
+        {:noreply,
+         assign(socket,
+           error:
+             gettext("%{field} : entre %{min} et %{max}.",
+               field: field_label(field),
+               min: min,
+               max: max
+             )
+         )}
+
       {:error, :no_sanction_type} ->
         {:noreply, assign(socket, error: gettext("Gardez au moins un type de sanction."))}
 
@@ -91,6 +102,16 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
           end)
     })
   end
+
+  defp field_label(:late_as_absence_minutes), do: gettext("Retard compté comme absence")
+  defp field_label(:justification_deadline_days), do: gettext("Délai de justification")
+  defp field_label(:absence_alert_hours), do: gettext("Alerte")
+
+  defp field_label(:conduct_points_per_absence_hour),
+    do: gettext("Par heure d'absence non justifiée")
+
+  defp field_label(:conduct_points_per_late), do: gettext("Par retard")
+  defp field_label({:sanction_points, type}), do: SanctionType.label(type)
 
   defp shown(nil), do: ""
 

@@ -85,4 +85,16 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
              live(conn_for(ws, teacher.current_user), ~p"/school/settings/school-life")
   end
+
+  test "an out-of-range value shows a readable message", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/school-life")
+
+    view
+    |> form("#school-life-form", %{school_life: %{late_as_absence_minutes: "500"}})
+    |> render_submit()
+
+    error = view |> element("#school-life-error") |> render()
+    assert error =~ "240"
+    refute error =~ "%{max}"
+  end
 end

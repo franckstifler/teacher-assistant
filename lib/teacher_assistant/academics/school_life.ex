@@ -156,7 +156,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   @doc """
   One row per student-day between `first` and `last` with at least one `:absent`
   entry: student, class, periods, whether justified (and why), the student's
-  unjustified days in the current séquence and the V04 flag. Flagged students
+  unjustified absence hours in the current séquence and the V04 flag. Flagged students
   first, then newest day.
   """
   def absence_days(%Scope{} = scope, %Date{} = first, %Date{} = last, %Date{} = today) do
@@ -167,7 +167,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     zero = Decimal.new(0)
 
     AttendanceEntry
-    |> Ash.Query.filter(status == :absent and date >= ^first and date <= ^last)
+    |> absences_between(first, last, rules.late_as_absence_minutes)
     |> Ash.Query.load([:period, enrollment: [:student, :class_group]])
     |> Ash.read!(scope: scope)
     |> Enum.group_by(&{&1.enrollment_id, &1.date})
@@ -196,6 +196,18 @@ defmodule TeacherAssistant.Academics.SchoolLife do
        SchoolTemplates.class_sort_key(&1.class_group), String.downcase(&1.student.full_name)}
     )
   end
+
+  # Absences, and lates long enough to count as one (spec KLM2).
+  defp absences_between(query, first, last, nil),
+    do: Ash.Query.filter(query, status == :absent and date >= ^first and date <= ^last)
+
+  defp absences_between(query, first, last, threshold),
+    do:
+      Ash.Query.filter(
+        query,
+        (status == :absent or (status == :late and late_minutes > ^threshold)) and
+          date >= ^first and date <= ^last
+      )
 
   @doc "The current séquence's date range up to `today` (`nil` without one)."
   def current_sequence_range(%Scope{current_academic_year: nil}, _today), do: nil

@@ -83,4 +83,38 @@ defmodule TeacherAssistant.Academics.AttendanceLateMinutesTest do
              0
            )
   end
+
+  test "a long late is listed with the day's absences and justified with them", ctx do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(ctx.scope)
+
+    {:ok, _} =
+      profile
+      |> Ash.Changeset.for_update(:update_school_life, %{late_as_absence_minutes: 15},
+        scope: ctx.scope
+      )
+      |> Ash.update()
+
+    {:ok, 1} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :late, 20}])
+
+    assert [%{date: @monday, justified?: false}] =
+             Attendance.absence_days(ctx.scope, ~D[2025-09-08], @monday, @monday)
+
+    assert {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.e, @monday, :maladie)
+
+    totals = Attendance.student_conduct(ctx.scope, ctx.e, {:annual, ctx.year})
+    assert Decimal.gt?(totals.justified_hours, 0)
+    assert Decimal.equal?(totals.unjustified_hours, 0)
+    assert totals.retards == 0
+
+    assert [%{justified?: true}] =
+             Attendance.absence_days(ctx.scope, ~D[2025-09-08], @monday, @monday)
+  end
+
+  test "a short late is not listed with the absences", ctx do
+    {:ok, 1} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :late, 5}])
+
+    assert Attendance.absence_days(ctx.scope, ~D[2025-09-08], @monday, @monday) == []
+  end
 end

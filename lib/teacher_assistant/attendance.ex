@@ -430,7 +430,7 @@ defmodule TeacherAssistant.Attendance do
 
   @doc """
   Unjustifies `enrollment`'s day: clears the justification (reason, note, author,
-  time) on every `:absent` `AttendanceEntry` on `date`. Returns `{:ok, count}`.
+  time) on every `:absent` or `:late` `AttendanceEntry` on `date`. Returns `{:ok, count}`.
   """
   def unjustify_day(%Scope{} = scope, %Enrollment{} = enrollment, %Date{} = date) do
     set_justification(scope, enrollment, date, %{
@@ -698,6 +698,15 @@ defmodule TeacherAssistant.Attendance do
          {:ok, per_late} <- parse_decimal(params["conduct_points_per_late"]),
          {:ok, points} <- parse_points(params["sanction_points"] || %{}),
          {:ok, types} <- parse_types(params["sanction_types_in_use"]),
+         :ok <-
+           check_ranges([
+             {:late_as_absence_minutes, late, 1, 240},
+             {:justification_deadline_days, deadline, 1, 60},
+             {:absence_alert_hours, alert, 1, 200},
+             {:conduct_points_per_absence_hour, per_hour, 0, 5},
+             {:conduct_points_per_late, per_late, 0, 5}
+             | Enum.map(points, fn {type, d} -> {{:sanction_points, type}, d, 0, 20} end)
+           ]),
          {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
       profile
       |> Ash.Changeset.for_update(
@@ -715,6 +724,19 @@ defmodule TeacherAssistant.Attendance do
       )
       |> Ash.update()
     end
+  end
+
+  # `{:error, {:out_of_range, field, min, max}}` for the first value outside its
+  # bounds, so the page can name the field (Ash's own messages are untranslated).
+  defp check_ranges(checks) do
+    Enum.find_value(checks, :ok, fn
+      {_field, nil, _min, _max} ->
+        nil
+
+      {field, value, min, max} ->
+        if Decimal.lt?(Decimal.new(value), min) or Decimal.gt?(Decimal.new(value), max),
+          do: {:error, {:out_of_range, field, min, max}}
+    end)
   end
 
   defp parse_integer(value, mode) do

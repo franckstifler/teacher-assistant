@@ -89,11 +89,17 @@ defmodule TeacherAssistant.Academics.SchoolLifeRulesTest do
                Map.delete(@blank, "sanction_types_in_use")
              )
 
-    assert {:error, %Ash.Error.Invalid{}} =
+    assert {:error, {:out_of_range, :late_as_absence_minutes, 1, 240}} =
              Attendance.update_school_life_rules(scope, %{
                @blank
                | "late_as_absence_minutes" => "500"
              })
+
+    assert {:error, {:out_of_range, {:sanction_points, :blame}, 0, 20}} =
+             Attendance.update_school_life_rules(
+               scope,
+               put_in(@blank, ["sanction_points", "blame"], "25")
+             )
 
     assert Attendance.school_life_rules(scope).absence_alert_hours == 10
   end

@@ -126,12 +126,15 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
              )
     end
 
+    # A day is justified as a whole, lates included (a long late counts as an
+    # absence, spec KLM2).
     read :absences_for_day do
       argument :enrollment_id, :uuid, allow_nil?: false
       argument :date, :date, allow_nil?: false
 
       filter expr(
-               enrollment_id == ^arg(:enrollment_id) and date == ^arg(:date) and status == :absent
+               enrollment_id == ^arg(:enrollment_id) and date == ^arg(:date) and
+                 status in [:absent, :late]
              )
     end
 
