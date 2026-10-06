@@ -21,8 +21,4 @@ defmodule TeacherAssistant.Academics.Guardian.Changes.PhoneKey do
         changeset
     end
   end
-
-  # Only reads values set on the changeset itself, so it is safe in an atomic update.
-  @impl true
-  def atomic(changeset, opts, context), do: {:ok, change(changeset, opts, context)}
 end

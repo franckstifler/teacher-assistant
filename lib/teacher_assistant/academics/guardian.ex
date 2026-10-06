@@ -38,6 +38,8 @@ defmodule TeacherAssistant.Academics.Guardian do
 
     update :update do
       primary? true
+      # PhoneKey derives `phone_key` from the new `phone` in Elixir.
+      require_atomic? false
       accept [:full_name, :relationship, :phone, :phone_2, :email, :language]
       change PhoneKey
     end
@@ -55,17 +57,19 @@ defmodule TeacherAssistant.Academics.Guardian do
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if {Checks.SchoolRole, any_of: :conduct}
 
+      # Only this year's classes, as `Enrollment.student_access/2`.
       authorize_if expr(
                      exists(
                        student_links.student.enrollments,
-                       class_group.form_master_user_id == ^actor(:id)
+                       academic_year.active and class_group.form_master_user_id == ^actor(:id)
                      )
                    )
 
       authorize_if expr(
                      exists(
-                       student_links.student.enrollments.class_group.teaching_contexts,
-                       teacher_user_id == ^actor(:id)
+                       student_links.student.enrollments,
+                       academic_year.active and
+                         exists(class_group.teaching_contexts, teacher_user_id == ^actor(:id))
                      )
                    )
     end

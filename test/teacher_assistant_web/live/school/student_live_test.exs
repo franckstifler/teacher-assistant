@@ -139,4 +139,34 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/students"}}} =
              live(conn, ~p"/school/students/#{Ash.UUID.generate()}")
   end
+
+  test "the admin edits a guardian in place", %{conn: conn, scope: scope, awa: awa} do
+    {:ok, _} =
+      Enrollment.add_guardian(scope, awa, %{
+        full_name: "Jean Nkolo",
+        relationship: :pere,
+        phone: "677123456"
+      })
+
+    [link] = Enrollment.list_guardian_links(scope, awa)
+    {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+
+    view |> element("#edit-guardian-#{link.id}") |> render_click()
+
+    view
+    |> form("#guardian-edit-form",
+      guardian: %{phone: "699 88 77 66", full_name: "Jean-Pierre Nkolo"}
+    )
+    |> render_submit()
+
+    assert [
+             %{
+               primary_contact: true,
+               guardian: %{full_name: "Jean-Pierre Nkolo", phone_key: "699887766"}
+             }
+           ] =
+             Enrollment.list_guardian_links(scope, awa)
+
+    refute has_element?(view, "#guardian-edit-form")
+  end
 end

@@ -95,4 +95,14 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
 
     refute Enrollment.can_manage_register?(member_scope_fixture(scope, %{roles: [:teacher]}))
   end
+
+  test "editing a guardian's phone updates the lookup key", %{scope: scope, awa: awa} do
+    {:ok, jean} = Enrollment.add_guardian(scope, awa, @father)
+    {:ok, jean} = Enrollment.update_guardian(scope, jean, %{phone: "+237 699 88 77 66"})
+
+    assert jean.phone_key == "699887766"
+    assert [%{id: id}] = Enrollment.find_guardians_by_phone(scope, "699887766")
+    assert id == jean.id
+    assert {:error, _} = Enrollment.update_guardian(scope, jean, %{phone: "12"})
+  end
 end

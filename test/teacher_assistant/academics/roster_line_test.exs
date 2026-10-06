@@ -32,4 +32,9 @@ defmodule TeacherAssistant.Academics.RosterLineTest do
     assert [%{guardian: %{full_name: "Parent de Awa Nkolo", phone: "677123456"}}] =
              RosterLine.parse("Awa Nkolo;f;;;;;677123456")
   end
+
+  test "a birth date in the future is dropped, the row is kept" do
+    future = Date.utc_today() |> Date.add(400) |> Calendar.strftime("%d/%m/%Y")
+    assert [%{full_name: "Awa", birth_date: nil}] = RosterLine.parse("Awa;f;;#{future}")
+  end
 end

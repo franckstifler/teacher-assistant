@@ -26,7 +26,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          access when access != :none <- Enrollment.student_access(scope, student) do
       {:ok,
        socket
-       |> assign(student: student, access: access, editing: false, match: [])
+       |> assign(student: student, access: access, editing: false, match: [], guardian_edit: nil)
        |> assign_guardian_form(%{})
        |> load()}
     else
@@ -145,6 +145,49 @@ defmodule TeacherAssistantWeb.School.StudentLive do
       {:noreply, socket |> assign(match: []) |> assign_guardian_form(%{}) |> load()}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Impossible de lier ce parent."))}
+    end
+  end
+
+  def handle_event("edit_guardian", %{"id" => id}, socket)
+      when socket.assigns.access == :manage do
+    case Enum.find(socket.assigns.links, &(&1.id == id)) do
+      nil ->
+        {:noreply, socket}
+
+      link ->
+        form =
+          AshPhoenix.Form.for_update(link.guardian, :update,
+            as: "guardian",
+            id: "guardian_edit",
+            scope: socket.assigns.current_scope
+          )
+
+        # Own id prefix: the add form beside it uses the same field names.
+        {:noreply, assign(socket, guardian_edit: %{link_id: id, form: to_form(form)})}
+    end
+  end
+
+  def handle_event("cancel_guardian", _params, socket),
+    do: {:noreply, assign(socket, guardian_edit: nil)}
+
+  def handle_event("save_guardian", %{"guardian" => params}, socket)
+      when socket.assigns.access == :manage and socket.assigns.guardian_edit != nil do
+    case AshPhoenix.Form.submit(socket.assigns.guardian_edit.form.source, params: params) do
+      {:ok, _guardian} ->
+        {:noreply,
+         socket
+         |> assign(guardian_edit: nil)
+         |> put_flash(:info, gettext("Parent mis à jour."))
+         |> load()}
+
+      {:error, form} ->
+        if Authz.forbidden_form?(form),
+          do: {:noreply, Authz.put_not_allowed(socket)},
+          else:
+            {:noreply,
+             assign(socket,
+               guardian_edit: %{socket.assigns.guardian_edit | form: to_form(form)}
+             )}
     end
   end
 
@@ -286,6 +329,14 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 <span class="text-xs text-base-content/60">{ContactLanguage.label(l.guardian.language)}</span>
                 <span :if={@access == :manage} class="ml-auto flex gap-1">
                   <button
+                    id={"edit-guardian-#{l.id}"}
+                    phx-click="edit_guardian"
+                    phx-value-id={l.id}
+                    class="btn btn-ghost btn-xs"
+                  >
+                    {gettext("Modifier")}
+                  </button>
+                  <button
                     :if={not l.primary_contact}
                     id={"make-primary-#{l.id}"}
                     phx-click="make_primary"
@@ -306,6 +357,38 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 </span>
               </li>
             </ul>
+            <.form
+              :if={@guardian_edit}
+              for={@guardian_edit.form}
+              id="guardian-edit-form"
+              phx-submit="save_guardian"
+              class="grid gap-2 rounded-box border border-base-300 p-3 sm:grid-cols-2"
+            >
+              <.input field={@guardian_edit.form[:full_name]} label={gettext("Nom et prénoms")} />
+              <.input
+                field={@guardian_edit.form[:relationship]}
+                type="select"
+                label={gettext("Lien")}
+                options={
+                  Enum.map(GuardianRelationship.values(), &{GuardianRelationship.label(&1), &1})
+                }
+              />
+              <.input field={@guardian_edit.form[:phone]} label={gettext("Téléphone")} />
+              <.input field={@guardian_edit.form[:phone_2]} label={gettext("Second téléphone")} />
+              <.input field={@guardian_edit.form[:email]} type="email" label={gettext("E-mail")} />
+              <.input
+                field={@guardian_edit.form[:language]}
+                type="select"
+                label={gettext("Langue")}
+                options={Enum.map(ContactLanguage.values(), &{ContactLanguage.label(&1), &1})}
+              />
+              <div class="flex gap-2 sm:col-span-2">
+                <button class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+                <button type="button" phx-click="cancel_guardian" class="btn btn-ghost btn-sm">
+                  {gettext("Annuler")}
+                </button>
+              </div>
+            </.form>
             <p :if={@links == []} class="text-sm text-base-content/60">
               {gettext("Aucun parent enregistré.")}
             </p>

@@ -127,4 +127,33 @@ defmodule TeacherAssistant.Academics.GuardianTest do
     sg = member_scope_fixture(scope, %{roles: [:discipline_master]})
     assert {:ok, _} = create_guardian(sg, %{phone: "699 11 22 33"})
   end
+
+  test "a form master of a past year's class no longer reads the guardians", %{
+    scope: scope,
+    awa: awa
+  } do
+    {:ok, g} = create_guardian(scope, %{})
+
+    {:ok, _} =
+      StudentGuardian
+      |> Ash.Changeset.for_create(:link, %{student_id: awa.id, guardian_id: g.id}, scope: scope)
+      |> Ash.create()
+
+    {:ok, past} =
+      TeacherAssistant.Organization.create_academic_year(scope, %{
+        name: "2024-2025",
+        start_date: ~D[2024-09-09],
+        end_date: ~D[2025-07-31],
+        active: false
+      })
+
+    {:ok, old_cg} = Enrollment.create_class_group(scope, past, %{label: "6e Z", level: "6ème"})
+    {:ok, _} = Enrollment.enroll_existing(scope, old_cg, awa)
+
+    master = member_scope_fixture(scope, %{roles: [:teacher]})
+    {:ok, _} = Enrollment.set_form_master(scope, old_cg, master.current_user.id)
+
+    assert Ash.read!(Guardian, scope: master) == []
+    assert Ash.read!(StudentGuardian, scope: master) == []
+  end
 end
