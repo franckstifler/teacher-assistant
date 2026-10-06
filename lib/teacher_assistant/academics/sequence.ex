@@ -72,6 +72,11 @@ defmodule TeacherAssistant.Academics.Sequence do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:term]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

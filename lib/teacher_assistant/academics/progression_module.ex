@@ -98,6 +98,11 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:progression_plan]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

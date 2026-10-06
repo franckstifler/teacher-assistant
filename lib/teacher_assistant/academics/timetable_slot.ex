@@ -187,6 +187,11 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:class_group]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

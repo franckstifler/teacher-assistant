@@ -68,6 +68,11 @@ defmodule TeacherAssistant.Academics.CouncilDecision do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:class_council]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

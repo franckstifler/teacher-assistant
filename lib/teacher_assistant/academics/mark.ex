@@ -158,6 +158,9 @@ defmodule TeacherAssistant.Academics.Mark do
   end
 
   validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]},
+      on: [:create, :update, :destroy]
+
     # `before_action?: true`: the validation fetches the `Assessment` in the
     # scope of the action context (actor + tenant), but on `:create` the scope
     # is threaded through `for_create/4` at build time — plain (non-

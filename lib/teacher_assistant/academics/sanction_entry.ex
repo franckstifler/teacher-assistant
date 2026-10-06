@@ -139,6 +139,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

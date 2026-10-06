@@ -168,6 +168,10 @@ defmodule TeacherAssistant.Academics.Enrollment do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

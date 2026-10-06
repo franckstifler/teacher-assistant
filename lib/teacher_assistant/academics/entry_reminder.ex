@@ -54,6 +54,11 @@ defmodule TeacherAssistant.Academics.EntryReminder do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

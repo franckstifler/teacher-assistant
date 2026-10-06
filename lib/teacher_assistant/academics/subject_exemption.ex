@@ -46,6 +46,11 @@ defmodule TeacherAssistant.Academics.SubjectExemption do
     end
   end
 
+  validations do
+    validate {TeacherAssistant.Academics.YearOpen, path: [:teaching_context]},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id
