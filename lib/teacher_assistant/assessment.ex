@@ -33,6 +33,7 @@ defmodule TeacherAssistant.Assessment do
     TrimesterAverageRule
   }
 
+  alias TeacherAssistant.Notifications
   alias TeacherAssistant.Scope
 
   resources do
@@ -285,11 +286,22 @@ defmodule TeacherAssistant.Assessment do
 
   @correction_loads [:student, :requester, assessment: [teaching_context: [:class_group]]]
 
-  @doc "Asks to change a locked mark (the course's teacher only)."
+  @doc "Asks to change a locked mark (the course's teacher only); notifies the deciders."
   def request_correction(%Scope{} = scope, attrs) do
-    MarkCorrection
-    |> Ash.Changeset.for_create(:request, attrs, scope: scope)
-    |> Ash.create(load: @correction_loads)
+    with {:ok, correction} <-
+           MarkCorrection
+           |> Ash.Changeset.for_create(:request, attrs, scope: scope)
+           |> Ash.create(load: @correction_loads) do
+      Notifications.deliver(
+        scope,
+        :correction_requested,
+        others(scope, Notifications.admin_ids(scope)),
+        Map.put(correction_params(correction), :teacher, user_name(correction.requester)),
+        "/school/corrections/review"
+      )
+
+      {:ok, correction}
+    end
   end
 
   @doc """
@@ -355,10 +367,40 @@ defmodule TeacherAssistant.Assessment do
     do: decide_correction(scope, correction, :refuse)
 
   defp decide_correction(scope, correction, action) do
-    correction
-    |> Ash.Changeset.for_update(action, %{}, scope: scope)
-    |> Ash.update(load: @correction_loads)
+    with {:ok, decided} <-
+           correction
+           |> Ash.Changeset.for_update(action, %{}, scope: scope)
+           |> Ash.update(load: @correction_loads) do
+      Notifications.deliver(
+        scope,
+        :correction_decided,
+        others(scope, [decided.requester_user_id]),
+        Map.put(correction_params(decided), :decision, decided.status),
+        "/school/corrections"
+      )
+
+      {:ok, decided}
+    end
   end
+
+  # Spec KLM8: the short strings a correction notice shows.
+  defp correction_params(%MarkCorrection{student: student, assessment: assessment}) do
+    tc = assessment.teaching_context
+
+    %{
+      student: student.full_name,
+      subject: tc.subject,
+      class: tc.class_group && tc.class_group.label,
+      assessment: assessment.label
+    }
+  end
+
+  # Nobody is notified of their own action; a requester gone from the school (nil) is skipped.
+  defp others(%Scope{current_user: %{id: actor_id}}, ids),
+    do: Enum.reject(ids, &(is_nil(&1) or &1 == actor_id))
+
+  defp user_name(nil), do: ""
+  defp user_name(user), do: to_string(user.name || user.email)
 
   @doc "The scope's own requests, newest first."
   def list_my_corrections(%Scope{current_user: %{id: user_id}} = scope) do
