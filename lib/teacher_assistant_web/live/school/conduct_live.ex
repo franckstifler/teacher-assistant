@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Discipline, Enrollment, Organization}
+  alias TeacherAssistant.{Attendance, Discipline, Enrollment, Organization}
   alias TeacherAssistant.Academics.{EntryProgress, Reference, SanctionType}
   alias TeacherAssistantWeb.Authz
 
@@ -21,6 +21,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
        assign(socket,
          classes: Enrollment.list_class_groups(scope, year),
          sequences: Organization.list_sequences(scope, year),
+         rules: Attendance.school_life_rules(scope),
          open: nil,
          error: nil
        )}
@@ -52,8 +53,11 @@ defmodule TeacherAssistantWeb.School.ConductLive do
 
   defp load(socket), do: assign(socket, rows: [], values: %{})
 
-  def handle_event("pick", %{"class" => class, "seq" => seq}, socket),
-    do: {:noreply, push_patch(socket, to: ~p"/school/conduct?class=#{class}&seq=#{seq}")}
+  # A year without séquences (or classes) posts no value for that select.
+  def handle_event("pick", params, socket) do
+    query = params |> Map.take(["class", "seq"]) |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
+    {:noreply, push_patch(socket, to: ~p"/school/conduct?#{query}")}
+  end
 
   def handle_event("edit", %{"marks" => marks}, socket),
     do: {:noreply, assign(socket, values: Map.merge(socket.assigns.values, marks))}
@@ -102,8 +106,26 @@ defmodule TeacherAssistantWeb.School.ConductLive do
     end
   end
 
-  defp adjusted?(row, values),
-    do: Map.get(values, row.enrollment.id) not in [shown(row.suggestion.mark), nil, ""]
+  # Compared as numbers: « 17.5 », « 17,50 » and « 17,5 » are the same mark.
+  defp adjusted?(row, values) do
+    case Map.get(values, row.enrollment.id) do
+      blank when blank in [nil, ""] ->
+        false
+
+      typed ->
+        case typed
+             |> to_string()
+             |> String.trim()
+             |> String.replace(",", ".")
+             |> Decimal.parse() do
+          {%Decimal{coef: coef} = d, ""} when is_integer(coef) ->
+            not Decimal.equal?(d, row.suggestion.mark)
+
+          _ ->
+            true
+        end
+    end
+  end
 
   defp shown(nil), do: ""
 
@@ -186,7 +208,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                         :for={s <- row.sanctions}
                         class="badge badge-sm badge-ghost mr-1"
                       >
-                        {SanctionType.label(s.type)}
+                        {SanctionType.label(s.type)} −{shown(@rules.sanction_points[s.type])}
                       </span>
                     </td>
                     <td class="ta-num text-right font-semibold">{shown(row.suggestion.mark)}</td>
@@ -208,7 +230,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                     <td colspan="7" class="bg-base-200/60 text-xs">
                       <span :if={row.suggestion.deductions == []}>{gettext("Aucune déduction.")}</span>
                       <span :for={d <- row.suggestion.deductions} class="mr-3">
-                        {deduction_label(d)} : −{shown(d.points)}
+                        {deduction_label(d)} : −{shown(Decimal.round(d.points, 2))}
                       </span>
                     </td>
                   </tr>

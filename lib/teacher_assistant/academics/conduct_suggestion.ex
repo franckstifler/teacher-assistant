@@ -56,8 +56,11 @@ defmodule TeacherAssistant.Academics.ConductSuggestion do
   defp zero_count?(%{count: %Decimal{} = count}), do: Decimal.equal?(count, 0)
   defp zero_count?(%{count: count}), do: count == 0
 
+  # Summed lesson hours carry division noise (e.g. 3 × 40 min = 2.000…0001 h);
+  # rounding to 10 places first keeps an exact quarter from flooring below it.
   defp round_down_to_quarter(value) do
     value
+    |> Decimal.round(10)
     |> Decimal.div(@quarter)
     |> Decimal.round(0, :floor)
     |> Decimal.mult(@quarter)

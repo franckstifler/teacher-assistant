@@ -59,7 +59,9 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
       cg: cg,
       awa: awa,
       bob: bob,
-      seq: seq
+      seq: seq,
+      tc: tc,
+      p1: p1
     }
   end
 
@@ -130,5 +132,36 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/school/conduct")
+  end
+
+  test "chips show their points; deductions show rounded points", %{conn: conn} = ctx do
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @today, [{ctx.bob.id, :absent}])
+
+    {:ok, view, _} = live(conn, path(ctx))
+
+    assert view |> element("#conduct-row-#{ctx.awa.id}") |> render() =~ "Avertissement −2"
+
+    view |> element("#conduct-name-#{ctx.bob.id}") |> render_click()
+    deductions = view |> element("#deductions-#{ctx.bob.id}") |> render()
+    assert deductions =~ "−0,42"
+    refute deductions =~ "41666"
+  end
+
+  test "the same value written differently is not « ajustée »", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, path(ctx))
+
+    view
+    |> form("#conduct-form", %{"marks" => %{ctx.awa.id => "18.0", ctx.bob.id => "20,00"}})
+    |> render_change()
+
+    refute view |> element("#conduct-row-#{ctx.awa.id}") |> render() =~ "ajustée"
+    refute view |> element("#conduct-row-#{ctx.bob.id}") |> render() =~ "ajustée"
+  end
+
+  test "a pick without a séquence does not crash", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, path(ctx))
+    render_change(view, "pick", %{"class" => ctx.cg.id})
+    assert has_element?(view, "#conduct-form")
   end
 end
