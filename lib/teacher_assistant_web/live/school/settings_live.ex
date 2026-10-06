@@ -1,7 +1,7 @@
 defmodule TeacherAssistantWeb.School.SettingsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Academics.{AcademicYear, BulletinGroup, Subject}
+  alias TeacherAssistant.Academics.{BulletinGroup, Subject}
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
@@ -29,14 +29,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           max_entries: 1,
           max_file_size: 2_000_000
         )
-        # `load_years/1` must run before `year_form/2` is built: the form's
-        # `active` flag (see `year_form/2`) is derived from whether any years
-        # already exist.
         |> load_years()
-
-      socket =
-        socket
-        |> assign(:year_form, year_form(scope, socket.assigns.years == []))
         |> load_profile()
 
       {:ok, socket}
@@ -194,21 +187,17 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                   <td>{year.start_date}</td>
                   <td>{year.end_date}</td>
                   <td>
-                    <span :if={year.active} class="badge badge-primary">{gettext("Active")}</span>
-                    <span :if={!year.active} class="badge badge-ghost">{gettext("Inactive")}</span>
+                    <span :if={year.status == :closed} class="badge badge-ghost">
+                      {gettext("Clôturée")}
+                    </span>
+                    <span :if={year.status == :open and year.active} class="badge badge-primary">
+                      {gettext("Active")}
+                    </span>
+                    <span :if={year.status == :open and !year.active} class="badge badge-ghost">
+                      {gettext("Inactive")}
+                    </span>
                   </td>
-                  <td>
-                    <button
-                      :if={!year.active}
-                      id={"year-activate-#{year.id}"}
-                      type="button"
-                      class="btn btn-ghost btn-xs"
-                      phx-click="activate_year"
-                      phx-value-id={year.id}
-                    >
-                      {gettext("Activer")}
-                    </button>
-                  </td>
+                  <td class="text-right"></td>
                 </tr>
               </tbody>
             </table>
@@ -240,24 +229,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             icon="hero-calendar"
             title={gettext("No academic years yet")}
           />
-
-          <div class="ta-leaf space-y-3">
-            <h3 class="text-sm font-semibold">{gettext("Create an academic year")}</h3>
-            <.form
-              for={@year_form}
-              id="year-form"
-              phx-change="validate_year"
-              phx-submit="create_year"
-              class="space-y-2"
-            >
-              <div class="grid gap-2 sm:grid-cols-3">
-                <.input field={@year_form[:name]} label={gettext("Name")} />
-                <.input field={@year_form[:start_date]} type="date" label={gettext("Start date")} />
-                <.input field={@year_form[:end_date]} type="date" label={gettext("End date")} />
-              </div>
-              <button type="submit" class="btn btn-primary btn-sm">{gettext("Create")}</button>
-            </.form>
-          </div>
         </section>
 
         <%!-- Every member sees the calendar; only calendar managers can edit it. --%>
@@ -576,11 +547,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
-  def handle_event("validate_year", %{"year" => params}, socket) do
-    {:noreply,
-     assign(socket, :year_form, AshPhoenix.Form.validate(socket.assigns.year_form, params))}
-  end
-
   def handle_event("save_calendar", %{"calendar" => params}, socket) do
     case Organization.update_calendar(socket.assigns.scope, socket.assigns.active_year, params) do
       :ok ->
@@ -613,52 +579,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     with {:ok, year} <- Organization.get_academic_year(scope, id),
          :ok <- Organization.build_default_calendar(scope, year) do
       {:noreply, socket |> load_years() |> put_flash(:info, gettext("Calendrier généré."))}
-    else
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      _ -> {:noreply, socket}
-    end
-  end
-
-  def handle_event("create_year", %{"year" => params}, socket) do
-    scope = socket.assigns.scope
-
-    case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
-      {:ok, year} ->
-        :ok = Organization.build_default_calendar(scope, year)
-        :ok = TeacherAssistant.Attendance.build_default_periods(scope)
-        TeacherAssistant.Academics.Seeding.seed_starter_classes(scope, year)
-
-        socket = load_years(socket)
-
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Année scolaire créée."))
-         |> assign(
-           :year_form,
-           year_form(scope, socket.assigns.years == [])
-         )}
-
-      {:error, form} ->
-        if Authz.forbidden_form?(form) do
-          {:noreply, Authz.put_not_allowed(socket)}
-        else
-          {:noreply,
-           socket
-           |> assign(:year_form, form)
-           |> put_flash(:error, gettext("Impossible de créer l'année scolaire."))}
-        end
-    end
-  end
-
-  def handle_event("activate_year", %{"id" => id}, socket) do
-    scope = socket.assigns.scope
-
-    with {:ok, year} <- Organization.get_academic_year(scope, id),
-         {:ok, _} <- Organization.activate_academic_year(scope, year) do
-      {:noreply,
-       socket
-       |> put_flash(:info, gettext("Année scolaire activée."))
-       |> load_years()}
     else
       {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, socket}
@@ -896,28 +816,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   defp name_form(scope) do
     scope.current_workspace
     |> AshPhoenix.Form.for_update(:update, as: "school", scope: scope)
-    |> to_form()
-  end
-
-  # `AcademicYear` is tenant-scoped to the workspace (attribute multitenancy);
-  # `workspace_id` is no longer an acceptable create attribute, it's derived
-  # from the form's `tenant:`. `active` is still server-controlled (never
-  # user input), set on the changeset at build time via `prepare_source` —
-  # not merged into the submitted params at submit time. Only the first year
-  # of a workspace is created active (the `:create_for_workspace` action
-  # deactivates any other active year), so `active?` is a *live* value: it
-  # flips from `true` to `false` the moment the first year exists. Callers
-  # must rebuild the form — via this helper — on mount and again right after
-  # a successful year creation (see `handle_event("create_year", ...)`).
-  defp year_form(scope, active?) do
-    AcademicYear
-    |> AshPhoenix.Form.for_create(:create_for_workspace,
-      as: "year",
-      scope: scope,
-      prepare_source: fn changeset ->
-        Ash.Changeset.change_attribute(changeset, :active, active?)
-      end
-    )
     |> to_form()
   end
 
