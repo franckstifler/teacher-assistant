@@ -22,6 +22,7 @@ defmodule TeacherAssistant.Assessment do
     CombinedCourse,
     CouncilDecision,
     EntryProgress,
+    EntryReminder,
     GradingRules,
     Mark,
     MarkCorrection,
@@ -45,6 +46,7 @@ defmodule TeacherAssistant.Assessment do
     resource BulletinPublication
     resource ClassCouncil
     resource CouncilDecision
+    resource EntryReminder
   end
 
   authorization do
@@ -143,6 +145,82 @@ defmodule TeacherAssistant.Assessment do
   @doc "The séquence shown by default on `today` (current, else last started, else first)."
   def default_sequence(sequences, %Date{} = today),
     do: EntryProgress.default_sequence(sequences, today)
+
+  # --- Entry reminders (spec KLM8, N06) ------------------------------------------
+
+  @doc """
+  « Relancer »: logs a reminder for the course and séquence and notifies the course's
+  teacher. Once per course, séquence and school day: a second one is
+  `{:error, :already_reminded}` and notifies nobody.
+  """
+  def remind_entry(%Scope{} = scope, %Sequence{} = seq, teaching_context_id) do
+    with {:ok, tc} <-
+           Ash.get(TeachingContext, teaching_context_id,
+             scope: scope,
+             load: [:class_group, :catalog_subject]
+           ),
+         {:ok, reminder} <- create_reminder(scope, seq, tc) do
+      Notifications.deliver(
+        scope,
+        :entry_reminder,
+        others(scope, [tc.teacher_user_id]),
+        %{
+          subject: (tc.catalog_subject && tc.catalog_subject.name) || tc.subject,
+          class: tc.class_group && tc.class_group.label,
+          sequence: seq.number
+        },
+        "/school/courses"
+      )
+
+      {:ok, reminder}
+    end
+  end
+
+  @doc "« Relancer tous les retards »: reminds every course with nothing entered; the count sent."
+  def remind_late(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq) do
+    tc_ids =
+      for row <- sequence_entry_grid(scope, year, seq).rows,
+          %{pct: 0, teaching_context: tc} <- Map.values(row.cells),
+          do: tc.id
+
+    {:ok, Enum.count(tc_ids, &match?({:ok, _}, remind_entry(scope, seq, &1)))}
+  end
+
+  @doc "The latest reminder day of each course reminded for the séquence."
+  def reminder_dates(%Scope{} = scope, %Sequence{id: seq_id}) do
+    EntryReminder
+    |> Ash.Query.filter(sequence_id == ^seq_id)
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.teaching_context_id, & &1.sent_on)
+    |> Map.new(fn {tc_id, days} -> {tc_id, Enum.max(days, Date)} end)
+  end
+
+  defp create_reminder(scope, seq, tc) do
+    EntryReminder
+    |> Ash.Changeset.for_create(
+      :create,
+      %{teaching_context_id: tc.id, sequence_id: seq.id},
+      scope: scope
+    )
+    |> Ash.create()
+    |> case do
+      {:error, error} ->
+        if reminded_today?(error), do: {:error, :already_reminded}, else: {:error, error}
+
+      ok ->
+        ok
+    end
+  end
+
+  defp reminded_today?(%Ash.Error.Invalid{errors: errors}),
+    do: Enum.any?(errors, &reminded_today?/1)
+
+  defp reminded_today?(%Ash.Error.Changes.InvalidAttribute{private_vars: vars}) do
+    constraint = vars[:constraint]
+    is_binary(constraint) and String.contains?(constraint, "once_a_day")
+  end
+
+  defp reminded_today?(_error), do: false
 
   # --- Assessment types (spec D2b-2) -----------------------------------------------
 
