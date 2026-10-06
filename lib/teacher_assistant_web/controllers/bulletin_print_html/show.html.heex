@@ -31,6 +31,9 @@
       .totals strong { font-size: 13pt; }
       .visa { margin-top: 24px; display: flex; justify-content: space-between; gap: 16px; }
       .visa .slot { flex: 1; }
+      .visa .head .marks { position: relative; height: 56px; }
+      .visa .head .stamp { position: absolute; left: 10%; height: 56px; opacity: .85; }
+      .visa .head .signature { position: absolute; right: 10%; height: 48px; }
       .visa .line { border-top: 1px solid #999; margin-top: 32px; padding-top: 2px;
                     font-variant: small-caps; font-size: 9pt; color: #444; }
       .visa .pp-name { font-size: 11px; margin-bottom: 2px; }
@@ -295,7 +298,21 @@
           <div :if={@professeur_principal} class="pp-name">{@professeur_principal}</div>
           <div class="line">{tr(@lang, fn -> gettext("Visa Professeur Principal") end)}</div>
         </div>
-        <div class="slot">
+        <div class="slot head">
+          <div class="marks">
+            <img
+              :if={show?(@template, :stamp) and Map.get(@template.header, :stamp?)}
+              class="stamp"
+              src={~p"/school/logo?kind=stamp"}
+              alt=""
+            />
+            <img
+              :if={show?(@template, :signature) and Map.get(@template.header, :signature?)}
+              class="signature"
+              src={~p"/school/logo?kind=signature"}
+              alt=""
+            />
+          </div>
           <div class="line">{tr(@lang, fn -> gettext("Visa Chef d'établissement") end)}</div>
         </div>
         <div :if={b.qr_svg} class="qr">{Phoenix.HTML.raw(b.qr_svg)}</div>

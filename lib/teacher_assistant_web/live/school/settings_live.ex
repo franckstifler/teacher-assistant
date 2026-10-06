@@ -163,6 +163,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 {gettext("Téléverser le logo")}
               </button>
             </.form>
+
+            <.link
+              id="official-header-link"
+              navigate={~p"/school/settings/header"}
+              class="link link-primary text-sm"
+            >
+              {gettext("En-tête officiel, signature et cachet")}
+            </.link>
           </div>
         </section>
 

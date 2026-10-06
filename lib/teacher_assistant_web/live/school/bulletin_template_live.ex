@@ -231,8 +231,28 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
           <div class="mt-2 font-semibold">
             <div :for={line <- BulletinTemplate.school_lines(@header)}>{line}</div>
           </div>
+          <div
+            :if={Map.get(@header, :signature?) or Map.get(@header, :stamp?)}
+            id="signature-preview"
+            class="mt-2 flex justify-center gap-4"
+          >
+            <img
+              :if={Map.get(@header, :stamp?)}
+              src={~p"/school/logo?kind=stamp"}
+              alt={gettext("Cachet")}
+              class="inline-block h-10"
+            />
+            <img
+              :if={Map.get(@header, :signature?)}
+              src={~p"/school/logo?kind=signature"}
+              alt={gettext("Signature du chef d'établissement")}
+              class="inline-block h-10"
+            />
+          </div>
           <p class="mt-2 text-xs text-base-content/60">
-            {gettext("Modifiable dans la fiche de l'établissement.")}
+            <.link navigate={~p"/school/settings/header"} class="link">
+              {gettext("Modifiable dans « En-tête et signature ».")}
+            </.link>
           </p>
         </div>
       </section>
