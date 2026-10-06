@@ -4,6 +4,7 @@ defmodule TeacherAssistant.Discipline do
   alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.ConductMark
+  alias TeacherAssistant.Academics.ConductSuggestion
   # `TeacherAssistant.Academics.Enrollment` is the resource struct every
   # function below pattern-matches on; the domain `TeacherAssistant.Enrollment`
   # is always referenced fully qualified so the two never collide under one
@@ -304,6 +305,107 @@ defmodule TeacherAssistant.Discipline do
 
       {enrollment.id, summary}
     end)
+  end
+
+  # --- Suggested conduct marks (spec KLM3) ---------------------------------------
+
+  @doc """
+  One row per student of `class_group` for `sequence`: unjustified absence
+  hours and lates (a long late already counts as hours, KLM2), the séquence's
+  sanctions, the current conduct mark and the suggestion. One read per kind.
+  """
+  def conduct_sheet(%Scope{} = scope, %ClassGroup{} = class_group, %Sequence{} = sequence) do
+    period = {:sequence, sequence}
+    rules = TeacherAssistant.Attendance.school_life_rules(scope)
+    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
+    totals = TeacherAssistant.Attendance.class_conduct(scope, class_group, period)
+    sanctions = scope |> list_sanctions(class_group, period) |> Enum.group_by(& &1.enrollment_id)
+
+    current =
+      roster
+      |> Enum.map(& &1.enrollment.id)
+      |> then(fn
+        [] -> []
+        ids -> conduct_marks_for_enrollments_sequences!(ids, [sequence.id], scope: scope)
+      end)
+      |> Map.new(&{&1.enrollment_id, &1.value})
+
+    Enum.map(roster, fn %{student: student, enrollment: enrollment} ->
+      %{unjustified_hours: hours, retards: retards} = Map.fetch!(totals, enrollment.id)
+      entries = Map.get(sanctions, enrollment.id, [])
+
+      %{
+        enrollment: enrollment,
+        student: student,
+        unjustified_hours: hours,
+        retards: retards,
+        sanctions: entries,
+        current: Map.get(current, enrollment.id),
+        suggestion:
+          ConductSuggestion.suggest(
+            %{unjustified_hours: hours, retards: retards, sanction_types: Enum.map(entries, & &1.type)},
+            rules
+          )
+      }
+    end)
+  end
+
+  @doc """
+  Saves the class's conduct marks for `sequence` from `values`
+  (`enrollment_id => value`, comma or dot), skipping blanks, in one
+  transaction: any bad value or foreign student saves nothing.
+  """
+  def set_conduct_marks(%Scope{} = scope, %ClassGroup{} = class_group, %Sequence{} = sequence, values) do
+    roster =
+      scope |> TeacherAssistant.Enrollment.list_roster(class_group) |> Map.new(&{&1.enrollment.id, &1.enrollment})
+
+    with {:ok, marks} <- parse_class_marks(values, roster) do
+      Ash.transact([ConductMark], fn ->
+        Enum.reduce_while(marks, {:ok, 0}, fn {enrollment, value}, {:ok, n} ->
+          case set_conduct_mark(scope, enrollment, sequence, value) do
+            {:ok, _} -> {:cont, {:ok, n + 1}}
+            # Ash.transact rolls back on an `{:error, _}` result.
+            {:error, error} -> {:halt, {:error, error}}
+          end
+        end)
+      end)
+      |> case do
+        {:ok, {:ok, count}} -> {:ok, count}
+        {:error, error} -> {:error, error}
+      end
+    end
+  end
+
+  defp parse_class_marks(values, roster) do
+    Enum.reduce_while(values, {:ok, []}, fn {id, raw}, {:ok, acc} ->
+      case {Map.fetch(roster, id), parse_mark(raw)} do
+        {:error, _} -> {:halt, {:error, :not_in_class}}
+        {{:ok, _}, :blank} -> {:cont, {:ok, acc}}
+        {{:ok, e}, {:ok, value}} -> {:cont, {:ok, [{e, value} | acc]}}
+        {{:ok, _}, :error} -> {:halt, {:error, {:invalid_value, id}}}
+      end
+    end)
+  end
+
+  defp parse_mark(%Decimal{} = d), do: bounded(d)
+  defp parse_mark(n) when is_number(n), do: bounded(Decimal.new(to_string(n)))
+
+  defp parse_mark(raw) do
+    case raw |> to_string() |> String.trim() |> String.replace(",", ".") do
+      "" ->
+        :blank
+
+      text ->
+        case Decimal.parse(text) do
+          # NaN and ±Infinity carry an atom coefficient.
+          {%Decimal{coef: coef} = d, ""} when is_integer(coef) -> bounded(d)
+          _ -> :error
+        end
+    end
+  end
+
+  defp bounded(d) do
+    if Decimal.compare(d, 0) != :lt and Decimal.compare(d, 20) != :gt, do: {:ok, d}, else: :error
   end
 
   # Single batched read of ConductMark for the whole roster, scoped to the
