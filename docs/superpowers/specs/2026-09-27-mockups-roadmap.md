@@ -1394,6 +1394,9 @@ Out of scope: parent messages, e-mail and SMS delivery, message templates, notif
 
 ## KLM9 — Next school year and closed years (spec)
 
+Status: implemented 2026-10-06 (branch `klm9-next-year`, plan
+`docs/superpowers/plans/2026-10-06-klm9-next-year.md`); no visual check done.
+
 Gap: **M1**. No mockup.
 
 User decisions (2026-10-02): carry over **classes, courses and teacher assignments** (with form masters) as an
