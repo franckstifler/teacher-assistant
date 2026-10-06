@@ -3,8 +3,9 @@ defmodule TeacherAssistantWeb.NotificationHooks do
   Spec KLM8: the header bell on every school LiveView. On mount it puts the bell
   (`Notifications.bell/1`) into `current_scope.capabilities.notifications` for the
   layout and subscribes to the member's topic; it refreshes the bell on
-  `:notifications_changed` and handles the bell's own events, so pages need no code
-  for it. Navigation data only — reading and marking stay under the resource policies.
+  `:notifications_changed` (a view exporting `notifications_changed/1`, the inbox,
+  is told too) and handles the bell's own events, so other pages need no code for
+  it. Navigation data only — reading and marking stay under the resource policies.
   """
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1, push_navigate: 2]
@@ -27,7 +28,16 @@ defmodule TeacherAssistantWeb.NotificationHooks do
     end
   end
 
-  defp handle_info(:notifications_changed, socket), do: {:halt, put_bell(socket)}
+  # A page that shows notices itself (the inbox) opts in by exporting
+  # `notifications_changed/1`; other views never receive the message.
+  defp handle_info(:notifications_changed, socket) do
+    socket = put_bell(socket)
+
+    if function_exported?(socket.view, :notifications_changed, 1),
+      do: {:halt, socket.view.notifications_changed(socket)},
+      else: {:halt, socket}
+  end
+
   defp handle_info(_message, socket), do: {:cont, socket}
 
   defp handle_event("notification:open", %{"id" => id}, socket) do

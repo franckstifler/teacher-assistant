@@ -76,4 +76,18 @@ defmodule TeacherAssistantWeb.School.NotificationsLiveTest do
     assert list =~ "S1 ·"
     refute list =~ "S31 ·"
   end
+
+  test "the list follows the bell: new notices appear, the bell's read-all clears it",
+       %{conn: conn, scope: scope, actor: head} do
+    {:ok, view, _} = live(conn, ~p"/school/notifications")
+    assert has_element?(view, "#notifications-empty")
+
+    remind(scope, head, "Physique")
+    assert view |> element("#notifications") |> render() =~ "Physique"
+    assert has_element?(view, "#notifications [data-unread]")
+
+    view |> element("#bell-read-all") |> render_click()
+    refute has_element?(view, "#notifications [data-unread]")
+    refute has_element?(view, "#read-all")
+  end
 end

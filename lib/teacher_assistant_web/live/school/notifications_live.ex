@@ -30,6 +30,9 @@ defmodule TeacherAssistantWeb.School.NotificationsLive do
     {:noreply, load(socket, socket.assigns.page_number)}
   end
 
+  @doc "Called by `NotificationHooks` when the member's notices change (new, read)."
+  def notifications_changed(socket), do: load(socket, socket.assigns.page_number)
+
   defp load(socket, n),
     do:
       assign(socket,
