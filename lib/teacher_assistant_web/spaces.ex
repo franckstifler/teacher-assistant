@@ -137,6 +137,7 @@ defmodule TeacherAssistantWeb.Spaces do
           members(),
           correction_review(facts.pending_corrections)
         ]),
+        section(gettext("Vie scolaire"), [conduct()]),
         section(gettext("Paramètres"), [
           settings(),
           coefficients(),
@@ -169,6 +170,7 @@ defmodule TeacherAssistantWeb.Spaces do
           members(),
           correction_review(facts.pending_corrections)
         ]),
+        section(gettext("Vie scolaire"), [conduct()]),
         section(gettext("Paramètres"), [
           settings(),
           coefficients(),
@@ -193,6 +195,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Vie scolaire"), [
           school_day(facts[:missed_calls]),
           absences(facts[:unjustified_absences]),
+          conduct(),
           classes(),
           students(),
           school_life_settings()
@@ -312,6 +315,9 @@ defmodule TeacherAssistantWeb.Spaces do
         ~p"/school/absences",
         unjustified
       )
+
+  defp conduct,
+    do: item("conduct", gettext("Conduite"), "hero-hand-thumb-up", ~p"/school/conduct")
 
   defp courses,
     do: item("courses", gettext("Mes cours"), "hero-academic-cap", ~p"/school/courses")
