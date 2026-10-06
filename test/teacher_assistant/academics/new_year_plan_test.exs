@@ -14,6 +14,24 @@ defmodule TeacherAssistant.Academics.NewYearPlanTest do
     assert NewYearPlan.suffix(cls("a", "2nde C B", "2nde", "C")) == "B"
   end
 
+  test "suffix ignores a label's trailing level number (anglophone Form N)" do
+    assert NewYearPlan.suffix(cls("f1", "Form 1", "Form 1")) == nil
+    assert NewYearPlan.suffix(cls("f1a", "Form 1 A", "Form 1")) == "A"
+  end
+
+  test "bare anglophone Form N classes target Form N+1" do
+    classes = [
+      cls("f1", "Form 1", "Form 1"),
+      cls("f2", "Form 2", "Form 2"),
+      cls("f1a", "Form 1 A", "Form 1"),
+      cls("f2a", "Form 2 A", "Form 2")
+    ]
+
+    targets = NewYearPlan.default_targets(classes)
+    assert targets["f1"] == "f2"
+    assert targets["f1a"] == "f2a"
+  end
+
   test "the admis target is the next level's class with the same suffix and série" do
     classes = [
       cls("6a", "6ème A", "6ème"),

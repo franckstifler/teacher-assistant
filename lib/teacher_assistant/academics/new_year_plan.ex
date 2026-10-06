@@ -9,15 +9,19 @@ defmodule TeacherAssistant.Academics.NewYearPlan do
 
   @doc "The label's last word when it is letters or a number and not the level's or série's own text."
   def suffix(%{label: label, level: level, serie: serie}) do
-    case String.split(label) do
-      [_, _ | _] = words ->
-        last = List.last(words)
+    if String.ends_with?(label, level) do
+      nil
+    else
+      case String.split(label) do
+        [_, _ | _] = words ->
+          last = List.last(words)
 
-        if last != level and last != serie and Regex.match?(~r/^([A-Za-z]{1,3}|\d{1,3})$/, last),
-          do: last
+          if last != level and last != serie and Regex.match?(~r/^([A-Za-z]{1,3}|\d{1,3})$/, last),
+            do: last
 
-      _ ->
-        nil
+        _ ->
+          nil
+      end
     end
   end
 
