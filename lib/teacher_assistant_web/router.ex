@@ -159,6 +159,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/corrections", School.CorrectionsLive, :index
       live "/school/corrections/new", School.CorrectionsLive, :new
       live "/school/corrections/review", School.CorrectionReviewLive, :index
+      live "/school/notifications", School.NotificationsLive, :index
       live "/school/setup", Onboarding.SetupWizardLive, :index
     end
 
