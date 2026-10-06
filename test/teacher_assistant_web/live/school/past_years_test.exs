@@ -42,10 +42,10 @@ defmodule TeacherAssistantWeb.School.PastYearsTest do
   end
 
   test "a past class's results use its own year and say it is closed", %{conn: conn} = ctx do
-    {:ok, view, html} = live(conn, ~p"/school/classes/#{ctx.cg.id}/results")
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{ctx.cg.id}/results")
     assert has_element?(view, "#year-closed", "Année de référence")
     # The period list is the closed year's, not the current one's.
-    assert html =~ "seq:#{ctx.seq.id}"
+    assert has_element?(view, ~s|option[value="seq:#{ctx.seq.id}"]|)
 
     {:ok, view, _} =
       live(conn, ~p"/school/classes/#{ctx.cg.id}/students/#{ctx.enrollment.id}/bulletin")
@@ -54,8 +54,13 @@ defmodule TeacherAssistantWeb.School.PastYearsTest do
   end
 
   test "the printed bulletins of a past class name its year", %{conn: conn} = ctx do
-    conn = get(conn, ~p"/school/classes/#{ctx.cg.id}/bulletin/print?period=annee")
-    assert html_response(conn, 200) =~ "Année de référence"
+    # The closed year's séquence only resolves against the class's own year.
+    conn = get(conn, ~p"/school/classes/#{ctx.cg.id}/bulletin/print?period=seq:#{ctx.seq.id}")
+    html = html_response(conn, 200)
+
+    assert html =~ "Année de référence"
+    # The current year is « Après Année de référence » — the bulletin must not name it.
+    refute html =~ "Après Année de référence"
   end
 
   test "the student profile links to the past bulletin", %{conn: conn} = ctx do
