@@ -1351,6 +1351,9 @@ Out of scope: editing rights.
 
 ## KLM8 — Staff in-app notifications (spec)
 
+Status: implemented 2026-10-06 (branch `klm8-notifications`, plan
+`docs/superpowers/plans/2026-10-06-klm8-staff-notifications.md`); no visual check done.
+
 Gaps: **R03** (staff part only) and **N06** (reminders to teachers late with marks).
 
 User decisions (2026-10-02): **in-app only, staff only**; parent messages and SMS wait for a provider; no
