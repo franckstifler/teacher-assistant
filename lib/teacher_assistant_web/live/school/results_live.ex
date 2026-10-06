@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          access when access != :none <- ReportCards.access(scope, cg) do
-      year = scope.current_academic_year
+      year = Organization.class_year(scope, cg)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
 
@@ -122,6 +122,15 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
             </form>
           </:actions>
         </.page_header>
+
+        <p
+          :if={@year && @year.status == :closed}
+          id="year-closed"
+          class="badge badge-ghost gap-1 self-start"
+        >
+          <.icon name="hero-lock-closed" class="size-3.5" />
+          {gettext("Année %{name} · clôturée", name: @year.name)}
+        </p>
 
         <p :if={@form_master} class="text-sm text-base-content/70">
           {gettext("Professeur principal")}: {@form_master.email}

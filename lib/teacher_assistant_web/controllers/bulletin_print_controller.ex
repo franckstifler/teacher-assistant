@@ -30,7 +30,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          {:operating, true} <- {:operating, TeacherAssistant.Scope.school_verified?(scope)},
-         year when not is_nil(year) <- scope.current_academic_year,
+         year when not is_nil(year) <- Organization.class_year(scope, cg),
          period when not is_nil(period) <-
            Organization.resolve_period(scope, year, params["period"]) do
       case ReportCards.view_for(scope, cg, period) do
@@ -87,13 +87,14 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       end)
 
     kind = Organization.period_kind(period)
+    year = Organization.class_year(scope, cg)
 
     conn
     |> put_layout(false)
     |> put_root_layout(false)
     |> render(:show,
       etablissement: scope.current_workspace.name,
-      annee: scope.current_academic_year && scope.current_academic_year.name,
+      annee: year && year.name,
       professeur_principal: view.form_master && view.form_master.email,
       cg: cg,
       period_kind: kind,

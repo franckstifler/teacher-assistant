@@ -110,6 +110,21 @@ defmodule TeacherAssistant.Organization do
     Ash.get(AcademicYear, id, scope: scope)
   end
 
+  @doc "Spec KLM9: the year a class (or any record with `academic_year_id`) belongs to."
+  def class_year(%Scope{current_academic_year: %AcademicYear{id: id} = year}, %{
+        academic_year_id: id
+      }),
+      do: year
+
+  def class_year(%Scope{} = scope, %{academic_year_id: id}) when is_binary(id) do
+    case get_academic_year(scope, id) do
+      {:ok, year} -> year
+      _ -> nil
+    end
+  end
+
+  def class_year(_scope, _record), do: nil
+
   @doc """
   Activates `year` and deactivates every other active year of the same
   workspace (see `AcademicYear`'s `:activate` action).

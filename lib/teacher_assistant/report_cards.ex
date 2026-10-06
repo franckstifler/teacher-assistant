@@ -258,8 +258,13 @@ defmodule TeacherAssistant.ReportCards do
   defp year_of(_scope, %ClassGroup{academic_year_id: id, workspace_id: ws}),
     do: %AcademicYear{id: id, workspace_id: ws}
 
-  defp teaches_class?(%Scope{current_academic_year: %AcademicYear{} = year} = scope, cg),
-    do: MapSet.member?(taught_class_ids(scope, year), cg.id)
+  # Spec KLM9: checked against the class's own year, so a teacher keeps access to a past class.
+  defp teaches_class?(
+         %Scope{current_user: %{}} = scope,
+         %ClassGroup{academic_year_id: year_id} = cg
+       )
+       when is_binary(year_id),
+       do: MapSet.member?(taught_class_ids(scope, %AcademicYear{id: year_id}), cg.id)
 
   defp teaches_class?(_scope, _cg), do: false
 

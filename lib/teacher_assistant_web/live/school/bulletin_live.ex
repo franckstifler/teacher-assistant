@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
          roster = Enrollment.list_roster(scope, cg),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
-      year = scope.current_academic_year
+      year = Organization.class_year(scope, cg)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
 
@@ -170,6 +170,15 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
             </a>
           </:actions>
         </.page_header>
+
+        <p
+          :if={@year && @year.status == :closed}
+          id="year-closed"
+          class="badge badge-ghost gap-1 self-start"
+        >
+          <.icon name="hero-lock-closed" class="size-3.5" />
+          {gettext("Année %{name} · clôturée", name: @year.name)}
+        </p>
 
         <dl id="bulletin-identity" class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
           <div>

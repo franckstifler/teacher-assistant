@@ -206,6 +206,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                     >
                       {gettext("Préparer l'année suivante")}
                     </.link>
+                    <.link
+                      :if={year.status == :closed}
+                      id={"year-open-#{year.id}"}
+                      navigate={~p"/school/years/#{year.id}"}
+                      class="btn btn-ghost btn-xs"
+                    >
+                      {gettext("Consulter")}
+                    </.link>
                   </td>
                 </tr>
               </tbody>
