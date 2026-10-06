@@ -1,6 +1,8 @@
 defmodule TeacherAssistant.Discipline do
   use Ash.Domain, otp_app: :teacher_assistant
 
+  require Ash.Query
+
   alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.ConductMark
@@ -84,16 +86,41 @@ defmodule TeacherAssistant.Discipline do
     end
   end
 
+  @doc "Spec KLM4: one page (50) of `year`'s sanctions, newest first; opts class_group_id, type, to_notify, offset."
+  def list_school_sanctions(%Scope{} = scope, %AcademicYear{id: year_id}, opts) do
+    SanctionEntry
+    |> Ash.Query.for_read(
+      :school_list,
+      %{
+        academic_year_id: year_id,
+        class_group_id: opts[:class_group_id],
+        type: opts[:type],
+        to_notify: opts[:to_notify] == true
+      },
+      scope: scope
+    )
+    |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
+  end
+
+  @doc "Spec KLM4: `year`'s sanctions whose parents are not yet notified (menu badge)."
+  def count_parents_to_notify(%Scope{} = scope, %AcademicYear{id: year_id}) do
+    SanctionEntry
+    |> Ash.Query.filter(is_nil(parents_notified_on) and enrollment.academic_year_id == ^year_id)
+    |> Ash.count!(scope: scope)
+  end
+
   @doc """
   Records a sanction for `enrollment`, attributed to the scope's user. `attrs`
   carries `type` (atom), `date`, optional `reason`, optional `duration_days`.
-  Rejects an invalid `type` with `{:error, :invalid_type}`. `duration_days`
+  Rejects an invalid `type` with `{:error, :invalid_type}`, and a type the
+  school switched off (spec KLM2) with `{:error, :type_not_in_use}`. `duration_days`
   is persisted only for `:exclusion_temporaire`, forced to `nil` otherwise.
   """
   def add_sanction(%Scope{} = scope, %Enrollment{} = e, attrs) do
     type = attrs[:type] || attrs["type"]
 
-    with :ok <- validate_type(type) do
+    with :ok <- validate_type(type),
+         :ok <- in_use(scope, type) do
       duration_days =
         if type == :exclusion_temporaire, do: attrs[:duration_days] || attrs["duration_days"]
 
@@ -124,6 +151,13 @@ defmodule TeacherAssistant.Discipline do
     sanction
     |> Ash.Changeset.for_update(:mark_parents_notified, %{}, scope: scope)
     |> Ash.update()
+  end
+
+  # Spec KLM2/KLM4: a type the school switched off is refused, whatever the page.
+  defp in_use(scope, type) do
+    if type in TeacherAssistant.Attendance.school_life_rules(scope).sanction_types_in_use,
+      do: :ok,
+      else: {:error, :type_not_in_use}
   end
 
   defp validate_type(type) do

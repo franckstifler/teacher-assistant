@@ -75,6 +75,26 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
       filter expr(is_nil(parents_notified_on))
     end
 
+    # Spec KLM4: the SG's school-wide list, newest first, paginated.
+    read :school_list do
+      argument :academic_year_id, :uuid, allow_nil?: false
+      argument :class_group_id, :uuid
+      argument :type, TeacherAssistant.Academics.SanctionType
+      argument :to_notify, :boolean, default: false
+
+      pagination offset?: true, countable: true, required?: false, default_limit: 50
+
+      filter expr(enrollment.academic_year_id == ^arg(:academic_year_id))
+      filter expr(is_nil(^arg(:class_group_id)) or enrollment.class_group_id == ^arg(:class_group_id))
+      filter expr(is_nil(^arg(:type)) or type == ^arg(:type))
+      filter expr(^arg(:to_notify) == false or is_nil(parents_notified_on))
+
+      prepare build(
+                sort: [date: :desc, inserted_at: :desc],
+                load: [enrollment: [:class_group, student: [primary_guardian_link: :guardian]]]
+              )
+    end
+
     read :for_class_in_range do
       argument :class_group_id, :uuid, allow_nil?: false
       argument :first, :date, allow_nil?: false
