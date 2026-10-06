@@ -124,6 +124,22 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                   field={@profile_form[:registration_number]}
                   label={gettext("Numéro d'autorisation")}
                 />
+                <.input
+                  field={@profile_form[:max_class_size]}
+                  type="number"
+                  label={gettext("Effectif maximum par classe")}
+                />
+                <.input
+                  field={@profile_form[:class_suffix]}
+                  type="select"
+                  label={gettext("Nommage des classes")}
+                  options={
+                    Enum.map(
+                      TeacherAssistant.Academics.ClassSuffix.values(),
+                      &{TeacherAssistant.Academics.ClassSuffix.label(&1), &1}
+                    )
+                  }
+                />
               </div>
               <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
             </.form>

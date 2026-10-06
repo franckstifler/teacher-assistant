@@ -104,6 +104,10 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
             )}
           </p>
 
+          <p :if={@capacity.over?} id="import-capacity" class="text-sm text-warning">
+            {gettext("La classe dépasse l'effectif maximum (%{max}).", max: @capacity.max)}
+          </p>
+
           <div :if={@result.conflicts != []} id="import-conflicts" class="space-y-2">
             <p class="font-semibold text-warning">{gettext("Conflicts (skipped)")}</p>
             <ul class="space-y-1">
@@ -153,6 +157,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
     {:noreply,
      socket
      |> assign(:result, result)
+     |> assign(:capacity, Enrollment.capacity(socket.assigns.current_scope, socket.assigns.cg))
      |> assign(:stage, :done)}
   end
 

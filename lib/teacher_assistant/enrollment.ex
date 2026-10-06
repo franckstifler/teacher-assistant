@@ -374,6 +374,19 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
   end
 
+  @doc "Spec KLM5: a class's headcount against the school's maximum (a warning, never a block)."
+  def capacity(%Scope{} = scope, %ClassGroup{} = cg) do
+    count = length(list_roster(scope, cg))
+
+    max =
+      case TeacherAssistant.Accounts.fetch_school_profile(scope) do
+        {:ok, profile} -> profile.max_class_size
+        _ -> nil
+      end
+
+    %{count: count, max: max, over?: is_integer(max) and count > max}
+  end
+
   defp roster_query(cg_id, %Scope{} = scope) do
     Enrollment
     |> Ash.Query.for_read(:for_class_group, %{class_group_id: cg_id}, scope: scope)

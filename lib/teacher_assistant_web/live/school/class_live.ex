@@ -49,7 +49,17 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         <.page_header
           eyebrow={gettext("École")}
           title={"#{@cg.label} — #{@cg.level}#{if @cg.serie, do: " · #{@cg.serie}", else: ""}"}
-        />
+        >
+          <:actions>
+            <.side_chip id="class-size">
+              <span class={@capacity.over? && "text-warning font-semibold"}>
+                {if @capacity.max,
+                  do: "#{@capacity.count} / #{@capacity.max}",
+                  else: ngettext("%{count} élève", "%{count} élèves", @capacity.count)}
+              </span>
+            </.side_chip>
+          </:actions>
+        </.page_header>
 
         <div :if={@manage?} class="flex justify-end gap-2">
           <.link
@@ -485,6 +495,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     assignments = Curriculum.list_assignments_for_class(scope, cg)
 
     assign(socket,
+      capacity: Enrollment.capacity(scope, cg),
       roster: Enrollment.list_roster(scope, cg),
       other_classes:
         Enrollment.list_class_groups(scope, scope.current_academic_year)
@@ -525,7 +536,18 @@ defmodule TeacherAssistantWeb.School.ClassLive do
              repeater: params["repeater"] == "true"
            }) do
         {:ok, _} ->
-          {:noreply, socket |> put_flash(:info, gettext("Student enrolled.")) |> load_roster()}
+          socket = load_roster(socket)
+
+          # Spec KLM5: over the maximum is a warning, never a block.
+          message =
+            if socket.assigns.capacity.over?,
+              do:
+                gettext("Élève inscrit. La classe dépasse l'effectif maximum (%{max}).",
+                  max: socket.assigns.capacity.max
+                ),
+              else: gettext("Student enrolled.")
+
+          {:noreply, put_flash(socket, :info, message)}
 
         {:error, :duplicate_matricule} ->
           {:noreply,

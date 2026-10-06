@@ -21,8 +21,15 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           _ -> %{kind: :serie, values: [], levels: []}
         end
 
+      {max_class_size, class_suffix} =
+        case profile do
+          {:ok, p} -> {p.max_class_size, p.class_suffix}
+          _ -> {nil, :letters}
+        end
+
       {:ok,
        socket
+       |> assign(max_class_size: max_class_size, class_suffix: class_suffix, suggested_label: nil)
        |> assign(:can_manage_classes?, Enrollment.can_manage_classes?(scope))
        |> assign(:class_streams, class_streams)
        |> assign(
@@ -85,7 +92,12 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
                   <td>{row.cg.level}</td>
                   <td>{row.cg.serie}</td>
                   <td>{row.cg.subsystem}</td>
-                  <td>{row.effectif}</td>
+                  <td
+                    id={"class-size-#{row.cg.id}"}
+                    class={[@max_class_size && row.effectif > @max_class_size && "text-warning font-semibold"]}
+                  >
+                    {if @max_class_size, do: "#{row.effectif} / #{@max_class_size}", else: row.effectif}
+                  </td>
                   <td :if={@can_manage_classes?}>
                     <button
                       id={"class-delete-#{row.cg.id}"}
@@ -146,8 +158,12 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   end
 
   def handle_event("validate_class", %{"class_group" => params}, socket) do
+    params = suggest_label(socket, params)
+
     {:noreply,
-     assign(socket, :class_form, AshPhoenix.Form.validate(socket.assigns.class_form, params))}
+     socket
+     |> assign(:suggested_label, params["label"])
+     |> assign(:class_form, AshPhoenix.Form.validate(socket.assigns.class_form, params))}
   end
 
   def handle_event("create_class", %{"class_group" => params}, socket) do
@@ -205,16 +221,29 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
     classes =
       if year do
-        Enrollment.list_class_groups(scope, year)
-        |> Enum.map(fn cg ->
-          %{cg: cg, effectif: length(Enrollment.list_roster(scope, cg))}
-        end)
+        scope
+        |> Enrollment.list_class_groups(year, load: [:enrollment_count])
+        |> Enum.map(&%{cg: &1, effectif: &1.enrollment_count})
       else
         []
       end
 
     assign(socket, classes: classes, year: year)
   end
+
+  # Spec KLM5: a blank (or still-suggested) label follows the level and the school's rule.
+  defp suggest_label(socket, %{"level" => level} = params) when level not in [nil, ""] do
+    if params["label"] in [nil, "", socket.assigns[:suggested_label]] do
+      base = Enum.join(Enum.reject([level, params["serie"]], &(&1 in [nil, ""])), " ")
+      labels = Enum.map(socket.assigns.classes, & &1.cg.label)
+      label = SchoolTemplates.next_class_label(base, labels, socket.assigns.class_suffix)
+      Map.put(params, "label", label)
+    else
+      params
+    end
+  end
+
+  defp suggest_label(_socket, params), do: params
 
   # `workspace_id` and `academic_year_id` are server-controlled (never user
   # input), so they're set on the changeset at build time via `prepare_source`
