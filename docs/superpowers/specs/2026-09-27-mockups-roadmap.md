@@ -1214,6 +1214,9 @@ for anything new.
 
 ## KLM3 — Suggested conduct mark (spec)
 
+Status: implemented 2026-10-06 (branch `klm3-conduct-suggestion`, plan
+`docs/superpowers/plans/2026-10-06-klm3-conduct-suggestion.md`); no visual check done.
+
 Mockup: `Espaces par rôle` → SG → « Conduite ». Gap: **V05**.
 
 User decisions (2026-10-02): the scale is **points per sanction type** (KLM2); the mark starts at 20 per

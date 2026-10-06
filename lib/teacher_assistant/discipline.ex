@@ -343,7 +343,11 @@ defmodule TeacherAssistant.Discipline do
         current: Map.get(current, enrollment.id),
         suggestion:
           ConductSuggestion.suggest(
-            %{unjustified_hours: hours, retards: retards, sanction_types: Enum.map(entries, & &1.type)},
+            %{
+              unjustified_hours: hours,
+              retards: retards,
+              sanction_types: Enum.map(entries, & &1.type)
+            },
             rules
           )
       }
@@ -355,9 +359,16 @@ defmodule TeacherAssistant.Discipline do
   (`enrollment_id => value`, comma or dot), skipping blanks, in one
   transaction: any bad value or foreign student saves nothing.
   """
-  def set_conduct_marks(%Scope{} = scope, %ClassGroup{} = class_group, %Sequence{} = sequence, values) do
+  def set_conduct_marks(
+        %Scope{} = scope,
+        %ClassGroup{} = class_group,
+        %Sequence{} = sequence,
+        values
+      ) do
     roster =
-      scope |> TeacherAssistant.Enrollment.list_roster(class_group) |> Map.new(&{&1.enrollment.id, &1.enrollment})
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> Map.new(&{&1.enrollment.id, &1.enrollment})
 
     with {:ok, marks} <- parse_class_marks(values, roster) do
       Ash.transact([ConductMark], fn ->

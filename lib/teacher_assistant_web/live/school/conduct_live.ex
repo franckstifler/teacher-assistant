@@ -33,7 +33,9 @@ defmodule TeacherAssistantWeb.School.ConductLive do
   end
 
   def handle_params(params, _uri, socket) do
-    cg = Enum.find(socket.assigns.classes, &(&1.id == params["class"])) || List.first(socket.assigns.classes)
+    cg =
+      Enum.find(socket.assigns.classes, &(&1.id == params["class"])) ||
+        List.first(socket.assigns.classes)
 
     seq =
       Enum.find(socket.assigns.sequences, &(&1.id == params["seq"])) ||
@@ -83,7 +85,8 @@ defmodule TeacherAssistantWeb.School.ConductLive do
          )}
 
       {:error, {:invalid_value, id}} ->
-        name = Enum.find_value(socket.assigns.rows, &(&1.enrollment.id == id && &1.student.full_name))
+        name =
+          Enum.find_value(socket.assigns.rows, &(&1.enrollment.id == id && &1.student.full_name))
 
         {:noreply,
          assign(socket,
@@ -113,7 +116,8 @@ defmodule TeacherAssistantWeb.School.ConductLive do
   defp deduction_label(%{kind: :retards, count: n}),
     do: ngettext("%{count} retard", "%{count} retards", n)
 
-  defp deduction_label(%{kind: {:sanction, type}, count: n}), do: "#{n} × #{SanctionType.label(type)}"
+  defp deduction_label(%{kind: {:sanction, type}, count: n}),
+    do: "#{n} × #{SanctionType.label(type)}"
 
   def render(assigns) do
     ~H"""
@@ -123,7 +127,9 @@ defmodule TeacherAssistantWeb.School.ConductLive do
 
         <form id="conduct-pick" phx-change="pick" class="flex flex-wrap gap-2">
           <select name="class" class="select select-sm">
-            <option :for={c <- @classes} value={c.id} selected={@cg && c.id == @cg.id}>{c.label}</option>
+            <option :for={c <- @classes} value={c.id} selected={@cg && c.id == @cg.id}>
+              {c.label}
+            </option>
           </select>
           <select name="seq" class="select select-sm">
             <option :for={s <- @sequences} value={s.id} selected={@seq && s.id == @seq.id}>
@@ -132,9 +138,18 @@ defmodule TeacherAssistantWeb.School.ConductLive do
           </select>
         </form>
 
-        <p :if={@rows == []} class="text-sm text-base-content/70">{gettext("Aucun élève dans cette classe.")}</p>
+        <p :if={@rows == []} class="text-sm text-base-content/70">
+          {gettext("Aucun élève dans cette classe.")}
+        </p>
 
-        <.form :if={@rows != []} for={%{}} id="conduct-form" phx-change="edit" phx-submit="validate" class="flex flex-col gap-3">
+        <.form
+          :if={@rows != []}
+          for={%{}}
+          id="conduct-form"
+          phx-change="edit"
+          phx-submit="validate"
+          class="flex flex-col gap-3"
+        >
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
             <table class="table table-sm">
               <thead>
@@ -162,7 +177,9 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                         {row.student.full_name}
                       </button>
                     </td>
-                    <td class="ta-num text-right">{shown(Decimal.round(row.unjustified_hours, 1))}</td>
+                    <td class="ta-num text-right">
+                      {shown(Decimal.round(row.unjustified_hours, 1))}
+                    </td>
                     <td class="ta-num text-right">{row.retards}</td>
                     <td>
                       <span
@@ -203,7 +220,12 @@ defmodule TeacherAssistantWeb.School.ConductLive do
           <p :if={@error} id="conduct-error" class="text-sm text-error">{@error}</p>
 
           <div class="flex flex-wrap gap-2">
-            <button type="button" id="apply-suggestions" phx-click="apply" class="btn btn-ghost btn-sm">
+            <button
+              type="button"
+              id="apply-suggestions"
+              phx-click="apply"
+              class="btn btn-ghost btn-sm"
+            >
               {gettext("Appliquer les propositions")}
             </button>
             <button type="submit" id="validate-class" class="btn btn-primary btn-sm">

@@ -1,7 +1,15 @@
 defmodule TeacherAssistant.DisciplineConductSheetTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.{Attendance, Curriculum, Discipline, Enrollment, Organization, Timetabling}
+  alias TeacherAssistant.{
+    Attendance,
+    Curriculum,
+    Discipline,
+    Enrollment,
+    Organization,
+    Timetabling
+  }
+
   alias TeacherAssistant.TeacherFixtures
 
   # 2025-09-15 is a Monday; lesson 1 runs 07:30–08:20 (50 minutes).
@@ -38,7 +46,11 @@ defmodule TeacherAssistant.DisciplineConductSheetTest do
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 
     {:ok, _} =
-      Timetabling.place_slot(scope, cg, %{day: :monday, period_id: p1.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p1.id,
+        teaching_context_id: tc.id
+      })
 
     seq = Organization.current_sequence(scope, year, @monday)
 
@@ -76,7 +88,11 @@ defmodule TeacherAssistant.DisciplineConductSheetTest do
 
   test "a clean student is listed at 20 with no deductions", ctx do
     rows = Discipline.conduct_sheet(ctx.scope, ctx.cg, ctx.seq)
-    assert Enum.all?(rows, &(Decimal.equal?(&1.suggestion.mark, 20) and &1.suggestion.deductions == []))
+
+    assert Enum.all?(
+             rows,
+             &(Decimal.equal?(&1.suggestion.mark, 20) and &1.suggestion.deductions == [])
+           )
   end
 
   test "the class is saved in one go; saving again replaces the marks", ctx do

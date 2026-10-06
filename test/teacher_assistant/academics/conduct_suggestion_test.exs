@@ -53,7 +53,11 @@ defmodule TeacherAssistant.Academics.ConductSuggestionTest do
   end
 
   test "follows the school's scale" do
-    rules = %{@rules | points_per_late: Decimal.new(1), sanction_points: %{@rules.sanction_points | consigne: Decimal.new("0.5")}}
+    rules = %{
+      @rules
+      | points_per_late: Decimal.new(1),
+        sanction_points: %{@rules.sanction_points | consigne: Decimal.new("0.5")}
+    }
 
     %{mark: mark} =
       ConductSuggestion.suggest(facts(%{retards: 3, sanction_types: [:consigne]}), rules)

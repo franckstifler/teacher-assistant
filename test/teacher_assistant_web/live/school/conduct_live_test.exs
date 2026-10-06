@@ -2,7 +2,15 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.{Attendance, Curriculum, Discipline, Enrollment, Organization, Timetabling}
+  alias TeacherAssistant.{
+    Attendance,
+    Curriculum,
+    Discipline,
+    Enrollment,
+    Organization,
+    Timetabling
+  }
+
   alias TeacherAssistant.TeacherFixtures
 
   # The test clock is frozen at Monday 2025-09-15.
@@ -35,7 +43,11 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 
     {:ok, _} =
-      Timetabling.place_slot(scope, cg, %{day: :monday, period_id: p1.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p1.id,
+        teaching_context_id: tc.id
+      })
 
     {:ok, _} = Discipline.add_sanction(scope, awa, %{type: :avertissement, date: @today})
     seq = Organization.current_sequence(scope, year, @today)
@@ -53,7 +65,8 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
 
   defp path(ctx), do: ~p"/school/conduct?class=#{ctx.cg.id}&seq=#{ctx.seq.id}"
 
-  test "shows each student's facts and suggestion, inputs pre-filled with it", %{conn: conn} = ctx do
+  test "shows each student's facts and suggestion, inputs pre-filled with it",
+       %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
 
     awa_row = view |> element("#conduct-row-#{ctx.awa.id}") |> render()
@@ -63,7 +76,8 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
     assert has_element?(view, "#conduct-input-#{ctx.bob.id}[value='20']")
   end
 
-  test "an edited row is marked « ajustée »; applying the suggestions resets it", %{conn: conn} = ctx do
+  test "an edited row is marked « ajustée »; applying the suggestions resets it",
+       %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
 
     view |> form("#conduct-form", %{"marks" => %{ctx.awa.id => "16"}}) |> render_change()
