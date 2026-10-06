@@ -15,6 +15,7 @@ defmodule TeacherAssistant.Accounts do
     end
 
     resource SchoolMembership
+    resource TeacherAssistant.Accounts.Notification
 
     resource SchoolInvitation do
       define :revoke_invitation, action: :revoke
