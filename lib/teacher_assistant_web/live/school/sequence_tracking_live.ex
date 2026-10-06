@@ -28,7 +28,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         sequences = if year, do: Organization.list_sequences(scope, year), else: []
 
         {:ok,
-         assign(socket, year: year, sequences: sequences, seq: nil, grid: nil, selected: nil)}
+         assign(socket,
+           year: year,
+           sequences: sequences,
+           seq: nil,
+           grid: nil,
+           selected: nil,
+           reminders: %{}
+         )}
     end
   end
 
@@ -37,11 +44,18 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
 
     case pick_sequence(sequences, params["seq"]) do
       nil ->
-        {:noreply, assign(socket, seq: nil, grid: nil, selected: nil)}
+        {:noreply, assign(socket, seq: nil, grid: nil, selected: nil, reminders: %{})}
 
       seq ->
         grid = Assessment.sequence_entry_grid(scope, year, seq)
-        {:noreply, assign(socket, seq: seq, grid: grid, selected: default_selection(grid))}
+
+        {:noreply,
+         assign(socket,
+           seq: seq,
+           grid: grid,
+           selected: default_selection(grid),
+           reminders: Assessment.reminder_dates(scope, seq)
+         )}
     end
   end
 
@@ -61,6 +75,60 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     else
       _ -> {:noreply, socket}
     end
+  end
+
+  def handle_event("remind", %{"tc" => tc_id}, socket) do
+    %{grid: grid, seq: seq, current_scope: scope} = socket.assigns
+
+    # Only a lagging course of the grid on screen can be reminded.
+    case lagging_cell(grid, tc_id) do
+      nil ->
+        {:noreply, socket}
+
+      cell ->
+        case Assessment.remind_entry(scope, seq, tc_id) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> put_flash(
+               :info,
+               gettext("Relance envoyée à %{name}.", name: teacher_name(cell.teacher))
+             )
+             |> assign(:reminders, Assessment.reminder_dates(scope, seq))}
+
+          {:error, :already_reminded} ->
+            {:noreply, assign(socket, :reminders, Assessment.reminder_dates(scope, seq))}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("La relance n'a pas pu être envoyée."))}
+        end
+    end
+  end
+
+  def handle_event("remind-late", _params, socket) do
+    %{year: year, seq: seq, current_scope: scope} = socket.assigns
+    {:ok, sent} = Assessment.remind_late(scope, year, seq)
+
+    message =
+      if sent == 0,
+        do: gettext("Aucune nouvelle relance : chaque retard a déjà été relancé aujourd'hui."),
+        else: ngettext("%{count} relance envoyée.", "%{count} relances envoyées.", sent)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, message)
+     |> assign(:reminders, Assessment.reminder_dates(scope, seq))}
+  end
+
+  defp lagging_cell(nil, _tc_id), do: nil
+
+  defp lagging_cell(grid, tc_id) do
+    grid.rows
+    |> Enum.flat_map(&Map.values(&1.cells))
+    |> Enum.find(fn
+      %{pct: pct, teaching_context: %{id: ^tc_id}} when is_integer(pct) and pct < 100 -> true
+      _ -> false
+    end)
   end
 
   # As in the mockup a course is selected on arrival: the first one not complete, else the first.
@@ -217,6 +285,10 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                       cg_id={row.class_group.id}
                       col={n}
                       cell={row.cells[subject.key]}
+                      reminded={
+                        row.cells[subject.key] &&
+                          @reminders[row.cells[subject.key].teaching_context.id]
+                      }
                       title={"#{row.class_group.label} · #{subject.label}"}
                       selected={
                         @selected != nil and @selected.cg_id == row.class_group.id and
@@ -256,6 +328,27 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                   label={gettext("Dernière saisie")}
                   value={last_entry(@selected.cell.last_entry_at)}
                 />
+                <.detail_line
+                  :if={@reminders[@selected.cell.teaching_context.id]}
+                  id="reminded-on"
+                  label={gettext("Relancé")}
+                  value={Dates.short(@reminders[@selected.cell.teaching_context.id])}
+                />
+                <button
+                  :if={
+                    @selected.cell.pct < 100 and
+                      @reminders[@selected.cell.teaching_context.id] != Reference.today()
+                  }
+                  id="remind-course"
+                  type="button"
+                  phx-click="remind"
+                  phx-value-tc={@selected.cell.teaching_context.id}
+                  phx-disable-with={gettext("Envoi…")}
+                  class="btn btn-warning btn-sm mt-1"
+                >
+                  <.icon name="hero-bell-alert" class="size-4" />
+                  {gettext("Relancer")}
+                </button>
               </div>
 
               <div
@@ -278,10 +371,17 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                     )}
                   </span>
                 </div>
-                <p class="mt-2 flex items-center gap-1.5 text-xs text-base-content/50">
-                  <.icon name="hero-bell" class="size-3.5" />
-                  {gettext("Les relances arrivent avec les notifications.")}
-                </p>
+                <button
+                  :if={@grid.late != []}
+                  id="remind-late"
+                  type="button"
+                  phx-click="remind-late"
+                  phx-disable-with={gettext("Envoi…")}
+                  class="btn btn-outline btn-warning btn-sm mt-2"
+                >
+                  <.icon name="hero-bell-alert" class="size-4" />
+                  {gettext("Relancer tous les retards")}
+                </button>
               </div>
             </div>
           </div>
@@ -297,6 +397,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   attr :cell, :map, default: nil
   attr :title, :string, required: true
   attr :selected, :boolean, default: false
+  attr :reminded, :any, default: nil
 
   defp grid_cell(%{cell: nil} = assigns) do
     ~H"""
@@ -328,7 +429,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
       phx-click="select"
       phx-value-cg={@cg_id}
       phx-value-col={@col}
-      title={@title <> " · " <> teacher_name(@cell.teacher)}
+      data-tc={@cell.teaching_context.id}
+      data-reminded={@reminded != nil}
+      title={
+        @title <> " · " <> teacher_name(@cell.teacher) <>
+          if(@reminded,
+            do: " · " <> gettext("relancé le %{date}", date: Dates.short(@reminded)),
+            else: ""
+          )
+      }
       aria-pressed={to_string(@selected)}
       class={[
         "ta-num h-9 cursor-pointer rounded-md text-xs font-semibold text-base-content transition-colors hover:ring-1 hover:ring-base-content/50",
@@ -336,17 +445,22 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         @selected && "ring-2 ring-base-content hover:ring-2 hover:ring-base-content"
       ]}
     >
-      {@cell.pct}%
+      {@cell.pct}%<.icon
+        :if={@reminded}
+        name="hero-bell-alert"
+        class="ml-0.5 size-3 align-[-1px] text-base-content/70"
+      />
     </button>
     """
   end
 
+  attr :id, :string, default: nil
   attr :label, :string, required: true
   attr :value, :string, required: true
 
   defp detail_line(assigns) do
     ~H"""
-    <div class="flex justify-between gap-2 text-sm">
+    <div id={@id} class="flex justify-between gap-2 text-sm">
       <span class="text-base-content/70">{@label}</span>
       <span class="ta-num text-right">{@value}</span>
     </div>

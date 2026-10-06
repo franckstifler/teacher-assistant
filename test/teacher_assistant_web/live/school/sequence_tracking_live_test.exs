@@ -3,7 +3,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
   import Phoenix.LiveViewTest
 
   alias TeacherAssistant.{Assessment, Curriculum, Enrollment, Organization}
-  alias TeacherAssistant.TeacherFixtures
+  alias TeacherAssistant.{Notifications, TeacherFixtures}
 
   setup :register_and_log_in_user
 
@@ -97,14 +97,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     assert detail =~ "Dernière saisie"
   end
 
-  test "late teachers are listed without reminder buttons", %{conn: conn} = ctx do
+  test "late teachers are listed with one « Relancer tous les retards »", %{conn: conn} = ctx do
     {:ok, view, _html} = live(conn, ~p"/school/sequences")
 
     late = view |> element("#late-teachers") |> render()
     assert late =~ to_string(ctx.english.email)
     # classes in level order (4ème before 3ème)
     assert late =~ "Anglais · 4e B, 3e A · rien saisi"
-    refute late =~ "<button"
+    assert has_element?(view, "#late-teachers #remind-late")
+    assert late |> String.split("<button") |> length() == 2
   end
 
   test "?seq= selects a séquence; an unknown one falls back", %{conn: conn} = ctx do
@@ -142,5 +143,52 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/sequences")
     assert has_element?(view, "#no-sequences")
     refute has_element?(view, "#entry-grid")
+  end
+
+  defp english_scope(ctx), do: TeacherAssistant.DataCase.school_scope(ctx.english, ctx.workspace)
+
+  defp tc_id_of(view, cell) do
+    view
+    |> element(cell)
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.attribute("data-tc")
+    |> hd()
+  end
+
+  test "« Relancer » notifies the course's teacher once a day and marks the cell",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+    cell = col(view, ctx.cg, "Anglais")
+    view |> element(cell) |> render_click()
+
+    html = view |> element("#remind-course") |> render_click()
+    assert html =~ "Relance envoyée"
+
+    assert %{unread: 1, latest: [%{kind: :entry_reminder}]} =
+             Notifications.bell(english_scope(ctx))
+
+    assert has_element?(view, "#{cell}[data-reminded]")
+    assert has_element?(view, "#reminded-on")
+    refute has_element?(view, "#remind-course")
+
+    # A forged second click the same day is refused quietly.
+    render_click(view, "remind", %{"tc" => tc_id_of(view, cell)})
+    assert %{unread: 1} = Notifications.bell(english_scope(ctx))
+    refute render(view) =~ "n'a pas pu"
+  end
+
+  test "« Relancer tous les retards » reminds each course with nothing entered, once",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+
+    html = view |> element("#remind-late") |> render_click()
+    # Anglais 3e A and Anglais 4e B.
+    assert html =~ "2 relances envoyées"
+    assert %{unread: 2} = Notifications.bell(english_scope(ctx))
+
+    html = view |> element("#remind-late") |> render_click()
+    assert html =~ "Aucune nouvelle relance"
+    assert %{unread: 2} = Notifications.bell(english_scope(ctx))
   end
 end
