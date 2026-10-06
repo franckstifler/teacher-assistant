@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.Spaces do
   use Gettext, backend: TeacherAssistantWeb.Gettext
   use TeacherAssistantWeb, :verified_routes
 
-  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Enrollment, Organization}
+  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Discipline, Enrollment, Organization}
   alias TeacherAssistant.Academics.Reference
 
   @order [:proviseur, :censeur, :surveillant, :intendant, :enseignant, :ecole]
@@ -98,7 +98,12 @@ defmodule TeacherAssistantWeb.Spaces do
 
     %{
       missed_calls: length(Attendance.school_day(scope, today, Reference.now()).missed),
-      unjustified_absences: unjustified
+      unjustified_absences: unjustified,
+      parents_to_notify:
+        case scope.current_academic_year do
+          nil -> 0
+          year -> Discipline.count_parents_to_notify(scope, year)
+        end
     }
   end
 
@@ -196,6 +201,7 @@ defmodule TeacherAssistantWeb.Spaces do
           school_day(facts[:missed_calls]),
           absences(facts[:unjustified_absences]),
           conduct(),
+          sanctions(facts[:parents_to_notify]),
           classes(),
           students(),
           school_life_settings()
@@ -315,6 +321,9 @@ defmodule TeacherAssistantWeb.Spaces do
         ~p"/school/absences",
         unjustified
       )
+
+  defp sanctions(to_notify),
+    do: item("sanctions", gettext("Sanctions"), "hero-flag", ~p"/school/sanctions", to_notify)
 
   defp conduct,
     do: item("conduct", gettext("Conduite"), "hero-hand-thumb-up", ~p"/school/conduct")

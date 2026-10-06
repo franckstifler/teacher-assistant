@@ -66,6 +66,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
                "nav-school-day",
                "nav-school-absences",
                "nav-school-conduct",
+               "nav-school-sanctions",
                "nav-school-classes",
                "nav-school-students",
                "nav-school-school-life"
