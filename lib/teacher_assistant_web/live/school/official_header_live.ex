@@ -67,7 +67,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
          [relative] <- store(socket, kind) do
       save(socket, %{field => relative}, gettext("Image enregistrée."))
     else
-      _ -> {:noreply, socket}
+      _ -> {:noreply, put_flash(socket, :error, gettext("Aucune image valide à téléverser."))}
     end
   end
 
@@ -96,6 +96,11 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
       {:ok, relative}
     end)
   end
+
+  defp upload_error(:too_large), do: gettext("Fichier trop volumineux (1 Mo au plus).")
+  defp upload_error(:not_accepted), do: gettext("Format accepté : PNG ou JPEG.")
+  defp upload_error(:too_many_files), do: gettext("Une seule image à la fois.")
+  defp upload_error(_), do: gettext("Image refusée.")
 
   defp save(socket, attrs, message) do
     case Accounts.update_official_header(socket.assigns.current_scope, attrs) do
@@ -165,6 +170,16 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
               class="h-20 object-contain"
             />
             <.live_file_input upload={@uploads[kind]} />
+            <p
+              :for={
+                err <-
+                  upload_errors(@uploads[kind]) ++
+                    Enum.flat_map(@uploads[kind].entries, &upload_errors(@uploads[kind], &1))
+              }
+              class="text-sm text-error"
+            >
+              {upload_error(err)}
+            </p>
             <div class="flex gap-2">
               <button type="submit" class="btn btn-secondary btn-sm">{gettext("Téléverser")}</button>
               <button

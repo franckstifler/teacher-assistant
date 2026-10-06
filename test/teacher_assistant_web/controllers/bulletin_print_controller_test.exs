@@ -670,4 +670,33 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert body =~ "/school/logo?kind=signature"
     assert body =~ "/school/logo?kind=stamp"
   end
+
+  test "custom header lines print once on a bilingual card", %{
+    conn: conn,
+    cg: cg,
+    seq: seq,
+    roster: roster,
+    scope: scope
+  } do
+    %{enrollment: enr} = hd(roster)
+
+    {:ok, _} =
+      TeacherAssistant.Accounts.update_official_header(scope, %{
+        official_header_lines: ["Ligne propre à l'école"]
+      })
+
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    {:ok, _} =
+      TeacherAssistant.Accounts.update_school_profile(profile, %{bulletin_language: :bilingual},
+        scope: scope
+      )
+
+    body =
+      conn
+      |> get(~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}")
+      |> html_response(200)
+
+    assert length(String.split(body, "Ligne propre à l&#39;école")) == 2
+  end
 end

@@ -70,4 +70,18 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     assert profile.max_class_size == 55
     assert profile.class_suffix == :numbers
   end
+
+  test "a label the admin typed survives a level change", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+
+    view
+    |> form("#class-form", %{"class_group" => %{"level" => "6ème", "label" => "Prépa"}})
+    |> render_change()
+
+    view
+    |> form("#class-form", %{"class_group" => %{"level" => "5ème", "label" => "Prépa"}})
+    |> render_change()
+
+    assert has_element?(view, "#class-form input[name='class_group[label]'][value='Prépa']")
+  end
 end

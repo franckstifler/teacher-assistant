@@ -65,7 +65,7 @@
       </p>
 
       <div class="header">
-        <div :for={l <- header_langs(@lang)} class="col">
+        <div :for={l <- header_columns(@lang, @template.header)} class="col">
           <div :for={line <- official_lines(l, @template.header)}>{line}</div>
         </div>
       </div>

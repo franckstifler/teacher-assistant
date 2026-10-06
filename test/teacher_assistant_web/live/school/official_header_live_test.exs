@@ -67,4 +67,16 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
              live(conn, ~p"/school/settings/header")
   end
+
+  test "a file too large says so", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/header")
+
+    upload =
+      file_input(view, "#signature-form", :signature, [
+        %{name: "big.png", content: :binary.copy("x", 1_100_000), type: "image/png"}
+      ])
+
+    render_upload(upload, "big.png")
+    assert render(view) =~ "Fichier trop volumineux"
+  end
 end

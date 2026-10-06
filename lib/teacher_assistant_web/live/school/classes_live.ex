@@ -163,11 +163,12 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   end
 
   def handle_event("validate_class", %{"class_group" => params}, socket) do
-    params = suggest_label(socket, params)
+    {params, suggested} = suggest_label(socket, params)
 
     {:noreply,
      socket
-     |> assign(:suggested_label, params["label"])
+     # Only a label we generated may be replaced later; a typed one is kept.
+     |> assign(:suggested_label, suggested || socket.assigns.suggested_label)
      |> assign(:class_form, AshPhoenix.Form.validate(socket.assigns.class_form, params))}
   end
 
@@ -242,13 +243,13 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       base = Enum.join(Enum.reject([level, params["serie"]], &(&1 in [nil, ""])), " ")
       labels = Enum.map(socket.assigns.classes, & &1.cg.label)
       label = SchoolTemplates.next_class_label(base, labels, socket.assigns.class_suffix)
-      Map.put(params, "label", label)
+      {Map.put(params, "label", label), label}
     else
-      params
+      {params, nil}
     end
   end
 
-  defp suggest_label(_socket, params), do: params
+  defp suggest_label(_socket, params), do: {params, nil}
 
   # `workspace_id` and `academic_year_id` are server-controlled (never user
   # input), so they're set on the changeset at build time via `prepare_source`

@@ -117,7 +117,8 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
            socket
            |> put_flash(:info, gettext("Sanction enregistrée."))
            |> assign(entry: %{enrollment: nil, type: nil})
-           |> load()}
+           |> load()
+           |> refresh_badge()}
 
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
@@ -135,7 +136,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
   def handle_event("notify", %{"id" => id}, socket) do
     with %{} = s <- Enum.find(socket.assigns.page.results, &(&1.id == id)),
          {:ok, _} <- Discipline.mark_parents_notified(socket.assigns.current_scope, s) do
-      {:noreply, load(socket)}
+      {:noreply, socket |> load() |> refresh_badge()}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Action impossible."))}
     end
@@ -144,7 +145,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
   def handle_event("delete", %{"id" => id}, socket) do
     with %{} = s <- Enum.find(socket.assigns.page.results, &(&1.id == id)),
          :ok <- Discipline.delete_sanction(s, scope: socket.assigns.current_scope) do
-      {:noreply, socket |> assign(selected: nil) |> load()}
+      {:noreply, socket |> assign(selected: nil) |> load() |> refresh_badge()}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Action impossible."))}
     end
@@ -169,6 +170,33 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
   end
 
   defp date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
+
+  defp page_link(filters, page) do
+    query =
+      %{
+        "class" => filters.class,
+        "type" => filters.type,
+        "notify" => if(filters.notify, do: "1"),
+        "page" => page
+      }
+      |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
+
+    ~p"/school/sanctions?#{query}"
+  end
+
+  # The rail badge (parents to notify) is computed on mount; refresh it after a change.
+  defp refresh_badge(socket) do
+    scope = socket.assigns.current_scope
+
+    case scope.capabilities do
+      %{space: %{key: key}} ->
+        scope = TeacherAssistantWeb.Spaces.put_space(scope, Atom.to_string(key))
+        assign(socket, current_scope: scope, scope: scope)
+
+      _ ->
+        socket
+    end
+  end
 
   defp guardian(sanction) do
     case sanction.enrollment.student.primary_guardian_link do
@@ -317,6 +345,19 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
             <p :if={@page.results == []} class="p-4 text-sm text-base-content/60">
               {gettext("Aucune sanction.")}
             </p>
+            <nav
+              :if={(@page.count || 0) > 50}
+              id="sanctions-pager"
+              class="join flex justify-center border-t border-base-300 p-2"
+            >
+              <.link
+                :for={p <- 1..div((@page.count || 0) + 49, 50)}
+                patch={page_link(@filters, p)}
+                class={["join-item btn btn-xs", p == @filters.page && "btn-active"]}
+              >
+                {p}
+              </.link>
+            </nav>
           </div>
 
           <aside

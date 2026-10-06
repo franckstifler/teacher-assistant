@@ -50,6 +50,9 @@ defmodule TeacherAssistantWeb.School.RolesLive do
             </tbody>
           </table>
         </div>
+        <p id="teaching-footnote" class="text-xs text-base-content/70">
+          {SchoolRole.teaching_footnote()}
+        </p>
       </section>
     </Layouts.app>
     """

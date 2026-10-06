@@ -100,4 +100,40 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
 
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/school/sanctions")
   end
+
+  test "past 50 sanctions, a second page is reachable", %{conn: conn, scope: scope, awa_e: awa_e} do
+    for day <- 1..50,
+        do:
+          {:ok, _} =
+            Discipline.add_sanction(scope, awa_e, %{
+              type: :consigne,
+              date: Date.add(~D[2025-01-01], day)
+            })
+
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+    assert has_element?(view, "#sanctions-pager a", "2")
+
+    # 52 sanctions, newest first: the oldest (2 Jan 2025) is on page 2 only.
+    refute view |> element("#sanction-rows") |> render() =~ "02/01/2025"
+    {:ok, view, _} = live(conn, ~p"/school/sanctions?page=2")
+    assert view |> element("#sanction-rows") |> render() =~ "02/01/2025"
+  end
+
+  test "the menu badge follows « Marquer les parents notifiés »",
+       %{workspace: ws, scope: scope} = ctx do
+    sg = TeacherFixtures.member_scope_fixture(scope, %{roles: [:discipline_master]})
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, sg.current_user.id)
+      |> Plug.Conn.put_session(:workspace_id, ws.id)
+
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+    assert view |> element("#nav-school-sanctions .badge") |> render() =~ "2"
+
+    view |> element("#sanction-#{ctx.s1.id}") |> render_click()
+    view |> element("#notify-#{ctx.s1.id}") |> render_click()
+    assert view |> element("#nav-school-sanctions .badge") |> render() =~ "1"
+  end
 end

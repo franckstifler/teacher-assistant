@@ -45,47 +45,62 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
     alias TeacherAssistant.Academics, as: A
     alias TeacherAssistant.Accounts, as: Acc
 
+    own_courses = gettext("ses cours")
+    own_class_read = gettext("sa classe, en lecture (professeur principal)")
+
     [
       %{
         key: :marks,
         label: gettext("Saisir les notes"),
         axis: :admin,
         resource: A.Mark,
-        notes: %{teacher: gettext("ses cours"), hod: gettext("ses cours")}
+        action: :create,
+        notes: %{teacher: own_courses, hod: own_courses}
       },
       %{
         key: :corrections,
         label: gettext("Valider les corrections de notes"),
         axis: :admin,
         resource: A.MarkCorrection,
-        notes: %{teacher: gettext("demander, pour ses cours")}
+        action: :approve,
+        notes: %{
+          teacher: gettext("demander, pour ses cours"),
+          hod: gettext("demander, pour ses cours")
+        }
       },
       %{
         key: :discipline,
         label: gettext("Gérer la discipline et la conduite"),
         axis: :conduct,
         resource: A.SanctionEntry,
-        notes: %{teacher: gettext("sa classe, en lecture (professeur principal)")}
+        action: :create,
+        notes: %{teacher: own_class_read}
       },
       %{
         key: :fees,
         label: gettext("Frais et paiements"),
         axis: :fees,
         resource: A.Payment,
-        notes: %{}
+        action: :create,
+        notes: %{teacher: own_class_read}
       },
       %{
         key: :settings,
         label: gettext("Paramètres de l'école"),
         axis: :admin,
         resource: Acc.SchoolProfile,
-        notes: %{discipline_master: gettext("assiduité et discipline")}
+        action: :update,
+        notes: %{
+          vice_principal: gettext("sauf en-tête et signature"),
+          discipline_master: gettext("assiduité et discipline")
+        }
       },
       %{
         key: :members,
         label: gettext("Membres et invitations"),
         axis: :head,
         resource: Acc.SchoolInvitation,
+        action: :create,
         notes: %{}
       },
       %{
@@ -93,6 +108,7 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
         label: gettext("Emploi du temps"),
         axis: :admin,
         resource: A.TimetableSlot,
+        action: :place,
         notes: %{}
       },
       %{
@@ -100,6 +116,7 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
         label: gettext("Bulletins et conseils de classe"),
         axis: :admin,
         resource: A.ClassCouncil,
+        action: :hold,
         notes: %{teacher: gettext("sa classe (professeur principal)")}
       },
       %{
@@ -107,10 +124,18 @@ defmodule TeacherAssistant.Accounts.SchoolRole do
         label: gettext("Affectations"),
         axis: :admin,
         resource: A.TeachingContext,
+        action: :create,
         notes: %{}
       }
     ]
   end
+
+  @doc "Teaching rights follow the course assignment, not the role (shown under the matrix)."
+  def teaching_footnote,
+    do:
+      gettext(
+        "Enseigner une matière donne la saisie des notes et les demandes de correction de ses cours, quel que soit le rôle."
+      )
 
   @doc "A matrix cell: `{:note, text}` for a row rule, else `:yes` when the role is on the axis, else `:no`."
   def cell(%{notes: notes, axis: axis}, role) do

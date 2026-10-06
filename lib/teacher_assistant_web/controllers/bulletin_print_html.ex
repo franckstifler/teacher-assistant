@@ -26,6 +26,14 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
   defp header_langs(:bilingual), do: [:fr, :en]
   defp header_langs(lang), do: [lang]
 
+  # Lines the school typed (spec KLM6) are in one language: one column, even on a bilingual card.
+  defp header_columns(lang, header) do
+    case Map.get(header, :official_lines) do
+      [_ | _] -> Enum.take(header_langs(lang), 1)
+      _ -> header_langs(lang)
+    end
+  end
+
   defp official_lines(lang, header),
     do: tr_list(lang, fn -> BulletinTemplate.official_lines(header) end)
 
