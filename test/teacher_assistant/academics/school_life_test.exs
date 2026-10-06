@@ -99,7 +99,7 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
            ) == []
   end
 
-  test "absence days carry the reason and the repeated-absence flag", ctx do
+  test "absence rows carry the reason, the séquence's unjustified hours and the alert", ctx do
     days = [~D[2025-09-15], ~D[2025-09-22], ~D[2025-09-29]]
 
     for d <- days,
@@ -109,8 +109,14 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
 
     today = ~D[2025-09-30]
 
-    assert [%{flagged?: true, unjustified_days: 3, justified?: false} | _] =
+    # 3 × 50 min = 2.5 h, under the default 10 h alert.
+    assert [%{flagged?: false, justified?: false, unjustified_hours: hours} | _] =
              Attendance.absence_days(ctx.scope, ~D[2025-09-08], today, today)
+
+    assert Decimal.equal?(hours, Decimal.new("2.5"))
+
+    set_school_life(ctx.scope, %{absence_alert_hours: 2})
+    assert [%{flagged?: true} | _] = Attendance.absence_days(ctx.scope, ~D[2025-09-08], today, today)
 
     assert {:error, :invalid_reason} = Attendance.justify_day(ctx.scope, ctx.e, @monday, nil)
     assert {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.e, @monday, :maladie)
@@ -119,6 +125,48 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
 
     assert %{justified?: true, reason: :maladie, flagged?: false} =
              Enum.find(rows, &(&1.date == @monday))
+  end
+
+  test "an unjustified absence is late for justification after N lesson days", ctx do
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :absent}])
+
+    row = fn today ->
+      ctx.scope |> Attendance.absence_days(~D[2025-09-08], today, today) |> hd()
+    end
+
+    refute row.(~D[2025-09-25]).overdue?
+
+    set_school_life(ctx.scope, %{justification_deadline_days: 2})
+    refute row.(~D[2025-09-17]).overdue?
+    assert row.(~D[2025-09-18]).overdue?
+
+    {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.e, @monday, :famille)
+    refute row.(~D[2025-09-18]).overdue?
+  end
+
+  test "overdue?/4 skips holidays and days without lessons" do
+    alias TeacherAssistant.Academics.{SchoolCalendar, SchoolLife}
+
+    cal =
+      SchoolCalendar.new(nil, false, [
+        %{label: "Congé", start_date: ~D[2025-10-27], end_date: ~D[2025-10-31]}
+      ])
+
+    # Friday 24 Oct, deadline 3. Lessons run Monday–Saturday by default; the
+    # holiday week and the Sundays don't count: 25 Oct, 1 Nov, 3 Nov = 3 days.
+    refute SchoolLife.overdue?(~D[2025-10-24], ~D[2025-11-03], 3, cal)
+    assert SchoolLife.overdue?(~D[2025-10-24], ~D[2025-11-04], 3, cal)
+    refute SchoolLife.overdue?(~D[2025-10-24], ~D[2026-01-01], nil, cal)
+  end
+
+  defp set_school_life(scope, attrs) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    {:ok, _} =
+      profile
+      |> Ash.Changeset.for_update(:update_school_life, attrs, scope: scope)
+      |> Ash.update()
   end
 
   test "parents notified is recorded with the date and author", ctx do

@@ -157,6 +157,7 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
                     if(row.justified?, do: "text-primary", else: "text-warning")
                   ]}>
                     {if row.justified?, do: justified_label(row), else: gettext("Non justifiée")}
+                    <.overdue_badge row={row} />
                   </span>
                 </button>
               </div>
@@ -175,7 +176,10 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
               <span class="ta-num text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-primary/90">
                 {@selected.class_group.label} · {Dates.relative(@selected.date, @today)}
               </span>
-              <.absence_status row={@selected} />
+              <span class="flex items-center gap-1.5">
+                <.overdue_badge row={@selected} />
+                <.absence_status row={@selected} />
+              </span>
             </div>
             <span class="font-display text-[1.3rem] font-semibold leading-tight">
               {@selected.student.full_name}
@@ -183,9 +187,11 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
             <span :if={@selected.flagged?} class="self-start"><.repeated_badge row={@selected} /></span>
             <span class="text-[0.82rem] text-base-content/80">{periods_text(@selected.periods)}</span>
             <div class="flex justify-between gap-2.5 border-b border-base-300/60 py-1.5 text-[0.85rem]">
-              <span class="text-base-content/80">{gettext("Absences non justifiées")}</span>
-              <span id="unjustified-days" class="ta-num font-semibold">
-                {ngettext("%{count} jour", "%{count} jours", @selected.unjustified_days)}
+              <span class="text-base-content/80">
+                {gettext("Absences non justifiées (séquence)")}
+              </span>
+              <span id="unjustified-hours" class="ta-num font-semibold">
+                {hours_label(@selected.unjustified_hours)}
               </span>
             </div>
             <div :if={not @selected.justified?} class="flex flex-col gap-1.5">
@@ -205,6 +211,9 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
     </Layouts.app>
     """
   end
+
+  defp hours_label(%Decimal{} = hours),
+    do: "#{hours |> Decimal.round(1) |> Decimal.normalize() |> Decimal.to_string(:normal)} h"
 
   defp row_grid,
     do: "grid grid-cols-[110px_minmax(0,1fr)_70px_minmax(0,1fr)_150px] gap-2.5 px-3.5"

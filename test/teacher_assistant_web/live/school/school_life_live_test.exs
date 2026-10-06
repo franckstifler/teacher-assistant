@@ -163,4 +163,26 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     {:ok, _view, html} = live(conn, ~p"/school/today")
     assert html =~ "Jour férié : Journée pédagogique"
   end
+
+  test "Absences shows the séquence's hours and « Délai dépassé »", %{conn: conn} = ctx do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(ctx.scope)
+
+    {:ok, _} =
+      profile
+      |> Ash.Changeset.for_update(:update_school_life, %{justification_deadline_days: 1},
+        scope: ctx.scope
+      )
+      |> Ash.update()
+
+    # Thursday 11 Sept: Fri 12, Sat 13 and Mon 15 are 3 lesson days later.
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, nil, ~D[2025-09-11], [{ctx.e.id, :absent}])
+
+    {:ok, view, _} = live(conn, ~p"/school/absences")
+    assert view |> element("#row-#{ctx.e.id}-2025-09-11") |> render() =~ "Délai dépassé"
+    refute view |> element("#row-#{ctx.e.id}-2025-09-15") |> render() =~ "Délai dépassé"
+
+    view |> element("#row-#{ctx.e.id}-2025-09-15") |> render_click()
+    assert view |> element("#unjustified-hours") |> render() =~ " h"
+  end
 end

@@ -73,6 +73,19 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
 
   attr :row, :map, required: true
 
+  def overdue_badge(assigns) do
+    ~H"""
+    <span
+      :if={@row.overdue?}
+      class="ta-num rounded-full bg-warning/20 px-1.5 py-px text-[0.62rem] font-semibold text-warning"
+    >
+      {gettext("Délai dépassé")}
+    </span>
+    """
+  end
+
+  attr :row, :map, required: true
+
   def reason_chips(assigns) do
     ~H"""
     <div class="flex flex-wrap gap-1.5">

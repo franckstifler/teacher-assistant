@@ -12,6 +12,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
   alias TeacherAssistant.Academics.{
     AttendanceEntry,
+    Conduct,
     EntryProgress,
     SchoolCalendar,
     SchoolTemplates,
@@ -19,9 +20,6 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   }
 
   alias TeacherAssistant.{Attendance, Organization, Scope}
-
-  @doc "Distinct days with an unjustified absence in the séquence from which a student is flagged (V04)."
-  def repeated_absence_threshold, do: 3
 
   @days ~w(monday tuesday wednesday thursday friday saturday)a
 
@@ -162,7 +160,11 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   first, then newest day.
   """
   def absence_days(%Scope{} = scope, %Date{} = first, %Date{} = last, %Date{} = today) do
-    unjustified = unjustified_days(scope, today)
+    rules = Attendance.school_life_rules(scope)
+    calendar = Attendance.school_calendar(scope)
+    alert = Decimal.new(rules.absence_alert_hours)
+    unjustified = unjustified_hours(scope, today, rules)
+    zero = Decimal.new(0)
 
     AttendanceEntry
     |> Ash.Query.filter(status == :absent and date >= ^first and date <= ^last)
@@ -170,8 +172,9 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     |> Ash.read!(scope: scope)
     |> Enum.group_by(&{&1.enrollment_id, &1.date})
     |> Enum.map(fn {{enrollment_id, date}, [entry | _] = entries} ->
-      days = Map.get(unjustified, enrollment_id, 0)
+      hours = Map.get(unjustified, enrollment_id, zero)
       justified = Enum.find(entries, & &1.justified)
+      justified? = Enum.all?(entries, & &1.justified)
 
       %{
         id: "#{enrollment_id}-#{Date.to_iso8601(date)}",
@@ -180,10 +183,12 @@ defmodule TeacherAssistant.Academics.SchoolLife do
         class_group: entry.enrollment.class_group,
         date: date,
         periods: entries |> Enum.map(& &1.period) |> Enum.sort_by(& &1.position),
-        justified?: Enum.all?(entries, & &1.justified),
+        justified?: justified?,
         reason: justified && justified.justification_reason,
-        unjustified_days: days,
-        flagged?: days >= repeated_absence_threshold()
+        unjustified_hours: hours,
+        flagged?: Decimal.compare(hours, alert) != :lt,
+        overdue?:
+          not justified? and overdue?(date, today, rules.justification_deadline_days, calendar)
       }
     end)
     |> Enum.sort_by(
@@ -205,8 +210,9 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     end
   end
 
-  # enrollment_id => distinct days with an unjustified absence in the séquence.
-  defp unjustified_days(scope, today) do
+  # enrollment_id => unjustified absence hours in the current séquence (a long
+  # late counts, spec KLM2).
+  defp unjustified_hours(scope, today, rules) do
     case current_sequence_range(scope, today) do
       nil ->
         %{}
@@ -214,13 +220,30 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       {first, last} ->
         AttendanceEntry
         |> Ash.Query.filter(
-          status == :absent and justified == false and date >= ^first and date <= ^last
+          status in [:absent, :late] and justified == false and date >= ^first and date <= ^last
         )
-        |> Ash.Query.select([:enrollment_id, :date])
+        |> Ash.Query.load(:period)
         |> Ash.read!(scope: scope)
-        |> Enum.uniq_by(&{&1.enrollment_id, &1.date})
-        |> Enum.frequencies_by(& &1.enrollment_id)
+        |> Enum.group_by(& &1.enrollment_id)
+        |> Map.new(fn {id, entries} ->
+          {id, Conduct.totals(entries, rules.late_as_absence_minutes).unjustified_hours}
+        end)
     end
+  end
+
+  @doc """
+  Whether an absence on `date` is past the justification deadline on `today`:
+  more than `deadline` lesson days (holidays and days without lessons skipped)
+  since it. A nil deadline means any time.
+  """
+  def overdue?(_date, _today, nil, _calendar), do: false
+
+  def overdue?(%Date{} = date, %Date{} = today, deadline, %SchoolCalendar{} = calendar) do
+    Date.compare(today, date) == :gt and
+      date
+      |> Date.add(1)
+      |> Date.range(today)
+      |> Enum.count(&SchoolCalendar.lesson_day?(calendar, &1)) > deadline
   end
 
   # --- Queries ------------------------------------------------------------------
