@@ -120,6 +120,13 @@ defmodule TeacherAssistant.Organization do
     |> Ash.update()
   end
 
+  @doc "Spec KLM9: closes `year` for good (read only from then on). Called by `NewYear.start/3`."
+  def close_academic_year(%Scope{} = scope, %AcademicYear{} = year) do
+    year
+    |> Ash.Changeset.for_update(:close, %{}, scope: scope)
+    |> Ash.update()
+  end
+
   @doc """
   Seeds a year's default calendar (3 terms, their séquences) — idempotent, no-op once séquences exist — from
   `Reference.default_calendar_preset/2` applied to the year's own dates. Not wrapped in a shared transaction

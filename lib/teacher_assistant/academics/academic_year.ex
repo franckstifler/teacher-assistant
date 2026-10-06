@@ -92,6 +92,14 @@ defmodule TeacherAssistant.Academics.AcademicYear do
                changeset
              end)
     end
+
+    # Spec KLM9: closed for good — no reopening. Only `NewYear.start/3` calls it, once
+    # the next year is active.
+    update :close do
+      accept []
+      change set_attribute(:status, :closed)
+      change set_attribute(:active, false)
+    end
   end
 
   policies do
@@ -107,6 +115,9 @@ defmodule TeacherAssistant.Academics.AcademicYear do
   validations do
     validate compare(:end_date, greater_than: :start_date),
       message: "must be after the start date"
+
+    # Spec KLM9: a closed year is never activated, updated or destroyed.
+    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:update, :destroy]
   end
 
   multitenancy do
@@ -120,6 +131,12 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     attribute :start_date, :date, allow_nil?: false, public?: true
     attribute :end_date, :date, allow_nil?: false, public?: true
     attribute :active, :boolean, default: true, public?: true
+
+    attribute :status, TeacherAssistant.Academics.AcademicYearStatus,
+      allow_nil?: false,
+      default: :open,
+      public?: true
+
     timestamps()
   end
 

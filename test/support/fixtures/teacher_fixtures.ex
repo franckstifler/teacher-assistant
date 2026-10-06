@@ -56,6 +56,33 @@ defmodule TeacherAssistant.TeacherFixtures do
     year
   end
 
+  @doc """
+  Spec KLM9: closes `year` as `NewYear.start/3` does — an inactive next year (dates + 1
+  year, default calendar, one class « 6ème Z ») is activated first, then `year` closed.
+  """
+  def close_year!(%Scope{} = scope, %TeacherAssistant.Academics.AcademicYear{} = year) do
+    {:ok, next} =
+      Organization.create_academic_year(scope, %{
+        name: "Après #{year.name}",
+        start_date: Date.shift(year.start_date, year: 1),
+        end_date: Date.shift(year.end_date, year: 1),
+        active: false
+      })
+
+    :ok = Organization.build_default_calendar(scope, next)
+
+    {:ok, _} =
+      TeacherAssistant.Enrollment.create_class_group(scope, next, %{
+        label: "6ème Z",
+        level: "6ème"
+      })
+
+    {:ok, next} = Organization.activate_academic_year(scope, next)
+    {:ok, year} = Organization.get_academic_year(scope, year.id)
+    {:ok, closed} = Organization.close_academic_year(scope, year)
+    %{closed: closed, next: next}
+  end
+
   @doc "Verifies the scope's school as a fresh operator (the only role allowed to)."
   def verify_school!(%Scope{} = scope) do
     operator = admin_user_fixture()
