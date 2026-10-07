@@ -23,6 +23,7 @@ defmodule TeacherAssistantWeb.Router do
 
   pipeline :school do
     plug TeacherAssistantWeb.Plug.Scope
+    plug TeacherAssistantWeb.Plug.RequirePasswordChange
   end
 
   scope "/", TeacherAssistantWeb do
@@ -168,6 +169,15 @@ defmodule TeacherAssistantWeb.Router do
     ash_authentication_live_session :onboarding,
       on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
       live "/schools/new", Onboarding.CreateSchoolLive
+    end
+
+    # The forced first-sign-in password change (spec 2026-10-07), in the paper
+    # auth shell: the one screen the `must_change_password` gate lets through.
+    ash_authentication_live_session :account,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      layout: {TeacherAssistantWeb.Layouts, :auth},
+      on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
+      live "/account/password", Account.PasswordLive
     end
 
     ash_authentication_live_session :operator,

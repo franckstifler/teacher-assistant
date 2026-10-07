@@ -3,22 +3,19 @@ defmodule TeacherAssistantWeb.AuthController do
   use AshAuthentication.Phoenix.Controller
 
   def success(conn, activity, user, _token) do
-    return_to = get_session(conn, :return_to) || ~p"/school"
+    if TeacherAssistant.Accounts.temporary_password_expired?(user) do
+      # The temporary password was correct but is past its 7 days: no session.
+      _ = TeacherAssistant.Accounts.revoke_all_sessions(user)
 
-    message =
-      case activity do
-        {:confirm_new_user, :confirm} -> gettext("Your email address has now been confirmed")
-        {:password, :reset} -> gettext("Your password has successfully been reset")
-        _ -> gettext("You are now signed in")
-      end
-
-    conn
-    |> delete_session(:return_to)
-    |> store_in_session(user)
-    # If your resource has a different name, update the assign name here (i.e :current_admin)
-    |> assign(:current_user, user)
-    |> put_flash(:info, message)
-    |> redirect(to: return_to)
+      conn
+      |> put_flash(
+        :error,
+        gettext("Mot de passe temporaire expiré — demandez-en un nouveau à l'établissement.")
+      )
+      |> redirect(to: ~p"/sign-in")
+    else
+      sign_in(conn, activity, user)
+    end
   end
 
   def failure(conn, activity, reason) do
@@ -35,12 +32,31 @@ defmodule TeacherAssistantWeb.AuthController do
           )
 
         _ ->
-          gettext("Incorrect email or password")
+          gettext("Identifiant ou mot de passe incorrect")
       end
 
     conn
     |> put_flash(:error, message)
     |> redirect(to: ~p"/sign-in")
+  end
+
+  defp sign_in(conn, activity, user) do
+    return_to = get_session(conn, :return_to) || ~p"/school"
+
+    message =
+      case activity do
+        {:confirm_new_user, :confirm} -> gettext("Your email address has now been confirmed")
+        {:password, :reset} -> gettext("Your password has successfully been reset")
+        _ -> gettext("You are now signed in")
+      end
+
+    conn
+    |> delete_session(:return_to)
+    |> store_in_session(user)
+    # If your resource has a different name, update the assign name here (i.e :current_admin)
+    |> assign(:current_user, user)
+    |> put_flash(:info, message)
+    |> redirect(to: return_to)
   end
 
   def sign_out(conn, _params) do

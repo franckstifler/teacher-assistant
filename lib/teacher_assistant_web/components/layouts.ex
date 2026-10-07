@@ -559,6 +559,9 @@ defmodule TeacherAssistantWeb.Layouts do
   #     and by `MagicSignInLive` (checked second, after `@strategy`).
   #   * `@live_action` is `:register` / `:reset` / `:sign_in` on `SignInLive`
   #     (`:reset` there is the "request a reset link" step, not the token step).
+  #   * `@auth_screen` is set by our own pages that borrow this shell
+  #     (`Account.PasswordLive` → `:own_password`). Such a page renders its own
+  #     column heading, so its copy has no title/foot, only the brand `panel`.
 
   @auth_points [
     "L'appel en un geste, même sur téléphone",
@@ -570,6 +573,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
   defp auth_screen(assigns) do
     cond do
+      assigns[:auth_screen] -> assigns[:auth_screen]
       assigns[:strategy] -> :magic_sign_in
       assigns[:token] -> :reset_confirm
       assigns[:live_action] == :register -> :register
@@ -580,6 +584,22 @@ defmodule TeacherAssistantWeb.Layouts do
 
   defp auth_copy(assigns) do
     case auth_screen(assigns) do
+      :own_password ->
+        %{
+          eyebrow: nil,
+          title: nil,
+          sub: nil,
+          foot: nil,
+          panel: %{
+            eyebrow: gettext("Première connexion"),
+            title: gettext("Un mot de passe rien qu'à vous."),
+            text:
+              gettext(
+                "Le mot de passe temporaire ne sert qu'une fois. Ensuite, personne à l'établissement ne connaît le vôtre."
+              )
+          }
+        }
+
       :register ->
         %{
           eyebrow: "Créer un compte",

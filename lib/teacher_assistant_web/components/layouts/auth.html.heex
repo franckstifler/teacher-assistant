@@ -162,7 +162,21 @@
       </span>
     </a>
 
-    <div class="max-w-md">
+    <div :if={@auth_copy[:panel]} class="max-w-md">
+      <p
+        class="ta-mono"
+        style="margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8FC9B4"
+      >
+        {@auth_copy.panel.eyebrow}
+      </p>
+      <h2 style="margin: 0.8rem 0 0; font-size: 1.85rem; font-weight: 650; line-height: 1.15; color: #FFFFFF">
+        {@auth_copy.panel.title}
+      </h2>
+      <p style="margin: 1.2rem 0 0; font-size: 0.92rem; line-height: 1.6; color: #C9D3CF">
+        {@auth_copy.panel.text}
+      </p>
+    </div>
+    <div :if={!@auth_copy[:panel]} class="max-w-md">
       <p
         class="ta-mono"
         style="margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8FC9B4"
@@ -200,27 +214,33 @@
     style="background: #FFFFFF"
   >
     <div class="w-full max-w-sm">
-      <p
-        class="ta-mono"
-        style="margin: 0; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7A5F"
-      >
-        {@auth_copy.eyebrow}
-      </p>
-      <h1 style="margin: 0.4rem 0 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; color: #1E2A2B">
-        {@auth_copy.title}
-      </h1>
-      <p
-        :if={@auth_copy.sub}
-        style="margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.55; color: #5A6668"
-      >
-        {@auth_copy.sub}
-      </p>
+      <%= if @auth_copy.title do %>
+        <p
+          class="ta-mono"
+          style="margin: 0; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7A5F"
+        >
+          {@auth_copy.eyebrow}
+        </p>
+        <h1 style="margin: 0.4rem 0 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; color: #1E2A2B">
+          {@auth_copy.title}
+        </h1>
+        <p
+          :if={@auth_copy.sub}
+          style="margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.55; color: #5A6668"
+        >
+          {@auth_copy.sub}
+        </p>
+      <% end %>
 
-      <div class="mt-5">
+      <div class={@auth_copy.title && "mt-5"}>
         {@inner_content}
       </div>
 
-      <div class="mt-6 flex items-start gap-2 border-t pt-4" style="border-color: #EFEAE0">
+      <div
+        :if={@auth_copy.foot}
+        class="mt-6 flex items-start gap-2 border-t pt-4"
+        style="border-color: #EFEAE0"
+      >
         <span style="color: #5A6668; flex: none; margin-top: 0.1rem">
           <.icon name="hero-shield-check" class="size-4" />
         </span>

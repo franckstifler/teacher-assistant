@@ -21,18 +21,26 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
 
   def on_mount(:live_user_required, _params, session, socket) do
     socket = assign_scope(socket, session)
+    user = socket.assigns.current_user
 
-    if socket.assigns.current_user do
-      socket =
-        Phoenix.LiveView.attach_hook(socket, :current_path, :handle_params, fn _params,
-                                                                               uri,
-                                                                               socket ->
-          {:cont, Phoenix.Component.assign(socket, :current_path, URI.parse(uri).path)}
-        end)
+    cond do
+      is_nil(user) ->
+        {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
 
-      {:cont, socket}
-    else
-      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
+      # A temporary password must be replaced before anything else (spec
+      # 2026-10-07); the change screen itself is the only exception.
+      user.must_change_password and socket.view != TeacherAssistantWeb.Account.PasswordLive ->
+        {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/account/password")}
+
+      true ->
+        socket =
+          Phoenix.LiveView.attach_hook(socket, :current_path, :handle_params, fn _params,
+                                                                                 uri,
+                                                                                 socket ->
+            {:cont, Phoenix.Component.assign(socket, :current_path, URI.parse(uri).path)}
+          end)
+
+        {:cont, socket}
     end
   end
 
