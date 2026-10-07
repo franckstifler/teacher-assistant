@@ -32,6 +32,12 @@ defmodule TeacherAssistant.Accounts do
     authorize :by_default
   end
 
+  @doc "Whether an Ash error is the `:unique_phone` identity violation."
+  def phone_taken?(%Ash.Error.Invalid{errors: errors}),
+    do: Enum.any?(errors, &match?(%{field: :phone}, &1))
+
+  def phone_taken?(_error), do: false
+
   @doc "Whether the scope may invite and manage staff (head)."
   def can_manage_staff?(scope), do: Ash.can?({SchoolInvitation, :create}, scope)
 

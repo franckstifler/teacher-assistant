@@ -85,4 +85,116 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
       assert User.contact(%User{email: nil, phone: nil}) == nil
     end
   end
+
+  alias TeacherAssistant.TeacherFixtures
+
+  defp head_scope do
+    %{scope: scope} = TeacherFixtures.setup_complete_school_fixture()
+    scope
+  end
+
+  defp create_by_school(scope, attrs) do
+    User
+    |> Ash.Changeset.for_create(
+      :create_by_school,
+      Map.merge(%{name: "Awa Nji", created_in_workspace_id: scope.current_workspace.id}, attrs),
+      scope: scope
+    )
+    |> Ash.create()
+  end
+
+  describe "create_by_school" do
+    test "a head creates a phone account with a temporary password" do
+      scope = head_scope()
+      assert {:ok, user} = create_by_school(scope, %{phone: "6 77 12 34 56"})
+
+      assert user.phone == "+237677123456"
+      assert user.must_change_password
+      assert user.created_in_workspace_id == scope.current_workspace.id
+      assert DateTime.diff(user.temporary_password_expires_at, DateTime.utc_now(), :day) in 6..7
+
+      password = user.__metadata__.temporary_password
+      assert password =~ ~r/\A[a-z]{4}-[a-z]{4}-\d{4}\z/
+      assert {:ok, _} = sign_in_by_phone("677123456", password)
+    end
+
+    test "a non-head member cannot create accounts" do
+      scope = head_scope()
+      teacher_scope = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               create_by_school(teacher_scope, %{
+                 phone: "677123456",
+                 created_in_workspace_id: scope.current_workspace.id
+               })
+    end
+
+    test "a head cannot create an account on behalf of another school" do
+      scope = head_scope()
+      other = head_scope()
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               create_by_school(scope, %{
+                 phone: "677123456",
+                 created_in_workspace_id: other.current_workspace.id
+               })
+    end
+
+    test "a duplicate phone is reported as an identity error" do
+      scope = head_scope()
+      {:ok, _} = create_by_school(scope, %{phone: "677123456"})
+      assert {:error, error} = create_by_school(scope, %{phone: "+237677123456"})
+      assert TeacherAssistant.Accounts.phone_taken?(error)
+    end
+  end
+
+  describe "set_own_password" do
+    test "the user replaces the temporary password and the flags clear" do
+      scope = head_scope()
+      {:ok, user} = create_by_school(scope, %{phone: "677123456"})
+
+      assert {:ok, updated} =
+               user
+               |> Ash.Changeset.for_update(
+                 :set_own_password,
+                 %{password: "my-own-pass", password_confirmation: "my-own-pass"},
+                 actor: user
+               )
+               |> Ash.update()
+
+      refute updated.must_change_password
+      assert updated.temporary_password_expires_at == nil
+      assert {:ok, _} = sign_in_by_phone("677123456", "my-own-pass")
+    end
+
+    test "confirmation must match and length is at least 8" do
+      scope = head_scope()
+      {:ok, user} = create_by_school(scope, %{phone: "677123456"})
+
+      for {pw, confirm} <- [{"my-own-pass", "other-pass"}, {"short", "short"}] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 user
+                 |> Ash.Changeset.for_update(
+                   :set_own_password,
+                   %{password: pw, password_confirmation: confirm},
+                   actor: user
+                 )
+                 |> Ash.update()
+      end
+    end
+
+    test "nobody else can set it" do
+      scope = head_scope()
+      {:ok, user} = create_by_school(scope, %{phone: "677123456"})
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               user
+               |> Ash.Changeset.for_update(
+                 :set_own_password,
+                 %{password: "my-own-pass", password_confirmation: "my-own-pass"},
+                 actor: scope.current_user
+               )
+               |> Ash.update()
+    end
+  end
 end

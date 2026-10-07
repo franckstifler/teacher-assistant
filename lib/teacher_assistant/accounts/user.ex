@@ -6,6 +6,8 @@ defmodule TeacherAssistant.Accounts.User do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshAuthentication]
 
+  alias TeacherAssistant.Accounts.Phone
+
   authentication do
     tokens do
       enabled? true
@@ -144,6 +146,33 @@ defmodule TeacherAssistant.Accounts.User do
       run AshAuthentication.Strategy.MagicLink.Request
     end
 
+    create :create_by_school do
+      accept [:name, :phone, :created_in_workspace_id]
+      validate present([:name, :phone, :created_in_workspace_id])
+      change TeacherAssistant.Accounts.User.Changes.SetTemporaryPassword
+    end
+
+    update :reset_temporary_password do
+      accept []
+      require_atomic? false
+      change TeacherAssistant.Accounts.User.Changes.SetTemporaryPassword
+    end
+
+    update :set_own_password do
+      accept []
+      require_atomic? false
+
+      argument :password, :string,
+        allow_nil?: false,
+        sensitive?: true,
+        constraints: [min_length: 8]
+
+      argument :password_confirmation, :string, allow_nil?: false, sensitive?: true
+
+      validate confirm(:password, :password_confirmation)
+      change TeacherAssistant.Accounts.User.Changes.SetOwnPassword
+    end
+
     update :promote_to_admin do
       accept []
       change set_attribute(:role, :admin)
@@ -171,6 +200,20 @@ defmodule TeacherAssistant.Accounts.User do
                          )
                      )
                    )
+    end
+
+    policy action(:create_by_school) do
+      authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
+    end
+
+    # Never an operator's account; only the school that created the account.
+    policy action(:reset_temporary_password) do
+      forbid_if expr(role == :admin)
+      authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
+    end
+
+    policy action(:set_own_password) do
+      authorize_if expr(id == ^actor(:id))
     end
 
     policy action(:promote_to_admin) do
@@ -225,8 +268,6 @@ defmodule TeacherAssistant.Accounts.User do
     identity :unique_email, [:email]
     identity :unique_phone, [:phone]
   end
-
-  alias TeacherAssistant.Accounts.Phone
 
   @doc "How to name a person in the UI: name, else email, else formatted phone."
   def display_name(%{name: name}) when is_binary(name) and name != "", do: name
