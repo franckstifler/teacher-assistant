@@ -25,6 +25,17 @@ defmodule TeacherAssistant.Accounts.User do
         end
       end
 
+      # Accounts created by a school (spec 2026-10-07): the phone number is the
+      # identifier, the password is shared with the email strategy. No
+      # self-registration and no self-service reset — the school resets it.
+      password :phone do
+        identity_field :phone
+        hashed_password_field :hashed_password
+        registration_enabled? false
+        sign_in_action_name :sign_in_with_phone
+        sign_in_with_token_action_name :sign_in_with_phone_token
+      end
+
       magic_link do
         identity_field :email
         registration_enabled? false
@@ -72,6 +83,26 @@ defmodule TeacherAssistant.Accounts.User do
       metadata :token, :string, allow_nil?: false
     end
 
+    read :sign_in_with_phone do
+      get? true
+
+      argument :phone, TeacherAssistant.Accounts.Phone, allow_nil?: false
+      argument :password, :string, allow_nil?: false, sensitive?: true
+
+      prepare AshAuthentication.Strategy.Password.SignInPreparation
+
+      metadata :token, :string, allow_nil?: false
+    end
+
+    read :sign_in_with_phone_token do
+      get? true
+
+      argument :token, :string, allow_nil?: false, sensitive?: true
+      prepare AshAuthentication.Strategy.Password.SignInWithTokenPreparation
+
+      metadata :token, :string, allow_nil?: false
+    end
+
     read :sign_in_with_magic_link do
       get? true
 
@@ -82,7 +113,7 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     create :create do
-      accept [:email, :hashed_password]
+      accept [:email, :phone, :hashed_password]
     end
 
     create :register_with_password do
@@ -147,10 +178,15 @@ defmodule TeacherAssistant.Accounts.User do
     end
   end
 
+  validations do
+    validate present([:email, :phone], at_least: 1), on: [:create]
+  end
+
   attributes do
     uuid_v7_primary_key :id
 
-    attribute :email, :ci_string, allow_nil?: false, public?: true
+    attribute :email, :ci_string, allow_nil?: true, public?: true
+    attribute :phone, TeacherAssistant.Accounts.Phone, allow_nil?: true, public?: true
     attribute :role, TeacherAssistant.Accounts.UserRole, default: :teacher, public?: true
     attribute :name, :string, allow_nil?: true, public?: true
 
@@ -158,6 +194,14 @@ defmodule TeacherAssistant.Accounts.User do
       allow_nil? true
       sensitive? true
     end
+
+    # Set while the account holds a temporary password given by the school.
+    attribute :must_change_password, :boolean,
+      allow_nil?: false,
+      default: false,
+      public?: true
+
+    attribute :temporary_password_expires_at, :utc_datetime, public?: true
 
     timestamps()
   end
@@ -167,9 +211,31 @@ defmodule TeacherAssistant.Accounts.User do
       destination_attribute :user_id
       public? true
     end
+
+    # The school whose staff manager created this account (phone accounts);
+    # only that school may reset its password. Nil for self-registered users.
+    belongs_to :created_in_workspace, TeacherAssistant.Academics.Workspace do
+      allow_nil? true
+      attribute_writable? true
+      public? true
+    end
   end
 
   identities do
     identity :unique_email, [:email]
+    identity :unique_phone, [:phone]
   end
+
+  alias TeacherAssistant.Accounts.Phone
+
+  @doc "How to name a person in the UI: name, else email, else formatted phone."
+  def display_name(%{name: name}) when is_binary(name) and name != "", do: name
+  def display_name(%{email: email}) when not is_nil(email), do: to_string(email)
+  def display_name(%{phone: phone}) when is_binary(phone), do: Phone.format(phone)
+  def display_name(_user), do: ""
+
+  @doc "How to reach a person: email, else formatted phone, else nil."
+  def contact(%{email: email}) when not is_nil(email), do: to_string(email)
+  def contact(%{phone: phone}) when is_binary(phone), do: Phone.format(phone)
+  def contact(_user), do: nil
 end
