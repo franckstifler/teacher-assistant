@@ -9,7 +9,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    head = TeacherFixtures.user_fixture()
+    head = TeacherFixtures.user_fixture(%{name: "Jean Abena"})
 
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
@@ -112,7 +112,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       slot_view = Map.fetch!(result.slots, {:monday, p1.id})
       assert slot_view.teaching_context_id == tc_maths.id
       assert slot_view.subject == "Maths"
-      assert slot_view.teacher_name == to_string(ctx.head.name || ctx.head.email)
+      assert slot_view.teacher_name == "Jean Abena"
       assert slot_view.day == :monday
       assert slot_view.period_id == p1.id
 

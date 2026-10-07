@@ -257,6 +257,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert html =~ "Awa Nkolo"
     refute has_element?(view, "#discipline-add-form")
     refute has_element?(view, "#delete-sanction-#{enrollment.id}")
+    # Read only: no way to the conduct entry page.
+    refute has_element?(view, "#conduct-link")
 
     view
     |> render_hook("add_sanction", %{

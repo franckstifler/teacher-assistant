@@ -1249,6 +1249,9 @@ in a date range.
 5. A closed séquence keeps working (conduct marks are not under the D3 lock); a closed year (KLM9) is read
    only.
 6. Strings through gettext (FR and EN).
+7. « Conduite » is the only place conduct marks are entered (decided 2026-10-07 after the visual pass):
+   the class discipline page shows them read only, with a « Saisir sur la page Conduite » link (class and
+   séquence preselected) for conduct managers; form masters get no link.
 
 Out of scope: per-trimester entry (trimester and year conduct stay means of séquences), automatic saving of
 suggestions.

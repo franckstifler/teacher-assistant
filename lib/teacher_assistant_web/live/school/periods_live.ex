@@ -81,7 +81,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
           <table :if={@periods != []} id="periods-table" class="table table-zebra">
             <tbody>
               <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
-                <td colspan="6">
+                <td>
                   <.form
                     for={
                       AshPhoenix.Form.for_update(period, :update,

@@ -88,5 +88,6 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
 
     {:ok, view, _} = live(conn, ~p"/school/settings/holidays")
     assert has_element?(view, "#holidays-empty")
+    refute has_element?(view, "#holidays-table")
   end
 end

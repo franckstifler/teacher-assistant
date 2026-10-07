@@ -121,7 +121,7 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
         />
 
         <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-          <table id="holidays-table" class="table">
+          <table :if={@holidays != []} id="holidays-table" class="table">
             <thead>
               <tr>
                 <th>{gettext("Libellé")}</th><th>{gettext("Du")}</th><th>{gettext("Au")}</th>

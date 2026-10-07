@@ -204,4 +204,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert Assessment.list_marks(scope, a_maco) == []
     assert [%{status: :excused}] = Assessment.list_marks(scope, a_menu)
   end
+
+  test "without ?seq= the combined course opens on the current séquence", %{
+    conn: conn,
+    tc_maco: tc_maco,
+    course: course,
+    seq: seq,
+    scope: scope
+  } do
+    {:ok, _} = Assessment.create_combined_assessment(scope, course, seq, %{label: "Devoir 1"})
+
+    {:ok, view, html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks")
+
+    assert html =~ "Devoir 1"
+    assert has_element?(view, "#new-assessment-form")
+  end
 end
