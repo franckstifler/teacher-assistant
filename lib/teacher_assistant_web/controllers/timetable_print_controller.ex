@@ -39,7 +39,7 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
       |> put_root_layout(false)
       |> render(:show,
         mode: :me,
-        title: to_string(scope.current_user.email),
+        title: to_string(scope.current_user.name || scope.current_user.email),
         etablissement: scope.current_workspace.name,
         annee: scope.current_academic_year && scope.current_academic_year.name,
         periods: Attendance.list_periods(scope),

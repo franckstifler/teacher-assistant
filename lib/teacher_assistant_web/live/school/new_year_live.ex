@@ -199,8 +199,10 @@ defmodule TeacherAssistantWeb.School.NewYearLive do
 
   defp over?(size, max), do: is_integer(max) and size > max
 
-  defp size_text(size, nil), do: to_string(size)
-  defp size_text(size, max), do: "#{size} / #{max}"
+  defp size_text(size, nil), do: ngettext("%{count} élève", "%{count} élèves", size)
+
+  defp size_text(size, max),
+    do: ngettext("%{count} / %{max} élève", "%{count} / %{max} élèves", size, max: max)
 
   defp reason_label(:exclu), do: gettext("Exclus")
   defp reason_label(:sans_decision), do: gettext("Sans décision")

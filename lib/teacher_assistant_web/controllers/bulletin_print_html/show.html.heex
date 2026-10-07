@@ -187,7 +187,7 @@
                 <% end %>
               <% end %>
               <td :if={show?(@template, :min_max)} class="num">
-                {fmt(row.class_min)} – {fmt(row.class_max)}
+                {if row.class_min, do: "#{fmt(row.class_min)} – #{fmt(row.class_max)}", else: "—"}
               </td>
             </tr>
             <tr :if={@group_subtotals?} id={"bulletin-group-total-#{g.group}"} class="group-total">

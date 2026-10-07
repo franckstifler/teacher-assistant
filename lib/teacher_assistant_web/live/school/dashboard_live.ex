@@ -119,7 +119,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
              /school/setup before this LiveView mounts unless the school
              already has an active year and at least one class, so the
              KPI strip is always reachable here. --%>
-        <div id="dashboard-stats" class="grid grid-cols-3 gap-2 sm:gap-3">
+        <div id="dashboard-stats" class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
           <.stat label={gettext("Classes")} value={Integer.to_string(@classes_count)} />
           <.stat
             label={gettext("Students")}

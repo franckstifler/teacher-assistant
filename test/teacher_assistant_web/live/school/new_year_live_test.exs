@@ -57,11 +57,11 @@ defmodule TeacherAssistantWeb.School.NewYearLiveTest do
 
     assert has_element?(view, "#class-row-#{ctx.a6.id}")
     # Awa is admis into the copy of 5ème A, Bob repeats 6ème A.
-    assert has_element?(view, "#class-size-#{ctx.a5.id}", "1")
+    assert has_element?(view, "#class-size-#{ctx.a5.id}", "1 élève")
     assert has_element?(view, "#class-size-#{ctx.a6.id}", "1")
 
     view |> form("#classes-form", %{"targets" => %{ctx.a6.id => ""}}) |> render_change()
-    assert has_element?(view, "#class-size-#{ctx.a5.id}", "0")
+    assert has_element?(view, "#class-size-#{ctx.a5.id}", "0 élève")
 
     view |> form("#classes-form") |> render_submit()
     assert has_element?(view, "#summary-reenrolled", "1")

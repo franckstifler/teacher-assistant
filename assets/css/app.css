@@ -179,7 +179,7 @@ h1, h2, h3, .ta-display {
 }
 
 .label { font-weight: 600; color: color-mix(in oklch, var(--color-base-content) 78%, transparent); }
-.badge { font-weight: 650; }
+.badge { font-weight: 650; white-space: nowrap; }
 .table thead th {
   font-size: 0.7rem;
   letter-spacing: 0.04em;

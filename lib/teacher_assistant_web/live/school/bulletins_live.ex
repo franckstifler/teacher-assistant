@@ -443,6 +443,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
             <button
               id="confirm-publish"
               type="button"
+              phx-mounted={JS.focus()}
               phx-click="confirm_publish"
               class="btn btn-sm btn-warning"
             >

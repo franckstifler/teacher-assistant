@@ -324,7 +324,9 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                   <td data-role="appreciation">
                     <.mention_badge :if={row.mention} mention={row.mention} />
                   </td>
-                  <td class="ta-num">{fmt(row.class_min)} – {fmt(row.class_max)}</td>
+                  <td class="ta-num">
+                    {if row.class_min, do: "#{fmt(row.class_min)} – #{fmt(row.class_max)}", else: "—"}
+                  </td>
                 </tr>
                 <tr
                   :if={@group_subtotals?}

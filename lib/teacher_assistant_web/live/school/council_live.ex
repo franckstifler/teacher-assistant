@@ -357,31 +357,49 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             <span class="font-medium">{row.student.full_name}</span>
             <span class="ta-num text-right">{fmt(row.data && row.data.moyenne_generale)}</span>
             <span><.distinction_badge distinction={row.data && row.data.distinction} /></span>
-            <.input
-              type="select"
-              name="decision[distinction_choice]"
-              value={row.decision && row.decision.distinction_choice}
-              options={choice_options()}
-              class="select select-sm"
-              disabled={@locked?}
-            />
-            <.input
-              type="select"
-              name="decision[conduct_warning]"
-              value={row.decision && row.decision.conduct_warning}
-              options={warning_options()}
-              class="select select-sm"
-              disabled={@locked?}
-            />
-            <.input
-              name="decision[appreciation]"
-              value={row.decision && row.decision.appreciation}
-              maxlength="300"
-              phx-debounce="blur"
-              placeholder={gettext("Appréciation du conseil")}
-              class="input input-sm w-full"
-              disabled={@locked?}
-            />
+            <div>
+              <span aria-hidden="true" class="mb-1 block text-xs text-base-content/60 lg:hidden">
+                {gettext("Décision")}
+              </span>
+              <.input
+                type="select"
+                name="decision[distinction_choice]"
+                aria-label={gettext("Décision")}
+                value={row.decision && row.decision.distinction_choice}
+                options={choice_options()}
+                class="select select-sm"
+                disabled={@locked?}
+              />
+            </div>
+            <div>
+              <span aria-hidden="true" class="mb-1 block text-xs text-base-content/60 lg:hidden">
+                {gettext("Conduite")}
+              </span>
+              <.input
+                type="select"
+                name="decision[conduct_warning]"
+                aria-label={gettext("Conduite")}
+                value={row.decision && row.decision.conduct_warning}
+                options={warning_options()}
+                class="select select-sm"
+                disabled={@locked?}
+              />
+            </div>
+            <div>
+              <span aria-hidden="true" class="mb-1 block text-xs text-base-content/60 lg:hidden">
+                {gettext("Appréciation")}
+              </span>
+              <.input
+                name="decision[appreciation]"
+                aria-label={gettext("Appréciation")}
+                value={row.decision && row.decision.appreciation}
+                maxlength="300"
+                phx-debounce="blur"
+                placeholder={gettext("Appréciation du conseil")}
+                class="input input-sm w-full"
+                disabled={@locked?}
+              />
+            </div>
             <div :if={annual?(@period)} id={"passage-#{row.student.id}"} class="space-y-1">
               <p id={"passage-proposal-#{row.student.id}"} class="text-xs text-base-content/70">
                 {proposal_text(row.outcome)}
@@ -445,6 +463,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             <button
               id="confirm-hold"
               type="button"
+              phx-mounted={JS.focus()}
               phx-click="confirm_hold"
               class="btn btn-sm btn-warning"
             >

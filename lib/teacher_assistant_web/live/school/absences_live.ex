@@ -109,7 +109,7 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
               </.link>
             </div>
             <div class="overflow-x-auto">
-              <div id="absence-rows" class="min-w-[640px]">
+              <div id="absence-rows" class="min-w-[700px]">
                 <div class={[row_grid(), "border-b border-base-300 py-2.5"]}>
                   <span
                     :for={
@@ -216,5 +216,5 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
     do: "#{hours |> Decimal.round(1) |> Decimal.normalize() |> Decimal.to_string(:normal)} h"
 
   defp row_grid,
-    do: "grid grid-cols-[110px_minmax(0,1fr)_70px_minmax(0,1fr)_150px] gap-2.5 px-3.5"
+    do: "grid grid-cols-[110px_minmax(170px,1.4fr)_70px_minmax(0,1fr)_150px] gap-2.5 px-3.5"
 end

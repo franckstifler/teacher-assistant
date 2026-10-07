@@ -28,4 +28,16 @@ defmodule TeacherAssistantWeb.School.StaffNamesTest do
     # A member without a name (the head here) still shows by e-mail; a named one never does.
     refute html =~ ~r/>\s*#{Regex.escape(to_string(teacher.email))}\s*</
   end
+
+  test "a named member sees their name in the rail and on their printed timetable",
+       %{conn: conn, workspace: school, teacher: teacher} do
+    conn = Plug.Conn.put_session(log_in_user(conn, teacher), :workspace_id, school.id)
+
+    {:ok, _view, html} = live(conn, ~p"/school/timetable/me")
+    assert html =~ "Grace Tabi"
+
+    body = conn |> get(~p"/school/timetable/me/print") |> html_response(200)
+    assert body =~ "Grace Tabi"
+    refute body =~ to_string(teacher.email)
+  end
 end

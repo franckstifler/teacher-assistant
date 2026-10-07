@@ -7,9 +7,9 @@ defmodule TeacherAssistantWeb.AuthController do
 
     message =
       case activity do
-        {:confirm_new_user, :confirm} -> "Your email address has now been confirmed"
-        {:password, :reset} -> "Your password has successfully been reset"
-        _ -> "You are now signed in"
+        {:confirm_new_user, :confirm} -> gettext("Your email address has now been confirmed")
+        {:password, :reset} -> gettext("Your password has successfully been reset")
+        _ -> gettext("You are now signed in")
       end
 
     conn
@@ -30,13 +30,12 @@ defmodule TeacherAssistantWeb.AuthController do
              errors: [%AshAuthentication.Errors.CannotConfirmUnconfirmedUser{}]
            }
          }} ->
-          """
-          You have already signed in another way, but have not confirmed your account.
-          You can confirm your account using the link we sent to you, or by resetting your password.
-          """
+          gettext(
+            "You have already signed in another way, but have not confirmed your account. You can confirm your account using the link we sent to you, or by resetting your password."
+          )
 
         _ ->
-          "Incorrect email or password"
+          gettext("Incorrect email or password")
       end
 
     conn
@@ -49,7 +48,7 @@ defmodule TeacherAssistantWeb.AuthController do
 
     conn
     |> clear_session(:teacher_assistant)
-    |> put_flash(:info, "You are now signed out")
+    |> put_flash(:info, gettext("You are now signed out"))
     |> redirect(to: return_to)
   end
 end
