@@ -169,7 +169,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
               alt={title}
               class="h-20 object-contain"
             />
-            <.live_file_input upload={@uploads[kind]} />
+            <.file_picker upload={@uploads[kind]} />
             <p
               :for={
                 err <-

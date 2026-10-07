@@ -280,6 +280,32 @@ defmodule TeacherAssistantWeb.CoreComponents do
   end
 
   @doc """
+  A file picker for a live upload: the native input is hidden (browsers draw its button
+  in their own language, « Choose File » in a French page) behind a labelled button, and
+  the chosen file's name is shown next to it.
+  """
+  attr :upload, Phoenix.LiveView.UploadConfig, required: true
+  attr :label, :string, default: nil
+
+  def file_picker(assigns) do
+    ~H"""
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="file-picker btn btn-ghost btn-sm cursor-pointer border border-base-300">
+        <.icon name="hero-arrow-up-tray" class="size-4" />
+        {@label || gettext("Choisir une image")}
+        <.live_file_input upload={@upload} class="sr-only" />
+      </label>
+      <span :for={entry <- @upload.entries} class="truncate text-xs text-base-content/70">
+        {entry.client_name}
+      </span>
+      <span :if={@upload.entries == []} class="text-xs text-base-content/50">
+        {gettext("Aucun fichier choisi")}
+      </span>
+    </div>
+    """
+  end
+
+  @doc """
   Renders a header with title.
   """
   slot :inner_block, required: true

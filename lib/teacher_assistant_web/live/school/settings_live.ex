@@ -151,7 +151,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                 alt={gettext("Logo de l'école")}
                 class="h-16 w-16 rounded object-cover"
               />
-              <.live_file_input upload={@uploads.logo} />
+              <.file_picker upload={@uploads.logo} />
               <button type="submit" class="btn btn-secondary btn-sm">
                 {gettext("Téléverser le logo")}
               </button>

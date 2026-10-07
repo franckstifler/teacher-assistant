@@ -79,4 +79,10 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
     render_upload(upload, "big.png")
     assert render(view) =~ "Fichier trop volumineux"
   end
+
+  test "the upload pickers are labelled in French, the native input hidden", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/header")
+    assert has_element?(view, "label.file-picker", "Choisir une image")
+    assert has_element?(view, "label.file-picker input[type=file].sr-only")
+  end
 end
