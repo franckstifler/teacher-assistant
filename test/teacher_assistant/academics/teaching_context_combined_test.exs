@@ -37,7 +37,9 @@ defmodule TeacherAssistant.Academics.TeachingContextCombinedTest do
           label: "Maths · 1A MACO+MENU",
           academic_year_id: year.id,
           teacher_user_id: head.id
-        }, tenant: ws.id)
+        },
+        tenant: ws.id
+      )
       |> Ash.create(authorize?: false)
 
     %{head: head, ws: ws, year: year, cg: cg, tc: tc, course: course}
