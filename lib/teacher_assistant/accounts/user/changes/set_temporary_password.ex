@@ -12,18 +12,25 @@ defmodule TeacherAssistant.Accounts.User.Changes.SetTemporaryPassword do
 
   @impl true
   def change(changeset, _opts, _context) do
-    password = TemporaryPassword.generate()
-    {:ok, hash} = AshAuthentication.BcryptProvider.hash(password)
-
-    expires_at =
-      DateTime.utc_now() |> DateTime.add(@validity_days, :day) |> DateTime.truncate(:second)
-
+    # Everything costly happens in before_action: building the changeset (e.g.
+    # for `Ash.can?`) must stay cheap, bcrypt hashing included.
     changeset
-    |> Ash.Changeset.force_change_attribute(:hashed_password, hash)
-    |> Ash.Changeset.force_change_attribute(:must_change_password, true)
-    |> Ash.Changeset.force_change_attribute(:temporary_password_expires_at, expires_at)
-    |> Ash.Changeset.after_action(fn _changeset, user ->
-      {:ok, Ash.Resource.put_metadata(user, :temporary_password, password)}
+    |> Ash.Changeset.before_action(fn changeset ->
+      password = TemporaryPassword.generate()
+      {:ok, hash} = AshAuthentication.BcryptProvider.hash(password)
+
+      expires_at =
+        DateTime.utc_now() |> DateTime.add(@validity_days, :day) |> DateTime.truncate(:second)
+
+      changeset
+      |> Ash.Changeset.put_context(:temporary_password, password)
+      |> Ash.Changeset.force_change_attribute(:hashed_password, hash)
+      |> Ash.Changeset.force_change_attribute(:must_change_password, true)
+      |> Ash.Changeset.force_change_attribute(:temporary_password_expires_at, expires_at)
+    end)
+    |> Ash.Changeset.after_action(fn changeset, user ->
+      {:ok,
+       Ash.Resource.put_metadata(user, :temporary_password, changeset.context.temporary_password)}
     end)
   end
 end

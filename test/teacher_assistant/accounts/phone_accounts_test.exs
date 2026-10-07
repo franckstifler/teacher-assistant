@@ -140,6 +140,36 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
                })
     end
 
+    test "a head of two schools only manages accounts of the school they act in" do
+      %{scope: scope_a, head_user: head_a} = TeacherFixtures.setup_complete_school_fixture()
+      scope_b = head_scope()
+      TeacherFixtures.membership_fixture(scope_b, %{user: head_a, roles: [:head]})
+      head_a_in_b = TeacherAssistant.DataCase.school_scope(head_a, scope_b.current_workspace)
+
+      {:ok, user_a} = create_by_school(scope_a, %{phone: "677123456"})
+
+      # Cannot create an account for A while acting in B...
+      assert {:error, %Ash.Error.Forbidden{}} =
+               create_by_school(head_a_in_b, %{
+                 phone: "677000111",
+                 created_in_workspace_id: scope_a.current_workspace.id
+               })
+
+      # ...nor reset A's account while acting in B...
+      assert {:error, %Ash.Error.Forbidden{}} =
+               user_a
+               |> Ash.Changeset.for_update(:reset_temporary_password, %{}, scope: head_a_in_b)
+               |> Ash.update()
+
+      # ...but can while acting in A.
+      assert {:ok, reset} =
+               user_a
+               |> Ash.Changeset.for_update(:reset_temporary_password, %{}, scope: scope_a)
+               |> Ash.update()
+
+      assert {:ok, _} = sign_in_by_phone("677123456", reset.__metadata__.temporary_password)
+    end
+
     test "a duplicate phone is reported as an identity error" do
       scope = head_scope()
       {:ok, _} = create_by_school(scope, %{phone: "677123456"})
