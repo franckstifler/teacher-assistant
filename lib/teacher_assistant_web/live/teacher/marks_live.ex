@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
   alias TeacherAssistant.Organization
 
-  alias TeacherAssistant.Academics.{Lock, MarkEntry}
+  alias TeacherAssistant.Academics.{Lock, MarkEntry, Reference}
 
   def mount(%{"id" => ctx_id} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -30,7 +30,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       scope = socket.assigns.current_scope
       year = Organization.current_academic_year(scope)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
-      seq = pick(sequences, params["seq"])
+      seq = pick_seq(sequences, params["seq"])
       assessments = if seq, do: Assessment.list_assessments(scope, ctx, seq), else: []
       assessment = pick(assessments, params["assessment"])
       exempt = Curriculum.exempt_student_ids(scope, ctx)
@@ -72,7 +72,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         scope = socket.assigns.current_scope
         year = Organization.current_academic_year(scope)
         sequences = if year, do: Organization.list_sequences(scope, year), else: []
-        seq = pick(sequences, params["seq"])
+        seq = pick_seq(sequences, params["seq"])
         combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
         selected = pick(combined, params["assessment"])
 
@@ -183,6 +183,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     Enum.count(existing, &String.starts_with?(&1.label, type.name)) + 1
   end
+
+  # The séquence asked for, else the current one (the one containing today, else the
+  # last started, else the first) — never none while the year has séquences.
+  defp pick_seq(sequences, id),
+    do: pick(sequences, id) || Assessment.default_sequence(sequences, Reference.today())
 
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
@@ -526,7 +531,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     # outgoing column, restore any previously stashed edits for the incoming one,
     # so an accidental tap on a selector never discards typed marks.
     unsaved = stash_current(socket)
-    seq = pick(socket.assigns.sequences, params["seq"])
+    seq = pick_seq(socket.assigns.sequences, params["seq"])
     scope = socket.assigns.current_scope
 
     case socket.assigns[:course] do

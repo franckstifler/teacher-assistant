@@ -136,6 +136,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert has_element?(view, "#mark-input-#{s1.id}[phx-debounce]")
   end
 
+  test "without ?seq= the current séquence is open, its assessments listed", %{
+    conn: conn,
+    ctx: ctx
+  } do
+    {:ok, view, html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks")
+
+    # The test clock (2025-09-15) is inside the first séquence, where « Devoir 1 » is.
+    assert html =~ "Devoir 1"
+    assert has_element?(view, "#new-assessment-form")
+  end
+
   test "unknown teaching context redirects to /school", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/marks")
