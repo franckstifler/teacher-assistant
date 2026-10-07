@@ -162,9 +162,11 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
         <div :if={@live_action == :reset} id="reset-phone-info" class="ta-auth-info">
           <.icon name="hero-information-circle" class="ta-auth-info__icon size-4" />
           <p>
-            {gettext("Vous vous connectez avec un")}
-            <strong>{gettext("numéro de téléphone")}</strong>
-            {gettext("? Seul votre établissement peut vous donner un nouveau mot de passe.")}
+            {Phoenix.HTML.raw(
+              gettext(
+                "Vous vous connectez avec un <strong>numéro de téléphone</strong> ? Seul votre établissement peut vous donner un nouveau mot de passe."
+              )
+            )}
           </p>
         </div>
       </div>

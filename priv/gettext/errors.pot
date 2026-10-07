@@ -111,3 +111,6 @@ msgstr ""
 
 msgid "must be equal to %{number}"
 msgstr ""
+
+msgid "is not a valid phone number"
+msgstr ""
