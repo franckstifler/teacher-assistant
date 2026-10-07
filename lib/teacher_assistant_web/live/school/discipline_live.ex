@@ -123,29 +123,6 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     end
   end
 
-  def handle_event("set_note", %{"enrollment_id" => enrollment_id, "value" => value}, socket) do
-    scope = socket.assigns.current_scope
-
-    with {:sequence, sequence} <- socket.assigns.period,
-         %{} = row <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
-      case Discipline.set_conduct_mark(scope, row.enrollment, sequence, value) do
-        {:ok, _mark} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Note de conduite enregistrée."))
-           |> select_period(nil)}
-
-        {:error, %Ash.Error.Forbidden{}} ->
-          {:noreply, Authz.put_not_allowed(socket)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Enter a value between 0 and 20."))}
-      end
-    else
-      _ -> {:noreply, socket}
-    end
-  end
-
   # Only the school's sanction types in use (spec KLM2).
   defp fetch_type(types, str) do
     case Enum.find(types, &(Atom.to_string(&1) == str)) do
@@ -337,7 +314,19 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
         </div>
 
         <div :if={@period} class="overflow-x-auto">
-          <h2 class="text-sm font-semibold mb-2">{gettext("Note de conduite")} /20</h2>
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold">{gettext("Note de conduite")} /20</h2>
+            <%!-- Conduct marks are entered in one place: the « Conduite » page. --%>
+            <.link
+              :if={@can_edit? and sequence_period?(@period)}
+              id="conduct-link"
+              navigate={~p"/school/conduct?class=#{@cg.id}&seq=#{elem(@period, 1).id}"}
+              class="btn btn-ghost btn-xs"
+            >
+              <.icon name="hero-pencil-square" class="size-4" />
+              {gettext("Saisir sur la page Conduite")}
+            </.link>
+          </div>
           <table id="conduct-table" class="table table-zebra">
             <thead>
               <tr>
@@ -350,29 +339,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 <td>{row.student.full_name}</td>
                 <td>
                   <% summary = Map.get(@discipline_by_enrollment, row.enrollment.id) %>
-                  <form
-                    :if={@can_edit? and sequence_period?(@period)}
-                    id={"note-form-#{row.enrollment.id}"}
-                    phx-submit="set_note"
-                    class="flex items-center gap-2"
-                  >
-                    <input type="hidden" name="enrollment_id" value={row.enrollment.id} />
-                    <input
-                      type="number"
-                      name="value"
-                      min="0"
-                      max="20"
-                      step="0.5"
-                      value={summary && fmt(summary.note_de_conduite)}
-                      class="input input-bordered input-xs w-20"
-                    />
-                    <button type="submit" class="btn btn-ghost btn-xs">
-                      {gettext("Enregistrer")}
-                    </button>
-                  </form>
-                  <span :if={!(@can_edit? and sequence_period?(@period))}>
-                    {summary && fmt(summary.note_de_conduite)}
-                  </span>
+                  <span class="ta-num">{summary && fmt(summary.note_de_conduite)}</span>
                 </td>
               </tr>
             </tbody>

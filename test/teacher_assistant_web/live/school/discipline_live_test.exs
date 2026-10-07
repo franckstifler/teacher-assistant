@@ -164,11 +164,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert sanction.duration_days == 3
   end
 
-  test "a conduct manager sets a note de conduite that persists", %{
+  test "a conduct manager enters conduct marks on the Conduite page, linked from here", %{
     school: school,
     cg: cg,
     head: head,
-    scope: scope,
     enrollment: enrollment,
     sequence: sequence
   } do
@@ -186,14 +185,13 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/discipline")
 
-    view
-    |> form("#note-form-#{enrollment.id}", %{"value" => "15"})
-    |> render_submit()
-
-    assert Decimal.equal?(
-             Discipline.note_de_conduite(scope, enrollment, {:sequence, sequence}),
-             Decimal.new(15)
+    # One place to enter conduct: the « Conduite » page, on this class and séquence.
+    assert has_element?(
+             view,
+             ~s|#conduct-link[href="/school/conduct?class=#{cg.id}&seq=#{sequence.id}"]|
            )
+
+    refute has_element?(view, "#note-form-#{enrollment.id}")
   end
 
   test "the period selector reloads the sanctions log", %{
@@ -267,9 +265,6 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
       "date" => "2025-09-10",
       "reason" => "forged"
     })
-
-    view
-    |> render_hook("set_note", %{"enrollment_id" => enrollment.id, "value" => "10"})
 
     sequence =
       Organization.current_sequence(
