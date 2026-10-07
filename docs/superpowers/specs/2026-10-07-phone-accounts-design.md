@@ -102,9 +102,9 @@ Concurrency: if the user insert hits `:unique_phone`, retry once as case 3.
 
 ### Temporary password
 
-- `TeacherAssistant.Accounts.TemporaryPassword.generate/0`: two words from a
-  short fixed list of easy, unambiguous lowercase words (≥ 256 words) + 4
-  digits, e.g. `kola-mango-4827`. Uses `:crypto.strong_rand_bytes`.
+- `TeacherAssistant.Accounts.TemporaryPassword.generate/0`: two pronounceable
+  4-letter words (consonant-vowel-consonant-vowel, no letters easily confused
+  when dictated) + 4 digits, e.g. `kola-mabu-4827` (~38 bits). Uses `:crypto`.
 - Shown once in a dialog with « Copier » and a hint to send it by WhatsApp/SMS.
   Never stored in clear, never put in a flash, URL or log.
 
