@@ -2258,9 +2258,9 @@ msgid "Devise"
 msgstr "Devise"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:106
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Département"
-msgstr ""
+msgstr "Department"
 
 #: lib/teacher_assistant_web/live/school/roll_call.ex:273
 #, elixir-autogen, elixir-format
@@ -2591,9 +2591,9 @@ msgid "Téléverser le logo"
 msgstr "Téléverser le logo"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:107
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Ville"
-msgstr ""
+msgstr "City"
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:65
 #, elixir-autogen, elixir-format

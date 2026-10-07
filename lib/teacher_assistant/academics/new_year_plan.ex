@@ -25,7 +25,10 @@ defmodule TeacherAssistant.Academics.NewYearPlan do
     end
   end
 
-  @doc "Each class's admis target: the next level's class (of those the school has) with the same série and suffix."
+  @doc """
+  Each class's admis target, at the next level the school has: the class with the same
+  série and suffix; else that level's class when it is the only one; else none.
+  """
   def default_targets(classes) do
     ranks = SchoolTemplates.level_order() |> Enum.with_index() |> Map.new()
 

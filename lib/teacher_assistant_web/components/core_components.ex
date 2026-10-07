@@ -290,7 +290,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
   def file_picker(assigns) do
     ~H"""
     <div class="flex flex-wrap items-center gap-2">
-      <label class="file-picker btn btn-ghost btn-sm cursor-pointer border border-base-300">
+      <label class="file-picker btn btn-ghost btn-sm cursor-pointer border border-base-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary">
         <.icon name="hero-arrow-up-tray" class="size-4" />
         {@label || gettext("Choisir une image")}
         <.live_file_input upload={@upload} class="sr-only" />

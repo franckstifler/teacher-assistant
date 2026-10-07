@@ -203,7 +203,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     school: school,
     scope: scope
   } do
-    fm = TeacherAssistant.TeacherFixtures.user_fixture()
+    fm = TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Pauline Atangana"})
 
     {:ok, inv} =
       Accounts.invite_member(school_scope(head, school), %{
@@ -221,7 +221,11 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{seq.id}")
-    assert html_response(conn, 200) =~ "Awa Ngo"
+    html = html_response(conn, 200)
+    assert html =~ "Awa Ngo"
+    # The form master is printed by name, never by e-mail.
+    assert html =~ "Pauline Atangana"
+    refute html =~ to_string(fm.email)
   end
 
   test "the bulletin names the form master when set", %{
