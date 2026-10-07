@@ -181,7 +181,7 @@ defmodule TeacherAssistant.Timetabling do
   Builds the class's timetable grid plus a weekly-hours tally.
 
   Returns `%{slots: %{{day, period_id} => slot_view}, tally: [tally_row]}`.
-  `slot_view` is `%{teaching_context_id, subject, teacher_email, day, period_id}`.
+  `slot_view` is `%{teaching_context_id, subject, teacher_name, day, period_id}` (`teacher_name`: the name, else the e-mail).
   `tally_row` is `%{teaching_context_id, subject, placed, required, status}`,
   one row per assignment from `Curriculum.list_assignments_for_class/1` (zero-placement
   assignments included), with `status` in `[:under, :exact, :over]`.
@@ -243,7 +243,8 @@ defmodule TeacherAssistant.Timetabling do
     base = %{
       teaching_context_id: slot.teaching_context_id,
       subject: slot.teaching_context.subject,
-      teacher_email: to_string(slot.teaching_context.teacher.email),
+      teacher_name:
+        to_string(slot.teaching_context.teacher.name || slot.teaching_context.teacher.email),
       day: slot.day,
       period_id: slot.period_id,
       class_group_id: slot.class_group_id

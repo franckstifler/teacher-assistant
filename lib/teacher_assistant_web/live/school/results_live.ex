@@ -133,7 +133,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
         </p>
 
         <p :if={@form_master} class="text-sm text-base-content/70">
-          {gettext("Professeur principal")}: {@form_master.email}
+          {gettext("Professeur principal")}: {@form_master.name || @form_master.email}
         </p>
 
         <.empty_state

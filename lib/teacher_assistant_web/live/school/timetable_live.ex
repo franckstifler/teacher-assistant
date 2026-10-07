@@ -224,7 +224,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                                 value={a.id}
                                 selected={slot && slot.teaching_context_id == a.id}
                               >
-                                {a.subject} — {a.teacher.email}{if a.combined_course,
+                                {a.subject} — {a.teacher.name || a.teacher.email}{if a.combined_course,
                                   do: " (#{gettext("combiné")})",
                                   else: ""}
                               </option>

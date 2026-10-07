@@ -135,7 +135,8 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
 
     Enum.sort_by(
       grid.members,
-      &{not MapSet.member?(teaching, &1.user_id), String.downcase(to_string(&1.user.email))}
+      &{not MapSet.member?(teaching, &1.user_id),
+       String.downcase(to_string(&1.user.name || &1.user.email))}
     )
   end
 

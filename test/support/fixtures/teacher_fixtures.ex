@@ -10,6 +10,7 @@ defmodule TeacherAssistant.TeacherFixtures do
       Accounts.create_user(
         %{
           email: email,
+          name: Map.get(attrs, :name),
           password: Map.get(attrs, :password, "password1234"),
           password_confirmation: Map.get(attrs, :password_confirmation, "password1234")
         },

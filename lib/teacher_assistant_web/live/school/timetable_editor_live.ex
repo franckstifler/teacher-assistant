@@ -328,7 +328,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                           >
                             <%= if slot do %>
                               <span class="block truncate font-semibold">{slot.subject}</span>
-                              <span class="block truncate text-base-content/70">{slot.teacher_email}</span>
+                              <span class="block truncate text-base-content/70">{slot.teacher_name}</span>
                             <% else %>
                               {gettext("Libre")}
                             <% end %>
@@ -351,14 +351,14 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               </h2>
               <p class="text-sm">
                 {if slot,
-                  do: "#{slot.subject} — #{slot.teacher_email}",
+                  do: "#{slot.subject} — #{slot.teacher_name}",
                   else: gettext("Créneau libre")}
               </p>
 
               <%= if slot && clash?(@clashes, @cg, d, pid) do %>
                 <p id="conflict-text" class="text-sm text-error">
                   {gettext("Conflit : %{teacher} a aussi cours en %{classes} à ce créneau.",
-                    teacher: slot.teacher_email,
+                    teacher: slot.teacher_name,
                     classes:
                       @clashes[{@cg.id, d, pid}]
                       |> Enum.map(&label_of(@classes, &1))
@@ -394,7 +394,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                   title={
                     (c = busy_for.(tc)) &&
                       gettext("%{teacher} a déjà cours en %{class}",
-                        teacher: tc.teacher.email,
+                        teacher: tc.teacher.name || to_string(tc.teacher.email),
                         class: c
                       )
                   }

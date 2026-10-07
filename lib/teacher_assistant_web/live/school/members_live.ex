@@ -40,7 +40,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             </thead>
             <tbody>
               <tr :for={m <- @members} id={"member-row-#{m.id}"}>
-                <td>{m.user.email}</td>
+                <td>
+                  <span class="block font-medium">{m.user.name || m.user.email}</span>
+                  <span :if={m.user.name} class="block text-xs text-base-content/60">
+                    {m.user.email}
+                  </span>
+                </td>
                 <td>
                   <form
                     :if={@can_manage_staff?}
