@@ -167,7 +167,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="appreciations" class="flex flex-col gap-4 pb-4">
         <.page_header
-          eyebrow={gettext("Évaluation")}
+          eyebrow={gettext("Paramètres")}
           title={gettext("Appréciations & distinctions")}
           subtitle={
             gettext(

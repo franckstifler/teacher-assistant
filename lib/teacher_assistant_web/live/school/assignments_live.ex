@@ -155,7 +155,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="assignments" class="space-y-6">
         <.page_header
-          eyebrow={gettext("Organisation")}
+          eyebrow={gettext("Paramètres")}
           title={gettext("Affectations")}
           subtitle={
             gettext(

@@ -115,7 +115,7 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="bulletin-template" class="space-y-6">
         <.page_header
-          eyebrow={gettext("Évaluation")}
+          eyebrow={gettext("Paramètres")}
           title={gettext("Modèle de bulletin")}
           subtitle={gettext("Ce qui apparaît sur le bulletin imprimé.")}
         />

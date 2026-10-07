@@ -101,7 +101,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="class-results" class="space-y-6">
         <.page_header
-          eyebrow={gettext("Conseil de classe")}
+          eyebrow={gettext("École")}
           title={"#{@cg.label} — #{gettext("Résultats & bulletins")}"}
         >
           <:actions>
