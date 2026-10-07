@@ -126,7 +126,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                     {row.student.full_name}
                   </.link>
                 </td>
-                <td>{row.student.sex}</td>
+                <td>{row.student.sex && TeacherAssistant.Academics.Sex.label(row.student.sex)}</td>
                 <td>{row.student.matricule}</td>
                 <td>
                   <span class="badge badge-sm">

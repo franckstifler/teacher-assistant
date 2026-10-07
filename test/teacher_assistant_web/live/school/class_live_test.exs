@@ -29,8 +29,10 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "shows the roster with status and repeater", %{conn: conn, cg: cg, scope: scope} do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, repeater: true})
-    {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}")
     assert html =~ "Awa"
+    # The sex in words, not the stored code.
+    assert view |> element("tr", "Awa") |> render() =~ "Féminin"
   end
 
   test "enrolls a new student (inscription)", %{conn: conn, cg: cg, scope: scope} do

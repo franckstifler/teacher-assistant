@@ -81,4 +81,12 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
     assert updated.end_date == ~D[2026-05-22]
     assert length(Organization.list_holidays(scope, year)) == 7
   end
+
+  test "a year without holidays says so", %{conn: conn, scope: scope, year: year} do
+    for h <- Organization.list_holidays(scope, year),
+        do: :ok = Organization.delete_holiday(scope, h)
+
+    {:ok, view, _} = live(conn, ~p"/school/settings/holidays")
+    assert has_element?(view, "#holidays-empty")
+  end
 end
