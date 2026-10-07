@@ -638,10 +638,10 @@ defmodule TeacherAssistantWeb.Layouts do
       :sign_in ->
         %{
           eyebrow: "Connexion",
-          title: "Content de vous revoir",
-          sub: "Entrez l'adresse fournie par votre établissement.",
-          foot:
-            "Une invitation reçue par e-mail vous rattache automatiquement à votre établissement et à votre rôle."
+          title: "Se connecter",
+          sub: "Entrez le numéro de téléphone ou l'adresse fournis par votre établissement.",
+          # the page renders its own footer line (« Inscrire mon établissement »)
+          foot: nil
         }
     end
   end

@@ -140,6 +140,8 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     set :hide_class, "hidden"
     set :sign_in_extra_component, &__MODULE__.remember_me_extra/1
     set :register_extra_component, &__MODULE__.name_extra/1
+    # the library's form + a page-level alert on failure (see the module)
+    set :sign_in_form_module, TeacherAssistantWeb.Auth.SignInForm
   end
 
   override Components.Password.SignInForm do

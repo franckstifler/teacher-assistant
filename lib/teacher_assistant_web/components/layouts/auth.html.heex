@@ -217,6 +217,117 @@
     color: #FFFFFF;
   }
 
+  /* /sign-in (Auth.SignInLive): « Téléphone | Adresse e-mail » switch — both
+     forms stay in the DOM, `data-method` on the wrapper picks the visible one */
+  .ta-auth-paper .ta-segmented {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+    margin: 0 0 1.1rem;
+    padding: 0.25rem;
+    border: 1px solid #EFEAE0;
+    border-radius: 0.6rem;
+    background: #FAF8F3;
+  }
+  .ta-auth-paper .ta-segmented__option {
+    height: 2.1rem;
+    border: 0;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: #5A6668;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ta-auth-paper .ta-segmented__option:hover { color: #1E2A2B; }
+  .ta-auth-paper .ta-segmented__option[aria-pressed="true"] {
+    background: #FFFFFF;
+    color: #0E7A5F;
+    box-shadow: 0 1px 2px rgba(23, 35, 33, 0.12);
+  }
+  .ta-auth-paper .ta-sign-in-methods[data-method="phone"] .ta-email-form,
+  .ta-auth-paper .ta-sign-in-methods[data-method="email"] .ta-phone-form { display: none; }
+
+  /* +237 chip glued to the left of the phone input */
+  .ta-auth-paper .ta-phone-form .ta-field-wrap:has(input[name$="[phone]"]) {
+    display: grid;
+    grid-template-columns: auto 1fr;
+  }
+  .ta-auth-paper .ta-phone-form .ta-field-wrap:has(input[name$="[phone]"]) > :not(input) { grid-column: 1 / -1; }
+  .ta-auth-paper .ta-phone-form .ta-field-wrap:has(input[name$="[phone]"])::before {
+    content: "+237";
+    grid-row: 2;
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 0.65rem;
+    border: 1px solid #D7CFBE;
+    border-right: 0;
+    border-radius: 0.45rem 0 0 0.45rem;
+    background: #FAF8F3;
+    color: #44514F;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.85rem;
+  }
+  .ta-auth-paper .ta-phone-form input[name$="[phone]"] {
+    grid-row: 2;
+    grid-column: 2;
+    border-radius: 0 0.45rem 0.45rem 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing: 0.02em;
+  }
+
+  /* sign-in failure (flash from AuthController, or a refused submission) */
+  .ta-auth-paper .ta-auth-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid #E7B9AC;
+    border-radius: 0.55rem;
+    background: #FBEAE4;
+    color: #7A2E1C;
+  }
+  .ta-auth-paper .ta-auth-alert--warning {
+    border-color: #E8CF9A;
+    background: #FBF3E1;
+    color: #6E4E12;
+  }
+  .ta-auth-paper .ta-auth-alert__icon { flex: none; margin-top: 0.1rem; }
+  .ta-auth-paper .ta-auth-alert__title { margin: 0; font-size: 0.84rem; font-weight: 700; }
+  .ta-auth-paper .ta-auth-alert__text { margin: 0.2rem 0 0; font-size: 0.8rem; line-height: 1.5; }
+
+  /* « Mot de passe oublié ? » for phone accounts, phone note on /reset */
+  .ta-auth-paper .ta-auth-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin: 1rem 0 0;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid #EFEAE0;
+    border-radius: 0.55rem;
+    background: #FAF8F3;
+    color: #44514F;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+  .ta-auth-paper .ta-auth-info p { margin: 0; }
+  .ta-auth-paper .ta-auth-info strong { color: #1E2A2B; }
+  .ta-auth-paper .ta-auth-info__icon { flex: none; margin-top: 0.12rem; color: #0E7A5F; }
+
+  .ta-auth-paper .ta-auth-footnote {
+    margin: 1.4rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid #EFEAE0;
+    font-size: 0.82rem;
+    color: #5A6668;
+    text-align: center;
+  }
+  .ta-auth-paper .ta-auth-footnote a { font-weight: 650; }
+
   .ta-auth-paper :where(a, button, input, [role="button"]):focus-visible {
     outline: 2px solid #0E7A5F;
     outline-offset: 2px;

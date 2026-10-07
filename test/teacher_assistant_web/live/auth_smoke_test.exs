@@ -14,13 +14,16 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
   test "sign-in page renders the paper layout, French copy, and hides magic link", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/sign-in")
 
-    assert html =~ "Content de vous revoir"
     assert html =~ "Se connecter"
+
+    assert html =~
+             "Entrez le numéro de téléphone ou l&#39;adresse fournis par votre établissement."
+
     assert html =~ "Mot de passe oublié ?"
     assert html =~ "Rester connecté"
     assert html =~ "Tout l&#39;établissement sur un seul tableau."
-    # magic-link UI (and the sign-in/register/reset forms not matching the
-    # current live_action) are hidden via CSS, not removed from the DOM
+    # magic link is no longer rendered on /sign-in (its routes stay); the
+    # register/reset forms not matching the live_action are hidden via CSS
     assert html =~ ~s(hidden)
     assert html =~ ~s(type="submit")
     # "Nom et prénom" belongs to the register form only. Like the rest of
