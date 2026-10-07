@@ -45,10 +45,10 @@ defmodule TeacherAssistant.Academics.NewYearPlanTest do
 
     targets = NewYearPlan.default_targets(classes)
     assert targets["6a"] == "5a"
-    # No « 5ème B »: the admin chooses.
-    assert targets["6b"] == nil
-    # 3ème has no série, every 2nde has one.
-    assert targets["3"] == nil
+    # No « 5ème B »: the only 5ème takes them.
+    assert targets["6b"] == "5a"
+    # 3ème has no série and no 2nde matches, but « 2nde C » is the only 2nde.
+    assert targets["3"] == "2c"
     assert targets["2c"] == "1c"
     # Last level.
     assert targets["tc"] == nil
@@ -92,5 +92,29 @@ defmodule TeacherAssistant.Academics.NewYearPlanTest do
              repeaters: 1,
              not_reenrolled: %{exclu: 1, sans_decision: 1, sans_classe: 1}
            }
+  end
+
+  test "without a same-suffix class, the next level's only class is the target" do
+    classes = [
+      cls("6a", "6ème A", "6ème"),
+      cls("5b", "5ème B", "5ème"),
+      cls("2a", "2nde A", "2nde"),
+      cls("1d", "1ère D", "1ère", "D")
+    ]
+
+    targets = NewYearPlan.default_targets(classes)
+    assert targets["6a"] == "5b"
+    # Série differs, but 1ère D is the only class of the next level.
+    assert targets["2a"] == "1d"
+  end
+
+  test "with several next-level classes and none matching, no target is guessed" do
+    classes = [
+      cls("6a", "6ème A", "6ème"),
+      cls("5b", "5ème B", "5ème"),
+      cls("5c", "5ème C", "5ème")
+    ]
+
+    assert NewYearPlan.default_targets(classes)["6a"] == nil
   end
 end

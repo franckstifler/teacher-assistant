@@ -48,15 +48,16 @@ defmodule TeacherAssistant.Academics.NewYearPlan do
 
   defp target(_class, _classes, nil), do: nil
 
+  # The next level's class with the same série and suffix; else, when the next level
+  # has a single class, that one; else none (the admin chooses).
   defp target(class, classes, next) do
+    at_next = Enum.filter(classes, &(&1.level == next))
     suffix = suffix(class)
 
-    case Enum.find(
-           classes,
-           &(&1.level == next and &1.serie == class.serie and suffix(&1) == suffix)
-         ) do
+    case Enum.find(at_next, &(&1.serie == class.serie and suffix(&1) == suffix)) do
+      %{id: id} -> id
+      nil when length(at_next) == 1 -> hd(at_next).id
       nil -> nil
-      found -> found.id
     end
   end
 

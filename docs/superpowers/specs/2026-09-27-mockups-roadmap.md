@@ -1445,8 +1445,10 @@ the calendar of `scope.current_academic_year`, not of the class's own year.
    action). Per class: new label (default: the same), **admis target** and projected size. Default admis
    target: the class of the next level (level order, as in `level_rank`) with the same série and the same
    suffix — the label's last word when it is letters or a number (« 6ème A » → A, « 3e 2 » → 2; KLM5's
-   `class_suffix`), no suffix otherwise; none when no such class exists (last level, or no next level in the
-   school) — the admin then picks a class or « Ne pas réinscrire ».
+   `class_suffix`), no suffix otherwise. When no class matches, the next level's class if it is the only one
+   (decided 2026-10-07 after the visual pass: a strict match left 43 of 84 demo students without a class);
+   none otherwise (last level, no next level in the school, or several candidates) — the admin then picks a
+   class or « Ne pas réinscrire ».
 8. **Placement** from each student's decision = the annual council's choice, else the engine's proposal:
    - `:admis` and `:admis_rachat` → the class's admis target; not re-enrolled when the target is « Ne pas
      réinscrire »;
