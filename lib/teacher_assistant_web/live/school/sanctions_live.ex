@@ -151,7 +151,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
     end
   end
 
-  defp member_name(member), do: member.user && (member.user.name || to_string(member.user.email))
+  defp member_name(member), do: member.user && Accounts.User.display_name(member.user)
   defp blank_to_nil(v) when v in [nil, ""], do: nil
   defp blank_to_nil(v), do: String.trim(v)
 

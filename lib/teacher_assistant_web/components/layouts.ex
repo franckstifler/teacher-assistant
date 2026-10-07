@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.Layouts do
   used by your application.
   """
   use TeacherAssistantWeb, :html
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.NotificationText
 
@@ -64,7 +65,7 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(
         :user_initial,
         current_user &&
-          String.upcase(String.slice(to_string(current_user.name || current_user.email), 0, 1))
+          String.upcase(String.slice(User.display_name(current_user), 0, 1))
       )
       |> assign(:workspace_name, workspace_name(current_scope))
       |> assign(:role_label, role_label(current_scope))
@@ -291,8 +292,7 @@ defmodule TeacherAssistantWeb.Layouts do
                   {@user_initial}
                 </span>
                 <span class="min-w-0 flex-1 leading-tight">
-                  <span class="block truncate text-xs font-semibold">{@current_user.name ||
-                    @current_user.email}</span>
+                  <span class="block truncate text-xs font-semibold">{User.display_name(@current_user)}</span>
                   <span class="ta-num block truncate text-[0.6rem] uppercase tracking-wide text-[color:var(--ta-rail-muted)]">
                     {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
                   </span>

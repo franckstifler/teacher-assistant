@@ -6,6 +6,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Assessment, Organization}
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistantWeb.Dates
@@ -504,7 +505,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   defp deadline_text(_seq), do: "—"
 
   defp teacher_name(nil), do: "—"
-  defp teacher_name(teacher), do: to_string(teacher.name || teacher.email)
+  defp teacher_name(teacher), do: User.display_name(teacher)
 
   defp last_entry(nil), do: "—"
 

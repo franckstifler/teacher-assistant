@@ -12,6 +12,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   require Ash.Query
 
+  alias TeacherAssistant.Accounts.User
+
   alias TeacherAssistant.Academics.{
     AcademicYear,
     Assessment,
@@ -265,5 +267,5 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   end
 
   defp teacher_name(nil), do: ""
-  defp teacher_name(teacher), do: to_string(teacher.name || teacher.email)
+  defp teacher_name(teacher), do: User.display_name(teacher)
 end

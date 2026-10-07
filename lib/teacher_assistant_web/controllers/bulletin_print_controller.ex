@@ -95,7 +95,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     |> render(:show,
       etablissement: scope.current_workspace.name,
       annee: year && year.name,
-      professeur_principal: view.form_master && (view.form_master.name || view.form_master.email),
+      professeur_principal: view.form_master && Accounts.User.display_name(view.form_master),
       cg: cg,
       period_kind: kind,
       period_heading: BulletinPrintHTML.tr(lang, fn -> period_heading(period) end),

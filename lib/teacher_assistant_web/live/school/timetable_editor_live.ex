@@ -7,6 +7,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Attendance, Curriculum, Enrollment, Organization, Timetabling}
 
   alias TeacherAssistant.Academics.{
@@ -394,7 +395,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                   title={
                     (c = busy_for.(tc)) &&
                       gettext("%{teacher} a déjà cours en %{class}",
-                        teacher: tc.teacher.name || to_string(tc.teacher.email),
+                        teacher: User.display_name(tc.teacher),
                         class: c
                       )
                   }

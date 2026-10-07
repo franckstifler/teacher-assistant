@@ -2,6 +2,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
   @moduledoc "Pieces shared by the surveillant's Aujourd'hui and Absences screens (spec G)."
   use TeacherAssistantWeb, :html
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Academics.JustificationReason
 
@@ -17,7 +18,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
     do: Enum.find(JustificationReason.values(), &(Atom.to_string(&1) == value))
 
   def teacher_name(nil), do: "—"
-  def teacher_name(teacher), do: to_string(teacher.name || teacher.email)
+  def teacher_name(teacher), do: User.display_name(teacher)
 
   def hm(time), do: Calendar.strftime(time, "%H:%M")
 

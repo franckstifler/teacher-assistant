@@ -243,8 +243,7 @@ defmodule TeacherAssistant.Timetabling do
     base = %{
       teaching_context_id: slot.teaching_context_id,
       subject: slot.teaching_context.subject,
-      teacher_name:
-        to_string(slot.teaching_context.teacher.name || slot.teaching_context.teacher.email),
+      teacher_name: User.display_name(slot.teaching_context.teacher),
       day: slot.day,
       period_id: slot.period_id,
       class_group_id: slot.class_group_id

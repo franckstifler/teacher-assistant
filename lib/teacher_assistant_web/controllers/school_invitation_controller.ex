@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.SchoolInvitationController do
             is_nil(current_user) ->
               {:signed_out, put_session(conn, :return_to, ~p"/schools/invitations/#{token}")}
 
-            to_string(current_user.email) == to_string(invitation.email) ->
+            current_user.email && to_string(current_user.email) == to_string(invitation.email) ->
               {:match, conn}
 
             true ->

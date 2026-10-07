@@ -122,7 +122,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
   defp name(users, id) do
     case users[id] do
       nil -> "—"
-      u -> u.name || to_string(u.email)
+      u -> Accounts.User.display_name(u)
     end
   end
 
@@ -136,7 +136,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
     Enum.sort_by(
       grid.members,
       &{not MapSet.member?(teaching, &1.user_id),
-       String.downcase(to_string(&1.user.name || &1.user.email))}
+       String.downcase(Accounts.User.display_name(&1.user))}
     )
   end
 

@@ -260,7 +260,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 value={m.user_id}
                 selected={m.user_id == @cg.form_master_user_id}
               >
-                {m.user.name || m.user.email}
+                {Accounts.User.display_name(m.user)}
               </option>
             </select>
           </form>
@@ -327,7 +327,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                       </form>
                     </details>
                   </td>
-                  <td>{tc.teacher.name || tc.teacher.email}</td>
+                  <td>{Accounts.User.display_name(tc.teacher)}</td>
                   <td>{tc.weekly_hours}</td>
                   <td>
                     <form
@@ -424,7 +424,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                         <select name="user_id" class="select select-bordered select-xs">
                           <option value="">{gettext("Réassigner à…")}</option>
                           <option :for={m <- @members} value={m.user_id}>
-                            {m.user.name || m.user.email}
+                            {Accounts.User.display_name(m.user)}
                           </option>
                         </select>
                       </form>
@@ -467,7 +467,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           <form :if={@can_manage_assignments?} id="assign-form" phx-submit="assign" class="space-y-2">
             <div class="grid gap-2 sm:grid-cols-4">
               <select name="assignment[user_id]" class="select select-bordered select-sm">
-                <option :for={m <- @members} value={m.user_id}>{m.user.name || m.user.email}</option>
+                <option :for={m <- @members} value={m.user_id}>
+                  {Accounts.User.display_name(m.user)}
+                </option>
               </select>
               <select name="assignment[subject]" class="select select-bordered select-sm">
                 <option value="">{gettext("Choisir une matière")}</option>

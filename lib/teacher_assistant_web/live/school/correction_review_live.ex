@@ -5,6 +5,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Assessment, Organization}
   alias TeacherAssistant.Academics.{Lock, MarkCorrectionMotive, MarkEntry}
   alias TeacherAssistantWeb.School.CorrectionsLive
@@ -143,7 +144,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   defp where(_event), do: nil
 
   defp author(nil), do: gettext("Système")
-  defp author(user), do: user.name || to_string(user.email)
+  defp author(user), do: User.display_name(user)
 
   defp action_label(:saisie), do: gettext("Saisie")
   defp action_label(:correction_demandee), do: gettext("Correction demandée")

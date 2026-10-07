@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.School.ResultsLive do
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
@@ -133,7 +134,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
         </p>
 
         <p :if={@form_master} class="text-sm text-base-content/70">
-          {gettext("Professeur principal")}: {@form_master.name || @form_master.email}
+          {gettext("Professeur principal")}: {User.display_name(@form_master)}
         </p>
 
         <.empty_state

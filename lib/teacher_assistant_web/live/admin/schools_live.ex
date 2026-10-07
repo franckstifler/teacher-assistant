@@ -36,7 +36,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
                   p.sector
                 )} · {CameroonRegion.label(p.region)} · {p.town}
               </p>
-              <p class="text-sm text-base-content/60">{p.owner_user.email}</p>
+              <p class="text-sm text-base-content/60">{Accounts.User.contact(p.owner_user)}</p>
             </div>
 
             <div class="flex flex-col items-end gap-2">

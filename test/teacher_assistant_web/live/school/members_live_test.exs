@@ -165,4 +165,214 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     view |> form("#service-#{m.id}", %{service: "12"}) |> render_submit()
     assert Enum.find(Accounts.list_members(scope), &(&1.id == m.id)).statutory_hours == 12
   end
+
+  describe "phone accounts" do
+    defp member_for(scope, user_id),
+      do: Enum.find(Accounts.list_members(scope), &(&1.user_id == user_id))
+
+    defp set_user_columns!(user_id, sets) do
+      {sql, values} =
+        sets
+        |> Enum.with_index(1)
+        |> Enum.map_reduce([], fn {{col, val}, i}, acc -> {"#{col} = $#{i}", acc ++ [val]} end)
+
+      TeacherAssistant.Repo.query!(
+        "UPDATE users SET #{Enum.join(sql, ", ")} WHERE id = $#{length(values) + 1}",
+        values ++ [Ecto.UUID.dump!(user_id)]
+      )
+    end
+
+    test "head creates an account and sees the temporary password once", %{
+      conn: conn,
+      scope: scope
+    } do
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view
+      |> form("#create-account-form", %{
+        "account" => %{"name" => "Awa Nji", "phone" => "6 77 12 34 56", "roles" => ["teacher"]}
+      })
+      |> render_submit()
+
+      assert has_element?(view, "#temporary-password-dialog")
+      assert has_element?(view, "#temporary-password-dialog", "Compte créé")
+      assert has_element?(view, "#temporary-password-dialog", "6 77 12 34 56")
+      assert view |> element("#temporary-password") |> render() =~ ~r/[a-z]{4}-[a-z]{4}-\d{4}/
+      assert has_element?(view, "#members-table", "Awa Nji")
+      assert has_element?(view, "#members-table", "6 77 12 34 56")
+      # the drawer is closed on success
+      refute has_element?(view, "#add-member-drawer[data-open]")
+      assert_push_event(view, "js-exec", %{to: "#add-member-drawer", attr: "data-hide"})
+
+      view |> element("#close-temporary-password") |> render_click()
+      refute has_element?(view, "#temporary-password-dialog")
+      assert Enum.any?(Accounts.list_members(scope), &(&1.user.name == "Awa Nji"))
+    end
+
+    test "invalid phone shows a field error and keeps the drawer open", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      refute has_element?(view, "#add-member-drawer[data-open]")
+
+      html =
+        view
+        |> form("#create-account-form", %{"account" => %{"name" => "X", "phone" => "12"}})
+        |> render_submit()
+
+      assert html =~ "numéro de téléphone"
+      assert has_element?(view, "#add-member-drawer[data-open]")
+      assert has_element?(view, "#add-member-drawer #create-account-form", "n'est pas valide")
+      refute has_element?(view, "#temporary-password-dialog")
+    end
+
+    test "an already-member number shows the error inside the drawer", %{
+      conn: conn,
+      scope: scope
+    } do
+      {:ok, _} =
+        Accounts.add_member_by_phone(scope, %{name: "Awa", phone: "677123456", roles: [:teacher]})
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view
+      |> form("#create-account-form", %{"account" => %{"name" => "Awa", "phone" => "677123456"}})
+      |> render_submit()
+
+      assert has_element?(view, "#add-member-drawer[data-open] #add-member-error", "Déjà membre")
+      refute has_element?(view, "#temporary-password-dialog")
+    end
+
+    test "an existing account is linked without a password", %{conn: conn} do
+      %{scope: other} = TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(other, %{
+          name: "Awa Nji",
+          phone: "677123456",
+          roles: [:teacher]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      html =
+        view
+        |> form("#create-account-form", %{
+          "account" => %{"name" => "Autre", "phone" => "677123456"}
+        })
+        |> render_submit()
+
+      assert html =~ "Awa Nji"
+      assert html =~ "Compte existant ajouté"
+      refute has_element?(view, "#temporary-password-dialog")
+    end
+
+    test "the Compte column shows each account's state", %{conn: conn, scope: scope} do
+      {:ok, %{user: pending}} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Pending",
+          phone: "677000011",
+          roles: [:teacher]
+        })
+
+      {:ok, %{user: expired}} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Expired",
+          phone: "677000012",
+          roles: [:teacher]
+        })
+
+      {:ok, %{user: settled}} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Settled",
+          phone: "677000013",
+          roles: [:teacher]
+        })
+
+      %{scope: other} = TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      {:ok, %{user: linked}} =
+        Accounts.add_member_by_phone(other, %{
+          name: "Linked",
+          phone: "677000014",
+          roles: [:teacher]
+        })
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Linked",
+          phone: "677000014",
+          roles: [:teacher]
+        })
+
+      set_user_columns!(expired.id, temporary_password_expires_at: ~U[2020-01-01 00:00:00Z])
+      set_user_columns!(settled.id, must_change_password: false)
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      row = fn user -> "#member-row-#{member_for(scope, user.id).id}" end
+
+      assert has_element?(view, row.(pending), "Mot de passe temporaire")
+      assert has_element?(view, row.(pending), "expire le")
+      assert has_element?(view, row.(pending), "TÉL")
+      assert has_element?(view, row.(expired), "Mot de passe expiré")
+      assert has_element?(view, row.(settled), "Compte créé par l'établissement")
+      assert has_element?(view, row.(linked), "Compte lié")
+      assert has_element?(view, row.(scope.current_user), "Mot de passe géré par la personne")
+    end
+
+    test "reset button only for accounts this school created", %{conn: conn, scope: scope} do
+      {:ok, %{user: own}} =
+        Accounts.add_member_by_phone(scope, %{name: "Own", phone: "677000001", roles: [:teacher]})
+
+      %{scope: other} = TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      {:ok, %{user: linked}} =
+        Accounts.add_member_by_phone(other, %{
+          name: "Linked",
+          phone: "677000002",
+          roles: [:teacher]
+        })
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Linked",
+          phone: "677000002",
+          roles: [:teacher]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      own_m = member_for(scope, own.id)
+      linked_m = member_for(scope, linked.id)
+
+      assert has_element?(view, "#reset-password-#{own_m.id}")
+      refute has_element?(view, "#reset-password-#{linked_m.id}")
+
+      view |> element("#reset-password-#{own_m.id}") |> render_click()
+      view |> element("#confirm-reset") |> render_click()
+      assert has_element?(view, "#temporary-password-dialog")
+    end
+
+    test "reset asks for confirmation first", %{conn: conn, scope: scope} do
+      {:ok, %{user: own, temporary_password: first}} =
+        Accounts.add_member_by_phone(scope, %{name: "Own", phone: "677000003", roles: [:teacher]})
+
+      own_m = member_for(scope, own.id)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view |> element("#reset-password-#{own_m.id}") |> render_click()
+      assert has_element?(view, "#confirm-reset-dialog", "Nouveau mot de passe pour Own")
+      refute has_element?(view, "#temporary-password-dialog")
+
+      view |> element("#cancel-reset") |> render_click()
+      refute has_element?(view, "#confirm-reset-dialog")
+
+      view |> element("#reset-password-#{own_m.id}") |> render_click()
+      view |> element("#confirm-reset") |> render_click()
+
+      refute has_element?(view, "#confirm-reset-dialog")
+      assert has_element?(view, "#temporary-password-dialog", "Mot de passe réinitialisé")
+      new_password = view |> element("#temporary-password") |> render()
+      assert new_password =~ ~r/[a-z]{4}-[a-z]{4}-\d{4}/
+      refute new_password =~ first
+    end
+  end
 end

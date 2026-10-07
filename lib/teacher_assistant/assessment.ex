@@ -8,6 +8,8 @@ defmodule TeacherAssistant.Assessment do
   # the short alias `Assessment` is bound to the RESOURCE (below); this module
   # calls its own domain functions bare, so there is never a bare
   # `Assessment.<fn>` that could rebind to the wrong module.
+  alias TeacherAssistant.Accounts.User
+
   alias TeacherAssistant.Academics.{
     AbsenceRule,
     AcademicYear,
@@ -478,7 +480,7 @@ defmodule TeacherAssistant.Assessment do
     do: Enum.reject(ids, &(is_nil(&1) or &1 == actor_id))
 
   defp user_name(nil), do: ""
-  defp user_name(user), do: to_string(user.name || user.email)
+  defp user_name(user), do: User.display_name(user)
 
   @doc "The scope's own requests, newest first."
   def list_my_corrections(%Scope{current_user: %{id: user_id}} = scope) do

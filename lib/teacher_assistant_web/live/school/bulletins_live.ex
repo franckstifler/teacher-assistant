@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.ReportCards
   alias TeacherAssistant.Academics.Reference
 
@@ -198,7 +199,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     do: at |> DateTime.add(3600) |> Calendar.strftime("%d/%m/%Y")
 
   defp who(nil), do: "—"
-  defp who(user), do: user.name || to_string(user.email)
+  defp who(user), do: User.display_name(user)
 
   defp fmt(nil), do: "—"
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
