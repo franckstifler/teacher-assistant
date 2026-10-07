@@ -5,9 +5,7 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  require Ash.Query
-
-  alias TeacherAssistant.Accounts.{Checks, SchoolMembership}
+  alias TeacherAssistant.Accounts.Checks
 
   postgres do
     table "school_invitations"
@@ -163,38 +161,12 @@ defmodule TeacherAssistant.Accounts.SchoolInvitation do
   # Bootstrap write (spec §4.1 case 2): the invitee is not a member until this
   # transaction commits, so no school policy could admit these reads/writes.
   defp ensure_membership(inv, user) do
-    SchoolMembership
-    |> Ash.Query.filter(user_id == ^user.id)
-    |> Ash.read_one(tenant: inv.workspace_id, authorize?: false)
-    |> case do
-      {:ok, %SchoolMembership{active: true}} ->
-        :ok
-
-      {:ok, %SchoolMembership{} = m} ->
-        m
-        |> Ash.Changeset.for_update(:update, %{
-          active: true,
-          roles: inv.roles,
-          status: inv.membership_status
-        })
-        |> Ash.update(tenant: inv.workspace_id, authorize?: false)
-        |> ok()
-
-      {:ok, nil} ->
-        SchoolMembership
-        |> Ash.Changeset.for_create(:create, %{
-          user_id: user.id,
-          roles: inv.roles,
-          status: inv.membership_status
-        })
-        |> Ash.create(tenant: inv.workspace_id, authorize?: false)
-        |> ok()
-
-      {:error, error} ->
-        {:error, error}
-    end
+    TeacherAssistant.Accounts.Memberships.ensure_active(
+      user.id,
+      inv.roles,
+      inv.membership_status,
+      tenant: inv.workspace_id,
+      authorize?: false
+    )
   end
-
-  defp ok({:ok, _}), do: :ok
-  defp ok({:error, error}), do: {:error, error}
 end

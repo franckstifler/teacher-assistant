@@ -227,4 +227,161 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
                |> Ash.update()
     end
   end
+
+  alias TeacherAssistant.Accounts
+
+  defp member_ids(scope), do: scope |> Accounts.list_members() |> Enum.map(& &1.user_id)
+
+  defp membership_of(scope, user),
+    do: Enum.find(Accounts.list_members(scope), &(&1.user_id == user.id))
+
+  describe "add_member_by_phone" do
+    test "new number: creates the account and the membership" do
+      scope = head_scope()
+
+      assert {:ok, %{user: user, temporary_password: pw}} =
+               Accounts.add_member_by_phone(scope, %{
+                 name: "Awa Nji",
+                 phone: "677 12 34 56",
+                 roles: [:teacher]
+               })
+
+      assert is_binary(pw)
+      assert user.id in member_ids(scope)
+    end
+
+    test "existing account: linked, its name and password untouched" do
+      scope_a = head_scope()
+      scope_b = head_scope()
+
+      {:ok, %{user: user, temporary_password: pw}} =
+        Accounts.add_member_by_phone(scope_a, %{
+          name: "Awa Nji",
+          phone: "677123456",
+          roles: [:teacher]
+        })
+
+      assert {:ok, %{user: linked, temporary_password: nil}} =
+               Accounts.add_member_by_phone(scope_b, %{
+                 name: "Autre Nom",
+                 phone: "+237 677 12 34 56",
+                 roles: [:teacher]
+               })
+
+      assert linked.id == user.id
+      assert linked.id in member_ids(scope_b)
+      reloaded = Ash.get!(User, user.id, authorize?: false)
+      assert reloaded.name == "Awa Nji"
+      assert {:ok, _} = sign_in_by_phone("677123456", pw)
+    end
+
+    test "already an active member" do
+      scope = head_scope()
+      attrs = %{name: "Awa Nji", phone: "677123456", roles: [:teacher]}
+      {:ok, _} = Accounts.add_member_by_phone(scope, attrs)
+      assert {:error, :already_member} = Accounts.add_member_by_phone(scope, attrs)
+    end
+
+    test "invalid phone" do
+      assert {:error, :invalid_phone} =
+               Accounts.add_member_by_phone(head_scope(), %{
+                 name: "X",
+                 phone: "12",
+                 roles: [:teacher]
+               })
+    end
+
+    test "a non-head cannot add members" do
+      scope = head_scope()
+      teacher_scope = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+
+      assert {:error, :forbidden} =
+               Accounts.add_member_by_phone(teacher_scope, %{
+                 name: "X",
+                 phone: "677123456",
+                 roles: [:teacher]
+               })
+    end
+  end
+
+  describe "reset_member_password" do
+    test "the creating school resets: new password, old one stops working, sessions revoked" do
+      scope = head_scope()
+
+      {:ok, %{user: user, temporary_password: old}} =
+        Accounts.add_member_by_phone(scope, %{name: "Awa", phone: "677123456", roles: [:teacher]})
+
+      {:ok, signed_in} = sign_in_by_phone("677123456", old)
+      token = signed_in.__metadata__.token
+
+      assert {:ok, new} = Accounts.reset_member_password(scope, membership_of(scope, user))
+      assert new != old
+      assert {:error, _} = sign_in_by_phone("677123456", old)
+      assert {:ok, _} = sign_in_by_phone("677123456", new)
+
+      assert AshAuthentication.TokenResource.token_revoked?(
+               TeacherAssistant.Accounts.Token,
+               token
+             )
+    end
+
+    test "linked account cannot be reset" do
+      scope_a = head_scope()
+      scope_b = head_scope()
+
+      {:ok, %{user: user}} =
+        Accounts.add_member_by_phone(scope_a, %{
+          name: "Awa",
+          phone: "677123456",
+          roles: [:teacher]
+        })
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(scope_b, %{
+          name: "Awa",
+          phone: "677123456",
+          roles: [:teacher]
+        })
+
+      refute Accounts.can_reset_member_password?(scope_b, user)
+      assert Accounts.can_reset_member_password?(scope_a, user)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.reset_member_password(scope_b, membership_of(scope_b, user))
+    end
+
+    test "an operator's account is never reset" do
+      scope = head_scope()
+
+      {:ok, %{user: user}} =
+        Accounts.add_member_by_phone(scope, %{name: "Op", phone: "677123456", roles: [:teacher]})
+
+      {:ok, _} = Accounts.promote_to_admin(user, authorize?: false)
+
+      refute Accounts.can_reset_member_password?(
+               scope,
+               Ash.get!(User, user.id, authorize?: false)
+             )
+    end
+  end
+
+  test "temporary_password_expired?/1" do
+    past = DateTime.add(DateTime.utc_now(), -1, :day)
+    future = DateTime.add(DateTime.utc_now(), 1, :day)
+
+    assert Accounts.temporary_password_expired?(%User{
+             must_change_password: true,
+             temporary_password_expires_at: past
+           })
+
+    refute Accounts.temporary_password_expired?(%User{
+             must_change_password: true,
+             temporary_password_expires_at: future
+           })
+
+    refute Accounts.temporary_password_expired?(%User{
+             must_change_password: false,
+             temporary_password_expires_at: past
+           })
+  end
 end

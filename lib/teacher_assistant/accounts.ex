@@ -2,9 +2,19 @@ defmodule TeacherAssistant.Accounts do
   use Ash.Domain,
     otp_app: :teacher_assistant
 
-  alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolMembership, SchoolProfile, User}
+  alias TeacherAssistant.Accounts.{
+    Memberships,
+    Phone,
+    SchoolInvitation,
+    SchoolMembership,
+    SchoolProfile,
+    User
+  }
+
   alias TeacherAssistant.Accounts.User.Senders.SendSchoolInvitationEmail
   alias TeacherAssistant.Scope
+
+  require Ash.Query
 
   resources do
     resource TeacherAssistant.Accounts.Token
@@ -250,8 +260,125 @@ defmodule TeacherAssistant.Accounts do
   defp active_member_email?(%Scope{} = scope, email) do
     scope
     |> list_members()
-    |> Enum.any?(fn m -> to_string(m.user.email) == to_string(email) end)
+    |> Enum.any?(fn m -> m.user.email && to_string(m.user.email) == to_string(email) end)
   end
+
+  # --- Phone accounts (spec 2026-10-07) ---------------------------------------
+
+  @doc """
+  Adds a person to the current school by phone. A new number gets an account
+  with a temporary password (returned once); a number that already has an
+  account is linked without touching it (`temporary_password: nil`).
+  """
+  def add_member_by_phone(%Scope{} = scope, %{} = attrs, retries \\ 1) do
+    with true <- can_manage_staff?(scope) || {:error, :forbidden},
+         {:ok, phone} <- normalize_phone(attrs[:phone]),
+         :ok <- ensure_not_member(scope, phone) do
+      roles = attrs[:roles] || [:teacher]
+      status = attrs[:membership_status]
+
+      TeacherAssistant.Repo.transaction(fn ->
+        case find_user_by_phone(phone) do
+          %User{} = user -> link_user(scope, user, roles, status)
+          nil -> create_and_link(scope, attrs[:name], phone, roles, status)
+        end
+        |> case do
+          {:ok, result} -> result
+          {:error, error} -> TeacherAssistant.Repo.rollback(error)
+        end
+      end)
+      |> case do
+        # Another head created the same number between our lookup and insert.
+        {:error, error} when retries > 0 ->
+          if phone_taken?(error),
+            do: add_member_by_phone(scope, attrs, retries - 1),
+            else: {:error, error}
+
+        other ->
+          other
+      end
+    end
+  end
+
+  defp normalize_phone(value) do
+    case Phone.normalize(value) do
+      {:ok, phone} -> {:ok, phone}
+      {:error, :invalid} -> {:error, :invalid_phone}
+    end
+  end
+
+  defp ensure_not_member(scope, phone) do
+    if scope |> list_members() |> Enum.any?(&(&1.user.phone == phone)),
+      do: {:error, :already_member},
+      else: :ok
+  end
+
+  # System lookup: the head cannot read users outside their school, but must
+  # know whether the number already has an account in order to link it.
+  defp find_user_by_phone(phone) do
+    User
+    |> Ash.Query.filter(phone == ^phone)
+    |> Ash.read_one!(authorize?: false)
+  end
+
+  defp link_user(scope, user, roles, status) do
+    with :ok <- Memberships.ensure_active(user.id, roles, status, scope: scope) do
+      {:ok, %{user: user, temporary_password: nil}}
+    end
+  end
+
+  defp create_and_link(scope, name, phone, roles, status) do
+    with {:ok, user} <-
+           User
+           |> Ash.Changeset.for_create(
+             :create_by_school,
+             %{name: name, phone: phone, created_in_workspace_id: scope.current_workspace.id},
+             scope: scope
+           )
+           |> Ash.create(),
+         :ok <- Memberships.ensure_active(user.id, roles, status, scope: scope) do
+      {:ok, %{user: user, temporary_password: user.__metadata__.temporary_password}}
+    end
+  end
+
+  @doc "New temporary password for a member whose account this school created; signs them out everywhere."
+  def reset_member_password(%Scope{} = scope, %SchoolMembership{} = membership) do
+    with {:ok, %{user: user}} <- Ash.load(membership, :user, scope: scope),
+         {:ok, user} <-
+           user
+           |> Ash.Changeset.for_update(:reset_temporary_password, %{}, scope: scope)
+           |> Ash.update(),
+         :ok <- revoke_all_sessions(user) do
+      {:ok, user.__metadata__.temporary_password}
+    end
+  end
+
+  def can_reset_member_password?(%Scope{} = scope, %User{} = user),
+    do: Ash.can?({user, :reset_temporary_password}, scope)
+
+  @doc "Revokes every stored token of the user (sign out on every device)."
+  def revoke_all_sessions(%User{} = user) do
+    TeacherAssistant.Accounts.Token
+    |> Ash.bulk_update(
+      :revoke_all_stored_for_subject,
+      %{subject: AshAuthentication.user_to_subject(user)},
+      context: %{private: %{ash_authentication?: true}},
+      strategy: [:atomic, :atomic_batches, :stream],
+      return_errors?: true
+    )
+    |> case do
+      %{status: :success} -> :ok
+      %{errors: errors} -> {:error, errors}
+    end
+  end
+
+  def temporary_password_expired?(%User{
+        must_change_password: true,
+        temporary_password_expires_at: %DateTime{} = at
+      }),
+      do: DateTime.compare(DateTime.utc_now(), at) == :gt
+
+  def temporary_password_expired?(_user), do: false
 
   defp gen_token, do: 24 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
 
