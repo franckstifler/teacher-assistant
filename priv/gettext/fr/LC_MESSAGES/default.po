@@ -747,14 +747,14 @@ msgid "Rôles"
 msgstr "Rôles"
 
 #: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:113
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "School name"
-msgstr "École"
+msgstr "Nom de l'établissement"
 
 #: lib/teacher_assistant_web/components/layouts.ex:235
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "School navigation"
-msgstr "Navigation du bas"
+msgstr "Navigation de l'école"
 
 #: lib/teacher_assistant_web/spaces.ex:362
 #, elixir-autogen, elixir-format
@@ -2249,14 +2249,14 @@ msgid "Communautaire"
 msgstr "Communautaire"
 
 #: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:164
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Create school"
-msgstr "Créer un établissement"
+msgstr "Créer l'établissement"
 
 #: lib/teacher_assistant_web/components/layouts.ex:170
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Créer un établissement"
-msgstr "Chef d'établissement"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:115
 #, elixir-autogen, elixir-format
@@ -2264,14 +2264,14 @@ msgid "Devise"
 msgstr "Devise"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:106
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Département"
-msgstr "Déroulement"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/roll_call.ex:273
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Enregistrer l'appel"
-msgstr "Enregistrer"
+msgstr ""
 
 #: lib/teacher_assistant/accounts/cameroon_region.ex:20
 #, elixir-autogen, elixir-format
@@ -2345,9 +2345,9 @@ msgid "Littoral"
 msgstr "Littoral"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:151
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Logo de l'école"
-msgstr "Nom de l'école"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:779
 #, elixir-autogen, elixir-format
@@ -2387,9 +2387,9 @@ msgid "Motif du rejet"
 msgstr "Motif du rejet"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:77
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Nom court"
-msgstr "Nom complet"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:514
 #, elixir-autogen, elixir-format
@@ -2397,9 +2397,9 @@ msgid "Nom de la matière"
 msgstr "Nom de la matière"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:113
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Nom du chef d'établissement"
-msgstr "Chef d'établissement"
+msgstr ""
 
 #: lib/teacher_assistant/accounts/school_verification_status.ex:6
 #, elixir-autogen, elixir-format
@@ -2432,9 +2432,9 @@ msgid "Ouest"
 msgstr "Ouest"
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:108
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Personnel"
-msgstr "Personnel"
+msgstr ""
 
 #: lib/teacher_assistant/accounts/school_sector.ex:8
 #, elixir-autogen, elixir-format
@@ -2504,9 +2504,9 @@ msgid "School identity"
 msgstr "Identité de l'établissement"
 
 #: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:123
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "School type"
-msgstr "École"
+msgstr "Type d'établissement"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:95
 #, elixir-autogen, elixir-format
@@ -2580,9 +2580,9 @@ msgid "Town"
 msgstr "Ville"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:81
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Type d'établissement"
-msgstr "Chef d'établissement"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:108
 #: lib/teacher_assistant_web/live/school/student_live.ex:376
@@ -2597,9 +2597,9 @@ msgid "Téléverser le logo"
 msgstr "Téléverser le logo"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:107
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Ville"
-msgstr "Fille"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:65
 #, elixir-autogen, elixir-format
@@ -2629,14 +2629,14 @@ msgid "École en attente de vérification — impression indisponible."
 msgstr "École en attente de vérification — impression indisponible."
 
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:17
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Établissements à vérifier"
-msgstr "Établissement"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:506
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Ajouter une matière"
-msgstr "Ajouter une tranche"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:502
 #, elixir-autogen, elixir-format
@@ -2655,14 +2655,14 @@ msgstr "Enseigner ensemble"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:678
 #: lib/teacher_assistant_web/live/school/settings_live.ex:703
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Impossible de mettre à jour la matière."
-msgstr "Impossible de mettre à jour la période."
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:671
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Matière mise à jour."
-msgstr "Période mise à jour."
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:824
 #, elixir-autogen, elixir-format
