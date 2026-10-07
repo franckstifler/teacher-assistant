@@ -48,6 +48,25 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert {:draft, _} = ReportCards.class_view(scope, cg, {:sequence, seq})
   end
 
+  test "a phone-only form master carries their phone, and no empty email", ctx do
+    %{scope: scope, cg: cg, term: term} = ctx
+
+    {:ok, %{user: fm}} =
+      TeacherAssistant.Accounts.add_member_by_phone(scope, %{
+        name: "Prof Tél",
+        phone: "677123456",
+        roles: [:teacher]
+      })
+
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, fm.id)
+
+    {:draft, view} = ReportCards.class_view(scope, cg, {:trimester, term})
+    assert %{name: "Prof Tél", email: nil, phone: "+237677123456"} = view.form_master
+
+    assert TeacherAssistant.Accounts.User.display_name(%{view.form_master | name: nil}) ==
+             TeacherAssistant.Accounts.Phone.format("+237677123456")
+  end
+
   test "publishing freezes the report cards", ctx do
     %{scope: scope, cg: cg, term: term, a: a, st: st} = ctx
     assert {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)

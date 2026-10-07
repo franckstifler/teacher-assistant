@@ -57,6 +57,9 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
     assert has_element?(view, "#members-table")
     refute has_element?(view, "#invite-form")
+    # colleagues' password state is for staff managers only
+    refute has_element?(view, "#members-table th", "Compte")
+    refute has_element?(view, "#members-table", "Mot de passe géré par la personne")
   end
 
   test "invite form includes the employment-type options", %{conn: conn, actor: user} do
@@ -349,6 +352,39 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       view |> element("#reset-password-#{own_m.id}") |> render_click()
       view |> element("#confirm-reset") |> render_click()
       assert has_element?(view, "#temporary-password-dialog")
+    end
+
+    test "no reset for an account this school created that is active in another school", %{
+      conn: conn,
+      scope: scope
+    } do
+      {:ok, %{user: shared}} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Shared",
+          phone: "677000005",
+          roles: [:teacher]
+        })
+
+      %{scope: other} = TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(other, %{
+          name: "Shared",
+          phone: "677000005",
+          roles: [:teacher]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      shared_m = member_for(scope, shared.id)
+
+      refute has_element?(view, "#reset-password-#{shared_m.id}")
+      assert has_element?(view, "#member-row-#{shared_m.id}", "Mot de passe temporaire")
+
+      assert has_element?(
+               view,
+               "#member-row-#{shared_m.id}",
+               "aussi utilisé dans un autre établissement"
+             )
     end
 
     test "reset asks for confirmation first", %{conn: conn, scope: scope} do

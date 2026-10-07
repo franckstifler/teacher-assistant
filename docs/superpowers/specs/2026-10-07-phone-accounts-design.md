@@ -120,6 +120,13 @@ the password in the same dialog.
 Linked-only accounts cannot be reset by this school; the teacher goes to the
 creating school, or uses email reset if they have an email.
 
+Rule added 2026-10-07 (décidé par l'utilisateur): the reset is also refused
+while the target user has an **active** membership in any school other than
+the creating one — otherwise the creating school could take over the account
+inside the other school; the person resets by email or asks an operator
+(`forbid_if Checks.ActiveInAnotherSchool`; the Members page shows no reset
+button and explains why in the « Compte » note).
+
 ### Displaying people
 
 Add `User.display_name/1` (`name`, else `email`, else formatted phone) and

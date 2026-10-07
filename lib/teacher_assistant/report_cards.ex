@@ -46,7 +46,8 @@ defmodule TeacherAssistant.ReportCards do
         scope
         |> Discipline.class_discipline(cg, period)
         |> Map.new(fn {id, summary} -> {id, plain_discipline(summary)} end),
-      form_master: fm && %{name: fm.name, email: to_string(fm.email)},
+      form_master:
+        fm && %{name: fm.name, email: fm.email && to_string(fm.email), phone: fm.phone},
       group_subtotals?: group_subtotals?(scope),
       template: template(scope, cg)
     }

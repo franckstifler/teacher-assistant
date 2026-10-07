@@ -56,7 +56,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                 <th>{gettext("Rôles")}</th>
                 <th>{gettext("Statut")}</th>
                 <th>{gettext("Service (h/sem.)")}</th>
-                <th>{gettext("Compte")}</th>
+                <th :if={@can_manage_staff?}>{gettext("Compte")}</th>
                 <th :if={@can_manage_staff?}><span class="sr-only">{gettext("Actions")}</span></th>
               </tr>
             </thead>
@@ -133,8 +133,14 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                   </.form>
                   <span :if={!@can_set_service?}>{m.statutory_hours || "—"}</span>
                 </td>
-                <td>
-                  <.account_status_pill status={account_status(m.user, @scope.current_workspace.id)} />
+                <td :if={@can_manage_staff?}>
+                  <.account_status_pill status={
+                    account_status(
+                      m.user,
+                      @scope.current_workspace.id,
+                      MapSet.member?(@resettable_member_ids, m.id)
+                    )
+                  } />
                 </td>
                 <td :if={@can_manage_staff?}>
                   <div class="flex flex-wrap justify-end gap-1">
@@ -885,11 +891,28 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   # --- Account status -------------------------------------------------------------
 
-  defp account_status(%User{} = user, workspace_id) do
+  # Only rendered for staff managers (heads of this school), so a non-operator
+  # account this school created that still cannot be reset is one the person
+  # also uses in another school (see `Checks.ActiveInAnotherSchool`).
+  defp account_status(%User{} = user, workspace_id, resettable?) do
     cond do
-      user.created_in_workspace_id == workspace_id -> created_here_status(user)
-      user.phone && user.created_in_workspace_id -> linked_status()
-      true -> self_managed_status()
+      user.created_in_workspace_id == workspace_id and not resettable? and user.role != :admin ->
+        %{
+          created_here_status(user)
+          | note:
+              gettext(
+                "Ce compte est aussi utilisé dans un autre établissement : la personne doit réinitialiser son mot de passe par e-mail ou demander à un administrateur."
+              )
+        }
+
+      user.created_in_workspace_id == workspace_id ->
+        created_here_status(user)
+
+      user.phone && user.created_in_workspace_id ->
+        linked_status()
+
+      true ->
+        self_managed_status()
     end
   end
 

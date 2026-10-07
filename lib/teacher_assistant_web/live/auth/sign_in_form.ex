@@ -4,7 +4,9 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
   unchanged (it still builds the form, checks the credentials and hands the
   sign-in token to `AuthController`), plus one thing: when a submission fails it
   tells the page (`{:sign_in_failed, strategy_name}` to the LiveView process)
-  and hides the field-level errors.
+  and hides the field-level errors; and the identity field always shows what
+  was typed, not its cast value (a phone typed « 677123456 » would otherwise
+  come back as « +237677123456 » next to the +237 chip).
 
   Why: a wrong password ("Phone or password was incorrect") and a malformed
   number (the `Phone` cast error) would otherwise surface as raw, English,
@@ -38,6 +40,11 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
     end
   end
 
+  def handle_event("change", params, socket) do
+    {:noreply, socket} = SignInForm.handle_event("change", params, socket)
+    {:noreply, assign(socket, :form, show_identity_as_typed(socket, params))}
+  end
+
   def handle_event(event, params, socket), do: SignInForm.handle_event(event, params, socket)
 
   # Keeps what was typed in the identity field, empties the password, shows no
@@ -50,8 +57,33 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
       |> Map.get(to_string(subject_name), %{})
       |> Map.delete(to_string(strategy.password_field))
 
-    Form.validate(form, kept, errors: false)
+    form
+    |> Form.validate(kept, errors: false)
+    |> show_identity_as_typed(strategy, kept)
   end
+
+  defp show_identity_as_typed(socket, params) do
+    %{subject_name: subject_name, strategy: strategy, form: form} = socket.assigns
+    show_identity_as_typed(form, strategy, Map.get(params, to_string(subject_name), %{}))
+  end
+
+  # The form displays the query's (cast) argument; put the raw text back for
+  # display only — every change/submit rebuilds the query from the params.
+  defp show_identity_as_typed(
+         %Form{source: %Ash.Query{} = query} = form,
+         %{identity_field: field},
+         params
+       ) do
+    case Map.get(params, to_string(field)) do
+      typed when is_binary(typed) ->
+        %{form | source: %{query | arguments: Map.put(query.arguments, field, typed)}}
+
+      _ ->
+        form
+    end
+  end
+
+  defp show_identity_as_typed(form, _strategy, _params), do: form
 
   # Success either redirects (sign-in token via GET), sets the token params
   # (token via POST) or triggers the form action (no sign-in tokens).

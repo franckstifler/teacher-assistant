@@ -148,8 +148,18 @@ defmodule TeacherAssistantWeb.SignInPhoneTest do
       refute html =~ "Phone or password was incorrect"
       refute has_element?(view, "#phone-sign-in .ta-error-list")
       # the number stays typed, the password does not
-      assert has_element?(view, "#phone-sign-in input[name='user[phone]'][value='+237677123456']")
+      assert has_element?(view, "#phone-sign-in input[name='user[phone]'][value='677123456']")
       refute has_element?(view, "#phone-sign-in input[name='user[password]'][value]")
+    end
+
+    test "while typing, the number stays as typed (no +237 prefix added)", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/sign-in")
+
+      view
+      |> form("#phone-sign-in form", %{"user" => %{"phone" => "6 77 12 34 56"}})
+      |> render_change()
+
+      assert has_element?(view, "#phone-sign-in input[name='user[phone]'][value='6 77 12 34 56']")
     end
 
     test "a malformed number shows the same alert, never the cast error", %{conn: conn} do

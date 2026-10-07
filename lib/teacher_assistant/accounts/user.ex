@@ -206,9 +206,12 @@ defmodule TeacherAssistant.Accounts.User do
       authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
     end
 
-    # Never an operator's account; only the school that created the account.
+    # Never an operator's account; only the school that created the account;
+    # never while the person is also active in another school (they would be
+    # taken over there too — decided by the user, 2026-10-07).
     policy action(:reset_temporary_password) do
       forbid_if expr(role == :admin)
+      forbid_if TeacherAssistant.Accounts.Checks.ActiveInAnotherSchool
       authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
     end
 

@@ -22,15 +22,21 @@ defmodule TeacherAssistant.Accounts.User.Changes.SetTemporaryPassword do
       expires_at =
         DateTime.utc_now() |> DateTime.add(@validity_days, :day) |> DateTime.truncate(:second)
 
+      # Under `private`: `Inspect` for `Ash.Changeset` omits it, so the clear
+      # value never reaches logs or error reports that print the changeset.
       changeset
-      |> Ash.Changeset.put_context(:temporary_password, password)
+      |> Ash.Changeset.set_context(%{private: %{temporary_password: password}})
       |> Ash.Changeset.force_change_attribute(:hashed_password, hash)
       |> Ash.Changeset.force_change_attribute(:must_change_password, true)
       |> Ash.Changeset.force_change_attribute(:temporary_password_expires_at, expires_at)
     end)
     |> Ash.Changeset.after_action(fn changeset, user ->
       {:ok,
-       Ash.Resource.put_metadata(user, :temporary_password, changeset.context.temporary_password)}
+       Ash.Resource.put_metadata(
+         user,
+         :temporary_password,
+         changeset.context.private.temporary_password
+       )}
     end)
   end
 end

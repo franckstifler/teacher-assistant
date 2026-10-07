@@ -361,10 +361,58 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
         })
 
       refute Accounts.can_reset_member_password?(scope_b, user)
-      assert Accounts.can_reset_member_password?(scope_a, user)
 
       assert {:error, %Ash.Error.Forbidden{}} =
                Accounts.reset_member_password(scope_b, membership_of(scope_b, user))
+    end
+
+    test "the creating school cannot reset while the person is active in another school" do
+      scope_a = head_scope()
+      scope_b = head_scope()
+
+      {:ok, %{user: user}} =
+        Accounts.add_member_by_phone(scope_a, %{
+          name: "Awa",
+          phone: "677123456",
+          roles: [:teacher]
+        })
+
+      assert Accounts.can_reset_member_password?(scope_a, user)
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(scope_b, %{
+          name: "Awa",
+          phone: "677123456",
+          roles: [:teacher]
+        })
+
+      refute Accounts.can_reset_member_password?(scope_a, user)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.reset_member_password(scope_a, membership_of(scope_a, user))
+
+      {:ok, _} = Accounts.deactivate_member(scope_b, membership_of(scope_b, user))
+
+      assert Accounts.can_reset_member_password?(scope_a, user)
+
+      assert {:ok, _password} =
+               Accounts.reset_member_password(scope_a, membership_of(scope_a, user))
+    end
+
+    test "the clear temporary password never shows when the changeset is inspected" do
+      scope = head_scope()
+
+      {:ok, %{user: user}} =
+        Accounts.add_member_by_phone(scope, %{name: "Awa", phone: "677123456", roles: [:teacher]})
+
+      {changeset, _} =
+        user
+        |> Ash.Changeset.for_update(:reset_temporary_password, %{}, authorize?: false)
+        |> Ash.Changeset.run_before_actions()
+
+      password = changeset.context.private.temporary_password
+      assert password =~ ~r/[a-z]{4}-[a-z]{4}-\d{4}/
+      refute inspect(changeset) =~ password
     end
 
     test "an operator's account is never reset" do
