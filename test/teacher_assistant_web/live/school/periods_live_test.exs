@@ -225,4 +225,10 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     assert Enum.find(Attendance.list_periods(scope), &(&1.id == cours6.id)).start_time ==
              ~T[11:55:00]
   end
+
+  test "each period row labels its own fields; the table repeats no header", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/periods")
+    assert has_element?(view, "#periods-table tbody")
+    refute has_element?(view, "#periods-table thead")
+  end
 end

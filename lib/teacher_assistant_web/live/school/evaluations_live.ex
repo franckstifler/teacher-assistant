@@ -62,7 +62,7 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
           >
             <input type="hidden" name="type_id" value={t.id} />
             <.input name="type[name]" value={t.name} class="input input-sm flex-1" />
-            <span class="text-xs text-base-content/60">{gettext("poids")}</span>
+            <span class="self-center text-xs text-base-content/60">{gettext("poids")}</span>
             <.input
               name="type[default_weight]"
               value={Decimal.to_string(Decimal.normalize(t.default_weight), :normal)}

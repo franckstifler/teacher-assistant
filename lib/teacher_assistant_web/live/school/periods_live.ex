@@ -79,16 +79,6 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
 
         <div class="overflow-x-auto">
           <table :if={@periods != []} id="periods-table" class="table table-zebra">
-            <thead>
-              <tr>
-                <th>{gettext("Position")}</th>
-                <th>{gettext("Libellé")}</th>
-                <th>{gettext("Début")}</th>
-                <th>{gettext("Fin")}</th>
-                <th>{gettext("Type")}</th>
-                <th><span class="sr-only">{gettext("Actions")}</span></th>
-              </tr>
-            </thead>
             <tbody>
               <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
                 <td colspan="6">
