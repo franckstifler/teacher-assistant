@@ -113,6 +113,10 @@ defmodule TeacherAssistantWeb.Account.PasswordLiveTest do
     assert {:ok, _view, _html} = live(conn, ~p"/school")
   end
 
+  test "a user without the flag cannot open the change screen", %{conn: conn} do
+    assert {:error, {:redirect, %{to: "/school"}}} = live(conn, ~p"/account/password")
+  end
+
   test "expired temporary password is refused", %{scope: scope} do
     {user, _pw} = phone_teacher(scope)
 
@@ -131,5 +135,8 @@ defmodule TeacherAssistantWeb.Account.PasswordLiveTest do
 
     assert redirected_to(conn) == ~p"/sign-in"
     assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "expir"
+    refute get_session(conn, "user_token")
+    refute get_session(conn, "user")
+    refute get_session(conn, :user_id)
   end
 end

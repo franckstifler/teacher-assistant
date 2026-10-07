@@ -212,8 +212,11 @@ defmodule TeacherAssistant.Accounts.User do
       authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
     end
 
+    # Only the user, and only while a temporary password is pending: the action
+    # asks for no current password, so it must not become a silent way to
+    # replace an ordinary password from any open session.
     policy action(:set_own_password) do
-      authorize_if expr(id == ^actor(:id))
+      authorize_if expr(id == ^actor(:id) and must_change_password == true)
     end
 
     policy action(:promote_to_admin) do

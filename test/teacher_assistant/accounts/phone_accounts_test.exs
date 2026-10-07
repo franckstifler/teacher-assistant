@@ -228,6 +228,23 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
     end
   end
 
+  describe "set_own_password without a pending temporary password" do
+    test "is refused, even to the user themself" do
+      scope = head_scope()
+      head = scope.current_user
+      refute head.must_change_password
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               head
+               |> Ash.Changeset.for_update(
+                 :set_own_password,
+                 %{password: "new-pass-123", password_confirmation: "new-pass-123"},
+                 actor: head
+               )
+               |> Ash.update()
+    end
+  end
+
   alias TeacherAssistant.Accounts
 
   defp member_ids(scope), do: scope |> Accounts.list_members() |> Enum.map(& &1.user_id)

@@ -12,6 +12,14 @@ defmodule TeacherAssistantWeb.Account.PasswordLive do
   @min_length 8
 
   @impl true
+  def mount(
+        _params,
+        _session,
+        %{assigns: %{current_user: %{must_change_password: false}}} = socket
+      ) do
+    {:ok, redirect(socket, to: ~p"/school")}
+  end
+
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
 
@@ -30,38 +38,20 @@ defmodule TeacherAssistantWeb.Account.PasswordLive do
   def render(assigns) do
     ~H"""
     <section id="own-password" class="space-y-6">
-      <div
-        id="own-password-identity"
-        class="flex items-center gap-3 rounded-xl border p-3"
-        style="border-color: #EFEAE0; background: #FAF8F3"
-      >
-        <span
-          class="grid size-10 flex-none place-items-center rounded-full text-sm font-semibold"
-          style="background: #172321; color: #E8E5DC; font-family: Fraunces, Georgia, serif"
-        >
-          {@initials}
-        </span>
+      <div id="own-password-identity" class="ta-identity-card">
+        <span class="ta-identity-card__avatar">{@initials}</span>
         <div class="min-w-0">
-          <p class="truncate text-sm font-semibold" style="margin: 0; color: #1E2A2B">
-            {@display_name}
-          </p>
-          <p :if={@identity_line} class="ta-mono truncate text-xs" style="margin: 0; color: #5A6668">
+          <p class="ta-identity-card__name truncate">{@display_name}</p>
+          <p :if={@identity_line} class="ta-identity-card__line ta-mono truncate">
             {@identity_line}
           </p>
         </div>
       </div>
 
       <div>
-        <p
-          class="ta-mono"
-          style="margin: 0; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7A5F"
-        >
-          {gettext("Votre compte · étape unique")}
-        </p>
-        <h1 style="margin: 0.4rem 0 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; color: #1E2A2B">
-          {gettext("Choisissez votre mot de passe")}
-        </h1>
-        <p style="margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.55; color: #5A6668">
+        <p class="ta-auth-eyebrow ta-mono">{gettext("Votre compte · étape unique")}</p>
+        <h1 class="ta-auth-title">{gettext("Choisissez votre mot de passe")}</h1>
+        <p class="ta-auth-sub">
           {gettext(
             "Votre établissement vous a donné un mot de passe temporaire. Choisissez-en un que vous seul·e connaissez."
           )}
@@ -115,17 +105,8 @@ defmodule TeacherAssistantWeb.Account.PasswordLive do
 
   defp check(assigns) do
     ~H"""
-    <li id={@id} data-met={@met} class="flex items-center gap-2 text-sm" style="color: #44514F">
-      <span
-        class="grid size-5 flex-none place-items-center rounded-full border transition-colors duration-200"
-        style={
-          if @met,
-            do: "background: #0E7A5F; border-color: #0E7A5F; color: #FFFFFF",
-            else: "background: #FFFFFF; border-color: #D7CFBE; color: transparent"
-        }
-      >
-        <.icon name="hero-check" class="size-3" />
-      </span>
+    <li id={@id} data-met={@met} class="ta-check">
+      <span class="ta-check__mark"><.icon name="hero-check" class="size-3" /></span>
       {render_slot(@inner_block)}
     </li>
     """

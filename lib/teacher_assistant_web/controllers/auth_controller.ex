@@ -2,10 +2,20 @@ defmodule TeacherAssistantWeb.AuthController do
   use TeacherAssistantWeb, :controller
   use AshAuthentication.Phoenix.Controller
 
+  require Logger
+
   def success(conn, activity, user, _token) do
     if TeacherAssistant.Accounts.temporary_password_expired?(user) do
       # The temporary password was correct but is past its 7 days: no session.
-      _ = TeacherAssistant.Accounts.revoke_all_sessions(user)
+      case TeacherAssistant.Accounts.revoke_all_sessions(user) do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning(
+            "Could not revoke sessions after an expired temporary password for user #{user.id}: #{inspect(reason)}"
+          )
+      end
 
       conn
       |> put_flash(

@@ -133,6 +133,90 @@
     font-size: 0.82rem;
   }
 
+  /* column heading for pages that render their own (Account.PasswordLive) */
+  .ta-auth-paper .ta-auth-eyebrow {
+    margin: 0;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #0E7A5F;
+  }
+  .ta-auth-paper .ta-auth-title {
+    margin: 0.4rem 0 0;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #1E2A2B;
+  }
+  .ta-auth-paper .ta-auth-sub {
+    margin: 0.5rem 0 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: #5A6668;
+  }
+
+  /* who is signed in: initials, name, « phone · school » */
+  .ta-auth-paper .ta-identity-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #EFEAE0;
+    border-radius: 0.75rem;
+    background: #FAF8F3;
+  }
+  .ta-auth-paper .ta-identity-card__avatar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    background: #172321;
+    color: #E8E5DC;
+    font-family: Fraunces, Georgia, serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .ta-auth-paper .ta-identity-card__name {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1E2A2B;
+  }
+  .ta-auth-paper .ta-identity-card__line {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #5A6668;
+  }
+
+  /* live password checklist — the round mark turns green when met */
+  .ta-auth-paper .ta-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #44514F;
+  }
+  .ta-auth-paper .ta-check__mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1px solid #D7CFBE;
+    border-radius: 9999px;
+    background: #FFFFFF;
+    color: transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  .ta-auth-paper .ta-check[data-met] .ta-check__mark {
+    border-color: #0E7A5F;
+    background: #0E7A5F;
+    color: #FFFFFF;
+  }
+
   .ta-auth-paper :where(a, button, input, [role="button"]):focus-visible {
     outline: 2px solid #0E7A5F;
     outline-offset: 2px;
