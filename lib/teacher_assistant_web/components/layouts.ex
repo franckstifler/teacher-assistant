@@ -125,7 +125,8 @@ defmodule TeacherAssistantWeb.Layouts do
             class="ta-rail flex min-h-screen w-64 flex-col gap-4 p-3"
             aria-label={gettext("Sidebar")}
           >
-            <div class="flex items-start gap-1">
+            <%!-- relative: the bell menu opens under this whole row, inside the rail. --%>
+            <div class="relative flex items-start gap-1">
               <div id="workspace-switcher" class="dropdown min-w-0 flex-1">
                 <div
                   tabindex="0"
@@ -346,7 +347,8 @@ defmodule TeacherAssistantWeb.Layouts do
 
   defp notification_bell(assigns) do
     ~H"""
-    <div id="notification-bell" class="dropdown dropdown-bottom">
+    <%!-- `!static`: the menu is placed against the rail header row, not the bell, so the rail (overflow hidden) never clips it. --%>
+    <div id="notification-bell" class="dropdown dropdown-bottom !static">
       <div
         tabindex="0"
         role="button"
@@ -364,7 +366,7 @@ defmodule TeacherAssistantWeb.Layouts do
       </div>
       <div
         tabindex="0"
-        class="dropdown-content z-50 mt-1 w-80 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
+        class="dropdown-content left-0 right-0 z-50 mt-1 w-auto rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
       >
         <div class="flex items-center justify-between gap-2 px-2 pb-2">
           <span class="ta-eyebrow">{gettext("Notifications")}</span>
@@ -455,11 +457,8 @@ defmodule TeacherAssistantWeb.Layouts do
   defp workspace_name(%{current_workspace: %{name: name}}), do: name
   defp workspace_name(_), do: nil
 
-  defp role_label(%{current_role: role}) when not is_nil(role) do
-    role
-    |> to_string()
-    |> String.replace("_", " ")
-  end
+  defp role_label(%{current_role: role}) when not is_nil(role),
+    do: TeacherAssistant.Accounts.SchoolRole.label(role)
 
   defp role_label(_), do: nil
 
