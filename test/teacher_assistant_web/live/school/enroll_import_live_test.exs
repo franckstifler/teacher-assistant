@@ -68,7 +68,9 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     |> form("#import-form", %{"import" => %{"raw" => "Bi;m;M-2"}})
     |> render_submit()
 
-    assert view |> element("#import-preview-rows") |> render() =~ "Déjà inscrit cette année (6e A)"
+    assert view |> element("#import-preview-rows") |> render() =~
+             "Déjà inscrit cette année (6e A)"
+
     assert view |> element("#import-chip-conflict") |> render() =~ "1 conflit"
     assert has_element?(view, "#import-confirm[disabled]")
     assert [] = Enrollment.list_roster(scope, cg2)
@@ -129,7 +131,10 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     assert preview =~ "Numéro « 12 » invalide — parent ignoré"
     assert preview =~ "Sexe manquant ou inconnu (M ou F)"
     assert view |> element("#import-chip-error") |> render() =~ "1 erreur"
-    assert view |> element("#import-chip-invalid-phone") |> render() =~ "1 numéro de parent invalide"
+
+    assert view |> element("#import-chip-invalid-phone") |> render() =~
+             "1 numéro de parent invalide"
+
     assert view |> element("#import-confirm") |> render() =~ "Confirmer l&#39;import de 2 élèves"
     assert view |> element("#import-after") |> render() =~ "Après import : 3 élèves."
 
@@ -162,7 +167,10 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     :ok = Enrollment.withdraw(scope, e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/import")
-    view |> form("#import-form", %{"import" => %{"raw" => "Mvogo Diane;f;M-7"}}) |> render_submit()
+
+    view
+    |> form("#import-form", %{"import" => %{"raw" => "Mvogo Diane;f;M-7"}})
+    |> render_submit()
 
     assert view |> element("#import-preview-rows") |> render() =~
              "Matricule déjà utilisé (Ebogo Sandrine)"

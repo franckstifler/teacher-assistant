@@ -212,7 +212,9 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
       Enrollment.import_rows(
         scope,
         cg2,
-        TeacherAssistant.Academics.RosterLine.parse("Owono Steve;M;;;6 95 12 12 12\nOwono Léa;F;;;695121212")
+        TeacherAssistant.Academics.RosterLine.parse(
+          "Owono Steve;M;;;6 95 12 12 12\nOwono Léa;F;;;695121212"
+        )
       )
 
       [steve, lea] =

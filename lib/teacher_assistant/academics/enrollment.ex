@@ -71,7 +71,7 @@ defmodule TeacherAssistant.Academics.Enrollment do
 
       filter expr(academic_year_id == ^arg(:academic_year_id))
       filter expr(is_nil(^arg(:class_group_id)) or class_group_id == ^arg(:class_group_id))
-      filter expr(not ^arg(:no_contact) or not exists(student.guardian_links, true))
+      filter expr(not (^arg(:no_contact)) or not exists(student.guardian_links, true))
 
       filter expr(
                is_nil(^arg(:query)) or

@@ -25,7 +25,11 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
 
   def handle_event("parse", %{"import" => %{"raw" => raw}}, socket) do
     preview =
-      Enrollment.preview_rows(socket.assigns.current_scope, socket.assigns.cg, RosterLine.parse(raw))
+      Enrollment.preview_rows(
+        socket.assigns.current_scope,
+        socket.assigns.cg,
+        RosterLine.parse(raw)
+      )
 
     {:noreply, assign(socket, raw: raw, preview: preview, stage: :preview)}
   end
@@ -108,9 +112,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
           <aside id="import-format" class="ta-panel flex flex-col gap-2 text-sm">
             <span class="ta-eyebrow">{gettext("Format attendu · une ligne par élève")}</span>
             <code class="ta-num rounded bg-base-200 p-2 text-xs">
-              {gettext(
-                "Nom et prénoms ; Sexe ; Matricule ; Date de naissance ; Téléphone du parent"
-              )}
+              {gettext("Nom et prénoms ; Sexe ; Matricule ; Date de naissance ; Téléphone du parent")}
             </code>
             <p>
               {gettext(
@@ -118,9 +120,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
               )}
             </p>
             <p>
-              {gettext(
-                "Un matricule déjà connu de l'école réinscrit l'élève au lieu de le recréer."
-              )}
+              {gettext("Un matricule déjà connu de l'école réinscrit l'élève au lieu de le recréer.")}
             </p>
             <p>
               {gettext(
@@ -232,7 +232,8 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
     do: gettext("%{count} / %{max} élèves", count: count, max: max)
 
   defp after_capacity(capacity, preview),
-    do: Enrollment.capacity_of(capacity.count + Enrollment.importable_count(preview), capacity.max)
+    do:
+      Enrollment.capacity_of(capacity.count + Enrollment.importable_count(preview), capacity.max)
 
   defp summary_chips(preview) do
     count = fn pred -> Enum.count(preview, pred) end
@@ -241,8 +242,8 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
       {"create", "bg-success/15 text-success", count.(&match?({_, :create, _}, &1)), :create},
       {"reenroll", "bg-info/15 text-info", count.(&match?({_, {:reenroll, _, _}, _}, &1)),
        :reenroll},
-      {"conflict", "bg-warning/20 text-warning",
-       count.(&match?({_, {:conflict, _, _}, _}, &1)), :conflict},
+      {"conflict", "bg-warning/20 text-warning", count.(&match?({_, {:conflict, _, _}, _}, &1)),
+       :conflict},
       {"error", "bg-error/15 text-error", count.(&match?({_, {:error, _}, _}, &1)), :error},
       {"invalid-phone", "bg-error/15 text-error",
        count.(fn {_, action, parent} ->
