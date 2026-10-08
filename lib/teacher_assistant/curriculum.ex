@@ -1508,14 +1508,7 @@ defmodule TeacherAssistant.Curriculum do
   def unassigned_subjects_by_class(%Scope{} = scope, classes) do
     cells = coefficient_cells(scope)
     subjects = list_subjects(scope)
-    class_ids = Enum.map(classes, & &1.id)
-
-    assigned =
-      TeachingContext
-      |> Ash.Query.filter(class_group_id in ^class_ids)
-      |> Ash.Query.select([:class_group_id, :subject_id])
-      |> Ash.read!(scope: scope)
-      |> MapSet.new(&{&1.class_group_id, &1.subject_id})
+    assigned = scope |> assigned_pairs(classes) |> MapSet.new()
 
     Map.new(classes, fn c ->
       {c.id,
@@ -1525,6 +1518,21 @@ defmodule TeacherAssistant.Curriculum do
        )
        |> Enum.sort_by(&String.downcase(&1.name))}
     end)
+  end
+
+  @doc "Per class id, how many assignments the class has (one read)."
+  def assignment_counts_by_class(%Scope{} = scope, classes) do
+    scope |> assigned_pairs(classes) |> Enum.frequencies_by(&elem(&1, 0))
+  end
+
+  defp assigned_pairs(scope, classes) do
+    class_ids = Enum.map(classes, & &1.id)
+
+    TeachingContext
+    |> Ash.Query.filter(class_group_id in ^class_ids)
+    |> Ash.Query.select([:class_group_id, :subject_id])
+    |> Ash.read!(scope: scope)
+    |> Enum.map(&{&1.class_group_id, &1.subject_id})
   end
 
   @doc "The class's assignment for a subject, or nil."

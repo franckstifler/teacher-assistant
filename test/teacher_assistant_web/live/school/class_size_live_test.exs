@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
 
     limit(scope, 1)
     {:ok, view, _} = live(conn, ~p"/school/classes")
-    assert has_element?(view, "#class-size-#{cg.id}.text-warning", "2 / 1")
+    assert has_element?(view, "#class-size-#{cg.id}.text-error", "2 / 1")
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
     assert has_element?(view, "#class-size", "2 / 1")
@@ -47,14 +47,41 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     assert length(Enrollment.list_roster(scope, cg)) == 3
   end
 
-  test "the add-class form proposes the next free label", %{conn: conn} do
+  test "the drawer proposes the next free suffix", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/classes")
+    view |> element("#new-class-button") |> render_click()
+    view |> form("#class-form", %{"nc" => %{"level" => "6ème"}}) |> render_change()
 
-    view
-    |> form("#class-form", %{"class_group" => %{"level" => "6ème", "label" => ""}})
-    |> render_change()
+    assert has_element?(view, "#nc-suffix[value='B']")
+    assert has_element?(view, "#nc-preview", "6ème B")
+  end
 
-    assert has_element?(view, "#class-form input[name='class_group[label]'][value='6ème B']")
+  test "a class's own maximum overrides the school's on its card", %{
+    conn: conn,
+    scope: scope,
+    cg: cg
+  } do
+    limit(scope, 40)
+    {:ok, _} = Ash.update(cg, %{max_size: 2}, scope: scope)
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    assert has_element?(view, "#class-size-#{cg.id}.text-warning", "2 / 2")
+  end
+
+  test "a class with grid subjects still unassigned is marked « À compléter »", %{
+    conn: conn,
+    scope: scope,
+    cg: cg
+  } do
+    n = length(TeacherAssistant.Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
+    assert n > 0
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    assert has_element?(view, "#class-card-#{cg.id}.border-l-error")
+
+    assert has_element?(
+             view,
+             "#class-unassigned-#{cg.id}.text-error",
+             "#{n} matières sans enseignant"
+           )
   end
 
   test "settings holds the limit and the rule", %{conn: conn, scope: scope} do
@@ -71,17 +98,22 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     assert profile.class_suffix == :numbers
   end
 
-  test "a label the admin typed survives a level change", %{conn: conn} do
+  test "a suffix the admin typed survives other edits", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/classes")
+    view |> element("#new-class-button") |> render_click()
+    view |> form("#class-form", %{"nc" => %{"level" => "6ème"}}) |> render_change()
 
     view
-    |> form("#class-form", %{"class_group" => %{"level" => "6ème", "label" => "Prépa"}})
+    |> form("#class-form", %{"nc" => %{"level" => "6ème", "suffix" => "Bilingue"}})
     |> render_change()
 
     view
-    |> form("#class-form", %{"class_group" => %{"level" => "5ème", "label" => "Prépa"}})
+    |> form("#class-form", %{
+      "nc" => %{"level" => "6ème", "suffix" => "Bilingue"},
+      "class_group" => %{"max_size" => "50"}
+    })
     |> render_change()
 
-    assert has_element?(view, "#class-form input[name='class_group[label]'][value='Prépa']")
+    assert has_element?(view, "#nc-preview", "6ème Bilingue")
   end
 end

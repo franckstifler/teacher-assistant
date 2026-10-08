@@ -39,33 +39,88 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     assert html =~ "1"
   end
 
-  test "head can create a class", %{conn: conn} do
+  test "head creates a class from the drawer and lands on it", %{
+    conn: conn,
+    scope: scope,
+    year: year
+  } do
     {:ok, view, _} = live(conn, ~p"/school/classes")
+    view |> element("#new-class-button") |> render_click()
+
+    view |> form("#class-form", %{"nc" => %{"level" => "2nde"}}) |> render_change()
+    # séries are offered for a streamed level
+    assert has_element?(view, "#nc-serie-c")
+    assert has_element?(view, "#nc-serie-d")
+
+    view
+    |> form("#class-form", %{"nc" => %{"level" => "2nde", "serie" => "C"}})
+    |> render_change()
+
+    assert has_element?(view, "#nc-preview", "2nde C A")
+
+    {:error, {:live_redirect, %{to: to}}} =
+      view
+      |> form("#class-form", %{
+        "nc" => %{"level" => "2nde", "serie" => "C", "suffix" => "A"},
+        "class_group" => %{"max_size" => "45"}
+      })
+      |> render_submit()
+
+    cg = Enum.find(Enrollment.list_class_groups(scope, year), &(&1.label == "2nde C A"))
+    assert to == "/school/classes/#{cg.id}"
+    assert cg.serie == "C"
+    assert cg.max_size == 45
+  end
+
+  test "a label already used this year cannot be created", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    view |> element("#new-class-button") |> render_click()
+
+    view |> form("#class-form", %{"nc" => %{"level" => "__other__"}}) |> render_change()
+
+    view
+    |> form("#class-form", %{"nc" => %{"level" => "__other__", "other_level" => "Seed"}})
+    |> render_change()
+
+    # a new level proposes a free suffix; clearing it gives the bare, taken label
 
     view
     |> form("#class-form", %{
-      "class_group" => %{"label" => "2nde C", "level" => "2nde", "serie" => "C"}
+      "nc" => %{"level" => "__other__", "other_level" => "Seed", "suffix" => ""}
     })
-    |> render_submit()
+    |> render_change()
 
-    assert render(view) =~ "2nde C"
+    assert has_element?(view, "#nc-duplicate")
+    assert has_element?(view, "#create-class[disabled]")
   end
 
-  test "série field offers template suggestions", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/school/classes")
-    # datalist of séries from the lycée template
-    assert html =~ "list=\"serie-options\""
-    assert html =~ "C"
-    assert html =~ "D"
-  end
-
-  test "delete is blocked when the class has enrollments", ctx do
+  test "cards are grouped by cycle and filtered by cycle and text", ctx do
     %{conn: conn, scope: scope, year: year} = ctx
-    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, a} = Enrollment.create_class_group(scope, year, %{label: "Tle D", level: "Terminale"})
+
+    {:ok, f} =
+      Enrollment.create_class_group(scope, year, %{
+        label: "Form 1",
+        level: "Form 1",
+        subsystem: :anglophone
+      })
+
     {:ok, view, _} = live(conn, ~p"/school/classes")
-    view |> element("#class-delete-#{cg.id}") |> render_click()
-    assert render(view) =~ "6e A"
+    assert has_element?(view, "#cycle-group-first")
+    assert has_element?(view, "#cycle-group-second #class-card-#{a.id}")
+    assert has_element?(view, "#cycle-group-anglophone #class-card-#{f.id}")
+
+    view |> element("#cycle-second") |> render_click()
+    refute has_element?(view, "#cycle-group-first")
+    assert has_element?(view, "#class-card-#{a.id}")
+
+    view |> element("#cycle-all") |> render_click()
+    view |> form("#class-filter", %{"q" => "form"}) |> render_change()
+    assert has_element?(view, "#class-card-#{f.id}")
+    refute has_element?(view, "#class-card-#{a.id}")
+
+    view |> form("#class-filter", %{"q" => "zzz"}) |> render_change()
+    assert has_element?(view, "#no-class-match")
   end
 
   test "a plain teacher member sees no admin controls and forged events are rejected", ctx do
@@ -87,15 +142,17 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     {:ok, view, _html} = live(conn, ~p"/school/classes")
+    refute has_element?(view, "#new-class-button")
+    render_hook(view, "open_drawer", %{})
     refute has_element?(view, "#class-form")
 
     before_labels = Enrollment.list_class_groups(scope, year) |> Enum.map(& &1.label)
 
-    render_hook(view, "create_class", %{"class_group" => %{"label" => "X", "level" => "6ème"}})
+    render_hook(view, "create_class", %{"nc" => %{"level" => "6ème", "suffix" => "X"}})
 
     after_labels = Enrollment.list_class_groups(scope, year) |> Enum.map(& &1.label)
     assert after_labels == before_labels
-    refute "X" in after_labels
+    refute "6ème X" in after_labels
   end
 
   # These two tests used to exercise ClassesLive's own inline "no active
