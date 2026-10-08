@@ -99,6 +99,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     |> render_change()
 
     assert has_element?(view, "#enroll-parent-matches", "Marie Bi")
+    assert has_element?(view, "#enroll-parent-matches", "Mère de 1 élève")
     refute has_element?(view, "#enroll-parent-name")
 
     view
@@ -110,6 +111,42 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     [%{student: student}] = Enrollment.list_roster(scope, cg)
     assert [%{guardian_id: id}] = Enrollment.list_guardian_links(scope, student)
     assert id == mum.id
+  end
+
+  test "with several parents on file for a phone, one must be picked", ctx do
+    %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
+    {:ok, %{student: a}} = Enrollment.enroll_new(scope, cg2, %{full_name: "Awa", sex: :f})
+    {:ok, %{student: b}} = Enrollment.enroll_new(scope, cg2, %{full_name: "Ali", sex: :m})
+
+    for {student, name} <- [{a, "Marie Bi"}, {b, "Paul Bi"}] do
+      {:ok, _} =
+        Enrollment.add_guardian(scope, student, %{
+          full_name: name,
+          relationship: :autre,
+          phone: "699112233"
+        })
+    end
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#enroll-button") |> render_click()
+    params = %{"enroll" => %{"full_name" => "Bi", "parent_phone" => "699112233"}}
+    view |> form("#enroll-form", params) |> render_change()
+    view |> form("#enroll-form", params) |> render_submit()
+
+    assert has_element?(view, "#enroll-error", "Choisissez le parent")
+    assert Enrollment.list_roster(scope, cg) == []
+  end
+
+  test "the drawer's footer gives the size after this enrolment, in warning past the maximum",
+       ctx do
+    %{conn: conn, cg: cg, scope: scope} = ctx
+    {:ok, cg} = Enrollment.set_class_max_size(scope, cg, 1)
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#enroll-button") |> render_click()
+
+    assert has_element?(view, "#enroll-after.text-warning", "2 / 1 élèves après cet ajout")
   end
 
   test "« Inscrire et en ajouter un autre » keeps the drawer open and empty", ctx do
@@ -158,6 +195,47 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     view |> element("#search-enroll-#{s.id}") |> render_click()
 
     assert [%{enrollment: %{status: :reinscription}}] = Enrollment.list_roster(scope, cg2)
+  end
+
+  test "the search shows each student's last class and who is already enrolled this year",
+       ctx do
+    %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
+
+    {:ok, past} =
+      Organization.create_academic_year(scope, %{
+        name: "2024-2025",
+        start_date: ~D[2024-09-09],
+        end_date: ~D[2025-07-31],
+        active: false
+      })
+
+    {:ok, old_cg} = Enrollment.create_class_group(scope, past, %{label: "CM2", level: "6ème"})
+
+    {:ok, %{student: former}} =
+      Enrollment.enroll_new(scope, old_cg, %{full_name: "Zang Eto", sex: :f})
+
+    {:ok, %{student: current}} =
+      Enrollment.enroll_new(scope, cg, %{full_name: "Zang Abi", sex: :f})
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}")
+    view |> element("#enroll-button") |> render_click()
+    view |> element("#enroll-mode-existing") |> render_click()
+    view |> form("#enroll-search-form", %{"q" => "Zang"}) |> render_change()
+
+    assert has_element?(view, "#search-results li", "CM2 · 2024-2025")
+    assert has_element?(view, "#search-enroll-#{former.id}")
+    assert has_element?(view, "#search-enrolled-#{current.id}[disabled]")
+    refute has_element?(view, "#search-enroll-#{current.id}")
+
+    # A class of a past year offers no transfer: transfers stay within a year.
+    {:ok, old_view, _} = live(conn, ~p"/school/classes/#{old_cg.id}")
+
+    assert has_element?(
+             old_view,
+             "#withdraw-#{hd(Enrollment.list_roster(scope, old_cg)).enrollment.id}"
+           )
+
+    refute has_element?(old_view, "[id^='transfer-']")
   end
 
   test "transfer moves a student to another class", ctx do
@@ -263,6 +341,24 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       view |> element("#delete-class") |> render_click()
 
     refute Enum.any?(Enrollment.list_class_groups(scope, year), &(&1.id == cg.id))
+  end
+
+  test "a refused maximum or delete says why", ctx do
+    %{conn: conn, cg: cg, scope: scope, year: year} = ctx
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+    view |> element("#open-class-settings") |> render_click()
+    view |> form("#class-settings-form", %{"max_size" => "500"}) |> render_submit()
+    assert render(view) =~ "Entrez un nombre entre 1 et 200."
+
+    TeacherAssistant.TeacherFixtures.close_year!(scope, year)
+
+    view |> form("#class-settings-form", %{"max_size" => "30"}) |> render_submit()
+    assert render(view) =~ "L&#39;année 2025-2026 est clôturée."
+
+    view |> element("#delete-class") |> render_click()
+    assert render(view) =~ "L&#39;année 2025-2026 est clôturée."
+    assert Enum.any?(Enrollment.list_class_groups(scope, year), &(&1.id == cg.id))
   end
 
   test "delete is refused while the class has students", %{conn: conn, cg: cg, scope: scope} do

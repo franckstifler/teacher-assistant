@@ -185,7 +185,13 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
         title={gettext("Nouvelle classe")}
         on_close={JS.push("close_drawer")}
       >
-        <.new_class_form nc={@nc} form={@class_form} members={@members} profile={@profile} />
+        <.new_class_form
+          nc={@nc}
+          form={@class_form}
+          error={@class_error}
+          members={@members}
+          profile={@profile}
+        />
         <:footer>
           <button type="button" class="btn btn-ghost btn-sm" phx-click="close_drawer">
             {gettext("Annuler")}
@@ -279,6 +285,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
   attr :nc, :map, required: true
   attr :form, Phoenix.HTML.Form, required: true
+  attr :error, :string, default: nil
   attr :members, :list, required: true
   attr :profile, :any, required: true
 
@@ -291,6 +298,10 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       phx-submit="create_class"
       class="space-y-5"
     >
+      <div :if={@error} id="class-error" role="alert" class="alert alert-error alert-soft">
+        <.icon name="hero-exclamation-triangle" class="size-5" />
+        <span>{@error}</span>
+      </div>
       <fieldset :if={length(@nc.subsystems) > 1} class="space-y-2">
         <legend class="ta-eyebrow mb-2">{gettext("Sous-système")}</legend>
         <div class="flex flex-wrap gap-2">
@@ -432,7 +443,8 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
      |> assign(
        drawer?: true,
        members: Accounts.list_members(scope),
-       class_form: class_form(scope, socket.assigns.year)
+       class_form: class_form(scope, socket.assigns.year),
+       class_error: nil
      )
      |> assign_nc(%{})}
   end
@@ -449,7 +461,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
         submit_params(socket.assigns.nc, params, socket.assigns.members)
       )
 
-    {:noreply, assign(socket, :class_form, form)}
+    {:noreply, assign(socket, class_form: form, class_error: nil)}
   end
 
   def handle_event("create_class", params, socket) when socket.assigns.drawer? do
@@ -471,7 +483,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
         {:error, form} ->
           if Authz.forbidden_form?(form),
             do: {:noreply, Authz.put_not_allowed(socket)},
-            else: {:noreply, assign(socket, :class_form, form)}
+            else: {:noreply, assign(socket, class_form: form, class_error: hidden_error(form))}
       end
     end
   end
@@ -651,6 +663,26 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
   # `academic_year_id` is server-controlled, set on the changeset through
   # `prepare_source` rather than merged into the submitted params.
+  # A refusal no field of the drawer shows: the name (built, not typed — another admin
+  # may have just taken it) or the whole class (a closed year).
+  defp hidden_error(form) do
+    errors =
+      form
+      |> AshPhoenix.Form.raw_errors()
+      |> Enum.reject(&(Map.get(&1, :field) in [:max_size, :form_master_user_id]))
+
+    cond do
+      errors == [] ->
+        nil
+
+      Enum.any?(errors, &(Map.get(&1, :field) == :label)) ->
+        gettext("Une classe porte déjà ce nom.")
+
+      true ->
+        Authz.failure_message(Ash.Error.to_error_class(errors))
+    end
+  end
+
   defp class_form(scope, year) do
     ClassGroup
     |> AshPhoenix.Form.for_create(:create,

@@ -259,8 +259,25 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           parent_matches={@parent_matches}
           q={@q}
           search_results={@search_results}
+          year_id={@cg.academic_year_id}
         />
         <:footer :if={@enroll_mode == :new}>
+          <span
+            :if={@shell.capacity.max}
+            id="enroll-after"
+            class={[
+              "ta-num mr-auto self-center text-xs",
+              if(@shell.capacity.count + 1 > @shell.capacity.max,
+                do: "font-semibold text-warning",
+                else: "text-base-content/60"
+              )
+            ]}
+          >
+            {gettext("%{count} / %{max} élèves après cet ajout",
+              count: @shell.capacity.count + 1,
+              max: @shell.capacity.max
+            )}
+          </span>
           <button
             type="submit"
             form="enroll-form"
@@ -324,6 +341,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   attr :parent_matches, :list, required: true
   attr :q, :string, required: true
   attr :search_results, :list, required: true
+  attr :year_id, :string, required: true
 
   defp enroll_panel(assigns) do
     ~H"""
@@ -455,7 +473,10 @@ defmodule TeacherAssistantWeb.School.ClassLive do
               class="radio radio-sm mt-0.5"
             />
             <span>
-              {gettext("Déjà enregistré : %{name} (%{relationship})",
+              {ngettext(
+                "Déjà enregistré : %{name} (%{relationship} de %{count} élève)",
+                "Déjà enregistré : %{name} (%{relationship} de %{count} élèves)",
+                g.student_count,
                 name: g.full_name,
                 relationship: GuardianRelationship.label(g.relationship)
               )}
@@ -512,11 +533,12 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         >
           <span class="min-w-0 text-sm">
             <span class="block font-semibold">{student.full_name}</span>
-            <span :if={student.matricule} class="ta-num block text-xs text-base-content/60">
-              {student.matricule}
+            <span class="ta-num block text-xs text-base-content/60">
+              {Enum.join(Enum.reject([student.matricule, last_class(student)], &is_nil/1), " · ")}
             </span>
           </span>
           <button
+            :if={!enrolled_in?(student, @year_id)}
             id={"search-enroll-#{student.id}"}
             type="button"
             class="btn btn-primary btn-xs"
@@ -524,6 +546,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             phx-value-student-id={student.id}
           >
             {gettext("Réinscrire")}
+          </button>
+          <button
+            :if={enrolled_in?(student, @year_id)}
+            id={"search-enrolled-#{student.id}"}
+            type="button"
+            class="btn btn-xs"
+            disabled
+          >
+            {gettext("Déjà inscrit cette année")}
           </button>
         </li>
       </ul>
@@ -541,9 +572,13 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     cg = socket.assigns.cg
     roster = Enrollment.list_roster(scope, cg)
 
+    # A transfer stays within the class's year: a past class has no targets.
     others =
-      Enrollment.list_class_groups(scope, scope.current_academic_year)
-      |> Enum.reject(&(&1.id == cg.id))
+      if cg.academic_year_id == scope.current_academic_year.id,
+        do:
+          Enrollment.list_class_groups(scope, scope.current_academic_year)
+          |> Enum.reject(&(&1.id == cg.id)),
+        else: []
 
     socket
     |> assign(
@@ -635,8 +670,19 @@ defmodule TeacherAssistantWeb.School.ClassLive do
        |> put_flash(:info, gettext("Élève transféré en %{label}.", label: target.label))
        |> load_roster()}
     else
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      _ -> {:noreply, socket}
+      {:error, :different_year} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("On ne transfère que vers une classe de la même année.")
+         )}
+
+      {:error, error} ->
+        {:noreply, Authz.put_failure(socket, error)}
+
+      nil ->
+        {:noreply, socket}
     end
   end
 
@@ -645,8 +691,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          :ok <- Enrollment.withdraw(socket.assigns.current_scope, e) do
       {:noreply, socket |> put_flash(:info, gettext("Enrollment removed.")) |> load_roster()}
     else
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      _ -> {:noreply, socket}
+      {:error, error} -> {:noreply, Authz.put_failure(socket, error)}
+      nil -> {:noreply, socket}
     end
   end
 
@@ -664,14 +710,14 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("close_drawer", _params, socket), do: {:noreply, assign(socket, :drawer, nil)}
 
   def handle_event("enroll_change", %{"enroll" => params}, socket) do
+    phone = params["parent_phone"] || ""
+
     matches =
-      if socket.assigns.can_manage_guardians?,
-        do:
-          Enrollment.find_guardians_by_phone(
-            socket.assigns.current_scope,
-            params["parent_phone"] || ""
-          ),
-        else: []
+      cond do
+        not socket.assigns.can_manage_guardians? -> []
+        phone == (socket.assigns.enroll["parent_phone"] || "") -> socket.assigns.parent_matches
+        true -> Enrollment.find_guardians_by_phone(socket.assigns.current_scope, phone)
+      end
 
     {:noreply, assign(socket, enroll: params, parent_matches: matches)}
   end
@@ -762,25 +808,20 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
   def handle_event("save_settings", %{"max_size" => raw}, socket)
       when socket.assigns.can_manage_classes? do
-    value =
-      case Integer.parse(String.trim(raw)) do
-        {n, ""} -> n
-        _ -> nil
-      end
-
-    case Enrollment.set_class_max_size(socket.assigns.current_scope, socket.assigns.cg, value) do
-      {:ok, cg} ->
-        {:noreply,
-         socket
-         |> assign(cg: cg, drawer: nil)
-         |> ClassShell.assign_shell()
-         |> put_flash(:info, gettext("Effectif maximum enregistré."))}
-
-      {:error, %Ash.Error.Forbidden{}} ->
-        {:noreply, Authz.put_not_allowed(socket)}
-
-      {:error, _} ->
+    with {:ok, value} <- parse_max_size(raw),
+         {:ok, cg} <-
+           Enrollment.set_class_max_size(socket.assigns.current_scope, socket.assigns.cg, value) do
+      {:noreply,
+       socket
+       |> assign(cg: cg, drawer: nil)
+       |> ClassShell.assign_shell()
+       |> put_flash(:info, gettext("Effectif maximum enregistré."))}
+    else
+      :invalid ->
         {:noreply, put_flash(socket, :error, gettext("Entrez un nombre entre 1 et 200."))}
+
+      {:error, error} ->
+        {:noreply, Authz.put_failure(socket, error)}
     end
   end
 
@@ -803,14 +844,26 @@ defmodule TeacherAssistantWeb.School.ClassLive do
            gettext("This class has students or teachers — remove them first.")
          )}
 
-      _ ->
-        {:noreply, socket}
+      {:error, error} ->
+        {:noreply, Authz.put_failure(socket, error)}
     end
   end
 
   def handle_event(event, _params, socket)
       when event in ["open_settings", "save_settings", "delete_class"],
       do: {:noreply, socket}
+
+  # Empty: follow the school's maximum.
+  defp parse_max_size(raw), do: raw |> String.trim() |> max_size_value()
+
+  defp max_size_value(""), do: {:ok, nil}
+
+  defp max_size_value(text) do
+    case Integer.parse(text) do
+      {n, ""} when n in 1..200 -> {:ok, n}
+      _ -> :invalid
+    end
+  end
 
   # --- Enrolment ------------------------------------------------------------------
 
@@ -867,6 +920,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       picked ->
         {:ok, %{guardian_id: picked.id}}
 
+      matches != [] ->
+        {:error, gettext("Choisissez le parent parmi ceux déjà enregistrés.")}
+
       phone == "" and name == "" ->
         {:ok, nil}
 
@@ -885,6 +941,17 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          }}
     end
   end
+
+  # « 6ème A · 2024-2025 », the student's most recent class.
+  defp last_class(%{enrollments: []}), do: nil
+
+  defp last_class(%{enrollments: enrollments}) do
+    e = Enum.max_by(enrollments, & &1.academic_year.start_date, Date)
+    "#{e.class_group.label} · #{e.academic_year.name}"
+  end
+
+  defp enrolled_in?(%{enrollments: enrollments}, year_id),
+    do: Enum.any?(enrollments, &(&1.academic_year_id == year_id))
 
   defp single([one]), do: one
   defp single(_), do: nil

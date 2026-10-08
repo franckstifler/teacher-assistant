@@ -64,7 +64,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
               <span class="font-semibold text-base-content">
                 {ngettext("%{count} matière", "%{count} matières", length(@assignments))} · {gettext(
                   "%{hours} h / semaine",
-                  hours: Enum.sum_by(@assignments, & &1.weekly_hours)
+                  hours: Enum.sum_by(@assignments, &(&1.weekly_hours || 0))
                 )}
               </span>
             </p>
@@ -515,35 +515,17 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
   end
 
   def handle_event("set_form_master", %{"user_id" => uid}, socket) do
-    with true <- socket.assigns.can_manage_classes? do
-      target =
-        if uid == "", do: :clear, else: Enum.find(socket.assigns.members, &(&1.user_id == uid))
-
-      case target do
-        :clear ->
-          {:ok, cg} =
-            Enrollment.set_form_master(socket.assigns.current_scope, socket.assigns.cg, nil)
-
-          {:noreply,
-           socket
-           |> assign(cg: cg)
-           |> ClassShell.assign_shell()
-           |> put_flash(:info, gettext("Form master cleared."))}
-
-        %{user_id: user_id} ->
-          {:ok, cg} =
-            Enrollment.set_form_master(socket.assigns.current_scope, socket.assigns.cg, user_id)
-
-          {:noreply,
-           socket
-           |> assign(cg: cg)
-           |> ClassShell.assign_shell()
-           |> put_flash(:info, gettext("Form master assigned."))}
-
-        _ ->
-          {:noreply, socket}
-      end
+    with true <- socket.assigns.can_manage_classes?,
+         {:ok, user_id, message} <- form_master_target(uid, socket.assigns.members),
+         {:ok, cg} <-
+           Enrollment.set_form_master(socket.assigns.current_scope, socket.assigns.cg, user_id) do
+      {:noreply,
+       socket
+       |> assign(cg: cg)
+       |> ClassShell.assign_shell()
+       |> put_flash(:info, message)}
     else
+      {:error, error} -> {:noreply, Authz.put_failure(socket, error)}
       _ -> {:noreply, socket}
     end
   end
@@ -618,6 +600,16 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
      socket
      |> assign(:prefill_subject, name)
      |> push_event("js-exec", %{to: "#assign-subject", attr: "data-focus"})}
+  end
+
+  # The chosen form master (nil clears it) and the flash, or :unknown for a stale id.
+  defp form_master_target("", _members), do: {:ok, nil, gettext("Form master cleared.")}
+
+  defp form_master_target(uid, members) do
+    case Enum.find(members, &(&1.user_id == uid)) do
+      %{user_id: user_id} -> {:ok, user_id, gettext("Form master assigned.")}
+      nil -> :unknown
+    end
   end
 
   defp parse_hours(v) do

@@ -47,7 +47,7 @@ defmodule TeacherAssistant.Academics.Guardian do
     read :by_phone_key do
       argument :phone_key, :string, allow_nil?: false
       filter expr(phone_key == ^arg(:phone_key))
-      prepare build(sort: [full_name: :asc])
+      prepare build(sort: [full_name: :asc], load: [:student_count])
     end
   end
 
@@ -118,5 +118,10 @@ defmodule TeacherAssistant.Academics.Guardian do
     end
 
     has_many :student_links, TeacherAssistant.Academics.StudentGuardian
+  end
+
+  aggregates do
+    # « Déjà enregistré : … de N élèves » when enrolling with a known phone.
+    count :student_count, :student_links
   end
 end

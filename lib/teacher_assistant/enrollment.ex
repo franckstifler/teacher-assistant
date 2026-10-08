@@ -199,7 +199,8 @@ defmodule TeacherAssistant.Enrollment do
 
   @doc """
   Matricule-exact + name-fragment lookup for the school enrollment search
-  box, deduplicated and capped at 10 results.
+  box, deduplicated and capped at 10 results, each with its enrollments (class
+  and year loaded) so the search shows the last class and who is already enrolled.
   """
   def search_students(%Scope{} = scope, query) do
     q = String.trim(query)
@@ -217,7 +218,10 @@ defmodule TeacherAssistant.Enrollment do
         |> Ash.Query.for_read(:search_by_name, %{query: String.downcase(q)}, scope: scope)
         |> Ash.read!()
 
-      Enum.uniq_by(by_matricule ++ by_name, & &1.id) |> Enum.take(10)
+      (by_matricule ++ by_name)
+      |> Enum.uniq_by(& &1.id)
+      |> Enum.take(10)
+      |> Ash.load!([enrollments: [:class_group, :academic_year]], scope: scope)
     end
   end
 

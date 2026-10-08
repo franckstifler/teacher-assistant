@@ -144,7 +144,7 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
       assert [_] = Enrollment.find_guardians_by_phone(scope, "677123456")
     end
 
-    test "a refused parent rolls the whole enrolment back", %{scope: scope, cg: cg} do
+    test "an invalid parent rolls the whole enrolment back", %{scope: scope, cg: cg} do
       before = length(Enrollment.list_roster(scope, cg))
 
       assert {:error, _} =
@@ -155,6 +155,30 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
                })
 
       assert length(Enrollment.list_roster(scope, cg)) == before
+    end
+
+    test "a parent refused by policy rolls the student and the enrolment back", %{
+      scope: scope,
+      cg: cg
+    } do
+      # The form master may enrol in their class but not write the register's parents.
+      form_master = member_scope_fixture(scope, %{roles: [:teacher]})
+      {:ok, cg} = Enrollment.set_form_master(scope, cg, form_master.current_user.id)
+      before = length(Enrollment.list_roster(scope, cg))
+
+      assert {:ok, _} = Enrollment.enroll_new(form_master, cg, %{full_name: "Ola Mbia", sex: :f})
+
+      assert_forbidden(
+        Enrollment.enroll_new(form_master, cg, %{
+          full_name: "Eba Nkolo",
+          sex: :f,
+          guardian: @father
+        })
+      )
+
+      assert length(Enrollment.list_roster(scope, cg)) == before + 1
+      assert Enrollment.search_students(scope, "Eba Nkolo") == []
+      assert Enrollment.find_guardians_by_phone(scope, "677123456") == []
     end
   end
 
