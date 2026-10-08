@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources1 do
+defmodule TeacherAssistant.Repo.Migrations.ClassMaxSize do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
