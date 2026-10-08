@@ -1,15 +1,19 @@
 defmodule TeacherAssistantWeb.School.ConductLive do
   @moduledoc """
-  SG → Conduite (spec KLM3, V05): for a class and a séquence, each student's
-  unjustified hours, lates and sanctions, the conduct mark the school's scale
-  suggests, and an input pre-filled with the current mark (else the
-  suggestion). « Valider la classe » saves the class in one go.
+  SG → Conduite (spec KLM3, V05; Vie scolaire redesign §2.3): for a class and a
+  séquence, each student's unjustified hours and sanctions, the conduct mark the
+  school's scale suggests (row click: the deductions, lates included), and an
+  input pre-filled with the current mark (else the suggestion). « Valider la
+  classe » saves the class in one go.
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.{Attendance, Discipline, Enrollment, Organization}
   alias TeacherAssistant.Academics.{EntryProgress, Reference, SanctionType}
   alias TeacherAssistantWeb.Authz
+
+  # More classes than this: a select instead of tabs (and always on phones).
+  @max_tabs 8
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -141,24 +145,82 @@ defmodule TeacherAssistantWeb.School.ConductLive do
   defp deduction_label(%{kind: {:sanction, type}, count: n}),
     do: "#{n} × #{SanctionType.label(type)}"
 
+  defp rule_text(rules) do
+    gettext(
+      "règle : 20 − %{per_hour} pt / h injustifiée − %{per_late} pt / retard − points par sanction",
+      per_hour: shown(rules.points_per_absence_hour),
+      per_late: shown(rules.points_per_late)
+    )
+  end
+
   def render(assigns) do
+    assigns = assign(assigns, tabs?: length(assigns.classes) <= @max_tabs)
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="conduct" class="flex flex-col gap-5">
-        <.page_header eyebrow={gettext("Vie scolaire")} title={gettext("Conduite")} />
+      <section id="conduct" class="flex flex-col gap-4">
+        <.page_header
+          eyebrow={gettext("Vie scolaire")}
+          title={gettext("Conduite")}
+          subtitle={gettext("Note de conduite /20 par séquence, portée sur le bulletin.")}
+        >
+          <:actions :if={@rows != []}>
+            <button
+              type="button"
+              id="apply-suggestions"
+              phx-click="apply"
+              class="btn btn-primary btn-sm"
+            >
+              {gettext("Appliquer les suggestions")}
+            </button>
+          </:actions>
+        </.page_header>
 
-        <form id="conduct-pick" phx-change="pick" class="flex flex-wrap gap-2">
-          <select name="class" class="select select-sm">
-            <option :for={c <- @classes} value={c.id} selected={@cg && c.id == @cg.id}>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <nav
+            :if={@tabs? and @classes != []}
+            id="conduct-class-tabs"
+            class="hidden gap-0.5 rounded-[0.55rem] border border-base-300 bg-base-200 p-[3px] sm:flex"
+          >
+            <.link
+              :for={c <- @classes}
+              id={"conduct-tab-#{c.id}"}
+              patch={~p"/school/conduct?#{[class: c.id] ++ if(@seq, do: [seq: @seq.id], else: [])}"}
+              aria-current={@cg && c.id == @cg.id && "page"}
+              class={[
+                "rounded-[0.45rem] px-3 py-1.5 text-[0.8rem] font-semibold transition-colors",
+                if(@cg && c.id == @cg.id,
+                  do: "bg-primary text-primary-content",
+                  else: "text-base-content/85 hover:text-base-content"
+                )
+              ]}
+            >
               {c.label}
-            </option>
-          </select>
-          <select name="seq" class="select select-sm">
-            <option :for={s <- @sequences} value={s.id} selected={@seq && s.id == @seq.id}>
-              {gettext("Séquence %{n}", n: s.number)}
-            </option>
-          </select>
-        </form>
+            </.link>
+          </nav>
+          <form id="conduct-pick" phx-change="pick" class="flex flex-wrap gap-2">
+            <select
+              name="class"
+              aria-label={gettext("Classe")}
+              class={["select select-sm w-auto", @tabs? && "sm:hidden"]}
+            >
+              <option :for={c <- @classes} value={c.id} selected={@cg && c.id == @cg.id}>
+                {c.label}
+              </option>
+            </select>
+            <select name="seq" aria-label={gettext("Séquence")} class="select select-sm w-auto">
+              <option :for={s <- @sequences} value={s.id} selected={@seq && s.id == @seq.id}>
+                {gettext("Séquence %{n}", n: s.number)}
+              </option>
+            </select>
+          </form>
+          <span id="conduct-rule" class="text-[0.82rem] text-base-content/80">
+            {rule_text(@rules)} (<.link
+              navigate={~p"/school/settings/school-life"}
+              class="text-info hover:underline"
+            >{gettext("Paramètres › Assiduité & discipline")}</.link>)
+          </span>
+        </div>
 
         <p :if={@rows == []} class="text-sm text-base-content/70">
           {gettext("Aucun élève dans cette classe.")}
@@ -177,12 +239,10 @@ defmodule TeacherAssistantWeb.School.ConductLive do
               <thead>
                 <tr>
                   <th>{gettext("Élève")}</th>
-                  <th class="text-right">{gettext("h non justifiées")}</th>
-                  <th class="text-right">{gettext("Retards")}</th>
+                  <th class="text-right">{gettext("Abs. injust.")}</th>
                   <th>{gettext("Sanctions")}</th>
-                  <th class="text-right">{gettext("Proposée")}</th>
-                  <th class="text-right">{gettext("Actuelle")}</th>
-                  <th class="text-right">{gettext("Note")}</th>
+                  <th class="text-right">{gettext("Suggestion")}</th>
+                  <th class="w-[130px] text-right">{gettext("Note /20")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,10 +260,10 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                       </button>
                     </td>
                     <td class="ta-num text-right">
-                      {shown(Decimal.round(row.unjustified_hours, 1))}
+                      {shown(Decimal.round(row.unjustified_hours, 1))} h
                     </td>
-                    <td class="ta-num text-right">{row.retards}</td>
                     <td>
+                      <span :if={row.sanctions == []} class="text-base-content/60">—</span>
                       <span
                         :for={s <- row.sanctions}
                         class="badge badge-sm badge-ghost mr-1"
@@ -211,8 +271,9 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                         {SanctionType.label(s.type)} −{shown(@rules.sanction_points[s.type])}
                       </span>
                     </td>
-                    <td class="ta-num text-right font-semibold">{shown(row.suggestion.mark)}</td>
-                    <td class="ta-num text-right">{shown(row.current)}</td>
+                    <td class="ta-num text-right font-semibold text-warning">
+                      {shown(row.suggestion.mark)}
+                    </td>
                     <td class="text-right">
                       <span :if={adjusted?(row, @values)} class="badge badge-warning badge-xs mr-1">
                         {gettext("ajustée")}
@@ -227,7 +288,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                     </td>
                   </tr>
                   <tr :if={@open == row.enrollment.id} id={"deductions-#{row.enrollment.id}"}>
-                    <td colspan="7" class="bg-base-200/60 text-xs">
+                    <td colspan="5" class="bg-base-200/60 text-xs">
                       <span :if={row.suggestion.deductions == []}>{gettext("Aucune déduction.")}</span>
                       <span :for={d <- row.suggestion.deductions} class="mr-3">
                         {deduction_label(d)} : −{shown(Decimal.round(d.points, 2))}
@@ -242,14 +303,6 @@ defmodule TeacherAssistantWeb.School.ConductLive do
           <p :if={@error} id="conduct-error" class="text-sm text-error">{@error}</p>
 
           <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              id="apply-suggestions"
-              phx-click="apply"
-              class="btn btn-ghost btn-sm"
-            >
-              {gettext("Appliquer les propositions")}
-            </button>
             <button type="submit" id="validate-class" class="btn btn-primary btn-sm">
               {gettext("Valider la classe")}
             </button>

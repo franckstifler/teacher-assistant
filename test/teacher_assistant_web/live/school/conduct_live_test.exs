@@ -159,6 +159,16 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
     refute view |> element("#conduct-row-#{ctx.bob.id}") |> render() =~ "ajustée"
   end
 
+  test "classes are tabs; the rule line follows the settings and links to them",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, path(ctx))
+
+    assert has_element?(view, "#conduct-tab-#{ctx.cg.id}[aria-current='page']")
+    rule = view |> element("#conduct-rule") |> render()
+    assert rule =~ "0,5 pt / h injustifiée"
+    assert rule =~ "/school/settings/school-life"
+  end
+
   test "a pick without a séquence does not crash", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
     render_change(view, "pick", %{"class" => ctx.cg.id})
