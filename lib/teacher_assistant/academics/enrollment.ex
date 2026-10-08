@@ -112,7 +112,17 @@ defmodule TeacherAssistant.Academics.Enrollment do
 
       argument :student_attrs, :map, allow_nil?: false
 
-      touches_resources [TeacherAssistant.Academics.Student]
+      # Spec 2026-10-08 §4: the main contact, written in the same transaction —
+      # `%{guardian_id: id}` links a parent already on file, otherwise the map
+      # is a new guardian's attributes. Guardian writes keep their own policies.
+      argument :guardian, :map, allow_nil?: true
+
+      touches_resources [
+        TeacherAssistant.Academics.Student,
+        TeacherAssistant.Academics.Guardian,
+        TeacherAssistant.Academics.StudentGuardian
+      ]
+
       transaction? true
 
       run fn input, scope ->
@@ -142,7 +152,8 @@ defmodule TeacherAssistant.Academics.Enrollment do
                  },
                  scope: scope
                )
-               |> Ash.create() do
+               |> Ash.create(),
+             :ok <- attach_guardian(student, args[:guardian], scope) do
           {:ok, %{student: student, enrollment: enrollment}}
         end
       end
@@ -227,5 +238,32 @@ defmodule TeacherAssistant.Academics.Enrollment do
 
   identities do
     identity :unique_enrollment_per_year, [:student_id, :academic_year_id]
+  end
+
+  alias TeacherAssistant.Academics.{Guardian, StudentGuardian}
+
+  defp attach_guardian(_student, nil, _scope), do: :ok
+
+  defp attach_guardian(student, %{guardian_id: id}, scope) do
+    with {:ok, guardian} <- Ash.get(Guardian, id, scope: scope),
+         do: link_guardian(student, guardian, scope)
+  end
+
+  defp attach_guardian(student, attrs, scope) when is_map(attrs) do
+    with {:ok, guardian} <-
+           Guardian |> Ash.Changeset.for_create(:create, attrs, scope: scope) |> Ash.create(),
+         do: link_guardian(student, guardian, scope)
+  end
+
+  defp link_guardian(student, guardian, scope) do
+    StudentGuardian
+    |> Ash.Changeset.for_create(:link, %{student_id: student.id, guardian_id: guardian.id},
+      scope: scope
+    )
+    |> Ash.create()
+    |> case do
+      {:ok, _} -> :ok
+      error -> error
+    end
   end
 end

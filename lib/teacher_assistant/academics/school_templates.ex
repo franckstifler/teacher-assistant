@@ -66,6 +66,17 @@ defmodule TeacherAssistant.Academics.SchoolTemplates do
       ~w(6ème 5ème 4ème 3ème) ++
         @technical_levels ++ @lycee_streamed_levels ++ @anglophone_levels
 
+  @doc """
+  The group a class is listed under on the classes page (spec 2026-10-08 §1):
+  `:first` (collège, technical years), `:second` (lycée), `:anglophone`
+  (every anglophone class) or `:other` (free-text levels).
+  """
+  def cycle(_level, :anglophone), do: :anglophone
+  def cycle(level, _subsystem) when level in @collège_levels, do: :first
+  def cycle(level, _subsystem) when level in @technical_levels, do: :first
+  def cycle(level, _subsystem) when level in @lycee_streamed_levels, do: :second
+  def cycle(_level, _subsystem), do: :other
+
   @doc "Sort key for a class: its level's place in `level_order/0` (unknown last), then label."
   def class_sort_key(%{level: level, label: label}),
     do: {Enum.find_index(level_order(), &(&1 == level)) || 1000, String.downcase(label)}

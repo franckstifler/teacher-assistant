@@ -45,4 +45,36 @@ defmodule TeacherAssistant.Academics.ClassSizeTest do
     assert {:error, _} =
              Accounts.update_school_profile(profile, %{max_class_size: 0}, scope: scope)
   end
+
+  describe "capacity/2" do
+    setup do
+      %{scope: scope} = setup_complete_school_fixture()
+      year = Organization.current_academic_year(scope)
+      [cg | _] = Enrollment.list_class_groups(scope, year)
+      {:ok, profile} = Accounts.fetch_school_profile(scope)
+
+      for n <- 1..9,
+          do: {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "S#{n}", sex: :f})
+
+      %{scope: scope, cg: cg, profile: profile}
+    end
+
+    test "falls back to the school's maximum", %{scope: scope, cg: cg, profile: profile} do
+      {:ok, _} = Accounts.update_school_profile(profile, %{max_class_size: 20}, scope: scope)
+      assert %{count: 9, max: 20, over?: false, near?: false} = Enrollment.capacity(scope, cg)
+    end
+
+    test "the class's own maximum wins", %{scope: scope, cg: cg, profile: profile} do
+      {:ok, _} = Accounts.update_school_profile(profile, %{max_class_size: 20}, scope: scope)
+      {:ok, cg} = Ash.update(cg, %{max_size: 10}, scope: scope)
+      assert %{count: 9, max: 10, over?: false, near?: true} = Enrollment.capacity(scope, cg)
+
+      {:ok, cg} = Ash.update(cg, %{max_size: 8}, scope: scope)
+      assert %{max: 8, over?: true, near?: false} = Enrollment.capacity(scope, cg)
+    end
+
+    test "no maximum anywhere means no warning", %{scope: scope, cg: cg} do
+      assert %{max: nil, over?: false, near?: false} = Enrollment.capacity(scope, cg)
+    end
+  end
 end

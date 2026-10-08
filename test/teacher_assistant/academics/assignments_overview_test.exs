@@ -79,4 +79,32 @@ defmodule TeacherAssistant.Academics.AssignmentsOverviewTest do
     assert {:error, :invalid_hours} =
              Curriculum.place_assignment(ctx.scope, ctx.cg, ctx.maths, ctx.head.id, "41")
   end
+
+  describe "unassigned_subjects_by_class/2" do
+    test "lists the grid's subjects with no teacher in the class, by name", ctx do
+      %{scope: scope, cg: cg, maths: maths, head: head} = ctx
+      year = scope.current_academic_year
+      classes = Enrollment.list_class_groups(scope, year)
+
+      before = Curriculum.unassigned_subjects_by_class(scope, classes)[cg.id]
+      assert maths.id in Enum.map(before, & &1.id)
+      names = Enum.map(before, &String.downcase(&1.name))
+      assert names == Enum.sort(names)
+
+      {:ok, _} = Curriculum.place_assignment(scope, cg, maths, head.id, "4")
+      after_ = Curriculum.unassigned_subjects_by_class(scope, classes)[cg.id]
+      assert length(after_) == length(before) - 1
+      refute maths.id in Enum.map(after_, & &1.id)
+    end
+
+    test "a level with no grid row flags nothing", ctx do
+      %{scope: scope} = ctx
+      year = scope.current_academic_year
+
+      {:ok, cg} =
+        Enrollment.create_class_group(scope, year, %{label: "Pass", level: "Passerelle"})
+
+      assert Curriculum.unassigned_subjects_by_class(scope, [cg]) == %{cg.id => []}
+    end
+  end
 end

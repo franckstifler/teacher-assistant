@@ -45,12 +45,24 @@ defmodule TeacherAssistant.Academics.AssignmentGrid do
     }
   end
 
-  # An inactive subject is never to assign (the coefficient grid hides it).
-  defp cell(nil, _c, %{active?: false}, _cells, _loads), do: %{kind: :not_taught}
+  defp cell(nil, c, s, cells, _loads),
+    do: if(expected?(cells, c, s), do: %{kind: :to_assign}, else: %{kind: :not_taught})
 
-  defp cell(nil, c, s, cells, _loads) do
-    key = %{subject_id: s.id, subsystem: c.subsystem, level: c.level, serie: c.serie}
-    if CoefficientRules.resolve(cells, key), do: %{kind: :to_assign}, else: %{kind: :not_taught}
+  @doc """
+  Whether the coefficient grid says `subject` is taught in `class` (its série's
+  cell, else its level's blank-série cell). An inactive subject never is.
+  """
+  def expected?(_cells, _class, %{active?: false}), do: false
+
+  def expected?(cells, class, subject) do
+    key = %{
+      subject_id: subject.id,
+      subsystem: class.subsystem,
+      level: class.level,
+      serie: class.serie
+    }
+
+    CoefficientRules.resolve(cells, key) != nil
   end
 
   defp loads(contexts, input) do

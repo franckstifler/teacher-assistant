@@ -73,4 +73,25 @@ defmodule TeacherAssistant.Academics.SchoolTemplatesTest do
     refute Enum.any?(classes_gths, &(&1.level == "Form 1"))
     assert Enum.any?(classes_gths, &(&1.level == "1ère Année" and &1.serie == "ELEQ"))
   end
+
+  describe "cycle/2" do
+    test "francophone collège and technical years are the first cycle" do
+      for level <- ~w(6ème 5ème 4ème 3ème) ++ ["1ère Année", "4ème Année"],
+          do: assert(T.cycle(level, :francophone) == :first)
+    end
+
+    test "francophone lycée levels are the second cycle" do
+      for level <- ~w(2nde 1ère Terminale), do: assert(T.cycle(level, :francophone) == :second)
+    end
+
+    test "every anglophone class is grouped together, whatever its level" do
+      assert T.cycle("Form 1", :anglophone) == :anglophone
+      assert T.cycle("Upper Sixth", :anglophone) == :anglophone
+      assert T.cycle("Classe bilingue", :anglophone) == :anglophone
+    end
+
+    test "unknown free-text levels fall in :other" do
+      assert T.cycle("Classe passerelle", :francophone) == :other
+    end
+  end
 end

@@ -224,6 +224,9 @@ defmodule TeacherAssistant.Enrollment do
 
   def can_manage_register?(_scope), do: false
 
+  @doc "Whether the scope may record parents (admin or conduct axis)."
+  def can_manage_guardians?(scope), do: Ash.can?({Guardian, :create}, scope)
+
   @doc "The student's guardian links with their guardian, main contact first."
   def list_guardian_links(%Scope{} = scope, %Student{id: id}) do
     StudentGuardian
@@ -374,17 +377,28 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
   end
 
-  @doc "Spec KLM5: a class's headcount against the school's maximum (a warning, never a block)."
+  @doc """
+  Spec KLM5 / 2026-10-08: a class's headcount against its maximum — the class's
+  own `max_size`, else the school's — a warning, never a block. `near?` marks
+  90 % and more while still within the limit.
+  """
   def capacity(%Scope{} = scope, %ClassGroup{} = cg) do
-    count = length(list_roster(scope, cg))
+    capacity_of(length(list_roster(scope, cg)), cg.max_size || school_max_size(scope))
+  end
 
-    max =
-      case TeacherAssistant.Accounts.fetch_school_profile(scope) do
-        {:ok, profile} -> profile.max_class_size
-        _ -> nil
-      end
+  @doc "The capacity map for a known headcount and maximum (nil when none is set)."
+  def capacity_of(count, max) when is_integer(count) do
+    over? = is_integer(max) and count > max
+    near? = is_integer(max) and not over? and count >= ceil(max * 0.9)
+    %{count: count, max: max, over?: over?, near?: near?}
+  end
 
-    %{count: count, max: max, over?: is_integer(max) and count > max}
+  @doc "The school's default maximum class size, or nil."
+  def school_max_size(%Scope{} = scope) do
+    case TeacherAssistant.Accounts.fetch_school_profile(scope) do
+      {:ok, profile} -> profile.max_class_size
+      _ -> nil
+    end
   end
 
   defp roster_query(cg_id, %Scope{} = scope) do
@@ -432,6 +446,7 @@ defmodule TeacherAssistant.Enrollment do
   defp do_enroll_new(%Scope{} = scope, %ClassGroup{} = cg, attrs) do
     {repeater, attrs} = Map.pop(attrs, :repeater, false)
     {status, attrs} = Map.pop(attrs, :status, :inscription)
+    {guardian, attrs} = Map.pop(attrs, :guardian)
 
     Enrollment
     |> Ash.ActionInput.for_action(
@@ -441,7 +456,8 @@ defmodule TeacherAssistant.Enrollment do
         academic_year_id: cg.academic_year_id,
         repeater: repeater,
         status: status,
-        student_attrs: attrs
+        student_attrs: attrs,
+        guardian: guardian
       },
       scope: scope
     )

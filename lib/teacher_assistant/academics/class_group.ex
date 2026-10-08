@@ -33,8 +33,16 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     defaults [
       :read,
       :destroy,
-      create: [:label, :level, :serie, :subsystem, :academic_year_id],
-      update: [:label, :level, :serie, :subsystem, :form_master_user_id]
+      create: [
+        :label,
+        :level,
+        :serie,
+        :subsystem,
+        :academic_year_id,
+        :max_size,
+        :form_master_user_id
+      ],
+      update: [:label, :level, :serie, :subsystem, :form_master_user_id, :max_size]
     ]
 
     read :for_workspace_and_year do
@@ -88,6 +96,12 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     attribute :label, :string, allow_nil?: false, public?: true
     attribute :level, :string, allow_nil?: false, public?: true
     attribute :serie, :string, allow_nil?: true, public?: true
+
+    # Spec 2026-10-08 §1: overrides the school's max_class_size; a warning, never a block.
+    attribute :max_size, :integer,
+      allow_nil?: true,
+      public?: true,
+      constraints: [min: 1, max: 200]
 
     attribute :subsystem, TeacherAssistant.Academics.Subsystem,
       allow_nil?: false,

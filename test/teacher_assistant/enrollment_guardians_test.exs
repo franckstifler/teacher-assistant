@@ -105,4 +105,56 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
     assert id == jean.id
     assert {:error, _} = Enrollment.update_guardian(scope, jean, %{phone: "12"})
   end
+
+  describe "enroll_new/3 with a guardian" do
+    setup %{scope: scope} do
+      year = Organization.current_academic_year(scope)
+      [cg | _] = Enrollment.list_class_groups(scope, year)
+      %{cg: cg}
+    end
+
+    test "creates the parent as the new student's main contact", %{scope: scope, cg: cg} do
+      assert {:ok, %{student: s}} =
+               Enrollment.enroll_new(scope, cg, %{
+                 full_name: "Eba Nkolo",
+                 sex: :f,
+                 guardian: @father
+               })
+
+      assert [%{primary_contact: true, guardian: %{full_name: "Jean Nkolo"}}] =
+               Enrollment.list_guardian_links(scope, s)
+    end
+
+    test "links a parent already on file instead of duplicating it", %{
+      scope: scope,
+      cg: cg,
+      awa: awa
+    } do
+      {:ok, jean} = Enrollment.add_guardian(scope, awa, @father)
+
+      assert {:ok, %{student: s}} =
+               Enrollment.enroll_new(scope, cg, %{
+                 full_name: "Eba Nkolo",
+                 sex: :f,
+                 guardian: %{guardian_id: jean.id}
+               })
+
+      assert [%{guardian_id: id}] = Enrollment.list_guardian_links(scope, s)
+      assert id == jean.id
+      assert [_] = Enrollment.find_guardians_by_phone(scope, "677123456")
+    end
+
+    test "a refused parent rolls the whole enrolment back", %{scope: scope, cg: cg} do
+      before = length(Enrollment.list_roster(scope, cg))
+
+      assert {:error, _} =
+               Enrollment.enroll_new(scope, cg, %{
+                 full_name: "Eba Nkolo",
+                 sex: :f,
+                 guardian: %{full_name: "", relationship: :pere, phone: "677000000"}
+               })
+
+      assert length(Enrollment.list_roster(scope, cg)) == before
+    end
+  end
 end
