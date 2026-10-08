@@ -133,6 +133,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
           {:noreply,
            put_flash(socket, :error, gettext("Indiquez la durée de la consigne, en heures."))}
 
+        {:error, :invalid_duration} ->
+          {:noreply, put_flash(socket, :error, gettext("Une consigne dure de 1 à 40 heures."))}
+
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Sanction non enregistrée."))}
       end

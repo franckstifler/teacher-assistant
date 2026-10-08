@@ -138,6 +138,11 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/discipline")
 
+    # Only the chosen type's duration is asked for.
+    refute has_element?(view, "#discipline-add-form input[name='duration_hours']")
+    view |> element("#discipline-add-form") |> render_change(%{"type" => "exclusion_temporaire"})
+    refute has_element?(view, "#discipline-add-form input[name='duration_hours']")
+
     view
     |> form("#discipline-add-form", %{
       "enrollment_id" => enrollment.id,

@@ -70,17 +70,19 @@ defmodule TeacherAssistant.Academics.RollCallReminderTest do
 
     assert %{unread: 1} = Notifications.bell(ctx.teacher)
 
-    day = Attendance.school_day(ctx.scope, @monday, ~N[2025-09-15 10:00:00])
-    assert [%{reminded?: true, slot_id: slot_id}] = day.missed
+    assert Attendance.reminded_slot_ids(ctx.scope, @monday) == MapSet.new([ctx.slot.id])
+
+    assert [%{slot_id: slot_id}] =
+             Attendance.school_day(ctx.scope, @monday, ~N[2025-09-15 10:00:00]).missed
+
     assert slot_id == ctx.slot.id
 
     # Another day starts fresh.
     assert {:ok, _} = Attendance.remind_roll_call(ctx.scope, ctx.slot.id, ~D[2025-09-22])
   end
 
-  test "a missed roll call nobody reminded is not marked", ctx do
-    assert [%{reminded?: false}] =
-             Attendance.school_day(ctx.scope, @monday, ~N[2025-09-15 10:00:00]).missed
+  test "nobody reminded: no slot is listed", ctx do
+    assert Attendance.reminded_slot_ids(ctx.scope, @monday) == MapSet.new()
   end
 
   test "a teacher cannot remind", ctx do

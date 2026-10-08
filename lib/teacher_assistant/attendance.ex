@@ -67,6 +67,7 @@ defmodule TeacherAssistant.Attendance do
   defdelegate teacher_day(scope, user, date, now), to: TeacherAssistant.Academics.SchoolLife
   defdelegate remind_roll_call(scope, slot_id, date), to: TeacherAssistant.Academics.SchoolLife
   defdelegate late_count(scope, date), to: TeacherAssistant.Academics.SchoolLife
+  defdelegate reminded_slot_ids(scope, date), to: TeacherAssistant.Academics.SchoolLife
 
   defdelegate teacher_missed_this_week(scope, user, today, now),
     to: TeacherAssistant.Academics.SchoolLife

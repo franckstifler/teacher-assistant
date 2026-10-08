@@ -29,7 +29,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          terms: terms,
          can_edit?: Discipline.can_manage_conduct?(scope),
          roster: roster,
-         sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use
+         sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use,
+         add_type: nil
        )
        |> ClassShell.assign_shell(count: length(roster))
        |> select_period(nil)}
@@ -52,6 +53,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
        to: ~p"/school/classes/#{socket.assigns.cg.id}/discipline?period=#{param}"
      )}
   end
+
+  # Which duration the add form asks for follows the chosen type.
+  def handle_event("add_type", params, socket),
+    do: {:noreply, assign(socket, add_type: params["type"])}
 
   def handle_event("add_sanction", params, socket) do
     scope = socket.assigns.current_scope
@@ -79,6 +84,9 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
         {:error, :duration_required} ->
           {:noreply,
            put_flash(socket, :error, gettext("Indiquez la durée de la consigne, en heures."))}
+
+        {:error, :invalid_duration} ->
+          {:noreply, put_flash(socket, :error, gettext("Une consigne dure de 1 à 40 heures."))}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not record the sanction."))}
@@ -133,6 +141,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
       type -> {:ok, type}
     end
   end
+
+  # The type the add form shows: the one picked, else the select's first option.
+  defp current_type(picked, types),
+    do: Enum.find(types, &(Atom.to_string(&1) == picked)) || List.first(types)
 
   defp parse_duration(nil), do: nil
   defp parse_duration(""), do: nil
@@ -278,7 +290,12 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
         <div :if={@can_edit? and @period} class="ta-leaf space-y-3">
           <h2 class="text-sm font-semibold">{gettext("Ajouter une sanction")}</h2>
-          <form id="discipline-add-form" phx-submit="add_sanction" class="space-y-2">
+          <form
+            id="discipline-add-form"
+            phx-change="add_type"
+            phx-submit="add_sanction"
+            class="space-y-2"
+          >
             <div class="grid gap-2 sm:grid-cols-6">
               <select name="enrollment_id" class="select select-bordered select-sm">
                 <option :for={row <- @roster} value={row.enrollment.id}>
@@ -295,6 +312,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 class="input input-bordered input-sm"
               />
               <input
+                :if={current_type(@add_type, @sanction_types) == :exclusion_temporaire}
                 type="number"
                 name="duration_days"
                 min="1"
@@ -302,6 +320,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 class="input input-bordered input-sm"
               />
               <input
+                :if={current_type(@add_type, @sanction_types) == :consigne}
                 type="number"
                 name="duration_hours"
                 min="1"

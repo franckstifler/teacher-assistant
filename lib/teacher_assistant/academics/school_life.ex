@@ -29,8 +29,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   @doc """
   The school's roll calls on `date`: `rows` (classes having a slot that weekday,
   each with `cells` keyed by period id, `nil` where no slot), the lesson
-  `periods`, and the `missed` roll calls (class, period, teacher, subject,
-  `reminded?` once a « Relancer » was sent that day).
+  `periods`, and the `missed` roll calls (slot id, class, period, teacher, subject).
   """
   def school_day(%Scope{} = scope, %Date{} = date, %NaiveDateTime{} = now) do
     periods = lesson_periods(scope)
@@ -49,7 +48,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     %{
       periods: periods,
       rows: rows,
-      missed: cells |> Enum.filter(&(&1.status == :missed)) |> sort_cells() |> reminded(scope)
+      missed: cells |> Enum.filter(&(&1.status == :missed)) |> sort_cells()
     }
   end
 
@@ -71,57 +70,55 @@ defmodule TeacherAssistant.Academics.SchoolLife do
              scope: scope,
              load: [:period, :class_group, teaching_context: [:catalog_subject]]
            ),
-         {:ok, reminder} <- create_reminder(scope, slot, date) do
-      tc = slot.teaching_context
-
-      TeacherAssistant.Notifications.deliver(
-        scope,
-        :roll_call_reminder,
-        Enum.reject([tc.teacher_user_id], &(is_nil(&1) or &1 == scope.current_user.id)),
-        %{
-          class: slot.class_group.label,
-          time: Calendar.strftime(slot.period.start_time, "%H:%M"),
-          subject: subject_label(tc)
-        },
-        "/school/today"
-      )
-
-      {:ok, reminder}
+         false <- MapSet.member?(reminded_slot_ids(scope, date), slot.id) do
+      remind_in_transaction(scope, slot, date)
+    else
+      true -> {:error, :already_reminded}
+      error -> error
     end
+  end
+
+  # The log row and the notification together: a failed delivery leaves no
+  # « Relancé » behind that would refuse every retry. The unique index still
+  # refuses a reminder racing another one.
+  defp remind_in_transaction(scope, slot, date) do
+    TeacherAssistant.Repo.transaction(fn ->
+      case create_reminder(scope, slot, date) do
+        {:ok, reminder} ->
+          tc = slot.teaching_context
+
+          TeacherAssistant.Notifications.deliver(
+            scope,
+            :roll_call_reminder,
+            Enum.reject([tc.teacher_user_id], &(is_nil(&1) or &1 == scope.current_user.id)),
+            %{
+              class: slot.class_group.label,
+              time: Calendar.strftime(slot.period.start_time, "%H:%M"),
+              subject: subject_label(tc)
+            },
+            "/school/today"
+          )
+
+          reminder
+
+        {:error, reason} ->
+          TeacherAssistant.Repo.rollback(reason)
+      end
+    end)
+  end
+
+  @doc "The slots reminded with « Relancer » on `date` (a MapSet of slot ids)."
+  def reminded_slot_ids(%Scope{} = scope, %Date{} = date) do
+    RollCallReminder
+    |> Ash.Query.for_read(:on_date, %{date: date}, scope: scope)
+    |> Ash.read!()
+    |> MapSet.new(& &1.timetable_slot_id)
   end
 
   defp create_reminder(scope, slot, date) do
     RollCallReminder
     |> Ash.Changeset.for_create(:create, %{timetable_slot_id: slot.id, date: date}, scope: scope)
     |> Ash.create()
-    |> case do
-      {:error, %Ash.Error.Invalid{errors: errors} = error} ->
-        if Enum.any?(errors, &once_a_day?/1),
-          do: {:error, :already_reminded},
-          else: {:error, error}
-
-      other ->
-        other
-    end
-  end
-
-  defp once_a_day?(%Ash.Error.Changes.InvalidAttribute{private_vars: vars}) do
-    constraint = vars[:constraint]
-    is_binary(constraint) and String.contains?(constraint, "once_a_day")
-  end
-
-  defp once_a_day?(_error), do: false
-
-  defp reminded([], _scope), do: []
-
-  defp reminded([%{date: date} | _] = missed, scope) do
-    sent =
-      RollCallReminder
-      |> Ash.Query.for_read(:on_date, %{date: date}, scope: scope)
-      |> Ash.read!()
-      |> MapSet.new(& &1.timetable_slot_id)
-
-    Enum.map(missed, &Map.put(&1, :reminded?, MapSet.member?(sent, &1.slot_id)))
   end
 
   @doc "The user's slots on `date`, sorted by period, with the same statuses as `school_day/3`."

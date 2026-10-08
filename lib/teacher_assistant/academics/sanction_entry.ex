@@ -40,7 +40,6 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
         :date,
         :reason,
         :duration_days,
-        :duration_hours,
         :issued_by_user_id
       ]
     ]

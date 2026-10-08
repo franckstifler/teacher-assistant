@@ -1,7 +1,7 @@
 # Vie scolaire redesign (day, absences, conduct, sanctions, timetable editor) — design
 
 Date: 2026-10-08
-Status: approved design, awaiting spec review
+Status: implemented on feat/vie-scolaire-redesign (2026-10-08)
 Mockup: claude.ai/design project « Tableau », file `Vie scolaire.dc.html`
 (screens `#day`, `#absences`, `#conduct`, `#sanctions`, `#timetable`).
 Follows: `2026-10-08-eleves-redesign-design.md` (cycle 2).
@@ -40,10 +40,12 @@ a parent-convocation record, splitting a subject between two teachers.
   « Appel non fait : %{class} · %{time} · %{subject} ».
 - `SchoolLife.remind_roll_call(scope, slot_id, date)`: creates the reminder,
   then `Notifications.deliver(scope, :roll_call_reminder, [teacher], payload,
-  link to that slot's register)`. A second call for the same slot and day
-  returns `{:error, :already_reminded}` (identity error mapped).
-- `SchoolLife.school_day/3`'s missed entries carry `reminded?` from one read of
-  that day's reminders.
+  "/school/today")` — the teacher's « Ma journée », where that roll call is
+  taken — both in one transaction. A second call for the same slot and day
+  returns `{:error, :already_reminded}` (checked first; the unique index
+  backs it).
+- `Attendance.reminded_slot_ids(scope, date)`: the day page marks the slots
+  already reminded (kept out of `school_day/3`, which the rail badge also calls).
 - Policy: create allowed when `Discipline.can_manage_conduct?` holds (same
   check as the page).
 
@@ -53,12 +55,14 @@ a parent-convocation record, splitting a subject between two teachers.
   `conseil_discipline: "0"` (the council's decision is recorded as its own
   sanction). Labels FR « Conseil de discipline » / EN « Disciplinary council ».
 - It flows everywhere the type list is used (sanctions form, settings points,
-  conduct sheet), like `:exclusion_definitive`.
+  conduct sheet), like `:exclusion_definitive`. A school that already saved its
+  own « types utilisés » list turns it on in Paramètres › Assiduité & discipline.
 
 ### 1.3 Consigne in hours
 
 - `SanctionEntry.duration_hours` (integer, 1–40, nullable).
-- Validation in the resource: `:consigne` requires `duration_hours` (on create);
+- Validation in the resource: `:consigne` requires `duration_hours` (on create;
+  the generic update does not accept hours);
   `:exclusion_temporaire` keeps requiring `duration_days`; every other type
   clears both. Existing consigne rows without hours stay valid and display with
   no duration.

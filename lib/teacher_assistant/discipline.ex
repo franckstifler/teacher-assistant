@@ -126,7 +126,8 @@ defmodule TeacherAssistant.Discipline do
   Rejects an invalid `type` with `{:error, :invalid_type}`, and a type the
   school switched off (spec KLM2) with `{:error, :type_not_in_use}`. `duration_days`
   is persisted only for `:exclusion_temporaire` and `duration_hours` only for
-  `:consigne` (required there: `{:error, :duration_required}`), both `nil` otherwise.
+  `:consigne` (required there: `{:error, :duration_required}`, and 1 to 40:
+  `{:error, :invalid_duration}`), both `nil` otherwise.
   """
   def add_sanction(%Scope{} = scope, %Enrollment{} = e, attrs) do
     type = attrs[:type] || attrs["type"]
@@ -157,18 +158,21 @@ defmodule TeacherAssistant.Discipline do
       |> case do
         {:ok, sanction} -> {:ok, sanction}
         {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
-        {:error, error} -> {:error, sanction_error(error)}
+        {:error, error} -> {:error, sanction_error(error, duration_hours)}
       end
     end
   end
 
-  defp sanction_error(%Ash.Error.Invalid{errors: errors}) do
-    if Enum.any?(errors, &(Map.get(&1, :field) == :duration_hours)),
-      do: :duration_required,
-      else: :sanction_failed
+  # Hours missing (a consigne) or outside 1..40.
+  defp sanction_error(%Ash.Error.Invalid{errors: errors}, hours) do
+    cond do
+      not Enum.any?(errors, &(Map.get(&1, :field) == :duration_hours)) -> :sanction_failed
+      is_nil(hours) -> :duration_required
+      true -> :invalid_duration
+    end
   end
 
-  defp sanction_error(_error), do: :sanction_failed
+  defp sanction_error(_error, _hours), do: :sanction_failed
 
   @doc "Records that the parents were told about `sanction`, today, by the scope's user (V06)."
   def mark_parents_notified(%Scope{} = scope, %SanctionEntry{} = sanction) do

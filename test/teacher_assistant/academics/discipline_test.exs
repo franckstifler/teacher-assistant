@@ -132,6 +132,15 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
                )
     end
 
+    test "a consigne over 40 hours is refused as an invalid duration", ctx do
+      assert {:error, :invalid_duration} =
+               Discipline.add_sanction(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 %{type: :consigne, date: ctx.seq1.start_date, duration_hours: 50}
+               )
+    end
+
     test "hours are dropped for any other type", ctx do
       assert {:ok, %SanctionEntry{duration_hours: nil}} =
                Discipline.add_sanction(

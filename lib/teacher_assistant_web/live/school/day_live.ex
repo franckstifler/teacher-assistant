@@ -41,6 +41,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
       today: today,
       now: now,
       day: Attendance.school_day(scope, today, now),
+      reminded: Attendance.reminded_slot_ids(scope, today),
       day_off: Attendance.day_off(scope, today),
       absent_students: sequence_rows |> Enum.filter(&(&1.date == today)) |> length(),
       to_justify: Enum.count(sequence_rows, &(not &1.justified?)),
@@ -211,14 +212,14 @@ defmodule TeacherAssistantWeb.School.DayLive do
                 </span>
               </div>
               <span
-                :if={m.reminded?}
+                :if={MapSet.member?(@reminded, m.slot_id)}
                 id={"reminded-#{m.slot_id}"}
                 class="flex-none text-[0.76rem] font-semibold text-primary"
               >
                 {gettext("Relancé ✓")}
               </span>
               <button
-                :if={not m.reminded?}
+                :if={not MapSet.member?(@reminded, m.slot_id)}
                 id={"remind-#{m.slot_id}"}
                 type="button"
                 class="btn btn-outline btn-xs flex-none"
