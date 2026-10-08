@@ -1,24 +1,27 @@
 defmodule TeacherAssistantWeb.School.AbsencesLive do
   @moduledoc """
-  Surveillant général → Absences (spec G, V02/V04): one row per student-day of
-  the current séquence with an absence, filterable by justification, with a side
-  panel to justify the day and the repeated-absence warning.
+  Surveillant général → Absences (spec G, V02/V04; Vie scolaire redesign §2.2):
+  one row per student-day of the current séquence with an absence, filtered by
+  justification, class and period (all in the URL), the « Absences répétées »
+  banner, and an inline « Justifier » with an optional precision.
   """
   use TeacherAssistantWeb, :live_view
 
   import TeacherAssistantWeb.School.SchoolLifeComponents
 
-  alias TeacherAssistant.{Attendance, Discipline}
-  alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.{Attendance, Discipline, Enrollment, Organization}
+  alias TeacherAssistant.Academics.{EntryProgress, JustificationReason, Reference}
   alias TeacherAssistantWeb.{Authz, Dates}
 
   @filters ~w(unjustified justified all)
+  @periods ~w(sequence week today)
+  @page_size 50
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil and Discipline.can_manage_conduct?(scope) do
-      {:ok, socket |> assign(filter: "unjustified", selected: nil) |> load()}
+      {:ok, socket |> assign(open: nil, note: "") |> load()}
     else
       {:ok,
        socket
@@ -28,13 +31,23 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
   end
 
   def handle_params(params, _uri, socket) do
-    filter = if params["filter"] in @filters, do: params["filter"], else: "unjustified"
-    {:noreply, assign(socket, filter: filter)}
+    class_ids = MapSet.new(socket.assigns.classes, & &1.id)
+
+    {:noreply,
+     assign(socket,
+       filter: pick(params["filter"], @filters),
+       period: pick(params["period"], @periods),
+       class_id: if(MapSet.member?(class_ids, params["class"]), do: params["class"]),
+       all?: params["all"] == "1"
+     )}
   end
+
+  defp pick(value, allowed), do: if(value in allowed, do: value, else: hd(allowed))
 
   defp load(socket) do
     scope = socket.assigns.current_scope
     today = Reference.today()
+    year = scope.current_academic_year
 
     rows =
       case Attendance.current_sequence_range(scope, today) do
@@ -42,179 +55,297 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
         {first, last} -> Attendance.absence_days(scope, first, last, today)
       end
 
-    selected = socket.assigns.selected && Enum.find(rows, &(&1.id == socket.assigns.selected.id))
-    assign(socket, today: today, rows: rows, selected: selected)
+    assign(socket,
+      today: today,
+      rows: rows,
+      sequence:
+        year && EntryProgress.default_sequence(Organization.list_sequences(scope, year), today),
+      classes: if(year, do: Enrollment.list_class_groups(scope, year), else: []),
+      lesson_count: scope |> Attendance.list_periods() |> Enum.count(&(&1.kind == :lesson)),
+      alert_hours: Attendance.school_life_rules(scope).absence_alert_hours
+    )
   end
 
-  def handle_event("select", %{"row" => row_id}, socket),
-    do: {:noreply, assign(socket, selected: Enum.find(socket.assigns.rows, &(&1.id == row_id)))}
+  def handle_event("filters", params, socket),
+    do: {:noreply, push_patch(socket, to: absences_path(socket.assigns, params))}
+
+  def handle_event("open", %{"row" => row_id}, socket),
+    do:
+      {:noreply,
+       assign(socket, open: if(socket.assigns.open == row_id, do: nil, else: row_id), note: "")}
+
+  def handle_event("note", %{"note" => note}, socket), do: {:noreply, assign(socket, note: note)}
 
   def handle_event("justify", %{"row" => row_id, "reason" => reason}, socket) do
-    case justify(socket.assigns.current_scope, socket.assigns.rows, row_id, reason) do
-      {:ok, _} -> {:noreply, load(socket)}
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      {:error, _} -> {:noreply, socket}
+    scope = socket.assigns.current_scope
+    reason = Enum.find(JustificationReason.values(), &(Atom.to_string(&1) == reason))
+    note = socket.assigns.note |> String.trim() |> then(&if(&1 == "", do: nil, else: &1))
+
+    case Enum.find(socket.assigns.rows, &(&1.id == row_id)) do
+      nil ->
+        {:noreply, socket}
+
+      row ->
+        case Attendance.justify_day(scope, row.enrollment, row.date, reason, note) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> put_flash(
+               :info,
+               gettext("Absence de %{name} justifiée.", name: row.student.full_name)
+             )
+             |> assign(open: nil, note: "")
+             |> load()}
+
+          {:error, %Ash.Error.Forbidden{}} ->
+            {:noreply, Authz.put_not_allowed(socket)}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
     end
   end
 
-  defp visible(rows, "unjustified"), do: Enum.reject(rows, & &1.justified?)
-  defp visible(rows, "justified"), do: Enum.filter(rows, & &1.justified?)
-  defp visible(rows, _all), do: rows
+  # The URL for the filters in `params` (form fields), keeping the others.
+  defp absences_path(assigns, params) do
+    query =
+      [
+        filter: Map.get(params, "filter", assigns.filter),
+        class: Map.get(params, "class", assigns.class_id),
+        period: Map.get(params, "period", assigns.period),
+        all: Map.get(params, "all")
+      ]
+      |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
 
-  defp filter_label("unjustified"), do: gettext("Non justifiées")
+    ~p"/school/absences?#{query}"
+  end
+
+  defp visible(rows, assigns) do
+    rows
+    |> Enum.filter(&by_filter(&1, assigns.filter))
+    |> Enum.filter(&(is_nil(assigns.class_id) or &1.class_group.id == assigns.class_id))
+    |> Enum.filter(&in_period?(&1.date, assigns.period, assigns.today))
+  end
+
+  defp by_filter(row, "unjustified"), do: not row.justified?
+  defp by_filter(row, "justified"), do: row.justified?
+  defp by_filter(_row, "all"), do: true
+
+  defp in_period?(_date, "sequence", _today), do: true
+  defp in_period?(date, "today", today), do: date == today
+
+  defp in_period?(date, "week", today),
+    do: Date.compare(date, Date.beginning_of_week(today)) != :lt
+
+  defp filter_label("unjustified"), do: gettext("À justifier")
   defp filter_label("justified"), do: gettext("Justifiées")
   defp filter_label("all"), do: gettext("Toutes")
 
+  defp period_label("sequence", nil), do: gettext("Séquence en cours")
+  defp period_label("sequence", seq), do: gettext("Séquence %{n}", n: seq.number)
+  defp period_label("week", _seq), do: gettext("Cette semaine")
+  defp period_label("today", _seq), do: gettext("Aujourd'hui")
+
+  # One entry per student over the threshold: their séquence hours.
+  defp repeated(rows) do
+    rows
+    |> Enum.filter(& &1.flagged?)
+    |> Enum.uniq_by(& &1.enrollment.id)
+    |> Enum.sort_by(
+      &{-Decimal.to_float(&1.unjustified_hours), String.downcase(&1.student.full_name)}
+    )
+  end
+
   def render(assigns) do
-    shown = visible(assigns.rows, assigns.filter)
+    shown = visible(assigns.rows, assigns)
+    page = if assigns.all?, do: shown, else: Enum.take(shown, @page_size)
 
-    # As in the mockup, the panel shows the chosen row, else the first one listed.
-    selected =
-      (assigns.selected && Enum.find(shown, &(&1.id == assigns.selected.id))) || List.first(shown)
-
-    assigns = assign(assigns, filters: @filters, shown: shown, selected: selected)
+    assigns =
+      assign(assigns,
+        filters: @filters,
+        periods: @periods,
+        shown: shown,
+        page: page,
+        repeated: repeated(assigns.rows),
+        to_justify: Enum.count(assigns.rows, &(not &1.justified?))
+      )
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="absences" class="flex flex-col gap-5">
-        <.page_header eyebrow={gettext("Vie scolaire")} title={gettext("Absences")}>
-          <:actions>
-            <.side_chip id="unjustified-count">
-              {ngettext(
-                "%{count} non justifiée",
-                "%{count} non justifiées",
-                Enum.count(@rows, &(not &1.justified?))
-              )}
-            </.side_chip>
-          </:actions>
-        </.page_header>
+      <section id="absences" class="flex flex-col gap-4">
+        <.page_header
+          eyebrow={
+            if @sequence,
+              do: gettext("Vie scolaire · Séquence %{n}", n: @sequence.number),
+              else: gettext("Vie scolaire")
+          }
+          title={gettext("Absences")}
+          subtitle={
+            ngettext(
+              "%{count} absence à justifier",
+              "%{count} absences à justifier",
+              @to_justify
+            ) <>
+              " · " <>
+              ngettext(
+                "%{count} élève au-delà du seuil de %{hours} h",
+                "%{count} élèves au-delà du seuil de %{hours} h",
+                length(@repeated),
+                hours: @alert_hours
+              )
+          }
+        />
 
-        <div class="flex flex-wrap items-start gap-4">
-          <div class="flex min-w-0 flex-[1_1_560px] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100">
-            <div class="flex flex-wrap items-center gap-1.5 border-b border-base-300 px-3.5 py-3">
-              <.link
-                :for={f <- @filters}
-                id={"filter-#{f}"}
-                patch={~p"/school/absences?filter=#{f}"}
-                aria-current={@filter == f && "page"}
-                class={[
-                  "rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors",
-                  if(@filter == f,
-                    do: "border-primary bg-primary/20 text-primary",
-                    else: "border-base-300 hover:border-primary/60"
-                  )
-                ]}
-              >
-                {filter_label(f)}
-              </.link>
-            </div>
-            <div class="overflow-x-auto">
-              <div id="absence-rows" class="min-w-[700px]">
-                <div class={[row_grid(), "border-b border-base-300 py-2.5"]}>
-                  <span
-                    :for={
-                      label <- [
-                        gettext("Date"),
-                        gettext("Élève"),
-                        gettext("Classe"),
-                        gettext("Créneaux"),
-                        gettext("Statut")
-                      ]
-                    }
-                    class="ta-num text-[0.65rem] font-semibold uppercase tracking-[0.06em] text-base-content/75"
-                  >
-                    {label}
-                  </span>
-                </div>
-                <button
-                  :for={row <- @shown}
-                  id={"row-#{row.id}"}
-                  type="button"
-                  phx-click="select"
-                  phx-value-row={row.id}
-                  aria-pressed={to_string(@selected != nil and @selected.id == row.id)}
-                  class={[
-                    row_grid(),
-                    "ta-row-rule w-full cursor-pointer items-center py-[9px] text-left text-[0.86rem] transition-colors hover:bg-base-content/5",
-                    @selected && @selected.id == row.id && "bg-primary/10"
-                  ]}
-                >
-                  <span class="ta-num truncate text-base-content/75">{Dates.relative(row.date, @today)}</span>
-                  <span class="flex min-w-0 items-center gap-1.5 font-semibold">
-                    <span class="truncate">{row.student.full_name}</span>
-                    <span
-                      :if={row.flagged?}
-                      title={gettext("Absences répétées")}
-                      class="ta-num flex-none rounded-full bg-error/20 px-1.5 text-[0.62rem] text-error"
-                    >
-                      {gettext("rép.")}
-                    </span>
-                  </span>
-                  <span class="truncate">{row.class_group.label}</span>
-                  <span class="truncate text-base-content/75">{periods_text(row.periods)}</span>
-                  <span class={[
-                    "truncate",
-                    if(row.justified?, do: "text-primary", else: "text-warning")
-                  ]}>
-                    {if row.justified?, do: justified_label(row), else: gettext("Non justifiée")}
-                    <.overdue_badge row={row} />
-                  </span>
-                </button>
-              </div>
-            </div>
-            <p :if={@shown == []} id="no-absences" class="px-3.5 py-5 text-sm text-base-content/75">
-              {gettext("Aucune absence pour ce filtre.")}
-            </p>
-          </div>
+        <div
+          :if={@repeated != []}
+          id="repeated-banner"
+          class="rounded-box border border-error/50 bg-error/10 px-3.5 py-3 text-[0.86rem]"
+        >
+          <b class="text-error">{gettext("Absences répétées.")}</b>
+          <%= for {row, i} <- Enum.with_index(@repeated) do %>
+            <span :if={i > 0}>, </span><.link
+              id={"repeated-#{row.enrollment.id}"}
+              navigate={~p"/school/students/#{row.student.id}"}
+              class="font-semibold hover:underline"
+            >{row.student.full_name}</.link>
+            ({row.class_group.label} · {hours_label(row.unjustified_hours)})
+          <% end %>
+        </div>
 
-          <aside
-            :if={@selected}
-            id="absence-panel"
-            class="ta-panel flex min-w-0 max-w-[420px] flex-[1_1_300px] flex-col gap-2.5 !border-primary !px-[18px] !py-4"
-          >
-            <div class="flex items-start justify-between gap-2">
-              <span class="ta-num text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-primary/90">
-                {@selected.class_group.label} · {Dates.relative(@selected.date, @today)}
-              </span>
-              <span class="flex items-center gap-1.5">
-                <.overdue_badge row={@selected} />
-                <.absence_status row={@selected} />
-              </span>
-            </div>
-            <span class="font-display text-[1.3rem] font-semibold leading-tight">
-              {@selected.student.full_name}
-            </span>
-            <span :if={@selected.flagged?} class="self-start"><.repeated_badge row={@selected} /></span>
-            <span class="text-[0.82rem] text-base-content/80">{periods_text(@selected.periods)}</span>
-            <div class="flex justify-between gap-2.5 border-b border-base-300/60 py-1.5 text-[0.85rem]">
-              <span class="text-base-content/80">
-                {gettext("Absences non justifiées (séquence)")}
-              </span>
-              <span id="unjustified-hours" class="ta-num font-semibold">
-                {hours_label(@selected.unjustified_hours)}
-              </span>
-            </div>
-            <div :if={not @selected.justified?} class="flex flex-col gap-1.5">
-              <span class="text-[0.8rem] font-semibold">{gettext("Motif de justification")}</span>
-              <.reason_chips row={@selected} />
-            </div>
-            <p
-              :if={@selected.flagged?}
-              id="repeated-warning"
-              class="rounded-[0.4rem] border border-dashed border-warning/60 px-3 py-2 text-[0.82rem] text-warning"
+        <form id="absence-filters" phx-change="filters" class="flex flex-wrap items-center gap-2.5">
+          <div class="flex gap-0.5 rounded-[0.55rem] border border-base-300 bg-base-200 p-[3px]">
+            <.link
+              :for={f <- @filters}
+              id={"filter-#{f}"}
+              patch={absences_path(assigns, %{"filter" => f})}
+              aria-current={@filter == f && "page"}
+              class={[
+                "rounded-[0.45rem] px-3 py-1.5 text-[0.8rem] font-semibold transition-colors",
+                if(@filter == f,
+                  do: "bg-primary text-primary-content",
+                  else: "text-base-content/85 hover:text-base-content"
+                )
+              ]}
             >
-              {gettext("Absences répétées : convocation des parents recommandée.")}
-            </p>
-          </aside>
+              {filter_label(f)}
+            </.link>
+          </div>
+          <select id="absence-class" name="class" class="select select-bordered select-sm w-auto">
+            <option value="">{gettext("Toutes les classes")}</option>
+            <option :for={c <- @classes} value={c.id} selected={c.id == @class_id}>{c.label}</option>
+          </select>
+          <select id="absence-period" name="period" class="select select-bordered select-sm w-auto">
+            <option :for={p <- @periods} value={p} selected={p == @period}>
+              {period_label(p, @sequence)}
+            </option>
+          </select>
+        </form>
+
+        <div class="overflow-hidden rounded-box border border-base-300 bg-base-100">
+          <p :if={@shown == []} id="no-absences" class="px-4 py-5 text-sm text-base-content/75">
+            {gettext("Aucune absence pour ce filtre.")}
+          </p>
+          <div :for={row <- @page} id={"row-#{row.id}"} class="ta-row-rule flex flex-col">
+            <div class="flex flex-wrap items-center gap-3 px-4 py-[11px]">
+              <div class="flex min-w-0 flex-[1_1_220px] flex-col gap-0.5">
+                <span class="flex flex-wrap items-center gap-1.5 font-semibold">
+                  {row.student.full_name}
+                  <span class="font-normal text-base-content/75">· {row.class_group.label}</span>
+                  <.overdue_badge row={row} />
+                </span>
+                <span class="text-[0.78rem] text-base-content/80">
+                  {when_text(row, @today, @lesson_count)}
+                </span>
+              </div>
+              <span class={[
+                "ta-num w-[52px] text-[0.86rem] font-semibold",
+                if(row.minutes >= 180, do: "text-error", else: "text-warning")
+              ]}>
+                {minutes_label(row.minutes)}
+              </span>
+              <span class="w-full text-[0.8rem] text-base-content/85 sm:w-[210px]">
+                <%= if row.guardian do %>
+                  {row.guardian.full_name} ·
+                  <a href={"tel:#{row.guardian.phone_key}"} class="ta-num hover:underline">
+                    {row.guardian.phone}
+                  </a>
+                <% else %>
+                  <span class="text-base-content/60">{gettext("Aucun contact")}</span>
+                <% end %>
+              </span>
+              <button
+                :if={not row.justified?}
+                id={"open-#{row.id}"}
+                type="button"
+                class="btn btn-outline btn-xs"
+                phx-click="open"
+                phx-value-row={row.id}
+                aria-expanded={to_string(@open == row.id)}
+              >
+                {gettext("Justifier")}
+              </button>
+              <.absence_status :if={row.justified?} row={row} />
+            </div>
+            <div
+              :if={@open == row.id and not row.justified?}
+              id={"justify-panel-#{row.id}"}
+              class="flex flex-wrap items-center gap-2 px-4 pb-3"
+            >
+              <.reason_chips row={row} />
+              <form id={"note-#{row.id}"} phx-change="note" phx-submit="note" class="contents">
+                <input
+                  type="text"
+                  name="note"
+                  value={@note}
+                  maxlength="200"
+                  placeholder={gettext("Précision (facultatif)")}
+                  aria-label={gettext("Précision (facultatif)")}
+                  class="input input-bordered input-sm min-w-[200px] flex-1 sm:flex-none"
+                />
+              </form>
+            </div>
+          </div>
+          <div
+            :if={@shown != []}
+            id="absences-footer"
+            class="flex items-center justify-between border-t border-base-300 px-4 py-2.5 text-[0.8rem] text-base-content/80"
+          >
+            <span>
+              {gettext("%{shown} sur %{total} affichées", shown: length(@page), total: length(@shown))}
+            </span>
+            <.link
+              :if={length(@page) < length(@shown)}
+              id="show-all"
+              patch={absences_path(assigns, %{"all" => "1"})}
+              class="font-semibold text-info hover:underline"
+            >
+              {gettext("Afficher tout")}
+            </.link>
+          </div>
         </div>
       </section>
     </Layouts.app>
     """
   end
 
+  # « lun. 6 oct. · 07:30 – 10:15 », or « … · journée » when every lesson was missed.
+  defp when_text(row, today, lesson_count) do
+    span =
+      if length(row.periods) >= lesson_count and lesson_count > 0,
+        do: gettext("journée"),
+        else: "#{hm(hd(row.periods).start_time)} – #{hm(List.last(row.periods).end_time)}"
+
+    "#{Dates.relative(row.date, today)} · #{span}"
+  end
+
+  defp minutes_label(minutes) do
+    case {div(minutes, 60), rem(minutes, 60)} do
+      {0, m} -> "#{m} min"
+      {h, 0} -> "#{h} h"
+      {h, m} -> "#{h} h #{String.pad_leading(to_string(m), 2, "0")}"
+    end
+  end
+
   defp hours_label(%Decimal{} = hours),
     do: "#{hours |> Decimal.round(1) |> Decimal.normalize() |> Decimal.to_string(:normal)} h"
-
-  defp row_grid,
-    do: "grid grid-cols-[110px_minmax(170px,1.4fr)_70px_minmax(0,1fr)_150px] gap-2.5 px-3.5"
 end

@@ -5,7 +5,7 @@ defmodule TeacherAssistant.Academics.JustificationReason do
 
   def label(:maladie), do: gettext("Maladie")
   def label(:famille), do: gettext("Raison familiale")
-  def label(:convocation), do: gettext("Convocation")
+  def label(:convocation), do: gettext("Convocation officielle")
   def label(:autre), do: gettext("Autre motif")
   # Entries justified before reasons existed.
   def label(nil), do: gettext("Motif non précisé")

@@ -229,9 +229,9 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
   @doc """
   One row per student-day between `first` and `last` with at least one `:absent`
-  entry: student, class, periods, whether justified (and why), the student's
-  unjustified absence hours in the current séquence and the V04 flag. Flagged students
-  first, then newest day.
+  entry: student, class, main guardian (or nil), periods and their `minutes`,
+  whether justified (and why), the student's unjustified absence hours in the
+  current séquence and the V04 flag. Flagged students first, then newest day.
   """
   def absence_days(%Scope{} = scope, %Date{} = first, %Date{} = last, %Date{} = today) do
     rules = Attendance.school_life_rules(scope)
@@ -242,13 +242,17 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
     AttendanceEntry
     |> absences_between(first, last, rules.late_as_absence_minutes)
-    |> Ash.Query.load([:period, enrollment: [:student, :class_group]])
+    |> Ash.Query.load([
+      :period,
+      enrollment: [:class_group, student: [primary_guardian_link: :guardian]]
+    ])
     |> Ash.read!(scope: scope)
     |> Enum.group_by(&{&1.enrollment_id, &1.date})
     |> Enum.map(fn {{enrollment_id, date}, [entry | _] = entries} ->
       hours = Map.get(unjustified, enrollment_id, zero)
       justified = Enum.find(entries, & &1.justified)
       justified? = Enum.all?(entries, & &1.justified)
+      periods = entries |> Enum.map(& &1.period) |> Enum.sort_by(& &1.position)
 
       %{
         id: "#{enrollment_id}-#{Date.to_iso8601(date)}",
@@ -256,7 +260,9 @@ defmodule TeacherAssistant.Academics.SchoolLife do
         student: entry.enrollment.student,
         class_group: entry.enrollment.class_group,
         date: date,
-        periods: entries |> Enum.map(& &1.period) |> Enum.sort_by(& &1.position),
+        periods: periods,
+        minutes: Enum.sum_by(periods, &div(Time.diff(&1.end_time, &1.start_time), 60)),
+        guardian: main_guardian(entry.enrollment.student),
         justified?: justified?,
         reason: justified && justified.justification_reason,
         unjustified_hours: hours,
@@ -270,6 +276,9 @@ defmodule TeacherAssistant.Academics.SchoolLife do
        SchoolTemplates.class_sort_key(&1.class_group), String.downcase(&1.student.full_name)}
     )
   end
+
+  defp main_guardian(%{primary_guardian_link: %{guardian: guardian}}), do: guardian
+  defp main_guardian(_student), do: nil
 
   # Absences, and lates long enough to count as one (spec KLM2).
   defp absences_between(query, first, last, nil),

@@ -121,17 +121,62 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     refute has_element?(view, "#remind-#{slot.id}")
   end
 
-  test "Absences: filter, panel and justify", %{conn: conn} = ctx do
+  test "Absences: inline justify with a precision, then the Justifiées tab",
+       %{conn: conn} = ctx do
     row_id = "#{ctx.e.id}-2025-09-15"
     {:ok, view, _} = live(conn, ~p"/school/absences")
 
-    view |> element("#row-#{row_id}") |> render_click()
-    assert has_element?(view, "#absence-panel")
+    assert view |> element("#row-#{row_id}") |> render() =~ "Aucun contact"
+    view |> element("#open-#{row_id}") |> render_click()
+    view |> element("#note-#{row_id}") |> render_change(%{"note" => "Certificat médical"})
     view |> element("#justify-#{row_id}-famille") |> render_click()
     refute has_element?(view, "#row-#{row_id}")
 
+    [entry] =
+      TeacherAssistant.Academics.AttendanceEntry
+      |> Ash.read!(scope: ctx.scope)
+      |> Enum.filter(&(&1.status == :absent))
+
+    assert entry.justification_note == "Certificat médical"
+
     {:ok, view, _} = live(conn, ~p"/school/absences?filter=justified")
     assert view |> element("#row-#{row_id}") |> render() =~ "Raison familiale"
+  end
+
+  test "Absences: class and period filters live in the URL", %{conn: conn} = ctx do
+    row_id = "#{ctx.e.id}-2025-09-15"
+    {:ok, view, _} = live(conn, ~p"/school/absences")
+
+    view
+    |> element("#absence-filters")
+    |> render_change(%{"period" => "today", "class" => ctx.cg.id})
+
+    assert_patch(view, ~p"/school/absences?filter=unjustified&class=#{ctx.cg.id}&period=today")
+    assert has_element?(view, "#row-#{row_id}")
+    assert view |> element("#absences-footer") |> render() =~ "1 sur 1"
+  end
+
+  test "Absences: the repeated-absence banner links to the student", %{conn: conn} = ctx do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(ctx.scope)
+
+    {:ok, _} =
+      profile
+      |> Ash.Changeset.for_update(:update_school_life, %{absence_alert_hours: 1},
+        scope: ctx.scope
+      )
+      |> Ash.update()
+
+    # 2 periods missed: 1 h 40 unjustified, over the 1 h threshold.
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p2, nil, @today, [{ctx.e.id, :absent}])
+
+    {:ok, view, _} = live(conn, ~p"/school/absences")
+    assert view |> element("#repeated-banner") |> render() =~ "Awa"
+
+    assert has_element?(
+             view,
+             "#repeated-#{ctx.e.id}[href='/school/students/#{ctx.e.student_id}']"
+           )
   end
 
   test "the surveillant's menu counts missed roll calls and unjustified absences", ctx do
@@ -175,7 +220,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert html =~ "Jour férié : Journée pédagogique"
   end
 
-  test "Absences shows the séquence's hours and « Délai dépassé »", %{conn: conn} = ctx do
+  test "Absences shows « Délai dépassé »", %{conn: conn} = ctx do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(ctx.scope)
 
     {:ok, _} =
@@ -194,8 +239,5 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/absences")
     assert view |> element("#row-#{ctx.e.id}-2025-09-11") |> render() =~ "Délai dépassé"
     refute view |> element("#row-#{ctx.e.id}-2025-09-15") |> render() =~ "Délai dépassé"
-
-    view |> element("#row-#{ctx.e.id}-2025-09-15") |> render_click()
-    assert view |> element("#unjustified-hours") |> render() =~ " h"
   end
 end
