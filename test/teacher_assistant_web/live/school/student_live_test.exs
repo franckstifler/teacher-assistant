@@ -73,11 +73,25 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
 
+    # The form stays folded until « + Ajouter ».
+    refute has_element?(view, "#guardian-form")
+    view |> element("#add-guardian") |> render_click()
+
     # Typing the sibling's number offers the existing parent instead of a new record.
     view |> form("#guardian-form", guardian: %{phone: "+237 677 12 34 56"}) |> render_change()
-    assert has_element?(view, "#guardian-match", "Jean Nkolo")
+
+    assert view |> element("#guardian-match") |> render() =~ "— père de 1 élève (6e A)"
+
     view |> element("#guardian-match button") |> render_click()
     assert view |> element("#guardian-list") |> render() =~ "Contact principal"
+    refute has_element?(view, "#guardian-form")
+
+    [jean_link] = Enrollment.list_guardian_links(scope, awa)
+
+    assert view |> element("#guardian-meta-#{jean_link.id}") |> render() =~
+             "aussi parent de Paul Nkolo (6e A)"
+
+    view |> element("#add-guardian") |> render_click()
 
     view
     |> form("#guardian-form",
@@ -95,6 +109,25 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
 
     assert [%{guardian: %{full_name: "Marie Nkolo"}, primary_contact: true} | _] =
              Enrollment.list_guardian_links(scope, awa)
+  end
+
+  test "the header shows the class, the age and the class's links", %{
+    conn: conn,
+    cg: cg,
+    awa: awa
+  } do
+    {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+
+    assert view |> element("#student-breadcrumb a[href='/school/students']") |> has_element?()
+    assert view |> element("#student-class") |> render() =~ "6e A"
+
+    today = Date.utc_today()
+    years = today.year - 2013 - if({today.month, today.day} < {4, 2}, do: 1, else: 0)
+    assert view |> element("#student-sex-age") |> render() =~ "Féminin · #{years} ans"
+
+    assert has_element?(view, "#student-bulletin")
+    assert has_element?(view, ~s|#student-absences[href="/school/classes/#{cg.id}/register"]|)
+    assert view |> element("#this-year-unjustified") |> render() =~ "0 h"
   end
 
   test "the admin edits the identity", %{conn: conn, scope: scope, awa: awa} do
@@ -120,7 +153,9 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
 
     assert render(view) =~ "Awa Nkolo"
     refute has_element?(view, "#edit-identity")
+    refute has_element?(view, "#add-guardian")
     refute has_element?(view, "#guardian-form")
+    refute has_element?(view, "#student-breadcrumb a")
   end
 
   test "a teacher of another class is sent back", %{

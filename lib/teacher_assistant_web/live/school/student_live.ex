@@ -1,13 +1,14 @@
 defmodule TeacherAssistantWeb.School.StudentLive do
   @moduledoc """
-  Student profile (spec KLM1, M3): identity, parents and guardians, class
-  history with passage decisions and bulletins, this year's attendance and
-  discipline. Editing for admins and the SG; reading for the student's
-  form masters and teachers.
+  Student profile (spec KLM1, M3; Élèves redesign 2026-10-08): identity,
+  parents and guardians with their other children, class history with passage
+  decisions and published results, this year's attendance and discipline.
+  Editing for admins and the SG; reading for the student's form masters and
+  teachers.
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Attendance, Councils, Discipline, Enrollment, Organization}
+  alias TeacherAssistant.{Attendance, Councils, Discipline, Enrollment, Organization, ReportCards}
 
   alias TeacherAssistant.Academics.{
     ContactLanguage,
@@ -18,6 +19,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   }
 
   alias TeacherAssistantWeb.Authz
+  alias TeacherAssistantWeb.School.ClassShell
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -26,7 +28,15 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          access when access != :none <- Enrollment.student_access(scope, student) do
       {:ok,
        socket
-       |> assign(student: student, access: access, editing: false, match: [], guardian_edit: nil)
+       |> assign(
+         student: student,
+         access: access,
+         editing: false,
+         adding_guardian: false,
+         match: [],
+         match_children: %{},
+         guardian_edit: nil
+       )
        |> assign_guardian_form(%{})
        |> load()}
     else
@@ -47,11 +57,16 @@ defmodule TeacherAssistantWeb.School.StudentLive do
     year = scope.current_academic_year
     history = Enrollment.student_history(scope, student)
     current = year && Enum.find(history, &(&1.academic_year_id == year.id))
+    links = Enrollment.list_guardian_links(scope, student)
 
     assign(socket,
-      links: Enrollment.list_guardian_links(scope, student),
-      history: history,
+      links: links,
+      children: Enrollment.guardian_children(scope, Enum.map(links, & &1.guardian_id)),
+      history: Enum.sort_by(history, & &1.academic_year.start_date, {:desc, Date}),
+      results: Map.new(history, &{&1.id, ReportCards.latest_published_result(scope, &1)}),
       decisions: Councils.annual_decisions(scope, student.id),
+      current: current,
+      register?: current && ClassShell.allowed?(scope, current.class_group, :register),
       this_year: current && this_year(scope, current, year)
     )
   end
@@ -105,16 +120,32 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
   # --- Guardians ---
 
+  def handle_event("toggle_add_guardian", _params, socket)
+      when socket.assigns.access == :manage do
+    {:noreply,
+     socket
+     |> assign(adding_guardian: not socket.assigns.adding_guardian, match: [])
+     |> assign_guardian_form(%{})}
+  end
+
   def handle_event("guardian_change", %{"guardian" => params}, socket)
       when socket.assigns.access == :manage do
     linked = MapSet.new(socket.assigns.links, & &1.guardian_id)
 
+    scope = socket.assigns.current_scope
+
     match =
-      socket.assigns.current_scope
+      scope
       |> Enrollment.find_guardians_by_phone(params["phone"] || "")
       |> Enum.reject(&MapSet.member?(linked, &1.id))
 
-    {:noreply, socket |> assign(match: match) |> assign_guardian_form(params)}
+    {:noreply,
+     socket
+     |> assign(
+       match: match,
+       match_children: Enrollment.guardian_children(scope, Enum.map(match, & &1.id))
+     )
+     |> assign_guardian_form(params)}
   end
 
   def handle_event("add_guardian", %{"guardian" => params}, socket)
@@ -123,13 +154,18 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
     case Enrollment.add_guardian(socket.assigns.current_scope, socket.assigns.student, attrs) do
       {:ok, _guardian} ->
-        {:noreply, socket |> assign(match: []) |> assign_guardian_form(%{}) |> load()}
+        {:noreply,
+         socket
+         |> assign(match: [], adding_guardian: false)
+         |> assign_guardian_form(%{})
+         |> load()}
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
 
       {:error, error} ->
-        {:noreply, put_flash(socket, :error, error_message(error))}
+        {:noreply,
+         socket |> assign_guardian_form(params) |> put_flash(:error, error_message(error))}
     end
   end
 
@@ -142,7 +178,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
              socket.assigns.student,
              guardian
            ) do
-      {:noreply, socket |> assign(match: []) |> assign_guardian_form(%{}) |> load()}
+      {:noreply,
+       socket |> assign(match: [], adding_guardian: false) |> assign_guardian_form(%{}) |> load()}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Impossible de lier ce parent."))}
     end
@@ -220,302 +257,466 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   defp format_date(nil), do: "—"
   defp format_date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
 
+  # Full years at today's date.
+  defp age(nil), do: nil
+
+  defp age(%Date{} = birth) do
+    today = Date.utc_today()
+    years = today.year - birth.year
+    if {today.month, today.day} < {birth.month, birth.day}, do: years - 1, else: years
+  end
+
+  defp identity_line(student) do
+    case age(student.birth_date) do
+      nil -> Sex.label(student.sex)
+      years -> "#{Sex.label(student.sex)} · #{ngettext("%{count} an", "%{count} ans", years)}"
+    end
+  end
+
+  # « aussi parent de Ebogo Ivan (3e A) », without the student shown.
+  defp other_children(children, guardian_id, student_id) do
+    children
+    |> Map.get(guardian_id, [])
+    |> Enum.reject(&(&1.student.id == student_id))
+    |> Enum.map_join(", ", &child_text/1)
+  end
+
+  defp child_text(%{student: s, class_label: nil}), do: s.full_name
+  defp child_text(%{student: s, class_label: label}), do: "#{s.full_name} (#{label})"
+
+  # « mère de 2 élèves (4e A, 2nde C) »
+  defp match_text(guardian, children) do
+    labels =
+      children
+      |> Map.get(guardian.id, [])
+      |> Enum.map(& &1.class_label)
+      |> Enum.reject(&is_nil/1)
+
+    text =
+      ngettext(
+        "%{relationship} de %{count} élève",
+        "%{relationship} de %{count} élèves",
+        guardian.student_count,
+        relationship: GuardianRelationship.label(guardian.relationship) |> String.downcase()
+      )
+
+    if labels == [], do: text, else: "#{text} (#{Enum.join(labels, ", ")})"
+  end
+
+  defp result_line(nil), do: nil
+
+  defp result_line(%{period: period, average: average, rank: rank, effectif: effectif}) do
+    label =
+      case period do
+        :annual -> gettext("Année")
+        {:trimester, term} -> gettext("Trim. %{n}", n: term.position)
+      end
+
+    gettext("%{period} : %{average} · %{rank} / %{effectif}",
+      period: label,
+      average: average && average |> Decimal.round(2) |> Decimal.to_string(),
+      rank: rank_text(rank),
+      effectif: effectif
+    )
+  end
+
+  defp rank_text(nil), do: "—"
+  defp rank_text(1), do: gettext("1er")
+  defp rank_text(n), do: gettext("%{n}e", n: n)
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="student" class="flex flex-col gap-5">
-        <.page_header eyebrow={gettext("Élève")} title={@student.full_name}>
-          <:actions>
+        <.breadcrumb id="student-breadcrumb">
+          <:crumb navigate={@access == :manage && ~p"/school/students"}>{gettext("Élèves")}</:crumb>
+          <:crumb>{@student.full_name}</:crumb>
+        </.breadcrumb>
+
+        <header id="student-header" class="flex flex-wrap items-end justify-between gap-4">
+          <div class="flex min-w-0 items-center gap-4">
+            <.initials_avatar name={@student.full_name} class="size-14 text-lg" />
+            <div class="min-w-0 space-y-1.5">
+              <h1 class="font-display text-3xl font-semibold leading-none sm:text-[2.2rem]">
+                {@student.full_name}
+              </h1>
+              <div class="ta-num flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/80">
+                <.link
+                  :if={@current}
+                  id="student-class"
+                  navigate={~p"/school/classes/#{@current.class_group_id}"}
+                  class="font-semibold text-base-content hover:text-primary"
+                >
+                  {@current.class_group.label}
+                </.link>
+                <span :if={!@current} id="student-class">{gettext("Pas inscrit cette année")}</span>
+                <span :if={@student.matricule}>{@student.matricule}</span>
+                <span id="student-sex-age">{identity_line(@student)}</span>
+              </div>
+            </div>
+          </div>
+          <div :if={@current} class="flex flex-wrap gap-2">
             <.link
-              :if={@access == :manage}
-              navigate={~p"/school/students"}
+              id="student-bulletin"
+              navigate={
+                ~p"/school/classes/#{@current.class_group_id}/students/#{@current.id}/bulletin"
+              }
               class="btn btn-ghost btn-sm"
             >
-              <.icon name="hero-arrow-left" class="size-4" /> {gettext("Élèves")}
+              {gettext("Bulletin")}
             </.link>
-          </:actions>
-        </.page_header>
-
-        <div class="grid gap-4 lg:grid-cols-2">
-          <article id="student-identity" class="ta-panel flex flex-col gap-3">
-            <header class="flex items-center justify-between">
-              <h2 class="ta-eyebrow">{gettext("Identité")}</h2>
-              <button
-                :if={@access == :manage and not @editing}
-                id="edit-identity"
-                phx-click="edit_identity"
-                class="btn btn-ghost btn-xs"
-              >
-                <.icon name="hero-pencil-square" class="size-4" /> {gettext("Modifier")}
-              </button>
-            </header>
-
-            <.form
-              :if={@editing}
-              for={@identity_form}
-              id="identity-form"
-              phx-submit="save_identity"
-              class="grid gap-2 sm:grid-cols-2"
+            <.link
+              :if={@register?}
+              id="student-absences"
+              navigate={~p"/school/classes/#{@current.class_group_id}/register"}
+              class="btn btn-ghost btn-sm"
             >
-              <.input field={@identity_form[:full_name]} label={gettext("Nom et prénoms")} />
-              <.input
-                field={@identity_form[:sex]}
-                type="select"
-                label={gettext("Sexe")}
-                options={Enum.map(Sex.values(), &{Sex.label(&1), &1})}
-              />
-              <.input field={@identity_form[:matricule]} label={gettext("Matricule")} />
-              <.input
-                field={@identity_form[:birth_date]}
-                type="date"
-                label={gettext("Date de naissance")}
-              />
-              <.input field={@identity_form[:birth_place]} label={gettext("Lieu de naissance")} />
-              <div class="flex items-end gap-2">
-                <button class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-                <button type="button" phx-click="cancel_identity" class="btn btn-ghost btn-sm">{gettext(
-                  "Annuler"
-                )}</button>
-              </div>
-            </.form>
+              {gettext("Absences")}
+            </.link>
+          </div>
+        </header>
 
-            <dl :if={not @editing} class="grid grid-cols-2 gap-2 text-sm">
-              <div class="col-span-2">
-                <dt class="ta-eyebrow">{gettext("Nom et prénoms")}</dt><dd>{@student.full_name}</dd>
-              </div>
-              <div>
-                <dt class="ta-eyebrow">{gettext("Sexe")}</dt><dd>{Sex.label(@student.sex)}</dd>
-              </div>
-              <div>
-                <dt class="ta-eyebrow">{gettext("Matricule")}</dt><dd>{@student.matricule || "—"}</dd>
-              </div>
-              <div>
-                <dt class="ta-eyebrow">{gettext("Date de naissance")}</dt><dd>
-                  {format_date(@student.birth_date)}
-                </dd>
-              </div>
-              <div>
-                <dt class="ta-eyebrow">{gettext("Lieu de naissance")}</dt><dd>
-                  {@student.birth_place || "—"}
-                </dd>
-              </div>
-            </dl>
-          </article>
-
-          <article id="student-guardians" class="ta-panel flex flex-col gap-3">
-            <h2 class="ta-eyebrow">{gettext("Parents et tuteurs")}</h2>
-            <p
-              :if={@links != [] and not Enum.any?(@links, & &1.primary_contact)}
-              class="text-sm text-warning"
-            >
-              {gettext("Aucun contact principal")}
-            </p>
-            <ul id="guardian-list" class="flex flex-col divide-y divide-base-300">
-              <li
-                :for={l <- @links}
-                id={"guardian-#{l.id}"}
-                class="flex flex-wrap items-center gap-2 py-2"
-              >
-                <span class="font-semibold">{l.guardian.full_name}</span>
-                <span class="text-base-content/60">{GuardianRelationship.label(
-                  l.guardian.relationship
-                )}</span>
-                <span :if={l.primary_contact} class="badge badge-primary badge-sm">{gettext(
-                  "Contact principal"
-                )}</span>
-                <a href={"tel:#{l.guardian.phone_key}"} class="link link-primary font-mono text-xs">{l.guardian.phone}</a>
-                <span :if={l.guardian.phone_2} class="font-mono text-xs">{l.guardian.phone_2}</span>
-                <span :if={l.guardian.email} class="text-xs">{l.guardian.email}</span>
-                <span class="text-xs text-base-content/60">{ContactLanguage.label(l.guardian.language)}</span>
-                <span :if={@access == :manage} class="ml-auto flex gap-1">
-                  <button
-                    id={"edit-guardian-#{l.id}"}
-                    phx-click="edit_guardian"
-                    phx-value-id={l.id}
-                    class="btn btn-ghost btn-xs"
-                  >
-                    {gettext("Modifier")}
-                  </button>
-                  <button
-                    :if={not l.primary_contact}
-                    id={"make-primary-#{l.id}"}
-                    phx-click="make_primary"
-                    phx-value-id={l.id}
-                    class="btn btn-ghost btn-xs"
-                  >
-                    {gettext("Contact principal")}
-                  </button>
-                  <button
-                    id={"unlink-#{l.id}"}
-                    phx-click="unlink"
-                    phx-value-id={l.id}
-                    data-confirm={gettext("Retirer ce parent de la fiche de l'élève ?")}
-                    class="btn btn-ghost btn-xs text-error"
-                  >
-                    {gettext("Retirer")}
-                  </button>
-                </span>
-              </li>
-            </ul>
-            <.form
-              :if={@guardian_edit}
-              for={@guardian_edit.form}
-              id="guardian-edit-form"
-              phx-submit="save_guardian"
-              class="grid gap-2 rounded-box border border-base-300 p-3 sm:grid-cols-2"
-            >
-              <.input field={@guardian_edit.form[:full_name]} label={gettext("Nom et prénoms")} />
-              <.input
-                field={@guardian_edit.form[:relationship]}
-                type="select"
-                label={gettext("Lien")}
-                options={
-                  Enum.map(GuardianRelationship.values(), &{GuardianRelationship.label(&1), &1})
-                }
-              />
-              <.input field={@guardian_edit.form[:phone]} label={gettext("Téléphone")} />
-              <.input field={@guardian_edit.form[:phone_2]} label={gettext("Second téléphone")} />
-              <.input field={@guardian_edit.form[:email]} type="email" label={gettext("E-mail")} />
-              <.input
-                field={@guardian_edit.form[:language]}
-                type="select"
-                label={gettext("Langue")}
-                options={Enum.map(ContactLanguage.values(), &{ContactLanguage.label(&1), &1})}
-              />
-              <div class="flex gap-2 sm:col-span-2">
-                <button class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-                <button type="button" phx-click="cancel_guardian" class="btn btn-ghost btn-sm">
+        <div class="grid items-start gap-4 lg:grid-cols-2">
+          <div class="flex flex-col gap-4">
+            <article id="student-identity" class="ta-panel flex flex-col gap-3">
+              <header class="flex items-center justify-between">
+                <h2 class="font-display text-lg font-semibold">{gettext("Identité")}</h2>
+                <button
+                  :if={@access == :manage and not @editing}
+                  id="edit-identity"
+                  type="button"
+                  phx-click="edit_identity"
+                  class="btn btn-ghost btn-xs"
+                >
+                  <.icon name="hero-pencil-square" class="size-4" /> {gettext("Modifier")}
+                </button>
+                <button
+                  :if={@editing}
+                  type="button"
+                  phx-click="cancel_identity"
+                  class="btn btn-ghost btn-xs"
+                >
                   {gettext("Annuler")}
                 </button>
-              </div>
-            </.form>
-            <p :if={@links == []} class="text-sm text-base-content/60">
-              {gettext("Aucun parent enregistré.")}
-            </p>
+              </header>
 
-            <.form
-              :if={@access == :manage}
-              for={@guardian_form}
-              id="guardian-form"
-              phx-change="guardian_change"
-              phx-submit="add_guardian"
-              class="grid gap-2 sm:grid-cols-2"
-            >
-              <.input field={@guardian_form[:phone]} label={gettext("Téléphone")} phx-debounce="300" />
-              <.input field={@guardian_form[:full_name]} label={gettext("Nom et prénoms")} />
-              <.input
-                field={@guardian_form[:relationship]}
-                type="select"
-                label={gettext("Lien")}
-                options={
-                  Enum.map(GuardianRelationship.values(), &{GuardianRelationship.label(&1), &1})
-                }
-              />
-              <.input field={@guardian_form[:phone_2]} label={gettext("Second téléphone")} />
-              <.input field={@guardian_form[:email]} type="email" label={gettext("E-mail")} />
-              <.input
-                field={@guardian_form[:language]}
-                type="select"
-                label={gettext("Langue")}
-                options={Enum.map(ContactLanguage.values(), &{ContactLanguage.label(&1), &1})}
-              />
-              <div
-                :if={@match != []}
-                id="guardian-match"
-                class="sm:col-span-2 flex flex-col gap-1 rounded-box bg-base-200 p-2 text-sm"
+              <.form
+                :if={@editing}
+                for={@identity_form}
+                id="identity-form"
+                phx-submit="save_identity"
+                class="grid gap-2 sm:grid-cols-2"
               >
-                <span :for={g <- @match} class="flex items-center gap-2">
-                  {gettext("Déjà enregistré :")} <strong>{g.full_name}</strong>
-                  <button
-                    type="button"
-                    phx-click="link_guardian"
-                    phx-value-id={g.id}
-                    class="btn btn-primary btn-xs"
-                  >
-                    {gettext("Lier %{name}", name: g.full_name)}
-                  </button>
-                </span>
-              </div>
-              <button class="btn btn-primary btn-sm sm:col-span-2">{gettext("Ajouter le parent")}</button>
-            </.form>
-          </article>
-        </div>
+                <div class="sm:col-span-2">
+                  <.input field={@identity_form[:full_name]} label={gettext("Nom et prénoms")} />
+                </div>
+                <.input
+                  field={@identity_form[:sex]}
+                  type="select"
+                  label={gettext("Sexe")}
+                  options={Enum.map(Sex.values(), &{Sex.label(&1), &1})}
+                />
+                <.input field={@identity_form[:matricule]} label={gettext("Matricule")} />
+                <.input
+                  field={@identity_form[:birth_date]}
+                  type="date"
+                  label={gettext("Date de naissance")}
+                />
+                <.input field={@identity_form[:birth_place]} label={gettext("Lieu de naissance")} />
+                <div class="sm:col-span-2">
+                  <button class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+                </div>
+              </.form>
 
-        <article id="student-history" class="ta-panel flex flex-col gap-2">
-          <h2 class="ta-eyebrow">{gettext("Scolarité")}</h2>
-          <table class="table table-sm">
-            <tbody>
-              <tr :for={e <- @history}>
-                <td>{e.academic_year.name}</td>
-                <td>{e.class_group.label}</td>
-                <td>
-                  <span :if={e.repeater} class="badge badge-ghost badge-sm">{gettext("Redoublant")}</span>
-                </td>
-                <td>
+              <dl :if={not @editing} class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div class="col-span-2">
+                  <dt class="ta-eyebrow">{gettext("Nom et prénoms")}</dt>
+                  <dd class="mt-0.5">{@student.full_name}</dd>
+                </div>
+                <div>
+                  <dt class="ta-eyebrow">{gettext("Sexe")}</dt>
+                  <dd class="mt-0.5">{Sex.label(@student.sex)}</dd>
+                </div>
+                <div>
+                  <dt class="ta-eyebrow">{gettext("Matricule")}</dt>
+                  <dd class="ta-num mt-0.5">{@student.matricule || "—"}</dd>
+                </div>
+                <div>
+                  <dt class="ta-eyebrow">{gettext("Date de naissance")}</dt>
+                  <dd class="ta-num mt-0.5">{format_date(@student.birth_date)}</dd>
+                </div>
+                <div>
+                  <dt class="ta-eyebrow">{gettext("Lieu de naissance")}</dt>
+                  <dd class="mt-0.5">{@student.birth_place || "—"}</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article id="student-guardians" class="ta-panel flex flex-col gap-3">
+              <header class="flex items-center justify-between">
+                <h2 class="font-display text-lg font-semibold">{gettext("Parents et tuteurs")}</h2>
+                <button
+                  :if={@access == :manage}
+                  id="add-guardian"
+                  type="button"
+                  phx-click="toggle_add_guardian"
+                  aria-expanded={to_string(@adding_guardian)}
+                  class="btn btn-ghost btn-xs"
+                >
+                  {if @adding_guardian, do: gettext("Annuler"), else: gettext("+ Ajouter")}
+                </button>
+              </header>
+              <p
+                :if={@links != [] and not Enum.any?(@links, & &1.primary_contact)}
+                class="text-sm text-warning"
+              >
+                {gettext("Aucun contact principal")}
+              </p>
+              <ul id="guardian-list" class="flex flex-col gap-2">
+                <li
+                  :for={l <- @links}
+                  id={"guardian-#{l.id}"}
+                  class="flex flex-wrap items-start justify-between gap-2 rounded-[0.6rem] border border-base-300 p-3"
+                >
+                  <span class="flex min-w-0 flex-col gap-0.5">
+                    <span class="flex flex-wrap items-center gap-2">
+                      <span class="font-semibold">{l.guardian.full_name}</span>
+                      <span class="text-sm text-base-content/60">
+                        {GuardianRelationship.label(l.guardian.relationship)}
+                      </span>
+                      <span
+                        :if={l.primary_contact}
+                        class="rounded-full bg-primary/15 px-2 py-0.5 text-[0.7rem] font-semibold text-primary"
+                      >
+                        {gettext("Contact principal")}
+                      </span>
+                    </span>
+                    <span class="ta-num text-sm">
+                      <a href={"tel:#{l.guardian.phone_key}"} class="link link-hover">{l.guardian.phone}</a>
+                      <span :if={l.guardian.phone_2} class="text-base-content/70">
+                        · {gettext("2nd : %{phone}", phone: l.guardian.phone_2)}
+                      </span>
+                    </span>
+                    <span :if={l.guardian.email} class="text-xs">{l.guardian.email}</span>
+                    <span id={"guardian-meta-#{l.id}"} class="text-xs text-base-content/60">
+                      {gettext("Messages en %{language}",
+                        language: ContactLanguage.label(l.guardian.language) |> String.downcase()
+                      )}
+                      <%= case other_children(@children, l.guardian_id, @student.id) do %>
+                        <% "" -> %>
+                        <% others -> %>
+                          · {gettext("aussi parent de %{children}", children: others)}
+                      <% end %>
+                    </span>
+                  </span>
+                  <span :if={@access == :manage} class="flex flex-wrap gap-1">
+                    <button
+                      id={"edit-guardian-#{l.id}"}
+                      type="button"
+                      phx-click="edit_guardian"
+                      phx-value-id={l.id}
+                      class="btn btn-ghost btn-xs"
+                    >
+                      {gettext("Modifier")}
+                    </button>
+                    <button
+                      :if={not l.primary_contact}
+                      id={"make-primary-#{l.id}"}
+                      type="button"
+                      phx-click="make_primary"
+                      phx-value-id={l.id}
+                      class="btn btn-ghost btn-xs"
+                    >
+                      {gettext("Contact principal")}
+                    </button>
+                    <button
+                      id={"unlink-#{l.id}"}
+                      type="button"
+                      phx-click="unlink"
+                      phx-value-id={l.id}
+                      data-confirm={gettext("Retirer ce parent de la fiche de l'élève ?")}
+                      class="btn btn-ghost btn-xs text-error"
+                    >
+                      {gettext("Retirer")}
+                    </button>
+                  </span>
+                </li>
+              </ul>
+              <.form
+                :if={@guardian_edit}
+                for={@guardian_edit.form}
+                id="guardian-edit-form"
+                phx-submit="save_guardian"
+                class="grid gap-2 rounded-[0.6rem] border border-base-300 p-3 sm:grid-cols-2"
+              >
+                <.input field={@guardian_edit.form[:full_name]} label={gettext("Nom et prénoms")} />
+                <.input
+                  field={@guardian_edit.form[:relationship]}
+                  type="select"
+                  label={gettext("Lien")}
+                  options={
+                    Enum.map(GuardianRelationship.values(), &{GuardianRelationship.label(&1), &1})
+                  }
+                />
+                <.input field={@guardian_edit.form[:phone]} label={gettext("Téléphone")} />
+                <.input field={@guardian_edit.form[:phone_2]} label={gettext("Second téléphone")} />
+                <.input field={@guardian_edit.form[:email]} type="email" label={gettext("E-mail")} />
+                <.input
+                  field={@guardian_edit.form[:language]}
+                  type="select"
+                  label={gettext("Langue des messages")}
+                  options={Enum.map(ContactLanguage.values(), &{ContactLanguage.label(&1), &1})}
+                />
+                <div class="flex gap-2 sm:col-span-2">
+                  <button class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+                  <button type="button" phx-click="cancel_guardian" class="btn btn-ghost btn-sm">
+                    {gettext("Annuler")}
+                  </button>
+                </div>
+              </.form>
+              <p :if={@links == []} class="text-sm text-base-content/60">
+                {gettext("Aucun parent enregistré.")}
+              </p>
+
+              <.form
+                :if={@access == :manage and @adding_guardian}
+                for={@guardian_form}
+                id="guardian-form"
+                phx-change="guardian_change"
+                phx-submit="add_guardian"
+                class="grid gap-2 rounded-[0.6rem] border border-primary/40 p-3 sm:grid-cols-2"
+              >
+                <div class="sm:col-span-2">
+                  <.input
+                    field={@guardian_form[:phone]}
+                    type="tel"
+                    inputmode="tel"
+                    label={gettext("Téléphone — commencez par lui")}
+                    placeholder="6XX XX XX XX"
+                    phx-debounce="300"
+                  />
+                </div>
+                <div
+                  :if={@match != []}
+                  id="guardian-match"
+                  class="flex flex-col gap-2 rounded-[0.5rem] bg-primary/10 p-2 text-sm sm:col-span-2"
+                >
+                  <span :for={g <- @match} class="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      {gettext("Déjà enregistré :")} <strong>{g.full_name}</strong>
+                      — {match_text(g, @match_children)}
+                    </span>
+                    <button
+                      type="button"
+                      phx-click="link_guardian"
+                      phx-value-id={g.id}
+                      class="btn btn-primary btn-xs"
+                    >
+                      {gettext("Lier %{name}", name: g.full_name)}
+                    </button>
+                  </span>
+                </div>
+                <div class="sm:col-span-2">
+                  <.input field={@guardian_form[:full_name]} label={gettext("Nom et prénoms")} />
+                </div>
+                <.input
+                  field={@guardian_form[:relationship]}
+                  type="select"
+                  label={gettext("Lien")}
+                  options={
+                    Enum.map(GuardianRelationship.values(), &{GuardianRelationship.label(&1), &1})
+                  }
+                />
+                <.input field={@guardian_form[:phone_2]} label={gettext("Second téléphone")} />
+                <.input field={@guardian_form[:email]} type="email" label={gettext("E-mail")} />
+                <.input
+                  field={@guardian_form[:language]}
+                  type="select"
+                  label={gettext("Langue des messages")}
+                  options={Enum.map(ContactLanguage.values(), &{ContactLanguage.label(&1), &1})}
+                />
+                <div class="flex gap-2 sm:col-span-2">
+                  <button class="btn btn-primary btn-sm">{gettext("Ajouter le parent")}</button>
+                  <button type="button" phx-click="toggle_add_guardian" class="btn btn-ghost btn-sm">
+                    {gettext("Annuler")}
+                  </button>
+                </div>
+              </.form>
+            </article>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <article :if={@this_year} id="student-this-year" class="ta-panel flex flex-col gap-3">
+              <h2 class="font-display text-lg font-semibold">{gettext("Cette année")}</h2>
+              <div class="grid grid-cols-2 gap-2">
+                <div
+                  :for={
+                    {id, label, value, tone} <- [
+                      {"unjustified", gettext("Absences injustifiées"),
+                       "#{@this_year.attendance.unjustified_hours} h",
+                       Decimal.gt?(@this_year.attendance.unjustified_hours, 0) && "text-warning"},
+                      {"justified", gettext("Absences justifiées"),
+                       "#{@this_year.attendance.justified_hours} h", nil},
+                      {"retards", gettext("Retards"), "#{@this_year.attendance.retards}", nil},
+                      {"consignes", gettext("Consignes"), "#{@this_year.discipline.consignes_count}",
+                       nil}
+                    ]
+                  }
+                  id={"this-year-#{id}"}
+                  class="flex flex-col gap-0.5 rounded-[0.5rem] bg-base-200/60 px-3 py-2"
+                >
+                  <span class="text-xs text-base-content/70">{label}</span>
+                  <span class={["ta-num text-xl font-semibold", tone]}>{value}</span>
+                </div>
+              </div>
+              <ul :if={@this_year.discipline.sanctions != []} class="text-sm">
+                <li :for={s <- @this_year.discipline.sanctions}>
+                  <span class="ta-num">{format_date(s.date)}</span>
+                  · {TeacherAssistant.Academics.SanctionType.label(s.type)}
+                  <span :if={s.reason} class="text-base-content/60">— {s.reason}</span>
+                </li>
+              </ul>
+              <p class="ta-num flex flex-wrap gap-x-3 border-t border-base-300 pt-2 text-sm">
+                <span class="text-base-content/70">{gettext("Conduite")}</span>
+                <span :for={{seq, value} <- @this_year.conduct}>
+                  {gettext("Séq. %{n}", n: seq.number)} · <strong>{value || "—"}</strong>
+                </span>
+              </p>
+            </article>
+
+            <article id="student-history" class="ta-panel flex flex-col gap-2">
+              <h2 class="font-display text-lg font-semibold">
+                {gettext("Scolarité dans l'établissement")}
+              </h2>
+              <ul class="flex flex-col divide-y divide-base-300">
+                <li
+                  :for={e <- @history}
+                  id={"history-#{e.id}"}
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm"
+                >
+                  <span class="ta-num text-base-content/70">{e.academic_year.name}</span>
+                  <span class="font-semibold">{e.class_group.label}</span>
+                  <span
+                    :if={e.repeater}
+                    class="rounded bg-warning/20 px-1.5 text-[0.7rem] font-semibold text-warning"
+                  >
+                    {gettext("Redoublant")}
+                  </span>
                   <span :if={d = @decisions[e.class_group_id]}>{PassageDecision.label(d)}</span>
-                </td>
-                <td class="text-right">
+                  <span :if={line = result_line(@results[e.id])} class="ta-num text-base-content/80">
+                    {line}
+                  </span>
                   <.link
                     navigate={~p"/school/classes/#{e.class_group_id}/students/#{e.id}/bulletin"}
-                    class="link link-primary text-sm"
+                    class="link link-primary ml-auto"
                   >
                     {gettext("Bulletin")}
                   </.link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </article>
-
-        <article :if={@this_year} id="student-this-year" class="ta-panel flex flex-col gap-3">
-          <h2 class="ta-eyebrow">{gettext("Cette année")}</h2>
-          <dl class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-            <div>
-              <dt class="ta-eyebrow">{gettext("Absences non justifiées")}</dt><dd>
-                {@this_year.attendance.unjustified_hours} h
-              </dd>
-            </div>
-            <div>
-              <dt class="ta-eyebrow">{gettext("Absences justifiées")}</dt><dd>
-                {@this_year.attendance.justified_hours} h
-              </dd>
-            </div>
-            <div>
-              <dt class="ta-eyebrow">{gettext("Retards")}</dt><dd>{@this_year.attendance.retards}</dd>
-            </div>
-            <div>
-              <dt class="ta-eyebrow">{gettext("Consignes")}</dt><dd>
-                {@this_year.discipline.consignes_count}
-              </dd>
-            </div>
-          </dl>
-          <ul class="text-sm">
-            <li :for={s <- @this_year.discipline.sanctions}>
-              {format_date(s.date)} · {TeacherAssistant.Academics.SanctionType.label(s.type)}
-              <span :if={s.reason} class="text-base-content/60">— {s.reason}</span>
-            </li>
-          </ul>
-          <p class="text-sm">
-            {gettext("Conduite")} :
-            <span :for={{seq, value} <- @this_year.conduct} class="mr-3">
-              {gettext("Séq. %{n}", n: seq.number)} <strong>{value || "—"}</strong>
-            </span>
-          </p>
-          <p class="flex gap-3 text-sm">
-            <.link
-              navigate={~p"/school/classes/#{@this_year.enrollment.class_group_id}/register"}
-              class="link link-primary"
-            >
-              {gettext("Registre d'appel")}
-            </.link>
-            <.link
-              navigate={~p"/school/classes/#{@this_year.enrollment.class_group_id}/discipline"}
-              class="link link-primary"
-            >
-              {gettext("Discipline")}
-            </.link>
-          </p>
-        </article>
+                </li>
+              </ul>
+            </article>
+          </div>
+        </div>
       </section>
     </Layouts.app>
     """

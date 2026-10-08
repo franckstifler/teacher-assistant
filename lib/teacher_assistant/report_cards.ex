@@ -293,6 +293,43 @@ defmodule TeacherAssistant.ReportCards do
     end
   end
 
+  @doc """
+  Élèves redesign: the student's result on the latest published report card of
+  the enrollment's class — the year's when published, else the last published
+  trimester's — read from the frozen snapshot, never computed. `nil` when none.
+  Returns `%{period: :annual | {:trimester, term}, average, rank, effectif}`.
+  """
+  def latest_published_result(%Scope{} = scope, %{class_group_id: cg_id, student_id: student_id}) do
+    BulletinPublication
+    |> Ash.Query.for_read(:for_class, %{class_group_id: cg_id}, scope: scope)
+    |> Ash.Query.filter(status == :published)
+    |> Ash.Query.load(:term)
+    |> Ash.read!()
+    |> Enum.max_by(&publication_order/1, fn -> nil end)
+    |> published_result(student_id)
+  end
+
+  # The year above every trimester, trimesters in their order.
+  defp publication_order(%{period_kind: :annual}), do: {1, 0}
+  defp publication_order(%{term: %{position: position}}), do: {0, position}
+
+  defp published_result(nil, _student_id), do: nil
+
+  defp published_result(pub, student_id) do
+    case pub.snapshot do
+      %{results: %{per_student: %{^student_id => data}} = results} ->
+        %{
+          period: if(pub.period_kind == :annual, do: :annual, else: {:trimester, pub.term}),
+          average: data.moyenne_generale,
+          rank: data.rank,
+          effectif: results.effectif
+        }
+
+      _ ->
+        nil
+    end
+  end
+
   @doc "Classes whose report cards for `period` are published, in one query."
   def published_class_ids(%Scope{} = scope, period) do
     key = Organization.period_param(period)

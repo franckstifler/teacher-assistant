@@ -374,6 +374,26 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
                Calendar.strftime(TeacherAssistant.ReportCards.published_on(pub), "%d/%m/%Y")
     end
 
+    test "the student page shows the latest published result", %{
+      conn: conn,
+      cg: cg,
+      enr: enr,
+      scope: scope
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      url = ~p"/school/students/#{enr.student_id}"
+
+      {:ok, view, _} = live(conn, url)
+      refute view |> element("#history-#{enr.id}") |> render() =~ "Trim."
+
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+      {:ok, view, _} = live(conn, url)
+
+      assert view |> element("#history-#{enr.id}") |> render() =~
+               "Trim. #{term.position} : 15.00 · 1er / 1"
+    end
+
     test "a teacher of the class reads published cards only", %{
       cg: cg,
       enr: enr,

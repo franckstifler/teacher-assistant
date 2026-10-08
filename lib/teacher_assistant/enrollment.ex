@@ -243,6 +243,26 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.read!()
   end
 
+  @doc """
+  Élèves redesign: per guardian id, the students the guardian is linked to
+  (by name), each with this year's class label or nil — one query.
+  """
+  def guardian_children(%Scope{}, []), do: %{}
+
+  def guardian_children(%Scope{} = scope, guardian_ids) do
+    year_id = scope.current_academic_year && scope.current_academic_year.id
+
+    StudentGuardian
+    |> Ash.Query.filter(guardian_id in ^guardian_ids)
+    |> Ash.Query.load(student: [enrollments: :class_group])
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.guardian_id, fn link ->
+      enrollment = Enum.find(link.student.enrollments, &(&1.academic_year_id == year_id))
+      %{student: link.student, class_label: enrollment && enrollment.class_group.label}
+    end)
+    |> Map.new(fn {id, children} -> {id, Enum.sort_by(children, & &1.student.full_name)} end)
+  end
+
   @doc "The school's guardians whose phone matches `phone` once normalised; `[]` for an invalid number."
   def find_guardians_by_phone(%Scope{} = scope, phone) do
     if Guardian.Phone.valid?(phone) do
@@ -592,7 +612,13 @@ defmodule TeacherAssistant.Enrollment do
           {:reenroll, student, _last} ->
             case enroll_existing(scope, cg, student, %{repeater: row[:repeater] || false}) do
               {:ok, _} ->
-                attach_guardian(%{acc | reenrolled: acc.reenrolled + 1}, scope, student, row, parent)
+                attach_guardian(
+                  %{acc | reenrolled: acc.reenrolled + 1},
+                  scope,
+                  student,
+                  row,
+                  parent
+                )
 
               {:error, reason} ->
                 skip(acc, row, reason)
@@ -618,7 +644,13 @@ defmodule TeacherAssistant.Enrollment do
   defp attach_guardian(acc, _scope, student, _row, {:invalid, phone}),
     do: guardian_issue(acc, student, phone, :invalid_phone)
 
-  defp attach_guardian(acc, scope, student, %{guardian: %{full_name: name, phone: phone}}, _parent) do
+  defp attach_guardian(
+         acc,
+         scope,
+         student,
+         %{guardian: %{full_name: name, phone: phone}},
+         _parent
+       ) do
     result =
       case find_guardians_by_phone(scope, phone) do
         [guardian | _] ->
@@ -680,7 +712,9 @@ defmodule TeacherAssistant.Enrollment do
         {:conflict, :already_enrolled, this_year.class_group.label}
 
       true ->
-        last = Enum.max_by(student.enrollments, & &1.academic_year.start_date, Date, fn -> nil end)
+        last =
+          Enum.max_by(student.enrollments, & &1.academic_year.start_date, Date, fn -> nil end)
+
         {:reenroll, student, last}
     end
   end

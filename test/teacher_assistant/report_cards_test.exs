@@ -275,4 +275,26 @@ defmodule TeacherAssistant.ReportCardsTest do
       assert %{language: :fr} = TeacherAssistant.ReportCards.template_of(scope, cg, old_view)
     end
   end
+
+  describe "latest_published_result/2" do
+    test "nothing before a publication, then the trimester, then the year", ctx do
+      %{scope: scope, cg: cg, term: term, year: year, st: st} = ctx
+      [enrollment] = Enrollment.student_history(scope, st)
+
+      assert ReportCards.latest_published_result(scope, enrollment) == nil
+
+      {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, term)
+
+      assert %{period: {:trimester, %{id: term_id}}, average: average, rank: 1, effectif: 1} =
+               ReportCards.latest_published_result(scope, enrollment)
+
+      assert term_id == term.id
+      assert Decimal.equal?(average, 15)
+
+      {:ok, _} = TeacherFixtures.publish_annual(scope, cg, year)
+
+      assert %{period: :annual, rank: 1} =
+               ReportCards.latest_published_result(scope, enrollment)
+    end
+  end
 end
