@@ -23,7 +23,7 @@ defmodule TeacherAssistantWeb.School.StaffNamesTest do
 
   test "the class page shows the course teacher and the form-master picker by name",
        %{conn: conn, cg: cg, teacher: teacher} do
-    {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
     assert html =~ "Grace Tabi"
     # A member without a name (the head here) still shows by e-mail; a named one never does.
     refute html =~ ~r/>\s*#{Regex.escape(to_string(teacher.email))}\s*</

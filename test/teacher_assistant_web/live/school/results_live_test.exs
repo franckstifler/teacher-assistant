@@ -193,7 +193,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")
     assert html =~ to_string(fm.email)
-    assert html =~ "Professeur principal"
+    assert html =~ "PP :"
   end
 
   test "pending make-ups are counted under the make-up rule", ctx do

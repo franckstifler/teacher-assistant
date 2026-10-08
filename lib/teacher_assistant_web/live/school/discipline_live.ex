@@ -1,6 +1,9 @@
 defmodule TeacherAssistantWeb.School.DisciplineLive do
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistantWeb.School.ClassShell
+  import ClassShell, only: [class_shell: 1]
+
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
@@ -11,7 +14,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- authorized?(scope, cg) do
+         true <- ClassShell.allowed?(scope, cg, :discipline) do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
@@ -27,6 +30,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          roster: Enrollment.list_roster(scope, cg),
          sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use
        )
+       |> ClassShell.assign_shell()
        |> select_period(nil)}
     else
       false ->
@@ -36,10 +40,6 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
       _ ->
         {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
-  end
-
-  defp authorized?(scope, cg) do
-    Discipline.can_manage_conduct?(scope) or Enrollment.class_manager?(scope, cg)
   end
 
   def handle_params(params, _uri, socket),
@@ -180,26 +180,24 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-discipline" class="space-y-6">
-        <.page_header eyebrow={gettext("École")} title={"#{@cg.label} — #{gettext("Discipline")}"}>
-          <:actions>
-            <form :if={@sequences != []} id="discipline-period-form" phx-change="select_period">
-              <.input
-                type="select"
-                id="discipline-period-select"
-                name="period"
-                value={@period_param}
-                options={[
-                  {gettext("Séquences"),
-                   for(s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", "seq:#{s.id}"})},
-                  {gettext("Trimestres"),
-                   for(t <- @terms, do: {gettext("Trimestre") <> " #{t.position}", "trim:#{t.id}"})},
-                  {gettext("Année"), [{gettext("Année scolaire"), "annee"}]}
-                ]}
-              />
-            </form>
-          </:actions>
-        </.page_header>
+      <.class_shell cg={@cg} shell={@shell} tab={:discipline}>
+        <:actions>
+          <form :if={@sequences != []} id="discipline-period-form" phx-change="select_period">
+            <.input
+              type="select"
+              id="discipline-period-select"
+              name="period"
+              value={@period_param}
+              options={[
+                {gettext("Séquences"),
+                 for(s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", "seq:#{s.id}"})},
+                {gettext("Trimestres"),
+                 for(t <- @terms, do: {gettext("Trimestre") <> " #{t.position}", "trim:#{t.id}"})},
+                {gettext("Année"), [{gettext("Année scolaire"), "annee"}]}
+              ]}
+            />
+          </form>
+        </:actions>
 
         <.empty_state
           :if={@period == nil}
@@ -345,7 +343,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
             </tbody>
           </table>
         </div>
-      </section>
+      </.class_shell>
     </Layouts.app>
     """
   end

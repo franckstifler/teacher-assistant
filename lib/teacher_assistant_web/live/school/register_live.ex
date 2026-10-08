@@ -1,6 +1,9 @@
 defmodule TeacherAssistantWeb.School.RegisterLive do
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistantWeb.School.ClassShell
+  import ClassShell, only: [class_shell: 1]
+
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Organization
@@ -11,7 +14,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     date = parse_date(params["date"])
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- authorized?(scope, cg) do
+         true <- ClassShell.allowed?(scope, cg, :register) do
       {:ok,
        socket
        |> assign(
@@ -19,6 +22,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
          date: date,
          can_edit?: TeacherAssistant.Discipline.can_manage_conduct?(scope)
        )
+       |> ClassShell.assign_shell()
        |> load_register()}
     else
       false ->
@@ -37,11 +41,6 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
       {:ok, date} -> date
       {:error, _} -> Date.utc_today()
     end
-  end
-
-  defp authorized?(scope, cg) do
-    TeacherAssistant.Discipline.can_manage_conduct?(scope) or
-      Enrollment.class_manager?(scope, cg)
   end
 
   defp load_register(socket) do
@@ -143,12 +142,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-register" class="space-y-6">
-        <.page_header
-          eyebrow={gettext("École")}
-          title={"#{@cg.label} — #{gettext("Cahier d'appel")}"}
-        />
-
+      <.class_shell cg={@cg} shell={@shell} tab={:register}>
         <form id="register-date-form" phx-submit="pick_date" class="flex items-end gap-2">
           <label class="form-control">
             <span class="ta-eyebrow block mb-1">{gettext("Date")}</span>
@@ -232,7 +226,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
           icon="hero-user-group"
           title={gettext("Aucun élève inscrit")}
         />
-      </section>
+      </.class_shell>
     </Layouts.app>
     """
   end

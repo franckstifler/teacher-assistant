@@ -1,6 +1,9 @@
 defmodule TeacherAssistantWeb.School.TimetableLive do
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistantWeb.School.ClassShell
+  import ClassShell, only: [class_shell: 1]
+
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
@@ -14,7 +17,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- Enrollment.class_manager?(scope, cg),
+         true <- ClassShell.allowed?(scope, cg, :timetable),
          # Spec J4: editors work in the school-wide editor; others keep this read-only grid.
          false <- Timetabling.can_edit_timetable?(scope) && {:editor, cg} do
       calendar = Attendance.school_calendar(scope)
@@ -29,6 +32,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
          calendar: calendar,
          days: calendar.lesson_days
        )
+       |> ClassShell.assign_shell()
        |> load_timetable()}
     else
       {:editor, cg} -> {:ok, push_navigate(socket, to: ~p"/school/timetable?class=#{cg.id}")}
@@ -173,23 +177,18 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-timetable" class="space-y-6">
-        <.page_header
-          eyebrow={gettext("École")}
-          title={"#{@cg.label} — #{gettext("Emploi du temps")}"}
-        />
-
-        <div class="flex justify-end">
+      <.class_shell cg={@cg} shell={@shell} tab={:timetable}>
+        <:actions>
           <a
             id="print-class-timetable"
             href={~p"/school/classes/#{@cg.id}/timetable/print"}
             target="_blank"
-            class="btn btn-primary btn-sm gap-2"
+            class="btn btn-ghost btn-sm gap-2"
           >
             <.icon name="hero-printer" class="size-4" />
             {gettext("Imprimer")}
           </a>
-        </div>
+        </:actions>
 
         <div class="overflow-x-auto">
           <table id="timetable-grid" class="table table-zebra">
@@ -260,7 +259,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
             </li>
           </ul>
         </div>
-      </section>
+      </.class_shell>
     </Layouts.app>
     """
   end

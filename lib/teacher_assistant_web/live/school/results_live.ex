@@ -1,7 +1,9 @@
 defmodule TeacherAssistantWeb.School.ResultsLive do
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.User
+  alias TeacherAssistantWeb.School.ClassShell
+  import ClassShell, only: [class_shell: 1]
+
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
@@ -10,7 +12,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         access when access != :none <- ReportCards.access(scope, cg) do
+         true <- ClassShell.allowed?(scope, cg, :results) do
       year = Organization.class_year(scope, cg)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
@@ -19,14 +21,14 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
        socket
        |> assign(
          cg: cg,
-         form_master: Enrollment.form_master(scope, cg),
          year: year,
          sequences: sequences,
          terms: terms
        )
+       |> ClassShell.assign_shell()
        |> select_period(nil)}
     else
-      :none -> {:ok, push_navigate(socket, to: ~p"/school")}
+      false -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end
   end
@@ -100,29 +102,24 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-results" class="space-y-6">
-        <.page_header
-          eyebrow={gettext("École")}
-          title={"#{@cg.label} — #{gettext("Résultats & bulletins")}"}
-        >
-          <:actions>
-            <form :if={@sequences != []} id="results-period-form" phx-change="select_period">
-              <.input
-                type="select"
-                id="results-period-select"
-                name="period"
-                value={@period_param}
-                options={[
-                  {gettext("Séquences"),
-                   for(s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", "seq:#{s.id}"})},
-                  {gettext("Trimestres"),
-                   for(t <- @terms, do: {gettext("Trimestre") <> " #{t.position}", "trim:#{t.id}"})},
-                  {gettext("Année"), [{gettext("Année scolaire"), "annee"}]}
-                ]}
-              />
-            </form>
-          </:actions>
-        </.page_header>
+      <.class_shell cg={@cg} shell={@shell} tab={:results}>
+        <:actions>
+          <form :if={@sequences != []} id="results-period-form" phx-change="select_period">
+            <.input
+              type="select"
+              id="results-period-select"
+              name="period"
+              value={@period_param}
+              options={[
+                {gettext("Séquences"),
+                 for(s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", "seq:#{s.id}"})},
+                {gettext("Trimestres"),
+                 for(t <- @terms, do: {gettext("Trimestre") <> " #{t.position}", "trim:#{t.id}"})},
+                {gettext("Année"), [{gettext("Année scolaire"), "annee"}]}
+              ]}
+            />
+          </form>
+        </:actions>
 
         <p
           :if={@year && @year.status == :closed}
@@ -131,10 +128,6 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
         >
           <.icon name="hero-lock-closed" class="size-3.5" />
           {gettext("Année %{name} · clôturée", name: @year.name)}
-        </p>
-
-        <p :if={@form_master} class="text-sm text-base-content/70">
-          {gettext("Professeur principal")}: {User.display_name(@form_master)}
         </p>
 
         <.empty_state
@@ -259,7 +252,7 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
             </a>
           </div>
         </div>
-      </section>
+      </.class_shell>
     </Layouts.app>
     """
   end
