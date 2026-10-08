@@ -343,7 +343,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
               <h1 class="font-display text-3xl font-semibold leading-none sm:text-[2.2rem]">
                 {@student.full_name}
               </h1>
-              <div class="ta-num flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/80">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/80">
                 <.link
                   :if={@current}
                   id="student-class"
@@ -353,7 +353,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                   {@current.class_group.label}
                 </.link>
                 <span :if={!@current} id="student-class">{gettext("Pas inscrit cette année")}</span>
-                <span :if={@student.matricule}>{@student.matricule}</span>
+                <span :if={@student.matricule} class="ta-num">{@student.matricule}</span>
                 <span id="student-sex-age">{identity_line(@student)}</span>
               </div>
             </div>

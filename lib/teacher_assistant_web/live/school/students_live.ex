@@ -167,7 +167,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
             <h1 class="mt-1.5 font-display text-2xl font-semibold leading-[1.1] sm:text-[2rem]">
               {gettext("Élèves")}
             </h1>
-            <p id="students-subtitle" class="ta-num mt-2 text-[0.95rem] text-base-content/80">
+            <p id="students-subtitle" class="mt-2 text-[0.95rem] text-base-content/80">
               {ngettext(
                 "%{count} inscrit en %{year}",
                 "%{count} inscrits en %{year}",
@@ -235,7 +235,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>
-                <th>{gettext("Matricule")}</th>
+                <th class="hidden sm:table-cell">{gettext("Matricule")}</th>
                 <th>{gettext("Classe")}</th>
                 <th>{gettext("Contact principal")}</th>
               </tr>
@@ -269,7 +269,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
                     </span>
                   </span>
                 </td>
-                <td class="ta-num text-sm">{e.student.matricule || "—"}</td>
+                <td class="ta-num hidden text-sm sm:table-cell">{e.student.matricule || "—"}</td>
                 <td>
                   <span class="inline-flex rounded-[0.4rem] border border-base-300 px-2 py-0.5 text-xs font-semibold">
                     {e.class_group.label}
