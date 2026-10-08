@@ -57,6 +57,39 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
     assert has_element?(view, "#conflict-count", "Aucun conflit")
   end
 
+  test "a clash names the day and time and can be given to a free teacher",
+       %{conn: conn} = ctx do
+    free = TeacherFixtures.member_scope_fixture(ctx.scope).current_user
+
+    for {cg, tc} <- [{ctx.b, ctx.mb}, {ctx.a, ctx.ma}],
+        do:
+          {:ok, _} =
+            Timetabling.place_slot(ctx.scope, cg, %{
+              day: :monday,
+              period_id: ctx.p1.id,
+              teaching_context_id: tc.id
+            })
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+
+    assert view |> element("#conflict-text") |> render() =~ "le lundi à #{hm(ctx.p1.start_time)}"
+
+    name = TeacherAssistant.Accounts.User.display_name(free)
+    fix = element(view, "#cell-panel button[id^='fix-']", "Confier à #{name}")
+    assert render(fix) =~ "0 h / 18 h"
+    render_click(fix)
+
+    assert has_element?(view, "#conflict-count", "Aucun conflit")
+
+    assert {:ok, %{teacher_user_id: id}} =
+             Ash.get(TeacherAssistant.Academics.TeachingContext, ctx.ma.id, scope: ctx.scope)
+
+    assert id == free.id
+  end
+
+  defp hm(t), do: Calendar.strftime(t, "%H:%M")
+
   test "clearing a cell", %{conn: conn} = ctx do
     {:ok, _} =
       Timetabling.place_slot(ctx.scope, ctx.a, %{
@@ -136,7 +169,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
         &(&1.kind == :lesson and Time.compare(&1.start_time, ~T[13:00:00]) != :lt)
       )
 
-    assert has_element?(view, "#cell-wednesday-#{late.id}.closed-cell")
+    assert has_element?(view, "#cell-wednesday-#{late.id}.closed-cell", "Fermé")
   end
 
   test "the editor links to the class timetable print", %{conn: conn} = ctx do

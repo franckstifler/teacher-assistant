@@ -32,10 +32,10 @@ a parent-convocation record, splitting a subject between two teachers.
 
 ### 1.1 Roll-call reminder (« Relancer »)
 
-- New resource `RollCallReminder` (Academics domain, next to the attendance
-  resources): `timetable_slot_id`, `on` (date), `sent_by_user_id`, workspace
-  multitenancy like its neighbours; identity `unique_slot_day` on
-  `(timetable_slot_id, on)`. Modelled on `EntryReminder`.
+- New resource `RollCallReminder` (Attendance domain): `timetable_slot_id`,
+  `date`, `sent_by_user_id`, workspace
+  multitenancy like its neighbours; identity `once_a_day` on
+  `(timetable_slot_id, date)`. Modelled on `EntryReminder`.
 - `NotificationKind` gains `:roll_call_reminder`, with FR/EN text
   « Appel non fait : %{class} · %{time} · %{subject} ».
 - `SchoolLife.remind_roll_call(scope, slot_id, date)`: creates the reminder,
@@ -73,8 +73,8 @@ a parent-convocation record, splitting a subject between two teachers.
     (`TimetableConflicts.busy?/5`);
   - `load + tc.weekly_hours <= service`, where load is the sum of
     `weekly_hours` of their teaching contexts this year and service is
-    `statutory_hours` of the membership, else of the school profile; members
-    with no service at all are kept and shown without « / N h »;
+    `statutory_hours` of the membership, else of the school profile (never nil,
+    default 18);
   - sorted: teachers who already teach that subject (catalog subject) in the
     school first, then by lowest load, then by name.
 - `TimetableConflicts.suggestions/4` stays pure; the editor appends up to 2
@@ -165,7 +165,7 @@ Via `mix ash.codegen --dev` only: the `roll_call_reminders` table and
 - Domain: reminder create + `:already_reminded` + notification delivered;
   `duration_hours` validation per type; `conseil_discipline` points default;
   `reassign_candidates` (busy teacher excluded, over-service excluded, sort
-  order, no-service member kept); reassign moves every slot.
+  order); reassign moves every slot.
 - LiveView: each screen's new behaviour (Relancer, banner links, filters in the
   URL, inline justify with note, apply suggestions, hours/days field switch,
   inline notify, « Confier à »). Existing tests updated where wording or

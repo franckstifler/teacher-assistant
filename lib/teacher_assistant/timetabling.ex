@@ -5,12 +5,14 @@ defmodule TeacherAssistant.Timetabling do
 
   require Ash.Query
 
-  alias TeacherAssistant.Curriculum
+  alias TeacherAssistant.{Accounts, Curriculum}
+  alias TeacherAssistant.Academics.AssignmentGrid
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Period
   alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.TimetableConflicts
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Scope
@@ -293,6 +295,76 @@ defmodule TeacherAssistant.Timetabling do
       }
     end)
   end
+
+  @doc """
+  « Confier à un autre enseignant » (Vie scolaire redesign §1.4): the teachers who
+  could take `tc` (the whole subject of that class, every slot of it) — active
+  teachers other than its own, free at every one of its slots in `slots` (as
+  `school_slots/1` returns them), and still within their service (theirs, else
+  the school's) once its weekly hours are added. Those already
+  teaching that subject come first, then the lightest load, then the name. Each
+  is `%{user, load, service}`; none for a combined course.
+  """
+  def reassign_candidates(%Scope{}, %TeachingContext{combined_course_id: cc}, _slots)
+      when not is_nil(cc),
+      do: []
+
+  def reassign_candidates(
+        %Scope{current_academic_year: year} = scope,
+        %TeachingContext{} = tc,
+        slots
+      ) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    members = Accounts.list_members(scope)
+    own_slots = Enum.filter(slots, &(&1.teaching_context_id == tc.id))
+
+    contexts =
+      TeachingContext
+      |> Ash.Query.filter(academic_year_id == ^year.id)
+      |> Ash.read!(scope: scope)
+
+    grid = %{
+      services: Map.new(members, &{&1.user_id, &1.statutory_hours}),
+      school_hours: profile.statutory_hours
+    }
+
+    loads =
+      contexts
+      |> Enum.group_by(& &1.teacher_user_id)
+      |> Map.new(fn {teacher, tcs} ->
+        {teacher,
+         tcs
+         |> Enum.uniq_by(&(&1.combined_course_id || {:solo, &1.id}))
+         |> Enum.sum_by(&(&1.weekly_hours || 0))}
+      end)
+
+    teaches_subject =
+      contexts
+      |> Enum.filter(&same_subject?(&1, tc))
+      |> MapSet.new(& &1.teacher_user_id)
+
+    for m <- members,
+        :teacher in m.roles,
+        m.user_id != tc.teacher_user_id,
+        Enum.all?(
+          own_slots,
+          &(not TimetableConflicts.busy?(slots, m.user_id, &1.day, &1.period_id))
+        ),
+        load = Map.get(loads, m.user_id, 0),
+        service = AssignmentGrid.service(grid, m.user_id),
+        load + (tc.weekly_hours || 0) <= service do
+      %{user: m.user, load: load, service: service}
+    end
+    |> Enum.sort_by(
+      &{not MapSet.member?(teaches_subject, &1.user.id), &1.load,
+       String.downcase(User.display_name(&1.user))}
+    )
+  end
+
+  defp same_subject?(%{subject_id: id}, %{subject_id: id}) when not is_nil(id),
+    do: true
+
+  defp same_subject?(a, b), do: a.subject == b.subject
 
   @doc """
   Moves the class's lesson at `from` to the empty, open cell `to` (spec J4). Refused

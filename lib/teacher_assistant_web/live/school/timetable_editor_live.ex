@@ -1,9 +1,11 @@
 defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   @moduledoc """
-  Censorat → Emploi du temps (spec J4, T01): the whole school's timetable, one tab per
-  class. A teacher clash is saved and shown in red with fix suggestions (move to a free
-  cell, swap with another lesson of the class); hours placed against hours planned per
-  subject. Combined courses (« regroupé ») are placed and cleared on all their classes.
+  Censorat → Emploi du temps (spec J4, T01; Vie scolaire redesign §2.5): the whole
+  school's timetable, one tab per class. A teacher clash is saved and shown in red with
+  fix suggestions (move to a free cell, swap with another lesson of the class, give the
+  subject to another free teacher within their service); hours placed against hours
+  planned per subject. Combined courses (« regroupé ») are placed and cleared on all
+  their classes.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -38,7 +40,8 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
          calendar: calendar,
          periods: Attendance.list_periods(scope),
          cg: nil,
-         selected: nil
+         selected: nil,
+         fixes: []
        )}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -54,7 +57,16 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   end
 
   defp load(%{assigns: %{cg: nil}} = socket),
-    do: assign(socket, slots: [], clashes: %{}, count: 0, grid: %{}, tally: [], assignments: [])
+    do:
+      assign(socket,
+        slots: [],
+        clashes: %{},
+        count: 0,
+        grid: %{},
+        tally: [],
+        assignments: [],
+        fixes: []
+      )
 
   defp load(socket) do
     %{current_scope: scope, cg: cg} = socket.assigns
@@ -69,7 +81,28 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
       tally: timetable.tally,
       assignments: Curriculum.list_assignments_for_class(scope, cg)
     )
+    |> assign_fixes()
   end
+
+  # The selected clashing lesson's fixes: moves and swaps, then up to two teachers
+  # who could take the whole subject (« Confier à »).
+  defp assign_fixes(%{assigns: %{selected: {day, period_id} = cell} = assigns} = socket) do
+    with %{teaching_context_id: tc_id} <- assigns.grid[cell],
+         true <- clash?(assigns.clashes, assigns.cg, day, period_id),
+         %{} = tc <- Enum.find(assigns.assignments, &(&1.id == tc_id)) do
+      reassigns =
+        assigns.current_scope
+        |> Timetabling.reassign_candidates(tc, assigns.slots)
+        |> Enum.take(2)
+        |> Enum.map(&Map.merge(&1, %{kind: :reassign, tc: tc}))
+
+      assign(socket, fixes: suggestions(assigns, cell) ++ reassigns)
+    else
+      _ -> assign(socket, fixes: [])
+    end
+  end
+
+  defp assign_fixes(socket), do: assign(socket, fixes: [])
 
   # --- events -------------------------------------------------------------------------
 
@@ -81,9 +114,9 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
          %{} = period <-
            Enum.find(socket.assigns.periods, &(&1.id == period_id and &1.kind == :lesson)),
          true <- SchoolCalendar.open_cell?(socket.assigns.calendar, d, period) do
-      {:noreply, assign(socket, selected: {d, period.id})}
+      {:noreply, socket |> assign(selected: {d, period.id}) |> assign_fixes()}
     else
-      _ -> {:noreply, assign(socket, selected: nil)}
+      _ -> {:noreply, assign(socket, selected: nil, fixes: [])}
     end
   end
 
@@ -132,9 +165,9 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   end
 
   def handle_event("fix", %{"n" => n}, socket) do
-    with {day, period_id} = cell <- socket.assigns.selected,
+    with {day, period_id} <- socket.assigns.selected,
          {i, ""} <- Integer.parse(n),
-         %{} = fix <- Enum.at(suggestions(socket.assigns, cell), i) do
+         %{} = fix <- Enum.at(socket.assigns.fixes, i) do
       scope = socket.assigns.current_scope
 
       result =
@@ -144,9 +177,16 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
 
           %{kind: :swap, to: to} ->
             Timetabling.swap_slots(scope, socket.assigns.cg, {day, period_id}, to)
+
+          %{kind: :reassign, tc: tc, user: user} ->
+            Curriculum.reassign_teacher(scope, tc, user)
         end
 
-      socket = if result == :ok, do: assign(socket, selected: fix.to), else: socket
+      socket =
+        if result == :ok,
+          do: assign(socket, selected: fix[:to] || socket.assigns.selected),
+          else: socket
+
       after_write(result, socket)
     else
       _ -> {:noreply, socket}
@@ -197,6 +237,19 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
 
   defp hm(t), do: Calendar.strftime(t, "%H:%M")
 
+  defp fix_text(%{kind: :reassign, user: user, load: load, service: service}, _assigns),
+    do:
+      gettext("Confier à %{name} · %{load} h / %{service} h",
+        name: User.display_name(user),
+        load: load,
+        service: service
+      )
+
+  defp fix_text(%{kind: :move} = fix, assigns), do: fix_label(fix, assigns.periods)
+
+  defp fix_text(%{kind: :swap} = fix, assigns),
+    do: fix_label(fix, assigns.periods, assigns.assignments)
+
   defp fix_label(%{kind: :move, to: {d, p}}, periods),
     do:
       gettext("Déplacer au %{day} %{period} (créneau libre)",
@@ -243,6 +296,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               do: gettext("Emploi du temps · %{class}", class: @cg.label),
               else: gettext("Emploi du temps")
           }
+          subtitle={gettext("Cliquez sur une case pour placer ou déplacer un cours.")}
         >
           <:actions>
             <a
@@ -252,7 +306,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               target="_blank"
               class="btn btn-ghost btn-sm"
             >
-              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer")}
+              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer la classe")}
             </a>
             <span
               id="conflict-count"
@@ -308,8 +362,9 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                         <% not SchoolCalendar.open_cell?(@calendar, d, p) -> %>
                           <div
                             id={"cell-#{d}-#{p.id}"}
-                            class="closed-cell h-11 rounded bg-base-200/60"
+                            class="closed-cell flex h-11 items-center rounded bg-base-200/60 px-1.5 text-xs text-base-content/55"
                           >
+                            {gettext("Fermé")}
                           </div>
                         <% true -> %>
                           <button
@@ -331,7 +386,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                               <span class="block truncate font-semibold">{slot.subject}</span>
                               <span class="block truncate text-base-content/70">{slot.teacher_name}</span>
                             <% else %>
-                              {gettext("Libre")}
+                              <span class="font-semibold text-info">{gettext("+ Libre")}</span>
                             <% end %>
                           </button>
                       <% end %>
@@ -357,30 +412,33 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               </p>
 
               <%= if slot && clash?(@clashes, @cg, d, pid) do %>
-                <p id="conflict-text" class="text-sm text-error">
-                  {gettext("Conflit : %{teacher} a aussi cours en %{classes} à ce créneau.",
+                <p
+                  id="conflict-text"
+                  class="rounded-[0.5rem] border border-error/55 bg-error/12 p-2.5 text-sm"
+                >
+                  <b class="text-error">{gettext("Conflit.")}</b>
+                  {gettext("%{teacher} enseigne déjà en %{classes} le %{day} à %{time}.",
                     teacher: slot.teacher_name,
                     classes:
                       @clashes[{@cg.id, d, pid}]
                       |> Enum.map(&label_of(@classes, &1))
-                      |> Enum.join(", ")
+                      |> Enum.join(", "),
+                    day: String.downcase(DayOfWeek.label(d)),
+                    time: hm(p.start_time)
                   )}
                 </p>
-                <% fixes = suggestions(assigns, @selected) %>
-                <p :if={fixes == []} class="text-sm text-base-content/70">
+                <p :if={@fixes == []} class="text-sm text-base-content/70">
                   {gettext("Aucune solution automatique")}
                 </p>
                 <button
-                  :for={{fix, i} <- Enum.with_index(fixes)}
+                  :for={{fix, i} <- Enum.with_index(@fixes)}
                   id={"fix-#{i}"}
                   type="button"
                   phx-click="fix"
                   phx-value-n={i}
-                  class="btn btn-outline btn-sm w-full justify-start"
+                  class="btn btn-outline btn-sm h-auto w-full justify-start py-1.5 text-left"
                 >
-                  {if fix.kind == :move,
-                    do: fix_label(fix, @periods),
-                    else: fix_label(fix, @periods, @assignments)}
+                  {fix_text(fix, assigns)}
                 </button>
               <% end %>
 
@@ -405,7 +463,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                     slot && slot.teaching_context_id == tc.id && "badge-primary"
                   ]}
                 >
-                  {tc.subject} · {(t = placed(@tally, tc.id)) && t.placed}/{tc.weekly_hours} h
+                  {tc.subject} {((t = placed(@tally, tc.id)) && t.placed) || 0}/{tc.weekly_hours}
                   <span :if={tc.combined_course_id} class="text-[0.6rem]">{gettext("regroupé")}</span>
                 </button>
               </div>
