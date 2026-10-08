@@ -153,7 +153,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     assert Enrollment.list_guardian_links(scope, zoe) == []
 
     done = view |> element("#import-done") |> render()
-    assert done =~ "2 inscriptions, 0 réinscription."
+    assert done =~ "2 inscriptions."
     assert done =~ "Moko — sexe manquant ou inconnu."
     assert done =~ "Parent non enregistré pour Zoé (numéro « 12 » invalide)."
   end

@@ -331,11 +331,17 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   defp parent_note({:invalid, phone}),
     do: gettext("Numéro « %{phone} » invalide — parent ignoré", phone: phone)
 
+  # Zero parts are left out (« 5 inscriptions. »), never « 0 réinscription ».
+  defp done_headline(%{created: 0, reenrolled: 0}), do: gettext("Aucun élève inscrit.")
+
   defp done_headline(result) do
     [
-      ngettext("%{count} inscription", "%{count} inscriptions", result.created),
-      ngettext("%{count} réinscription", "%{count} réinscriptions", result.reenrolled)
+      result.created > 0 &&
+        ngettext("%{count} inscription", "%{count} inscriptions", result.created),
+      result.reenrolled > 0 &&
+        ngettext("%{count} réinscription", "%{count} réinscriptions", result.reenrolled)
     ]
+    |> Enum.filter(& &1)
     |> Enum.join(", ")
     |> Kernel.<>(".")
   end

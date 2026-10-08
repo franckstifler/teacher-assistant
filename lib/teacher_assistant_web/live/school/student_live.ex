@@ -303,6 +303,9 @@ defmodule TeacherAssistantWeb.School.StudentLive do
     if labels == [], do: text, else: "#{text} (#{Enum.join(labels, ", ")})"
   end
 
+  defp messages_in(:en), do: gettext("Messages en anglais")
+  defp messages_in(_fr), do: gettext("Messages en français")
+
   defp result_line(nil), do: nil
 
   defp result_line(%{period: period, average: average, rank: rank, effectif: effectif}) do
@@ -499,9 +502,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                     </span>
                     <span :if={l.guardian.email} class="text-xs">{l.guardian.email}</span>
                     <span id={"guardian-meta-#{l.id}"} class="text-xs text-base-content/60">
-                      {gettext("Messages en %{language}",
-                        language: ContactLanguage.label(l.guardian.language) |> String.downcase()
-                      )}
+                      {messages_in(l.guardian.language)}
                       <%= case other_children(@children, l.guardian_id, @student.id) do %>
                         <% "" -> %>
                         <% others -> %>
