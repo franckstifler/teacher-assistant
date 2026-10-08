@@ -96,18 +96,29 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school/today")
   end
 
-  test "Aujourd'hui: grid, missed roll calls, justify and sanctions", %{conn: conn} = ctx do
+  test "Aujourd'hui: KPIs, grid, « Relancer » and recent sanctions", %{conn: conn} = ctx do
     {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.e, %{type: :avertissement, date: @today})
     {:ok, view, _} = live(conn, ~p"/school/day")
 
+    assert view |> element("#to-absences") |> render() =~ "Absences à justifier · 1"
+    assert view |> element("#kpi-calls") |> render() =~ "1 / 2"
+    assert view |> element("#kpi-absents") |> render() =~ "1"
+    assert view |> element("#kpi-to-justify") |> render() =~ "1"
+
     assert has_element?(view, "#grid-#{ctx.cg.id}")
+    assert view |> element("#roll-call-grid") |> render() =~ "?"
     assert has_element?(view, "#missed-#{ctx.cg.id}-#{ctx.p2.id}")
     assert view |> element("#recent-sanctions") |> render() =~ "parents à notifier"
+    assert has_element?(view, "#all-sanctions[href='/school/sanctions']")
 
-    row_id = "#{ctx.e.id}-2025-09-15"
-    view |> element("#open-#{row_id}") |> render_click()
-    view |> element("#justify-#{row_id}-maladie") |> render_click()
-    assert view |> element("#absence-#{row_id}") |> render() =~ "Justifiée · Maladie"
+    slot =
+      ctx.cg.id
+      |> Timetabling.list_for_class!(scope: ctx.scope)
+      |> Enum.find(&(&1.period_id == ctx.p2.id))
+
+    view |> element("#remind-#{slot.id}") |> render_click()
+    assert has_element?(view, "#reminded-#{slot.id}")
+    refute has_element?(view, "#remind-#{slot.id}")
   end
 
   test "Absences: filter, panel and justify", %{conn: conn} = ctx do

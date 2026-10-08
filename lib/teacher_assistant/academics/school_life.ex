@@ -53,6 +53,13 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     }
   end
 
+  @doc "How many late arrivals were recorded on `date` (Vie scolaire redesign §2.1)."
+  def late_count(%Scope{} = scope, %Date{} = date) do
+    AttendanceEntry
+    |> Ash.Query.filter(date == ^date and status == :late)
+    |> Ash.count!(scope: scope)
+  end
+
   @doc """
   « Relancer » (Vie scolaire redesign §1.1): notifies the teacher of the slot
   whose roll call was not taken on `date`. Once per slot and day:

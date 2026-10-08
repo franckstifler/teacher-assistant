@@ -1,12 +1,13 @@
 defmodule TeacherAssistantWeb.School.DayLive do
   @moduledoc """
-  Surveillant général → Aujourd'hui (spec G, V01–V04, V06): today's roll calls
-  as a classes × periods grid, the absences to justify, the missed roll calls
-  and the school's latest sanctions. The surveillant space's home.
+  Surveillant général → Aujourd'hui (spec G, V01–V04, V06; Vie scolaire redesign
+  §2.1): today's roll calls as a classes × periods grid, the missed roll calls
+  with « Relancer », and the school's latest sanctions. Absences are justified on
+  `/school/absences`. The surveillant space's home.
   """
   use TeacherAssistantWeb, :live_view
 
-  import TeacherAssistantWeb.School.SchoolLifeComponents
+  import TeacherAssistantWeb.School.SchoolLifeComponents, only: [hm: 1, teacher_name: 1]
 
   alias TeacherAssistant.{Attendance, Discipline}
   alias TeacherAssistant.Academics.Reference
@@ -16,7 +17,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil and Discipline.can_manage_conduct?(scope) do
-      {:ok, socket |> assign(open: nil) |> load()}
+      {:ok, load(socket)}
     else
       {:ok,
        socket
@@ -30,25 +31,46 @@ defmodule TeacherAssistantWeb.School.DayLive do
     today = Reference.today()
     now = Reference.now()
 
+    sequence_rows =
+      case Attendance.current_sequence_range(scope, today) do
+        nil -> []
+        {first, last} -> Attendance.absence_days(scope, first, last, today)
+      end
+
     assign(socket,
       today: today,
       now: now,
       day: Attendance.school_day(scope, today, now),
       day_off: Attendance.day_off(scope, today),
-      absences: Attendance.absence_days(scope, today, today, today),
-      sanctions: Discipline.recent_sanctions!(scope: scope),
-      to_notify: length(Discipline.list_parents_to_notify!(scope: scope))
+      absent_students: sequence_rows |> Enum.filter(&(&1.date == today)) |> length(),
+      to_justify: Enum.count(sequence_rows, &(not &1.justified?)),
+      lates: Attendance.late_count(scope, today),
+      sanctions: Enum.take(Discipline.recent_sanctions!(scope: scope), 3)
     )
   end
 
-  def handle_event("open", %{"row" => row_id}, socket),
-    do: {:noreply, assign(socket, open: if(socket.assigns.open == row_id, do: nil, else: row_id))}
+  def handle_event("remind", %{"slot" => slot_id}, socket) do
+    scope = socket.assigns.current_scope
+    missed = Enum.find(socket.assigns.day.missed, &(&1.slot_id == slot_id))
 
-  def handle_event("justify", %{"row" => row_id, "reason" => reason}, socket) do
-    case justify(socket.assigns.current_scope, socket.assigns.absences, row_id, reason) do
-      {:ok, _} -> {:noreply, socket |> assign(open: nil) |> load()}
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      {:error, _} -> {:noreply, socket}
+    case missed && Attendance.remind_roll_call(scope, slot_id, socket.assigns.today) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :info,
+           gettext("Rappel envoyé à %{teacher}.", teacher: teacher_name(missed.teacher))
+         )
+         |> load()}
+
+      {:error, :already_reminded} ->
+        {:noreply, load(socket)}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -59,7 +81,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
     assigns =
       assign(assigns,
         current: current_period(assigns.day.periods, assigns.now),
-        open_rows: Enum.reject(assigns.absences, & &1.justified?)
+        done: count_status(assigns.day, :done)
       )
 
     ~H"""
@@ -67,52 +89,58 @@ defmodule TeacherAssistantWeb.School.DayLive do
       <section id="school-day" class="flex flex-col gap-5">
         <.page_header
           eyebrow={
-            gettext("Vie scolaire · %{date} · %{time}",
+            gettext("%{date} · %{time}",
               date: Dates.long(@today),
               time: Calendar.strftime(@now, "%H:%M")
             )
           }
           title={gettext("Aujourd'hui")}
         >
-          <:actions :if={@current}>
-            <.side_chip id="current-period">
-              {gettext("Créneau en cours · %{period}", period: @current.label)}
-            </.side_chip>
+          <:actions>
+            <.link
+              id="to-absences"
+              navigate={~p"/school/absences"}
+              class="btn btn-outline btn-sm"
+            >
+              {gettext("Absences à justifier · %{count}", count: @to_justify)}
+            </.link>
           </:actions>
         </.page_header>
 
         <.kpi_row>
           <.kpi
-            id="kpi-absences"
-            label={gettext("Absences du jour")}
-            value={to_string(absent_total(@day))}
-            sub={done_range(@day)}
+            id="kpi-calls"
+            label={gettext("Appels faits")}
+            value={"#{@done} / #{@done + length(@day.missed)}"}
+            sub={
+              ngettext(
+                "%{count} non fait à %{time}",
+                "%{count} non faits à %{time}",
+                length(@day.missed),
+                time: Calendar.strftime(@now, "%H:%M")
+              )
+            }
+            tone="text-primary"
+          />
+          <.kpi
+            id="kpi-absents"
+            label={gettext("Absents")}
+            value={to_string(@absent_students)}
+            sub={gettext("élèves sur au moins un créneau")}
+          />
+          <.kpi
+            id="kpi-lates"
+            label={gettext("Retards")}
+            value={to_string(@lates)}
+            sub={first_period_text(@day.periods)}
+            tone="text-warning"
           />
           <.kpi
             id="kpi-to-justify"
             label={gettext("À justifier")}
-            value={to_string(length(@open_rows))}
-            sub={
-              ngettext(
-                "dont %{count} absence répétée",
-                "dont %{count} absences répétées",
-                Enum.count(@open_rows, & &1.flagged?)
-              )
-            }
-            tone="text-warning"
-          />
-          <.kpi
-            id="kpi-missed"
-            label={gettext("Appels non faits")}
-            value={to_string(length(@day.missed))}
-            sub={gettext("créneaux déjà passés")}
+            value={to_string(@to_justify)}
+            sub={gettext("sur la séquence en cours")}
             tone="text-error"
-          />
-          <.kpi
-            id="kpi-to-notify"
-            label={gettext("Sanctions à notifier")}
-            value={to_string(@to_notify)}
-            sub={gettext("aux parents")}
           />
         </.kpi_row>
 
@@ -122,17 +150,13 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
         <div :if={@day.rows != []} class="ta-panel flex flex-col gap-2.5 overflow-x-auto">
           <div class="flex flex-wrap items-center justify-between gap-3.5">
-            <h2 class="ta-eyebrow">{gettext("Appels par créneau · nombre d'absents")}</h2>
-            <div class="flex gap-3 text-[0.74rem] text-base-content/80">
-              <span class="flex items-center gap-[5px]">
-                <i class="size-2.5 rounded-[3px] bg-primary/45"></i>{gettext("Fait")}
-              </span>
-              <span class="flex items-center gap-[5px]">
-                <i class="size-2.5 rounded-[3px] bg-error/60"></i>{gettext("Non fait")}
-              </span>
-              <span class="flex items-center gap-[5px]">
-                <i class="size-2.5 rounded-[3px] border border-warning"></i>{gettext("En cours")}
-              </span>
+            <h2 class="text-[1.05rem] font-semibold">
+              {gettext("Appels par créneau · nombre d'absents")}
+            </h2>
+            <div id="grid-legend" class="flex gap-3 text-[0.76rem] text-base-content/80">
+              <span>{gettext("· pas de cours")}</span>
+              <span class="text-error">{gettext("? appel non fait")}</span>
+              <span class="text-warning">{gettext("… en cours")}</span>
             </div>
           </div>
           <div
@@ -164,92 +188,80 @@ defmodule TeacherAssistantWeb.School.DayLive do
         </div>
 
         <div class="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]">
-          <div id="absences-to-justify" class="ta-panel flex flex-col gap-0.5">
-            <div class="flex items-baseline justify-between gap-2">
-              <h2 class="ta-eyebrow">{gettext("Absences à justifier")}</h2>
-              <span class="ta-num text-[0.75rem] text-warning">
-                {ngettext("%{count} en attente", "%{count} en attente", length(@open_rows))}
-              </span>
+          <div id="missed-roll-calls" class="ta-panel flex flex-col gap-0.5">
+            <div class="flex items-baseline justify-between gap-2 pb-1">
+              <h2 class="text-[1.05rem] font-semibold">{gettext("Appels non faits")}</h2>
+              <span class="ta-num text-[0.75rem] text-error">{length(@day.missed)}</span>
             </div>
-            <p :if={@absences == []} class="py-2 text-sm text-base-content/70">
-              {gettext("Aucune absence aujourd'hui.")}
+            <p :if={@day.missed == []} class="py-2 text-sm text-base-content/70">
+              {gettext("Tous les appels passés sont faits.")}
             </p>
             <div
-              :for={row <- @absences}
-              id={"absence-#{row.id}"}
-              class="ta-row-rule flex flex-col gap-2 py-2"
+              :for={m <- @day.missed}
+              id={"missed-#{m.class_group.id}-#{m.period.id}"}
+              class="ta-row-rule flex items-center gap-2.5 py-2"
             >
-              <div class="flex items-center gap-2.5">
-                <div class="flex min-w-0 flex-1 flex-col">
-                  <span class="flex flex-wrap items-center gap-1.5 text-[0.9rem] font-semibold">
-                    {row.student.full_name} <.repeated_badge row={row} />
-                  </span>
-                  <span class="text-[0.75rem] text-base-content/75">
-                    {row.class_group.label} · {periods_text(row.periods)}
-                  </span>
-                </div>
-                <.absence_status :if={row.justified?} row={row} />
-                <button
-                  :if={not row.justified?}
-                  id={"open-#{row.id}"}
-                  type="button"
-                  class="flex-none cursor-pointer rounded-[0.35rem] border border-base-300 px-[11px] py-[7px] text-[0.76rem] font-semibold transition-colors hover:border-primary hover:text-primary"
-                  phx-click="open"
-                  phx-value-row={row.id}
-                >
-                  {gettext("Justifier")}
-                </button>
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-[0.9rem] font-semibold">
+                  {m.class_group.label} · <span class="ta-num">{hm(m.period.start_time)}</span>
+                  · {m.subject}
+                </span>
+                <span class="text-[0.76rem] text-base-content/75">
+                  {teacher_name(m.teacher)} · {gettext("créneau terminé")}
+                </span>
               </div>
-              <.reason_chips :if={@open == row.id} row={row} />
+              <span
+                :if={m.reminded?}
+                id={"reminded-#{m.slot_id}"}
+                class="flex-none text-[0.76rem] font-semibold text-primary"
+              >
+                {gettext("Relancé ✓")}
+              </span>
+              <button
+                :if={not m.reminded?}
+                id={"remind-#{m.slot_id}"}
+                type="button"
+                class="btn btn-outline btn-xs flex-none"
+                phx-click="remind"
+                phx-value-slot={m.slot_id}
+                phx-disable-with={gettext("Envoi…")}
+              >
+                {gettext("Relancer")}
+              </button>
             </div>
           </div>
 
-          <div class="flex flex-col gap-4">
-            <div id="missed-roll-calls" class="ta-panel flex flex-col gap-0.5">
-              <div class="flex items-baseline justify-between gap-2">
-                <h2 class="ta-eyebrow">{gettext("Appels non faits")}</h2>
-                <span class="ta-num text-[0.75rem] text-error">{length(@day.missed)}</span>
-              </div>
-              <p :if={@day.missed == []} class="py-2 text-sm text-base-content/70">
-                {gettext("Tous les appels passés sont faits.")}
-              </p>
-              <div
-                :for={m <- @day.missed}
-                id={"missed-#{m.class_group.id}-#{m.period.id}"}
-                class="ta-row-rule flex flex-col py-[7px]"
-              >
-                <span class="ta-num text-[0.88rem] font-semibold">
-                  {m.class_group.label} · {m.period.label} {hm(m.period.start_time)}
-                </span>
-                <span class="text-[0.74rem] text-base-content/75">
-                  {teacher_name(m.teacher)} · {m.subject}
-                </span>
-              </div>
-            </div>
-
-            <div id="recent-sanctions" class="ta-panel flex flex-col gap-0.5">
-              <h2 class="ta-eyebrow pb-1">{gettext("Sanctions récentes")}</h2>
-              <p :if={@sanctions == []} class="py-2 text-sm text-base-content/70">
-                {gettext("Aucune sanction")}
-              </p>
+          <div id="recent-sanctions" class="ta-panel flex flex-col gap-0.5">
+            <div class="flex items-baseline justify-between gap-2 pb-1">
+              <h2 class="text-[1.05rem] font-semibold">{gettext("Sanctions récentes")}</h2>
               <.link
-                :for={s <- @sanctions}
-                id={"sanction-#{s.id}"}
-                navigate={~p"/school/classes/#{s.enrollment.class_group_id}/discipline"}
-                class="ta-row-rule flex flex-col gap-0.5 py-[7px] transition-colors hover:text-primary"
+                id="all-sanctions"
+                navigate={~p"/school/sanctions"}
+                class="text-[0.8rem] font-semibold text-info hover:underline"
               >
-                <span class="text-[0.88rem] font-semibold">
-                  {s.enrollment.student.full_name} · {s.enrollment.class_group.label}
-                </span>
-                <span class="text-[0.75rem] text-base-content/75">
-                  {sanction_text(s)} ·
-                  <b :if={is_nil(s.parents_notified_on)} class="text-warning">
-                    {gettext("parents à notifier")}
-                  </b>
-                  <span :if={s.parents_notified_on}>{notified_text(s.parents_notified_on, @today)}</span>
-                </span>
+                {gettext("Toutes →")}
               </.link>
             </div>
+            <p :if={@sanctions == []} class="py-2 text-sm text-base-content/70">
+              {gettext("Aucune sanction")}
+            </p>
+            <.link
+              :for={s <- @sanctions}
+              id={"sanction-#{s.id}"}
+              navigate={~p"/school/classes/#{s.enrollment.class_group_id}/discipline"}
+              class="ta-row-rule flex flex-col gap-0.5 py-2 transition-colors hover:text-primary"
+            >
+              <span class="text-[0.9rem] font-semibold">
+                {s.enrollment.student.full_name} · {s.enrollment.class_group.label}
+              </span>
+              <span class="text-[0.76rem] text-base-content/75">
+                {sanction_text(s)} ·
+                <b :if={is_nil(s.parents_notified_on)} class="text-warning">
+                  {gettext("parents à notifier")}
+                </b>
+                <span :if={s.parents_notified_on}>{notified_text(s.parents_notified_on, @today)}</span>
+              </span>
+            </.link>
           </div>
         </div>
       </section>
@@ -259,7 +271,9 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
   attr :cell, :map, default: nil
 
-  defp grid_cell(%{cell: nil} = assigns), do: ~H|<span class="h-[30px]"></span>|
+  defp grid_cell(%{cell: nil} = assigns),
+    do:
+      ~H|<span class="ta-num grid h-[30px] place-items-center text-[0.76rem] text-base-content/45">·</span>|
 
   defp grid_cell(assigns) do
     ~H"""
@@ -275,16 +289,20 @@ defmodule TeacherAssistantWeb.School.DayLive do
     """
   end
 
-  defp cell_class(%{status: :done, absent: 0}), do: "border-transparent bg-primary/34"
-  defp cell_class(%{status: :done}), do: "border-transparent bg-primary/22"
-  defp cell_class(%{status: :missed}), do: "border-transparent bg-error/42"
+  defp cell_class(%{status: :done, absent: 0}), do: "border-transparent bg-base-200 text-primary"
+
+  defp cell_class(%{status: :done, absent: n}) when n >= 3,
+    do: "border-transparent bg-base-200 text-error"
+
+  defp cell_class(%{status: :done}), do: "border-transparent bg-base-200"
+  defp cell_class(%{status: :missed}), do: "border-transparent bg-error text-error-content"
   defp cell_class(%{status: :in_progress}), do: "border-warning text-warning"
-  defp cell_class(%{status: :upcoming}), do: "border-dashed border-base-300 text-base-content/70"
+  defp cell_class(%{status: :upcoming}), do: "border-dashed border-base-300"
 
   defp cell_text(%{status: :done, absent: n}), do: n
-  defp cell_text(%{status: :missed}), do: "—"
+  defp cell_text(%{status: :missed}), do: "?"
   defp cell_text(%{status: :in_progress}), do: "…"
-  defp cell_text(%{status: :upcoming}), do: "·"
+  defp cell_text(%{status: :upcoming}), do: ""
 
   defp cell_title(%{status: :done, absent: n} = cell),
     do: "#{ngettext("%{count} absent", "%{count} absents", n)} · #{cell_detail(cell)}"
@@ -307,34 +325,16 @@ defmodule TeacherAssistantWeb.School.DayLive do
     end)
   end
 
-  defp absent_total(day),
+  defp count_status(day, status),
     do:
-      for(
-        row <- day.rows,
-        {_id, %{status: :done, absent: n}} <- row.cells,
-        reduce: 0,
-        do: (acc -> acc + n)
-      )
+      Enum.count(for(row <- day.rows, {_id, cell} <- row.cells, do: cell.status), &(&1 == status))
 
-  # "créneaux Cours 1 à Cours 5": the span of periods whose roll call is done somewhere.
-  defp done_range(day) do
-    done_ids =
-      for row <- day.rows, {id, %{status: :done}} <- row.cells, into: MapSet.new(), do: id
-
-    case Enum.filter(day.periods, &MapSet.member?(done_ids, &1.id)) do
-      [] ->
-        gettext("aucun appel fait")
-
-      [only] ->
-        gettext("créneau %{period}", period: only.label)
-
-      [first | rest] ->
-        gettext("créneaux %{first} à %{last}", first: first.label, last: List.last(rest).label)
-    end
-  end
+  # « depuis 07:30 »: the school's first lesson.
+  defp first_period_text([]), do: nil
+  defp first_period_text([first | _]), do: gettext("depuis %{time}", time: hm(first.start_time))
 
   defp sanction_text(s) do
-    [SanctionLabels.type_label(s.type), s.reason]
+    [SanctionLabels.sanction_label(s), s.reason]
     |> Enum.reject(&(&1 in [nil, ""]))
     |> Enum.join(" · ")
   end
