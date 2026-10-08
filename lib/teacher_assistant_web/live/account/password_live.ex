@@ -160,12 +160,4 @@ defmodule TeacherAssistantWeb.Account.PasswordLive do
       parts -> Enum.join(parts, " · ")
     end
   end
-
-  defp initials(name) do
-    name
-    |> String.split(~r/[\s@.]+/, trim: true)
-    |> Enum.take(2)
-    |> Enum.map_join(&String.first/1)
-    |> String.upcase()
-  end
 end

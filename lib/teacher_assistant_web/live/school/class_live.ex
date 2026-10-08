@@ -162,9 +162,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 <td class="ta-num text-base-content/60">{n}</td>
                 <td>
                   <span class="flex items-center gap-3">
-                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-base-300 text-xs font-semibold">
-                      {initials(row.student.full_name)}
-                    </span>
+                    <.initials_avatar name={row.student.full_name} />
                     <span class="min-w-0">
                       <.link
                         navigate={~p"/school/students/#{row.student.id}"}
@@ -629,14 +627,6 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   defp filter_label(:f), do: gettext("Filles")
   defp filter_label(:m), do: gettext("Garçons")
   defp filter_label(:repeaters), do: gettext("Redoublants")
-
-  defp initials(name) do
-    name
-    |> String.split(~r/\s+/, trim: true)
-    |> Enum.take(2)
-    |> Enum.map_join(&String.first/1)
-    |> String.upcase()
-  end
 
   defp format_date(nil), do: ""
   defp format_date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")

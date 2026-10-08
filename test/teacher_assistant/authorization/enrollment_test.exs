@@ -66,7 +66,7 @@ defmodule TeacherAssistant.Authorization.EnrollmentTest do
   test "a refused import row is a :forbidden conflict", ctx do
     rows = [%{full_name: "Imp #{System.unique_integer([:positive])}", sex: :m, matricule: nil}]
 
-    assert %{created: 0, conflicts: [%{reason: :forbidden}]} =
+    assert %{created: 0, skipped: [%{reason: :forbidden}]} =
              Enrollment.import_rows(ctx.teacher, ctx.cg, rows)
   end
 end

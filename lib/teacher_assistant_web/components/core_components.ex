@@ -566,6 +566,58 @@ defmodule TeacherAssistantWeb.CoreComponents do
     """
   end
 
+  @doc """
+  A breadcrumb: every crumb but the last is a link (`navigate`, optional for
+  a crumb shown as plain text); the last is the current page.
+  """
+  attr :id, :string, default: nil
+
+  slot :crumb, required: true do
+    attr :navigate, :string
+  end
+
+  def breadcrumb(assigns) do
+    ~H"""
+    <nav id={@id} aria-label={gettext("Fil d'Ariane")} class="text-sm text-base-content/70">
+      <%= for {crumb, i} <- Enum.with_index(@crumb) do %>
+        <span :if={i > 0} class="mx-1.5" aria-hidden="true">/</span>
+        <%= cond do %>
+          <% i == length(@crumb) - 1 -> %>
+            <span aria-current="page">{render_slot(crumb)}</span>
+          <% crumb[:navigate] -> %>
+            <.link navigate={crumb.navigate} class="link link-hover">{render_slot(crumb)}</.link>
+          <% true -> %>
+            <span>{render_slot(crumb)}</span>
+        <% end %>
+      <% end %>
+    </nav>
+    """
+  end
+
+  @doc "A round avatar with a person's first two initials."
+  attr :name, :string, required: true
+  attr :class, :string, default: "size-8 text-xs"
+
+  def initials_avatar(assigns) do
+    ~H"""
+    <span
+      aria-hidden="true"
+      class={["grid shrink-0 place-items-center rounded-full bg-base-300 font-semibold", @class]}
+    >
+      {initials(@name)}
+    </span>
+    """
+  end
+
+  @doc "« Ebogo Sandrine » → « ES »; an e-mail display name splits on `@` and `.`."
+  def initials(name) do
+    name
+    |> String.split(~r/[\s@.]+/, trim: true)
+    |> Enum.take(2)
+    |> Enum.map_join(&String.first/1)
+    |> String.upcase()
+  end
+
   @doc "The mono chip at the right of a page header (\"2 / 5 appels faits\")."
   attr :id, :string, default: nil
   slot :inner_block, required: true

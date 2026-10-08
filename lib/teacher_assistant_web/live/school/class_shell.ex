@@ -92,11 +92,10 @@ defmodule TeacherAssistantWeb.School.ClassShell do
 
     ~H"""
     <section id="class-shell" class="space-y-5">
-      <nav aria-label={gettext("Fil d'Ariane")} class="text-sm text-base-content/70">
-        <.link navigate={~p"/school/classes"} class="link link-hover">{gettext("Classes")}</.link>
-        <span class="mx-1.5" aria-hidden="true">/</span>
-        <span aria-current="page">{@cg.label}</span>
-      </nav>
+      <.breadcrumb>
+        <:crumb navigate={~p"/school/classes"}>{gettext("Classes")}</:crumb>
+        <:crumb>{@cg.label}</:crumb>
+      </.breadcrumb>
 
       <header class="flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0 space-y-2">

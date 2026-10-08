@@ -68,8 +68,9 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     |> form("#import-form", %{"import" => %{"raw" => "Bi;m;M-2"}})
     |> render_submit()
 
-    assert render(view) =~ "conflict" or render(view) =~ "conflit"
-    view |> element("#import-confirm") |> render_click()
+    assert view |> element("#import-preview-rows") |> render() =~ "Déjà inscrit cette année (6e A)"
+    assert view |> element("#import-chip-conflict") |> render() =~ "1 conflit"
+    assert has_element?(view, "#import-confirm[disabled]")
     assert [] = Enrollment.list_roster(scope, cg2)
   end
 
@@ -93,11 +94,11 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     assert {:error, {:live_redirect, %{to: _}}} = live(conn, ~p"/school/classes/#{cg.id}/import")
   end
 
-  test "extra fields beyond the third are ignored", %{conn: conn, cg: cg, scope: scope} do
+  test "tab-separated lines and extra fields are accepted", %{conn: conn, cg: cg, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/import")
 
     view
-    |> form("#import-form", %{"import" => %{"raw" => "Awa;f;M-1;extra\nBi;m;"}})
+    |> form("#import-form", %{"import" => %{"raw" => "Awa\tf\tM-1\t\t\t\textra\nBi;m;"}})
     |> render_submit()
 
     assert render(view) =~ "Awa"
@@ -105,11 +106,8 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     assert length(Enrollment.list_roster(scope, cg)) == 2
   end
 
-  test "imports birth details and links a sibling's parent by phone", %{
-    conn: conn,
-    scope: scope,
-    cg: cg
-  } do
+  test "imports birth dates and links a sibling's parent by phone; an invalid number is reported",
+       %{conn: conn, scope: scope, cg: cg} do
     {:ok, paul} = Enrollment.add_student(scope, cg, %{full_name: "Paul Nkolo", sex: :m})
 
     {:ok, jean} =
@@ -121,16 +119,24 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/import")
 
-    raw =
-      "Awa Nkolo;f;M-9;02/04/2013;Yaoundé;Jean Nkolo;+237 677 12 34 56\nZoé;f;;31/02/2010;;Papa Zoé;12"
+    raw = "Awa Nkolo;f;M-9;02/04/2013;+237 677 12 34 56\nZoé;f;;31/02/2010;12\nMoko;;;;"
 
     view |> form("#import-form", %{"import" => %{"raw" => raw}}) |> render_submit()
-    assert render(view) =~ "02/04/2013"
+
+    preview = view |> element("#import-preview-rows") |> render()
+    assert preview =~ "F · 02/04/2013"
+    assert preview =~ "Parent existant lié : Jean Nkolo"
+    assert preview =~ "Numéro « 12 » invalide — parent ignoré"
+    assert preview =~ "Sexe manquant ou inconnu (M ou F)"
+    assert view |> element("#import-chip-error") |> render() =~ "1 erreur"
+    assert view |> element("#import-chip-invalid-phone") |> render() =~ "1 numéro de parent invalide"
+    assert view |> element("#import-confirm") |> render() =~ "Confirmer l&#39;import de 2 élèves"
+    assert view |> element("#import-after") |> render() =~ "Après import : 3 élèves."
+
     view |> element("#import-confirm") |> render_click()
 
     awa = Enrollment.list_students(scope, cg) |> Enum.find(&(&1.full_name == "Awa Nkolo"))
     assert awa.birth_date == ~D[2013-04-02]
-    assert awa.birth_place == "Yaoundé"
 
     assert [%{guardian: %{id: id}, primary_contact: true}] =
              Enrollment.list_guardian_links(scope, awa)
@@ -140,6 +146,36 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     zoe = Enrollment.list_students(scope, cg) |> Enum.find(&(&1.full_name == "Zoé"))
     assert zoe.birth_date == nil
     assert Enrollment.list_guardian_links(scope, zoe) == []
-    assert view |> element("#guardian-issues") |> render() =~ "Zoé"
+
+    done = view |> element("#import-done") |> render()
+    assert done =~ "2 inscriptions, 0 réinscription."
+    assert done =~ "Moko — sexe manquant ou inconnu."
+    assert done =~ "Parent non enregistré pour Zoé (numéro « 12 » invalide)."
+  end
+
+  test "a matricule held by another student is a conflict, not a re-enrolment", ctx do
+    %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
+
+    {:ok, %{enrollment: e}} =
+      Enrollment.enroll_new(scope, cg, %{full_name: "Ebogo Sandrine", sex: :f, matricule: "M-7"})
+
+    :ok = Enrollment.withdraw(scope, e)
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/import")
+    view |> form("#import-form", %{"import" => %{"raw" => "Mvogo Diane;f;M-7"}}) |> render_submit()
+
+    assert view |> element("#import-preview-rows") |> render() =~
+             "Matricule déjà utilisé (Ebogo Sandrine)"
+
+    assert view |> element("#import-confirm[disabled]") |> has_element?()
+  end
+
+  test "« Importer une autre liste » starts over", %{conn: conn, cg: cg} do
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/import")
+    view |> form("#import-form", %{"import" => %{"raw" => "Awa;f"}}) |> render_submit()
+    view |> element("#import-confirm") |> render_click()
+    view |> element("#import-restart") |> render_click()
+    assert has_element?(view, "#import-form")
+    refute view |> element("#import-raw") |> render() =~ "Awa"
   end
 end

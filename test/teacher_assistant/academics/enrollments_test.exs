@@ -106,7 +106,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     assert {:error, :different_year} = Enrollment.transfer(scope, e, cg_other)
   end
 
-  test "import_rows: creates, re-enrolls by matricule, flags same-year conflicts", ctx do
+  test "import_rows: creates, re-enrolls by matricule, skips same-year conflicts", ctx do
     %{cg: cg, cg2: cg2, scope: scope} = ctx
     # existing student with matricule, not enrolled this year in cg2's class
     {:ok, %{student: _s, enrollment: e}} =
@@ -117,14 +117,110 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Bi", sex: :m, matricule: "M-2"})
 
     rows = [
-      %{full_name: "Awa", sex: :f, matricule: "M-1", repeater: false},
-      %{full_name: "Bi", sex: :m, matricule: "M-2", repeater: false},
-      %{full_name: "Cam", sex: :m, matricule: nil, repeater: true}
+      %{full_name: "Awa", sex: :f, matricule: "M-1", repeater: false, guardian: nil},
+      %{full_name: "Bi", sex: :m, matricule: "M-2", repeater: false, guardian: nil},
+      %{full_name: "Cam", sex: :m, matricule: nil, repeater: true, guardian: nil},
+      %{full_name: "Dodo", sex: nil, matricule: nil, repeater: false, guardian: nil}
     ]
 
     result = Enrollment.import_rows(scope, cg2, rows)
     assert result.created == 1
     assert result.reenrolled == 1
-    assert [%{matricule: "M-2", reason: :already_enrolled}] = result.conflicts
+
+    assert [%{full_name: "Bi", reason: :already_enrolled}, %{full_name: "Dodo", reason: :sex}] =
+             result.skipped
+  end
+
+  describe "preview_rows/3" do
+    setup %{scope: scope, cg: cg} do
+      {:ok, old_year} =
+        Organization.create_academic_year(scope, %{
+          name: "2024-2025",
+          start_date: ~D[2024-09-09],
+          end_date: ~D[2025-07-31],
+          active: false
+        })
+
+      {:ok, old_cg} =
+        Enrollment.create_class_group(scope, old_year, %{label: "5e C", level: "5ème"})
+
+      {:ok, %{student: former}} =
+        Enrollment.enroll_new(scope, old_cg, %{
+          full_name: "Ébogo Sandrine",
+          sex: :f,
+          matricule: "M-7"
+        })
+
+      {:ok, %{student: current}} =
+        Enrollment.enroll_new(scope, cg, %{full_name: "Nana Eric", sex: :m, matricule: "M-8"})
+
+      {:ok, rose} =
+        Enrollment.add_guardian(scope, current, %{
+          full_name: "Bekono Rose",
+          relationship: :mere,
+          phone: "699 10 22 33"
+        })
+
+      %{former: former, rose: rose}
+    end
+
+    defp actions(scope, cg, raw) do
+      scope
+      |> Enrollment.preview_rows(cg, TeacherAssistant.Academics.RosterLine.parse(raw))
+      |> Enum.map(fn {row, action, parent} -> {row.full_name, action, parent} end)
+    end
+
+    test "classifies each row and its parent", %{scope: scope, cg2: cg2} = ctx do
+      %{former: former, rose: rose} = ctx
+
+      assert [
+               {"Abessolo Marc", :create, {:new, "677 45 12 90"}},
+               {"Bekono Aline", :create, {:existing, guardian}},
+               {"sandrine EBOGO", {:reenroll, reenrolled, last}, nil},
+               {"Mvogo Diane", {:conflict, :matricule_taken, "Ébogo Sandrine"}, nil},
+               {"Nana Eric", {:conflict, :already_enrolled, "6e A"}, nil},
+               {"Kana Brice", {:error, :sex}, {:invalid, "690 22"}}
+             ] =
+               actions(scope, cg2, """
+               Abessolo Marc;M;;12/02/2014;677 45 12 90
+               Bekono Aline;F;;;+237 699 10 22 33
+               sandrine EBOGO;F;M-7
+               Mvogo Diane;F;M-7
+               Nana Eric;G;M-8
+               Kana Brice;;;;690 22
+               """)
+
+      assert guardian.id == rose.id
+      assert reenrolled.id == former.id
+      assert last.class_group.label == "5e C"
+      assert last.academic_year.name == "2024-2025"
+    end
+
+    test "an invalid parent number is reported, not attempted", %{scope: scope, cg2: cg2} do
+      result =
+        Enrollment.import_rows(
+          scope,
+          cg2,
+          TeacherAssistant.Academics.RosterLine.parse("Kana Brice;M;;;690 22")
+        )
+
+      assert result.created == 1
+      assert [%{full_name: "Kana Brice", phone: "690 22"}] = result.guardian_issues
+    end
+
+    test "two siblings with one new number share one parent", %{scope: scope, cg2: cg2} do
+      Enrollment.import_rows(
+        scope,
+        cg2,
+        TeacherAssistant.Academics.RosterLine.parse("Owono Steve;M;;;6 95 12 12 12\nOwono Léa;F;;;695121212")
+      )
+
+      [steve, lea] =
+        scope |> Enrollment.list_students(cg2) |> Enum.sort_by(& &1.full_name, :desc)
+
+      [%{guardian_id: g1}] = Enrollment.list_guardian_links(scope, steve)
+      [%{guardian_id: g2}] = Enrollment.list_guardian_links(scope, lea)
+      assert g1 == g2
+    end
   end
 end

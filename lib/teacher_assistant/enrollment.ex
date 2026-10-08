@@ -519,61 +519,85 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   @doc """
-  Classifies each row against current data without writing anything.
-  Returns `[{row, :create | :reenroll | {:conflict, reason}}]` in input order.
+  Élèves redesign: classifies each pasted row against current data without
+  writing anything. Returns `[{row, action, parent}]` in input order, where
+  `action` is `:create`, `{:reenroll, student, last_enrollment | nil}`,
+  `{:conflict, :already_enrolled, class_label}`,
+  `{:conflict, :matricule_taken, other_student_name}`,
+  `{:conflict, :lookup_failed, nil}` or `{:error, :sex}`, and `parent` is
+  `nil`, `{:invalid, phone}`, `{:existing, guardian}` or `{:new, phone}`.
   """
   def preview_rows(%Scope{} = scope, %ClassGroup{} = cg, rows) do
-    Enum.map(rows, fn row -> {row, classify_row(scope, cg, row)} end)
+    Enum.map(rows, fn row ->
+      {row, classify_row(scope, cg, row), classify_parent(scope, row[:guardian])}
+    end)
   end
 
+  @doc "How many students the preview would enroll (creations and re-enrolments)."
+  def importable_count(preview),
+    do: Enum.count(preview, fn {_row, action, _parent} -> importable?(action) end)
+
+  @doc "Whether a preview action enrolls the student (a creation or a re-enrolment)."
+  def importable?(:create), do: true
+  def importable?({:reenroll, _student, _last}), do: true
+  def importable?(_action), do: false
+
   @doc """
-  Imports a roster: each row is independently classified as a new student
-  (`enroll_new/3`), a re-enrollment (`enroll_existing/4`), or a conflict —
-  a single row's failure never blocks the rest of the batch (each row's own
-  student+enrollment write is atomic via `enroll_new/3`'s `:enroll_new`
-  action, but the import as a whole is deliberately best-effort/partial,
-  matching the pre-existing behavior).
+  Imports a roster: each row is re-classified (the preview is not trusted)
+  and enrolled as a new student (`enroll_new/3`) or a re-enrolment
+  (`enroll_existing/4`); errors and conflicts are skipped. A single row's
+  failure never blocks the rest of the batch (each row's own student +
+  enrollment write is atomic, the import as a whole is best-effort).
+  Returns `%{created, reenrolled, skipped: [row + :reason], guardian_issues}`.
   """
   def import_rows(%Scope{} = scope, %ClassGroup{} = cg, rows) do
     scope
     |> preview_rows(cg, rows)
     |> Enum.reduce(
-      %{created: 0, reenrolled: 0, conflicts: [], guardian_issues: []},
-      fn {row, action}, acc ->
+      %{created: 0, reenrolled: 0, skipped: [], guardian_issues: []},
+      fn {row, action, parent}, acc ->
         case action do
           :create ->
-            attrs =
-              Map.take(row, [:full_name, :sex, :matricule, :repeater, :birth_date, :birth_place])
+            attrs = Map.take(row, [:full_name, :sex, :matricule, :repeater, :birth_date])
 
             case enroll_new(scope, cg, attrs) do
               {:ok, %{student: student}} ->
-                attach_guardian(%{acc | created: acc.created + 1}, scope, student, row)
+                attach_guardian(%{acc | created: acc.created + 1}, scope, student, row, parent)
 
               {:error, reason} ->
-                conflict(acc, row, reason)
+                skip(acc, row, reason)
             end
 
-          {:reenroll, student} ->
+          {:reenroll, student, _last} ->
             case enroll_existing(scope, cg, student, %{repeater: row[:repeater] || false}) do
               {:ok, _} ->
-                attach_guardian(%{acc | reenrolled: acc.reenrolled + 1}, scope, student, row)
+                attach_guardian(%{acc | reenrolled: acc.reenrolled + 1}, scope, student, row, parent)
 
               {:error, reason} ->
-                conflict(acc, row, reason)
+                skip(acc, row, reason)
             end
 
-          {:conflict, reason} ->
-            conflict(acc, row, reason)
+          {:conflict, reason, _detail} ->
+            skip(acc, row, reason)
+
+          {:error, reason} ->
+            skip(acc, row, reason)
         end
       end
     )
+    |> Map.update!(:skipped, &Enum.reverse/1)
+    |> Map.update!(:guardian_issues, &Enum.reverse/1)
   end
 
-  # Spec KLM1: the row's parent, matched by phone or created, becomes a guardian.
-  defp attach_guardian(acc, _scope, _student, %{guardian: nil}), do: acc
-  defp attach_guardian(acc, _scope, _student, row) when not is_map_key(row, :guardian), do: acc
+  # The row's parent, matched by phone or created, becomes a guardian. The
+  # lookup runs again here: an earlier row of the same paste may have just
+  # created that parent (siblings).
+  defp attach_guardian(acc, _scope, _student, _row, nil), do: acc
 
-  defp attach_guardian(acc, scope, student, %{guardian: %{full_name: name, phone: phone}}) do
+  defp attach_guardian(acc, _scope, student, _row, {:invalid, phone}),
+    do: guardian_issue(acc, student, phone, :invalid_phone)
+
+  defp attach_guardian(acc, scope, student, %{guardian: %{full_name: name, phone: phone}}, _parent) do
     result =
       case find_guardians_by_phone(scope, phone) do
         [guardian | _] ->
@@ -584,58 +608,76 @@ defmodule TeacherAssistant.Enrollment do
       end
 
     case result do
-      {:ok, _} ->
-        acc
-
-      {:error, :already_linked} ->
-        acc
-
-      {:error, reason} ->
-        %{
-          acc
-          | guardian_issues:
-              acc.guardian_issues ++ [%{full_name: student.full_name, reason: reason}]
-        }
+      {:ok, _} -> acc
+      {:error, :already_linked} -> acc
+      {:error, reason} -> guardian_issue(acc, student, phone, reason)
     end
   end
 
+  defp guardian_issue(acc, student, phone, reason) do
+    issue = %{full_name: student.full_name, phone: phone, reason: reason}
+    %{acc | guardian_issues: [issue | acc.guardian_issues]}
+  end
+
+  defp classify_parent(_scope, nil), do: nil
+
+  defp classify_parent(scope, %{phone: phone}) do
+    if Guardian.Phone.valid?(phone) do
+      case find_guardians_by_phone(scope, phone) do
+        [guardian | _] -> {:existing, guardian}
+        [] -> {:new, phone}
+      end
+    else
+      {:invalid, phone}
+    end
+  end
+
+  defp classify_row(_scope, _cg, %{sex: nil}), do: {:error, :sex}
   defp classify_row(_scope, _cg, %{matricule: nil}), do: :create
   defp classify_row(_scope, _cg, %{matricule: ""}), do: :create
 
-  defp classify_row(%Scope{} = scope, cg, %{matricule: mat}) do
-    case Student
-         |> Ash.Query.for_read(:by_matricule, %{matricule: mat}, scope: scope)
-         |> Ash.read_one() do
-      {:ok, nil} ->
-        :create
-
-      {:ok, student} ->
-        if enrolled_this_year?(scope, student, cg),
-          do: {:conflict, :already_enrolled},
-          else: {:reenroll, student}
-
-      _ ->
-        {:conflict, :lookup_failed}
+  defp classify_row(%Scope{} = scope, cg, %{matricule: mat} = row) do
+    Student
+    |> Ash.Query.for_read(:by_matricule, %{matricule: mat}, scope: scope)
+    |> Ash.Query.load(enrollments: [:class_group, :academic_year])
+    |> Ash.read_one()
+    |> case do
+      {:ok, nil} -> :create
+      {:ok, student} -> classify_known(student, cg, row)
+      _ -> {:conflict, :lookup_failed, nil}
     end
   end
 
-  defp enrolled_this_year?(%Scope{} = scope, student, cg) do
-    Enrollment
-    |> Ash.Query.for_read(
-      :for_student_and_year,
-      %{
-        student_id: student.id,
-        academic_year_id: cg.academic_year_id
-      },
-      scope: scope
-    )
-    |> Ash.read!() != []
+  defp classify_known(student, cg, row) do
+    this_year = Enum.find(student.enrollments, &(&1.academic_year_id == cg.academic_year_id))
+
+    cond do
+      not same_name?(student.full_name, row.full_name) ->
+        {:conflict, :matricule_taken, student.full_name}
+
+      this_year ->
+        {:conflict, :already_enrolled, this_year.class_group.label}
+
+      true ->
+        last = Enum.max_by(student.enrollments, & &1.academic_year.start_date, Date, fn -> nil end)
+        {:reenroll, student, last}
+    end
   end
 
-  defp conflict(acc, row, %Ash.Error.Forbidden{}), do: conflict(acc, row, :forbidden)
+  # Case-, accent- and word-order-insensitive.
+  defp same_name?(a, b), do: name_words(a) == name_words(b)
 
-  defp conflict(acc, row, reason),
-    do: %{acc | conflicts: acc.conflicts ++ [Map.put(row, :reason, reason)]}
+  defp name_words(name) do
+    name
+    |> String.normalize(:nfd)
+    |> String.replace(~r/\p{Mn}/u, "")
+    |> String.downcase()
+    |> String.split()
+    |> Enum.sort()
+  end
+
+  defp skip(acc, row, %Ash.Error.Forbidden{}), do: skip(acc, row, :forbidden)
+  defp skip(acc, row, reason), do: %{acc | skipped: [Map.put(row, :reason, reason) | acc.skipped]}
 
   defp duplicate_matricule?(error) do
     error |> Exception.message() |> String.contains?("matricule")
