@@ -302,19 +302,19 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         on_close={JS.push("close_drawer")}
       >
         <form id="class-settings-form" phx-submit="save_settings" class="space-y-2">
-          <label class="block space-y-1">
-            <span class="ta-eyebrow block">{gettext("Effectif maximum de la classe")}</span>
-            <input
-              id="class-max-size"
-              type="number"
-              name="max_size"
-              min="1"
-              max="200"
-              value={@cg.max_size}
-              placeholder={school_max_placeholder(@current_scope)}
-              class="input input-sm w-full"
-            />
+          <label for="class-max-size" class="ta-eyebrow block">
+            {gettext("Effectif maximum de la classe")}
           </label>
+          <.input
+            id="class-max-size"
+            type="number"
+            name="max_size"
+            min="1"
+            max="200"
+            value={@cg.max_size}
+            placeholder={school_max_placeholder(@current_scope)}
+            class="input input-sm w-full"
+          />
           <p class="text-xs text-base-content/60">
             {gettext(
               "Laissez vide pour suivre l'effectif de l'établissement. Alerte au-delà, sans bloquer."
@@ -377,9 +377,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       phx-submit="enroll_new"
       class="space-y-4"
     >
-      <label class="block space-y-1">
-        <span class="ta-eyebrow block">{gettext("Nom et prénoms")}</span>
-        <input
+      <div class="space-y-1">
+        <label for="enroll-full-name" class="ta-eyebrow block">{gettext("Nom et prénoms")}</label>
+        <.input
           id="enroll-full-name"
           type="text"
           name="enroll[full_name]"
@@ -387,7 +387,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           placeholder={gettext("NOM Prénoms")}
           class="input input-sm w-full"
         />
-      </label>
+      </div>
       <fieldset>
         <legend class="ta-eyebrow mb-2">{gettext("Sexe")}</legend>
         <div class="flex gap-2">
@@ -403,45 +403,50 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         </div>
       </fieldset>
       <div class="grid gap-3 sm:grid-cols-2">
-        <label class="block space-y-1">
-          <span class="ta-eyebrow block">{gettext("Date de naissance")}</span>
-          <input
+        <div class="space-y-1">
+          <label for="enroll-birth-date" class="ta-eyebrow block">
+            {gettext("Date de naissance")}
+          </label>
+          <.input
+            id="enroll-birth-date"
             type="date"
             name="enroll[birth_date]"
             value={@enroll["birth_date"]}
             class="input input-sm w-full"
           />
-        </label>
-        <label class="block space-y-1">
-          <span class="ta-eyebrow block">{gettext("Lieu de naissance")}</span>
-          <input
+        </div>
+        <div class="space-y-1">
+          <label for="enroll-birth-place" class="ta-eyebrow block">
+            {gettext("Lieu de naissance")}
+          </label>
+          <.input
+            id="enroll-birth-place"
             type="text"
             name="enroll[birth_place]"
             value={@enroll["birth_place"]}
             class="input input-sm w-full"
           />
-        </label>
+        </div>
       </div>
-      <label class="block space-y-1">
-        <span class="ta-eyebrow block">{gettext("Matricule (facultatif)")}</span>
-        <input
+      <div class="space-y-1">
+        <label for="enroll-matricule" class="ta-eyebrow block">
+          {gettext("Matricule (facultatif)")}
+        </label>
+        <.input
+          id="enroll-matricule"
           type="text"
           name="enroll[matricule]"
           value={@enroll["matricule"]}
           class="input input-sm w-full"
         />
-      </label>
-      <label class="flex cursor-pointer items-center gap-2 text-sm">
-        <input type="hidden" name="enroll[repeater]" value="false" />
-        <input
-          type="checkbox"
-          name="enroll[repeater]"
-          value="true"
-          checked={@enroll["repeater"] == "true"}
-          class="checkbox checkbox-sm"
-        />
-        {gettext("Redoublant dans ce niveau")}
-      </label>
+      </div>
+      <.input
+        id="enroll-repeater"
+        type="checkbox"
+        name="enroll[repeater]"
+        checked={@enroll["repeater"] == "true"}
+        label={gettext("Redoublant dans ce niveau")}
+      />
 
       <fieldset
         :if={@can_manage_guardians?}
@@ -449,7 +454,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         class="space-y-3 rounded-[0.6rem] border border-base-300 p-3"
       >
         <legend class="ta-eyebrow px-1">{gettext("Parent ou tuteur · recommandé")}</legend>
-        <input
+        <.input
           id="enroll-parent-phone"
           type="tel"
           inputmode="tel"
@@ -487,7 +492,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           </label>
         </div>
         <div :if={@parent_matches == []} class="grid gap-2 sm:grid-cols-[1fr_auto]">
-          <input
+          <.input
             id="enroll-parent-name"
             type="text"
             name="enroll[parent_name]"
@@ -496,26 +501,22 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             aria-label={gettext("Nom du parent")}
             class="input input-sm w-full"
           />
-          <select
+          <.input
+            id="enroll-parent-relationship"
+            type="select"
             name="enroll[parent_relationship]"
+            value={@enroll["parent_relationship"]}
+            options={Enum.map(GuardianRelationship.values(), &{GuardianRelationship.label(&1), &1})}
             aria-label={gettext("Lien")}
             class="select select-sm"
-          >
-            <option
-              :for={r <- GuardianRelationship.values()}
-              value={r}
-              selected={@enroll["parent_relationship"] == to_string(r)}
-            >
-              {GuardianRelationship.label(r)}
-            </option>
-          </select>
+          />
         </div>
       </fieldset>
     </form>
 
     <div :if={@enroll_mode == :existing} class="space-y-3">
       <form id="enroll-search-form" phx-change="search">
-        <input
+        <.input
           type="search"
           id="enroll-search"
           name="q"
@@ -587,7 +588,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       # Same level first, then the rest by label.
       transfer_targets: Enum.sort_by(others, &{&1.level != cg.level, &1.label})
     )
-    |> ClassShell.assign_shell()
+    |> ClassShell.assign_shell(count: length(roster))
   end
 
   defp roster_filters, do: @roster_filters
@@ -814,7 +815,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:noreply,
        socket
        |> assign(cg: cg, drawer: nil)
-       |> ClassShell.assign_shell()
+       |> ClassShell.assign_shell(count: length(socket.assigns.roster))
        |> put_flash(:info, gettext("Effectif maximum enregistré."))}
     else
       :invalid ->

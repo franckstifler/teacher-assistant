@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
       year = scope.current_academic_year
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
       terms = if year, do: Organization.list_terms(scope, year), else: []
+      roster = Enrollment.list_roster(scope, cg)
 
       {:ok,
        socket
@@ -27,10 +28,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          sequences: sequences,
          terms: terms,
          can_edit?: Discipline.can_manage_conduct?(scope),
-         roster: Enrollment.list_roster(scope, cg),
+         roster: roster,
          sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use
        )
-       |> ClassShell.assign_shell()
+       |> ClassShell.assign_shell(count: length(roster))
        |> select_period(nil)}
     else
       false ->

@@ -42,30 +42,38 @@ defmodule TeacherAssistantWeb.School.ClassShell do
 
   @doc """
   Everything the header and tab bar show, loaded once per page mount (and
-  again after a roster or assignment change, through `reload/2`).
+  again after a roster or assignment change). A page that has already read
+  the class's headcount (`count:`) or unassigned subjects (`unassigned:`)
+  passes them in `known`, so the shell does not read them again.
   """
-  def load(scope, %ClassGroup{} = cg) do
+  def load(scope, %ClassGroup{} = cg, known \\ []) do
     tabs = visible_tabs(scope, cg)
+
+    count =
+      Keyword.get_lazy(known, :count, fn -> length(Enrollment.list_roster(scope, cg)) end)
+
+    unassigned =
+      cond do
+        :teachings not in tabs -> 0
+        Keyword.has_key?(known, :unassigned) -> length(known[:unassigned])
+        true -> length(Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
+      end
 
     %{
       tabs: Enum.map(tabs, &{&1, tab_path(scope, cg, &1)}),
-      capacity: Enrollment.capacity(scope, cg),
+      capacity: Enrollment.capacity(scope, cg, count),
       form_master: Enrollment.form_master(scope, cg),
-      unassigned:
-        if(:teachings in tabs,
-          do: length(Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id]),
-          else: 0
-        )
+      unassigned: unassigned
     }
   end
 
-  @doc "Assigns `:shell` on the socket."
-  def assign_shell(socket),
+  @doc "Assigns `:shell` on the socket (see `load/3` for `known`)."
+  def assign_shell(socket, known \\ []),
     do:
       Phoenix.Component.assign(
         socket,
         :shell,
-        load(socket.assigns.current_scope, socket.assigns.cg)
+        load(socket.assigns.current_scope, socket.assigns.cg, known)
       )
 
   attr :cg, ClassGroup, required: true

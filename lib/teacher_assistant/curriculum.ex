@@ -1505,24 +1505,37 @@ defmodule TeacherAssistant.Curriculum do
   have no assignment yet, sorted by name (spec 2026-10-08 §1). Three reads,
   whatever the number of classes.
   """
-  def unassigned_subjects_by_class(%Scope{} = scope, classes) do
+  def unassigned_subjects_by_class(%Scope{} = scope, classes),
+    do:
+      scope
+      |> assignment_status_by_class(classes)
+      |> Map.new(fn {id, s} -> {id, s.unassigned} end)
+
+  @doc """
+  Per class id, `%{assigned: count, unassigned: subjects}`: how many assignments the
+  class has and the expected subjects still without one (see
+  `unassigned_subjects_by_class/2`), from the same three reads.
+  """
+  def assignment_status_by_class(%Scope{} = scope, classes) do
     cells = coefficient_cells(scope)
     subjects = list_subjects(scope)
-    assigned = scope |> assigned_pairs(classes) |> MapSet.new()
+    pairs = assigned_pairs(scope, classes)
+    assigned = MapSet.new(pairs)
+    counts = Enum.frequencies_by(pairs, &elem(&1, 0))
 
     Map.new(classes, fn c ->
       {c.id,
-       subjects
-       |> Enum.filter(
-         &(not MapSet.member?(assigned, {c.id, &1.id}) and AssignmentGrid.expected?(cells, c, &1))
-       )
-       |> Enum.sort_by(&String.downcase(&1.name))}
+       %{
+         assigned: Map.get(counts, c.id, 0),
+         unassigned:
+           subjects
+           |> Enum.filter(
+             &(not MapSet.member?(assigned, {c.id, &1.id}) and
+                 AssignmentGrid.expected?(cells, c, &1))
+           )
+           |> Enum.sort_by(&String.downcase(&1.name))
+       }}
     end)
-  end
-
-  @doc "Per class id, how many assignments the class has (one read)."
-  def assignment_counts_by_class(%Scope{} = scope, classes) do
-    scope |> assigned_pairs(classes) |> Enum.frequencies_by(&elem(&1, 0))
   end
 
   defp assigned_pairs(scope, classes) do

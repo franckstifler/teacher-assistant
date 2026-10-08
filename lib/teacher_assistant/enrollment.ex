@@ -13,9 +13,7 @@ defmodule TeacherAssistant.Enrollment do
   }
 
   alias TeacherAssistant.Academics.TeachingContext
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.Checks
-  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Scope
 
   resources do
@@ -122,22 +120,13 @@ defmodule TeacherAssistant.Enrollment do
   @doc """
   Sets (or clears, with `user_id: nil`) `cg`'s form master. A non-`nil`
   `user_id` must name an active `SchoolMembership` in `cg`'s own workspace —
-  `User` isn't multitenant, so this is the tenant check for it (mirrors
-  `Curriculum.assign_teacher/4`'s `assignable_ws/2`).
+  `User` isn't multitenant, so `ClassGroup.FormMasterIsMember` is the tenant
+  check for it, on every write of the field.
   """
-  def set_form_master(%Scope{} = scope, %ClassGroup{} = cg, nil) do
-    cg
-    |> Ash.Changeset.for_update(:update, %{form_master_user_id: nil}, scope: scope)
-    |> Ash.update()
-  end
-
   def set_form_master(%Scope{} = scope, %ClassGroup{} = cg, user_id) do
-    with {:ok, _membership} <-
-           Accounts.fetch_school_membership(scope, %User{id: user_id}) do
-      cg
-      |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id}, scope: scope)
-      |> Ash.update()
-    end
+    cg
+    |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id}, scope: scope)
+    |> Ash.update()
   end
 
   @doc "Sets (or clears, with nil) the class's own maximum size."
@@ -402,9 +391,12 @@ defmodule TeacherAssistant.Enrollment do
   own `max_size`, else the school's — a warning, never a block. `near?` marks
   90 % and more while still within the limit.
   """
-  def capacity(%Scope{} = scope, %ClassGroup{} = cg) do
-    capacity_of(length(list_roster(scope, cg)), cg.max_size || school_max_size(scope))
-  end
+  def capacity(%Scope{} = scope, %ClassGroup{} = cg),
+    do: capacity(scope, cg, length(list_roster(scope, cg)))
+
+  @doc "The capacity map for a headcount the caller already knows."
+  def capacity(%Scope{} = scope, %ClassGroup{} = cg, count),
+    do: capacity_of(count, cg.max_size || school_max_size(scope))
 
   @doc "The capacity map for a known headcount and maximum (nil when none is set)."
   def capacity_of(count, max) when is_integer(count) do

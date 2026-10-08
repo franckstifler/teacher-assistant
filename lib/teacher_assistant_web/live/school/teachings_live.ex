@@ -355,13 +355,16 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
     scope = socket.assigns.current_scope
     cg = socket.assigns.cg
     assignments = Curriculum.list_assignments_for_class(scope, cg)
+    students = Enrollment.list_students(scope, cg)
+    unassigned = Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id]
 
     socket
     |> assign(
       assignments: assignments,
       combinable_siblings:
         combinable_siblings_by_context(scope, assignments, socket.assigns.can_manage_assignments?),
-      roster_students: Enrollment.list_students(scope, cg),
+      roster_students: students,
+      unassigned: unassigned,
       exemptions:
         for(
           tc <- assignments,
@@ -370,8 +373,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
           do: {tc.id, Curriculum.exempt_student_ids(scope, tc)}
         )
     )
-    |> assign(unassigned: Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
-    |> ClassShell.assign_shell()
+    |> ClassShell.assign_shell(count: length(students), unassigned: unassigned)
   end
 
   defp combinable_siblings_by_context(scope, assignments, true) do
@@ -522,7 +524,10 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
       {:noreply,
        socket
        |> assign(cg: cg)
-       |> ClassShell.assign_shell()
+       |> ClassShell.assign_shell(
+         count: length(socket.assigns.roster_students),
+         unassigned: socket.assigns.unassigned
+       )
        |> put_flash(:info, message)}
     else
       {:error, error} -> {:noreply, Authz.put_failure(socket, error)}

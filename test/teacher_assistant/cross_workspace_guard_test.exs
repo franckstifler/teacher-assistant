@@ -127,8 +127,20 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
 
   test "Enrollment.set_form_master requires an active membership in the class group's own workspace",
        ctx do
-    assert {:error, :not_a_member} =
+    assert {:error, %Ash.Error.Invalid{}} =
              Enrollment.set_form_master(ctx.scope_a, ctx.cg_a, ctx.head_b.id)
+
+    # The same check guards a class created with a form master from another school.
+    assert {:error, %Ash.Error.Invalid{}} =
+             Enrollment.create_class_group(
+               ctx.scope_a,
+               TeacherAssistant.Organization.current_academic_year(ctx.scope_a),
+               %{
+                 label: "6e Z",
+                 level: "6ème",
+                 form_master_user_id: ctx.head_b.id
+               }
+             )
 
     {:ok, reloaded} = Enrollment.fetch_owned_class_group(ctx.scope_a, ctx.cg_a.id)
     assert reloaded.form_master_user_id == nil

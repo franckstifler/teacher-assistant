@@ -84,6 +84,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
 
   validations do
     validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+    validate TeacherAssistant.Academics.ClassGroup.FormMasterIsMember, on: [:create, :update]
   end
 
   multitenancy do

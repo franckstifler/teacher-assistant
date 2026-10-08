@@ -338,7 +338,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             {gettext("Autre…")}
           </.chip_radio>
         </div>
-        <input
+        <.input
           :if={@nc.level_choice == other_level()}
           id="nc-other-level"
           type="text"
@@ -370,9 +370,9 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       </fieldset>
 
       <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block space-y-1">
-          <span class="ta-eyebrow block">{gettext("Suffixe")}</span>
-          <input
+        <div class="space-y-1">
+          <label for="nc-suffix" class="ta-eyebrow block">{gettext("Suffixe")}</label>
+          <.input
             id="nc-suffix"
             type="text"
             name="nc[suffix]"
@@ -381,9 +381,11 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             class="input input-sm w-full"
           />
           <span class="block text-xs text-base-content/60">{@nc.suffix_hint}</span>
-        </label>
-        <label class="block space-y-1">
-          <span class="ta-eyebrow block">{gettext("Effectif maximum")}</span>
+        </div>
+        <div class="space-y-1">
+          <label for={@form[:max_size].id} class="ta-eyebrow block">
+            {gettext("Effectif maximum")}
+          </label>
           <.input
             field={@form[:max_size]}
             type="number"
@@ -395,11 +397,13 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           <span class="block text-xs text-base-content/60">
             {gettext("Alerte au-delà, sans bloquer")}
           </span>
-        </label>
+        </div>
       </div>
 
-      <label class="block space-y-1">
-        <span class="ta-eyebrow block">{gettext("Professeur principal (facultatif)")}</span>
+      <div class="space-y-1">
+        <label for={@form[:form_master_user_id].id} class="ta-eyebrow block">
+          {gettext("Professeur principal (facultatif)")}
+        </label>
         <.input
           field={@form[:form_master_user_id]}
           type="select"
@@ -407,7 +411,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           options={Enum.map(@members, &{User.display_name(&1.user), &1.user_id})}
           class="select select-sm w-full"
         />
-      </label>
+      </div>
 
       <div
         id="nc-preview"
@@ -502,8 +506,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     classes =
       if year do
         cgs = Enrollment.list_class_groups(scope, year, load: [:enrollment_count, :form_master])
-        unassigned = Curriculum.unassigned_subjects_by_class(scope, cgs)
-        assigned = Curriculum.assignment_counts_by_class(scope, cgs)
+        status = Curriculum.assignment_status_by_class(scope, cgs)
         school_max = socket.assigns.profile && socket.assigns.profile.max_class_size
 
         cgs
@@ -514,8 +517,8 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             count: cg.enrollment_count,
             capacity: Enrollment.capacity_of(cg.enrollment_count, cg.max_size || school_max),
             pp: cg.form_master && User.display_name(cg.form_master),
-            unassigned: length(unassigned[cg.id]),
-            assigned: Map.get(assigned, cg.id, 0),
+            unassigned: length(status[cg.id].unassigned),
+            assigned: status[cg.id].assigned,
             cycle: SchoolTemplates.cycle(cg.level, cg.subsystem),
             search: fold("#{cg.label} #{cg.level} #{cg.serie}")
           }
