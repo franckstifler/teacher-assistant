@@ -107,3 +107,6 @@ msgstr ""
 
 msgid "is not a valid phone number"
 msgstr "n'est pas un numéro de téléphone valide"
+
+msgid "length must be greater than or equal to %{min}"
+msgstr "doit contenir au moins %{min} caractères"

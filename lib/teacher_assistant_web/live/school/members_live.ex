@@ -142,8 +142,8 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                     )
                   } />
                 </td>
-                <td :if={@can_manage_staff?}>
-                  <div class="flex flex-wrap justify-end gap-1">
+                <td :if={@can_manage_staff?} class="w-px whitespace-nowrap">
+                  <div class="flex flex-col items-end gap-1">
                     <button
                       :if={MapSet.member?(@resettable_member_ids, m.id)}
                       id={"reset-password-#{m.id}"}
@@ -151,9 +151,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                       class="btn btn-ghost btn-xs"
                       phx-click="ask_reset_password"
                       phx-value-id={m.id}
+                      title={gettext("Réinitialiser le mot de passe")}
+                      aria-label={gettext("Réinitialiser le mot de passe")}
                     >
                       <.icon name="hero-key" class="size-3.5" />
-                      {gettext("Réinitialiser le mot de passe")}
+                      {gettext("Réinitialiser")}
                     </button>
                     <button
                       id={"member-deactivate-#{m.id}"}
