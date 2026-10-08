@@ -110,6 +110,16 @@ defmodule TeacherAssistant.Discipline do
     |> Ash.count!(scope: scope)
   end
 
+  @doc "Vie scolaire redesign §2.4: how many students have a sanction their parents were not told about."
+  def count_families_to_notify(%Scope{} = scope, %AcademicYear{id: year_id}) do
+    SanctionEntry
+    |> Ash.Query.filter(is_nil(parents_notified_on) and enrollment.academic_year_id == ^year_id)
+    |> Ash.Query.select([:enrollment_id])
+    |> Ash.read!(scope: scope)
+    |> Enum.uniq_by(& &1.enrollment_id)
+    |> length()
+  end
+
   @doc """
   Records a sanction for `enrollment`, attributed to the scope's user. `attrs`
   carries `type` (atom), `date`, optional `reason`, `duration_days`, `duration_hours`.

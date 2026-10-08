@@ -42,7 +42,10 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/sanctions")
     rows = view |> element("#sanction-rows") |> render()
     assert rows =~ "Awa Nkolo" and rows =~ "Bob Eyong"
-    assert rows =~ "À notifier"
+    assert rows =~ "Marquer notifiés"
+    assert rows =~ "Consigne · 2 h"
+    assert rows =~ "12/09 · Insolence"
+    assert view |> element("#sanctions header") |> render() =~ "2 familles à prévenir"
 
     {:ok, view, _} = live(conn, ~p"/school/sanctions?class=#{ctx.cg_a.id}")
     refute view |> element("#sanction-rows") |> render() =~ "Bob Eyong"
@@ -78,6 +81,50 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     |> render_submit()
 
     assert Discipline.list_school_sanctions(ctx.scope, ctx.year, type: :avertissement).count == 1
+  end
+
+  test "a consigne asks for hours, an exclusion for days; a consigne without hours is refused",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+    view |> form("#student-search", %{"q" => "awa"}) |> render_change()
+    view |> element("#pick-#{ctx.awa_e.id}") |> render_click()
+
+    view |> element("#type-exclusion_temporaire") |> render_click()
+    assert has_element?(view, "#entry-days")
+    refute has_element?(view, "#entry-hours")
+
+    view |> element("#type-consigne") |> render_click()
+    assert has_element?(view, "#entry-hours")
+
+    view
+    |> form("#sanction-entry", %{"entry" => %{"date" => "2025-09-15"}})
+    |> render_submit()
+
+    assert render(view) =~ "Indiquez la durée de la consigne"
+
+    view
+    |> form("#sanction-entry", %{"entry" => %{"date" => "2025-09-15", "duration_hours" => "3"}})
+    |> render_submit()
+
+    assert [%{duration_hours: 3}] =
+             Discipline.list_school_sanctions(ctx.scope, ctx.year,
+               class_group_id: ctx.cg_a.id,
+               type: :consigne
+             ).results
+  end
+
+  test "the conseil de discipline explains who convenes it", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+    view |> element("#type-conseil_discipline") |> render_click()
+    assert view |> element("#type-note") |> render() =~ "convoqué par le chef"
+  end
+
+  test "« Marquer notifiés » works from the row", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+    view |> element("#notify-row-#{ctx.s1.id}") |> render_click()
+
+    assert view |> element("#sanction-#{ctx.s1.id}") |> render() =~ "Notifiés le"
+    assert view |> element("#sanctions header") |> render() =~ "1 famille à prévenir"
   end
 
   test "types switched off are not offered", %{conn: conn, scope: scope} do
@@ -121,9 +168,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     assert has_element?(view, "#sanctions-pager a", "2")
 
     # 52 sanctions, newest first: the oldest (2 Jan 2025) is on page 2 only.
-    refute view |> element("#sanction-rows") |> render() =~ "02/01/2025"
+    refute view |> element("#sanction-rows") |> render() =~ "02/01"
     {:ok, view, _} = live(conn, ~p"/school/sanctions?page=2")
-    assert view |> element("#sanction-rows") |> render() =~ "02/01/2025"
+    assert view |> element("#sanction-rows") |> render() =~ "02/01"
   end
 
   test "the menu badge follows « Marquer les parents notifiés »",
