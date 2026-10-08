@@ -31,6 +31,7 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
         :date,
         :reason,
         :duration_days,
+        :duration_hours,
         :issued_by_user_id,
         :enrollment_id
       ],
@@ -39,6 +40,7 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
         :date,
         :reason,
         :duration_days,
+        :duration_hours,
         :issued_by_user_id
       ]
     ]
@@ -142,6 +144,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
   validations do
     validate {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
+
+    # Vie scolaire redesign §1.3: a consigne is given in hours.
+    validate present(:duration_hours),
+      where: [attribute_equals(:type, :consigne)],
+      on: [:create]
   end
 
   multitenancy do
@@ -157,6 +164,12 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     attribute :date, :date, allow_nil?: false, public?: true
     attribute :reason, :string, allow_nil?: true, public?: true
     attribute :duration_days, :integer, allow_nil?: true, public?: true
+
+    attribute :duration_hours, :integer,
+      allow_nil?: true,
+      public?: true,
+      constraints: [min: 1, max: 40]
+
     attribute :issued_by_user_id, :uuid, allow_nil?: true, public?: true
     attribute :parents_notified_on, :date, allow_nil?: true, public?: true
     attribute :parents_notified_by_user_id, :uuid, allow_nil?: true, public?: true

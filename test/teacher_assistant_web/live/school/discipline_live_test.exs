@@ -330,7 +330,11 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     enrollment: enrollment
   } do
     {:ok, _} =
-      Discipline.add_sanction(scope, enrollment, %{type: :consigne, date: ~D[2025-09-10]})
+      Discipline.add_sanction(scope, enrollment, %{
+        type: :consigne,
+        date: ~D[2025-09-10],
+        duration_hours: 2
+      })
 
     {:ok, profile} = Accounts.fetch_school_profile(scope)
 

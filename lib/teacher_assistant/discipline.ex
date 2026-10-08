@@ -60,7 +60,8 @@ defmodule TeacherAssistant.Discipline do
                  :blame,
                  :exclusion_temporaire,
                  :exclusion_definitive,
-                 :consigne
+                 :consigne,
+                 :conseil_discipline
                ])
 
   @doc """
@@ -111,10 +112,11 @@ defmodule TeacherAssistant.Discipline do
 
   @doc """
   Records a sanction for `enrollment`, attributed to the scope's user. `attrs`
-  carries `type` (atom), `date`, optional `reason`, optional `duration_days`.
+  carries `type` (atom), `date`, optional `reason`, `duration_days`, `duration_hours`.
   Rejects an invalid `type` with `{:error, :invalid_type}`, and a type the
   school switched off (spec KLM2) with `{:error, :type_not_in_use}`. `duration_days`
-  is persisted only for `:exclusion_temporaire`, forced to `nil` otherwise.
+  is persisted only for `:exclusion_temporaire` and `duration_hours` only for
+  `:consigne` (required there: `{:error, :duration_required}`), both `nil` otherwise.
   """
   def add_sanction(%Scope{} = scope, %Enrollment{} = e, attrs) do
     type = attrs[:type] || attrs["type"]
@@ -124,6 +126,9 @@ defmodule TeacherAssistant.Discipline do
       duration_days =
         if type == :exclusion_temporaire, do: attrs[:duration_days] || attrs["duration_days"]
 
+      duration_hours =
+        if type == :consigne, do: attrs[:duration_hours] || attrs["duration_hours"]
+
       SanctionEntry
       |> Ash.Changeset.for_create(
         :create,
@@ -132,6 +137,7 @@ defmodule TeacherAssistant.Discipline do
           date: attrs[:date] || attrs["date"],
           reason: attrs[:reason] || attrs["reason"],
           duration_days: duration_days,
+          duration_hours: duration_hours,
           issued_by_user_id: scope.current_user && scope.current_user.id,
           enrollment_id: e.id
         },
@@ -141,10 +147,18 @@ defmodule TeacherAssistant.Discipline do
       |> case do
         {:ok, sanction} -> {:ok, sanction}
         {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
-        {:error, _error} -> {:error, :sanction_failed}
+        {:error, error} -> {:error, sanction_error(error)}
       end
     end
   end
+
+  defp sanction_error(%Ash.Error.Invalid{errors: errors}) do
+    if Enum.any?(errors, &(Map.get(&1, :field) == :duration_hours)),
+      do: :duration_required,
+      else: :sanction_failed
+  end
+
+  defp sanction_error(_error), do: :sanction_failed
 
   @doc "Records that the parents were told about `sanction`, today, by the scope's user (V06)."
   def mark_parents_notified(%Scope{} = scope, %SanctionEntry{} = sanction) do

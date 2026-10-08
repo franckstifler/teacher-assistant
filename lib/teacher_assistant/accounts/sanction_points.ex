@@ -11,7 +11,8 @@ defmodule TeacherAssistant.Accounts.SanctionPoints do
           avertissement: "2",
           blame: "4",
           exclusion_temporaire: "6",
-          exclusion_definitive: "0"
+          exclusion_definitive: "0",
+          conseil_discipline: "0"
         ] do
       attribute type, :decimal,
         allow_nil?: false,

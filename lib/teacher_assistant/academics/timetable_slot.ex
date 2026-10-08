@@ -11,10 +11,14 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     table "timetable_slots"
     repo TeacherAssistant.Repo
 
-    # No `custom_indexes` block: under attribute multitenancy, the
-    # `teaching_context` reference's auto-generated FK index is already
-    # tenant-prefixed (`[:workspace_id, :teaching_context_id]`), covering the
-    # same lookup a hand-declared custom index of that shape would.
+    # The `teaching_context` reference's auto-generated FK index is already
+    # tenant-prefixed (`[:workspace_id, :teaching_context_id]`).
+    custom_indexes do
+      # Composite-FK target for roll-call reminders: attribute multitenancy
+      # prefixes this to (workspace_id, id).
+      index [:id], unique: true
+    end
+
     references do
       reference :class_group,
         on_delete: :delete,

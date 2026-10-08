@@ -23,7 +23,11 @@ defmodule TeacherAssistant.DisciplineSchoolSanctionsTest do
     {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.awa, %{type: :blame, date: ~D[2025-09-12]})
 
     {:ok, _} =
-      Discipline.add_sanction(ctx.scope, ctx.bob, %{type: :consigne, date: ~D[2025-09-11]})
+      Discipline.add_sanction(ctx.scope, ctx.bob, %{
+        type: :consigne,
+        date: ~D[2025-09-11],
+        duration_hours: 2
+      })
 
     {:ok, _} = Discipline.mark_parents_notified(ctx.scope, s1)
 

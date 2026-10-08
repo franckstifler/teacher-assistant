@@ -22,7 +22,8 @@ defmodule TeacherAssistant.Academics.SchoolLifeRulesTest do
       "avertissement" => "2",
       "blame" => "4",
       "exclusion_temporaire" => "6",
-      "exclusion_definitive" => "0"
+      "exclusion_definitive" => "0",
+      "conseil_discipline" => "0"
     },
     "sanction_types_in_use" =>
       ~w(consigne avertissement blame exclusion_temporaire exclusion_definitive)

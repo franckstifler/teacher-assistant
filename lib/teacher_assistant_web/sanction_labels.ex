@@ -10,11 +10,21 @@ defmodule TeacherAssistantWeb.SanctionLabels do
 
   def type_label(type), do: SanctionType.label(type)
 
-  def sanction_label(%{type: :exclusion_temporaire, duration_days: days}) when is_integer(days) do
-    "#{type_label(:exclusion_temporaire)} (#{days} #{gettext("j")})"
+  def sanction_label(%{type: type} = sanction) do
+    case duration(sanction) do
+      nil -> type_label(type)
+      text -> "#{type_label(type)} (#{text})"
+    end
   end
 
-  def sanction_label(%{type: type}), do: type_label(type)
+  @doc "« 3 j » for an exclusion temporaire, « 2 h » for a consigne, else nil."
+  def duration(%{type: :exclusion_temporaire, duration_days: days}) when is_integer(days),
+    do: "#{days} #{gettext("j")}"
+
+  def duration(%{type: :consigne, duration_hours: hours}) when is_integer(hours),
+    do: "#{hours} #{gettext("h")}"
+
+  def duration(_sanction), do: nil
 
   def sanctions_line([]), do: gettext("Aucune sanction")
   def sanctions_line(sanctions), do: sanctions |> Enum.map(&sanction_label/1) |> Enum.join(" · ")

@@ -11,7 +11,8 @@ defmodule TeacherAssistant.Academics.SchoolLifeRules do
     avertissement: Decimal.new(2),
     blame: Decimal.new(4),
     exclusion_temporaire: Decimal.new(6),
-    exclusion_definitive: Decimal.new(0)
+    exclusion_definitive: Decimal.new(0),
+    conseil_discipline: Decimal.new(0)
   }
 
   defstruct late_as_absence_minutes: nil,
@@ -35,7 +36,13 @@ defmodule TeacherAssistant.Academics.SchoolLifeRules do
   end
 
   defp points(nil), do: @default_points
-  defp points(%{} = embedded), do: Map.new(SanctionType.values(), &{&1, Map.fetch!(embedded, &1)})
+  # A type added after the school saved its points (e.g. :conseil_discipline) takes the default.
+  defp points(%{} = embedded),
+    do:
+      Map.new(
+        SanctionType.values(),
+        &{&1, Map.get(embedded, &1) || Map.fetch!(@default_points, &1)}
+      )
 
   @doc "The settings page's worked example: 6 unjustified hours, 2 lates, 1 avertissement."
   def example_mark(%__MODULE__{} = rules) do

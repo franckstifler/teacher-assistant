@@ -41,6 +41,14 @@ defmodule TeacherAssistantWeb.NotificationText do
     )
   end
 
+  def text(%{kind: :roll_call_reminder, params: p}) do
+    gettext("Appel non fait : %{class} · %{time} · %{subject}",
+      class: get(p, "class"),
+      time: get(p, "time"),
+      subject: get(p, "subject")
+    )
+  end
+
   @doc "« Aujourd'hui · 14:05 », « hier · 09:12 », else « ven. 2 oct. · 16:40 » (school time)."
   def when_text(%{inserted_at: %DateTime{} = at}) do
     local = Reference.now(at)

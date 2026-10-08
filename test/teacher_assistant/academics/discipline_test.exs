@@ -106,7 +106,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
       assert sanction.duration_days == 3
     end
 
-    test "drops duration_days (nil) for a consigne", ctx do
+    test "a consigne keeps its hours and drops duration_days", ctx do
       assert {:ok, %SanctionEntry{} = sanction} =
                Discipline.add_sanction(
                  ctx.scope,
@@ -114,11 +114,43 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
                  %{
                    type: :consigne,
                    date: ctx.seq1.start_date,
-                   duration_days: 2
+                   duration_days: 2,
+                   duration_hours: 3
                  }
                )
 
       assert sanction.duration_days == nil
+      assert sanction.duration_hours == 3
+    end
+
+    test "a consigne without hours is refused", ctx do
+      assert {:error, :duration_required} =
+               Discipline.add_sanction(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 %{type: :consigne, date: ctx.seq1.start_date}
+               )
+    end
+
+    test "hours are dropped for any other type", ctx do
+      assert {:ok, %SanctionEntry{duration_hours: nil}} =
+               Discipline.add_sanction(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 %{type: :blame, date: ctx.seq1.start_date, duration_hours: 2}
+               )
+    end
+
+    test "records a conseil de discipline, worth no conduct points by default", ctx do
+      assert {:ok, %SanctionEntry{type: :conseil_discipline}} =
+               Discipline.add_sanction(
+                 ctx.scope,
+                 ctx.enrollment1,
+                 %{type: :conseil_discipline, date: ctx.seq1.start_date}
+               )
+
+      rules = TeacherAssistant.Attendance.school_life_rules(ctx.scope)
+      assert Decimal.equal?(rules.sanction_points.conseil_discipline, 0)
     end
 
     test "drops duration_days (nil) for an avertissement", ctx do
@@ -228,7 +260,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
         Discipline.add_sanction(
           ctx.scope,
           ctx.enrollment1,
-          %{type: :consigne, date: Date.add(ctx.seq1.end_date, 1)}
+          %{type: :consigne, date: Date.add(ctx.seq1.end_date, 1), duration_hours: 2}
         )
 
       results = Discipline.list_sanctions(ctx.scope, ctx.cg, {:sequence, ctx.seq1})
@@ -372,7 +404,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
         Discipline.add_sanction(
           ctx.scope,
           ctx.enrollment1,
-          %{type: :consigne, date: ctx.seq1.start_date}
+          %{type: :consigne, date: ctx.seq1.start_date, duration_hours: 2}
         )
 
       {:ok, avertissement} =
@@ -397,7 +429,7 @@ defmodule TeacherAssistant.Academics.DisciplineTest do
         Discipline.add_sanction(
           ctx.scope,
           ctx.enrollment1,
-          %{type: :consigne, date: ctx.seq2.start_date}
+          %{type: :consigne, date: ctx.seq2.start_date, duration_hours: 2}
         )
 
       {:ok, _} = Discipline.set_conduct_mark(ctx.scope, ctx.enrollment1, ctx.seq1, 17)

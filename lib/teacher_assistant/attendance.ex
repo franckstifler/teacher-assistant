@@ -45,6 +45,8 @@ defmodule TeacherAssistant.Attendance do
 
       define :for_class_range, action: :for_class_range, args: [:class_group_id, :first, :last]
     end
+
+    resource TeacherAssistant.Academics.RollCallReminder
   end
 
   authorization do
@@ -63,6 +65,7 @@ defmodule TeacherAssistant.Attendance do
 
   defdelegate school_day(scope, date, now), to: TeacherAssistant.Academics.SchoolLife
   defdelegate teacher_day(scope, user, date, now), to: TeacherAssistant.Academics.SchoolLife
+  defdelegate remind_roll_call(scope, slot_id, date), to: TeacherAssistant.Academics.SchoolLife
 
   defdelegate teacher_missed_this_week(scope, user, today, now),
     to: TeacherAssistant.Academics.SchoolLife

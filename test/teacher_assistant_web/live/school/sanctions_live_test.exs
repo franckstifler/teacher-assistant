@@ -28,7 +28,13 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
         reason: "Insolence"
       })
 
-    {:ok, _} = Discipline.add_sanction(scope, bob_e, %{type: :consigne, date: ~D[2025-09-11]})
+    {:ok, _} =
+      Discipline.add_sanction(scope, bob_e, %{
+        type: :consigne,
+        date: ~D[2025-09-11],
+        duration_hours: 2
+      })
+
     %{cg_a: cg_a, awa_e: awa_e, s1: s1}
   end
 
@@ -107,7 +113,8 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
           {:ok, _} =
             Discipline.add_sanction(scope, awa_e, %{
               type: :consigne,
-              date: Date.add(~D[2025-01-01], day)
+              date: Date.add(~D[2025-01-01], day),
+              duration_hours: 1
             })
 
     {:ok, view, _} = live(conn, ~p"/school/sanctions")

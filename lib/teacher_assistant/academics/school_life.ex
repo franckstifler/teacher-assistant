@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   alias TeacherAssistant.Academics.{
     AttendanceEntry,
     Conduct,
+    RollCallReminder,
     EntryProgress,
     SchoolCalendar,
     SchoolTemplates,
@@ -28,7 +29,8 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   @doc """
   The school's roll calls on `date`: `rows` (classes having a slot that weekday,
   each with `cells` keyed by period id, `nil` where no slot), the lesson
-  `periods`, and the `missed` roll calls (class, period, teacher, subject).
+  `periods`, and the `missed` roll calls (class, period, teacher, subject,
+  `reminded?` once a « Relancer » was sent that day).
   """
   def school_day(%Scope{} = scope, %Date{} = date, %NaiveDateTime{} = now) do
     periods = lesson_periods(scope)
@@ -47,8 +49,72 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     %{
       periods: periods,
       rows: rows,
-      missed: cells |> Enum.filter(&(&1.status == :missed)) |> sort_cells()
+      missed: cells |> Enum.filter(&(&1.status == :missed)) |> sort_cells() |> reminded(scope)
     }
+  end
+
+  @doc """
+  « Relancer » (Vie scolaire redesign §1.1): notifies the teacher of the slot
+  whose roll call was not taken on `date`. Once per slot and day:
+  `{:error, :already_reminded}` after that.
+  """
+  def remind_roll_call(%Scope{} = scope, slot_id, %Date{} = date) do
+    with {:ok, slot} <-
+           Ash.get(TimetableSlot, slot_id,
+             scope: scope,
+             load: [:period, :class_group, teaching_context: [:catalog_subject]]
+           ),
+         {:ok, reminder} <- create_reminder(scope, slot, date) do
+      tc = slot.teaching_context
+
+      TeacherAssistant.Notifications.deliver(
+        scope,
+        :roll_call_reminder,
+        Enum.reject([tc.teacher_user_id], &(is_nil(&1) or &1 == scope.current_user.id)),
+        %{
+          class: slot.class_group.label,
+          time: Calendar.strftime(slot.period.start_time, "%H:%M"),
+          subject: subject_label(tc)
+        },
+        "/school/today"
+      )
+
+      {:ok, reminder}
+    end
+  end
+
+  defp create_reminder(scope, slot, date) do
+    RollCallReminder
+    |> Ash.Changeset.for_create(:create, %{timetable_slot_id: slot.id, date: date}, scope: scope)
+    |> Ash.create()
+    |> case do
+      {:error, %Ash.Error.Invalid{errors: errors} = error} ->
+        if Enum.any?(errors, &once_a_day?/1),
+          do: {:error, :already_reminded},
+          else: {:error, error}
+
+      other ->
+        other
+    end
+  end
+
+  defp once_a_day?(%Ash.Error.Changes.InvalidAttribute{private_vars: vars}) do
+    constraint = vars[:constraint]
+    is_binary(constraint) and String.contains?(constraint, "once_a_day")
+  end
+
+  defp once_a_day?(_error), do: false
+
+  defp reminded([], _scope), do: []
+
+  defp reminded([%{date: date} | _] = missed, scope) do
+    sent =
+      RollCallReminder
+      |> Ash.Query.for_read(:on_date, %{date: date}, scope: scope)
+      |> Ash.read!()
+      |> MapSet.new(& &1.timetable_slot_id)
+
+    Enum.map(missed, &Map.put(&1, :reminded?, MapSet.member?(sent, &1.slot_id)))
   end
 
   @doc "The user's slots on `date`, sorted by period, with the same statuses as `school_day/3`."
@@ -122,6 +188,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     tc = slot.teaching_context
 
     %{
+      slot_id: slot.id,
       date: date,
       period: slot.period,
       class_group: slot.class_group,

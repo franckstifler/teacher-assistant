@@ -60,14 +60,12 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
            Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
          {:ok, type} <- fetch_type(socket.assigns.sanction_types, params["type"]),
          {:ok, date} <- Date.from_iso8601(params["date"] || "") do
-      duration_days =
-        if type == :exclusion_temporaire, do: parse_duration(params["duration_days"])
-
       attrs = %{
         type: type,
         date: date,
         reason: presence(params["reason"]),
-        duration_days: duration_days
+        duration_days: parse_duration(params["duration_days"]),
+        duration_hours: parse_duration(params["duration_hours"])
       }
 
       case Discipline.add_sanction(scope, row.enrollment, attrs) do
@@ -77,6 +75,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
 
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, :duration_required} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Indiquez la durée de la consigne, en heures."))}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, gettext("Could not record the sanction."))}
@@ -213,7 +215,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 <th>{gettext("Élève")}</th>
                 <th>{gettext("Type")}</th>
                 <th>{gettext("Date")}</th>
-                <th>{gettext("Durée (jours)")}</th>
+                <th>{gettext("Durée")}</th>
                 <th>{gettext("Motif")}</th>
                 <th>{gettext("Émis par")}</th>
                 <th>{gettext("Parents")}</th>
@@ -225,9 +227,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 <td>{sanction.enrollment.student.full_name}</td>
                 <td>{SanctionLabels.type_label(sanction.type)}</td>
                 <td>{Date.to_string(sanction.date)}</td>
-                <td>
-                  {if sanction.type == :exclusion_temporaire, do: sanction.duration_days, else: "—"}
-                </td>
+                <td>{SanctionLabels.duration(sanction) || "—"}</td>
                 <td>{sanction.reason || "—"}</td>
                 <td>{sanction.issued_by_user_id || "—"}</td>
                 <td id={"parents-#{sanction.id}"}>
@@ -279,7 +279,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
         <div :if={@can_edit? and @period} class="ta-leaf space-y-3">
           <h2 class="text-sm font-semibold">{gettext("Ajouter une sanction")}</h2>
           <form id="discipline-add-form" phx-submit="add_sanction" class="space-y-2">
-            <div class="grid gap-2 sm:grid-cols-5">
+            <div class="grid gap-2 sm:grid-cols-6">
               <select name="enrollment_id" class="select select-bordered select-sm">
                 <option :for={row <- @roster} value={row.enrollment.id}>
                   {row.student.full_name}
@@ -299,6 +299,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 name="duration_days"
                 min="1"
                 placeholder={gettext("Durée (jours)")}
+                class="input input-bordered input-sm"
+              />
+              <input
+                type="number"
+                name="duration_hours"
+                min="1"
+                max="40"
+                placeholder={gettext("Durée (heures)")}
                 class="input input-bordered input-sm"
               />
               <input

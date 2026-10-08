@@ -200,7 +200,12 @@ defmodule TeacherAssistantWeb.School.BulletinLiveTest do
     date = seq.start_date
 
     {:ok, _} =
-      Discipline.add_sanction(scope, enr, %{type: :consigne, date: date, reason: "Bavardage"})
+      Discipline.add_sanction(scope, enr, %{
+        type: :consigne,
+        date: date,
+        reason: "Bavardage",
+        duration_hours: 2
+      })
 
     {:ok, _} =
       Discipline.add_sanction(
