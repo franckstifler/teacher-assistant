@@ -205,8 +205,8 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
           title={gettext("Aucune séquence")}
         />
 
-        <div :if={@period} class="overflow-x-auto">
-          <table id="sanctions-log" class="table table-zebra">
+        <div :if={@period} class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+          <table id="sanctions-log" class="table">
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>
@@ -325,7 +325,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
               {gettext("Saisir sur la page Conduite")}
             </.link>
           </div>
-          <table id="conduct-table" class="table table-zebra">
+          <table id="conduct-table" class="table">
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>

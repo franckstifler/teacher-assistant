@@ -158,8 +158,8 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
 
         <p class="text-sm text-base-content/70">{Date.to_string(@date)}</p>
 
-        <div class="overflow-x-auto">
-          <table id="register-grid" class="table table-zebra">
+        <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+          <table id="register-grid" class="table">
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>

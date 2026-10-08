@@ -534,4 +534,30 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       assert reloaded_tc.combined_course_id != nil
     end
   end
+
+  describe "unassigned subjects" do
+    test "the grid's subjects without a teacher are listed and pre-fill the add form", ctx do
+      %{conn: conn, cg: cg, scope: scope} = ctx
+
+      maths =
+        Enum.find(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
+
+      :ok =
+        TeacherAssistant.Curriculum.update_coefficient_grid(scope, %{
+          "cells" => %{
+            maths.id => %{
+              TeacherAssistant.Curriculum.cell_token({:francophone, "6ème", nil}) => "4"
+            }
+          },
+          "groups" => %{}
+        })
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      assert has_element?(view, "#unassigned-subjects", "Mathématiques")
+      assert has_element?(view, "#class-tab-teachings", "1")
+
+      view |> element("#prefill-#{maths.id}") |> render_click()
+      assert has_element?(view, "#assign-subject option[selected][value='Mathématiques']")
+    end
+  end
 end

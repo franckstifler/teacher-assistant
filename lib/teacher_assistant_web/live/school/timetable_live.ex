@@ -190,8 +190,8 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
           </a>
         </:actions>
 
-        <div class="overflow-x-auto">
-          <table id="timetable-grid" class="table table-zebra">
+        <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+          <table id="timetable-grid" class="table">
             <thead>
               <tr>
                 <th>{gettext("Période")}</th>

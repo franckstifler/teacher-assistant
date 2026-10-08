@@ -210,8 +210,8 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
             </p>
           </div>
 
-          <div class="overflow-x-auto">
-            <table id="results-table" class="table table-zebra">
+          <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+            <table id="results-table" class="table">
               <thead>
                 <tr>
                   <th>{gettext("Rang")}</th>

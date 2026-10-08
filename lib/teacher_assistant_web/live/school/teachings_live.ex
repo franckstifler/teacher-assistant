@@ -25,7 +25,8 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
          subject_options: Curriculum.subjects_taught_in(scope, cg),
          on_grid?: Curriculum.class_on_grid?(scope, cg),
          class_coefficients_allowed?: class_coefficients_allowed?(scope),
-         members: Accounts.list_members(scope)
+         members: Accounts.list_members(scope),
+         prefill_subject: nil
        )
        |> load_teachings()}
     else
@@ -38,28 +39,73 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <.class_shell cg={@cg} shell={@shell} tab={:teachings}>
-        <div id="teachings" class="ta-leaf space-y-3">
-          <form
-            :if={@can_manage_classes?}
-            id="form-master-form"
-            phx-change="set_form_master"
-            class="text-sm"
-          >
-            <label class="ta-eyebrow block mb-1">{gettext("Professeur principal")}</label>
-            <select name="user_id" class="select select-bordered select-sm w-full sm:w-80">
-              <option value="">{gettext("Aucun")}</option>
-              <option
-                :for={m <- @members}
-                value={m.user_id}
-                selected={m.user_id == @cg.form_master_user_id}
-              >
-                {Accounts.User.display_name(m.user)}
-              </option>
-            </select>
-          </form>
+        <div id="teachings" class="space-y-4">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <form
+              :if={@can_manage_classes?}
+              id="form-master-form"
+              phx-change="set_form_master"
+              class="text-sm"
+            >
+              <label class="ta-eyebrow block mb-1">{gettext("Professeur principal")}</label>
+              <select name="user_id" class="select select-bordered select-sm w-full sm:w-80">
+                <option value="">{gettext("Aucun")}</option>
+                <option
+                  :for={m <- @members}
+                  value={m.user_id}
+                  selected={m.user_id == @cg.form_master_user_id}
+                >
+                  {Accounts.User.display_name(m.user)}
+                </option>
+              </select>
+            </form>
+            <p id="teachings-summary" class="text-sm text-base-content/70">
+              {gettext("Grille %{level} :", level: @cg.level)}
+              <span class="font-semibold text-base-content">
+                {ngettext("%{count} matière", "%{count} matières", length(@assignments))} · {gettext(
+                  "%{hours} h / semaine",
+                  hours: Enum.sum_by(@assignments, & &1.weekly_hours)
+                )}
+              </span>
+            </p>
+          </div>
 
-          <div class="overflow-x-auto">
-            <table id="assignments" class="table table-zebra">
+          <div
+            :if={@unassigned != []}
+            id="unassigned-subjects"
+            role="status"
+            class="rounded-[0.6rem] border border-error/40 bg-error/10 px-4 py-3 text-sm"
+          >
+            <p class="font-semibold text-error">
+              {ngettext(
+                "%{count} matière sans enseignant :",
+                "%{count} matières sans enseignant :",
+                length(@unassigned)
+              )}
+              <%= for {subject, i} <- Enum.with_index(@unassigned) do %>
+                <span :if={i > 0}>, </span>
+                <button
+                  :if={@can_manage_assignments?}
+                  type="button"
+                  id={"prefill-#{subject.id}"}
+                  phx-click="prefill_subject"
+                  phx-value-subject={subject.name}
+                  class="link"
+                >
+                  {subject.name}
+                </button>
+                <span :if={!@can_manage_assignments?}>{subject.name}</span>
+              <% end %>
+            </p>
+            <p class="mt-1 text-base-content/70">
+              {gettext(
+                "Les notes et l'emploi du temps de ces matières restent bloqués tant qu'elles ne sont pas affectées."
+              )}
+            </p>
+          </div>
+
+          <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+            <table id="assignments" class="table">
               <thead>
                 <tr>
                   <th>{gettext("Matière")}</th>
@@ -264,9 +310,20 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
                   {Accounts.User.display_name(m.user)}
                 </option>
               </select>
-              <select name="assignment[subject]" class="select select-bordered select-sm">
+              <select
+                id="assign-subject"
+                name="assignment[subject]"
+                data-focus={JS.focus()}
+                class="select select-bordered select-sm"
+              >
                 <option value="">{gettext("Choisir une matière")}</option>
-                <option :for={s <- @subject_options} value={s.name}>{s.name}</option>
+                <option
+                  :for={s <- @subject_options}
+                  value={s.name}
+                  selected={s.name == @prefill_subject}
+                >
+                  {s.name}
+                </option>
               </select>
               <input
                 type="number"
@@ -305,6 +362,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
           do: {tc.id, Curriculum.exempt_student_ids(scope, tc)}
         )
     )
+    |> assign(unassigned: Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
     |> ClassShell.assign_shell()
   end
 
@@ -545,6 +603,13 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
       {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
       _ -> {:noreply, socket}
     end
+  end
+
+  def handle_event("prefill_subject", %{"subject" => name}, socket) do
+    {:noreply,
+     socket
+     |> assign(:prefill_subject, name)
+     |> push_event("js-exec", %{to: "#assign-subject", attr: "data-focus"})}
   end
 
   defp parse_hours(v) do
