@@ -82,20 +82,25 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
                 "%{count} matières sans enseignant :",
                 length(@unassigned)
               )}
-              <%= for {subject, i} <- Enum.with_index(@unassigned) do %>
-                <span :if={i > 0}>, </span>
-                <button
-                  :if={@can_manage_assignments?}
-                  type="button"
-                  id={"prefill-#{subject.id}"}
-                  phx-click="prefill_subject"
-                  phx-value-subject={subject.name}
-                  class="link"
+              <span class="inline-flex flex-wrap gap-x-1.5">
+                <span
+                  :for={{subject, i} <- Enum.with_index(@unassigned, 1)}
+                  class="inline-flex"
                 >
-                  {subject.name}
-                </button>
-                <span :if={!@can_manage_assignments?}>{subject.name}</span>
-              <% end %>
+                  <button
+                    :if={@can_manage_assignments?}
+                    type="button"
+                    id={"prefill-#{subject.id}"}
+                    phx-click="prefill_subject"
+                    phx-value-subject={subject.name}
+                    class="link"
+                  >
+                    {subject.name}
+                  </button>
+                  <span :if={!@can_manage_assignments?}>{subject.name}</span>
+                  <span :if={i < length(@unassigned)}>,</span>
+                </span>
+              </span>
             </p>
             <p class="mt-1 text-base-content/70">
               {gettext(
@@ -104,7 +109,10 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
             </p>
           </div>
 
-          <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+          <div
+            :if={@assignments != []}
+            class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100"
+          >
             <table id="assignments" class="table">
               <thead>
                 <tr>

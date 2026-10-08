@@ -40,7 +40,7 @@ defmodule TeacherAssistantWeb.Drawer do
           |> JS.focus_first()
         }
         phx-key="escape"
-        phx-keydown={@on_close}
+        phx-window-keydown={@on_close}
         class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-base-300 bg-base-100 shadow-2xl"
       >
         <header class="flex items-start justify-between gap-3 border-b border-base-300 px-5 py-4">

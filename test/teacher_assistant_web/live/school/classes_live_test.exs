@@ -94,6 +94,24 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     assert has_element?(view, "#create-class[disabled]")
   end
 
+  test "a class spelt differently at the same level still takes its suffix", ctx do
+    %{conn: conn, scope: scope, year: year} = ctx
+    {:ok, _} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    view |> element("#new-class-button") |> render_click()
+    view |> form("#class-form", %{"nc" => %{"level" => "6ème"}}) |> render_change()
+
+    assert has_element?(view, "#nc-suffix[value='B']")
+    assert render(view) =~ "Déjà : 6e A"
+
+    view
+    |> form("#class-form", %{"nc" => %{"level" => "6ème", "suffix" => "A"}})
+    |> render_change()
+
+    assert has_element?(view, "#nc-duplicate")
+  end
+
   test "cards are grouped by cycle and filtered by cycle and text", ctx do
     %{conn: conn, scope: scope, year: year} = ctx
     {:ok, a} = Enrollment.create_class_group(scope, year, %{label: "Tle D", level: "Terminale"})

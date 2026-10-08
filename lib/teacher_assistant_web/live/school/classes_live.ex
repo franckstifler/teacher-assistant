@@ -371,30 +371,32 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           />
           <span class="block text-xs text-base-content/60">{@nc.suffix_hint}</span>
         </label>
-        <div class="space-y-1">
+        <label class="block space-y-1">
+          <span class="ta-eyebrow block">{gettext("Effectif maximum")}</span>
           <.input
             field={@form[:max_size]}
             type="number"
             min="1"
             max="200"
-            label={gettext("Effectif maximum")}
             placeholder={@profile && @profile.max_class_size && to_string(@profile.max_class_size)}
             class="input input-sm w-full"
           />
           <span class="block text-xs text-base-content/60">
             {gettext("Alerte au-delà, sans bloquer")}
           </span>
-        </div>
+        </label>
       </div>
 
-      <.input
-        field={@form[:form_master_user_id]}
-        type="select"
-        label={gettext("Professeur principal (facultatif)")}
-        prompt={gettext("À désigner plus tard")}
-        options={Enum.map(@members, &{User.display_name(&1.user), &1.user_id})}
-        class="select select-sm w-full"
-      />
+      <label class="block space-y-1">
+        <span class="ta-eyebrow block">{gettext("Professeur principal (facultatif)")}</span>
+        <.input
+          field={@form[:form_master_user_id]}
+          type="select"
+          prompt={gettext("À désigner plus tard")}
+          options={Enum.map(@members, &{User.display_name(&1.user), &1.user_id})}
+          class="select select-sm w-full"
+        />
+      </label>
 
       <div
         id="nc-preview"
@@ -578,6 +580,17 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     base = Enum.join(Enum.reject([level, serie], &(&1 in [nil, ""])), " ")
     existing = Enum.map(socket.assigns.classes, & &1.cg.label)
 
+    # Classes of the same level and série, whatever their label's spelling
+    # (« 6e A » is a 6ème class): their last word is the suffix they use.
+    siblings =
+      socket.assigns.classes
+      |> Enum.map(& &1.cg)
+      |> Enum.filter(&(&1.subsystem == subsystem and &1.level == level and &1.serie == serie))
+      |> Enum.map(& &1.label)
+      |> Enum.sort()
+
+    taken = Enum.map(siblings, &"#{base} #{&1 |> String.split() |> List.last()}")
+
     # The suffix follows level and série until the admin edits it.
     same_base? = previous != nil and previous.base == base
 
@@ -585,11 +598,10 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       cond do
         same_base? and is_binary(params["suffix"]) -> String.trim(params["suffix"])
         base == "" -> ""
-        true -> next_suffix(base, existing, profile)
+        true -> next_suffix(base, taken, profile)
       end
 
     label = Enum.join(Enum.reject([base, suffix], &(&1 == "")), " ")
-    at_level = existing |> Enum.filter(&String.starts_with?(&1, base <> " ")) |> Enum.sort()
 
     assign(socket, :nc, %{
       subsystems: subsystems,
@@ -604,11 +616,11 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       base: base,
       suffix: suffix,
       label: label,
-      duplicate?: label in existing,
+      duplicate?: label in existing or label in taken,
       suffix_hint:
-        if(at_level == [],
+        if(siblings == [],
           do: gettext("Aucune autre classe à ce niveau."),
-          else: gettext("Déjà : %{labels}", labels: Enum.join(at_level, ", "))
+          else: gettext("Déjà : %{labels}", labels: Enum.join(siblings, ", "))
         )
     })
   end
