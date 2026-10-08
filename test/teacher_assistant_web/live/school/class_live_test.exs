@@ -35,30 +35,111 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     assert view |> element("tr", "Awa") |> render() =~ "Féminin"
   end
 
-  test "enrolls a new student (inscription)", %{conn: conn, cg: cg, scope: scope} do
+  test "enrolls a new student (inscription) from the drawer", %{conn: conn, cg: cg, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#enroll-button") |> render_click()
 
     view
     |> form("#enroll-form", %{
-      "student" => %{"full_name" => "Bi", "sex" => "m", "matricule" => "M-3"}
+      "enroll" => %{
+        "full_name" => "Bi",
+        "sex" => "m",
+        "matricule" => "M-3",
+        "birth_date" => "2014-03-02",
+        "birth_place" => "Yaoundé"
+      }
     })
     |> render_submit()
 
-    assert [%{student: %{full_name: "Bi"}}] = Enrollment.list_roster(scope, cg)
+    assert [%{student: %{full_name: "Bi", birth_place: "Yaoundé", birth_date: ~D[2014-03-02]}}] =
+             Enrollment.list_roster(scope, cg)
+
+    refute has_element?(view, "#enroll-drawer")
+  end
+
+  test "enrolling with a new parent records them as the main contact", ctx do
+    %{conn: conn, cg: cg, scope: scope} = ctx
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#enroll-button") |> render_click()
+
+    params = %{
+      "full_name" => "Bi",
+      "sex" => "m",
+      "parent_phone" => "677 12 34 56",
+      "parent_name" => "Jean Bi",
+      "parent_relationship" => "pere"
+    }
+
+    view |> form("#enroll-form", %{"enroll" => params}) |> render_change()
+    view |> form("#enroll-form", %{"enroll" => params}) |> render_submit()
+
+    [%{student: student}] = Enrollment.list_roster(scope, cg)
+    assert [%{guardian: %{full_name: "Jean Bi"}}] = Enrollment.list_guardian_links(scope, student)
+    assert has_element?(view, "tr", "Jean Bi")
+  end
+
+  test "a parent already on file is found by phone and linked", ctx do
+    %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
+    {:ok, %{student: sibling}} = Enrollment.enroll_new(scope, cg2, %{full_name: "Awa", sex: :f})
+
+    {:ok, mum} =
+      Enrollment.add_guardian(scope, sibling, %{
+        full_name: "Marie Bi",
+        relationship: :mere,
+        phone: "699112233"
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#enroll-button") |> render_click()
+
+    view
+    |> form("#enroll-form", %{
+      "enroll" => %{"full_name" => "Bi", "parent_phone" => "699 11 22 33"}
+    })
+    |> render_change()
+
+    assert has_element?(view, "#enroll-parent-matches", "Marie Bi")
+    refute has_element?(view, "#enroll-parent-name")
+
+    view
+    |> form("#enroll-form", %{
+      "enroll" => %{"full_name" => "Bi", "parent_phone" => "699 11 22 33"}
+    })
+    |> render_submit()
+
+    [%{student: student}] = Enrollment.list_roster(scope, cg)
+    assert [%{guardian_id: id}] = Enrollment.list_guardian_links(scope, student)
+    assert id == mum.id
+  end
+
+  test "« Inscrire et en ajouter un autre » keeps the drawer open and empty", ctx do
+    %{conn: conn, cg: cg, scope: scope} = ctx
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#enroll-button") |> render_click()
+
+    view
+    |> form("#enroll-form", %{"enroll" => %{"full_name" => "Bi"}})
+    |> render_submit(%{"then" => "another"})
+
+    assert [_] = Enrollment.list_roster(scope, cg)
+    assert has_element?(view, "#enroll-drawer #enroll-full-name")
+    refute has_element?(view, "#enroll-full-name[value='Bi']")
   end
 
   test "duplicate matricule surfaces a friendly error", %{conn: conn, cg: cg, scope: scope} do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
+    view |> element("#enroll-button") |> render_click()
+
     view
     |> form("#enroll-form", %{
-      "student" => %{"full_name" => "Bi", "sex" => "m", "matricule" => "M-1"}
+      "enroll" => %{"full_name" => "Bi", "sex" => "m", "matricule" => "M-1"}
     })
     |> render_submit()
 
     assert length(Enrollment.list_roster(scope, cg)) == 1
-    assert render(view) =~ "matricule"
+    assert has_element?(view, "#enroll-error", "matricule")
   end
 
   test "search finds an existing student and re-enrolls (réinscription)", ctx do
@@ -70,7 +151,9 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     :ok = Enrollment.withdraw(scope, e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}")
-    view |> element("#enroll-search") |> render_change(%{"q" => "M-1"})
+    view |> element("#enroll-button") |> render_click()
+    view |> element("#enroll-mode-existing") |> render_click()
+    view |> form("#enroll-search-form", %{"q" => "M-1"}) |> render_change()
     assert render(view) =~ "Awa Zang"
     view |> element("#search-enroll-#{s.id}") |> render_click()
 
@@ -82,9 +165,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
-    view
-    |> element("#transfer-#{e.id}")
-    |> render_change(%{"class_group_id" => cg2.id})
+    view |> element("#transfer-#{e.id}-#{cg2.id}") |> render_click()
 
     assert [] = Enrollment.list_roster(scope, cg)
     assert [_] = Enrollment.list_roster(scope, cg2)
@@ -146,6 +227,51 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
              live(conn, ~p"/school/classes/#{cg.id}")
   end
 
+  test "the roster filters by sex and repeaters, and searches by name", ctx do
+    %{conn: conn, cg: cg, scope: scope} = ctx
+    {:ok, %{enrollment: a}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+
+    {:ok, %{enrollment: b}} =
+      Enrollment.enroll_new(scope, cg, %{full_name: "Bob", sex: :m, repeater: true})
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    assert has_element?(view, "#roster-summary", "1 F · 1 G · 1 redoublant")
+
+    view |> element("#roster-filter-f") |> render_click()
+    assert has_element?(view, "#roster-row-#{a.id}")
+    refute has_element?(view, "#roster-row-#{b.id}")
+
+    view |> element("#roster-filter-repeaters") |> render_click()
+    assert has_element?(view, "#roster-row-#{b.id}")
+    refute has_element?(view, "#roster-row-#{a.id}")
+
+    view |> element("#roster-filter-all") |> render_click()
+    view |> form("#roster-search", %{"rq" => "aw"}) |> render_change()
+    assert has_element?(view, "#roster-row-#{a.id}")
+    refute has_element?(view, "#roster-row-#{b.id}")
+  end
+
+  test "the class menu sets the class's maximum and deletes an empty class", ctx do
+    %{conn: conn, cg: cg, scope: scope, year: year} = ctx
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+
+    view |> element("#open-class-settings") |> render_click()
+    view |> form("#class-settings-form", %{"max_size" => "30"}) |> render_submit()
+    assert has_element?(view, "#class-size", "0 / 30")
+
+    {:error, {:live_redirect, %{to: "/school/classes"}}} =
+      view |> element("#delete-class") |> render_click()
+
+    refute Enum.any?(Enrollment.list_class_groups(scope, year), &(&1.id == cg.id))
+  end
+
+  test "delete is refused while the class has students", %{conn: conn, cg: cg, scope: scope} do
+    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    view |> element("#delete-class") |> render_click()
+    assert render(view) =~ "retirez-les"
+  end
+
   test "the class page has no fees link (fees deferred)", %{conn: conn, cg: cg} do
     {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}")
     refute has_element?(view, "#go-to-fees")
@@ -176,10 +302,13 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
     test "form master reaches the class and can enroll", %{fm_conn: conn, cg: cg, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
-      assert has_element?(view, "#enroll-form")
+      view |> element("#enroll-button") |> render_click()
+      # a teacher who is form master records no parent (guardians are admin / conduct)
+      refute has_element?(view, "#enroll-parent")
+      refute has_element?(view, "#class-menu")
 
       view
-      |> form("#enroll-form", %{"student" => %{"full_name" => "Zoe", "sex" => "f"}})
+      |> form("#enroll-form", %{"enroll" => %{"full_name" => "Zoe", "sex" => "f"}})
       |> render_submit()
 
       assert Enum.any?(Enrollment.list_roster(scope, cg), &(&1.student.full_name == "Zoe"))

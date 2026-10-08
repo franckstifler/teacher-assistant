@@ -444,7 +444,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     form =
       AshPhoenix.Form.validate(
         socket.assigns.class_form,
-        submit_params(socket.assigns.nc, params)
+        submit_params(socket.assigns.nc, params, socket.assigns.members)
       )
 
     {:noreply, assign(socket, :class_form, form)}
@@ -457,7 +457,9 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     if nc.duplicate? or nc.label == "" do
       {:noreply, socket}
     else
-      case AshPhoenix.Form.submit(socket.assigns.class_form, params: submit_params(nc, params)) do
+      case AshPhoenix.Form.submit(socket.assigns.class_form,
+             params: submit_params(nc, params, socket.assigns.members)
+           ) do
         {:ok, cg} ->
           {:noreply,
            socket
@@ -619,8 +621,11 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     |> String.replace_prefix(base <> " ", "")
   end
 
-  defp submit_params(nc, params) do
+  # The form master must be one of the school's members (as `set_form_master/3`).
+  defp submit_params(nc, params, members) do
     form = params["class_group"] || %{}
+    pp = form["form_master_user_id"]
+    pp = if Enum.any?(members, &(&1.user_id == pp)), do: pp, else: nil
 
     %{
       "label" => nc.label,
@@ -628,7 +633,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       "serie" => nc.serie,
       "subsystem" => to_string(nc.subsystem),
       "max_size" => form["max_size"],
-      "form_master_user_id" => form["form_master_user_id"]
+      "form_master_user_id" => pp
     }
   end
 

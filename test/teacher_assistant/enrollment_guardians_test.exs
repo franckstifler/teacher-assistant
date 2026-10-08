@@ -157,4 +157,16 @@ defmodule TeacherAssistant.EnrollmentGuardiansTest do
       assert length(Enrollment.list_roster(scope, cg)) == before
     end
   end
+
+  test "primary_guardians/2 maps each student to their main contact, in one read", %{
+    scope: scope,
+    awa: awa,
+    paul: paul
+  } do
+    {:ok, jean} = Enrollment.add_guardian(scope, awa, @father)
+
+    assert %{} = map = Enrollment.primary_guardians(scope, [awa.id, paul.id])
+    assert map[awa.id].id == jean.id
+    refute Map.has_key?(map, paul.id)
+  end
 end

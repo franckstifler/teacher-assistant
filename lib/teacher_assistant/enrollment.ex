@@ -140,6 +140,13 @@ defmodule TeacherAssistant.Enrollment do
     end
   end
 
+  @doc "Sets (or clears, with nil) the class's own maximum size."
+  def set_class_max_size(%Scope{} = scope, %ClassGroup{} = cg, max_size) do
+    cg
+    |> Ash.Changeset.for_update(:update, %{max_size: max_size}, scope: scope)
+    |> Ash.update()
+  end
+
   def form_master(%Scope{}, %ClassGroup{form_master_user_id: nil}), do: nil
 
   def form_master(%Scope{} = scope, %ClassGroup{form_master_user_id: uid}) do
@@ -223,6 +230,15 @@ defmodule TeacherAssistant.Enrollment do
         Checks.SchoolRole.holds?(user, ws_id, :conduct)
 
   def can_manage_register?(_scope), do: false
+
+  @doc "Per student id, the student's main contact guardian (absent when none)."
+  def primary_guardians(%Scope{} = scope, student_ids) do
+    StudentGuardian
+    |> Ash.Query.filter(student_id in ^student_ids and primary_contact == true)
+    |> Ash.Query.load(:guardian)
+    |> Ash.read!(scope: scope)
+    |> Map.new(&{&1.student_id, &1.guardian})
+  end
 
   @doc "Whether the scope may record parents (admin or conduct axis)."
   def can_manage_guardians?(scope), do: Ash.can?({Guardian, :create}, scope)
