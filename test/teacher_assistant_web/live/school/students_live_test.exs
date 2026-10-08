@@ -67,6 +67,45 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     refute render(view) =~ "Awa Nkolo"
   end
 
+  test "the header counts the year and the students without a parent", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/students?q=awa")
+
+    # Independent of the active filters.
+    assert view |> element("#students-subtitle") |> render() =~
+             "2 inscrits en 2025-2026 · 1 sans contact parent"
+  end
+
+  test "« Sans contact parent » keeps only students with no parent", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+    assert view |> element("#no-contact-chip") |> render() =~ "Sans contact parent · 1"
+
+    view |> element("#no-contact-chip") |> render_click()
+    assert_patch(view, ~p"/school/students?no_contact=1")
+
+    rows = view |> element("#student-rows") |> render()
+    assert rows =~ "Zoé Abena"
+    assert rows =~ "Aucun contact"
+    refute rows =~ "Awa Nkolo"
+    assert view |> element("#no-contact-chip[aria-pressed=true]") |> has_element?()
+  end
+
+  test "rows show the sex under the name, the class and a range footer", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+
+    rows = view |> element("#student-rows") |> render()
+    assert rows =~ "Féminin"
+    assert rows =~ "6e A"
+    assert view |> element("#students-range") |> render() =~ "1–2 sur 2"
+    refute has_element?(view, "#students-next")
+  end
+
+  test "clicking a row opens the student", %{conn: conn, awa: awa} do
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+
+    assert view |> element("#student-#{awa.id}") |> render() =~
+             ~s|phx-click="[[&quot;navigate&quot;|
+  end
+
   test "a plain teacher is sent back to the school home", %{school: school, scope: scope} do
     teacher = member_scope_fixture(scope, %{roles: [:teacher]})
 

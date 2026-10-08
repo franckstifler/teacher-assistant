@@ -64,11 +64,14 @@ defmodule TeacherAssistant.Academics.Enrollment do
       argument :class_group_id, :uuid
       # Lower-cased by the caller.
       argument :query, :string
+      # Élèves redesign: only students with no parent linked.
+      argument :no_contact, :boolean, allow_nil?: false, default: false
 
       pagination offset?: true, countable: true, required?: false, default_limit: 50
 
       filter expr(academic_year_id == ^arg(:academic_year_id))
       filter expr(is_nil(^arg(:class_group_id)) or class_group_id == ^arg(:class_group_id))
+      filter expr(not ^arg(:no_contact) or not exists(student.guardian_links, true))
 
       filter expr(
                is_nil(^arg(:query)) or

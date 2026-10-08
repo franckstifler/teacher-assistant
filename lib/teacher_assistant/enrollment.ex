@@ -368,7 +368,8 @@ defmodule TeacherAssistant.Enrollment do
   @doc """
   Spec KLM1 (L3): one page (50) of `year`'s enrollments, class order then name,
   with the student's main contact. `opts`: `query` (name fragment or exact
-  matricule), `class_group_id`, `offset`.
+  matricule), `class_group_id`, `no_contact` (only students with no parent),
+  `offset`.
   """
   def list_school_students(%Scope{} = scope, %AcademicYear{id: year_id}, opts \\ []) do
     query =
@@ -380,10 +381,30 @@ defmodule TeacherAssistant.Enrollment do
     Enrollment
     |> Ash.Query.for_read(
       :school_list,
-      %{academic_year_id: year_id, class_group_id: opts[:class_group_id], query: query},
+      %{
+        academic_year_id: year_id,
+        class_group_id: opts[:class_group_id],
+        query: query,
+        no_contact: opts[:no_contact] || false
+      },
       scope: scope
     )
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
+  end
+
+  @doc "Élèves redesign: the year's enrolled students, and those with no parent linked."
+  def student_counts(%Scope{} = scope, %AcademicYear{id: year_id}) do
+    count = fn no_contact ->
+      Enrollment
+      |> Ash.Query.for_read(
+        :school_list,
+        %{academic_year_id: year_id, no_contact: no_contact},
+        scope: scope
+      )
+      |> Ash.count!()
+    end
+
+    %{total: count.(false), no_contact: count.(true)}
   end
 
   @doc """
