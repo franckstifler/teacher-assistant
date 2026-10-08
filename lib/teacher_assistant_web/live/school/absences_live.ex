@@ -202,14 +202,14 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
           class="rounded-box border border-error/50 bg-error/10 px-3.5 py-3 text-[0.86rem]"
         >
           <b class="text-error">{gettext("Absences répétées.")}</b>
-          <%= for {row, i} <- Enum.with_index(@repeated) do %>
-            <span :if={i > 0}>, </span><.link
-              id={"repeated-#{row.enrollment.id}"}
-              navigate={~p"/school/students/#{row.student.id}"}
-              class="font-semibold hover:underline"
-            >{row.student.full_name}</.link>
-            ({row.class_group.label} · {hours_label(row.unjustified_hours)})
-          <% end %>
+          <span :for={{row, i} <- Enum.with_index(@repeated)}>{if i > 0, do: ", "}<.link
+            id={"repeated-#{row.enrollment.id}"}
+            navigate={~p"/school/students/#{row.student.id}"}
+            class="font-semibold hover:underline"
+          >{row.student.full_name}</.link>
+          <span class="whitespace-nowrap">({row.class_group.label} · {hours_label(
+            row.unjustified_hours
+          )})</span></span>
         </div>
 
         <form id="absence-filters" phx-change="filters" class="flex flex-wrap items-center gap-2.5">
@@ -347,5 +347,6 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
   end
 
   defp hours_label(%Decimal{} = hours),
-    do: "#{hours |> Decimal.round(1) |> Decimal.normalize() |> Decimal.to_string(:normal)} h"
+    do:
+      "#{hours |> Decimal.round(1) |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.replace(".", ",")} h"
 end

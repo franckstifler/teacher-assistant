@@ -460,12 +460,12 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
             </aside>
 
             <div class="min-w-0 overflow-x-auto rounded-box border border-base-300 bg-base-100">
-              <table class="table table-sm min-w-[560px]">
+              <table class="table table-sm">
                 <thead>
                   <tr>
                     <th>{gettext("Élève")}</th>
                     <th>{gettext("Type")}</th>
-                    <th>{gettext("Date · motif")}</th>
+                    <th class="hidden sm:table-cell">{gettext("Date · motif")}</th>
                     <th>{gettext("Parents")}</th>
                   </tr>
                 </thead>
@@ -489,7 +489,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                       </span>
                     </td>
                     <td class="font-semibold">{type_cell(s)}</td>
-                    <td class="max-w-64 truncate text-[0.8rem] text-base-content/85">
+                    <td class="hidden max-w-64 truncate text-[0.8rem] text-base-content/85 sm:table-cell">
                       {meta_cell(s)}
                     </td>
                     <td>
@@ -504,7 +504,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                         type="button"
                         phx-click="notify"
                         phx-value-id={s.id}
-                        class="btn btn-outline btn-warning btn-xs"
+                        class="btn btn-outline btn-warning btn-xs whitespace-nowrap"
                       >
                         {gettext("Marquer notifiés")}
                       </button>

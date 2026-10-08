@@ -235,14 +235,14 @@ defmodule TeacherAssistantWeb.School.ConductLive do
           class="flex flex-col gap-3"
         >
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-            <table class="table table-sm">
+            <table class="table table-xs sm:table-sm">
               <thead>
                 <tr>
                   <th>{gettext("Élève")}</th>
                   <th class="text-right">{gettext("Abs. injust.")}</th>
-                  <th>{gettext("Sanctions")}</th>
+                  <th class="hidden sm:table-cell">{gettext("Sanctions")}</th>
                   <th class="text-right">{gettext("Suggestion")}</th>
-                  <th class="w-[130px] text-right">{gettext("Note /20")}</th>
+                  <th class="text-right sm:w-[130px]">{gettext("Note /20")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -262,7 +262,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                     <td class="ta-num text-right">
                       {shown(Decimal.round(row.unjustified_hours, 1))} h
                     </td>
-                    <td>
+                    <td class="hidden sm:table-cell">
                       <span :if={row.sanctions == []} class="text-base-content/60">—</span>
                       <span
                         :for={s <- row.sanctions}
