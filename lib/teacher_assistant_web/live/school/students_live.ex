@@ -8,6 +8,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
 
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Sex
+  alias TeacherAssistantWeb.School.EnrollDrawer
 
   @per_page 50
 
@@ -17,7 +18,12 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
     if scope.current_academic_year && Enrollment.can_manage_register?(scope) do
       {:ok,
        socket
-       |> assign(classes: Enrollment.list_class_groups(scope, scope.current_academic_year))
+       |> assign(
+         classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
+         can_manage_classes?: Enrollment.can_manage_classes?(scope),
+         can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
+         drawer: nil
+       )
        |> assign_counts()}
     else
       {:ok,
@@ -57,6 +63,13 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
     {:noreply, push_patch(socket, to: list_path(params))}
   end
 
+  def handle_event("open_enroll", _params, socket) when socket.assigns.can_manage_classes?,
+    do: {:noreply, assign(socket, :drawer, :enroll)}
+
+  def handle_event("open_enroll", _params, socket), do: {:noreply, socket}
+
+  def handle_event("close_drawer", _params, socket), do: {:noreply, assign(socket, :drawer, nil)}
+
   def handle_event("toggle_no_contact", _params, socket) do
     %{q: q, class_id: class_id, no_contact: no_contact} = socket.assigns
 
@@ -64,6 +77,45 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
      push_patch(socket,
        to: list_path(%{"q" => q, "class" => class_id, "no_contact" => not no_contact})
      )}
+  end
+
+  def handle_info({EnrollDrawer, {:enrolled, cg, then}}, socket) do
+    capacity = Enrollment.capacity(socket.assigns.current_scope, cg)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, EnrollDrawer.enrolled_message(cg, capacity))
+     |> assign(:drawer, if(then == :another, do: :enroll, else: nil))
+     |> refresh()}
+  end
+
+  def handle_info({EnrollDrawer, {:reenrolled, _cg}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, gettext("Student re-enrolled."))
+     |> assign(:drawer, nil)
+     |> refresh()}
+  end
+
+  def handle_info({EnrollDrawer, :forbidden}, socket),
+    do: {:noreply, Authz.put_not_allowed(socket)}
+
+  # After an enrolment: the counts and the current page.
+  defp refresh(socket) do
+    %{q: q, class_id: class_id, no_contact: no_contact, offset: offset} = socket.assigns
+    scope = socket.assigns.current_scope
+
+    socket
+    |> assign_counts()
+    |> assign(
+      :page,
+      Enrollment.list_school_students(scope, scope.current_academic_year,
+        query: q,
+        class_group_id: class_id,
+        no_contact: no_contact,
+        offset: offset
+      )
+    )
   end
 
   defp parse_page(value) do
@@ -124,6 +176,15 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               )} · {gettext("%{count} sans contact parent", count: @counts.no_contact)}
             </p>
           </div>
+          <button
+            :if={@can_manage_classes?}
+            id="enroll-button"
+            type="button"
+            class="btn btn-primary btn-sm gap-1.5"
+            phx-click="open_enroll"
+          >
+            <.icon name="hero-plus" class="size-4" /> {gettext("Inscrire un élève")}
+          </button>
         </header>
 
         <div class="flex flex-wrap items-center gap-2">
@@ -147,7 +208,9 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
             </label>
             <select name="class" class="select select-sm w-auto" aria-label={gettext("Classe")}>
               <option value="">{gettext("Toutes les classes")}</option>
-              <option :for={c <- @classes} value={c.id} selected={c.id == @class_id}>{c.label}</option>
+              <option :for={c <- @classes} value={c.id} selected={c.id == @class_id}>
+                {c.label}
+              </option>
             </select>
           </.form>
           <button
@@ -260,6 +323,14 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
           </div>
         </div>
       </section>
+
+      <.live_component
+        :if={@drawer == :enroll}
+        module={EnrollDrawer}
+        id="enroll"
+        scope={@current_scope}
+        can_manage_guardians?={@can_manage_guardians?}
+      />
     </Layouts.app>
     """
   end

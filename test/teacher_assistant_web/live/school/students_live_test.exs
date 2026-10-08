@@ -106,6 +106,66 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
              ~s|phx-click="[[&quot;navigate&quot;|
   end
 
+  describe "« Inscrire un élève »" do
+    test "picks the class first, then enrols", %{conn: conn, scope: scope, sixth: sixth} do
+      {:ok, view, _html} = live(conn, ~p"/school/students")
+      view |> element("#enroll-button") |> render_click()
+
+      assert view |> element("#enroll-class") |> render() =~ "6e A — 1 élève"
+
+      view
+      |> form("#enroll-form", %{"enroll" => %{"full_name" => "Mbida Paul", "sex" => "m"}})
+      |> render_submit()
+
+      assert view |> element("#enroll-error") |> render() =~ "Choisissez une classe."
+
+      view |> form("#enroll-class-form", %{"class_id" => sixth.id}) |> render_change()
+      assert view |> element("#enroll-drawer") |> render() =~ "6e A · 1 élève"
+
+      view
+      |> form("#enroll-form", %{"enroll" => %{"full_name" => "Mbida Paul", "sex" => "m"}})
+      |> render_submit()
+
+      refute has_element?(view, "#enroll-drawer")
+      assert render(view) =~ "Élève inscrit en 6e A"
+      assert view |> element("#student-rows") |> render() =~ "Mbida Paul"
+      assert view |> element("#students-subtitle") |> render() =~ "3 inscrits"
+
+      assert Enum.any?(
+               Enrollment.list_roster(scope, sixth),
+               &(&1.student.full_name == "Mbida Paul")
+             )
+    end
+
+    test "« Inscrire et en ajouter un autre » keeps the class and counts the new student",
+         %{conn: conn, sixth: sixth} do
+      {:ok, view, _html} = live(conn, ~p"/school/students")
+      view |> element("#enroll-button") |> render_click()
+      view |> form("#enroll-class-form", %{"class_id" => sixth.id}) |> render_change()
+
+      view
+      |> form("#enroll-form", %{"enroll" => %{"full_name" => "Mbida Paul", "sex" => "m"}})
+      |> render_submit(%{"then" => "another"})
+
+      assert has_element?(view, "#enroll-drawer")
+      assert view |> element("#enroll-class") |> render() =~ "6e A — 2 élèves"
+      assert view |> element("#enroll-drawer") |> render() =~ "6e A · 2 élèves"
+    end
+
+    test "is offered to class managers only", %{school: school, scope: scope} do
+      sg = member_scope_fixture(scope, %{roles: [:discipline_master]})
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:user_id, sg.current_user.id)
+        |> Plug.Conn.put_session(:workspace_id, school.id)
+
+      {:ok, view, _html} = live(conn, ~p"/school/students")
+      refute has_element?(view, "#enroll-button")
+    end
+  end
+
   test "a plain teacher is sent back to the school home", %{school: school, scope: scope} do
     teacher = member_scope_fixture(scope, %{roles: [:teacher]})
 

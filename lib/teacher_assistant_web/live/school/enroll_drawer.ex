@@ -498,8 +498,12 @@ defmodule TeacherAssistantWeb.School.EnrollDrawer do
     end
   end
 
+  # Ready for the next student; the picker's headcounts include the one just added.
   defp reset(socket) do
+    options = socket.assigns.options && class_options(socket.assigns.scope)
+
     assign(socket,
+      options: options,
       enroll: %{"sex" => "f", "parent_relationship" => "mere"},
       enroll_error: nil,
       parent_matches: [],
