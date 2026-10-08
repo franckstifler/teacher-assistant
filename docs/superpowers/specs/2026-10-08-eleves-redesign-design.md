@@ -1,7 +1,7 @@
 # Élèves redesign (students list, student page, import) — design
 
 Date: 2026-10-08
-Status: approved in conversation, awaiting spec review
+Status: implemented on feat/eleves-redesign (2026-10-08)
 Mockup: claude.ai/design project « Tableau », file `Classes et eleves.dc.html`
 (screens `#students`, `#student`, `#import`).
 Follows: `2026-10-08-classes-redesign-design.md` (cycle 1).
@@ -22,7 +22,7 @@ Out of scope: the Frais link/tab (bursar deferred), a per-student filter on
 | Import format | Mockup's 5 columns, `;` or tab; name and sex required |
 | Year result on the student page | Average and rank of the latest **published** report card of that class; nothing when none |
 | « Inscrire un élève » on `/school/students` | The class page's enrol drawer, extracted into a shared component, with a class picker |
-| « Sans contact parent » | No guardian linked at all |
+| « Sans contact parent » | No main contact (no parent at all, or the main contact was removed) — what the rows' « Aucun contact » shows |
 | Page size of the students list | Stays 50 |
 
 ## 0. Shared enrol drawer
@@ -79,6 +79,7 @@ Each row gets one action:
 | `{:reenroll, student, last}` | matricule known, same name, not enrolled this year | « Était en 6e B en 2025–2026 » (`last` = latest enrollment, or no note) |
 | `{:conflict, :already_enrolled, cls}` | matricule known, same name, enrolled this year | « Déjà inscrit cette année (6e B) » |
 | `{:conflict, :matricule_taken, name}` | matricule known, **different name** | « Matricule déjà utilisé (Ebogo Sandrine) » |
+| `{:conflict, :repeated_in_list, name}` | matricule already on an earlier line of the paste | « Matricule répété dans la liste (Owono Steve) » |
 
 Same name: both names lower-cased, accents stripped, split on whitespace,
 compared as sorted word lists (`Ebogo Sandrine` = `SANDRINE ébogo`).

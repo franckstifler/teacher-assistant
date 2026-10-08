@@ -177,7 +177,6 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
                {"Abessolo Marc", :create, {:new, "677 45 12 90"}},
                {"Bekono Aline", :create, {:existing, guardian}},
                {"sandrine EBOGO", {:reenroll, reenrolled, last}, nil},
-               {"Mvogo Diane", {:conflict, :matricule_taken, "Ébogo Sandrine"}, nil},
                {"Nana Eric", {:conflict, :already_enrolled, "6e A"}, nil},
                {"Kana Brice", {:error, :sex}, {:invalid, "690 22"}}
              ] =
@@ -185,15 +184,27 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
                Abessolo Marc;M;;12/02/2014;677 45 12 90
                Bekono Aline;F;;;+237 699 10 22 33
                sandrine EBOGO;F;M-7
-               Mvogo Diane;F;M-7
                Nana Eric;G;M-8
                Kana Brice;;;;690 22
                """)
+
+      assert [{"Mvogo Diane", {:conflict, :matricule_taken, "Ébogo Sandrine"}, nil}] =
+               actions(scope, cg2, "Mvogo Diane;F;M-7")
 
       assert guardian.id == rose.id
       assert reenrolled.id == former.id
       assert last.class_group.label == "5e C"
       assert last.academic_year.name == "2024-2025"
+    end
+
+    test "a matricule repeated in the paste: only its first line counts", %{
+      scope: scope,
+      cg2: cg2
+    } do
+      assert [
+               {"Owono Steve", :create, nil},
+               {"Owono Léa", {:conflict, :repeated_in_list, "Owono Steve"}, nil}
+             ] = actions(scope, cg2, "Owono Steve;M;M-50\nOwono Léa;F;M-50")
     end
 
     test "an invalid parent number is reported, not attempted", %{scope: scope, cg2: cg2} do

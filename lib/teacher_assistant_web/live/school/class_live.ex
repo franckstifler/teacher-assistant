@@ -412,6 +412,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
 
   # --- Events: drawers ------------------------------------------------------------
 
+  # Everyone on this tab manages the class (form masters included, spec 2026-10-08
+  # §3); the enrolment itself is authorised by the resource policies.
   def handle_event("open_enroll", _params, socket),
     do: {:noreply, assign(socket, :drawer, :enroll)}
 

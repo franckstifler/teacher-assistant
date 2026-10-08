@@ -43,16 +43,19 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
     class_id = Enum.find_value(socket.assigns.classes, &(&1.id == params["class"] && &1.id))
     no_contact = params["no_contact"] == "1"
     offset = params |> Map.get("page", "1") |> parse_page() |> then(&((&1 - 1) * @per_page))
+    list = &list_page(socket.assigns.current_scope, q, class_id, no_contact, &1)
+    page = list.(offset)
 
-    page =
-      Enrollment.list_school_students(
-        socket.assigns.current_scope,
-        socket.assigns.current_scope.current_academic_year,
-        query: q,
-        class_group_id: class_id,
-        no_contact: no_contact,
-        offset: offset
-      )
+    # A page past the end (stale link, hand-typed URL) shows the last one.
+    {page, offset} =
+      case page do
+        %{results: [], count: count} when count > 0 and offset > 0 ->
+          last = div(count - 1, @per_page) * @per_page
+          {list.(last), last}
+
+        _ ->
+          {page, offset}
+      end
 
     {:noreply,
      assign(socket, q: q, class_id: class_id, no_contact: no_contact, page: page, offset: offset)}
@@ -107,14 +110,15 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
 
     socket
     |> assign_counts()
-    |> assign(
-      :page,
-      Enrollment.list_school_students(scope, scope.current_academic_year,
-        query: q,
-        class_group_id: class_id,
-        no_contact: no_contact,
-        offset: offset
-      )
+    |> assign(:page, list_page(scope, q, class_id, no_contact, offset))
+  end
+
+  defp list_page(scope, q, class_id, no_contact, offset) do
+    Enrollment.list_school_students(scope, scope.current_academic_year,
+      query: q,
+      class_group_id: class_id,
+      no_contact: no_contact,
+      offset: offset
     )
   end
 

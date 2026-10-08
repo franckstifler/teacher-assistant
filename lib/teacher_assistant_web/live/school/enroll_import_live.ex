@@ -39,6 +39,10 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   def handle_event("restart", _params, socket),
     do: {:noreply, assign(socket, stage: :paste, raw: "", preview: [], result: nil)}
 
+  # Once only: a double click or a replayed event after « Terminé » imports nothing.
+  def handle_event("confirm", _params, socket) when socket.assigns.stage != :preview,
+    do: {:noreply, socket}
+
   def handle_event("confirm", _params, socket) do
     %{current_scope: scope, cg: cg, raw: raw} = socket.assigns
     result = Enrollment.import_rows(scope, cg, RosterLine.parse(raw))
@@ -305,6 +309,9 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   defp row_note({:conflict, :matricule_taken, name}, _parent),
     do: gettext("Matricule déjà utilisé (%{name})", name: name)
 
+  defp row_note({:conflict, :repeated_in_list, name}, _parent),
+    do: gettext("Matricule répété dans la liste (%{name})", name: name)
+
   defp row_note({:conflict, _reason, _detail}, _parent),
     do: gettext("Vérification impossible — ignoré")
 
@@ -352,6 +359,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
   defp skip_reason(:already_enrolled), do: gettext("déjà inscrit cette année")
   defp skip_reason(:matricule_taken), do: gettext("matricule déjà utilisé")
   defp skip_reason(:duplicate_matricule), do: gettext("matricule déjà utilisé")
+  defp skip_reason(:repeated_in_list), do: gettext("matricule répété dans la liste")
   defp skip_reason(:forbidden), do: gettext("action non autorisée")
   defp skip_reason(_reason), do: gettext("inscription impossible")
 

@@ -89,6 +89,29 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     assert view |> element("#no-contact-chip[aria-pressed=true]") |> has_element?()
   end
 
+  test "a student whose main contact was removed counts as without contact", ctx do
+    %{conn: conn, scope: scope, awa: awa} = ctx
+
+    {:ok, _} =
+      Enrollment.add_guardian(scope, awa, %{
+        full_name: "Marie Nkolo",
+        relationship: :mere,
+        phone: "699000001"
+      })
+
+    [jean | _] = Enrollment.list_guardian_links(scope, awa)
+    :ok = Enrollment.unlink_guardian(scope, jean)
+
+    {:ok, view, _html} = live(conn, ~p"/school/students?no_contact=1")
+    assert view |> element("#student-rows") |> render() =~ "Awa Nkolo"
+    assert view |> element("#no-contact-chip") |> render() =~ "Sans contact parent · 2"
+  end
+
+  test "a page past the end shows the last page", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/students?page=99")
+    assert view |> element("#students-range") |> render() =~ "1–2 sur 2"
+  end
+
   test "rows show the sex under the name, the class and a range footer", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/school/students")
 

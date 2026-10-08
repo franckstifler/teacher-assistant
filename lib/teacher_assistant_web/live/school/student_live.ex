@@ -317,7 +317,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
     gettext("%{period} : %{average} · %{rank} / %{effectif}",
       period: label,
-      average: average && average |> Decimal.round(2) |> Decimal.to_string(),
+      average: if(average, do: average |> Decimal.round(2) |> Decimal.to_string(), else: "—"),
       rank: rank_text(rank),
       effectif: effectif
     )

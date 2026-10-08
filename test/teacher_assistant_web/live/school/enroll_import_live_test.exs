@@ -178,6 +178,18 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     assert view |> element("#import-confirm[disabled]") |> has_element?()
   end
 
+  test "a replayed confirm after « Terminé » imports nothing more", %{
+    conn: conn,
+    cg: cg,
+    scope: scope
+  } do
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/import")
+    view |> form("#import-form", %{"import" => %{"raw" => "Awa;f"}}) |> render_submit()
+    view |> element("#import-confirm") |> render_click()
+    render_hook(view, "confirm", %{})
+    assert length(Enrollment.list_roster(scope, cg)) == 1
+  end
+
   test "« Importer une autre liste » starts over", %{conn: conn, cg: cg} do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/import")
     view |> form("#import-form", %{"import" => %{"raw" => "Awa;f"}}) |> render_submit()

@@ -388,7 +388,7 @@ defmodule TeacherAssistant.Enrollment do
   @doc """
   Spec KLM1 (L3): one page (50) of `year`'s enrollments, class order then name,
   with the student's main contact. `opts`: `query` (name fragment or exact
-  matricule), `class_group_id`, `no_contact` (only students with no parent),
+  matricule), `class_group_id`, `no_contact` (only students with no main contact),
   `offset`.
   """
   def list_school_students(%Scope{} = scope, %AcademicYear{id: year_id}, opts \\ []) do
@@ -412,7 +412,7 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
   end
 
-  @doc "Élèves redesign: the year's enrolled students, and those with no parent linked."
+  @doc "Élèves redesign: the year's enrolled students, and those with no main contact."
   def student_counts(%Scope{} = scope, %AcademicYear{id: year_id}) do
     count = fn no_contact ->
       Enrollment
@@ -565,13 +565,26 @@ defmodule TeacherAssistant.Enrollment do
   `action` is `:create`, `{:reenroll, student, last_enrollment | nil}`,
   `{:conflict, :already_enrolled, class_label}`,
   `{:conflict, :matricule_taken, other_student_name}`,
+  `{:conflict, :repeated_in_list, first_row_name}`,
   `{:conflict, :lookup_failed, nil}` or `{:error, :sex}`, and `parent` is
   `nil`, `{:invalid, phone}`, `{:existing, guardian}` or `{:new, phone}`.
   """
   def preview_rows(%Scope{} = scope, %ClassGroup{} = cg, rows) do
-    Enum.map(rows, fn row ->
-      {row, classify_row(scope, cg, row), classify_parent(scope, row[:guardian])}
+    rows
+    |> Enum.map_reduce(%{}, fn row, seen ->
+      mat = row[:matricule]
+
+      action =
+        case seen do
+          # A matricule repeated in the paste: only its first line counts.
+          %{^mat => first} when is_binary(mat) -> {:conflict, :repeated_in_list, first}
+          _ -> classify_row(scope, cg, row)
+        end
+
+      {{row, action, classify_parent(scope, row[:guardian])},
+       if(is_binary(mat), do: Map.put_new(seen, mat, row.full_name), else: seen)}
     end)
+    |> elem(0)
   end
 
   @doc "How many students the preview would enroll (creations and re-enrolments)."

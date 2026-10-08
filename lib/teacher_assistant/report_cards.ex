@@ -301,8 +301,8 @@ defmodule TeacherAssistant.ReportCards do
   """
   def latest_published_result(%Scope{} = scope, %{class_group_id: cg_id, student_id: student_id}) do
     BulletinPublication
-    |> Ash.Query.for_read(:for_class, %{class_group_id: cg_id}, scope: scope)
-    |> Ash.Query.filter(status == :published)
+    |> Ash.Query.for_read(:read, %{}, scope: scope)
+    |> Ash.Query.filter(class_group_id == ^cg_id and status == :published)
     |> Ash.Query.load(:term)
     |> Ash.read!()
     |> Enum.max_by(&publication_order/1, fn -> nil end)
