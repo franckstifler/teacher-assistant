@@ -397,7 +397,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         <div id="council-table" class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
           <table class="table">
             <thead>
-              <tr class="text-xs text-base-content/60">
+              <tr class="text-xs text-base-content/60 max-md:hidden">
                 <th>{gettext("Élève")}</th>
                 <th class="text-right">{gettext("Moy. trim.")}</th>
                 <th class="text-right">{gettext("Conduite")}</th>
@@ -405,16 +405,28 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
               </tr>
             </thead>
             <tbody>
-              <tr :for={row <- @rows} id={"council-row-#{row.student.id}"}>
+              <tr
+                :for={row <- @rows}
+                id={"council-row-#{row.student.id}"}
+                class="max-md:grid max-md:grid-cols-[1fr_auto_auto] max-md:items-baseline max-md:gap-x-4"
+              >
                 <td class="font-medium">{row.student.full_name}</td>
                 <td class={[
                   "ta-num text-right",
                   low?(row.data && row.data.moyenne_generale) && "text-error"
                 ]}>
+                  <span class="font-sans text-xs text-base-content/60 md:hidden">
+                    {gettext("Moy. trim.")}
+                  </span>
                   {moyenne_text(row.data && row.data.moyenne_generale)}
                 </td>
-                <td class="ta-num text-right">{conduct_text(row.conduct)}</td>
-                <td>
+                <td class="ta-num text-right">
+                  <span class="font-sans text-xs text-base-content/60 md:hidden">
+                    {gettext("Conduite")}
+                  </span>
+                  {conduct_text(row.conduct)}
+                </td>
+                <td class="max-md:col-span-3">
                   <div class="flex flex-wrap gap-1.5">
                     <button
                       :for={choice <- CouncilDistinctionChoice.values()}

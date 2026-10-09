@@ -54,8 +54,8 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
       |> get(~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}")
       |> html_response(200)
 
-    assert html =~ "13.25"
-    refute html =~ "13.20"
+    assert html =~ "13,25"
+    refute html =~ "13,20"
   end
 
   test "the tied-ranks toggle saves", %{conn: conn, scope: scope} do

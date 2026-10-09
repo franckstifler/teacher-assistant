@@ -911,7 +911,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
         ~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{ctx.seq.id}"
 
       html = ctx.conn |> get(path) |> html_response(200)
-      assert html =~ "7.00"
+      assert html =~ "7,00"
       refute html =~ "R : rattrapage attendu"
 
       {:ok, _} = Assessment.update_grading_rules(ctx.scope, %{"absence_rule" => "makeup"})

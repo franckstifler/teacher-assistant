@@ -171,6 +171,19 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
   defp rate_text(nil), do: "—"
   defp rate_text(rate), do: "#{rate} %"
 
+  attr :row, :map, required: true
+
+  defp prep(assigns) do
+    ~H"""
+    <span :if={ready?(@row)} class="font-medium text-primary">{gettext("Prêt")}</span>
+    <span :if={!ready?(@row)} class="ta-num text-base-content/70">
+      {gettext("Notes %{rate}", rate: rate_text(@row.rate))}<span :if={@row.conduct_missing?}> · {gettext(
+        "conduite à saisir"
+      )}</span>
+    </span>
+    """
+  end
+
   defp prefill_date(%{council: %{held_on: %Date{} = d}}), do: Date.to_iso8601(d)
   defp prefill_date(%{default_date: %Date{} = d}), do: Date.to_iso8601(d)
   defp prefill_date(_), do: ""
@@ -228,8 +241,8 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
             <thead>
               <tr>
                 <th>{gettext("Classe")}</th>
-                <th>{gettext("Date")}</th>
-                <th>{gettext("Préparation")}</th>
+                <th class="hidden md:table-cell">{gettext("Date")}</th>
+                <th class="hidden md:table-cell">{gettext("Préparation")}</th>
                 <th>{gettext("Statut")}</th>
                 <th><span class="sr-only">{gettext("Action")}</span></th>
               </tr>
@@ -248,15 +261,14 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
                   >
                     {row.class_group.label}
                   </.link>
+                  <div class="mt-0.5 text-xs font-normal md:hidden">
+                    <div class="ta-num mb-0.5">{date_text(row)}</div>
+                    <.prep row={row} />
+                  </div>
                 </td>
-                <td class="ta-num whitespace-nowrap">{date_text(row)}</td>
-                <td class="text-sm">
-                  <span :if={ready?(row)} class="font-medium text-primary">{gettext("Prêt")}</span>
-                  <span :if={!ready?(row)} class="ta-num text-base-content/70">
-                    {gettext("Notes %{rate}", rate: rate_text(row.rate))}<span :if={
-                      row.conduct_missing?
-                    }> · {gettext("conduite à saisir")}</span>
-                  </span>
+                <td class="ta-num hidden whitespace-nowrap md:table-cell">{date_text(row)}</td>
+                <td class="hidden text-sm md:table-cell">
+                  <.prep row={row} />
                 </td>
                 <td>
                   <span
@@ -269,7 +281,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
                     {status_label(row.status)}
                   </span>
                 </td>
-                <td class="min-w-44">
+                <td class="md:min-w-44">
                   <button
                     :if={row.status == :to_plan && @planning != row.class_group.id}
                     id={"plan-#{row.class_group.id}"}
@@ -294,14 +306,14 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
                       name="plan[date]"
                       value={prefill_date(row)}
                       aria-label={gettext("Date")}
-                      class="input input-sm w-40"
+                      class="input input-sm w-full md:w-40"
                     />
                     <input
                       type="time"
                       name="plan[time]"
                       value={prefill_time(row)}
                       aria-label={gettext("Heure")}
-                      class="input input-sm w-28"
+                      class="input input-sm w-full md:w-28"
                     />
                     <button type="submit" class="btn btn-primary btn-sm">
                       {gettext("Enregistrer")}

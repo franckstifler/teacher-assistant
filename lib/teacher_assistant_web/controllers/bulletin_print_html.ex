@@ -82,7 +82,14 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
   defp grade(template, mark), do: BulletinTemplate.grade(template.grade_scale, mark)
 
   defp fmt(nil), do: "—"
-  defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
+
+  defp fmt(%Decimal{} = d) do
+    str = d |> Decimal.round(2) |> Decimal.to_string()
+
+    if Gettext.get_locale(TeacherAssistantWeb.Gettext) == "fr",
+      do: String.replace(str, ".", ","),
+      else: str
+  end
 
   defp comp(row, key, idx) do
     case row.components do
