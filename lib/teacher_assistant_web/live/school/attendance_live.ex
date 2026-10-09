@@ -29,6 +29,9 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
     end
   end
 
+  def handle_event("all_present", _params, socket),
+    do: {:noreply, update(socket, :roll, &(&1 && RollCall.all_present(&1)))}
+
   def handle_event("minutes", %{"minutes" => minutes}, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_minutes(&1, minutes)))}
 

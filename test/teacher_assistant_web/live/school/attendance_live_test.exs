@@ -160,7 +160,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       Attendance.record_period(scope, cg, period, tc, date, [{enrollment.id, :present}])
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
-    assert has_element?(view, "#roll-status", "enregistré")
+    assert has_element?(view, "#record-roll", "Modifier l'appel")
+    assert has_element?(view, "#roll-footer", "Appel enregistré")
   end
 
   test "an invalid status from a forged set event is ignored", %{
@@ -321,5 +322,39 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
 
     %{students: [%{status: :late, late_minutes: 25}]} =
       Attendance.period_roll(scope, cg, period, date)
+  end
+
+  test "« Tous présents » resets absents and lates", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date,
+    scope: scope,
+    enrollment: e1
+  } do
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Bello Nana", sex: :m})
+    e2 = scope |> Enrollment.list_roster(cg) |> Enum.map(& &1.enrollment) |> Enum.find(&(&1.id != e1.id))
+
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+    view |> element("#att-#{e1.id}-absent") |> render_click()
+    view |> element("#att-#{e2.id}-late") |> render_click()
+    assert has_element?(view, "#late-minutes-#{e2.id}")
+
+    view |> element("#all-present") |> render_click()
+    assert has_element?(view, "#att-#{e1.id}-present[aria-pressed='true']")
+    refute has_element?(view, "#late-minutes-#{e2.id}")
+    assert has_element?(view, "#roll-counts", "0 absent")
+  end
+
+  test "before recording the button reads « Valider l'appel », after « Modifier l'appel »", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date
+  } do
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+    assert has_element?(view, "#record-roll", "Valider l'appel")
+    view |> element("#record-roll") |> render_click()
+    assert has_element?(view, "#record-roll", "Modifier l'appel")
   end
 end

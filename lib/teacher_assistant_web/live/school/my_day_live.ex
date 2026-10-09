@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Attendance, Curriculum}
+  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Organization}
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.RollCall
@@ -15,7 +15,12 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil and Curriculum.list_units_for_scope(scope) != [] do
-      {:ok, socket |> assign(today: Reference.today(), roll: nil, selected: nil) |> load_day()}
+      today = Reference.today()
+
+      {:ok,
+       socket
+       |> assign(today: today, roll: nil, selected: nil, seq: current_sequence(scope, today))
+       |> load_day()}
     else
       {:ok, push_navigate(socket, to: space_home(scope))}
     end
@@ -23,6 +28,11 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp space_home(%{capabilities: %{space: %{home: home}}}) when home != "/school/today", do: home
   defp space_home(_scope), do: ~p"/school/classes"
+
+  defp current_sequence(%{current_academic_year: nil}, _today), do: nil
+
+  defp current_sequence(%{current_academic_year: year} = scope, today),
+    do: scope |> Organization.list_sequences(year) |> Assessment.default_sequence(today)
 
   defp load_day(socket) do
     %{current_scope: scope, today: today} = socket.assigns
@@ -68,6 +78,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp slot_key(slot), do: "#{slot.class_group.id}-#{slot.period.id}"
 
+  def handle_event("all_present", _params, socket),
+    do: {:noreply, update(socket, :roll, &(&1 && RollCall.all_present(&1)))}
+
   def handle_event("minutes", %{"minutes" => minutes}, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_minutes(&1, minutes)))}
 
@@ -98,35 +111,19 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="my-day" class="flex flex-col gap-5">
         <.page_header
-          eyebrow={
-            gettext("Ma journée · %{date} · %{time}",
-              date: Dates.long(@today),
-              time: Calendar.strftime(@now, "%H:%M")
-            )
-          }
-          title={gettext("Appel")}
-        >
-          <:actions :if={@slots != []}>
-            <.side_chip id="calls-done">
-              {gettext("%{done} / %{total} appels faits",
-                done: Enum.count(@slots, &(&1.status == :done)),
-                total: length(@slots)
-              )}
-            </.side_chip>
-          </:actions>
-        </.page_header>
+          eyebrow={eyebrow(@today, @seq)}
+          title={gettext("Ma journée")}
+          subtitle={@slots != [] && subtitle(@slots)}
+        />
 
         <div :if={@slots == []} id="no-lessons">
           <.empty_state icon="hero-sun" title={no_lessons_title(@day_off)} />
         </div>
 
-        <div
-          :if={@slots != []}
-          class="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]"
-        >
-          <div class="flex flex-col gap-5">
-            <div id="today-slots" class="flex flex-col gap-1.5">
-              <h2 class="ta-eyebrow">{gettext("Mes créneaux du jour")}</h2>
+        <div :if={@slots != []} class="grid items-start gap-4 lg:grid-cols-3">
+          <div class="flex flex-col gap-4">
+            <div id="today-slots" class="ta-leaf flex flex-col gap-1.5 !p-3">
+              <h2 class="ta-eyebrow px-1 pb-1">{gettext("Mes créneaux du jour")}</h2>
               <.slot_row
                 :for={slot <- @slots}
                 id={"slot-#{slot_key(slot)}"}
@@ -136,36 +133,86 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
               />
             </div>
 
-            <div :if={@missed != []} id="missed-this-week" class="flex flex-col gap-1.5">
-              <h2 class="ta-eyebrow">{gettext("Appels manquants cette semaine")}</h2>
-              <.link
+            <div :if={@missed != []} id="missed-this-week" class="ta-leaf flex flex-col gap-1.5 !p-3">
+              <div class="flex items-baseline justify-between px-1 pb-1">
+                <h2 class="ta-eyebrow">{gettext("Appels manquants cette semaine")}</h2>
+                <span class="ta-num rounded-full bg-error/20 px-2 text-[0.7rem] font-semibold text-error">
+                  {length(@missed)}
+                </span>
+              </div>
+              <div
                 :for={m <- @missed}
                 id={"missed-#{m.class_group.id}-#{m.period.id}-#{m.date}"}
-                navigate={
-                  ~p"/school/classes/#{m.class_group.id}/attendance/#{m.period.id}?date=#{Date.to_iso8601(m.date)}"
-                }
-                class="grid grid-cols-[112px_minmax(0,1fr)_auto] items-center gap-3 rounded-box border border-base-300 bg-base-100 px-3.5 py-[11px] transition-colors hover:border-warning/70"
+                class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-box border border-base-300 px-3 py-2"
               >
-                <span class="ta-num flex flex-col">
-                  <span class="whitespace-nowrap text-[0.88rem] font-semibold">{Dates.short(m.date)}</span>
-                  <span class="text-[0.7rem] text-base-content/75">
-                    {m.period.label} · {hm(m.period.start_time)}
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-[0.9rem] font-semibold">
+                    {m.class_group.label} · {m.subject}
+                  </span>
+                  <span class="ta-num text-[0.72rem] text-base-content/70">
+                    {Dates.short(m.date)} · {m.period.label} · {hm(m.period.start_time)}
                   </span>
                 </span>
-                <span class="flex min-w-0 flex-col gap-0.5">
-                  <span class="text-[0.95rem] font-semibold">{m.class_group.label}</span>
-                  <span class="truncate text-[0.78rem] text-base-content/75">{m.subject}</span>
-                </span>
-                <.tag tone={:warning}>{gettext("Non fait")}</.tag>
-              </.link>
+                <.link
+                  navigate={
+                    ~p"/school/classes/#{m.class_group.id}/attendance/#{m.period.id}?date=#{Date.to_iso8601(m.date)}"
+                  }
+                  class="btn btn-outline btn-xs"
+                >
+                  {gettext("Faire l'appel")}
+                </.link>
+              </div>
             </div>
           </div>
 
-          <RollCall.roll_panel :if={@roll} roll={@roll} title={roll_title(@roll)} />
+          <div class="lg:col-span-2">
+            <RollCall.roll_panel
+              :if={@roll}
+              roll={@roll}
+              title={roll_title(@roll)}
+              eyebrow={roll_eyebrow(@slots, @selected)}
+            />
+          </div>
         </div>
       </section>
     </Layouts.app>
     """
+  end
+
+  defp eyebrow(today, nil), do: Dates.long(today)
+
+  defp eyebrow(today, seq),
+    do: Dates.long(today) <> " · " <> gettext("Séquence %{n}", n: seq.number)
+
+  defp subtitle(slots) do
+    to_call = Enum.count(slots, &(&1.status in [:in_progress, :missed]))
+    lessons = ngettext("%{count} cours aujourd'hui", "%{count} cours aujourd'hui", length(slots))
+
+    if to_call > 0,
+      do:
+        lessons <>
+          " · " <>
+          ngettext(
+            "%{count} appel à faire maintenant",
+            "%{count} appels à faire maintenant",
+            to_call
+          ),
+      else: lessons
+  end
+
+  # « En cours · 10:00 – 10:55 » over the panel when its slot is in progress, else
+  # « Cours 2 · 08:55 – 09:50 ».
+  defp roll_eyebrow(slots, selected) do
+    case Enum.find(slots, &(slot_key(&1) == selected)) do
+      %{status: :in_progress, period: p} ->
+        gettext("En cours · %{from} – %{to}", from: hm(p.start_time), to: hm(p.end_time))
+
+      %{period: p} ->
+        "#{p.label} · #{hm(p.start_time)} – #{hm(p.end_time)}"
+
+      nil ->
+        nil
+    end
   end
 
   attr :id, :string, required: true
@@ -196,7 +243,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp slot_class,
     do:
-      "grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 rounded-box border px-3.5 py-[11px] text-left transition-colors"
+      "grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 rounded-box border px-3 py-2.5 text-left transition-colors"
 
   defp selected_class(true), do: "border-primary bg-primary/12"
   defp selected_class(false), do: "border-base-300 bg-base-100 hover:border-primary/60"
@@ -205,13 +252,18 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp slot_cells(assigns) do
     ~H"""
-    <span class="ta-num flex flex-col">
-      <span class="truncate text-[0.88rem] font-semibold">{@slot.period.label}</span>
-      <span class="text-[0.7rem] text-base-content/75">{hm(@slot.period.start_time)}</span>
-    </span>
+    <span class="ta-num text-[0.88rem] font-semibold">{hm(@slot.period.start_time)}</span>
     <span class="flex min-w-0 flex-col gap-0.5">
-      <span class="text-[0.95rem] font-semibold">{@slot.class_group.label}</span>
-      <span class="truncate text-[0.78rem] text-base-content/75">{@slot.subject}</span>
+      <span class="truncate text-[0.92rem] font-semibold">
+        {@slot.class_group.label} · {@slot.subject}
+      </span>
+      <span class="ta-num truncate text-[0.72rem] text-base-content/70">
+        <%= if @slot.status == :done do %>
+          {ngettext("%{count} absent", "%{count} absents", @slot.absent)}
+        <% else %>
+          {@slot.period.label}
+        <% end %>
+      </span>
     </span>
     <.status_tag status={@slot.status} absent={@slot.absent} />
     """
@@ -221,13 +273,13 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   attr :absent, :integer, required: true
 
   defp status_tag(%{status: :done} = assigns),
-    do: ~H|<.tag tone={:primary}>{gettext("Fait · %{count} abs.", count: @absent)}</.tag>|
+    do: ~H|<.tag tone={:primary}>{gettext("Fait")}</.tag>|
 
   defp status_tag(%{status: :in_progress} = assigns),
-    do: ~H|<.tag tone={:warning}>{gettext("En cours")}</.tag>|
+    do: ~H|<.tag tone={:now}>{gettext("Maintenant")}</.tag>|
 
   defp status_tag(%{status: :missed} = assigns),
-    do: ~H|<.tag tone={:warning}>{gettext("Non fait")}</.tag>|
+    do: ~H|<.tag tone={:error}>{gettext("Non fait")}</.tag>|
 
   defp status_tag(%{status: :upcoming} = assigns),
     do: ~H|<.tag tone={:muted}>{gettext("À venir")}</.tag>|
@@ -247,11 +299,16 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   end
 
   defp tone_class(:primary), do: "bg-primary/20 text-primary"
-  defp tone_class(:warning), do: "bg-warning/25 text-warning"
-  defp tone_class(:muted), do: "bg-base-content/10 text-base-content/75"
+  defp tone_class(:now), do: "bg-warning text-warning-content"
+  defp tone_class(:error), do: "bg-error/20 text-error"
+  defp tone_class(:muted), do: "bg-base-300 text-base-content/75"
 
   defp roll_title(roll),
-    do: "#{roll.period.label} · #{roll.cg.label} — #{hm(roll.period.start_time)}"
+    do:
+      gettext("Appel · %{class} · %{what}",
+        class: roll.cg.label,
+        what: (roll.teaching_context && roll.teaching_context.subject) || roll.period.label
+      )
 
   defp hm(time), do: Calendar.strftime(time, "%H:%M")
 end

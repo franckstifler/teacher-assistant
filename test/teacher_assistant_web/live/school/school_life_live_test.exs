@@ -73,9 +73,11 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
   test "Ma journée lists today's slots with their roll-call status", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/today")
 
-    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "Fait · 1 abs."
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "Fait"
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "1 absent"
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Non fait"
-    assert view |> element("#calls-done") |> render() =~ "1 / 2"
+    assert has_element?(view, "#my-day h1", "Ma journée")
+    assert has_element?(view, "#my-day header", "2 cours aujourd'hui")
     # the missed slot is selected on arrival, its roll call beside the list
     assert view |> element("#roll-panel") |> render() =~ ctx.p2.label
   end
@@ -86,9 +88,8 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     view |> element("#att-#{ctx.e.id}-late") |> render_click()
     view |> element("#record-roll") |> render_click()
 
-    assert view |> element("#roll-status") |> render() =~ "Appel enregistré"
-    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Fait · 0 abs."
-    assert view |> element("#calls-done") |> render() =~ "2 / 2"
+    assert has_element?(view, "#record-roll", "Modifier l'appel")
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Fait"
   end
 
   test "Ma journée sends non-teachers to their space home", ctx do
