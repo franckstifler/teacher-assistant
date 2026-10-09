@@ -56,4 +56,48 @@ defmodule TeacherAssistantWeb.NotificationTextTest do
     assert NotificationText.detail(n(:entry_reminder, %{"sequence" => "1"})) ==
              "— · — · Séquence 1"
   end
+
+  test "bulletins published" do
+    note =
+      n(:bulletins_published, %{
+        "class" => "6e A",
+        "period" => "Trimestre 1",
+        "by" => "Marie Ekotto"
+      })
+
+    assert NotificationText.title(note) == "Bulletins Trimestre 1 publiés"
+    assert NotificationText.detail(note) == "6e A · par Marie Ekotto"
+  end
+
+  test "member joined" do
+    note = n(:member_joined, %{"name" => "Grace Ayuk", "roles" => "Enseignant"})
+    assert NotificationText.title(note) == "Grace Ayuk a rejoint l'établissement"
+    assert NotificationText.detail(note) == "Compte lié · Enseignant"
+  end
+
+  test "missed roll calls" do
+    morning =
+      n(:missed_roll_calls, %{"half" => "morning", "count" => "2", "list" => "6e A, 5e B"})
+
+    assert NotificationText.title(morning) == "2 appels non faits ce matin"
+    assert NotificationText.detail(morning) == "6e A, 5e B"
+
+    one = n(:missed_roll_calls, %{"half" => "afternoon", "count" => "1", "list" => "6e A"})
+    assert NotificationText.title(one) == "1 appel non fait cet après-midi"
+  end
+
+  test "temporary password expired" do
+    note =
+      n(:temporary_password_expired, %{"name" => "Samuel Fotso", "expired_on" => "07/10/2025"})
+
+    assert NotificationText.title(note) ==
+             "Samuel Fotso n'a pas utilisé son mot de passe temporaire"
+
+    assert NotificationText.detail(note) == "Expiré le 07/10/2025"
+  end
+
+  test "detail is nil when there is nothing to say" do
+    assert NotificationText.detail(n(:missed_roll_calls, %{"half" => "morning", "count" => "1"})) ==
+             nil
+  end
 end

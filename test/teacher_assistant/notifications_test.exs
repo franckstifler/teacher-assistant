@@ -115,4 +115,26 @@ defmodule TeacherAssistant.NotificationsTest do
     assert Enum.sort(Notifications.admin_ids(ctx.t)) ==
              Enum.sort([ctx.head.current_user.id, censeur.current_user.id])
   end
+
+  test "accepting an invitation notifies the admins, not the newcomer" do
+    %{scope: head} = TeacherFixtures.setup_complete_school_fixture()
+    user = TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      TeacherAssistant.Accounts.invite_member(head, %{
+        email: to_string(user.email),
+        roles: [:teacher]
+      })
+
+    {:ok, _} =
+      TeacherAssistant.Accounts.accept_invitation(
+        %TeacherAssistant.Scope{current_user: user},
+        inv.token
+      )
+
+    assert [%{kind: :member_joined, link: "/school/members"} = n] =
+             Notifications.inbox(head, 1).results
+
+    assert n.params["roles"] == "Enseignant"
+  end
 end

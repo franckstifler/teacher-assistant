@@ -8,6 +8,7 @@ defmodule TeacherAssistant.ReportCards do
   """
   use Gettext, backend: TeacherAssistantWeb.Gettext
   require Ash.Query
+  require Logger
 
   alias TeacherAssistant.{
     Accounts,
@@ -16,6 +17,7 @@ defmodule TeacherAssistant.ReportCards do
     Curriculum,
     Discipline,
     Enrollment,
+    Notifications,
     Organization
   }
 
@@ -117,6 +119,10 @@ defmodule TeacherAssistant.ReportCards do
         )
         |> Ash.create()
         |> case do
+          {:ok, _} = ok ->
+            _ = notify_published(scope, cg, period)
+            ok
+
           # A concurrent publish won the race: the partial unique identity refused this one.
           {:error, %Ash.Error.Invalid{}} = error ->
             if current_publication(scope, cg, period),
@@ -128,6 +134,35 @@ defmodule TeacherAssistant.ReportCards do
         end
     end
   end
+
+  # The class's form master and teachers hear of the publication; never the publisher.
+  # A notification failure must not undo the publication.
+  defp notify_published(scope, cg, {_, subject} = period) do
+    teachers = for tc <- Curriculum.list_assignments_for_class(scope, cg), do: tc.teacher_user_id
+    recipients = [cg.form_master_user_id | teachers]
+    recipients = Enum.reject(recipients, &(is_nil(&1) or &1 == scope.current_user.id))
+
+    Notifications.deliver(
+      scope,
+      :bulletins_published,
+      recipients,
+      %{
+        class: cg.label,
+        period: publication_period_label(period),
+        by: Accounts.User.display_name(scope.current_user)
+      },
+      "/school/bulletins?class=#{cg.id}&period=#{Organization.period_param({elem(period, 0), subject})}"
+    )
+  rescue
+    error ->
+      Logger.warning("bulletins_published notification failed: #{Exception.message(error)}")
+      :error
+  end
+
+  defp publication_period_label({:trimester, %Term{position: n}}),
+    do: gettext("Trimestre %{n}", n: n)
+
+  defp publication_period_label({:annual, _}), do: gettext("Année")
 
   @doc "Withdraws a publication; `reason` is required."
   def withdraw(%Scope{} = scope, %BulletinPublication{} = pub, reason) do

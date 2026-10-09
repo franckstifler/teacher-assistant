@@ -232,6 +232,7 @@ defmodule TeacherAssistant.Accounts do
            # The invitation's school is the tenant, not the scope's current school.
            |> Ash.Changeset.for_update(:accept, %{}, scope: scope, tenant: inv.workspace_id)
            |> Ash.update() do
+      _ = notify_member_joined(user, inv)
       {:ok, inv.workspace}
     else
       {:error, :not_found} -> {:error, :invalid}
@@ -240,6 +241,24 @@ defmodule TeacherAssistant.Accounts do
   end
 
   def accept_invitation(%Scope{}, _token), do: {:error, :invalid}
+
+  # The admins hear of the newcomer; a failure here must not undo the acceptance.
+  defp notify_member_joined(user, inv) do
+    with {:ok, scope} <- TeacherAssistant.Accounts.Workspaces.scope_for(user, inv.workspace_id) do
+      TeacherAssistant.Notifications.deliver(
+        scope,
+        :member_joined,
+        TeacherAssistant.Notifications.admin_ids(scope) -- [user.id],
+        %{
+          name: User.display_name(user),
+          roles: Enum.map_join(inv.roles, ", ", &TeacherAssistant.Accounts.SchoolRole.label/1)
+        },
+        "/school/members"
+      )
+    end
+  rescue
+    _ -> :error
+  end
 
   defp check_acceptable(%SchoolInvitation{status: :pending} = inv) do
     cond do

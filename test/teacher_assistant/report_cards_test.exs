@@ -67,6 +67,34 @@ defmodule TeacherAssistant.ReportCardsTest do
              TeacherAssistant.Accounts.Phone.format("+237677123456")
   end
 
+  test "publishing notifies the form master and the class's teachers, not the publisher", ctx do
+    %{scope: scope, cg: cg, term: term} = ctx
+    fm = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+    t = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, fm.current_user.id)
+
+    {:ok, _} =
+      Curriculum.assign_teacher(scope, cg, t.current_user, %{
+        subject: "SVT",
+        coefficient: Decimal.new(2)
+      })
+
+    {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, term)
+
+    kinds = fn s ->
+      s |> TeacherAssistant.Notifications.inbox(1) |> Map.get(:results) |> Enum.map(& &1.kind)
+    end
+
+    assert :bulletins_published in kinds.(fm)
+    assert :bulletins_published in kinds.(t)
+    refute :bulletins_published in kinds.(scope)
+
+    [n] = fm |> TeacherAssistant.Notifications.inbox(1) |> Map.get(:results)
+    assert n.params["class"] == "6e P"
+    assert n.params["period"] == "Trimestre 1"
+    assert n.link == "/school/bulletins?class=#{cg.id}&period=trim:#{term.id}"
+  end
+
   test "publishing freezes the report cards", ctx do
     %{scope: scope, cg: cg, term: term, a: a, st: st} = ctx
     assert {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)

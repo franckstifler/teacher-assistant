@@ -14,6 +14,9 @@ defmodule TeacherAssistant.Academics.MarkCorrectionNotificationsTest do
       ])
 
     censeur = TeacherFixtures.member_scope_fixture(world.head, %{roles: [:vice_principal]})
+    # Joining the school notified the admins (:member_joined); start from a clean bell.
+    Notifications.mark_all_read(world.head)
+    Notifications.mark_all_read(censeur)
     Map.put(world, :censeur, censeur)
   end
 

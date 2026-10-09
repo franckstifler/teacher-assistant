@@ -20,6 +20,34 @@ defmodule TeacherAssistantWeb.NotificationText do
   def title(%{kind: :entry_reminder}), do: gettext("Saisie en retard")
   def title(%{kind: :roll_call_reminder}), do: gettext("Appel non fait")
 
+  def title(%{kind: :bulletins_published, params: p}) do
+    gettext("Bulletins %{period} publiés", period: get(p, "period"))
+  end
+
+  def title(%{kind: :member_joined, params: p}) do
+    gettext("%{name} a rejoint l'établissement", name: get(p, "name"))
+  end
+
+  def title(%{kind: :missed_roll_calls, params: p}) do
+    count = count(p)
+
+    case Map.get(p, "half") do
+      "afternoon" ->
+        ngettext(
+          "%{count} appel non fait cet après-midi",
+          "%{count} appels non faits cet après-midi",
+          count
+        )
+
+      _ ->
+        ngettext("%{count} appel non fait ce matin", "%{count} appels non faits ce matin", count)
+    end
+  end
+
+  def title(%{kind: :temporary_password_expired, params: p}) do
+    gettext("%{name} n'a pas utilisé son mot de passe temporaire", name: get(p, "name"))
+  end
+
   @doc "The second line: about whom and what; nil when there is nothing more to say."
   def detail(%{kind: :correction_requested, params: p}) do
     join([get(p, "student"), get(p, "class"), get(p, "subject"), present(p, "change")])
@@ -41,6 +69,23 @@ defmodule TeacherAssistantWeb.NotificationText do
     join([get(p, "class"), get(p, "time"), get(p, "subject")])
   end
 
+  def detail(%{kind: :bulletins_published, params: p}) do
+    join([present(p, "class"), by_text(p)])
+  end
+
+  def detail(%{kind: :member_joined, params: p}) do
+    join([gettext("Compte lié"), present(p, "roles")])
+  end
+
+  def detail(%{kind: :missed_roll_calls, params: p}), do: join([present(p, "list")])
+
+  def detail(%{kind: :temporary_password_expired, params: p}) do
+    case present(p, "expired_on") do
+      nil -> nil
+      date -> gettext("Expiré le %{date}", date: date)
+    end
+  end
+
   @doc "« Aujourd'hui · 14:05 », « hier · 09:12 », else « ven. 2 oct. · 16:40 » (school time)."
   def when_text(%{inserted_at: %DateTime{} = at}) do
     local = Reference.now(at)
@@ -49,7 +94,27 @@ defmodule TeacherAssistantWeb.NotificationText do
       Calendar.strftime(local, "%H:%M")
   end
 
-  defp join(segments), do: segments |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
+  # nil when no segment is present, so callers can `:if` on the result.
+  defp join(segments) do
+    case Enum.reject(segments, &is_nil/1) do
+      [] -> nil
+      present -> Enum.join(present, " · ")
+    end
+  end
+
+  defp by_text(params) do
+    case present(params, "by") do
+      nil -> nil
+      by -> gettext("par %{name}", name: by)
+    end
+  end
+
+  defp count(params) do
+    case Integer.parse(to_string(Map.get(params, "count"))) do
+      {n, _} -> n
+      :error -> 0
+    end
+  end
 
   defp present(params, key) do
     case Map.get(params, key) do
