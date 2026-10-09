@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Academics.{Lock, MarkEntry, Reference}
+  alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.Teacher.MarksComponents
 
   def mount(%{"id" => ctx_id}, _session, socket) do
@@ -82,9 +83,24 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     |> assign(:grading_rules, Assessment.grading_rules(scope))
     |> assign(:sequences, if(year, do: Organization.list_sequences(scope, year), else: []))
     |> assign(:student_group, student_group(socket.assigns.groups))
-    |> assign(errors: %{}, saved_at: nil)
+    |> assign(errors: %{}, saved_at: nil, today: Reference.today())
+    |> assign(:course_tabs, course_tabs(scope, ctx))
     |> assign_assessment_defaults(scope)
   end
+
+  # The teacher's courses, each linking to its own marks page.
+  defp course_tabs(scope, ctx) do
+    for unit <- Curriculum.list_units_for_scope(scope) do
+      %{
+        label: Curriculum.unit_label(unit),
+        context_id: Curriculum.unit_select_id(scope, unit),
+        current?: current_unit?(unit, ctx)
+      }
+    end
+  end
+
+  defp current_unit?({:course, course}, ctx), do: course.id == ctx.combined_course_id
+  defp current_unit?({:solo, tc}, ctx), do: tc.id == ctx.id
 
   # student id => class group id, to route a mark to the student's own class.
   defp student_group(groups),
@@ -340,11 +356,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp new_assessment_form(socket, seq),
     do: solo_assessment_form(socket.assigns.current_scope, socket.assigns.ctx, seq)
 
-  def handle_event("select_seq", %{"seq" => seq_id}, socket) do
-    {:noreply,
-     push_patch(socket, to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq_id}")}
-  end
-
   def handle_event("select_assessment", %{"assessment" => aid}, socket) do
     {:noreply,
      push_patch(socket,
@@ -524,41 +535,74 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           </:actions>
         </.page_header>
 
-        <div id="marks-toolbar" class="ta-leaf flex flex-wrap items-end gap-2">
-          <form id="seq-select" phx-change="select_seq" class="min-w-36 flex-1">
-            <.input
-              type="select"
-              name="seq"
-              value={@seq && @seq.id}
-              label={gettext("Séquence")}
-              options={for s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", s.id}}
+        <div id="marks-toolbar" class="ta-leaf flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <nav
+              :if={length(@course_tabs) > 1}
+              id="course-tabs"
+              aria-label={gettext("Mes cours")}
+              class="flex max-w-full gap-1 overflow-x-auto rounded-box bg-base-200 p-1"
+            >
+              <.link
+                :for={tab <- @course_tabs}
+                navigate={~p"/teacher/contexts/#{tab.context_id}/marks"}
+                aria-current={tab.current? && "page"}
+                class={[
+                  "whitespace-nowrap rounded-[0.5rem] px-3 py-1.5 text-sm font-semibold transition-colors",
+                  if(tab.current?,
+                    do: "bg-primary text-primary-content",
+                    else: "text-base-content/70 hover:bg-base-300"
+                  )
+                ]}
+              >
+                {tab.label}
+              </.link>
+            </nav>
+
+            <div
+              :if={@sequences != []}
+              id="seq-tabs"
+              class="flex max-w-full gap-1 overflow-x-auto rounded-box border border-base-300 p-1"
+            >
+              <.link
+                :for={s <- @sequences}
+                id={"seq-tab-#{s.id}"}
+                patch={~p"/teacher/contexts/#{@ctx.id}/marks?seq=#{s.id}"}
+                aria-current={@seq && @seq.id == s.id && "page"}
+                class={[
+                  "whitespace-nowrap rounded-[0.5rem] px-3 py-1.5 text-sm transition-colors",
+                  if(@seq && @seq.id == s.id,
+                    do: "bg-base-content text-base-100 font-semibold",
+                    else: "text-base-content/70 hover:bg-base-200"
+                  )
+                ]}
+              >
+                {seq_tab_label(s, @today)}
+              </.link>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-2">
+            <.assessment_controls
+              seq={@seq}
+              locked?={@locked?}
+              columns={@columns}
+              column={@column}
+              form={@new_assessment_form}
+              assessment_types={@assessment_types}
+              default_max={@default_max}
             />
-          </form>
-
-          <p :if={@seq} id="entry-deadline" class="ta-num self-center text-xs text-base-content/70">
-            {gettext("Limite de saisie : %{date}",
-              date: Calendar.strftime(@seq.grade_entry_deadline, "%d/%m/%Y")
-            )}
-          </p>
-
-          <.assessment_controls
-            seq={@seq}
-            locked?={@locked?}
-            columns={@columns}
-            column={@column}
-            form={@new_assessment_form}
-            assessment_types={@assessment_types}
-            default_max={@default_max}
-          />
+          </div>
         </div>
 
         <.locked_banner :if={@locked?} seq={@seq} assessment={@column} />
+        <.open_banner :if={@seq && !@locked?} seq={@seq} today={@today} />
 
         <div :if={@column} class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div class="space-y-3">
             <.pending_makeups names={@pending_makeups} />
             <div class="ta-leaf overflow-x-auto !p-0">
-              <table id="marks-table" class="table table-sm">
+              <table id="marks-table" class="table table-sm" phx-hook=".MarksGrid">
                 <thead>
                   <tr>
                     <th>{gettext("N°")}</th>
@@ -591,6 +635,27 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                   </tbody>
                 <% end %>
               </table>
+              <script :type={Phoenix.LiveView.ColocatedHook} name=".MarksGrid">
+                // Enter moves to the next student's cell (its blur saves this one);
+                // « a » in an empty cell marks the student absent.
+                export default {
+                  mounted() {
+                    this.el.addEventListener("keydown", (e) => {
+                      const input = e.target.closest("input[data-mark-input]")
+                      if (!input) return
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        const inputs = [...this.el.querySelectorAll("input[data-mark-input]:not([disabled])")]
+                        const next = inputs[inputs.indexOf(input) + 1]
+                        next ? next.focus() : input.blur()
+                      } else if ((e.key === "a" || e.key === "A") && input.value === "") {
+                        e.preventDefault()
+                        this.pushEvent("toggle_absent", {student: input.dataset.student})
+                      }
+                    })
+                  }
+                }
+              </script>
             </div>
           </div>
 
@@ -600,13 +665,54 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               done={entered_count(@students, @loaded)}
               total={length(@students)}
               average={fmt_avg(preview_average(@students, @column, @loaded, @grading_rules))}
+              missing={
+                missing_line(
+                  length(@students) - entered_count(@students, @loaded),
+                  @seq,
+                  @locked?
+                )
+              }
             />
+            <div id="marks-shortcuts" class="ta-leaf space-y-1.5 text-sm">
+              <p class="ta-eyebrow">{gettext("Raccourcis")}</p>
+              <p>
+                <kbd class="kbd kbd-sm">{gettext("Entrée")}</kbd> {gettext("élève suivant")}
+              </p>
+              <p><kbd class="kbd kbd-sm">a</kbd> {gettext("absent (case vide)")}</p>
+              <p class="text-base-content/70">
+                {gettext("Virgule ou point acceptés : 12,5 = 12.5")}
+              </p>
+            </div>
           </aside>
         </div>
       </section>
     </Layouts.app>
     """
   end
+
+  # « Séquence 2 · ouverte » / « · verrouillée »; nothing for one not started yet.
+  defp seq_tab_label(seq, today) do
+    base = gettext("Séquence %{n}", n: seq.number)
+
+    cond do
+      Lock.locked?(seq, today) -> base <> " · " <> gettext("verrouillée")
+      Date.compare(seq.start_date, today) != :gt -> base <> " · " <> gettext("ouverte")
+      true -> base
+    end
+  end
+
+  defp missing_line(_missing, nil, _locked?), do: nil
+  defp missing_line(_missing, _seq, true), do: nil
+  defp missing_line(0, _seq, false), do: gettext("Toutes les notes sont saisies.")
+
+  defp missing_line(missing, seq, false),
+    do:
+      ngettext(
+        "%{count} note à saisir avant le %{date}",
+        "%{count} notes à saisir avant le %{date}",
+        missing,
+        date: Dates.day_month(seq.grade_entry_deadline)
+      )
 
   # Each group with the row number its first student follows.
   defp group_offsets(groups) do
@@ -673,22 +779,46 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp locked_banner(assigns) do
     ~H"""
-    <div id="locked-banner" class="alert alert-warning text-sm">
-      <.icon name="hero-lock-closed" class="size-4" />
+    <div
+      id="locked-banner"
+      class="flex flex-wrap items-center gap-3 rounded-box border border-info/50 bg-info/15 px-4 py-3 text-sm"
+    >
+      <.icon name="hero-lock-closed" class="size-4 text-info" />
       <span class="flex-1">
-        {gettext(
-          "Séquence verrouillée depuis le %{date} : les notes ne se modifient plus que par une demande de correction.",
-          date: @seq.grade_entry_deadline |> Date.add(1) |> Calendar.strftime("%d/%m/%Y")
+        {gettext("Séquence %{n} verrouillée depuis le %{date}.",
+          n: @seq.number,
+          date: @seq.grade_entry_deadline |> Date.add(1) |> Dates.day_month()
         )}
       </span>
       <.link
         :if={@assessment}
         id="locked-request-link"
         navigate={~p"/school/corrections/new?assessment=#{@assessment.id}"}
-        class="btn btn-sm"
+        class="link font-semibold link-hover"
       >
-        {gettext("Nouvelle demande")}
+        {gettext("Demander une correction →")}
       </.link>
+    </div>
+    """
+  end
+
+  attr :seq, :map, required: true
+  attr :today, Date, required: true
+
+  defp open_banner(assigns) do
+    ~H"""
+    <div
+      id="open-banner"
+      class="flex items-start gap-3 rounded-box border border-primary/45 bg-primary/10 px-4 py-3 text-sm"
+    >
+      <.icon name="hero-pencil-square" class="mt-0.5 size-4 text-primary" />
+      <span>
+        {gettext(
+          "Saisie ouverte jusqu'au %{date} (J-%{n}). Chaque note est enregistrée dès que vous quittez la case.",
+          date: Dates.day_month(@seq.grade_entry_deadline),
+          n: max(Date.diff(@seq.grade_entry_deadline, @today), 0)
+        )}
+      </span>
     </div>
     """
   end

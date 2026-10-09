@@ -234,7 +234,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    assert has_element?(view, "#marks-toolbar #seq-select")
+    assert has_element?(view, "#marks-toolbar #seq-tabs")
     assert has_element?(view, "#marks-toolbar #assessment-select")
   end
 
@@ -274,15 +274,66 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert has_element?(view, "#new-assessment-form")
   end
 
-  test "shows the séquence's grade-entry deadline", %{conn: conn, ctx: ctx, seq: seq, a: a} do
+  test "open banner names the deadline", %{conn: conn, ctx: ctx, seq: seq, a: a} do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    assert has_element?(
-             view,
-             "#entry-deadline",
-             Calendar.strftime(seq.grade_entry_deadline, "%d/%m/%Y")
-           )
+    assert has_element?(view, "#open-banner", "Saisie ouverte jusqu'au")
+    assert has_element?(view, "#open-banner", "dès que vous quittez la case")
+  end
+
+  test "course tabs link to the teacher's other courses", %{
+    conn: conn,
+    ctx: ctx,
+    scope: scope,
+    year: year,
+    actor: head
+  } do
+    other =
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
+        subject: "Physique",
+        level: "4ème",
+        teacher: head
+      })
+
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks")
+    assert has_element?(view, "#course-tabs a[href^='/teacher/contexts/#{other.id}/marks']")
+    assert has_element?(view, "#course-tabs [aria-current='page']")
+  end
+
+  test "séquence tabs name their state and switch the séquence", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    scope: scope,
+    year: year
+  } do
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+    assert has_element?(view, "#seq-tab-#{seq.id}", "Séquence #{seq.number} · ouverte")
+
+    [_, seq2 | _] = Organization.list_sequences(scope, year)
+    view |> element("#seq-tab-#{seq2.id}") |> render_click()
+    assert_patch(view, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq2.id}")
+  end
+
+  test "the side panel counts what is left before the deadline", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a
+  } do
+    {:ok, view, _} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#marks-missing", "1 note à saisir avant le")
+    assert has_element?(view, "#marks-shortcuts", "Entrée")
+  end
+
+  test "the grid carries the shortcuts hook", %{conn: conn, ctx: ctx, seq: seq, a: a} do
+    {:ok, view, _} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#marks-table[phx-hook$='MarksGrid']")
   end
 
   defp blur(view, student_id, value),
