@@ -122,4 +122,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/marks/summary")
   end
+
+  test "shows the distribution bars and the way back to entry", %{conn: conn, ctx: ctx, seq: seq} do
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+    assert has_element?(view, "#summary-distribution [data-band='12 – 15']", "1")
+    assert has_element?(view, "#summary-distribution [data-band='5 – 10']", "1")
+    assert has_element?(view, "#summary-distribution [data-band='0 – 5']", "0")
+    assert has_element?(view, "#teacher-marks-summary h1", "Maths")
+    assert has_element?(view, "#back-to-entry[href^='/teacher/contexts/#{ctx.id}/marks']")
+  end
 end

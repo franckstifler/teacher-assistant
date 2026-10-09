@@ -675,7 +675,8 @@ defmodule TeacherAssistantWeb.CoreComponents do
       <p class={[
         "ta-num mt-1 text-2xl font-semibold leading-none",
         @tone == :primary && "text-primary",
-        @tone == :behind && "text-warning"
+        @tone == :behind && "text-warning",
+        @tone == :error && "text-error"
       ]}>
         {@value}<span :if={@suffix} class="text-base font-normal text-base-content/55">{@suffix}</span>
       </p>

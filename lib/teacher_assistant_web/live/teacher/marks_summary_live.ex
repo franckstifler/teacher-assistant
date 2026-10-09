@@ -22,6 +22,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
       {:ok,
        socket
        |> assign(:ctx, ctx)
+       |> assign(:cg, cg)
        |> assign(:sequences, sequences)
        |> assign(:seq, seq)
        |> assign(:students, students)
@@ -75,6 +76,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     assign(socket, :summary, summary)
   end
 
+  defp notes_count(summary),
+    do: summary.per_student |> Map.values() |> Enum.count(&(&1.average != nil))
+
+  # Bars of the « Répartition des notes » chart, height relative to the largest band.
+  defp distribution(summary) do
+    bands = summary.per_student |> Map.values() |> Enum.map(& &1.average) |> Marks.distribution()
+    top = bands |> Enum.map(& &1.count) |> Enum.max(fn -> 0 end) |> max(1)
+    Enum.map(bands, &Map.put(&1, :pct, round(&1.count * 100 / top)))
+  end
+
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
 
@@ -101,8 +112,28 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-marks-summary" class="mx-auto max-w-2xl space-y-4">
-        <.page_header eyebrow={gettext("Séquence results")} title={"#{@ctx.subject} · #{@ctx.level}"}>
+        <.page_header
+          eyebrow={
+            if @seq,
+              do: gettext("Résultats · Séquence %{n}", n: @seq.number),
+              else: gettext("Résultats")
+          }
+          title={"#{@ctx.subject} · #{@cg.label}"}
+          subtitle={
+            @summary &&
+              ngettext("%{count} élève", "%{count} élèves", length(@students)) <>
+                " · " <>
+                ngettext("%{count} note", "%{count} notes", notes_count(@summary))
+          }
+        >
           <:actions>
+            <.link
+              id="back-to-entry"
+              navigate={~p"/teacher/contexts/#{@ctx.id}/marks?#{if @seq, do: [seq: @seq.id], else: []}"}
+              class="btn btn-outline btn-sm"
+            >
+              <.icon name="hero-arrow-left" class="size-4" /> {gettext("Retour à la saisie")}
+            </.link>
             <form :if={@sequences != []} id="summary-seq-select" phx-change="select_seq">
               <.input
                 type="select"
@@ -125,10 +156,39 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
               />
             </div>
             <div id="summary-pass-rate" class="contents">
-              <.stat label={gettext("Pass rate")} value={pct(@summary.pass_rate)} />
+              <.stat label={gettext("≥ 10/20")} value={pct(@summary.pass_rate)} tone={:primary} />
             </div>
             <.stat label={gettext("Highest")} value={fmt(@summary.highest)} suffix="/20" />
-            <.stat label={gettext("Lowest")} value={fmt(@summary.lowest)} suffix="/20" />
+            <.stat
+              label={gettext("Lowest")}
+              value={fmt(@summary.lowest)}
+              suffix="/20"
+              tone={:error}
+            />
+          </div>
+
+          <div id="summary-distribution" class="ta-leaf space-y-3">
+            <p class="ta-eyebrow">{gettext("Répartition des notes")}</p>
+            <div class="grid h-40 grid-cols-5 items-end gap-2">
+              <div
+                :for={b <- distribution(@summary)}
+                data-band={b.label}
+                class="flex h-full flex-col items-center justify-end gap-1"
+              >
+                <span class="ta-num text-sm font-semibold">{b.count}</span>
+                <div
+                  class={[
+                    "w-full rounded-t transition-[height] duration-500",
+                    if(b.below_pass?, do: "bg-error", else: "bg-primary")
+                  ]}
+                  style={"height: #{b.pct}%"}
+                >
+                </div>
+                <span class="ta-num whitespace-nowrap text-[0.7rem] text-base-content/70">
+                  {b.label}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div id="summary-mentions" class="flex flex-wrap items-center gap-2">

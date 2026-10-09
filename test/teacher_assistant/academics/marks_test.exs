@@ -124,4 +124,17 @@ defmodule TeacherAssistant.Academics.MarksTest do
       assert r.per_student["s3"].rank == 3
     end
   end
+
+  test "distribution buckets averages with inclusive lower bounds" do
+    avgs = Enum.map(~w(0 4.99 5 9.99 10 11.99 12 14.99 15 20), &Decimal.new/1) ++ [nil]
+
+    assert Enum.map(Marks.distribution(avgs), &{&1.label, &1.count, &1.below_pass?}) ==
+             [
+               {"0 – 5", 2, true},
+               {"5 – 10", 2, true},
+               {"10 – 12", 2, false},
+               {"12 – 15", 2, false},
+               {"15 – 20", 2, false}
+             ]
+  end
 end

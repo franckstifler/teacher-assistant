@@ -151,4 +151,32 @@ defmodule TeacherAssistant.Academics.Marks do
 
   defp min_of(list),
     do: Enum.reduce(list, fn a, acc -> if Decimal.compare(a, acc) == :lt, do: a, else: acc end)
+
+  @bands [
+    {"0 – 5", 0, 5},
+    {"5 – 10", 5, 10},
+    {"10 – 12", 10, 12},
+    {"12 – 15", 12, 15},
+    {"15 – 20", 15, 21}
+  ]
+
+  @doc """
+  Counts of /20 averages per results band (spec 2026-10-09 §1.3): lower bound
+  inclusive, 20 in the last band, nils ignored.
+  """
+  def distribution(averages) do
+    graded = Enum.reject(averages, &is_nil/1)
+
+    Enum.map(@bands, fn {label, low, high} ->
+      %{
+        label: label,
+        below_pass?: high <= 10,
+        count:
+          Enum.count(
+            graded,
+            &(Decimal.compare(&1, low) != :lt and Decimal.compare(&1, high) == :lt)
+          )
+      }
+    end)
+  end
 end
