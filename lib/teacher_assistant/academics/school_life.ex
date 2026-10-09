@@ -304,6 +304,32 @@ defmodule TeacherAssistant.Academics.SchoolLife do
           date >= ^first and date <= ^last
       )
 
+  @doc """
+  The current séquence's absences still to justify (spec 2026-10-09 §1.4): `count`
+  student-days not justified, `flagged_students` among them at or over the alert
+  threshold, and that threshold (`alert_hours`). Zero without a current séquence.
+  Drives the dashboard KPI and the « Absences » menu badge.
+  """
+  def absences_to_justify(%Scope{} = scope, %Date{} = today) do
+    alert_hours = Attendance.school_life_rules(scope).absence_alert_hours
+
+    open =
+      case current_sequence_range(scope, today) do
+        nil ->
+          []
+
+        {first, last} ->
+          scope |> absence_days(first, last, today) |> Enum.reject(& &1.justified?)
+      end
+
+    %{
+      count: length(open),
+      flagged_students:
+        open |> Enum.filter(& &1.flagged?) |> Enum.uniq_by(& &1.enrollment.id) |> length(),
+      alert_hours: alert_hours
+    }
+  end
+
   @doc "The current séquence's date range up to `today` (`nil` without one)."
   def current_sequence_range(%Scope{current_academic_year: nil}, _today), do: nil
 

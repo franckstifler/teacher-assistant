@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
     conn = get(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
-    assert has_element?(view, "#school-dashboard")
+    assert has_element?(view, "#dashboard")
     assert render(view) =~ "Lycée Central"
     assert has_element?(view, "#school-nav")
   end
@@ -30,32 +30,6 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
-  end
-
-  test "dashboard shows structure stats", %{conn: conn, actor: user} do
-    alias TeacherAssistant.Enrollment
-
-    {:ok, school} =
-      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
-        name: "Lycée Stats"
-      })
-
-    scope = school_scope(user, school)
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
-
-    {:ok, year} =
-      Organization.create_academic_year(scope, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
-    {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
-
-    {:ok, _view, html} = live(conn, ~p"/school")
-    assert html =~ "6e A" or html =~ "1"
   end
 
   # These two tests used to exercise DashboardLive's own inline "no active
@@ -258,8 +232,62 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
     } do
       conn = conn_with_roles(school, scope, [:head])
       assert {:ok, view, _html} = live(conn, ~p"/school")
-      assert has_element?(view, "#school-dashboard")
+      assert has_element?(view, "#dashboard")
       assert has_element?(view, "#nav-school-sequences")
+    end
+  end
+
+  describe "Pilotage (complete, verified school)" do
+    setup do
+      %{head_user: head, workspace: ws, scope: scope} =
+        TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> log_in_user(head)
+        |> Plug.Conn.put_session(:workspace_id, ws.id)
+
+      %{conn: conn, scope: scope}
+    end
+
+    test "KPI cards link to their screens", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+      assert has_element?(view, "#dashboard h1", "Bonjour")
+
+      for {id, href} <- [
+            {"kpi-entry", "/school/sequences"},
+            {"kpi-calls", "/school/day"},
+            {"kpi-absences", "/school/absences"},
+            {"kpi-corrections", "/school/corrections/review"}
+          ],
+          do: assert(has_element?(view, "##{id}[href='#{href}']"))
+    end
+
+    test "to-do rows appear only when their condition holds", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+      # the fixture's classes have no form master
+      assert has_element?(view, "#todo-no-pp")
+      assert has_element?(view, "#todo-no-pp a", "Désigner")
+      # no pending correction, no account awaiting its first sign-in
+      refute has_element?(view, "#todo-corrections")
+      refute has_element?(view, "#todo-accounts")
+    end
+
+    test "the setup checklist is hidden once setup is complete", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+      refute has_element?(view, "#setup-checklist")
+      refute has_element?(view, "#pending-verification")
+    end
+
+    test "entry bars per class", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+      assert has_element?(view, "#entry-bars [data-class]")
+      assert has_element?(view, "#entry-bars a[href='/school/sequences']")
+    end
+
+    test "the three count stats are gone", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+      refute has_element?(view, "#dashboard-stats")
     end
   end
 end

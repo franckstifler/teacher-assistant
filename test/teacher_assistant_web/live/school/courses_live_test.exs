@@ -203,7 +203,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     } do
       {:ok, _} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Physique"})
       {:ok, view, _html} = live(conn, ~p"/school")
-      assert has_element?(view, "#school-dashboard")
+      assert has_element?(view, "#dashboard")
       assert has_element?(view, "#dashboard-my-courses a[href='/school/courses']")
     end
   end

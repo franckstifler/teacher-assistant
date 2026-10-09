@@ -142,6 +142,49 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
              Enum.find(rows, &(&1.date == @monday))
   end
 
+  test "absences_to_justify counts unjustified rows and flagged students", ctx do
+    {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "Bello", sex: :m})
+
+    %{enrollment: other} =
+      Enum.find(Enrollment.list_roster(ctx.scope, ctx.cg), &(&1.enrollment.id != ctx.e.id))
+
+    for d <- [~D[2025-09-15], ~D[2025-09-22], ~D[2025-09-29]],
+        do:
+          {:ok, _} =
+            Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, d, [
+              {ctx.e.id, :absent},
+              {other.id, if(d == ~D[2025-09-15], do: :absent, else: :present)}
+            ])
+
+    {:ok, 1} = Attendance.justify_day(ctx.scope, other, ~D[2025-09-15], :maladie)
+    set_school_life(ctx.scope, %{absence_alert_hours: 2})
+
+    today = ~D[2025-09-30]
+    {first, last} = Attendance.current_sequence_range(ctx.scope, today)
+    rows = Attendance.absence_days(ctx.scope, first, last, today)
+    r = Attendance.absences_to_justify(ctx.scope, today)
+
+    assert r.count == Enum.count(rows, &(not &1.justified?))
+    assert r.count == 3
+
+    assert r.flagged_students ==
+             rows
+             |> Enum.filter(&(&1.flagged? and not &1.justified?))
+             |> Enum.uniq_by(& &1.enrollment.id)
+             |> length()
+
+    assert r.flagged_students == 1
+    assert r.alert_hours == 2
+  end
+
+  test "absences_to_justify is zero without a current séquence", ctx do
+    assert %{count: 0, flagged_students: 0} =
+             Attendance.absences_to_justify(
+               %{ctx.scope | current_academic_year: nil},
+               ~D[2025-09-30]
+             )
+  end
+
   test "an unjustified absence is late for justification after N lesson days", ctx do
     {:ok, _} =
       Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :absent}])

@@ -128,3 +128,40 @@ defmodule TeacherAssistantWeb.SpacesTest do
     refute item(:surveillant, facts([:discipline_master]), "nav-school-correction-review")
   end
 end
+
+defmodule TeacherAssistantWeb.SpacesCountsTest do
+  use TeacherAssistant.DataCase, async: true
+
+  alias TeacherAssistant.{Attendance, Curriculum, Enrollment, TeacherFixtures}
+  alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistantWeb.Spaces
+
+  test "the Absences badge is the count of absences to justify, as before" do
+    %{scope: scope, year: year, head_user: head} = TeacherFixtures.setup_complete_school_fixture()
+    [cg | _] = Enrollment.list_class_groups(scope, year)
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Bello", sex: :m})
+    [a, b] = scope |> Enrollment.list_roster(cg) |> Enum.map(& &1.enrollment)
+    :ok = Attendance.build_default_periods(scope)
+    [p1, p2 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    today = Reference.today()
+
+    for p <- [p1, p2],
+        do:
+          {:ok, _} =
+            Attendance.record_period(scope, cg, p, tc, today, [{a.id, :absent}, {b.id, :absent}])
+
+    {:ok, _} = Attendance.justify_day(scope, b, today, :maladie)
+
+    # the figure the badge was computed with before `absences_to_justify/2`
+    {first, last} = Attendance.current_sequence_range(scope, today)
+
+    before =
+      scope |> Attendance.absence_days(first, last, today) |> Enum.count(&(not &1.justified?))
+
+    assert before == 1
+    assert Spaces.counts(:surveillant, scope).unjustified_absences == before
+    assert Attendance.absences_to_justify(scope, today).count == before
+  end
+end

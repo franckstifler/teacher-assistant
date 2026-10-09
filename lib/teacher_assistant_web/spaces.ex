@@ -95,18 +95,9 @@ defmodule TeacherAssistantWeb.Spaces do
   def counts(:surveillant, scope) do
     today = Reference.today()
 
-    unjustified =
-      case Attendance.current_sequence_range(scope, today) do
-        nil ->
-          0
-
-        {first, last} ->
-          scope |> Attendance.absence_days(first, last, today) |> Enum.count(&(not &1.justified?))
-      end
-
     %{
       missed_calls: length(Attendance.school_day(scope, today, Reference.now()).missed),
-      unjustified_absences: unjustified,
+      unjustified_absences: Attendance.absences_to_justify(scope, today).count,
       parents_to_notify:
         case scope.current_academic_year do
           nil -> 0
