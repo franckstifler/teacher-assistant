@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     refute has_element?(view, "#pending-#{ctx.c.id}")
 
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review?tab=decided")
-    assert has_element?(view, "#decided-#{ctx.c.id}", "Approuvée")
+    assert has_element?(view, "#decided-#{ctx.c.id}", "Acceptée")
   end
 
   test "the censeur refuses a request", ctx do

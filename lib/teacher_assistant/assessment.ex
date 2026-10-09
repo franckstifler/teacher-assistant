@@ -485,6 +485,20 @@ defmodule TeacherAssistant.Assessment do
   defp user_name(nil), do: ""
   defp user_name(user), do: User.display_name(user)
 
+  @doc """
+  The display name of the school's Censeur, to name them on a request; nil when the
+  school has none or several (`:vice_principal` members).
+  """
+  def censeur_name(%Scope{} = scope) do
+    scope
+    |> TeacherAssistant.Accounts.list_members()
+    |> Enum.filter(&(:vice_principal in &1.roles))
+    |> case do
+      [member] -> User.display_name(member.user)
+      _none_or_several -> nil
+    end
+  end
+
   @doc "The scope's own requests, newest first."
   def list_my_corrections(%Scope{current_user: %{id: user_id}} = scope) do
     MarkCorrection
