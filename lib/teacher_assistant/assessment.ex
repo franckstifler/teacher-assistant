@@ -179,13 +179,25 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
-  @doc "« Relancer tous les retards »: reminds every course with nothing entered; the count sent."
+  @doc "« Relancer tous les retards »: reminds every lagging course; the count sent."
   def remind_late(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq) do
-    tc_ids =
-      for row <- sequence_entry_grid(scope, year, seq).rows,
-          %{pct: 0, teaching_context: tc} <- Map.values(row.cells),
-          do: tc.id
+    scope
+    |> sequence_entry_grid(year, seq)
+    |> Map.fetch!(:late)
+    |> remind_courses(scope, seq)
+  end
 
+  @doc "Reminds each lagging course of one teacher; the count sent (once per course and day)."
+  def remind_teacher(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, teacher_id) do
+    scope
+    |> sequence_entry_grid(year, seq)
+    |> Map.fetch!(:late)
+    |> Enum.filter(&(&1.teacher_id == teacher_id))
+    |> remind_courses(scope, seq)
+  end
+
+  defp remind_courses(late, scope, seq) do
+    tc_ids = for %{courses: courses} <- late, %{tc_id: id} <- courses, do: id
     {:ok, Enum.count(tc_ids, &match?({:ok, _}, remind_entry(scope, seq, &1)))}
   end
 

@@ -71,7 +71,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       overall_pct: overall_pct(rows),
       complete_classes: {Enum.count(rows, &complete?/1), length(rows)},
       late: late,
-      late_teacher_count: late |> Enum.uniq_by(&(&1.teacher && &1.teacher.id)) |> length(),
+      late_teacher_count: length(late),
       council_date: council_date(scope, seq)
     }
   end
@@ -297,22 +297,24 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     end
   end
 
-  # Courses with nothing entered, one line per teacher and subject, classes in row order.
+  # Every lagging course (entry below 100 %, at least one student) with a teacher,
+  # grouped per teacher: classes in row order, subjects in column order; teachers by name.
   defp late(rows, subjects) do
     labels = Map.new(subjects, &{&1.key, &1.label})
 
-    rows
-    |> Enum.flat_map(fn %{class_group: cg, cells: cells} ->
-      for {key, %{pct: 0} = cell} <- cells, do: {key, cell, cg.label}
+    for %{class_group: cg, cells: cells} <- rows,
+        %{key: key} <- subjects,
+        %{pct: pct, teacher: teacher, teaching_context: tc} when is_integer(pct) and pct < 100 <-
+          [cells[key]],
+        not is_nil(tc.teacher_user_id) do
+      {tc.teacher_user_id, teacher,
+       %{tc_id: tc.id, subject: labels[key], class: cg.label, pct: pct}}
+    end
+    |> Enum.group_by(&elem(&1, 0))
+    |> Enum.map(fn {teacher_id, [{_, teacher, _} | _] = entries} ->
+      %{teacher: teacher, teacher_id: teacher_id, courses: Enum.map(entries, &elem(&1, 2))}
     end)
-    |> Enum.group_by(
-      fn {key, cell, _} -> {cell.teaching_context.teacher_user_id, key} end,
-      fn {_, cell, label} -> {cell.teacher, label} end
-    )
-    |> Enum.map(fn {{_teacher_id, key}, [{teacher, _} | _] = entries} ->
-      %{teacher: teacher, subject: labels[key], classes: Enum.map(entries, &elem(&1, 1))}
-    end)
-    |> Enum.sort_by(&{teacher_name(&1.teacher), &1.subject})
+    |> Enum.sort_by(&{teacher_name(&1.teacher), &1.teacher_id})
   end
 
   defp teacher_name(nil), do: ""

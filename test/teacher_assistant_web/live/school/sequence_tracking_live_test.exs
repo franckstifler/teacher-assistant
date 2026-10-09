@@ -73,7 +73,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     # Maths 3e A 50, Anglais 3e A 0, Anglais 4e B 0
     assert view |> element("#kpi-overall") |> render() =~ "16"
     assert view |> element("#kpi-complete") |> render() =~ ~r/0\s*\/\s*\d+/
-    assert view |> element("#kpi-late") |> render() =~ "1"
+    assert view |> element("#kpi-late") |> render() =~ ">2<"
     assert has_element?(view, "#kpi-council")
 
     assert view |> element(col(view, ctx.cg, "Maths")) |> render() =~ "50%"
@@ -103,7 +103,9 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     late = view |> element("#late-teachers") |> render()
     assert late =~ to_string(ctx.english.email)
     # classes in level order (4ème before 3ème)
-    assert late =~ "Anglais · 4e B, 3e A · rien saisi"
+    assert late =~ "Anglais · 4e B · 0 %"
+    assert late =~ "Anglais · 3e A · 0 %"
+    assert late =~ "Maths · 3e A · 50 %"
     assert has_element?(view, "#late-teachers #remind-late")
     assert late |> String.split("<button") |> length() == 2
   end
@@ -178,13 +180,13 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     refute render(view) =~ "n'a pas pu"
   end
 
-  test "« Relancer tous les retards » reminds each course with nothing entered, once",
+  test "« Relancer tous les retards » reminds each lagging course, once",
        %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
 
     html = view |> element("#remind-late") |> render_click()
-    # Anglais 3e A and Anglais 4e B.
-    assert html =~ "2 relances envoyées"
+    # Anglais 3e A, Anglais 4e B and Maths 3e A (50 %).
+    assert html =~ "3 relances envoyées"
     assert %{unread: 2} = Notifications.bell(english_scope(ctx))
 
     html = view |> element("#remind-late") |> render_click()

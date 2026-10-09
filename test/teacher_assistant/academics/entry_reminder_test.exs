@@ -72,13 +72,21 @@ defmodule TeacherAssistant.Academics.EntryReminderTest do
     assert %{unread: 0} = Notifications.bell(ctx.english)
   end
 
-  test "« Relancer tous les retards » reminds every course with nothing entered, once", ctx do
-    assert {:ok, 1} = Assessment.remind_late(ctx.head, ctx.year, ctx.seq)
+  test "« Relancer tous les retards » reminds every lagging course, once", ctx do
+    assert {:ok, 2} = Assessment.remind_late(ctx.head, ctx.year, ctx.seq)
     assert %{unread: 1} = Notifications.bell(ctx.english)
-    # Maths has marks: not late.
-    assert %{unread: 0} = Notifications.bell(ctx.maths)
+    # Maths is at 50 %: lagging too.
+    assert %{unread: 1} = Notifications.bell(ctx.maths)
 
     assert {:ok, 0} = Assessment.remind_late(ctx.censeur, ctx.year, ctx.seq)
     assert %{unread: 1} = Notifications.bell(ctx.english)
+  end
+
+  test "remind_teacher reminds each of the teacher's lagging courses once a day", ctx do
+    teacher_id = ctx.english.current_user.id
+    assert {:ok, 1} = Assessment.remind_teacher(ctx.head, ctx.year, ctx.seq, teacher_id)
+    assert %{unread: 1} = Notifications.bell(ctx.english)
+    assert %{unread: 0} = Notifications.bell(ctx.maths)
+    assert {:ok, 0} = Assessment.remind_teacher(ctx.head, ctx.year, ctx.seq, teacher_id)
   end
 end

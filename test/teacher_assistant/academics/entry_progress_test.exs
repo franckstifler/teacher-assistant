@@ -143,10 +143,15 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
     assert Enum.map(grid.rows, & &1.class_group.label) == ["5e C", "4e B", "3e A"]
     # 3e A: Maths 50, Anglais 0; 4e B: Anglais 0, Allemand 100; 5e C: nil (no students)
     assert grid.complete_classes == {0, 3}
-    teacher_id = ctx.english_teacher.id
+    english = ctx.english_teacher.id
+    head_id = ctx.head.current_user.id
 
-    assert [%{teacher: %{id: ^teacher_id}, subject: "Anglais", classes: ["4e B", "3e A"]}] =
-             grid.late
+    assert [%{teacher_id: ^english, courses: en}, %{teacher_id: ^head_id, courses: mine}] =
+             Enum.sort_by(grid.late, &(&1.teacher_id != english))
+
+    assert Enum.map(en, &{&1.class, &1.pct}) == [{"4e B", 0}, {"3e A", 0}]
+    assert [%{subject: "Maths", class: "3e A", pct: 50}] = mine
+    assert grid.late_teacher_count == 2
 
     assert grid.overall_pct == div(50 + 0 + 0 + 100, 4)
     assert grid.council_date == nil

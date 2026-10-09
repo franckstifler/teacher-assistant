@@ -365,10 +365,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                   class="ta-row-rule flex flex-col py-[7px]"
                 >
                   <span class="text-[0.88rem] font-semibold">{teacher_name(late.teacher)}</span>
-                  <span class="text-[0.74rem] text-base-content/75">
-                    {gettext("%{subject} · %{classes} · rien saisi",
-                      subject: late.subject,
-                      classes: Enum.join(late.classes, ", ")
+                  <span
+                    :for={course <- late.courses}
+                    class="text-[0.74rem] text-base-content/75"
+                  >
+                    {gettext("%{subject} · %{class} · %{pct} %",
+                      subject: course.subject,
+                      class: course.class,
+                      pct: course.pct
                     )}
                   </span>
                 </div>
