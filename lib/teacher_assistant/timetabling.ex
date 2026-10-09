@@ -297,6 +297,32 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   @doc """
+  The user's weekly load this year against their expected service (spec 2026-10-09
+  §2.5), computed as the « Confier à » editor does; `service` nil when none is set.
+  """
+  def teacher_service(%Scope{current_academic_year: nil}, _user), do: %{load: 0, service: nil}
+
+  def teacher_service(%Scope{current_academic_year: year} = scope, %{id: user_id}) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    member = Enum.find(Accounts.list_members(scope), &(&1.user_id == user_id))
+
+    contexts =
+      TeachingContext
+      |> Ash.Query.filter(academic_year_id == ^year.id and teacher_user_id == ^user_id)
+      |> Ash.read!(scope: scope)
+
+    grid = %{
+      services: %{user_id => member && member.statutory_hours},
+      school_hours: profile.statutory_hours
+    }
+
+    case AssignmentGrid.loads(contexts, grid) do
+      %{^user_id => %{load: load, service: service}} -> %{load: load, service: service}
+      _none -> %{load: 0, service: AssignmentGrid.service(grid, user_id)}
+    end
+  end
+
+  @doc """
   « Confier à un autre enseignant » (Vie scolaire redesign §1.4): the teachers who
   could take `tc` (the whole subject of that class, every slot of it) — active
   teachers other than its own, free at every one of its slots in `slots` (as
@@ -328,15 +354,7 @@ defmodule TeacherAssistant.Timetabling do
       school_hours: profile.statutory_hours
     }
 
-    loads =
-      contexts
-      |> Enum.group_by(& &1.teacher_user_id)
-      |> Map.new(fn {teacher, tcs} ->
-        {teacher,
-         tcs
-         |> Enum.uniq_by(&(&1.combined_course_id || {:solo, &1.id}))
-         |> Enum.sum_by(&(&1.weekly_hours || 0))}
-      end)
+    loads = AssignmentGrid.loads(contexts, grid)
 
     teaches_subject =
       contexts
@@ -350,7 +368,7 @@ defmodule TeacherAssistant.Timetabling do
           own_slots,
           &(not TimetableConflicts.busy?(slots, m.user_id, &1.day, &1.period_id))
         ),
-        load = Map.get(loads, m.user_id, 0),
+        load = get_in(loads, [m.user_id, :load]) || 0,
         service = AssignmentGrid.service(grid, m.user_id),
         load + (tc.weekly_hours || 0) <= service do
       %{user: m.user, load: load, service: service}

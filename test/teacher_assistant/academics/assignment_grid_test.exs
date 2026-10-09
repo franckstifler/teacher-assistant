@@ -91,4 +91,21 @@ defmodule TeacherAssistant.Academics.AssignmentGridTest do
     assert AssignmentGrid.load_after(g, "u1", 8, "u1", 5) == 8
     assert AssignmentGrid.load_after(g, "u2", 8, "u1", 5) == 13
   end
+
+  test "loads/2 counts a combined course once and falls back to the school's service" do
+    contexts = [
+      tc("a", "x", "s", "t1", 4, "c"),
+      tc("b", "y", "s", "t1", 4, "c"),
+      tc("d", "x", "s", "t1", 3)
+    ]
+
+    assert %{"t1" => %{load: 7, service: 18, over?: false}} =
+             AssignmentGrid.loads(contexts, %{services: %{}, school_hours: 18})
+
+    assert %{"t1" => %{load: 7, service: 5, over?: true}} =
+             AssignmentGrid.loads(contexts, %{services: %{"t1" => 5}, school_hours: 18})
+
+    assert %{"t1" => %{service: nil, over?: false}} =
+             AssignmentGrid.loads(contexts, %{services: %{}, school_hours: nil})
+  end
 end

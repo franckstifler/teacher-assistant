@@ -65,7 +65,12 @@ defmodule TeacherAssistant.Academics.AssignmentGrid do
     CoefficientRules.resolve(cells, key) != nil
   end
 
-  defp loads(contexts, input) do
+  @doc """
+  Each teacher's weekly load (sum of `weekly_hours`, a combined course counted once)
+  against their service: `%{user_id => %{load:, service:, over?:}}`; `service` is nil
+  when neither the teacher nor the school has one.
+  """
+  def loads(contexts, input) do
     contexts
     |> Enum.group_by(& &1.teacher_user_id)
     |> Map.new(fn {teacher, tcs} ->
@@ -76,7 +81,7 @@ defmodule TeacherAssistant.Academics.AssignmentGrid do
         |> Enum.sum()
 
       service = service(input, teacher)
-      {teacher, %{load: load, service: service, over?: load > service}}
+      {teacher, %{load: load, service: service, over?: is_integer(service) and load > service}}
     end)
   end
 

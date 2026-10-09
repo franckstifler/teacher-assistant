@@ -126,4 +126,33 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     assert has_element?(view, "#cell-monday-#{period.id}", "6e A")
     assert has_element?(view, "#cell-monday-#{period.id}", "6e B")
   end
+
+  describe "weekly load header" do
+    setup %{tc: tc, head: head, school: school} do
+      scope = school_scope(head, school)
+
+      tc
+      |> Ash.Changeset.for_update(:update, %{weekly_hours: 14}, scope: scope)
+      |> Ash.update!()
+
+      %{scope: scope}
+    end
+
+    test "falls back to the school's service", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/school/timetable/me")
+      assert has_element?(view, "#my-timetable-hours", "14 h par semaine · service attendu : 18 h")
+    end
+
+    test "uses the teacher's own service when set", %{conn: conn, scope: scope, head: head} do
+      member = Enum.find(Accounts.list_members(scope), &(&1.user_id == head.id))
+      {:ok, _} = Accounts.set_member_service(scope, member, "12")
+      {:ok, view, _} = live(conn, ~p"/school/timetable/me")
+      assert has_element?(view, "#my-timetable-hours", "14 h par semaine · service attendu : 12 h")
+    end
+  end
+
+  test "Timetabling.teacher_service/2 without a year is empty", %{head: head, school: school} do
+    scope = %{school_scope(head, school) | current_academic_year: nil}
+    assert Timetabling.teacher_service(scope, head) == %{load: 0, service: nil}
+  end
 end

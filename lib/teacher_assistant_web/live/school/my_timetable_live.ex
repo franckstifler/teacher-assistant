@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
        assign(socket,
          periods: Attendance.list_periods(scope),
          grid: Timetabling.teacher_timetable(scope, scope.current_user),
+         service: Timetabling.teacher_service(scope, scope.current_user),
          calendar: calendar,
          days: calendar.lesson_days
        )}
@@ -28,23 +29,38 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
 
   defp cell_slots(grid, day, period_id), do: Map.get(grid, {day, period_id}, [])
 
+  # « 14 h par semaine · service attendu : 18 h » (service part only when one is set).
+  defp hours_line(%{load: load, service: nil}), do: gettext("%{n} h par semaine", n: load)
+
+  defp hours_line(%{load: load, service: service}),
+    do:
+      gettext("%{n} h par semaine", n: load) <>
+        " · " <> gettext("service attendu : %{m} h", m: service)
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="my-timetable" class="space-y-6">
-        <.page_header eyebrow={gettext("École")} title={gettext("Mon emploi du temps")} />
-
-        <div class="flex justify-end">
+        <header class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p class="ta-eyebrow">{gettext("Semaine type")}</p>
+            <h1 class="mt-1.5 text-2xl font-semibold leading-[1.1] sm:text-[2rem]">
+              {gettext("Mon emploi du temps")}
+            </h1>
+            <p id="my-timetable-hours" class="ta-num mt-2 text-[0.95rem] text-base-content/80">
+              {hours_line(@service)}
+            </p>
+          </div>
           <a
             id="print-my-timetable"
             href={~p"/school/timetable/me/print"}
             target="_blank"
-            class="btn btn-primary btn-sm gap-2"
+            class="btn btn-outline btn-sm gap-2"
           >
             <.icon name="hero-printer" class="size-4" />
             {gettext("Imprimer")}
           </a>
-        </div>
+        </header>
 
         <%= if @grid == %{} do %>
           <.empty_state
@@ -53,30 +69,42 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
             message={gettext("Vous n'avez pas encore de créneau dans l'emploi du temps.")}
           />
         <% else %>
-          <div class="overflow-x-auto">
-            <table id="my-timetable-grid" class="table table-zebra">
+          <div class="ta-leaf overflow-x-auto p-2">
+            <table id="my-timetable-grid" class="table table-sm min-w-[700px] table-fixed">
               <thead>
                 <tr>
-                  <th>{gettext("Période")}</th>
+                  <th class="w-24">{gettext("Période")}</th>
                   <th :for={day <- @days}>{day_label(day)}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
                   <%= if period.kind == :break do %>
-                    <td colspan={length(@days) + 1} class="text-center italic text-base-content/60">
+                    <td
+                      colspan={length(@days) + 1}
+                      class="bg-base-200/60 py-1 text-center text-xs italic text-base-content/70"
+                    >
                       {period.label}
                     </td>
                   <% else %>
-                    <td class="font-semibold">{period.label}</td>
+                    <td class="ta-num text-xs font-semibold text-base-content/70">
+                      {period.label}
+                    </td>
                     <%= for day <- @days do %>
                       <%= if SchoolCalendar.open_cell?(@calendar, day, period) do %>
-                        <td id={"cell-#{day}-#{period.id}"}>
+                        <td id={"cell-#{day}-#{period.id}"} class="p-1 align-top">
                           <div
                             :for={slot <- cell_slots(@grid, day, period.id)}
-                            class={length(cell_slots(@grid, day, period.id)) > 1 && "text-error"}
+                            class={[
+                              "mb-1 rounded px-2 py-1.5 last:mb-0",
+                              if(length(cell_slots(@grid, day, period.id)) > 1,
+                                do: "bg-error/15 text-error",
+                                else: "bg-primary/15"
+                              )
+                            ]}
                           >
-                            {slot.class_label} · {slot.subject}
+                            <p class="font-semibold leading-tight">{slot.class_label}</p>
+                            <p class="text-xs text-base-content/70">{slot.subject}</p>
                             <.link
                               navigate={
                                 ~p"/school/classes/#{slot.class_group_id}/attendance/#{period.id}?date=#{Date.to_iso8601(Date.utc_today())}"
@@ -90,9 +118,9 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                       <% else %>
                         <td
                           id={"cell-#{day}-#{period.id}"}
-                          class="closed-cell bg-base-200/60 text-center text-xs text-base-content/50"
+                          class="closed-cell bg-base-300/50 text-center text-xs text-base-content/50"
                         >
-                          {gettext("Libre")}
+                          {gettext("Fermé")}
                         </td>
                       <% end %>
                     <% end %>
