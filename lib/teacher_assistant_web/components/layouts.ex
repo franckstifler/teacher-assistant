@@ -349,7 +349,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
   defp notification_bell(assigns) do
     ~H"""
-    <%!-- `!static`: the menu is placed against the rail header row, not the bell, so the rail (overflow hidden) never clips it. --%>
+    <%!-- `!static`: the menu is placed against the rail header row, not the bell, so the rail (overflow hidden) never clips it. The drawer clips anything wider than the 16rem rail, so the menu is exactly rail-wide (max 100vw - 2rem) and its list scrolls. --%>
     <div id="notification-bell" class="dropdown dropdown-bottom !static">
       <div
         tabindex="0"
@@ -368,16 +368,16 @@ defmodule TeacherAssistantWeb.Layouts do
       </div>
       <div
         tabindex="0"
-        class="dropdown-content left-0 right-0 z-50 mt-1 w-auto rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
+        class="dropdown-content left-0 right-0 z-50 mt-1 w-auto max-w-[calc(100vw-2rem)] rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
       >
-        <div class="flex items-center justify-between gap-2 px-2 pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2 pb-2">
           <span class="ta-eyebrow">{gettext("Notifications")}</span>
           <button
             :if={@bell.unread > 0}
             id="bell-read-all"
             type="button"
             phx-click="notification:read_all"
-            class="text-xs font-semibold text-primary hover:underline"
+            class="whitespace-nowrap text-xs font-semibold text-primary hover:underline"
           >
             {gettext("Tout marquer comme lu")}
           </button>
@@ -385,7 +385,7 @@ defmodule TeacherAssistantWeb.Layouts do
         <p :if={@bell.latest == []} class="px-2 py-3 text-sm text-base-content/60">
           {gettext("Aucune notification.")}
         </p>
-        <ul class="flex flex-col gap-0.5">
+        <ul class="flex max-h-[60vh] flex-col gap-0.5 overflow-y-auto">
           <li :for={n <- @bell.latest}>
             <button
               type="button"

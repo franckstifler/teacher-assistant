@@ -141,6 +141,19 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
     assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).chair == "M. Fotso"
   end
 
+  test "the header line shows only the parts that exist", ctx do
+    {:ok, view, html} = live(ctx.conn, council_path(ctx.cg, ctx.term))
+    refute html =~ ~r/Chaired by|Présidé par|Form master|PP :/
+
+    view
+    |> form("#council-header-form", %{council: %{chair: "M. Fotso", attendees: ""}})
+    |> render_submit()
+
+    html = render(view)
+    assert html =~ ~r/(Chaired by|Présidé par) M\. Fotso/
+    refute html =~ ~r/Form master|PP :|Chaired by —|Présidé par —/
+  end
+
   test "changing a row saves the student's decision", ctx do
     {:ok, view, _} = live(ctx.conn, council_path(ctx.cg, ctx.term))
 

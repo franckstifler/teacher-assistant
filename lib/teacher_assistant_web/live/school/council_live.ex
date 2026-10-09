@@ -242,11 +242,26 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
   defp low?(%Decimal{} = d), do: Decimal.lt?(d, 10)
   defp low?(_), do: false
 
-  defp blank_dash(v) when v in [nil, ""], do: "—"
-  defp blank_dash(v), do: v
-
-  defp master_name(nil), do: "—"
+  defp master_name(nil), do: nil
   defp master_name(user), do: User.display_name(user)
+
+  # Only the parts that exist; nil when both the chair and the form master are absent.
+  defp header_line(chair, form_master) do
+    parts =
+      [
+        present(chair) && gettext("Présidé par %{chair}", chair: chair),
+        master_name(form_master) |> present() |> pp_part()
+      ]
+      |> Enum.filter(& &1)
+
+    if parts == [], do: nil, else: Enum.join(parts, " · ")
+  end
+
+  defp pp_part(nil), do: nil
+  defp pp_part(name), do: gettext("PP : %{pp}", pp: name)
+
+  defp present(v) when v in [nil, ""], do: nil
+  defp present(v), do: v
 
   defp passage_options do
     [{gettext("Proposition"), ""}] ++
@@ -302,12 +317,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         <.page_header
           eyebrow={eyebrow(@period, @council)}
           title={gettext("Conseil de classe · %{class}", class: @cg.label)}
-          subtitle={
-            gettext("Présidé par %{chair} · PP : %{pp}",
-              chair: blank_dash(@council.chair),
-              pp: master_name(@form_master)
-            )
-          }
+          subtitle={header_line(@council.chair, @form_master)}
         >
           <:actions>
             <span
