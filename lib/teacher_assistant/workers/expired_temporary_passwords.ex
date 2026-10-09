@@ -10,14 +10,14 @@ defmodule TeacherAssistant.Workers.ExpiredTemporaryPasswords do
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.{User, Workspaces}
-  alias TeacherAssistant.Notifications
+  alias TeacherAssistant.{Notifications, Scope}
 
   @impl Oban.Worker
   def perform(_job) do
     now = DateTime.utc_now()
     since = DateTime.add(now, -24, :hour)
 
-    for scope <- Workspaces.job_scopes() do
+    for scope <- Workspaces.job_scopes(), Scope.school_verified?(scope) do
       admins = Notifications.admin_ids(scope)
 
       for %{user: user} <- Accounts.list_members(scope), expired?(user, since, now) do

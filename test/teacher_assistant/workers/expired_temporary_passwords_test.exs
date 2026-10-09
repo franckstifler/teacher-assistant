@@ -51,4 +51,16 @@ defmodule TeacherAssistant.Workers.ExpiredTemporaryPasswordsTest do
     assert :ok = perform_job(ExpiredTemporaryPasswords, %{})
     assert length(Notifications.inbox(ctx.head, 1).results) == 1
   end
+
+  test "nothing for an unverified school", ctx do
+    TeacherAssistant.Repo.update_all(
+      from(p in "school_profiles",
+        where: p.workspace_id == type(^ctx.head.current_workspace.id, :binary_id)
+      ),
+      set: [verification_status: "unverified"]
+    )
+
+    assert :ok = perform_job(ExpiredTemporaryPasswords, %{})
+    assert Notifications.inbox(ctx.head, 1).results == []
+  end
 end
