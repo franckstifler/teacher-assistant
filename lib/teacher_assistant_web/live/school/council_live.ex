@@ -9,7 +9,9 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Assessment, Councils, Enrollment, Organization, ReportCards}
+  alias TeacherAssistant.{Assessment, Councils, Discipline, Enrollment, Organization, ReportCards}
+  alias TeacherAssistant.Accounts.User
+  alias TeacherAssistantWeb.Dates
 
   alias TeacherAssistant.Academics.{
     ConductWarning,
@@ -56,15 +58,18 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     decisions = Map.new(council.decisions, &{&1.student_id, &1})
     outcomes = passage_outcomes(scope, cg, period, council, results)
 
+    discipline = Discipline.class_discipline(scope, cg, period)
+
     rows =
       scope
       |> Enrollment.list_roster(cg)
-      |> Enum.map(fn %{student: s} ->
+      |> Enum.map(fn %{student: s, enrollment: e} ->
         %{
           student: s,
           data: results && results.per_student[s.id],
           decision: decisions[s.id],
-          outcome: outcomes[s.id]
+          outcome: outcomes[s.id],
+          conduct: discipline[e.id] && discipline[e.id].note_de_conduite
         }
       end)
       |> Enum.sort_by(
@@ -76,7 +81,8 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
       results: results,
       rows: rows,
       rate: scope |> EntryProgress.class_rates(year, sequences(scope, period)) |> Map.get(cg.id),
-      locked?: Councils.locked?(scope, cg, period)
+      locked?: Councils.locked?(scope, cg, period),
+      form_master: Enrollment.form_master(scope, cg)
     )
   end
 
@@ -99,7 +105,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     %{current_scope: scope, cg: cg, period: period} = socket.assigns
 
     scope
-    |> Councils.save_header(cg, period, params)
+    |> Councils.save_header(cg, period, normalise_time(params))
     |> after_write(socket, gettext("Conseil enregistré."))
   end
 
@@ -109,6 +115,26 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     case Councils.set_decision(scope, cg, period, student_id, Map.get(params, "decision", %{})) do
       {:ok, _} -> {:noreply, socket |> load() |> assign(saved: student_id)}
       other -> after_write(other, socket, nil)
+    end
+  end
+
+  # A chip click changes only the distinction choice; the student's other stored values
+  # are re-sent unchanged. Refused server-side once the council is held or locked.
+  def handle_event("choose", %{"student_id" => student_id, "choice" => choice}, socket) do
+    %{current_scope: scope, cg: cg, period: period, council: council, locked?: locked?} =
+      socket.assigns
+
+    cond do
+      locked? or council.status == :held ->
+        {:noreply, socket}
+
+      true ->
+        current = Enum.find(council.decisions, &(&1.student_id == student_id))
+
+        case Councils.set_decision(scope, cg, period, student_id, keep_values(current, choice)) do
+          {:ok, _} -> {:noreply, socket |> load() |> assign(saved: student_id)}
+          other -> after_write(other, socket, nil)
+        end
     end
   end
 
@@ -126,6 +152,30 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     |> Councils.reopen(cg, period)
     |> after_write(socket, gettext("Conseil rouvert."))
   end
+
+  defp keep_values(nil, choice), do: %{"distinction_choice" => choice}
+
+  defp keep_values(decision, choice) do
+    %{
+      "distinction_choice" => choice,
+      "conduct_warning" => to_param(decision.conduct_warning),
+      "appreciation" => decision.appreciation,
+      "passage_decision" => to_param(decision.passage_decision)
+    }
+  end
+
+  defp to_param(nil), do: ""
+  defp to_param(value), do: to_string(value)
+
+  # `<input type="time">` submits "HH:MM"; Ash's :time cast wants seconds.
+  defp normalise_time(%{"starts_at" => <<_::binary-size(5)>> = t} = params) do
+    case Time.from_iso8601(t <> ":00") do
+      {:ok, time} -> %{params | "starts_at" => time}
+      _ -> params
+    end
+  end
+
+  defp normalise_time(params), do: params
 
   defp hold(socket) do
     %{current_scope: scope, cg: cg, period: period} = socket.assigns
@@ -151,10 +201,52 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
   defp after_write({:error, _}, socket, _message),
     do: {:noreply, put_flash(socket, :error, gettext("Non enregistré : vérifiez les champs."))}
 
-  defp choice_options do
-    [{gettext("Proposition"), ""}] ++
-      Enum.map(CouncilDistinctionChoice.values(), &{CouncilDistinctionChoice.label(&1), &1})
+  # The chip lit for a row: the council's stored choice, else the proposal, else « Aucune ».
+  defp pressed_choice(%{decision: %{distinction_choice: choice}}) when choice != nil, do: choice
+  defp pressed_choice(%{data: %{distinction: d}}) when d != nil, do: d
+  defp pressed_choice(_row), do: :none
+
+  defp eyebrow(period, %{held_on: held_on, starts_at: starts_at}) do
+    [
+      period_label(period),
+      held_on && Dates.long(held_on),
+      starts_at && Calendar.strftime(starts_at, "%H:%M")
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
   end
+
+  defp period_label({:annual, _}), do: gettext("Année")
+  defp period_label({:trimester, term}), do: gettext("Trimestre %{n}", n: term.position)
+
+  defp time_value(nil), do: nil
+  defp time_value(time), do: Calendar.strftime(time, "%H:%M")
+
+  defp conduct_text(nil), do: "—"
+
+  defp conduct_text(%Decimal{} = d),
+    do:
+      d
+      |> Decimal.round(2)
+      |> Decimal.normalize()
+      |> Decimal.to_string(:normal)
+      |> String.replace(".", ",")
+
+  defp conduct_text(other), do: to_string(other)
+
+  defp moyenne_text(nil), do: "—"
+
+  defp moyenne_text(%Decimal{} = d),
+    do: d |> Decimal.round(2) |> Decimal.to_string() |> String.replace(".", ",")
+
+  defp low?(%Decimal{} = d), do: Decimal.lt?(d, 10)
+  defp low?(_), do: false
+
+  defp blank_dash(v) when v in [nil, ""], do: "—"
+  defp blank_dash(v), do: v
+
+  defp master_name(nil), do: "—"
+  defp master_name(user), do: User.display_name(user)
 
   defp passage_options do
     [{gettext("Proposition"), ""}] ++
@@ -179,19 +271,8 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
   defp annual?({:annual, _}), do: true
   defp annual?(_), do: false
 
-  defp period_title({:annual, _}), do: gettext("Conseil de fin d'année")
-
-  defp period_title({:trimester, term}),
-    do: gettext("Conseil de classe · Trimestre %{n}", n: term.position)
-
   defp period_params({:annual, _}), do: %{period: "annee"}
   defp period_params({:trimester, term}), do: %{term: term.id}
-
-  defp grid_cols({:annual, _}),
-    do: "lg:grid-cols-[3rem_minmax(0,1.4fr)_4rem_9rem_10rem_10rem_minmax(0,1.6fr)_11rem_4rem]"
-
-  defp grid_cols(_),
-    do: "lg:grid-cols-[3rem_minmax(0,1.4fr)_4rem_9rem_10rem_10rem_minmax(0,1.6fr)_4rem]"
 
   defp warning_options do
     [{gettext("Aucun"), ""}] ++
@@ -211,9 +292,22 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="council" class="space-y-5">
+        <.link
+          navigate={~p"/school/councils?#{period_params(@period)}"}
+          class="inline-flex items-center gap-1 text-sm text-base-content/70 hover:text-base-content"
+        >
+          <.icon name="hero-arrow-left" class="size-4" /> {gettext("Conseils de classe")}
+        </.link>
+
         <.page_header
-          eyebrow={period_title(@period)}
-          title={@cg.label}
+          eyebrow={eyebrow(@period, @council)}
+          title={gettext("Conseil de classe · %{class}", class: @cg.label)}
+          subtitle={
+            gettext("Présidé par %{chair} · PP : %{pp}",
+              chair: blank_dash(@council.chair),
+              pp: master_name(@form_master)
+            )
+          }
         >
           <:actions>
             <span
@@ -225,10 +319,39 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             >
               {if @council.status == :held, do: gettext("Tenu"), else: gettext("Ouvert")}
             </span>
+            <a
+              id="print-pv"
+              href={~p"/school/councils/#{@cg.id}/print?#{period_params(@period)}"}
+              target="_blank"
+              class="btn btn-ghost btn-sm gap-1"
+            >
+              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer le PV")}
+            </a>
+            <button
+              :if={not @locked?}
+              id="close-council"
+              type="button"
+              phx-click="hold"
+              disabled={@council.status == :held}
+              class="btn btn-primary btn-sm"
+            >
+              {if @council.status == :held,
+                do: gettext("Conseil clôturé ✓"),
+                else: gettext("Clôturer le conseil")}
+            </button>
+            <button
+              :if={not @locked? and @council.status == :held}
+              id="reopen-council"
+              type="button"
+              phx-click="reopen"
+              class="btn btn-ghost btn-sm"
+            >
+              {gettext("Rouvrir")}
+            </button>
           </:actions>
         </.page_header>
 
-        <div role="tablist" class="tabs tabs-box w-fit">
+        <div role="tablist" class="tabs tabs-box w-fit max-w-full overflow-x-auto">
           <.link
             :for={t <- @terms}
             role="tab"
@@ -251,210 +374,6 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
           {gettext("Conseil verrouillé : bulletins publiés.")}
         </p>
 
-        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <.form
-            for={%{}}
-            as={:council}
-            id="council-header-form"
-            phx-submit="save_header"
-            class="space-y-3 rounded-box border border-base-300 bg-base-100 p-4"
-          >
-            <div class="grid gap-3 sm:grid-cols-2">
-              <.input
-                type="date"
-                name="council[held_on]"
-                value={@council.held_on}
-                label={gettext("Date du conseil")}
-                disabled={@locked?}
-              />
-              <.input
-                name="council[chair]"
-                value={@council.chair}
-                label={gettext("Président")}
-                disabled={@locked?}
-              />
-            </div>
-            <.input
-              type="textarea"
-              name="council[attendees]"
-              value={@council.attendees}
-              label={gettext("Présents")}
-              rows="2"
-              disabled={@locked?}
-            />
-            <.input
-              type="textarea"
-              name="council[observations]"
-              value={@council.observations}
-              label={gettext("Observations générales")}
-              rows="3"
-              disabled={@locked?}
-            />
-            <button :if={not @locked?} type="submit" class="btn btn-primary btn-sm">
-              {gettext("Enregistrer")}
-            </button>
-          </.form>
-
-          <dl
-            id="council-stats"
-            class="space-y-2 rounded-box border border-base-300 bg-base-100 p-4 text-sm"
-          >
-            <div class="flex justify-between">
-              <dt>{gettext("Effectif")}</dt>
-              <dd class="ta-num">{(@results && @results.effectif) || "—"}</dd>
-            </div>
-            <div class="flex justify-between">
-              <dt>{gettext("Moyenne de la classe")}</dt>
-              <dd class="ta-num">{fmt(@results && @results.class_average)}</dd>
-            </div>
-            <div class="flex justify-between">
-              <dt>{gettext("Taux de réussite")}</dt>
-              <dd class="ta-num">{pct(@results && @results.pass_rate)}</dd>
-            </div>
-            <div class="flex justify-between">
-              <dt>{gettext("Garçons / Filles")}</dt>
-              <dd class="ta-num">
-                {fmt(@results && @results.by_sex.m.class_average)} / {fmt(
-                  @results && @results.by_sex.f.class_average
-                )}
-              </dd>
-            </div>
-            <div class="flex justify-between">
-              <dt>{gettext("Saisie des notes")}</dt>
-              <dd class="ta-num">{rate_text(@rate)}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div class="rounded-box border border-base-300 bg-base-100">
-          <div class={[
-            "hidden gap-3 border-b border-base-300 px-4 py-2 text-xs text-base-content/60 lg:grid",
-            grid_cols(@period)
-          ]}>
-            <span>{gettext("Rang")}</span>
-            <span>{gettext("Élève")}</span>
-            <span class="text-right">{gettext("Moy.")}</span>
-            <span>{gettext("Proposition")}</span>
-            <span>{gettext("Décision")}</span>
-            <span>{gettext("Conduite")}</span>
-            <span>{gettext("Appréciation")}</span>
-            <span :if={annual?(@period)}>{gettext("Passage")}</span>
-            <span></span>
-          </div>
-          <.form
-            :for={row <- @rows}
-            for={%{}}
-            as={:decision}
-            id={"decision-#{row.student.id}"}
-            phx-change="decision"
-            class={[
-              "grid items-center gap-3 border-b border-base-300 px-4 py-2 last:border-b-0",
-              grid_cols(@period)
-            ]}
-          >
-            <input type="hidden" name="student_id" value={row.student.id} />
-            <span class="ta-num">{(row.data && row.data.rank) || "—"}</span>
-            <span class="font-medium">{row.student.full_name}</span>
-            <span class="ta-num text-right">{fmt(row.data && row.data.moyenne_generale)}</span>
-            <span><.distinction_badge distinction={row.data && row.data.distinction} /></span>
-            <div>
-              <span aria-hidden="true" class="mb-1 block text-xs text-base-content/60 lg:hidden">
-                {gettext("Décision")}
-              </span>
-              <.input
-                type="select"
-                name="decision[distinction_choice]"
-                aria-label={gettext("Décision")}
-                value={row.decision && row.decision.distinction_choice}
-                options={choice_options()}
-                class="select select-sm"
-                disabled={@locked?}
-              />
-            </div>
-            <div>
-              <span aria-hidden="true" class="mb-1 block text-xs text-base-content/60 lg:hidden">
-                {gettext("Conduite")}
-              </span>
-              <.input
-                type="select"
-                name="decision[conduct_warning]"
-                aria-label={gettext("Conduite")}
-                value={row.decision && row.decision.conduct_warning}
-                options={warning_options()}
-                class="select select-sm"
-                disabled={@locked?}
-              />
-            </div>
-            <div>
-              <span aria-hidden="true" class="mb-1 block text-xs text-base-content/60 lg:hidden">
-                {gettext("Appréciation")}
-              </span>
-              <.input
-                name="decision[appreciation]"
-                aria-label={gettext("Appréciation")}
-                value={row.decision && row.decision.appreciation}
-                maxlength="300"
-                phx-debounce="blur"
-                placeholder={gettext("Appréciation du conseil")}
-                class="input input-sm w-full"
-                disabled={@locked?}
-              />
-            </div>
-            <div :if={annual?(@period)} id={"passage-#{row.student.id}"} class="space-y-1">
-              <p id={"passage-proposal-#{row.student.id}"} class="text-xs text-base-content/70">
-                {proposal_text(row.outcome)}
-              </p>
-              <.input
-                type="select"
-                name="decision[passage_decision]"
-                value={row.decision && row.decision.passage_decision}
-                options={passage_options()}
-                class="select select-sm"
-                disabled={@locked?}
-              />
-            </div>
-            <span
-              :if={@saved == row.student.id}
-              id={"saved-#{row.student.id}"}
-              class="text-xs text-success"
-            >
-              {gettext("Enregistré")}
-            </span>
-          </.form>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-          <a
-            id="print-pv"
-            href={~p"/school/councils/#{@cg.id}/print?#{period_params(@period)}"}
-            target="_blank"
-            class="btn btn-ghost btn-sm gap-1"
-          >
-            <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer le procès-verbal")}
-          </a>
-        </div>
-
-        <div :if={not @locked?} class="flex flex-wrap gap-2">
-          <button
-            :if={@council.status != :held}
-            id="hold-council"
-            type="button"
-            phx-click="hold"
-            class="btn btn-primary btn-sm"
-          >
-            {gettext("Marquer le conseil tenu")}
-          </button>
-          <button
-            :if={@council.status == :held}
-            id="reopen-council"
-            type="button"
-            phx-click="reopen"
-            class="btn btn-ghost btn-sm"
-          >
-            {gettext("Rouvrir le conseil")}
-          </button>
-        </div>
-
         <div :if={@confirm_hold?} id="hold-confirm" class="alert alert-warning">
           <span>
             {gettext("Saisie incomplète : %{rate}. Marquer tenu quand même ?", rate: rate_text(@rate))}
@@ -474,6 +393,210 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
             </button>
           </div>
         </div>
+
+        <div id="council-table" class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+          <table class="table">
+            <thead>
+              <tr class="text-xs text-base-content/60">
+                <th>{gettext("Élève")}</th>
+                <th class="text-right">{gettext("Moy. trim.")}</th>
+                <th class="text-right">{gettext("Conduite")}</th>
+                <th>{gettext("Décision")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={row <- @rows} id={"council-row-#{row.student.id}"}>
+                <td class="font-medium">{row.student.full_name}</td>
+                <td class={[
+                  "ta-num text-right",
+                  low?(row.data && row.data.moyenne_generale) && "text-error"
+                ]}>
+                  {moyenne_text(row.data && row.data.moyenne_generale)}
+                </td>
+                <td class="ta-num text-right">{conduct_text(row.conduct)}</td>
+                <td>
+                  <div class="flex flex-wrap gap-1.5">
+                    <button
+                      :for={choice <- CouncilDistinctionChoice.values()}
+                      id={"decision-#{row.student.id}-#{choice}"}
+                      type="button"
+                      phx-click="choose"
+                      phx-value-student_id={row.student.id}
+                      phx-value-choice={choice}
+                      aria-pressed={to_string(pressed_choice(row) == choice)}
+                      disabled={@locked? or @council.status == :held}
+                      class={[
+                        "btn btn-xs rounded-full",
+                        if(pressed_choice(row) == choice, do: "btn-primary", else: "btn-outline")
+                      ]}
+                    >
+                      {CouncilDistinctionChoice.label(choice)}
+                    </button>
+                    <span
+                      :if={@saved == row.student.id}
+                      id={"saved-#{row.student.id}"}
+                      class="self-center text-xs text-success"
+                    >
+                      {gettext("Enregistré")}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-xs text-base-content/70">
+          {gettext(
+            "Les propositions viennent des règles de l'établissement (Paramètres › Appréciations & distinctions). Le conseil peut les modifier ; après clôture, elles figurent sur les bulletins du trimestre."
+          )}
+        </p>
+
+        <details id="council-details" class="rounded-box border border-base-300 bg-base-100">
+          <summary class="cursor-pointer px-4 py-3 font-medium">
+            {gettext("Détails du conseil")}
+          </summary>
+          <div class="space-y-5 border-t border-base-300 p-4">
+            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              <.form
+                for={%{}}
+                as={:council}
+                id="council-header-form"
+                phx-submit="save_header"
+                class="space-y-3"
+              >
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <.input
+                    type="date"
+                    name="council[held_on]"
+                    value={@council.held_on}
+                    label={gettext("Date du conseil")}
+                    disabled={@locked?}
+                  />
+                  <.input
+                    type="time"
+                    name="council[starts_at]"
+                    value={time_value(@council.starts_at)}
+                    label={gettext("Heure")}
+                    disabled={@locked?}
+                  />
+                  <.input
+                    name="council[chair]"
+                    value={@council.chair}
+                    label={gettext("Président")}
+                    disabled={@locked?}
+                  />
+                </div>
+                <.input
+                  type="textarea"
+                  name="council[attendees]"
+                  value={@council.attendees}
+                  label={gettext("Présents")}
+                  rows="2"
+                  disabled={@locked?}
+                />
+                <.input
+                  type="textarea"
+                  name="council[observations]"
+                  value={@council.observations}
+                  label={gettext("Observations générales")}
+                  rows="3"
+                  disabled={@locked?}
+                />
+                <button :if={not @locked?} type="submit" class="btn btn-primary btn-sm">
+                  {gettext("Enregistrer")}
+                </button>
+              </.form>
+
+              <dl id="council-stats" class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <dt>{gettext("Effectif")}</dt>
+                  <dd class="ta-num">{(@results && @results.effectif) || "—"}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>{gettext("Moyenne de la classe")}</dt>
+                  <dd class="ta-num">{fmt(@results && @results.class_average)}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>{gettext("Taux de réussite")}</dt>
+                  <dd class="ta-num">{pct(@results && @results.pass_rate)}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>{gettext("Garçons / Filles")}</dt>
+                  <dd class="ta-num">
+                    {fmt(@results && @results.by_sex.m.class_average)} / {fmt(
+                      @results && @results.by_sex.f.class_average
+                    )}
+                  </dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>{gettext("Saisie des notes")}</dt>
+                  <dd class="ta-num">{rate_text(@rate)}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <.form
+              :for={row <- @rows}
+              for={%{}}
+              as={:decision}
+              id={"decision-#{row.student.id}"}
+              phx-change="decision"
+              class="grid items-end gap-3 border-t border-base-300 pt-3 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              <input type="hidden" name="student_id" value={row.student.id} />
+              <input
+                type="hidden"
+                name="decision[distinction_choice]"
+                value={row.decision && row.decision.distinction_choice}
+              />
+              <div class="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2">
+                <span class="font-medium">{row.student.full_name}</span>
+                <.distinction_badge distinction={row.data && row.data.distinction} />
+              </div>
+              <div>
+                <span class="mb-1 block text-xs text-base-content/60">{gettext("Conduite")}</span>
+                <.input
+                  type="select"
+                  name="decision[conduct_warning]"
+                  aria-label={gettext("Conduite")}
+                  value={row.decision && row.decision.conduct_warning}
+                  options={warning_options()}
+                  class="select select-sm w-full"
+                  disabled={@locked?}
+                />
+              </div>
+              <div class="lg:col-span-2">
+                <span class="mb-1 block text-xs text-base-content/60">
+                  {gettext("Appréciation")}
+                </span>
+                <.input
+                  name="decision[appreciation]"
+                  aria-label={gettext("Appréciation")}
+                  value={row.decision && row.decision.appreciation}
+                  maxlength="300"
+                  phx-debounce="blur"
+                  placeholder={gettext("Appréciation du conseil")}
+                  class="input input-sm w-full"
+                  disabled={@locked?}
+                />
+              </div>
+              <div :if={annual?(@period)} id={"passage-#{row.student.id}"} class="space-y-1">
+                <p id={"passage-proposal-#{row.student.id}"} class="text-xs text-base-content/70">
+                  {proposal_text(row.outcome)}
+                </p>
+                <.input
+                  type="select"
+                  name="decision[passage_decision]"
+                  value={row.decision && row.decision.passage_decision}
+                  options={passage_options()}
+                  class="select select-sm w-full"
+                  disabled={@locked?}
+                />
+              </div>
+            </.form>
+          </div>
+        </details>
       </section>
     </Layouts.app>
     """

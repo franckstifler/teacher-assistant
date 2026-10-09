@@ -148,7 +148,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
 
   test "holding below complete entry asks for confirmation; reopen", ctx do
     {:ok, view, _} = live(ctx.conn, council_path(ctx.cg, ctx.term))
-    view |> element("#hold-council") |> render_click()
+    view |> element("#close-council") |> render_click()
     assert has_element?(view, "#hold-confirm", "Saisie incomplète")
     refute Councils.held?(ctx.scope, ctx.cg, {:trimester, ctx.term})
 
@@ -174,6 +174,92 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
 
     assert render(view) =~ "Conseil verrouillé : bulletins publiés."
     assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
+  end
+
+  describe "council page (Task 10)" do
+    defp path(ctx), do: council_path(ctx.cg, ctx.term)
+    defp chip(s, c), do: "#decision-#{s.id}-#{c}"
+
+    test "header line, details disclosure and footnote", ctx do
+      {:ok, view, html} = live(ctx.conn, path(ctx))
+      assert has_element?(view, "#council h1", "Conseil de classe · 4e B")
+      assert has_element?(view, "#council-details")
+      refute html =~ ~s(id="council-details" open)
+      assert html =~ "Les propositions viennent des règles de l&#39;établissement"
+      assert has_element?(view, "#council a", "Conseils de classe")
+    end
+
+    test "chips: the proposal is pre-pressed, a click saves only the distinction choice", ctx do
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+      assert has_element?(view, "#{chip(ctx.tch, "avertissement_travail")}[aria-pressed='true']")
+      assert has_element?(view, "#{chip(ctx.tch, "tableau_honneur")}[aria-pressed='false']")
+
+      view
+      |> form("#decision-#{ctx.tch.id}", %{
+        decision: %{conduct_warning: "avertissement_conduite", appreciation: "Doit se ressaisir"}
+      })
+      |> render_change()
+
+      view |> element(chip(ctx.tch, "tableau_honneur")) |> render_click()
+      assert has_element?(view, "#{chip(ctx.tch, "tableau_honneur")}[aria-pressed='true']")
+      assert has_element?(view, "#{chip(ctx.tch, "avertissement_travail")}[aria-pressed='false']")
+
+      assert [d] = Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions
+      assert d.distinction_choice == :tableau_honneur
+      assert d.conduct_warning == :avertissement_conduite
+      assert d.appreciation == "Doit se ressaisir"
+    end
+
+    test "chips lock after « Clôturer », and the server refuses choose when held", ctx do
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+      view |> element("#close-council") |> render_click()
+      view |> element("#confirm-hold") |> render_click()
+      assert has_element?(view, "#close-council[disabled]", "Conseil clôturé")
+      assert has_element?(view, "#{chip(ctx.dj, "tableau_honneur")}[disabled]")
+      assert has_element?(view, "#reopen-council")
+
+      render_click(view, "choose", %{"student_id" => ctx.dj.id, "choice" => "tableau_honneur"})
+      assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
+
+      view |> element("#reopen-council") |> render_click()
+      refute has_element?(view, "#{chip(ctx.dj, "tableau_honneur")}[disabled]")
+    end
+
+    test "a locked council refuses choose", ctx do
+      {:ok, _} = TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+      assert has_element?(view, "#{chip(ctx.dj, "tableau_honneur")}[disabled]")
+      render_click(view, "choose", %{"student_id" => ctx.dj.id, "choice" => "tableau_honneur"})
+      assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
+    end
+
+    test "an unknown choice is refused", ctx do
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+      render_click(view, "choose", %{"student_id" => ctx.dj.id, "choice" => "bogus"})
+      assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
+    end
+
+    test "the header form saves an HTML time « 14:00 » and shows it in the eyebrow", ctx do
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+
+      view
+      |> form("#council-header-form", %{council: %{held_on: "2025-10-14", starts_at: "14:00"}})
+      |> render_submit()
+
+      assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).starts_at == ~T[14:00:00]
+      assert has_element?(view, "#council header", "14:00")
+    end
+
+    test "an invalid time shows an error instead of crashing", ctx do
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+
+      view
+      |> form("#council-header-form", %{council: %{starts_at: "25:99"}})
+      |> render_submit()
+
+      assert render(view) =~ "Non enregistré"
+      assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).starts_at == nil
+    end
   end
 
   test "only the admin axis opens council screens; the head has the menu item", ctx do
