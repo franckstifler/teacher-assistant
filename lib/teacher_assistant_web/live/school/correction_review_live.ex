@@ -34,19 +34,25 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
     averages =
       selected && Assessment.correction_averages(socket.assigns.current_scope, selected)
 
-    {:noreply, assign(socket, selected: selected, averages: averages)}
+    {:noreply,
+     assign(socket, selected: selected, averages: averages, decision_form: decision_form())}
   end
 
+  def handle_event("note", %{"decision" => params}, socket),
+    do: {:noreply, assign(socket, decision_form: to_form(params, as: :decision))}
+
   def handle_event("approve", _params, socket),
-    do: decide(socket, &Assessment.approve_correction/2, gettext("Correction approuvée."))
+    do: decide(socket, &Assessment.approve_correction/3, gettext("Correction approuvée."))
 
   def handle_event("refuse", _params, socket),
-    do: decide(socket, &Assessment.refuse_correction/2, gettext("Correction refusée."))
+    do: decide(socket, &Assessment.refuse_correction/3, gettext("Correction refusée."))
 
   defp decide(%{assigns: %{selected: nil}} = socket, _fun, _message), do: {:noreply, socket}
 
   defp decide(socket, fun, message) do
-    case fun.(socket.assigns.current_scope, socket.assigns.selected) do
+    note = socket.assigns.decision_form[:note].value
+
+    case fun.(socket.assigns.current_scope, socket.assigns.selected, note) do
       {:ok, _correction} ->
         {:noreply, socket |> put_flash(:info, message) |> assign(selected: nil) |> load_tab()}
 
@@ -62,6 +68,8 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
         {:noreply, socket |> put_flash(:error, message) |> load_tab()}
     end
   end
+
+  defp decision_form, do: to_form(%{"note" => ""}, as: :decision)
 
   defp load_tab(%{assigns: %{tab: "journal"}} = socket),
     do: assign(socket, corrections: [], journal: journal(socket.assigns.current_scope))
@@ -254,14 +262,33 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
                 {average(elem(@averages, 0))} → {average(elem(@averages, 1))}
               </dd>
             </dl>
-            <div class="flex gap-2">
-              <button id="approve-correction" phx-click="approve" class="btn btn-primary btn-sm">
-                {gettext("Approuver la correction")}
-              </button>
-              <button id="refuse-correction" phx-click="refuse" class="btn btn-ghost btn-sm">
-                {gettext("Refuser")}
-              </button>
-            </div>
+            <.form for={@decision_form} id="decision-form" phx-change="note" class="space-y-2">
+              <.input
+                type="textarea"
+                field={@decision_form[:note]}
+                label={gettext("Note pour l'enseignant")}
+                rows="2"
+                maxlength="500"
+              />
+              <div class="flex gap-2">
+                <button
+                  id="approve-correction"
+                  type="button"
+                  phx-click="approve"
+                  class="btn btn-primary btn-sm"
+                >
+                  {gettext("Approuver la correction")}
+                </button>
+                <button
+                  id="refuse-correction"
+                  type="button"
+                  phx-click="refuse"
+                  class="btn btn-ghost btn-sm"
+                >
+                  {gettext("Refuser")}
+                </button>
+              </div>
+            </.form>
           </aside>
         </div>
 

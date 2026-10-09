@@ -189,4 +189,37 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
     assert Enum.count(Assessment.list_mark_events(ctx.head), &(&1.action == :correction_refusee)) ==
              1
   end
+  describe "decision note and motives" do
+    setup ctx do
+      lock(ctx)
+      :ok
+    end
+
+    test "refusal stores the censeur's note", ctx do
+      {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
+
+      {:ok, refused} =
+        Assessment.refuse_correction(ctx.censeur, c, "  Joindre la copie au dossier  ")
+
+      assert refused.decision_note == "Joindre la copie au dossier"
+      assert refused.decider.id == ctx.censeur.current_user.id
+    end
+
+    test "approval without a note leaves it nil", ctx do
+      {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
+      {:ok, approved} = Assessment.approve_correction(ctx.censeur, c)
+      assert approved.decision_note == nil
+    end
+  end
+
+  test "offered motives are the mockup's four; old values still label" do
+    alias TeacherAssistant.Academics.MarkCorrectionMotive
+
+    assert MarkCorrectionMotive.offered() ==
+             [:erreur_saisie, :copie_retrouvee, :note_rattrapage, :erreur_calcul]
+
+    assert MarkCorrectionMotive.label(:copie_retrouvee) == "Copie retrouvée"
+    assert MarkCorrectionMotive.label(:note_rattrapage) == "Rattrapage"
+    assert MarkCorrectionMotive.label(:reclamation_eleve) == "Réclamation de l'élève"
+  end
 end

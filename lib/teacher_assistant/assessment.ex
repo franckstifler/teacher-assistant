@@ -364,7 +364,7 @@ defmodule TeacherAssistant.Assessment do
 
   # --- Correction requests (spec D3c) -----------------------------------------
 
-  @correction_loads [:student, :requester, assessment: [teaching_context: [:class_group]]]
+  @correction_loads [:student, :requester, :decider, assessment: [teaching_context: [:class_group]]]
 
   @doc "Asks to change a locked mark (the course's teacher only); notifies the deciders."
   def request_correction(%Scope{} = scope, attrs) do
@@ -438,18 +438,21 @@ defmodule TeacherAssistant.Assessment do
     {average.(marks), average.(requested)}
   end
 
-  @doc "Approves a pending request: writes the mark, unless it changed since (\"stale\")."
-  def approve_correction(%Scope{} = scope, %MarkCorrection{} = correction),
-    do: decide_correction(scope, correction, :approve)
+  @doc """
+  Approves a pending request: writes the mark, unless it changed since ("stale").
+  `note` is the admin's optional word to the teacher.
+  """
+  def approve_correction(%Scope{} = scope, %MarkCorrection{} = correction, note \\ nil),
+    do: decide_correction(scope, correction, :approve, note)
 
-  @doc "Refuses a pending request; the mark is untouched."
-  def refuse_correction(%Scope{} = scope, %MarkCorrection{} = correction),
-    do: decide_correction(scope, correction, :refuse)
+  @doc "Refuses a pending request; the mark is untouched. `note` as in `approve_correction/3`."
+  def refuse_correction(%Scope{} = scope, %MarkCorrection{} = correction, note \\ nil),
+    do: decide_correction(scope, correction, :refuse, note)
 
-  defp decide_correction(scope, correction, action) do
+  defp decide_correction(scope, correction, action, note) do
     with {:ok, decided} <-
            correction
-           |> Ash.Changeset.for_update(action, %{}, scope: scope)
+           |> Ash.Changeset.for_update(action, %{decision_note: note}, scope: scope)
            |> Ash.update(load: @correction_loads) do
       Notifications.deliver(
         scope,
@@ -504,7 +507,7 @@ defmodule TeacherAssistant.Assessment do
     MarkCorrection
     |> Ash.Query.filter(status != :pending)
     |> Ash.Query.sort(decided_at: :desc)
-    |> Ash.Query.load(@correction_loads ++ [:decider])
+    |> Ash.Query.load(@correction_loads)
     |> Ash.read!(scope: scope)
   end
 

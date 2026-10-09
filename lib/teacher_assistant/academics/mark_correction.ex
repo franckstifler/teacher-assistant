@@ -53,12 +53,14 @@ defmodule TeacherAssistant.Academics.MarkCorrection do
     update :approve do
       validate {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
       require_atomic? false
+      argument :decision_note, :string, constraints: [max_length: 500, trim?: true]
       change {Decide, decision: :approved}
     end
 
     update :refuse do
       validate {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
       require_atomic? false
+      argument :decision_note, :string, constraints: [max_length: 500, trim?: true]
       change {Decide, decision: :refused}
     end
 
@@ -114,6 +116,8 @@ defmodule TeacherAssistant.Academics.MarkCorrection do
       public?: true
 
     attribute :decided_at, :utc_datetime_usec, public?: true
+    # The admin's optional word to the teacher on a decision (spec 2026-10-09 §1.1).
+    attribute :decision_note, :string, public?: true, constraints: [max_length: 500, trim?: true]
     # When the requester last saw the decision (menu badge).
     attribute :seen_at, :utc_datetime_usec, public?: true
 

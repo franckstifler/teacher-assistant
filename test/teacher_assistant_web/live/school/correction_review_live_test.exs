@@ -71,6 +71,20 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert Decimal.equal?(mark.score, 12)
   end
 
+  test "the censeur refuses with a note", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    view |> element("#pending-#{ctx.c.id}") |> render_click()
+
+    view
+    |> form("#decision-form", %{"decision" => %{"note" => "Joindre la copie"}})
+    |> render_change()
+
+    view |> element("#refuse-correction") |> render_click()
+
+    assert [%{decision_note: "Joindre la copie"}] =
+             Assessment.list_corrections(ctx.censeur, :decided)
+  end
+
   test "a stale request says it must be redone", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
     view |> element("#pending-#{ctx.c.id}") |> render_click()

@@ -41,7 +41,8 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
           Ash.Changeset.force_change_attributes(changeset, %{
             status: decision,
             decider_user_id: context.actor.id,
-            decided_at: DateTime.utc_now()
+            decided_at: DateTime.utc_now(),
+            decision_note: Ash.Changeset.get_argument(changeset, :decision_note)
           })
         end
 
