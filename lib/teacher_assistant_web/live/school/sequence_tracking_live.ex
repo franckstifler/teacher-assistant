@@ -1,14 +1,14 @@
 defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   @moduledoc """
   Censorat → Suivi des séquences (spec F, N05): per séquence, how complete each
-  course's mark entry is, as a classes × subjects grid with KPI tiles, the detail
-  of a selected course and the teachers who have entered nothing yet.
+  course's mark entry is, as a classes × subjects grid, the detail of a selected
+  course and the teachers whose courses are not yet fully entered.
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Assessment, Organization}
-  alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.{Lock, Reference}
   alias TeacherAssistantWeb.Dates
 
   def mount(_params, _session, socket) do
@@ -110,15 +110,57 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     %{year: year, seq: seq, current_scope: scope} = socket.assigns
     {:ok, sent} = Assessment.remind_late(scope, year, seq)
 
-    message =
-      if sent == 0,
-        do: gettext("Aucune nouvelle relance : chaque retard a déjà été relancé aujourd'hui."),
-        else: ngettext("%{count} relance envoyée.", "%{count} relances envoyées.", sent)
-
     {:noreply,
      socket
-     |> put_flash(:info, message)
+     |> put_flash(:info, sent_message(sent))
      |> assign(:reminders, Assessment.reminder_dates(scope, seq))}
+  end
+
+  def handle_event("remind-teacher", %{"teacher" => teacher_id}, socket) do
+    %{grid: grid, year: year, seq: seq, current_scope: scope} = socket.assigns
+
+    # Never trust the client id: only a teacher listed as late on screen is reminded.
+    if grid && Enum.any?(grid.late, &(&1.teacher_id == teacher_id)) do
+      {:ok, sent} = Assessment.remind_teacher(scope, year, seq, teacher_id)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, sent_message(sent))
+       |> assign(:reminders, Assessment.reminder_dates(scope, seq))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp sent_message(0),
+    do: gettext("Aucune nouvelle relance : chaque retard a déjà été relancé aujourd'hui.")
+
+  defp sent_message(sent),
+    do: ngettext("%{count} rappel envoyé.", "%{count} rappels envoyés.", sent)
+
+  defp reminded_today?(reminders, late),
+    do: Enum.all?(late.courses, &(reminders[&1.tc_id] == Reference.today()))
+
+  defp seq_state(seq, today) do
+    cond do
+      Lock.locked?(seq, today) -> :closed
+      Date.compare(seq.start_date, today) != :gt -> :current
+      true -> :future
+    end
+  end
+
+  defp tab_label(seq, :closed), do: gettext("Séq. %{n} · close", n: seq.number)
+  defp tab_label(seq, :current), do: gettext("Séq. %{n} · en cours", n: seq.number)
+  defp tab_label(seq, :future), do: gettext("Séq. %{n}", n: seq.number)
+
+  # "Boulangerie · 3e A (50 %), 4e B (0 %)": the lagging courses of a teacher, by subject.
+  defp course_groups(courses) do
+    courses
+    |> Enum.group_by(& &1.subject)
+    |> Enum.map(fn {subject, list} ->
+      {subject, Enum.map_join(list, ", ", &"#{&1.class} (#{&1.pct} %)")}
+    end)
+    |> Enum.sort()
   end
 
   defp lagging_cell(nil, _tc_id), do: nil
@@ -163,14 +205,11 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         <.page_header
           eyebrow={
             if @seq,
-              do: gettext("Censorat · Séquence %{n}", n: @seq.number),
+              do: eyebrow_text(@seq),
               else: gettext("Censorat")
           }
           title={gettext("Suivi de la saisie des notes")}
         >
-          <:actions :if={@seq}>
-            <.side_chip id="entry-deadline">{deadline_text(@seq)}</.side_chip>
-          </:actions>
         </.page_header>
 
         <div
@@ -187,36 +226,6 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         </div>
 
         <%= if @grid do %>
-          <.kpi_row>
-            <.kpi
-              id="kpi-overall"
-              label={gettext("Saisie globale")}
-              value={if @grid.overall_pct, do: "#{@grid.overall_pct} %", else: "—"}
-              sub={gettext("toutes classes, toutes disciplines")}
-              tone="text-warning"
-            />
-            <.kpi
-              id="kpi-complete"
-              label={gettext("Classes complètes")}
-              value={"#{elem(@grid.complete_classes, 0)} / #{elem(@grid.complete_classes, 1)}"}
-              sub={gettext("prêtes pour le conseil")}
-              tone="text-primary"
-            />
-            <.kpi
-              id="kpi-late"
-              label={gettext("Enseignants à relancer")}
-              value={to_string(@grid.late_teacher_count)}
-              sub={gettext("aucune note saisie")}
-              tone="text-error"
-            />
-            <.kpi
-              id="kpi-council"
-              label={gettext("Conseils de classe")}
-              value={if @grid.council_date, do: Dates.day_month(@grid.council_date), else: "—"}
-              sub={council_sub(@seq, @sequences)}
-            />
-          </.kpi_row>
-
           <nav
             id="seq-tabs"
             aria-label={gettext("Séquences")}
@@ -224,18 +233,18 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           >
             <.link
               :for={s <- @sequences}
-              id={"seq-tab-#{s.number}"}
+              id={"seq-tab-#{s.id}"}
               patch={~p"/school/sequences?seq=#{s.id}"}
               aria-current={s.id == @seq.id && "page"}
               class={[
-                "ta-num rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:border-warning",
+                "ta-num rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
                 if(s.id == @seq.id,
-                  do: "border-warning bg-warning/15 text-warning",
-                  else: "border-base-300 text-base-content/70"
+                  do: "border-primary bg-primary text-primary-content",
+                  else: "border-base-300 text-base-content/70 hover:border-primary"
                 )
               ]}
             >
-              S{s.number}
+              {tab_label(s, seq_state(s, Reference.today()))}
             </.link>
           </nav>
 
@@ -352,30 +361,48 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 </button>
               </div>
 
-              <div
-                id="late-teachers"
-                class="ta-panel flex flex-col gap-1"
-              >
-                <h2 class="ta-eyebrow">{gettext("À relancer")}</h2>
+              <div id="late-teachers" class="ta-panel flex flex-col gap-1">
+                <h2 class="ta-eyebrow">
+                  {gettext("À relancer · %{n}", n: length(@grid.late))}
+                </h2>
                 <p :if={@grid.late == []} class="py-2 text-sm text-base-content/60">
-                  {gettext("Personne : chaque cours a au moins une note saisie.")}
+                  {gettext("Personne : tous les cours sont saisis à 100 %.")}
                 </p>
-                <div
-                  :for={late <- @grid.late}
-                  class="ta-row-rule flex flex-col py-[7px]"
-                >
-                  <span class="text-[0.88rem] font-semibold">{teacher_name(late.teacher)}</span>
-                  <span
-                    :for={course <- late.courses}
-                    class="text-[0.74rem] text-base-content/75"
+                <ul :if={@grid.late != []} class="flex flex-col">
+                  <li
+                    :for={late <- @grid.late}
+                    id={"late-#{late.teacher_id}"}
+                    class="ta-row-rule flex items-start justify-between gap-3 py-[7px]"
                   >
-                    {gettext("%{subject} · %{class} · %{pct} %",
-                      subject: course.subject,
-                      class: course.class,
-                      pct: course.pct
-                    )}
-                  </span>
-                </div>
+                    <div class="flex min-w-0 flex-col">
+                      <span class="text-[0.88rem] font-semibold">{teacher_name(late.teacher)}</span>
+                      <span
+                        :for={{subject, detail} <- course_groups(late.courses)}
+                        class="text-[0.74rem] text-base-content/75"
+                      >
+                        {subject} · {detail}
+                      </span>
+                    </div>
+                    <button
+                      :if={not reminded_today?(@reminders, late)}
+                      id={"remind-teacher-#{late.teacher_id}"}
+                      type="button"
+                      phx-click="remind-teacher"
+                      phx-value-teacher={late.teacher_id}
+                      phx-disable-with={gettext("Envoi…")}
+                      class="btn btn-outline btn-warning btn-xs shrink-0"
+                    >
+                      {gettext("Relancer")}
+                    </button>
+                    <span
+                      :if={reminded_today?(@reminders, late)}
+                      id={"remind-teacher-#{late.teacher_id}"}
+                      class="shrink-0 pt-1 text-xs font-semibold text-primary"
+                    >
+                      {gettext("Relancé ✓")}
+                    </span>
+                  </li>
+                </ul>
                 <button
                   :if={@grid.late != []}
                   id="remind-late"
@@ -385,7 +412,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                   class="btn btn-outline btn-warning btn-sm mt-2"
                 >
                   <.icon name="hero-bell-alert" class="size-4" />
-                  {gettext("Relancer tous les retards")}
+                  {gettext("Relancer tous")}
                 </button>
               </div>
             </div>
@@ -421,7 +448,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
       title={@title <> " · " <> gettext("aucun élève")}
       class="ta-num flex h-9 items-center justify-center rounded-md bg-base-300/40 text-xs text-base-content/50"
     >
-      —
+      ·
     </span>
     """
   end
@@ -445,12 +472,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
       }
       aria-pressed={to_string(@selected)}
       class={[
-        "ta-num h-9 cursor-pointer rounded-md text-xs font-semibold text-base-content transition-colors hover:ring-1 hover:ring-base-content/50",
+        "ta-num h-9 cursor-pointer rounded-md text-xs font-semibold transition-colors hover:ring-1 hover:ring-base-content/50",
         cell_bg(@cell.pct),
         @selected && "ring-2 ring-base-content hover:ring-2 hover:ring-base-content"
       ]}
     >
-      {@cell.pct}%<.icon
+      {pct_text(@cell.pct)}<.icon
         :if={@reminded}
         name="hero-bell-alert"
         class="ml-0.5 size-3 align-[-1px] text-base-content/70"
@@ -472,41 +499,32 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     """
   end
 
-  defp cell_bg(100), do: "bg-primary/30 hover:bg-primary/40"
-  defp cell_bg(0), do: "bg-error/40 hover:bg-error/50"
-  defp cell_bg(_), do: "bg-warning/30 hover:bg-warning/40"
+  defp cell_bg(100), do: "bg-primary/20 text-primary hover:bg-primary/30"
+  defp cell_bg(0), do: "bg-error/20 text-error hover:bg-error/30"
+  defp cell_bg(_), do: "bg-warning/20 text-warning hover:bg-warning/30"
+
+  defp pct_text(100), do: "✓"
+  defp pct_text(pct), do: "#{pct} %"
 
   defp grid_style(n),
     do: "grid-template-columns: 72px repeat(#{n}, minmax(56px, 1fr)); min-width: #{72 + n * 59}px"
 
-  # "1er trimestre · S1 + S2": the term of the séquence and the séquences it holds.
-  defp council_sub(%{term: %{id: term_id, position: position}}, sequences) do
-    numbers =
-      sequences |> Enum.filter(&(&1.term_id == term_id)) |> Enum.map_join(" + ", &"S#{&1.number}")
-
-    "#{term_name(position)} · #{numbers}"
-  end
-
-  defp council_sub(_seq, _sequences), do: nil
-
-  defp term_name(1), do: gettext("1er trimestre")
-  defp term_name(n), do: gettext("%{n}e trimestre", n: n)
-
-  # "Clôture ven. 2 oct. · J-3" before the grade-entry deadline, "Clôturée le …" after.
-  defp deadline_text(%{grade_entry_deadline: %Date{} = deadline}) do
+  # "Séquence 2 · saisie jusqu'au ven. 2 oct. (J-3)"; past the deadline the J-n part is dropped.
+  defp eyebrow_text(%{grade_entry_deadline: %Date{} = deadline} = seq) do
     case Date.diff(deadline, Reference.today()) do
-      days when days > 0 ->
-        gettext("Clôture %{date} · J-%{n}", date: Dates.short(deadline), n: days)
-
-      0 ->
-        gettext("Clôture aujourd'hui")
+      days when days >= 0 ->
+        gettext("Séquence %{n} · saisie jusqu'au %{date} (J-%{d})",
+          n: seq.number,
+          date: Dates.short(deadline),
+          d: days
+        )
 
       _ ->
-        gettext("Clôturée le %{date}", date: Dates.short(deadline))
+        gettext("Séquence %{n} · clôturée le %{date}", n: seq.number, date: Dates.short(deadline))
     end
   end
 
-  defp deadline_text(_seq), do: "—"
+  defp eyebrow_text(seq), do: gettext("Censorat · Séquence %{n}", n: seq.number)
 
   defp teacher_name(nil), do: "—"
   defp teacher_name(teacher), do: User.display_name(teacher)
