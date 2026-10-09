@@ -283,41 +283,6 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
-  @doc """
-  Like `upsert_marks/3`, but atomic across several assessments at once — the
-  combined-marks save path. `assessment_entries` is `[{%Assessment{}, [entry]}]`,
-  one pair per member class. Every pair's entries are range-checked against
-  *their own* assessment's `max_score` BEFORE anything is written, and every
-  write happens inside a single transaction, so a combined course's per-class
-  saves are all-or-nothing: one class's out-of-range score can never leave
-  another class's valid score persisted (no partial commit across classes).
-  """
-  def upsert_marks_all_or_nothing(%Scope{} = _scope, []), do: :ok
-
-  def upsert_marks_all_or_nothing(%Scope{} = scope, assessment_entries) do
-    out_of_range? =
-      Enum.any?(assessment_entries, fn {%Assessment{max_score: max_score}, entries} ->
-        not Enum.all?(entries, &score_in_range?(&1, max_score))
-      end)
-
-    if out_of_range? do
-      {:error, :out_of_range}
-    else
-      assessment_entries
-      |> Enum.flat_map(fn {%Assessment{id: assessment_id}, entries} ->
-        Enum.map(entries, fn entry ->
-          %{
-            assessment_id: assessment_id,
-            student_id: entry.student_id,
-            score: Map.get(entry, :score),
-            status: Map.get(entry, :status)
-          }
-        end)
-      end)
-      |> run_upsert_all(scope)
-    end
-  end
-
   def list_marks(%Scope{} = scope, %Assessment{id: assessment_id}) do
     Mark
     |> Ash.Query.for_read(:for_assessment, %{assessment_id: assessment_id}, scope: scope)

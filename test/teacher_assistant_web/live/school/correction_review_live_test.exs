@@ -51,9 +51,10 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert detail =~ "Copie mal corrigée"
     # The student's séquence average in the subject, before → after.
     assert detail =~ "12 → 14"
+    assert has_element?(view, "#approve-correction", "Accepter")
 
     html = view |> element("#approve-correction") |> render_click()
-    assert html =~ "Correction approuvée."
+    assert html =~ "Correction acceptée."
     refute has_element?(view, "#pending-#{ctx.c.id}")
 
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review?tab=decided")
@@ -105,5 +106,18 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert journal =~ "Awa"
     assert journal =~ "Verrouillage"
     assert journal =~ "Système"
+  end
+
+  test "a note over 500 characters is named as the reason", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    view |> element("#pending-#{ctx.c.id}") |> render_click()
+
+    view
+    |> form("#decision-form", %{"decision" => %{"note" => String.duplicate("x", 501)}})
+    |> render_change()
+
+    html = view |> element("#refuse-correction") |> render_click()
+    assert html =~ "La note dépasse 500 caractères."
+    assert [_] = Assessment.list_corrections(ctx.censeur, :pending)
   end
 end

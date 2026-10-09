@@ -42,7 +42,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
     do: {:noreply, assign(socket, decision_form: to_form(params, as: :decision))}
 
   def handle_event("approve", _params, socket),
-    do: decide(socket, &Assessment.approve_correction/3, gettext("Correction approuvée."))
+    do: decide(socket, &Assessment.approve_correction/3, gettext("Correction acceptée."))
 
   def handle_event("refuse", _params, socket),
     do: decide(socket, &Assessment.refuse_correction/3, gettext("Correction refusée."))
@@ -52,6 +52,14 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   defp decide(socket, fun, message) do
     note = socket.assigns.decision_form[:note].value
 
+    if String.length(String.trim(note || "")) > 500 do
+      {:noreply, put_flash(socket, :error, gettext("La note dépasse 500 caractères."))}
+    else
+      record_decision(socket, fun, message, note)
+    end
+  end
+
+  defp record_decision(socket, fun, message, note) do
     case fun.(socket.assigns.current_scope, socket.assigns.selected, note) do
       {:ok, _correction} ->
         {:noreply, socket |> put_flash(:info, message) |> assign(selected: nil) |> load_tab()}
@@ -277,7 +285,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
                   phx-click="approve"
                   class="btn btn-primary btn-sm"
                 >
-                  {gettext("Approuver la correction")}
+                  {gettext("Accepter")}
                 </button>
                 <button
                   id="refuse-correction"

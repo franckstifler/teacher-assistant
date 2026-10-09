@@ -253,4 +253,17 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       assert has_element?(view, "#{card} [data-role='progress']", "1 / 2")
     end
   end
+
+  test "the subtitle counts a class taught in two subjects once", %{
+    school: school,
+    teacher: teacher,
+    cg: cg,
+    scope: scope
+  } do
+    {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, _} = Curriculum.assign_teacher(scope, cg, teacher, %{subject: "Physique"})
+
+    {:ok, view, _} = live(conn_for(school, teacher), ~p"/school/courses")
+    assert has_element?(view, "#courses header", "2 cours · 1 élève")
+  end
 end

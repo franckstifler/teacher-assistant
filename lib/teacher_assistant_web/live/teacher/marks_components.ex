@@ -47,6 +47,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           autocomplete="off"
           aria-label={@student.full_name}
           aria-invalid={@error && "true"}
+          aria-describedby={@error && "mark-error-#{@student.id}"}
           placeholder="—"
           value={@value}
           phx-blur="save_mark"
@@ -68,6 +69,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           phx-click="toggle_absent"
           phx-value-student={@student.id}
           aria-pressed={to_string(@absent?)}
+          data-confirm={
+            replaces_mark?(@saved_entry) && gettext("Remplacer la note saisie par « absent » ?")
+          }
           disabled={@locked?}
           class={[
             "btn btn-xs min-w-[72px] transition",
@@ -77,7 +81,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
             )
           ]}
         >
-          {if @absent?, do: gettext("Présent"), else: gettext("Absent")}
+          {gettext("Absent")}
         </button>
       </td>
       <td id={"mark-appreciation-#{@student.id}"} class="text-sm">
@@ -119,6 +123,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
     do: d |> Decimal.mult(20) |> Decimal.div(max)
 
   defp scaled(_entry, _max), do: nil
+
+  # Marking absent over an entered mark or a justified absence loses it: ask first.
+  defp replaces_mark?({:ok, {:graded, _}}), do: true
+  defp replaces_mark?({:ok, :excused}), do: true
+  defp replaces_mark?(_entry), do: false
 
   defp below_pass?(nil), do: false
   defp below_pass?(d), do: Decimal.compare(d, 10) == :lt

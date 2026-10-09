@@ -354,4 +354,71 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
   defp blur(view, student_id, value),
     do: view |> element("#mark-input-#{student_id}") |> render_blur(%{"value" => value})
+
+  test "on an unverified school a blur that changes nothing flashes nothing", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    operator = TeacherFixtures.admin_user_fixture()
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+    {:ok, _} =
+      TeacherAssistant.Accounts.reject_school(profile, operator.id, "test", actor: operator)
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    refute blur(view, s1.id, "") =~ "en attente de vérification"
+    assert blur(view, s1.id, "12") =~ "en attente de vérification"
+  end
+
+  test "the Absent toggle keeps its label, asks before replacing a mark, links errors", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    refute has_element?(view, "#absent-#{s1.id}[data-confirm]")
+    blur(view, s1.id, "14")
+    assert has_element?(view, "#absent-#{s1.id}[data-confirm]")
+
+    view |> element("#absent-#{s1.id}") |> render_click()
+    assert [%{status: :absent}] = Assessment.list_marks(scope, a)
+    assert has_element?(view, "#absent-#{s1.id}[aria-pressed='true']", "Absent")
+
+    view |> element("#absent-#{s1.id}") |> render_click()
+    blur(view, s1.id, "25")
+
+    assert has_element?(
+             view,
+             "#mark-input-#{s1.id}[aria-describedby='mark-error-#{s1.id}']"
+           )
+  end
+
+  test "switching assessment with an uncorrected cell warns that its text is dropped", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    {:ok, other} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 2"})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    blur(view, s1.id, "25")
+    html = view |> element("#assessment-select") |> render_change(%{"assessment" => other.id})
+    assert html =~ "1 note non enregistrée abandonnée"
+  end
 end

@@ -83,13 +83,11 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   def context_cells(%Scope{}, _year, _seq, []), do: %{}
 
   def context_cells(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, contexts) do
-    ids = MapSet.new(contexts, & &1.id)
-    enrolled = load_enrolled(scope, year)
+    ids = Enum.map(contexts, & &1.id)
+    class_ids = contexts |> Enum.map(& &1.class_group_id) |> Enum.uniq()
+    enrolled = load_enrolled(scope, year, class_ids)
     exempt = load_exempt(scope, contexts)
-
-    assessments =
-      scope |> load_assessments(seq) |> Enum.filter(&MapSet.member?(ids, &1.teaching_context_id))
-
+    assessments = load_assessments(scope, seq, ids)
     marks_by_assessment = scope |> load_marks(assessments) |> Enum.group_by(& &1.assessment_id)
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
 
@@ -155,6 +153,17 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   defp load_enrolled(scope, %AcademicYear{id: year_id}) do
     Enrollment
     |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> enrolled_by_class(scope)
+  end
+
+  defp load_enrolled(scope, %AcademicYear{id: year_id}, class_ids) do
+    Enrollment
+    |> Ash.Query.filter(academic_year_id == ^year_id and class_group_id in ^class_ids)
+    |> enrolled_by_class(scope)
+  end
+
+  defp enrolled_by_class(query, scope) do
+    query
     |> Ash.Query.select([:class_group_id, :student_id])
     |> Ash.read!(scope: scope)
     |> Enum.group_by(& &1.class_group_id, & &1.student_id)
@@ -176,6 +185,17 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   defp load_assessments(scope, %Sequence{id: seq_id}) do
     Assessment
     |> Ash.Query.filter(sequence_id == ^seq_id)
+    |> sorted_assessments(scope)
+  end
+
+  defp load_assessments(scope, %Sequence{id: seq_id}, context_ids) do
+    Assessment
+    |> Ash.Query.filter(sequence_id == ^seq_id and teaching_context_id in ^context_ids)
+    |> sorted_assessments(scope)
+  end
+
+  defp sorted_assessments(query, scope) do
+    query
     |> Ash.Query.select([:teaching_context_id, :label, :given_on, :inserted_at])
     |> Ash.Query.sort(given_on: :asc_nils_last, inserted_at: :asc)
     |> Ash.read!(scope: scope)

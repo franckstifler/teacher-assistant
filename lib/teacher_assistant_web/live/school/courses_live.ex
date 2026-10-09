@@ -50,7 +50,8 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
        socket
        |> assign(:courses, courses)
        |> assign(:seq, seq)
-       |> assign(:student_total, courses |> Enum.map(& &1.students) |> Enum.sum())
+       # Each class once, even when the teacher has it in two subjects.
+       |> assign(:student_total, ctx.students |> Map.values() |> Enum.sum())
        |> assign(:today, today)}
     else
       {:ok, push_navigate(socket, to: ~p"/school")}

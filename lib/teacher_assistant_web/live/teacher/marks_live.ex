@@ -335,12 +335,28 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     {:noreply,
      socket
+     |> warn_dropped_errors()
      |> assign(seq: seq, locked?: seq != nil and Lock.locked?(seq))
      |> assign(columns: columns, column: column)
      |> assign(scores: loaded, loaded: loaded, errors: %{})
      |> assign(:new_assessment_form, new_assessment_form(socket, seq))
      |> assign_pending()}
   end
+
+  # Valid marks are already saved; only cells still in error lose their text on a switch.
+  defp warn_dropped_errors(%{assigns: %{errors: errors}} = socket) when map_size(errors) > 0 do
+    put_flash(
+      socket,
+      :error,
+      ngettext(
+        "%{count} note non enregistrée abandonnée (valeur invalide).",
+        "%{count} notes non enregistrées abandonnées (valeurs invalides).",
+        map_size(errors)
+      )
+    )
+  end
+
+  defp warn_dropped_errors(socket), do: socket
 
   defp columns(_socket, nil), do: []
 
@@ -416,6 +432,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       not Map.has_key?(socket.assigns.student_group, id) ->
         {:noreply, socket}
 
+      same_entry?(entry, MarkEntry.parse(Map.get(loaded, id))) ->
+        {:noreply,
+         socket
+         |> clear_error(id)
+         |> assign(:scores, Map.put(socket.assigns.scores, id, Map.get(loaded, id, "")))}
+
       not TeacherAssistant.Scope.school_verified?(scope) ->
         {:noreply,
          put_flash(
@@ -424,15 +446,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
            gettext("École en attente de vérification — enregistrement indisponible.")
          )}
 
-      same_entry?(entry, MarkEntry.parse(Map.get(loaded, id))) ->
-        {:noreply,
-         socket
-         |> clear_error(id)
-         |> assign(:scores, Map.put(socket.assigns.scores, id, Map.get(loaded, id, "")))}
-
       true ->
         case assessment_for(socket.assigns, id) do
-          nil -> {:noreply, put_error(socket, id, :failed)}
+          nil -> {:noreply, put_error(socket, id, :no_assessment)}
           assessment -> upsert(socket, assessment, id, entry)
         end
     end
@@ -491,6 +507,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp put_error(socket, id, :failed),
     do: assign(socket, :errors, Map.put(socket.assigns.errors, id, gettext("Non enregistrée")))
+
+  defp put_error(socket, id, :no_assessment) do
+    message = gettext("Non enregistrée : cette évaluation manque pour sa classe")
+    assign(socket, :errors, Map.put(socket.assigns.errors, id, message))
+  end
 
   defp put_error(socket, id, _invalid_or_out_of_range) do
     message = gettext("Note entre 0 et %{max}", max: max_label(socket.assigns.column))

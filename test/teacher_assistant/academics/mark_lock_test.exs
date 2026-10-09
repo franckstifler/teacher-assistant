@@ -56,25 +56,6 @@ defmodule TeacherAssistant.Academics.MarkLockTest do
     assert [%Mark{}] = Assessment.list_marks(ctx.head, ctx.a)
   end
 
-  test "a combined save with one locked class writes nothing", ctx do
-    {:ok, cg2} =
-      Enrollment.create_class_group(ctx.head, ctx.year, %{label: "6e Z", level: "6ème"})
-
-    {:ok, s3} = Enrollment.add_student(ctx.head, cg2, %{full_name: "Chloé", sex: :f})
-    {:ok, tc2} = Curriculum.assign_teacher(ctx.head, cg2, ctx.t.current_user, %{subject: "Maths"})
-    [_, seq2 | _] = TeacherAssistant.Organization.list_sequences(ctx.head, ctx.year)
-    {:ok, open_a} = Assessment.create_assessment(ctx.t, tc2, seq2, %{label: "D"})
-    lock!(ctx, Date.add(Reference.today(), -1))
-
-    assert {:error, _} =
-             Assessment.upsert_marks_all_or_nothing(ctx.t, [
-               {open_a, [%{student_id: s3.id, score: Decimal.new(10)}]},
-               {ctx.a, [%{student_id: ctx.s1.id, score: Decimal.new(10)}]}
-             ])
-
-    assert Assessment.list_marks(ctx.head, open_a) == []
-  end
-
   test "assessments of a locked séquence cannot be created, edited or deleted", ctx do
     lock!(ctx, Date.add(Reference.today(), -1))
 
