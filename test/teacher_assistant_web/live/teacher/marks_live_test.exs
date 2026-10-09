@@ -36,9 +36,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    view
-    |> form("#marks-form", %{"scores" => %{s1.id => "15"}})
-    |> render_submit()
+    blur(view, s1.id, "15")
 
     assert [m] = Assessment.list_marks(scope, a)
     assert Decimal.equal?(m.score, Decimal.new("15"))
@@ -55,12 +53,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    html =
-      view
-      |> form("#marks-form", %{"scores" => %{s1.id => "25"}})
-      |> render_submit()
+    blur(view, s1.id, "25")
 
-    assert html =~ "0 and 20"
+    assert has_element?(view, "#mark-error-#{s1.id}", "Note entre 0 et 20")
+    assert has_element?(view, "#mark-input-#{s1.id}[value='25']")
+    assert has_element?(view, "#save-state", "1 note à corriger")
     assert Assessment.list_marks(scope, a) == []
   end
 
@@ -75,7 +72,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    view |> form("#marks-form", %{"scores" => %{s1.id => "13,5"}}) |> render_submit()
+    blur(view, s1.id, "13,5")
 
     assert [m] = Assessment.list_marks(scope, a)
     assert Decimal.equal?(m.score, Decimal.new("13.5"))
@@ -92,13 +89,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    html = view |> form("#marks-form", %{"scores" => %{s1.id => "abc"}}) |> render_submit()
+    blur(view, s1.id, "abc")
 
-    assert html =~ "valid"
+    assert has_element?(view, "#mark-error-#{s1.id}", "Note entre 0 et 20")
+    assert has_element?(view, "#mark-input-#{s1.id}[value='abc']")
     assert Assessment.list_marks(scope, a) == []
+
+    # Correcting the cell clears its error.
+    blur(view, s1.id, "11")
+    refute has_element?(view, "#mark-error-#{s1.id}")
   end
 
-  test "keeps unsaved marks when switching assessment and back", %{
+  test "blur with an unchanged value does not write", %{
     conn: conn,
     ctx: ctx,
     seq: seq,
@@ -106,34 +108,73 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     s1: s1,
     scope: scope
   } do
-    {:ok, other} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 2"})
+    :ok = Assessment.upsert_marks(scope, a, [%{student_id: s1.id, score: Decimal.new(12)}])
+    [before] = Assessment.list_marks(scope, a)
 
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    # type a mark (unsaved) for assessment a
-    view |> element("#marks-form") |> render_change(%{"scores" => %{s1.id => "14"}})
-
-    # switch to another assessment, then back to a — without ever saving
-    view |> element("#assessment-select") |> render_change(%{"assessment" => other.id})
-    view |> element("#assessment-select") |> render_change(%{"assessment" => a.id})
-
-    # the unsaved 14 is still in the input, not lost
-    assert has_element?(view, "#mark-input-#{s1.id}[value='14']")
-    assert Assessment.list_marks(scope, a) == []
+    blur(view, s1.id, "12,0")
+    [after_blur] = Assessment.list_marks(scope, a)
+    assert after_blur.updated_at == before.updated_at
+    refute has_element?(view, "#save-state", "Enregistré")
   end
 
-  test "mark inputs are debounced to avoid a round-trip per keystroke", %{
+  test "each mark input saves on blur", %{conn: conn, ctx: ctx, seq: seq, a: a, s1: s1} do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#mark-input-#{s1.id}[phx-blur='save_mark']")
+    refute has_element?(view, "#marks-submit")
+  end
+
+  test "the absent toggle marks and unmarks", %{
     conn: conn,
     ctx: ctx,
     seq: seq,
     a: a,
-    s1: s1
+    s1: s1,
+    scope: scope
   } do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    assert has_element?(view, "#mark-input-#{s1.id}[phx-debounce]")
+    view |> element("#absent-#{s1.id}") |> render_click()
+    assert [%{status: :absent, score: nil}] = Assessment.list_marks(scope, a)
+    assert has_element?(view, "#mark-input-#{s1.id}[disabled]")
+    assert has_element?(view, "#mark-appreciation-#{s1.id}", "Absent")
+
+    view |> element("#absent-#{s1.id}") |> render_click()
+    refute Enum.any?(Assessment.list_marks(scope, a), &(&1.status == :absent))
+    refute has_element?(view, "#mark-input-#{s1.id}[disabled]")
+  end
+
+  test "a saved mark shows its appreciation and « Enregistré »", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    blur(view, s1.id, "15")
+
+    expected =
+      TeacherAssistant.Academics.Marks.mention(Decimal.new(15), Assessment.grading_rules(scope))
+
+    assert has_element?(view, "#mark-appreciation-#{s1.id}", expected.label)
+    assert has_element?(view, "#save-state", "Enregistré")
+  end
+
+  test "a mark under 10/20 shows in red", %{conn: conn, ctx: ctx, seq: seq, a: a, s1: s1} do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    blur(view, s1.id, "8")
+    assert has_element?(view, "#mark-input-#{s1.id}.text-error")
   end
 
   test "without ?seq= the current séquence is open, its assessments listed", %{
@@ -181,12 +222,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     assert has_element?(view, "#marks-progress")
 
-    html =
-      view
-      |> element("#marks-form")
-      |> render_change(%{"scores" => %{s1.id => "14", s2.id => "10"}})
+    blur(view, s1.id, "14")
+    blur(view, s2.id, "10")
 
-    assert html =~ "2"
+    assert view |> element("#marks-progress") |> render() =~ "2"
     # average preview: (14 + 10) / 2 = 12
     assert view |> element("#marks-average-preview") |> render() =~ "12"
   end
@@ -197,28 +236,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     assert has_element?(view, "#marks-toolbar #seq-select")
     assert has_element?(view, "#marks-toolbar #assessment-select")
-  end
-
-  test "md sheet shows sibling assessment scores read-only", %{
-    conn: conn,
-    ctx: ctx,
-    seq: seq,
-    a: a,
-    s1: s1,
-    scope: scope
-  } do
-    {:ok, other} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 2"})
-
-    :ok =
-      Assessment.upsert_marks(scope, other, [
-        %{student_id: s1.id, score: Decimal.new("17")}
-      ])
-
-    {:ok, view, _html} =
-      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
-
-    assert has_element?(view, "#marks-sheet-header", "Devoir 2")
-    assert render(element(view, "#mark-row-#{s1.id}")) =~ "17"
   end
 
   test "creating an assessment in solo mode creates it and selects it", %{
@@ -235,7 +252,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     assert Enum.any?(Assessment.list_assessments(scope, ctx, seq), &(&1.label == "Composition"))
     # the newly created assessment is now the selected column — its sheet renders
-    assert has_element?(view, "#marks-sheet-header", "Composition")
+    assert has_element?(view, "#marks-table thead", "Composition")
   end
 
   test "a blank assessment label is rejected and creates nothing", %{
@@ -267,4 +284,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
              Calendar.strftime(seq.grade_entry_deadline, "%d/%m/%Y")
            )
   end
+
+  defp blur(view, student_id, value),
+    do: view |> element("#mark-input-#{student_id}") |> render_blur(%{"value" => value})
 end

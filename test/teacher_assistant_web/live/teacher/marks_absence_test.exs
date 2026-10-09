@@ -27,29 +27,29 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
   test "abs and abj are saved as absences, blank as not entered", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
-    view
-    |> form("#marks-form", %{"scores" => %{ctx.awa.id => "ABS", ctx.bob.id => "abj"}})
-    |> render_submit()
+    blur(view, ctx.awa.id, "ABS")
+    blur(view, ctx.bob.id, "abj")
 
     by_student = Map.new(Assessment.list_marks(ctx.scope, ctx.a), &{&1.student_id, &1.status})
     assert by_student == %{ctx.awa.id => :absent, ctx.bob.id => :excused}
     assert has_element?(view, "#mark-input-#{ctx.awa.id}[value='abs']")
 
-    view
-    |> form("#marks-form", %{"scores" => %{ctx.awa.id => "", ctx.bob.id => "abj"}})
-    |> render_submit()
+    # An absent cell is disabled: the toggle brings it back to blank.
+    view |> element("#absent-#{ctx.awa.id}") |> render_click()
+    blur(view, ctx.bob.id, "abj")
 
     assert [%{status: :excused}] = Assessment.list_marks(ctx.scope, ctx.a)
   end
 
-  test "an unknown code rejects the whole batch", ctx do
+  test "an unknown code is refused in its own cell only", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
-    view
-    |> form("#marks-form", %{"scores" => %{ctx.awa.id => "12", ctx.bob.id => "abx"}})
-    |> render_submit()
+    blur(view, ctx.awa.id, "12")
+    blur(view, ctx.bob.id, "abx")
 
-    assert Assessment.list_marks(ctx.scope, ctx.a) == []
+    assert [%{student_id: awa_id}] = Assessment.list_marks(ctx.scope, ctx.a)
+    assert awa_id == ctx.awa.id
+    assert has_element?(view, "#mark-error-#{ctx.bob.id}")
   end
 
   test "a new assessment takes its type's weight and the school's maximum", ctx do
@@ -90,7 +90,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
     assert has_element?(view, "#pending-makeups", "Awa")
   end
 
-  test "saving a stale page never touches marks the teacher did not edit", ctx do
+  test "a blur on a stale page never touches marks the teacher did not edit", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
     # Someone else enters Bob's mark after this page was loaded.
@@ -99,12 +99,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
         %{student_id: ctx.bob.id, score: Decimal.new(14)}
       ])
 
-    view
-    |> form("#marks-form", %{"scores" => %{ctx.awa.id => "12", ctx.bob.id => ""}})
-    |> render_submit()
+    blur(view, ctx.awa.id, "12")
+    blur(view, ctx.bob.id, "")
 
     by_student = Map.new(Assessment.list_marks(ctx.scope, ctx.a), &{&1.student_id, &1.score})
     assert Decimal.equal?(by_student[ctx.awa.id], 12)
     assert Decimal.equal?(by_student[ctx.bob.id], 14)
   end
+
+  defp blur(view, student_id, value),
+    do: view |> element("#mark-input-#{student_id}") |> render_blur(%{"value" => value})
 end

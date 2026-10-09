@@ -122,9 +122,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
     |> render_submit()
 
-    view
-    |> form("#marks-form", %{"scores" => %{s_maco.id => "15", s_menu.id => "12"}})
-    |> render_submit()
+    blur(view, s_maco.id, "15")
+    blur(view, s_menu.id, "12")
 
     [a_maco] = Assessment.list_assessments(scope, tc_maco, seq)
     [a_menu] = Assessment.list_assessments(scope, tc_menu, seq)
@@ -138,7 +137,21 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert Decimal.equal?(m_menu.score, Decimal.new("12"))
   end
 
-  test "an out-of-range score in one class saves nothing for either class (all-or-nothing)", %{
+  test "a blur on a student of the second class writes only that class's assessment", ctx do
+    %{conn: conn, scope: scope, course: course, seq: seq, tc_maco: tc_maco} = ctx
+    {:ok, _} = Assessment.create_combined_assessment(scope, course, seq, %{label: "DS"})
+    [column] = Assessment.combined_assessments_for(scope, course, seq)
+    path = ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}&assessment=#{column.id}"
+    {:ok, view, _} = live(conn, path)
+
+    blur(view, ctx.s_menu.id, "13")
+
+    assert [%{student_id: sid}] = Assessment.list_marks(scope, column.by_class_group_id[ctx.menu.id])
+    assert sid == ctx.s_menu.id
+    assert Assessment.list_marks(scope, column.by_class_group_id[ctx.maco.id]) == []
+  end
+
+  test "an out-of-range score is refused in its cell; the other class's mark still saves", %{
     conn: conn,
     tc_maco: tc_maco,
     tc_menu: tc_menu,
@@ -153,22 +166,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
     |> render_submit()
 
-    # MACO's score (15) is valid; MENU's (25) is out of range (marks are /20).
-    html =
-      view
-      |> form("#marks-form", %{"scores" => %{s_maco.id => "15", s_menu.id => "25"}})
-      |> render_submit()
+    blur(view, s_maco.id, "15")
+    blur(view, s_menu.id, "25")
 
-    assert html =~ "0 and 20"
+    assert has_element?(view, "#mark-error-#{s_menu.id}", "Note entre 0 et 20")
 
     [a_maco] = Assessment.list_assessments(scope, tc_maco, seq)
     [a_menu] = Assessment.list_assessments(scope, tc_menu, seq)
 
-    assert Assessment.list_marks(scope, a_maco) == []
+    assert [_] = Assessment.list_marks(scope, a_maco)
     assert Assessment.list_marks(scope, a_menu) == []
   end
 
-  test "abs/abj land on each class's own assessment, a blank deletes only that mark, abx saves nothing",
+  test "abs/abj land on each class's own assessment, a blank deletes only that mark, abx is refused",
        ctx do
     %{conn: conn, scope: scope, course: course, seq: seq, tc_maco: tc_maco} = ctx
     %{maco: maco, menu: menu, s_maco: s_maco, s_menu: s_menu} = ctx
@@ -181,28 +191,26 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
     {:ok, view, _} = live(conn, path)
 
-    view
-    |> form("#marks-form", %{"scores" => %{s_maco.id => "abs", s_menu.id => "ABJ"}})
-    |> render_submit()
+    blur(view, s_maco.id, "abs")
+    blur(view, s_menu.id, "ABJ")
 
     assert [%{student_id: sid_maco, status: :absent}] = Assessment.list_marks(scope, a_maco)
     assert sid_maco == s_maco.id
     assert [%{student_id: sid_menu, status: :excused}] = Assessment.list_marks(scope, a_menu)
     assert sid_menu == s_menu.id
 
-    view
-    |> form("#marks-form", %{"scores" => %{s_maco.id => "", s_menu.id => "abj"}})
-    |> render_submit()
+    # An absent cell is disabled: the toggle brings it back to blank.
+    view |> element("#absent-#{s_maco.id}") |> render_click()
+    blur(view, s_menu.id, "abj")
 
     assert Assessment.list_marks(scope, a_maco) == []
     assert [%{status: :excused}] = Assessment.list_marks(scope, a_menu)
 
-    view
-    |> form("#marks-form", %{"scores" => %{s_maco.id => "12", s_menu.id => "abx"}})
-    |> render_submit()
+    blur(view, s_menu.id, "abx")
 
     assert Assessment.list_marks(scope, a_maco) == []
     assert [%{status: :excused}] = Assessment.list_marks(scope, a_menu)
+    assert has_element?(view, "#mark-error-#{s_menu.id}")
   end
 
   test "without ?seq= the combined course opens on the current séquence", %{
@@ -219,4 +227,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert html =~ "Devoir 1"
     assert has_element?(view, "#new-assessment-form")
   end
+
+  defp blur(view, student_id, value),
+    do: view |> element("#mark-input-#{student_id}") |> render_blur(%{"value" => value})
 end

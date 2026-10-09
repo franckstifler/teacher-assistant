@@ -1,81 +1,60 @@
 defmodule TeacherAssistantWeb.Teacher.MarksLive do
+  @moduledoc """
+  « Saisie des notes » (spec 2026-10-09 §2.3): one assessment column of a course, each
+  mark saved when its cell loses focus. A combined course shows the union roster by
+  class; its column is one real `Assessment` per member class and a student's mark
+  always lands on their own class's.
+  """
   use TeacherAssistantWeb, :live_view
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
   alias TeacherAssistant.Organization
-
   alias TeacherAssistant.Academics.{Lock, MarkEntry, Reference}
+  alias TeacherAssistantWeb.Teacher.MarksComponents
 
-  def mount(%{"id" => ctx_id} = params, _session, socket) do
+  def mount(%{"id" => ctx_id}, _session, socket) do
     scope = socket.assigns.current_scope
-    ws = scope.current_workspace
 
     case Curriculum.fetch_assigned_teaching_context(scope, ctx_id) do
       {:ok, %{combined_course_id: course_id} = ctx} when not is_nil(course_id) ->
-        mount_combined(ctx, course_id, params, socket, ws)
+        mount_combined(ctx, course_id, socket)
 
       {:ok, ctx} ->
-        mount_solo(ctx, params, socket, ws)
+        mount_solo(ctx, socket)
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  defp mount_solo(ctx, params, socket, ws) do
-    with {:ok, cg} <-
-           Enrollment.fetch_owned_class_group(socket.assigns.current_scope, ctx.class_group_id) do
-      scope = socket.assigns.current_scope
-      year = Organization.current_academic_year(scope)
-      sequences = if year, do: Organization.list_sequences(scope, year), else: []
-      seq = pick_seq(sequences, params["seq"])
-      assessments = if seq, do: Assessment.list_assessments(scope, ctx, seq), else: []
-      assessment = pick(assessments, params["assessment"])
-      exempt = Curriculum.exempt_student_ids(scope, ctx)
+  defp mount_solo(ctx, socket) do
+    scope = socket.assigns.current_scope
 
-      students =
-        scope |> Enrollment.list_students(cg) |> Enum.reject(&MapSet.member?(exempt, &1.id))
+    case Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
+      {:ok, cg} ->
+        exempt = Curriculum.exempt_student_ids(scope, ctx)
 
-      {:ok,
-       socket
-       |> assign(:ws, ws)
-       |> assign(:ctx, ctx)
-       |> assign(:grading_rules, Assessment.grading_rules(scope))
-       |> assign(:sequences, sequences)
-       |> assign(:seq, seq)
-       |> assign(:locked?, seq != nil and Lock.locked?(seq))
-       |> assign(:assessments, assessments)
-       |> assign(:assessment, assessment)
-       |> assign(:students, students)
-       |> assign(:scores, existing_scores(scope, assessment))
-       |> assign(:loaded, existing_scores(scope, assessment))
-       |> assign(:unsaved, %{})
-       |> assign(:sibling_scores, sibling_scores(scope, ctx, seq))
-       |> assign_assessment_defaults(scope)
-       |> assign(:new_assessment_form, solo_assessment_form(scope, ctx, seq))
-       |> assign_pending()}
-    else
-      _ -> {:ok, push_navigate(socket, to: ~p"/school")}
+        students =
+          scope |> Enrollment.list_students(cg) |> Enum.reject(&MapSet.member?(exempt, &1.id))
+
+        {:ok,
+         socket
+         |> assign(course: nil, title: "#{ctx.subject} · #{cg.label}")
+         |> assign(groups: [%{class_group: cg, students: students}])
+         |> mount_common(ctx)}
+
+      _ ->
+        {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  # Combined mode: the mounted context is a member of a `CombinedCourse`.
-  # The page shows the union roster of every member class (grouped by
-  # class), and the "assessment" the teacher picks is a logical column
-  # backed by one real `Assessment` per member context — a student's score
-  # always lands on their own class's context's assessment.
-  defp mount_combined(ctx, course_id, params, socket, ws) do
-    case Curriculum.get_course(socket.assigns.current_scope, course_id) do
-      {:ok, course} ->
-        scope = socket.assigns.current_scope
-        year = Organization.current_academic_year(scope)
-        sequences = if year, do: Organization.list_sequences(scope, year), else: []
-        seq = pick_seq(sequences, params["seq"])
-        combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
-        selected = pick(combined, params["assessment"])
+  defp mount_combined(ctx, course_id, socket) do
+    scope = socket.assigns.current_scope
 
+    case Curriculum.get_course(scope, course_id) do
+      {:ok, course} ->
         groups =
           scope
           |> Curriculum.list_union_students(course)
@@ -86,27 +65,30 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
         {:ok,
          socket
-         |> assign(:ws, ws)
-         |> assign(:ctx, ctx)
-         |> assign(:grading_rules, Assessment.grading_rules(scope))
-         |> assign(:course, course)
-         |> assign(:groups, groups)
-         |> assign(:sequences, sequences)
-         |> assign(:seq, seq)
-         |> assign(:locked?, seq != nil and Lock.locked?(seq))
-         |> assign(:combined_assessments, combined)
-         |> assign(:selected, selected)
-         |> assign(:scores, combined_existing_scores(socket.assigns.current_scope, selected))
-         |> assign(:loaded, combined_existing_scores(socket.assigns.current_scope, selected))
-         |> assign(:unsaved, %{})
-         |> assign_assessment_defaults(scope)
-         |> assign(:new_assessment_form, assessment_form(socket.assigns.current_scope))
-         |> assign_pending()}
+         |> assign(course: course, title: course.label, groups: groups)
+         |> mount_common(ctx)}
 
       _ ->
         {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
+
+  defp mount_common(socket, ctx) do
+    scope = socket.assigns.current_scope
+    year = Organization.current_academic_year(scope)
+
+    socket
+    |> assign(:ctx, ctx)
+    |> assign(:grading_rules, Assessment.grading_rules(scope))
+    |> assign(:sequences, if(year, do: Organization.list_sequences(scope, year), else: []))
+    |> assign(:student_group, student_group(socket.assigns.groups))
+    |> assign(errors: %{}, saved_at: nil)
+    |> assign_assessment_defaults(scope)
+  end
+
+  # student id => class group id, to route a mark to the student's own class.
+  defp student_group(groups),
+    do: for(g <- groups, s <- g.students, into: %{}, do: {s.id, g.class_group.id})
 
   # School assessment types and default maximum for the "new assessment" form.
   defp assign_assessment_defaults(socket, scope) do
@@ -118,33 +100,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     )
   end
 
-  # Students whose make-up is still expected on the selected assessment (make-up rule).
+  # Students whose make-up is still expected on the selected column (make-up rule).
   defp assign_pending(socket) do
     %{current_scope: scope, grading_rules: rules} = socket.assigns
 
-    {students, assessments} =
-      case socket.assigns[:course] do
-        %CombinedCourse{} ->
-          selected = socket.assigns.selected
-
-          {Enum.flat_map(socket.assigns.groups, & &1.students),
-           if(selected,
-             do: selected.by_class_group_id |> Map.values() |> Enum.uniq_by(& &1.id),
-             else: []
-           )}
-
-        _ ->
-          assessment = socket.assigns.assessment
-          {socket.assigns.students, if(assessment, do: [assessment], else: [])}
-      end
-
     by_student =
-      assessments
+      socket.assigns.column
+      |> column_assessments()
       |> Enum.flat_map(&Assessment.list_marks(scope, &1))
       |> Enum.group_by(& &1.student_id)
 
     pending =
-      for s <- students,
+      for s <- all_students(socket.assigns),
           Marks.makeup_pending?(Map.get(by_student, s.id, []), rules),
           do: s.full_name
 
@@ -175,13 +142,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   defp next_type_number(socket, type) do
-    existing =
-      case socket.assigns[:course] do
-        %CombinedCourse{} -> socket.assigns.combined_assessments
-        _ -> socket.assigns.assessments
-      end
-
-    Enum.count(existing, &String.starts_with?(&1.label, type.name)) + 1
+    Enum.count(socket.assigns.columns, &String.starts_with?(&1.label, type.name)) + 1
   end
 
   # The séquence asked for, else the current one (the one containing today, else the
@@ -192,20 +153,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
 
-  defp existing_scores(_scope, nil), do: %{}
+  # The selected column's real assessments: one, or one per member class.
+  defp column_assessments(nil), do: []
 
-  defp existing_scores(scope, assessment) do
-    scope
-    |> Assessment.list_marks(assessment)
-    |> Map.new(fn m -> {m.student_id, mark_field(m)} end)
-  end
+  defp column_assessments(%{by_class_group_id: by_cg}),
+    do: by_cg |> Map.values() |> Enum.uniq_by(& &1.id)
 
-  defp combined_existing_scores(_scope, nil), do: %{}
+  defp column_assessments(assessment), do: [assessment]
 
-  defp combined_existing_scores(scope, %{by_class_group_id: by_class_group_id}) do
-    by_class_group_id
-    |> Map.values()
-    |> Enum.uniq_by(& &1.id)
+  # %{student_id => field text} of the stored marks.
+  defp saved_marks(scope, column) do
+    column
+    |> column_assessments()
     |> Enum.flat_map(&Assessment.list_marks(scope, &1))
     |> Map.new(fn m -> {m.student_id, mark_field(m)} end)
   end
@@ -213,20 +172,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp mark_field(%{status: :graded, score: score}), do: Decimal.to_string(score, :normal)
   defp mark_field(%{status: status}), do: MarkStatus.code(status)
 
-  # %{ {student_id, assessment_id} => score } for every assessment of the séquence
-  defp sibling_scores(_scope, _ctx, nil), do: %{}
+  defp all_students(%{groups: groups}), do: Enum.flat_map(groups, & &1.students)
 
-  defp sibling_scores(scope, ctx, seq) do
-    scope
-    |> Assessment.list_marks_for_context_sequence(ctx, seq)
-    |> Map.new(fn m -> {{m.student_id, m.assessment_id}, m} end)
-  end
-
-  defp entered_count(scores), do: Enum.count(scores, fn {_id, v} -> v not in [nil, ""] end)
+  defp entered_count(students, loaded),
+    do: Enum.count(students, &(Map.get(loaded, &1.id) not in [nil, ""]))
 
   defp preview_average(_students, nil, _scores, _rules), do: nil
 
-  defp preview_average(students, assessment, scores, rules) do
+  defp preview_average(students, column, scores, rules) do
     marks =
       Enum.flat_map(students, fn s ->
         case MarkEntry.parse(Map.get(scores, s.id)) do
@@ -237,14 +190,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             []
 
           {:ok, entry} ->
-            [Map.merge(%{assessment_id: assessment.id, student_id: s.id}, entry_mark(entry))]
+            [Map.merge(%{assessment_id: column.id, student_id: s.id}, entry_mark(entry))]
         end
       end)
 
     summary =
-      TeacherAssistant.Academics.Marks.summarize(
+      Marks.summarize(
         Enum.map(students, fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end),
-        [%{id: assessment.id, weight: assessment.weight, max_score: assessment.max_score}],
+        [%{id: column.id, weight: column.weight, max_score: column.max_score}],
         marks,
         rules
       )
@@ -253,56 +206,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   defp fmt_avg(nil), do: "—"
-  defp fmt_avg(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
 
-  def handle_event("select_seq", %{"seq" => seq_id}, socket) do
-    {:noreply,
-     push_patch(socket, to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq_id}")}
-  end
-
-  def handle_event("select_assessment", %{"assessment" => aid}, socket) do
-    {:noreply,
-     push_patch(socket,
-       to:
-         ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{socket.assigns.seq.id}&assessment=#{aid}"
-     )}
-  end
-
-  def handle_event("new_assessment", _params, %{assigns: %{locked?: true}} = socket),
-    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
-
-  def handle_event("new_assessment", %{"assessment" => p}, socket) do
-    case socket.assigns[:course] do
-      %CombinedCourse{} = course ->
-        new_combined_assessment(socket, course, normalize_assessment_params(p, socket))
-
-      _ ->
-        new_solo_assessment(socket, normalize_assessment_params(p, socket))
-    end
-  end
-
-  def handle_event("preview", %{"scores" => scores}, socket) do
-    {:noreply, assign(socket, :scores, Map.new(scores, fn {k, v} -> {k, v} end))}
-  end
-
-  def handle_event("save", _params, %{assigns: %{locked?: true}} = socket),
-    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
-
-  def handle_event("save", %{"scores" => scores}, socket) do
-    if not TeacherAssistant.Scope.school_verified?(socket.assigns.current_scope) do
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         gettext("École en attente de vérification — enregistrement indisponible.")
-       )}
-    else
-      case socket.assigns[:course] do
-        %CombinedCourse{} -> save_combined(socket, scores)
-        _ -> save_solo(socket, scores)
-      end
-    end
-  end
+  defp fmt_avg(%Decimal{} = d),
+    do:
+      d
+      |> Decimal.round(2)
+      |> Decimal.normalize()
+      |> Decimal.to_string(:normal)
+      |> String.replace(".", ",")
 
   # Blank scaffold for the "new assessment" toolbar form in combined mode.
   # Backed by the real `Assessment :create` action so the `:label` field
@@ -399,205 +310,166 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
-  defp save_solo(socket, scores) do
-    parsed =
-      Enum.map(socket.assigns.students, fn s ->
-        {s.id, MarkEntry.parse(Map.get(scores, s.id))}
-      end)
+  def handle_params(params, _uri, socket) do
+    scope = socket.assigns.current_scope
+    seq = pick_seq(socket.assigns.sequences, params["seq"])
+    columns = columns(socket, seq)
+    column = pick(columns, params["assessment"])
+    loaded = saved_marks(scope, column)
 
-    if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         gettext("Some marks aren't valid — use a number (e.g. 12 or 13,5), abs or abj.")
-       )}
-    else
-      save_marks(socket, parsed)
+    {:noreply,
+     socket
+     |> assign(seq: seq, locked?: seq != nil and Lock.locked?(seq))
+     |> assign(columns: columns, column: column)
+     |> assign(scores: loaded, loaded: loaded, errors: %{})
+     |> assign(:new_assessment_form, new_assessment_form(socket, seq))
+     |> assign_pending()}
+  end
+
+  defp columns(_socket, nil), do: []
+
+  defp columns(%{assigns: %{course: %CombinedCourse{} = course}} = socket, seq),
+    do: Assessment.combined_assessments_for(socket.assigns.current_scope, course, seq)
+
+  defp columns(socket, seq),
+    do: Assessment.list_assessments(socket.assigns.current_scope, socket.assigns.ctx, seq)
+
+  defp new_assessment_form(%{assigns: %{course: %CombinedCourse{}}} = socket, _seq),
+    do: assessment_form(socket.assigns.current_scope)
+
+  defp new_assessment_form(socket, seq),
+    do: solo_assessment_form(socket.assigns.current_scope, socket.assigns.ctx, seq)
+
+  def handle_event("select_seq", %{"seq" => seq_id}, socket) do
+    {:noreply,
+     push_patch(socket, to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq_id}")}
+  end
+
+  def handle_event("select_assessment", %{"assessment" => aid}, socket) do
+    {:noreply,
+     push_patch(socket,
+       to:
+         ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{socket.assigns.seq.id}&assessment=#{aid}"
+     )}
+  end
+
+  def handle_event("new_assessment", _params, %{assigns: %{locked?: true}} = socket),
+    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
+
+  def handle_event("new_assessment", %{"assessment" => p}, socket) do
+    case socket.assigns[:course] do
+      %CombinedCourse{} = course ->
+        new_combined_assessment(socket, course, normalize_assessment_params(p, socket))
+
+      _ ->
+        new_solo_assessment(socket, normalize_assessment_params(p, socket))
     end
   end
 
-  defp save_marks(socket, parsed) do
-    entries =
-      parsed
-      |> changed_entries(socket.assigns.loaded)
-      |> Enum.map(fn {id, entry} -> Map.put(entry_attrs(entry), :student_id, id) end)
+  def handle_event("save_mark", _params, %{assigns: %{locked?: true}} = socket),
+    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
-    scope = socket.assigns.current_scope
+  def handle_event("save_mark", %{"student" => id, "value" => raw}, socket) do
+    socket = assign(socket, :scores, Map.put(socket.assigns.scores, id, raw))
 
-    case Assessment.upsert_marks(scope, socket.assigns.assessment, entries) do
-      :ok ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Marks saved"))
-         |> assign(:unsaved, Map.delete(socket.assigns.unsaved, socket.assigns.assessment.id))
-         |> assign(:scores, existing_scores(scope, socket.assigns.assessment))
-         |> assign(:loaded, existing_scores(scope, socket.assigns.assessment))
-         |> assign_pending()}
+    case MarkEntry.parse(raw) do
+      :error -> {:noreply, put_error(socket, id, :invalid)}
+      {:ok, entry} -> write_mark(socket, id, entry)
+    end
+  end
 
-      {:error, :out_of_range} ->
+  def handle_event("toggle_absent", _params, %{assigns: %{locked?: true}} = socket),
+    do: {:noreply, socket}
+
+  def handle_event("toggle_absent", %{"student" => id}, socket) do
+    entry =
+      if MarkEntry.parse(socket.assigns.loaded[id]) == {:ok, :absent}, do: :blank, else: :absent
+
+    write_mark(socket, id, entry)
+  end
+
+  # Writes one student's mark to their own class's assessment — only when it differs
+  # from what this page loaded, so a blur never rewrites (nor overwrites another
+  # device's newer value of) an untouched mark.
+  defp write_mark(socket, id, entry) do
+    %{current_scope: scope, loaded: loaded} = socket.assigns
+
+    cond do
+      not Map.has_key?(socket.assigns.student_group, id) ->
+        {:noreply, socket}
+
+      not TeacherAssistant.Scope.school_verified?(scope) ->
         {:noreply,
          put_flash(
            socket,
            :error,
-           gettext("Marks must be between 0 and %{max}.",
-             max: max_label(socket.assigns.assessment)
-           )
+           gettext("École en attente de vérification — enregistrement indisponible.")
          )}
+
+      same_entry?(entry, MarkEntry.parse(Map.get(loaded, id))) ->
+        {:noreply,
+         socket
+         |> clear_error(id)
+         |> assign(:scores, Map.put(socket.assigns.scores, id, Map.get(loaded, id, "")))}
+
+      true ->
+        case assessment_for(socket.assigns, id) do
+          nil -> {:noreply, put_error(socket, id, :failed)}
+          assessment -> upsert(socket, assessment, id, entry)
+        end
+    end
+  end
+
+  defp upsert(socket, assessment, id, entry) do
+    attrs = Map.put(entry_attrs(entry), :student_id, id)
+
+    case Assessment.upsert_marks(socket.assigns.current_scope, assessment, [attrs]) do
+      :ok ->
+        text = mark_text(entry)
+
+        {:noreply,
+         socket
+         |> clear_error(id)
+         |> assign(:saved_at, Reference.now())
+         |> assign(:loaded, Map.put(socket.assigns.loaded, id, text))
+         |> assign(:scores, Map.put(socket.assigns.scores, id, text))
+         |> assign_pending()}
+
+      {:error, :out_of_range} ->
+        {:noreply, put_error(socket, id, :out_of_range)}
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
 
       _ ->
-        {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}
+        {:noreply, put_error(socket, id, :failed)}
     end
   end
 
-  # Combined mode: each student's score is routed to *their own class's*
-  # assessment — never the other member class's — via
-  # `selected.by_class_group_id[class_group_id]`. All groups are written in
-  # ONE `Assessment.upsert_marks_all_or_nothing/2` call: if any class's
-  # scores are out of range, NOTHING is persisted for ANY class (no partial
-  # commit), matching the "record once, all classes together" model.
-  # `Mark`'s `[:assessment_id, :student_id]` identity and the bulletin read
-  # path are untouched: a MACO student's mark still belongs to MACO's context.
-  defp save_combined(socket, scores) do
-    %{groups: groups, selected: selected} = socket.assigns
-    scope = socket.assigns.current_scope
+  defp assessment_for(%{course: %CombinedCourse{}, column: column, student_group: groups}, id),
+    do: column && column.by_class_group_id[groups[id]]
 
-    all_students = Enum.flat_map(groups, & &1.students)
+  defp assessment_for(%{column: column}, _id), do: column
 
-    parsed =
-      Enum.map(all_students, fn s ->
-        {s.id, MarkEntry.parse(Map.get(scores, s.id))}
-      end)
+  defp put_error(socket, id, :failed),
+    do: assign(socket, :errors, Map.put(socket.assigns.errors, id, gettext("Non enregistrée")))
 
-    if Enum.any?(parsed, fn {_id, result} -> result == :error end) do
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         gettext("Some marks aren't valid — use a number (e.g. 12 or 13,5), abs or abj.")
-       )}
-    else
-      entries_by_id =
-        parsed
-        |> changed_entries(socket.assigns.loaded)
-        |> Map.new(fn {id, entry} -> {id, entry_attrs(entry)} end)
-
-      assessment_entries =
-        Enum.map(groups, fn %{class_group: cg, students: students} ->
-          assessment = Map.fetch!(selected.by_class_group_id, cg.id)
-
-          entries =
-            for s <- students,
-                Map.has_key?(entries_by_id, s.id),
-                do: Map.put(entries_by_id[s.id], :student_id, s.id)
-
-          {assessment, entries}
-        end)
-
-      case Assessment.upsert_marks_all_or_nothing(scope, assessment_entries) do
-        :ok ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Marks saved"))
-           |> assign(:unsaved, Map.delete(socket.assigns.unsaved, selected.id))
-           |> assign(:scores, combined_existing_scores(scope, selected))
-           |> assign(:loaded, combined_existing_scores(scope, selected))
-           |> assign_pending()}
-
-        {:error, :out_of_range} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             gettext("Marks must be between 0 and %{max}.", max: max_label(selected))
-           )}
-
-        {:error, %Ash.Error.Forbidden{}} ->
-          {:noreply, Authz.put_not_allowed(socket)}
-
-        _ ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save marks"))}
-      end
-    end
+  defp put_error(socket, id, _invalid_or_out_of_range) do
+    message = gettext("Note entre 0 et %{max}", max: max_label(socket.assigns.column))
+    assign(socket, :errors, Map.put(socket.assigns.errors, id, message))
   end
 
-  defp max_label(%{max_score: %Decimal{} = m}), do: Decimal.to_string(m, :normal)
+  defp clear_error(socket, id), do: assign(socket, :errors, Map.delete(socket.assigns.errors, id))
 
-  def handle_params(params, _uri, socket) do
-    # Preserve unsaved edits across a séquence/assessment switch: stash the
-    # outgoing column, restore any previously stashed edits for the incoming one,
-    # so an accidental tap on a selector never discards typed marks.
-    unsaved = stash_current(socket)
-    seq = pick_seq(socket.assigns.sequences, params["seq"])
-    scope = socket.assigns.current_scope
+  # The field text a stored entry shows, as `mark_field/1` renders a stored mark.
+  defp mark_text(:blank), do: ""
+  defp mark_text({:graded, d}), do: Decimal.to_string(d, :normal)
+  defp mark_text(status), do: MarkStatus.code(status)
 
-    case socket.assigns[:course] do
-      %CombinedCourse{} = course ->
-        combined = if seq, do: Assessment.combined_assessments_for(scope, course, seq), else: []
-        selected = pick(combined, params["assessment"])
+  defp max_label(%{max_score: %Decimal{} = m}),
+    do: m |> Decimal.normalize() |> Decimal.to_string(:normal)
 
-        {:noreply,
-         socket
-         |> assign(:seq, seq)
-         |> assign(:locked?, seq != nil and Lock.locked?(seq))
-         |> assign(:combined_assessments, combined)
-         |> assign(:selected, selected)
-         |> assign(:unsaved, unsaved)
-         |> assign(:scores, restore_combined_scores(scope, selected, unsaved))
-         |> assign(:loaded, combined_existing_scores(scope, selected))
-         |> assign_pending()}
-
-      _ ->
-        assessments =
-          if seq, do: Assessment.list_assessments(scope, socket.assigns.ctx, seq), else: []
-
-        assessment = pick(assessments, params["assessment"])
-
-        {:noreply,
-         socket
-         |> assign(:seq, seq)
-         |> assign(:locked?, seq != nil and Lock.locked?(seq))
-         |> assign(:assessments, assessments)
-         |> assign(:assessment, assessment)
-         |> assign(:unsaved, unsaved)
-         |> assign(:scores, restore_scores(scope, assessment, unsaved))
-         |> assign(:loaded, existing_scores(scope, assessment))
-         |> assign(:sibling_scores, sibling_scores(scope, socket.assigns.ctx, seq))
-         |> assign(:new_assessment_form, solo_assessment_form(scope, socket.assigns.ctx, seq))
-         |> assign_pending()}
-    end
-  end
-
-  defp stash_current(socket) do
-    unsaved = socket.assigns[:unsaved] || %{}
-
-    case socket.assigns[:selected] || socket.assigns[:assessment] do
-      %{id: id} -> Map.put(unsaved, id, socket.assigns[:scores] || %{})
-      _ -> unsaved
-    end
-  end
-
-  defp restore_scores(_scope, nil, _unsaved), do: %{}
-
-  defp restore_scores(scope, %{id: id} = assessment, unsaved),
-    do: Map.merge(existing_scores(scope, assessment), Map.get(unsaved, id, %{}))
-
-  defp restore_combined_scores(_scope, nil, _unsaved), do: %{}
-
-  defp restore_combined_scores(scope, %{id: id} = selected, unsaved),
-    do: Map.merge(combined_existing_scores(scope, selected), Map.get(unsaved, id, %{}))
-
-  # Only the students whose field differs from what this page loaded: a stale page
-  # (another teacher or device saved meanwhile) never overwrites or deletes a mark
-  # its user did not touch.
-  defp changed_entries(parsed, loaded) do
-    for {id, {:ok, entry}} <- parsed,
-        not same_entry?(entry, MarkEntry.parse(Map.get(loaded, id))),
-        do: {id, entry}
-  end
+  defp max_label(_column), do: "20"
 
   defp same_entry?({:graded, a}, {:ok, {:graded, b}}), do: Decimal.equal?(a, b)
   defp same_entry?(entry, {:ok, entry}), do: true
@@ -608,24 +480,51 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp entry_attrs({:graded, d}), do: %{score: d}
   defp entry_attrs(status) when status in [:absent, :excused], do: %{score: nil, status: status}
 
-  # A mark map for the live preview average.
+  # A mark map for the provisional average.
   defp entry_mark({:graded, d}), do: %{score: d, status: :graded}
   defp entry_mark(status), do: %{score: nil, status: status}
 
-  defp sibling_text(nil), do: "—"
-  defp sibling_text(%{status: :graded, score: score}), do: fmt_avg(score)
-  defp sibling_text(%{status: status}), do: MarkStatus.code(status)
+  defp save_state(assigns) do
+    ~H"""
+    <p
+      :if={@errors != %{}}
+      id="save-state"
+      class="ta-num rounded-full bg-warning/20 px-3 py-1 text-sm font-semibold text-warning"
+    >
+      {ngettext(
+        "Erreur : %{count} note à corriger",
+        "Erreur : %{count} notes à corriger",
+        map_size(@errors)
+      )}
+    </p>
+    <p
+      :if={@errors == %{} and @saved_at != nil}
+      id="save-state"
+      class="ta-num flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-sm font-semibold text-primary"
+    >
+      <.icon name="hero-check-circle" class="size-4" />
+      {gettext("Enregistré · %{time}", time: Calendar.strftime(@saved_at, "%H:%M"))}
+    </p>
+    """
+  end
 
-  def render(%{course: %CombinedCourse{}} = assigns) do
+  def render(assigns) do
+    assigns = assign(assigns, :students, all_students(assigns))
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="teacher-marks" class="mx-auto max-w-3xl space-y-4">
-        <.page_header eyebrow={gettext("Marks")} title={@course.label} />
-
-        <div
-          id="marks-toolbar"
-          class="ta-leaf sticky top-16 z-10 flex flex-wrap items-end gap-2 backdrop-blur"
+      <section id="teacher-marks" class="space-y-4">
+        <.page_header
+          eyebrow={gettext("Notes · %{subject}", subject: @ctx.subject)}
+          title={gettext("Saisie des notes")}
+          subtitle={@title}
         >
+          <:actions>
+            <.save_state errors={@errors} saved_at={@saved_at} />
+          </:actions>
+        </.page_header>
+
+        <div id="marks-toolbar" class="ta-leaf flex flex-wrap items-end gap-2">
           <form id="seq-select" phx-change="select_seq" class="min-w-36 flex-1">
             <.input
               type="select"
@@ -636,270 +535,136 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             />
           </form>
 
-          <p
-            :if={@seq}
-            id="entry-deadline"
-            class="ta-num self-center text-xs text-base-content/70"
-          >
+          <p :if={@seq} id="entry-deadline" class="ta-num self-center text-xs text-base-content/70">
             {gettext("Limite de saisie : %{date}",
               date: Calendar.strftime(@seq.grade_entry_deadline, "%d/%m/%Y")
             )}
           </p>
 
-          <form
-            :if={@seq}
-            id="assessment-select"
-            phx-change="select_assessment"
-            class="min-w-36 flex-1"
-          >
-            <.input
-              type="select"
-              name="assessment"
-              value={@selected && @selected.id}
-              label={gettext("Assessment")}
-              options={for a <- @combined_assessments, do: {a.label, a.id}}
-            />
-          </form>
-
-          <.form
-            :if={@seq && !@locked?}
-            for={@new_assessment_form}
-            id="new-assessment-form"
-            phx-submit="new_assessment"
-            class="flex flex-1 items-end gap-2"
-          >
-            <.input
-              type="select"
-              name="assessment[assessment_type_id]"
-              value=""
-              options={[{gettext("Type"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
-            />
-            <.input field={@new_assessment_form[:label]} placeholder={gettext("New assessment")} />
-            <.input
-              type="text"
-              inputmode="decimal"
-              name="assessment[max_score]"
-              value={Decimal.to_string(@default_max, :normal)}
-              class="input input-bordered w-20"
-              aria-label={gettext("Note maximale")}
-            />
-            <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
-          </.form>
+          <.assessment_controls
+            seq={@seq}
+            locked?={@locked?}
+            columns={@columns}
+            column={@column}
+            form={@new_assessment_form}
+            assessment_types={@assessment_types}
+            default_max={@default_max}
+          />
         </div>
 
-        <.locked_banner :if={@locked?} seq={@seq} assessment={@selected} />
+        <.locked_banner :if={@locked?} seq={@seq} assessment={@column} />
 
-        <%= if @selected do %>
-          <p class="text-xs text-base-content/55">
-            {gettext("Vide = non saisi · abs = absent · abj = absence justifiée · notes sur %{max}.",
-              max: max_label(@selected)
-            )}
-          </p>
-          <.pending_makeups names={@pending_makeups} />
-
-          <.form
-            for={to_form(%{}, as: :scores)}
-            id="marks-form"
-            phx-change="preview"
-            phx-submit="save"
-            class="space-y-4"
-          >
-            <div :for={group <- @groups} id={"marks-class-#{group.class_group.id}"} class="space-y-2">
-              <h3 class="ta-eyebrow">{group.class_group.label}</h3>
-
-              <div
-                :for={s <- group.students}
-                id={"mark-row-#{s.id}"}
-                class="ta-leaf flex items-center justify-between gap-2"
-              >
-                <span class="flex-1">{s.full_name}</span>
-                <input
-                  id={"mark-input-#{s.id}"}
-                  type="text"
-                  inputmode="text"
-                  autocapitalize="off"
-                  autocomplete="off"
-                  aria-label={s.full_name}
-                  placeholder="—"
-                  name={"scores[#{s.id}]"}
-                  value={Map.get(@scores, s.id, "")}
-                  phx-debounce="300"
-                  disabled={@locked?}
-                  class="ta-num input input-bordered h-11 w-24 text-right"
-                />
-              </div>
+        <div :if={@column} class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <div class="space-y-3">
+            <.pending_makeups names={@pending_makeups} />
+            <div class="ta-leaf overflow-x-auto !p-0">
+              <table id="marks-table" class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>{gettext("N°")}</th>
+                    <th>{gettext("Élève")}</th>
+                    <th class="whitespace-nowrap">
+                      {@column.label} · /{max_label(@column)}
+                    </th>
+                    <th>{gettext("Absent")}</th>
+                    <th>{gettext("Appréciation")}</th>
+                  </tr>
+                </thead>
+                <%= for {group, offset} <- group_offsets(@groups) do %>
+                  <tbody id={"marks-class-#{group.class_group.id}"}>
+                    <tr :if={@course}>
+                      <th colspan="5" class="ta-eyebrow bg-base-200/60">
+                        {group.class_group.label}
+                      </th>
+                    </tr>
+                    <MarksComponents.mark_row
+                      :for={{s, i} <- Enum.with_index(group.students, offset + 1)}
+                      student={s}
+                      n={i}
+                      value={Map.get(@scores, s.id, "")}
+                      saved={Map.get(@loaded, s.id, "")}
+                      error={@errors[s.id]}
+                      locked?={@locked?}
+                      max={@column.max_score}
+                      grading_rules={@grading_rules}
+                    />
+                  </tbody>
+                <% end %>
+              </table>
             </div>
-            <.button
-              :if={!@locked?}
-              id="marks-submit"
-              type="submit"
-              class="btn btn-primary w-full"
-            >
-              {gettext("Save marks")}
-            </.button>
-          </.form>
-        <% end %>
+          </div>
+
+          <aside class="space-y-3 lg:sticky lg:top-4">
+            <MarksComponents.side_panel
+              title={side_title(@groups, @course, @seq)}
+              done={entered_count(@students, @loaded)}
+              total={length(@students)}
+              average={fmt_avg(preview_average(@students, @column, @loaded, @grading_rules))}
+            />
+          </aside>
+        </div>
       </section>
     </Layouts.app>
     """
   end
 
-  def render(assigns) do
+  # Each group with the row number its first student follows.
+  defp group_offsets(groups) do
+    {pairs, _total} =
+      Enum.map_reduce(groups, 0, fn g, offset -> {{g, offset}, offset + length(g.students)} end)
+
+    pairs
+  end
+
+  defp side_title(groups, course, seq) do
+    who = if course, do: course.label, else: hd(groups).class_group.label
+    if seq, do: who <> " · " <> gettext("Séquence %{n}", n: seq.number), else: who
+  end
+
+  attr :seq, :map, default: nil
+  attr :locked?, :boolean, required: true
+  attr :columns, :list, required: true
+  attr :column, :map, default: nil
+  attr :form, :any, required: true
+  attr :assessment_types, :list, required: true
+  attr :default_max, :any, required: true
+
+  defp assessment_controls(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="teacher-marks" class="mx-auto max-w-3xl space-y-4">
-        <.page_header eyebrow={gettext("Marks")} title={"#{@ctx.subject} · #{@ctx.level}"} />
+    <form :if={@seq} id="assessment-select" phx-change="select_assessment" class="min-w-36 flex-1">
+      <.input
+        type="select"
+        name="assessment"
+        value={@column && @column.id}
+        label={gettext("Évaluation")}
+        options={for a <- @columns, do: {a.label, a.id}}
+      />
+    </form>
 
-        <div
-          id="marks-toolbar"
-          class="ta-leaf sticky top-16 z-10 flex flex-wrap items-end gap-2 backdrop-blur"
-        >
-          <form id="seq-select" phx-change="select_seq" class="min-w-36 flex-1">
-            <.input
-              type="select"
-              name="seq"
-              value={@seq && @seq.id}
-              label={gettext("Séquence")}
-              options={for s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", s.id}}
-            />
-          </form>
-
-          <p
-            :if={@seq}
-            id="entry-deadline"
-            class="ta-num self-center text-xs text-base-content/70"
-          >
-            {gettext("Limite de saisie : %{date}",
-              date: Calendar.strftime(@seq.grade_entry_deadline, "%d/%m/%Y")
-            )}
-          </p>
-
-          <form
-            :if={@seq}
-            id="assessment-select"
-            phx-change="select_assessment"
-            class="min-w-36 flex-1"
-          >
-            <.input
-              type="select"
-              name="assessment"
-              value={@assessment && @assessment.id}
-              label={gettext("Assessment")}
-              options={for a <- @assessments, do: {a.label, a.id}}
-            />
-          </form>
-
-          <.form
-            :if={@seq && !@locked?}
-            for={@new_assessment_form}
-            id="new-assessment-form"
-            phx-submit="new_assessment"
-            class="flex flex-1 items-end gap-2"
-          >
-            <.input
-              type="select"
-              name="assessment[assessment_type_id]"
-              value=""
-              options={[{gettext("Type"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
-            />
-            <.input field={@new_assessment_form[:label]} placeholder={gettext("New assessment")} />
-            <.input
-              type="text"
-              inputmode="decimal"
-              name="assessment[max_score]"
-              value={Decimal.to_string(@default_max, :normal)}
-              class="input input-bordered w-20"
-              aria-label={gettext("Note maximale")}
-            />
-            <.button type="submit" class="btn btn-outline btn-sm">{gettext("Add")}</.button>
-          </.form>
-        </div>
-
-        <.locked_banner :if={@locked?} seq={@seq} assessment={@assessment} />
-
-        <%= if @assessment do %>
-          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <p id="marks-progress" class="ta-num text-base-content/70">
-              {gettext("%{entered} of %{total} entered",
-                entered: entered_count(@scores),
-                total: length(@students)
-              )}
-            </p>
-            <p id="marks-average-preview" class="ta-num font-semibold">
-              {gettext("Class average")}:
-              <span class="text-primary">
-                {fmt_avg(preview_average(@students, @assessment, @scores, @grading_rules))}
-              </span>
-            </p>
-          </div>
-          <p class="text-xs text-base-content/55">
-            {gettext("Vide = non saisi · abs = absent · abj = absence justifiée · notes sur %{max}.",
-              max: max_label(@assessment)
-            )}
-          </p>
-          <.pending_makeups names={@pending_makeups} />
-
-          <.form
-            for={to_form(%{}, as: :scores)}
-            id="marks-form"
-            phx-change="preview"
-            phx-submit="save"
-            class="space-y-2"
-          >
-            <div id="marks-sheet-header" class="hidden items-center gap-2 px-3 md:flex">
-              <span class="ta-eyebrow flex-1">{gettext("Élève")}</span>
-              <span
-                :for={a <- @assessments}
-                :if={a.id != @assessment.id}
-                class="ta-eyebrow w-16 text-right"
-              >
-                {a.label}
-              </span>
-              <span class="ta-eyebrow w-24 text-right">
-                {@assessment.label}<span :if={@locked?}> · {gettext("verrouillée")}</span>
-              </span>
-            </div>
-
-            <div
-              :for={s <- @students}
-              id={"mark-row-#{s.id}"}
-              class="ta-leaf flex items-center justify-between gap-2"
-            >
-              <span class="flex-1">{s.full_name}</span>
-              <span
-                :for={a <- @assessments}
-                :if={a.id != @assessment.id}
-                class="ta-num hidden w-16 text-right text-sm text-base-content/55 md:inline-block"
-              >
-                {sibling_text(@sibling_scores[{s.id, a.id}])}
-              </span>
-              <input
-                id={"mark-input-#{s.id}"}
-                type="text"
-                inputmode="text"
-                autocapitalize="off"
-                autocomplete="off"
-                aria-label={s.full_name}
-                placeholder="—"
-                name={"scores[#{s.id}]"}
-                value={Map.get(@scores, s.id, "")}
-                phx-debounce="300"
-                disabled={@locked?}
-                class="ta-num input input-bordered h-11 w-24 text-right"
-              />
-            </div>
-            <.button
-              :if={!@locked?}
-              id="marks-submit"
-              type="submit"
-              class="btn btn-primary w-full"
-            >
-              {gettext("Save marks")}
-            </.button>
-          </.form>
-        <% end %>
-      </section>
-    </Layouts.app>
+    <.form
+      :if={@seq && !@locked?}
+      for={@form}
+      id="new-assessment-form"
+      phx-submit="new_assessment"
+      class="flex flex-1 items-end gap-2"
+    >
+      <.input
+        type="select"
+        name="assessment[assessment_type_id]"
+        value=""
+        options={[{gettext("Type"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
+      />
+      <.input field={@form[:label]} placeholder={gettext("Nouvelle évaluation")} />
+      <.input
+        type="text"
+        inputmode="decimal"
+        name="assessment[max_score]"
+        value={Decimal.to_string(@default_max, :normal)}
+        class="input input-bordered w-20"
+        aria-label={gettext("Note maximale")}
+      />
+      <.button type="submit" class="btn btn-outline btn-sm">{gettext("Ajouter")}</.button>
+    </.form>
     """
   end
 
