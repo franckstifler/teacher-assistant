@@ -74,7 +74,7 @@ defmodule TeacherAssistantWeb.NotificationText do
   end
 
   def detail(%{kind: :member_joined, params: p}) do
-    join([gettext("Compte lié"), present(p, "roles")])
+    join([gettext("Compte lié"), role_labels(p)])
   end
 
   def detail(%{kind: :missed_roll_calls, params: p}), do: join([present(p, "list")])
@@ -121,6 +121,25 @@ defmodule TeacherAssistantWeb.NotificationText do
     case Integer.parse(to_string(Map.get(params, "count"))) do
       {n, _} -> n
       :error -> 0
+    end
+  end
+
+  # Roles are stored as values ("teacher,head") and translated at display time; an old
+  # notice that stored a label keeps showing it.
+  defp role_labels(params) do
+    case present(params, "roles") do
+      nil ->
+        nil
+
+      roles ->
+        roles
+        |> String.split(",", trim: true)
+        |> Enum.map_join(", ", fn role ->
+          case Enum.find(TeacherAssistant.Accounts.SchoolRole.values(), &(to_string(&1) == role)) do
+            nil -> role
+            value -> TeacherAssistant.Accounts.SchoolRole.label(value)
+          end
+        end)
     end
   end
 

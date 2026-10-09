@@ -5,7 +5,9 @@ defmodule TeacherAssistant.Workers.ExpiredTemporaryPasswords do
   (`must_change_password` still true). The 24 h window and the daily run make
   each account reported once.
   """
-  use Oban.Worker, queue: :default, unique: [period: 3600]
+  use Oban.Worker, queue: :default, max_attempts: 2, unique: [period: 3600]
+
+  require Logger
 
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Accounts
@@ -17,24 +19,42 @@ defmodule TeacherAssistant.Workers.ExpiredTemporaryPasswords do
     now = DateTime.utc_now()
     since = DateTime.add(now, -24, :hour)
 
-    for scope <- Workspaces.job_scopes(), Scope.school_verified?(scope) do
-      admins = Notifications.admin_ids(scope)
+    run(Workspaces.job_scopes(), &notify(&1, since, now))
+  end
 
-      for %{user: user} <- Accounts.list_members(scope), expired?(user, since, now) do
-        Notifications.deliver(
-          scope,
-          :temporary_password_expired,
-          admins,
-          %{
-            name: User.display_name(user),
-            expired_on: user.temporary_password_expires_at |> Reference.today() |> format()
-          },
-          "/school/members"
-        )
+  @doc false
+  # One school failing is logged and skipped: it must not stop the schools after it.
+  def run(scopes, fun) do
+    for scope <- scopes, Scope.school_verified?(scope) do
+      try do
+        fun.(scope)
+      rescue
+        error ->
+          Logger.warning(
+            "expired temporary passwords failed for workspace #{scope.current_workspace.id}: " <>
+              Exception.message(error)
+          )
       end
     end
 
     :ok
+  end
+
+  defp notify(scope, since, now) do
+    admins = Notifications.admin_ids(scope)
+
+    for %{user: user} <- Accounts.list_members(scope), expired?(user, since, now) do
+      Notifications.deliver(
+        scope,
+        :temporary_password_expired,
+        admins,
+        %{
+          name: User.display_name(user),
+          expired_on: user.temporary_password_expires_at |> Reference.today() |> format()
+        },
+        "/school/members"
+      )
+    end
   end
 
   defp expired?(

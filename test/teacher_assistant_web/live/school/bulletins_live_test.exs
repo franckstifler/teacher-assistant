@@ -184,6 +184,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
       refute has_element?(view, "#draft-banner")
       refute has_element?(view, "#published-banner")
       assert has_element?(view, "#bulletin-ranking")
+      refute has_element?(view, "#print-class")
       assert has_element?(view, "#period-#{String.replace(param, ":", "-")}", "Séquence 1")
     end
 
@@ -191,6 +192,33 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
       {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
       assert has_element?(view, "#bulletin-ranking", "1er")
       assert has_element?(view, "#student-panel", "1er / 2")
+      refute render(view) =~ ~r/\d\.\d\d</
+    end
+
+    test "ordinals follow the locale" do
+      alias TeacherAssistantWeb.School.BulletinsLive, as: B
+
+      assert {B.ordinal("fr", 1), B.ordinal("fr", 2), B.ordinal("fr", 11), B.ordinal("fr", 21)} ==
+               {"1er", "2e", "11e", "21e"}
+
+      for {n, expected} <-
+            [
+              {1, "1st"},
+              {2, "2nd"},
+              {3, "3rd"},
+              {4, "4th"},
+              {11, "11th"},
+              {12, "12th"},
+              {13, "13th"},
+              {21, "21st"},
+              {22, "22nd"},
+              {23, "23rd"},
+              {101, "101st"},
+              {111, "111th"},
+              {112, "112th"}
+            ] do
+        assert B.ordinal("en", n) == expected
+      end
     end
 
     test "a teacher does not see séquence tabs", ctx do

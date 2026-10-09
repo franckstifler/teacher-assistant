@@ -4,7 +4,9 @@ defmodule TeacherAssistant.Workers.MissedRollCalls do
   Surveillant général which roll calls were not taken. Nothing on a day off, when
   every call is done, or when the same half-day was already reported today.
   """
-  use Oban.Worker, queue: :default, unique: [period: 3600]
+  use Oban.Worker, queue: :default, max_attempts: 2, unique: [period: 3600]
+
+  require Logger
 
   require Ash.Query
 
@@ -19,8 +21,22 @@ defmodule TeacherAssistant.Workers.MissedRollCalls do
     now = Reference.now()
     half = half(args, now)
 
-    for scope <- Workspaces.job_scopes(), Scope.school_verified?(scope) do
-      notify(scope, Reference.today(), now, half)
+    run(Workspaces.job_scopes(), &notify(&1, Reference.today(), now, half))
+  end
+
+  @doc false
+  # One school failing is logged and skipped: it must not stop the schools after it.
+  def run(scopes, fun) do
+    for scope <- scopes, Scope.school_verified?(scope) do
+      try do
+        fun.(scope)
+      rescue
+        error ->
+          Logger.warning(
+            "missed roll calls failed for workspace #{scope.current_workspace.id}: " <>
+              Exception.message(error)
+          )
+      end
     end
 
     :ok

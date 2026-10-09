@@ -215,7 +215,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   defp who(user), do: User.display_name(user)
 
   defp fmt(nil), do: "—"
-  defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
+
+  defp fmt(%Decimal{} = d),
+    do: d |> Decimal.round(2) |> Decimal.to_string() |> String.replace(".", ",")
 
   defp coef(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal)
   defp coef(_), do: "—"
@@ -227,10 +229,26 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   defp short_date(_), do: "—"
 
   defp ordinal(nil), do: "—"
-  defp ordinal(1), do: pgettext("ordinal rank", "1er")
-  defp ordinal(2), do: pgettext("ordinal rank", "2e")
-  defp ordinal(3), do: pgettext("ordinal rank", "3e")
-  defp ordinal(n), do: pgettext("ordinal rank", "%{n}e", n: n)
+
+  defp ordinal(n) when is_integer(n),
+    do: ordinal(Gettext.get_locale(TeacherAssistantWeb.Gettext), n)
+
+  @doc false
+  def ordinal("en" <> _, n) do
+    suffix =
+      case {rem(n, 100), rem(n, 10)} do
+        {r, _} when r in 11..13 -> "th"
+        {_, 1} -> "st"
+        {_, 2} -> "nd"
+        {_, 3} -> "rd"
+        _ -> "th"
+      end
+
+    "#{n}#{suffix}"
+  end
+
+  def ordinal(_fr, 1), do: "1er"
+  def ordinal(_fr, n), do: "#{n}e"
 
   defp check_text(%{key: :notes, data: %{rate: rate, unassigned: 0}}),
     do: gettext("Notes : %{rate} saisies", rate: rate_text(rate))
@@ -449,7 +467,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
           class="flex flex-wrap items-center gap-2"
         >
           <a
-            :if={not (@publishable? and @can_publish?)}
+            :if={@publishable? and not @can_publish?}
             id="print-class"
             href={~p"/school/classes/#{@cg.id}/bulletin/print?period=#{@period_param}"}
             target="_blank"

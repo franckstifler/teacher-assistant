@@ -67,6 +67,18 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
       assert has_element?(view, "#plan-#{ctx.cg.id}")
     end
 
+    test "a to-plan council that carries a date shows « — » instead", ctx do
+      {:ok, _} =
+        Councils.save_header(ctx.scope, ctx.cg, {:trimester, ctx.term}, %{
+          "held_on" => "2025-10-14"
+        })
+
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+      assert has_element?(view, "#council-row-#{ctx.cg.id} [data-status='to_plan']")
+      refute has_element?(view, "#council-row-#{ctx.cg.id}", "14/10")
+      assert has_element?(view, "#council-row-#{ctx.cg.id} td.ta-num", "—")
+    end
+
     test "« Planifier » saves date and time inline", ctx do
       {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
       view |> element("#plan-#{ctx.cg.id}") |> render_click()

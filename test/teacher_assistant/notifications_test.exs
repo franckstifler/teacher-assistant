@@ -135,6 +135,6 @@ defmodule TeacherAssistant.NotificationsTest do
     assert [%{kind: :member_joined, link: "/school/members"} = n] =
              Notifications.inbox(head, 1).results
 
-    assert n.params["roles"] == "Enseignant"
+    assert n.params["roles"] == "teacher"
   end
 end

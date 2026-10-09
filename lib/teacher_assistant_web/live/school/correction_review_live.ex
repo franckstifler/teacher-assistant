@@ -344,7 +344,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
                   field={@refuse_form[:note]}
                   label={gettext("Motif du refus")}
                   rows="2"
-                  maxlength="600"
+                  maxlength="500"
                   required
                 />
                 <p :if={@refuse_form[:error].value} role="alert" class="text-sm text-error">

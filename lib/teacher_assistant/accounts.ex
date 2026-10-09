@@ -251,7 +251,7 @@ defmodule TeacherAssistant.Accounts do
         TeacherAssistant.Notifications.admin_ids(scope) -- [user.id],
         %{
           name: User.display_name(user),
-          roles: Enum.map_join(inv.roles, ", ", &TeacherAssistant.Accounts.SchoolRole.label/1)
+          roles: Enum.map_join(inv.roles, ",", &to_string/1)
         },
         "/school/members"
       )

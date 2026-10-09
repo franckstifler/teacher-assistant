@@ -1,8 +1,8 @@
 defmodule TeacherAssistantWeb.School.CouncilsLive do
   @moduledoc """
   Conseils de classe (spec I3, mockup Censeur → "Conseils de classe"): one trimester at a
-  time, one row per class with its council date, mark-entry rate and status (Saisie
-  incomplète, Prêt, Tenu, Publié). A row opens the class's council. Proviseur and Censeur.
+  time, one row per class with its council date, mark-entry rate and status (À planifier,
+  Planifié, Tenu, Clôturé). A row opens the class's council. Proviseur and Censeur.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -159,6 +159,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
   defp status_class(:planned), do: "bg-info/20 text-info"
   defp status_class(_), do: "bg-primary/20 text-primary"
 
+  defp date_text(%{status: :to_plan}), do: "—"
   defp date_text(%{council: nil}), do: "—"
   defp date_text(%{council: %{held_on: nil}}), do: "—"
 

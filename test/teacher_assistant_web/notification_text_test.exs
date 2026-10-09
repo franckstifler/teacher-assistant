@@ -76,9 +76,9 @@ defmodule TeacherAssistantWeb.NotificationTextTest do
   end
 
   test "member joined" do
-    note = n(:member_joined, %{"name" => "Grace Ayuk", "roles" => "Enseignant"})
+    note = n(:member_joined, %{"name" => "Grace Ayuk", "roles" => "teacher,head"})
     assert NotificationText.title(note) == "Grace Ayuk a rejoint l'établissement"
-    assert NotificationText.detail(note) == "Compte lié · Enseignant"
+    assert NotificationText.detail(note) == "Compte lié · Enseignant, Chef d'établissement"
   end
 
   test "missed roll calls" do

@@ -63,4 +63,20 @@ defmodule TeacherAssistant.Workers.ExpiredTemporaryPasswordsTest do
     assert :ok = perform_job(ExpiredTemporaryPasswords, %{})
     assert Notifications.inbox(ctx.head, 1).results == []
   end
+
+  test "a failing school is skipped and the next one still runs" do
+    %{scope: one} = TeacherFixtures.setup_complete_school_fixture()
+    %{scope: two} = TeacherFixtures.setup_complete_school_fixture()
+    test_pid = self()
+
+    assert :ok =
+             ExpiredTemporaryPasswords.run([one, two], fn scope ->
+               if scope == one, do: raise("boom")
+               send(test_pid, {:ran, scope.current_workspace.id})
+             end)
+
+    assert_received {:ran, id}
+    assert id == two.current_workspace.id
+    refute_received {:ran, _}
+  end
 end
