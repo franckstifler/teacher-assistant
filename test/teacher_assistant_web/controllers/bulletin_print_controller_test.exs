@@ -708,4 +708,276 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     assert length(String.split(body, "Ligne propre à l&#39;école")) == 2
   end
+
+  describe "report card elements (pilotage)" do
+    defp awa_print(ctx, period \\ nil) do
+      %{enrollment: enr} = Enum.find(ctx.roster, &(&1.student.full_name == "Awa Ngo"))
+      period = period || "seq:#{ctx.seq.id}"
+
+      ctx.conn
+      |> get(~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=#{period}")
+      |> html_response(200)
+    end
+
+    defp old_elements,
+      do: ~w(rank class_average min_max subject_appreciation effectif birth absences conduct
+             pp_signature signature stamp qr_code)
+
+    defp save_elements(scope, elements),
+      do:
+        {:ok, _} =
+          TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+            "language" => "by_class",
+            "elements" => elements
+          })
+
+    test "shows subject teacher, subject rank, class extremes, PP and parent visa", ctx do
+      %{teacher: _} =
+        TeacherAssistant.TeacherFixtures.school_teacher_fixture(ctx.scope, %{
+          class_group: ctx.cg,
+          subject: "SVT",
+          teacher: TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Jean Mbarga"})
+        })
+
+      {:ok, _} = Enrollment.set_form_master(ctx.scope, ctx.cg, ctx.head.id)
+      html = awa_print(ctx)
+      assert html =~ ~r/<div class="teacher">\s*Jean Mbarga\s*<\/div>/
+      assert html =~ ~r/<th class="num">\s*Rang\s*<\/th>/
+      assert html =~ "Plus forte"
+      assert html =~ "plus faible"
+      assert html =~ "Professeur principal"
+      assert html =~ "Visa du parent"
+      assert html =~ "Redoublant(e)"
+      assert html =~ ~s(class="head-name")
+      assert html =~ Accounts.User.display_name(ctx.head)
+    end
+
+    test "a repeater is marked as such", ctx do
+      {:ok, _} =
+        Enrollment.add_student(ctx.scope, ctx.cg, %{
+          full_name: "Carine Redo",
+          sex: :f,
+          repeater: true
+        })
+
+      %{enrollment: enr} =
+        Enum.find(
+          Enrollment.list_roster(ctx.scope, ctx.cg),
+          &(&1.student.full_name == "Carine Redo")
+        )
+
+      html =
+        ctx.conn
+        |> get(
+          ~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{ctx.seq.id}"
+        )
+        |> html_response(200)
+
+      assert html =~ ~r/Redoublant\(e\)<\/td>\s*<td>\s*oui/
+      assert awa_print(ctx) =~ ~r/Redoublant\(e\)<\/td>\s*<td>\s*non/
+    end
+
+    test "an element switched off disappears", ctx do
+      save_elements(ctx.scope, ["rank"])
+      html = awa_print(ctx)
+      refute html =~ "Visa du parent"
+      refute html =~ "Plus forte"
+      refute html =~ ~r/<th class="num">\s*Rang\s*<\/th>/
+      refute html =~ ~s(class="teacher")
+      refute html =~ "Redoublant(e)"
+      refute html =~ "Professeur principal"
+      refute html =~ ~s(class="head-name")
+    end
+
+    test "a school with only the old elements prints none of the new pieces", ctx do
+      save_elements(ctx.scope, old_elements())
+      scope = with_year(ctx.scope)
+      term = first_term(scope)
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, ctx.cg, term)
+      html = awa_print(ctx, "trim:#{term.id}")
+
+      assert html =~ "<svg"
+      refute html =~ "Vérifiable en ligne"
+      refute html =~ "Visa du parent"
+      refute html =~ "Plus forte"
+      refute html =~ ~s(class="teacher")
+      refute html =~ "Redoublant(e)"
+      refute html =~ ~s(class="head-name")
+
+      # Rows stay balanced: the footer has as many cells as the header.
+      [thead | _] = Regex.run(~r/<thead>.*?<\/thead>/s, html)
+      [tfoot | _] = Regex.run(~r/<tfoot>.*?<\/tfoot>/s, html)
+
+      assert length(Regex.scan(~r/<th[ >]/, tfoot)) ==
+               length(Regex.scan(~r/<th[ >]/, thead))
+    end
+
+    test "the verification link prints next to the QR on a published card", ctx do
+      save_elements(ctx.scope, ["qr_code", "verify_link"])
+      scope = with_year(ctx.scope)
+      term = first_term(scope)
+      refute awa_print(ctx, "trim:#{term.id}") =~ "Vérifiable en ligne"
+
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, ctx.cg, term)
+      html = awa_print(ctx, "trim:#{term.id}")
+      assert html =~ "Vérifiable en ligne"
+      assert html =~ "/verify/bulletin/"
+    end
+
+    test "the subject rank column keeps every row balanced", ctx do
+      save_elements(ctx.scope, ["subject_rank"])
+      {:ok, _} = Curriculum.set_bulletin_group_subtotals(ctx.scope, true)
+      html = awa_print(ctx)
+      assert html =~ ~r/<th class="num">\s*Rang\s*<\/th>/
+
+      [thead | _] = Regex.run(~r/<thead>.*?<\/thead>/s, html)
+      header_cells = length(Regex.scan(~r/<th[ >]/, thead))
+      [tfoot | _] = Regex.run(~r/<tfoot>.*?<\/tfoot>/s, html)
+      assert length(Regex.scan(~r/<th[ >]/, tfoot)) == header_cells
+      [total | _] = Regex.run(~r/<tr[^>]*bulletin-group-total.*?<\/tr>/s, html)
+      assert length(Regex.scan(~r/<td[ >]/, total)) == header_cells
+    end
+
+    test "a snapshot published before this cycle still prints", ctx do
+      scope = with_year(ctx.scope)
+      term = first_term(scope)
+      {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, ctx.cg, term)
+
+      # An older snapshot: no teachers, no repeater flag, no subject ranks nor extremes,
+      # and a template carrying every element (as a school without a saved list).
+      old =
+        pub.snapshot
+        |> Map.delete(:teachers)
+        |> Map.update!(:roster, fn roster ->
+          Enum.map(roster, &%{&1 | enrollment: Map.delete(&1.enrollment, :repeater)})
+        end)
+        |> Map.update!(:results, fn results ->
+          results
+          |> Map.drop([:highest, :lowest])
+          |> Map.update!(:per_student, fn per ->
+            Map.new(per, fn {id, d} ->
+              {id,
+               %{
+                 d
+                 | subjects: Enum.map(d.subjects, &Map.delete(&1, :subject_rank)),
+                   groups:
+                     Enum.map(d.groups, fn g ->
+                       %{g | rows: Enum.map(g.rows, &Map.delete(&1, :subject_rank))}
+                     end)
+               }}
+            end)
+          end)
+        end)
+        |> Map.update!(:template, fn t ->
+          %{t | elements: TeacherAssistant.Academics.BulletinElement.values()}
+        end)
+
+      {:ok, id} = Ecto.UUID.dump(pub.id)
+
+      import Ecto.Query, only: [from: 2]
+
+      {1, _} =
+        TeacherAssistant.Repo.update_all(
+          from(p in "bulletin_publications", where: p.id == ^id),
+          set: [snapshot: :erlang.term_to_binary(old)]
+        )
+
+      html = awa_print(ctx, "trim:#{term.id}")
+      assert html =~ "Bulletin de notes"
+      assert html =~ "Visa du parent"
+      refute html =~ "Plus forte"
+    end
+  end
+
+  # Moved from the on-screen bulletin's tests: the page now embeds this document.
+  describe "content once shown by the on-screen bulletin" do
+    test "the make-up rule turns a zero into an R with its legend", ctx do
+      [tc] = Curriculum.list_assignments_for_class(ctx.scope, ctx.cg)
+
+      {:ok, a2} =
+        Assessment.create_assessment(ctx.scope, tc, ctx.seq, %{
+          label: "D2",
+          weight: Decimal.new(1),
+          max_score: Decimal.new(20)
+        })
+
+      %{student: st, enrollment: enr} =
+        Enum.find(ctx.roster, &(&1.student.full_name == "Awa Ngo"))
+
+      :ok =
+        Assessment.upsert_marks(ctx.scope, a2, [%{student_id: st.id, score: nil, status: :absent}])
+
+      path =
+        ~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{ctx.seq.id}"
+
+      html = ctx.conn |> get(path) |> html_response(200)
+      assert html =~ "7.00"
+      refute html =~ "R : rattrapage attendu"
+
+      {:ok, _} = Assessment.update_grading_rules(ctx.scope, %{"absence_rule" => "makeup"})
+      html = ctx.conn |> get(path) |> html_response(200)
+      assert html =~ "<sup>R</sup>"
+      assert html =~ "R : rattrapage attendu"
+    end
+
+    test "the card uses the school's own appreciation scale", ctx do
+      {:ok, _} =
+        Assessment.update_appreciation_bands(ctx.scope, [
+          %{from: "0", label: "À revoir"},
+          %{from: "14", label: "Réussi"}
+        ])
+
+      %{enrollment: enr} = hd(ctx.roster)
+
+      html =
+        ctx.conn
+        |> get(
+          ~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{ctx.seq.id}"
+        )
+        |> html_response(200)
+
+      assert html =~ "Réussi"
+    end
+
+    test "a trimester card carries the council's warning and withheld distinction", ctx do
+      scope = with_year(ctx.scope)
+      term = first_term(scope)
+
+      %{student: st, enrollment: enr} =
+        Enum.find(ctx.roster, &(&1.student.full_name == "Awa Ngo"))
+
+      {:ok, _} =
+        TeacherAssistant.Councils.set_decision(scope, ctx.cg, {:trimester, term}, st.id, %{
+          "distinction_choice" => "none",
+          "conduct_warning" => "blame_conduite",
+          "appreciation" => "Trimestre fragile"
+        })
+
+      html =
+        ctx.conn
+        |> get(
+          ~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=trim:#{term.id}"
+        )
+        |> html_response(200)
+
+      assert html =~ "Blâme de conduite"
+      assert html =~ "Trimestre fragile"
+      refute html =~ "Encouragements"
+    end
+  end
+
+  test "the print document may be framed by the app's own pages only", ctx do
+    %{enrollment: enr} = hd(ctx.roster)
+
+    conn =
+      get(
+        ctx.conn,
+        ~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{ctx.seq.id}"
+      )
+
+    assert html_response(conn, 200)
+    [csp] = Plug.Conn.get_resp_header(conn, "content-security-policy")
+    assert csp =~ "frame-ancestors 'self'"
+    refute "DENY" in Plug.Conn.get_resp_header(conn, "x-frame-options")
+  end
 end

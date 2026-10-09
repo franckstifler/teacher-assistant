@@ -25,6 +25,30 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
     )
   end
 
+  @new_elements [
+    :subject_rank,
+    :subject_teacher,
+    :class_extremes,
+    :repeater,
+    :form_master,
+    :parent_visa,
+    :verify_link
+  ]
+
+  test "new elements are on by default, off for a school that saved its list" do
+    for el <- @new_elements, do: assert(el in BulletinTemplate.elements(nil))
+    refute :qr_code in BulletinTemplate.elements(nil)
+
+    saved = [:rank, :class_average]
+    assert BulletinTemplate.elements(saved) == saved
+    for el <- @new_elements, do: refute(el in BulletinTemplate.elements(saved))
+  end
+
+  test "every new element has a label" do
+    for el <- @new_elements,
+        do: assert(is_binary(TeacherAssistant.Academics.BulletinElement.label(el)))
+  end
+
   test "language follows the class, or bilingual for every class" do
     fr = %ClassGroup{subsystem: :francophone}
     en = %ClassGroup{subsystem: :anglophone}

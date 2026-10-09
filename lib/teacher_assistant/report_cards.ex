@@ -51,8 +51,18 @@ defmodule TeacherAssistant.ReportCards do
       form_master:
         fm && %{name: fm.name, email: fm.email && to_string(fm.email), phone: fm.phone},
       group_subtotals?: group_subtotals?(scope),
-      template: template(scope, cg)
+      template: template(scope, cg),
+      teachers: teachers(scope, cg)
     }
+  end
+
+  # Each subject's teacher by teaching context (the class's own contexts, which the
+  # subject rows carry; combined-course members are the class's contexts too).
+  # Snapshots published before this key read it with `Map.get(view, :teachers, %{})`.
+  defp teachers(scope, cg) do
+    scope
+    |> Curriculum.list_assignments_for_class(cg)
+    |> Map.new(&{&1.id, Accounts.User.display_name(&1.teacher)})
   end
 
   @doc "The class's printed-card template under the school's current settings (spec I5)."

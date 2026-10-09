@@ -66,8 +66,16 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
 
   defp min_max_cols(template), do: if(show?(template, :min_max), do: 1, else: 0)
 
+  defp subject_rank_cols(template), do: if(show?(template, :subject_rank), do: 1, else: 0)
+
   # Every column after "Note×Coef".
-  defp trailing_cols(template), do: mention_cols(template) + min_max_cols(template)
+  defp trailing_cols(template),
+    do: mention_cols(template) + min_max_cols(template) + subject_rank_cols(template)
+
+  # Snapshots published before these keys existed read them defensively.
+  defp subject_rank(row), do: Map.get(row, :subject_rank) || "—"
+
+  defp repeater?(enrollment), do: Map.get(enrollment, :repeater)
 
   defp body_cols(kind, template), do: 2 + period_cols(kind) + 1 + trailing_cols(template)
 

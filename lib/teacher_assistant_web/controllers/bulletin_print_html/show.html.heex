@@ -55,6 +55,9 @@
       .school .name { font-size: 13pt; font-weight: bold; }
       .school img { max-height: 56px; }
       .qr svg { width: 88px; height: 88px; }
+      td .teacher { font-size: 9pt; color: #666; }
+      .visa .head-name { font-size: 11px; margin-top: 2px; }
+      .verify { font-size: 8pt; color: #444; max-width: 180px; word-break: break-all; margin: 4px 0 0; }
     </style>
   </head>
   <body>
@@ -119,6 +122,30 @@
           <td></td>
           <td></td>
         </tr>
+        <%!-- Snapshots published before the pilotage redesign may lack the repeater flag. --%>
+        <tr :if={
+          show?(@template, :repeater) or
+            (show?(@template, :form_master) and @professeur_principal)
+        }>
+          <%= if show?(@template, :repeater) and not is_nil(repeater?(b.enrollment)) do %>
+            <td class="k">{tr(@lang, fn -> gettext("Redoublant(e)") end)}</td>
+            <td>
+              {if repeater?(b.enrollment),
+                do: tr(@lang, fn -> gettext("oui") end),
+                else: tr(@lang, fn -> gettext("non") end)}
+            </td>
+          <% else %>
+            <td></td>
+            <td></td>
+          <% end %>
+          <%= if show?(@template, :form_master) and @professeur_principal do %>
+            <td class="k">{tr(@lang, fn -> gettext("Professeur principal") end)}</td>
+            <td>{@professeur_principal}</td>
+          <% else %>
+            <td></td>
+            <td></td>
+          <% end %>
+        </tr>
       </table>
 
       <%= if b.data do %>
@@ -152,6 +179,9 @@
               <th :if={show?(@template, :min_max)} class="num">
                 {tr(@lang, fn -> gettext("Cote classe") end)}
               </th>
+              <th :if={show?(@template, :subject_rank)} class="num">
+                {tr(@lang, fn -> gettext("Rang") end)}
+              </th>
             </tr>
           </thead>
           <tbody :for={g <- b.data.groups} id={"bulletin-group-#{g.group}"}>
@@ -161,7 +191,15 @@
               </th>
             </tr>
             <tr :for={row <- g.rows}>
-              <td>{row.label}</td>
+              <td>
+                {row.label}
+                <div
+                  :if={show?(@template, :subject_teacher) and @teachers[row.context_id]}
+                  class="teacher"
+                >
+                  {@teachers[row.context_id]}
+                </div>
+              </td>
               <td class="num">{fmt(row.coefficient)}</td>
               <%= case @period_kind do %>
                 <% :trimester -> %>
@@ -189,6 +227,7 @@
               <td :if={show?(@template, :min_max)} class="num">
                 {if row.class_min, do: "#{fmt(row.class_min)} – #{fmt(row.class_max)}", else: "—"}
               </td>
+              <td :if={show?(@template, :subject_rank)} class="num">{subject_rank(row)}</td>
             </tr>
             <tr :if={@group_subtotals?} id={"bulletin-group-total-#{g.group}"} class="group-total">
               <td>{tr(@lang, fn -> gettext("Total groupe") end)}</td>
@@ -237,6 +276,12 @@
           <% else %>
             <span :if={b.data.mention}>&nbsp;·&nbsp; {b.data.mention.label}</span>
           <% end %>
+          <span :if={(show?(@template, :class_extremes) and @highest) && @lowest}>
+            &nbsp;·&nbsp; {tr(@lang, fn -> gettext("Plus forte") end)} : {fmt(@highest)} &nbsp;·&nbsp; {tr(
+              @lang,
+              fn -> gettext("plus faible") end
+            )} : {fmt(@lowest)}
+          </span>
           <span :if={b.distinction}>
             &nbsp;·&nbsp;
             <strong>
@@ -298,6 +343,9 @@
           <div :if={@professeur_principal} class="pp-name">{@professeur_principal}</div>
           <div class="line">{tr(@lang, fn -> gettext("Visa Professeur Principal") end)}</div>
         </div>
+        <div :if={show?(@template, :parent_visa)} class="slot">
+          <div class="line">{tr(@lang, fn -> gettext("Visa du parent") end)}</div>
+        </div>
         <div class="slot head">
           <div class="marks">
             <img
@@ -314,8 +362,16 @@
             />
           </div>
           <div class="line">{tr(@lang, fn -> gettext("Visa Chef d'établissement") end)}</div>
+          <div :if={show?(@template, :parent_visa) and @head_name} class="head-name">
+            {@head_name}
+          </div>
         </div>
-        <div :if={b.qr_svg} class="qr">{Phoenix.HTML.raw(b.qr_svg)}</div>
+        <div :if={b.qr_svg || (show?(@template, :verify_link) and b.verify_url)} class="qr">
+          {b.qr_svg && Phoenix.HTML.raw(b.qr_svg)}
+          <p :if={show?(@template, :verify_link) and b.verify_url} class="verify">
+            {tr(@lang, fn -> gettext("Vérifiable en ligne") end)} : {b.verify_url}
+          </p>
+        </div>
       </div>
     </section>
   </body>

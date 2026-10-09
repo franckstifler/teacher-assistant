@@ -18,6 +18,21 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLiveTest do
     assert has_element?(view, "#header-preview", "République du Cameroun")
   end
 
+  test "a school that saved its list sees the new elements unticked", %{conn: conn, scope: scope} do
+    {:ok, _} =
+      Assessment.update_bulletin_settings(scope, %{
+        "language" => "by_class",
+        "elements" => ["rank", "class_average"]
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/settings/bulletin")
+    assert has_element?(view, "#settings-form input[value='rank'][checked]")
+    assert has_element?(view, "#settings-form input[value='subject_rank']")
+    refute has_element?(view, "#settings-form input[value='subject_rank'][checked]")
+    assert render(view) =~ "Rang par matière"
+    assert render(view) =~ "Lien de vérification en ligne"
+  end
+
   test "saves the language and elements, unchecking everything", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings/bulletin")
 

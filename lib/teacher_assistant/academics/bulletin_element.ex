@@ -13,12 +13,22 @@ defmodule TeacherAssistant.Academics.BulletinElement do
       :pp_signature,
       :signature,
       :stamp,
-      :qr_code
+      :qr_code,
+      :subject_rank,
+      :subject_teacher,
+      :class_extremes,
+      :repeater,
+      :form_master,
+      :parent_visa,
+      :verify_link
     ]
 
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
-  @doc "Shown when the school has not chosen: everything but the QR code."
+  @doc """
+  Shown when the school has not chosen: everything but the QR code. A school that
+  saved its list keeps exactly that list, so elements added later stay off there.
+  """
   def defaults, do: values() -- [:qr_code]
 
   def label(:rank), do: gettext("Rang")
@@ -33,4 +43,11 @@ defmodule TeacherAssistant.Academics.BulletinElement do
   def label(:signature), do: gettext("Signature du chef d'établissement")
   def label(:stamp), do: gettext("Cachet")
   def label(:qr_code), do: gettext("QR de vérification")
+  def label(:subject_rank), do: gettext("Rang par matière")
+  def label(:subject_teacher), do: gettext("Enseignant de chaque matière")
+  def label(:class_extremes), do: gettext("Plus forte / plus faible moyenne de la classe")
+  def label(:repeater), do: gettext("Redoublant(e)")
+  def label(:form_master), do: gettext("Professeur principal")
+  def label(:parent_visa), do: gettext("Visa du parent")
+  def label(:verify_link), do: gettext("Lien de vérification en ligne")
 end

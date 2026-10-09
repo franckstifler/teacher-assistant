@@ -69,6 +69,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
     bundles =
       Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
+        verify_url = verify_url(pub, student.id)
+
         %{
           student: student,
           enrollment: enrollment,
@@ -82,7 +84,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
             ),
           conduct: view.conduct[enrollment.id],
           discipline: view.discipline[enrollment.id],
-          qr_svg: qr_svg(pub, template, student.id)
+          qr_svg: qr_svg(verify_url, template),
+          verify_url: verify_url
         }
       end)
 
@@ -108,8 +111,24 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       # A frozen card keeps its logo only while the school still has one (never a broken image).
       logo?: template.header.logo? and logo_present?(scope),
       lang: lang,
-      class_average: results && results.class_average
+      class_average: results && results.class_average,
+      # Spec pilotage §1.5: snapshots published before these pieces lack their keys.
+      teachers: Map.get(view, :teachers) || %{},
+      highest: results && Map.get(results, :highest),
+      lowest: results && Map.get(results, :lowest),
+      head_name: head_name(scope)
     )
+  end
+
+  # The school's head (first active member holding the role), by display name.
+  defp head_name(scope) do
+    scope
+    |> Accounts.list_members()
+    |> Enum.find(&(:head in &1.roles))
+    |> case do
+      %{user: %Accounts.User{} = user} -> Accounts.User.display_name(user)
+      _ -> nil
+    end
   end
 
   defp logo_present?(scope) do
@@ -117,13 +136,15 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   end
 
   # Spec I5: only published cards carry a verification code, and only when chosen.
-  defp qr_svg(nil, _template, _student_id), do: nil
+  defp verify_url(nil, _student_id), do: nil
 
-  defp qr_svg(pub, template, student_id) do
-    if BulletinTemplate.show?(template, :qr_code) do
-      token = BulletinVerification.token(pub, student_id)
-      BulletinVerification.qr_svg(url(~p"/verify/bulletin/#{token}"))
-    end
+  defp verify_url(pub, student_id),
+    do: url(~p"/verify/bulletin/#{BulletinVerification.token(pub, student_id)}")
+
+  defp qr_svg(nil, _template), do: nil
+
+  defp qr_svg(verify_url, template) do
+    if BulletinTemplate.show?(template, :qr_code), do: BulletinVerification.qr_svg(verify_url)
   end
 
   defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"

@@ -2,10 +2,8 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{BulletinGroup, Sex}
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
-  alias TeacherAssistantWeb.SanctionLabels
 
   def mount(%{"id" => id, "enrollment_id" => eid} = params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -65,9 +63,10 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
   def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   # One place decides what is shown: a published snapshot, a live draft (class
-  # managers only) or nothing yet (teachers before publication).
+  # managers only) or nothing yet (teachers before publication). The sheet itself is
+  # the print document, embedded so screen and paper never drift.
   defp load_period(socket, period) do
-    %{current_scope: scope, cg: cg, student: student, enrollment: enrollment} = socket.assigns
+    %{current_scope: scope, cg: cg, student: student} = socket.assigns
 
     {status, publication, view} =
       case period && ReportCards.view_for(scope, cg, period) do
@@ -76,64 +75,59 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
         _ -> {:not_published, nil, nil}
       end
 
-    results = view && view.results
-
     assign(socket,
       period: period,
       period_param: period && Organization.period_param(period),
-      period_kind: period && Organization.period_kind(period),
       status: if(period, do: status, else: :draft),
       publication: publication,
-      in_view?: is_nil(view) or Enum.any?(view.roster, &(&1.student.id == student.id)),
-      effectif: (results && results.effectif) || 0,
-      data: results && results.per_student[student.id],
-      outcome: view && ReportCards.outcome(view, student.id),
-      distinction:
-        view &&
-          ReportCards.final_distinction(
-            view,
-            student.id,
-            results && results.per_student[student.id]
-          ),
-      conduct: view && view.conduct[enrollment.id],
-      discipline: view && view.discipline[enrollment.id],
-      group_subtotals?: (view && view.group_subtotals?) || false
+      in_view?: is_nil(view) or Enum.any?(view.roster, &(&1.student.id == student.id))
     )
   end
 
-  defp component_at(row, key, idx) do
-    case row.components do
-      %{^key => list} -> Enum.at(list, idx, %{})[:average]
-      _ -> nil
-    end
-  end
+  defp print_path(assigns),
+    do:
+      ~p"/school/classes/#{assigns.cg.id}/students/#{assigns.enrollment.id}/bulletin/print?period=#{assigns.period_param}"
 
-  defp period_heading(%{period: {:sequence, seq}}), do: "#{gettext("Séquence")} #{seq.number}"
+  defp bulletins_path(%{cg: cg, period_param: nil}), do: ~p"/school/bulletins?class=#{cg.id}"
 
-  defp period_heading(%{period: {:trimester, term}}),
-    do: "#{gettext("Trimestre")} #{term.position}"
-
-  defp period_heading(%{period: {:annual, _}}), do: gettext("Année scolaire")
-  defp period_heading(_), do: "—"
-
-  # Columns between "Coefficient" and "Note×Coef" for each period kind.
-  defp period_cols(:trimester), do: 3
-  defp period_cols(:annual), do: 4
-  defp period_cols(_), do: 1
-
-  defp fmt(nil), do: "—"
-  defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
-
-  defp sex_label(s), do: Sex.label(s)
-
-  defp no_data_message(:trimester), do: gettext("No marks for this term yet.")
-  defp no_data_message(:annual), do: gettext("No marks for this year yet.")
-  defp no_data_message(_), do: gettext("No marks for this séquence yet.")
+  defp bulletins_path(%{cg: cg, period_param: param}),
+    do: ~p"/school/bulletins?class=#{cg.id}&period=#{param}"
 
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="bulletin" class="mx-auto max-w-3xl space-y-6">
+      <section id="bulletin" class="mx-auto max-w-4xl min-w-0 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <.link
+            id="bulletin-back"
+            navigate={bulletins_path(assigns)}
+            class="inline-flex items-center gap-1 text-sm text-base-content/70 transition-colors hover:text-base-content"
+          >
+            <.icon name="hero-arrow-left" class="size-4" />
+            {gettext("Bulletins de la %{class}", class: @cg.label)}
+          </.link>
+          <div class="flex flex-wrap items-center gap-2">
+            <.link
+              id="bulletin-student"
+              navigate={~p"/school/students/#{@student.id}"}
+              class="btn btn-ghost btn-sm gap-2"
+            >
+              <.icon name="hero-user" class="size-4" />
+              {gettext("Fiche élève")}
+            </.link>
+            <a
+              :if={(@period && @status != :not_published) and @in_view?}
+              id="bulletin-print"
+              href={print_path(assigns)}
+              target="_blank"
+              class="btn btn-primary btn-sm gap-2"
+            >
+              <.icon name="hero-printer" class="size-4" />
+              {gettext("Imprimer")}
+            </a>
+          </div>
+        </div>
+
         <.page_header eyebrow={gettext("Bulletin de notes")} title={@student.full_name}>
           <:actions>
             <form
@@ -156,66 +150,21 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
                 ]}
               />
             </form>
-            <a
-              :if={@period && @status != :not_published}
-              id="bulletin-print"
-              href={
-                ~p"/school/classes/#{@cg.id}/students/#{@enrollment.id}/bulletin/print?period=#{@period_param}"
-              }
-              target="_blank"
-              class="btn btn-primary btn-sm gap-2"
-            >
-              <.icon name="hero-printer" class="size-4" />
-              {gettext("Imprimer")}
-            </a>
           </:actions>
         </.page_header>
 
-        <p
-          :if={@year && @year.status == :closed}
-          id="year-closed"
-          class="badge badge-ghost gap-1 self-start"
-        >
-          <.icon name="hero-lock-closed" class="size-3.5" />
-          {gettext("Année %{name} · clôturée", name: @year.name)}
-        </p>
-
-        <dl id="bulletin-identity" class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-          <div>
-            <dt class="ta-eyebrow">{gettext("Matricule")}</dt>
-            <dd>{@student.matricule || "—"}</dd>
-          </div>
-          <div :if={Map.get(@student, :birth_date) || Map.get(@student, :birth_place)}>
-            <dt class="ta-eyebrow">{gettext("Né(e) le")}</dt>
-            <dd>
-              {Map.get(@student, :birth_date) && Calendar.strftime(@student.birth_date, "%d/%m/%Y")}
-              <span :if={Map.get(@student, :birth_place)}>{gettext("à")} {@student.birth_place}</span>
-            </dd>
-          </div>
-          <div>
-            <dt class="ta-eyebrow">{gettext("Classe")}</dt>
-            <dd>{@cg.label} — {@cg.level}</dd>
-          </div>
-          <div>
-            <dt class="ta-eyebrow">{gettext("Période")}</dt>
-            <dd>{period_heading(assigns)}</dd>
-          </div>
-          <div>
-            <dt class="ta-eyebrow">{gettext("Sexe")}</dt>
-            <dd>{sex_label(@student.sex)}</dd>
-          </div>
-          <div>
-            <dt class="ta-eyebrow">{gettext("Effectif")}</dt>
-            <dd>{@effectif}</dd>
-          </div>
-        </dl>
-
-        <p :if={@status == :published} id="bulletin-published" class="badge badge-success gap-1">
-          <.icon name="hero-check-badge" class="size-4" />
-          {gettext("Publié le %{date}",
-            date: Calendar.strftime(ReportCards.published_on(@publication), "%d/%m/%Y")
-          )}
-        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <p :if={@year && @year.status == :closed} id="year-closed" class="badge badge-ghost gap-1">
+            <.icon name="hero-lock-closed" class="size-3.5" />
+            {gettext("Année %{name} · clôturée", name: @year.name)}
+          </p>
+          <p :if={@status == :published} id="bulletin-published" class="badge badge-success gap-1">
+            <.icon name="hero-check-badge" class="size-4" />
+            {gettext("Publié le %{date}",
+              date: Calendar.strftime(ReportCards.published_on(@publication), "%d/%m/%Y")
+            )}
+          </p>
+        </div>
 
         <div :if={@status == :not_published} id="bulletin-not-published">
           <.empty_state
@@ -234,203 +183,24 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
         </div>
 
         <.empty_state
-          :if={@status != :not_published and @in_view? and is_nil(@data)}
+          :if={is_nil(@period)}
           icon="hero-document-text"
           title={gettext("Aucune donnée")}
-          message={no_data_message(@period_kind)}
+          message={gettext("No marks for this séquence yet.")}
         />
 
-        <div :if={@data} class="space-y-4">
-          <div class="overflow-x-auto">
-            <table id="bulletin-subjects" class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>{gettext("Matière")}</th>
-                  <th>{gettext("Coefficient")}</th>
-                  <%= case @period_kind do %>
-                    <% :trimester -> %>
-                      <th>{gettext("Séq 1")}</th>
-                      <th>{gettext("Séq 2")}</th>
-                      <th>{gettext("Moy. trim.")}</th>
-                    <% :annual -> %>
-                      <th>{gettext("Trim 1")}</th>
-                      <th>{gettext("Trim 2")}</th>
-                      <th>{gettext("Trim 3")}</th>
-                      <th>{gettext("Moy. ann.")}</th>
-                    <% _ -> %>
-                      <th>{gettext("Note")}/20</th>
-                  <% end %>
-                  <th>{gettext("Note×Coef")}</th>
-                  <th>{gettext("Appréciation")}</th>
-                  <th>{gettext("Cote classe")}</th>
-                </tr>
-              </thead>
-              <tbody :for={g <- @data.groups} id={"bulletin-group-#{g.group}"}>
-                <tr class="bg-base-200/60">
-                  <th
-                    colspan={period_cols(@period_kind) + 5}
-                    class="text-xs uppercase tracking-wide text-base-content/70"
-                  >
-                    {BulletinGroup.label(g.group)}
-                  </th>
-                </tr>
-                <tr :for={row <- g.rows} id={"bulletin-subject-#{row.context_id}"}>
-                  <td>{row.label}</td>
-                  <td class="ta-num">{fmt(row.coefficient)}</td>
-                  <%= case @period_kind do %>
-                    <% :trimester -> %>
-                      <td class="ta-num">{fmt(component_at(row, :sequences, 0))}</td>
-                      <td class="ta-num">{fmt(component_at(row, :sequences, 1))}</td>
-                      <td class="ta-num">
-                        {fmt(row.average)}
-                        <span
-                          :if={row.makeup_pending}
-                          id={"makeup-#{row.context_id}"}
-                          class="badge badge-warning badge-xs ml-1"
-                          title={gettext("Rattrapage attendu")}
-                        >
-                          R
-                        </span>
-                      </td>
-                    <% :annual -> %>
-                      <td class="ta-num">{fmt(component_at(row, :trimesters, 0))}</td>
-                      <td class="ta-num">{fmt(component_at(row, :trimesters, 1))}</td>
-                      <td class="ta-num">{fmt(component_at(row, :trimesters, 2))}</td>
-                      <td class="ta-num">
-                        {fmt(row.average)}
-                        <span
-                          :if={row.makeup_pending}
-                          id={"makeup-#{row.context_id}"}
-                          class="badge badge-warning badge-xs ml-1"
-                          title={gettext("Rattrapage attendu")}
-                        >
-                          R
-                        </span>
-                      </td>
-                    <% _ -> %>
-                      <td class="ta-num">
-                        {fmt(row.average)}
-                        <span
-                          :if={row.makeup_pending}
-                          id={"makeup-#{row.context_id}"}
-                          class="badge badge-warning badge-xs ml-1"
-                          title={gettext("Rattrapage attendu")}
-                        >
-                          R
-                        </span>
-                      </td>
-                  <% end %>
-                  <td class="ta-num">{fmt(row.note_x_coef)}</td>
-                  <td data-role="appreciation">
-                    <.mention_badge :if={row.mention} mention={row.mention} />
-                  </td>
-                  <td class="ta-num">
-                    {if row.class_min, do: "#{fmt(row.class_min)} – #{fmt(row.class_max)}", else: "—"}
-                  </td>
-                </tr>
-                <tr
-                  :if={@group_subtotals?}
-                  id={"bulletin-group-total-#{g.group}"}
-                  class="font-semibold"
-                >
-                  <td>{gettext("Total groupe")}</td>
-                  <td class="ta-num">{fmt(g.total_coef)}</td>
-                  <td :for={_ <- 2..period_cols(@period_kind)//1}></td>
-                  <td class="ta-num">{fmt(g.average)}</td>
-                  <td class="ta-num">{fmt(g.total_points)}</td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th>{gettext("Total des points")}</th>
-                  <th class="ta-num">{fmt(@data.total_coef)}</th>
-                  <th></th>
-                  <th class="ta-num">{fmt(@data.total_points)}</th>
-                  <th></th>
-                  <th></th>
-                </tr>
-              </tfoot>
-            </table>
-            <p
-              :if={Enum.any?(@data.subjects, & &1.makeup_pending)}
-              id="makeup-legend"
-              class="mt-1 text-xs text-base-content/70"
-            >
-              {gettext("R : rattrapage attendu")}
-            </p>
-          </div>
-
-          <div id="bulletin-totals" class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <.stat
-              label={gettext("Moyenne générale")}
-              value={fmt(@data.moyenne_generale)}
-              suffix="/20"
-              tone={:primary}
-            />
-            <.stat label={gettext("Rang")} value={"#{@data.rank || "—"} / #{@effectif}"} />
-            <div class="ta-leaf flex flex-wrap items-center gap-2">
-              <.mention_badge :if={@data.mention} mention={@data.mention} />
-              <span id="bulletin-distinction">
-                <.distinction_badge distinction={@distinction} />
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <p
-          :if={@data && @outcome && Map.get(@outcome, :passage)}
-          id="bulletin-passage"
-          class="ta-leaf flex items-center gap-2"
-        >
-          <span class="ta-eyebrow">{gettext("Décision de fin d'année")}</span>
-          <strong>{TeacherAssistant.Academics.PassageDecision.label(@outcome.passage)}</strong>
-        </p>
-
+        <%!-- An A4 sheet (794 px); on a phone it scrolls inside its own card. --%>
         <div
-          :if={@data && @outcome && (@outcome.conduct_warning || @outcome.appreciation)}
-          id="bulletin-council"
-          class="ta-leaf space-y-1"
+          :if={(@period && @status != :not_published) and @in_view?}
+          id="bulletin-sheet-frame"
+          class="ta-panel w-full overflow-x-auto contain-inline-size !p-2"
         >
-          <p class="ta-eyebrow">{gettext("Appréciation du conseil de classe")}</p>
-          <p :if={@outcome.conduct_warning} class="badge badge-error badge-sm">
-            {TeacherAssistant.Academics.ConductWarning.label(@outcome.conduct_warning)}
-          </p>
-          <p :if={@outcome.appreciation}>{@outcome.appreciation}</p>
-        </div>
-
-        <div :if={@conduct} id="bulletin-conduct" class="space-y-2">
-          <h2 class="ta-eyebrow">{gettext("Conduite")}</h2>
-          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <.stat
-              label={gettext("Absences justifiées")}
-              value={fmt(@conduct.justified_hours)}
-              suffix={gettext("h")}
-            />
-            <.stat
-              label={gettext("Absences non justifiées")}
-              value={fmt(@conduct.unjustified_hours)}
-              suffix={gettext("h")}
-            />
-            <.stat label={gettext("Retards")} value={to_string(@conduct.retards)} />
-          </div>
-          <div
-            :if={@discipline}
-            id="bulletin-discipline"
-            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
-          >
-            <.stat label={gettext("Consignes")} value={to_string(@discipline.consignes_count)} />
-            <.stat
-              label={gettext("Note de conduite")}
-              value={fmt(@discipline.note_de_conduite)}
-              suffix="/20"
-            />
-            <div class="ta-leaf">
-              <dt class="ta-eyebrow">{gettext("Sanctions")}</dt>
-              <dd id="bulletin-sanctions">{SanctionLabels.sanctions_line(@discipline.sanctions)}</dd>
-            </div>
-          </div>
+          <iframe
+            id="bulletin-sheet"
+            src={print_path(assigns)}
+            title={gettext("Bulletin")}
+            class="block h-[1400px] w-[794px] max-w-none rounded bg-white shadow-sm"
+          ></iframe>
         </div>
       </section>
     </Layouts.app>

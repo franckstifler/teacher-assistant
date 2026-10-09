@@ -48,8 +48,11 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
     view |> element("#rule-average_rounding-quarter") |> render_click()
     assert render(view) =~ "Réglage enregistré."
 
-    {:ok, _, html} =
-      live(conn, ~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin?period=seq:#{seq.id}")
+    # The on-screen bulletin embeds the print document, which carries the figures.
+    html =
+      conn
+      |> get(~p"/school/classes/#{cg.id}/students/#{enr.id}/bulletin/print?period=seq:#{seq.id}")
+      |> html_response(200)
 
     assert html =~ "13.25"
     refute html =~ "13.20"
