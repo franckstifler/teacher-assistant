@@ -1,6 +1,7 @@
 defmodule TeacherAssistant.Accounts.Workspaces do
   alias TeacherAssistant.{Organization, Scope}
   alias TeacherAssistant.Accounts
+  require Ash.Query
 
   def scope_for(user, workspace_id, context_id \\ nil)
 
@@ -17,6 +18,25 @@ defmodule TeacherAssistant.Accounts.Workspaces do
       {:ok, ws} -> school_scope(user, ws, context_id)
       _ -> {:error, :workspace_not_found}
     end
+  end
+
+  @doc """
+  One scope per school for the scheduled jobs: that of an active `:head` member
+  (the global read, no tenant). Schools whose scope cannot be built are skipped.
+  """
+  def job_scopes do
+    Accounts.SchoolMembership
+    |> Ash.Query.filter(active == true)
+    |> Ash.Query.load(:user)
+    |> Ash.read!(authorize?: false)
+    |> Enum.filter(&(:head in &1.roles))
+    |> Enum.uniq_by(& &1.workspace_id)
+    |> Enum.flat_map(fn m ->
+      case scope_for(m.user, m.workspace_id) do
+        {:ok, scope} -> [scope]
+        _ -> []
+      end
+    end)
   end
 
   defp school_scope(user, ws, context_id) do

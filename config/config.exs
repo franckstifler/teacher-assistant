@@ -15,7 +15,16 @@ config :teacher_assistant, Oban,
   notifier: Oban.Notifiers.Postgres,
   queues: [default: 10],
   repo: TeacherAssistant.Repo,
-  plugins: [{Oban.Plugins.Cron, []}]
+  plugins: [
+    # UTC; school time is UTC+1.
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"30 11 * * 1-6", TeacherAssistant.Workers.MissedRollCalls, args: %{"half" => "morning"}},
+       {"30 16 * * 1-6", TeacherAssistant.Workers.MissedRollCalls,
+        args: %{"half" => "afternoon"}},
+       {"10 6 * * *", TeacherAssistant.Workers.ExpiredTemporaryPasswords}
+     ]}
+  ]
 
 config :ash,
   default_string_length_count: :codepoints,

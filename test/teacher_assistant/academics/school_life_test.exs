@@ -75,6 +75,19 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
              []
   end
 
+  test "roll_call_counts matches the day grid", ctx do
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :present}])
+
+    now = at(@monday, ~T[10:00:00])
+    day = Attendance.school_day(ctx.scope, @monday, now)
+    counts = Attendance.roll_call_counts(ctx.scope, @monday, now)
+    assert counts.done == 1
+    assert counts.missed == day.missed
+    assert counts.expected == counts.done + length(day.missed)
+    assert counts.expected == 2
+  end
+
   test "missed this week covers Monday to yesterday", ctx do
     wednesday = ~D[2025-09-17]
 

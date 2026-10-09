@@ -52,6 +52,21 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     }
   end
 
+  @doc """
+  The roll-call tally of `date`: `done`, the `missed` ones and `expected`
+  (`done + missed`, as `/school/day` shows it).
+  """
+  def roll_call_counts(%Scope{} = scope, %Date{} = date, %NaiveDateTime{} = now),
+    do: roll_call_counts(school_day(scope, date, now))
+
+  @doc "The same tally from an already loaded `school_day/3`."
+  def roll_call_counts(%{rows: rows, missed: missed}) do
+    done =
+      Enum.count(for(row <- rows, {_id, cell} <- row.cells, do: cell.status), &(&1 == :done))
+
+    %{done: done, expected: done + length(missed), missed: missed}
+  end
+
   @doc "How many late arrivals were recorded on `date` (Vie scolaire redesign §2.1)."
   def late_count(%Scope{} = scope, %Date{} = date) do
     AttendanceEntry

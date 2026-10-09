@@ -82,7 +82,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
     assigns =
       assign(assigns,
         current: current_period(assigns.day.periods, assigns.now),
-        done: count_status(assigns.day, :done)
+        done: Attendance.roll_call_counts(assigns.day).done
       )
 
     ~H"""
@@ -325,10 +325,6 @@ defmodule TeacherAssistantWeb.School.DayLive do
       Time.compare(p.start_time, time) != :gt and Time.compare(time, p.end_time) == :lt
     end)
   end
-
-  defp count_status(day, status),
-    do:
-      Enum.count(for(row <- day.rows, {_id, cell} <- row.cells, do: cell.status), &(&1 == status))
 
   # « depuis 07:30 »: the school's first lesson.
   defp first_period_text([]), do: nil
