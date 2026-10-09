@@ -122,7 +122,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
         <div :if={@slots != []} class="grid items-start gap-4 lg:grid-cols-3">
           <div class="flex flex-col gap-4">
-            <div id="today-slots" class="ta-leaf flex flex-col gap-1.5 !p-3">
+            <div id="today-slots" class="ta-panel flex flex-col gap-1.5 !p-3">
               <h2 class="ta-eyebrow px-1 pb-1">{gettext("Mes créneaux du jour")}</h2>
               <.slot_row
                 :for={slot <- @slots}
@@ -133,7 +133,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
               />
             </div>
 
-            <div :if={@missed != []} id="missed-this-week" class="ta-leaf flex flex-col gap-1.5 !p-3">
+            <div :if={@missed != []} id="missed-this-week" class="ta-panel flex flex-col gap-1.5 !p-3">
               <div class="flex items-baseline justify-between px-1 pb-1">
                 <h2 class="ta-eyebrow">{gettext("Appels manquants cette semaine")}</h2>
                 <span class="ta-num rounded-full bg-error/20 px-2 text-[0.7rem] font-semibold text-error">
@@ -166,6 +166,14 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
           </div>
 
           <div class="lg:col-span-2">
+            <div
+              :if={!@roll}
+              id="no-roll-now"
+              class="ta-panel flex items-center gap-3 text-sm text-base-content/70"
+            >
+              <.icon name="hero-clock" class="size-5" />
+              {gettext("Aucun appel à faire maintenant. Le prochain s'ouvrira au début du créneau.")}
+            </div>
             <RollCall.roll_panel
               :if={@roll}
               roll={@roll}

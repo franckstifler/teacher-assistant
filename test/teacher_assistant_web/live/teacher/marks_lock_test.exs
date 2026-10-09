@@ -90,4 +90,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
 
     assert %{label: "Devoir 1"} = by_class[cg2.id]
   end
+
+  test "a séquence locking while the page is open says so and shows the correction link", ctx do
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+    MarksFixtures.lock!(ctx, Date.add(Reference.today(), -1))
+
+    html = view |> element("#mark-input-#{ctx.s1.id}") |> render_blur(%{"value" => "15"})
+
+    assert html =~ "Séquence verrouillée."
+    assert has_element?(view, "#locked-banner")
+    assert has_element?(view, "#mark-input-#{ctx.s1.id}[disabled]")
+    [mark] = Assessment.list_marks(ctx.head, ctx.a)
+    assert Decimal.equal?(mark.score, 12)
+  end
 end

@@ -69,7 +69,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
             message={gettext("Vous n'avez pas encore de créneau dans l'emploi du temps.")}
           />
         <% else %>
-          <div class="ta-leaf overflow-x-auto p-2">
+          <div class="ta-panel overflow-x-auto !p-2">
             <table id="my-timetable-grid" class="table table-sm min-w-[700px] table-fixed">
               <thead>
                 <tr>

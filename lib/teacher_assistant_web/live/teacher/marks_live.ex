@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.{CombinedCourse, MarkStatus, Marks}
+  alias TeacherAssistant.Academics.{CombinedCourse, Marks}
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Academics.{Lock, MarkEntry, Reference}
   alias TeacherAssistantWeb.Dates
@@ -185,8 +185,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     |> Map.new(fn m -> {m.student_id, mark_field(m)} end)
   end
 
-  defp mark_field(%{status: :graded, score: score}), do: Decimal.to_string(score, :normal)
-  defp mark_field(%{status: status}), do: MarkStatus.code(status)
+  defp mark_field(%{status: status, score: score}), do: MarkEntry.format(status, score)
 
   defp all_students(%{groups: groups}), do: Enum.flat_map(groups, & &1.students)
 
@@ -330,7 +329,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     scope = socket.assigns.current_scope
     seq = pick_seq(socket.assigns.sequences, params["seq"])
     columns = columns(socket, seq)
-    column = pick(columns, params["assessment"])
+    # The asked column, else the first: the sheet is never hidden behind the select.
+    column = pick(columns, params["assessment"]) || List.first(columns)
     loaded = saved_marks(scope, column)
 
     {:noreply,
@@ -381,11 +381,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
   def handle_event("save_mark", %{"student" => id, "value" => raw}, socket) do
-    socket = assign(socket, :scores, Map.put(socket.assigns.scores, id, raw))
+    # An absent cell is disabled; the blur a browser may fire as it becomes disabled
+    # carries its empty value and must not undo the absence (only the toggle does).
+    if MarkEntry.parse(raw) == {:ok, :blank} and
+         MarkEntry.parse(socket.assigns.loaded[id]) == {:ok, :absent} do
+      {:noreply, socket}
+    else
+      socket = assign(socket, :scores, Map.put(socket.assigns.scores, id, raw))
 
-    case MarkEntry.parse(raw) do
-      :error -> {:noreply, put_error(socket, id, :invalid)}
-      {:ok, entry} -> write_mark(socket, id, entry)
+      case MarkEntry.parse(raw) do
+        :error -> {:noreply, put_error(socket, id, :invalid)}
+        {:ok, entry} -> write_mark(socket, id, entry)
+      end
     end
   end
 
@@ -453,9 +460,29 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         {:noreply, Authz.put_not_allowed(socket)}
 
       _ ->
-        {:noreply, put_error(socket, id, :failed)}
+        {:noreply, failed(socket, id)}
     end
   end
+
+  # A refused write on a séquence that has locked since the page loaded: show the page
+  # as locked (banner and correction link) instead of a bare per-cell failure.
+  defp failed(%{assigns: %{seq: %{id: seq_id}}} = socket, id) do
+    case Lock.fetch_sequence(seq_id, socket.assigns.current_scope) do
+      {:ok, seq} ->
+        if Lock.locked?(seq) do
+          socket
+          |> assign(seq: seq, locked?: true, errors: %{}, scores: socket.assigns.loaded)
+          |> put_flash(:error, gettext("Séquence verrouillée."))
+        else
+          put_error(socket, id, :failed)
+        end
+
+      _ ->
+        put_error(socket, id, :failed)
+    end
+  end
+
+  defp failed(socket, id), do: put_error(socket, id, :failed)
 
   defp assessment_for(%{course: %CombinedCourse{}, column: column, student_group: groups}, id),
     do: column && column.by_class_group_id[groups[id]]
@@ -474,8 +501,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   # The field text a stored entry shows, as `mark_field/1` renders a stored mark.
   defp mark_text(:blank), do: ""
-  defp mark_text({:graded, d}), do: Decimal.to_string(d, :normal)
-  defp mark_text(status), do: MarkStatus.code(status)
+  defp mark_text({:graded, d}), do: MarkEntry.format(:graded, d)
+  defp mark_text(status), do: MarkEntry.format(status, nil)
 
   defp max_label(%{max_score: %Decimal{} = m}),
     do: m |> Decimal.normalize() |> Decimal.to_string(:normal)
@@ -535,7 +562,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           </:actions>
         </.page_header>
 
-        <div id="marks-toolbar" class="ta-leaf flex flex-col gap-3">
+        <div id="marks-toolbar" class="ta-panel flex flex-col gap-3">
           <div class="flex flex-wrap items-center gap-2">
             <nav
               :if={length(@course_tabs) > 1}
@@ -598,10 +625,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         <.locked_banner :if={@locked?} seq={@seq} assessment={@column} />
         <.open_banner :if={@seq && !@locked?} seq={@seq} today={@today} />
 
-        <div :if={@column} class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div
+          :if={@column}
+          class="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px]"
+        >
           <div class="space-y-3">
             <.pending_makeups names={@pending_makeups} />
-            <div class="ta-leaf overflow-x-auto !p-0">
+            <div class="ta-panel overflow-x-auto !p-0">
               <table id="marks-table" class="table table-sm" phx-hook=".MarksGrid">
                 <thead>
                   <tr>
@@ -636,8 +666,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 <% end %>
               </table>
               <script :type={Phoenix.LiveView.ColocatedHook} name=".MarksGrid">
-                // Enter moves to the next student's cell (its blur saves this one);
-                // « a » in an empty cell marks the student absent.
+                // Enter moves to the next student's cell (its blur saves this one).
                 export default {
                   mounted() {
                     this.el.addEventListener("keydown", (e) => {
@@ -648,9 +677,6 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                         const inputs = [...this.el.querySelectorAll("input[data-mark-input]:not([disabled])")]
                         const next = inputs[inputs.indexOf(input) + 1]
                         next ? next.focus() : input.blur()
-                      } else if ((e.key === "a" || e.key === "A") && input.value === "") {
-                        e.preventDefault()
-                        this.pushEvent("toggle_absent", {student: input.dataset.student})
                       }
                     })
                   }
@@ -678,7 +704,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               <p>
                 <kbd class="kbd kbd-sm">{gettext("Entrée")}</kbd> {gettext("élève suivant")}
               </p>
-              <p><kbd class="kbd kbd-sm">a</kbd> {gettext("absent (case vide)")}</p>
+              <p>
+                <kbd class="kbd kbd-sm">a</kbd> {gettext(
+                  "puis Entrée : absent · abj : absence justifiée"
+                )}
+              </p>
               <p class="text-base-content/70">
                 {gettext("Virgule ou point acceptés : 12,5 = 12.5")}
               </p>

@@ -149,6 +149,22 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     refute has_element?(view, "#mark-input-#{s1.id}[disabled]")
   end
 
+  test "the blur a disabled absent cell may fire never clears the absence", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    view |> element("#absent-#{s1.id}") |> render_click()
+    render_hook(view, "save_mark", %{"student" => s1.id, "value" => ""})
+    assert [%{status: :absent}] = Assessment.list_marks(scope, a)
+  end
+
   test "a saved mark shows its appreciation and « Enregistré »", %{
     conn: conn,
     ctx: ctx,

@@ -268,8 +268,11 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 <span class="text-base-content/70">
                   {gettext("Notes Séq. %{n}", n: @seq.number)}
                 </span>
-                <span class="ta-num font-semibold">
+                <span :if={course.progress.expected > 0} class="ta-num font-semibold">
                   {course.progress.entered} / {course.progress.expected}
+                </span>
+                <span :if={course.progress.expected == 0} class="text-base-content/60">
+                  {gettext("aucune évaluation")}
                 </span>
               </div>
               <div class="h-1.5 overflow-hidden rounded-full bg-base-300">

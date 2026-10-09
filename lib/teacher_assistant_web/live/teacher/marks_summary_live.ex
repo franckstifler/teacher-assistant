@@ -90,7 +90,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
 
   defp fmt(nil), do: "—"
-  defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
+
+  defp fmt(%Decimal{} = d),
+    do: d |> Decimal.round(2) |> Decimal.to_string(:normal) |> String.replace(".", ",")
 
   defp pct(rate), do: "#{round(rate * 100)}%"
 
