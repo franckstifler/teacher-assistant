@@ -66,7 +66,7 @@ defmodule TeacherAssistant.Academics.MarkCorrectionNotificationsTest do
     assert %{"decision" => "approved", "student" => "Awa", "assessment" => "Devoir 1"} = n.params
 
     {:ok, c2} = request(ctx, nil, nil, 15)
-    {:ok, _} = Assessment.refuse_correction(ctx.head, c2)
+    {:ok, _} = Assessment.refuse_correction(ctx.head, c2, "Non")
 
     assert %{unread: 2, latest: [%{params: %{"decision" => "refused"}} | _]} =
              Notifications.bell(ctx.t)

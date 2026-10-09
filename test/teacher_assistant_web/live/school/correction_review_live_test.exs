@@ -43,28 +43,46 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
     assert has_element?(view, "#nav-school-correction-review .badge", "1")
     assert has_element?(view, "#review-tab-pending")
-    assert has_element?(view, "#pending-#{ctx.c.id}", "Awa")
-    assert has_element?(view, "#pending-#{ctx.c.id}", "12 → 14")
-
-    view |> element("#pending-#{ctx.c.id}") |> render_click()
-    detail = view |> element("#correction-detail") |> render()
-    assert detail =~ "Copie mal corrigée"
+    card = "#correction-card-#{ctx.c.id}"
+    assert has_element?(view, card, "Awa")
+    assert has_element?(view, card, "12 → 14")
+    assert has_element?(view, card, "Copie mal corrigée")
     # The student's séquence average in the subject, before → after.
-    assert detail =~ "12 → 14"
-    assert has_element?(view, "#approve-correction", "Accepter")
+    assert has_element?(view, card, "Moyenne de séquence : 12 → 14")
 
-    html = view |> element("#approve-correction") |> render_click()
-    assert html =~ "Correction acceptée."
-    refute has_element?(view, "#pending-#{ctx.c.id}")
+    html =
+      view |> form("#accept-form-#{ctx.c.id}", %{"accept" => %{"note" => ""}}) |> render_submit()
+
+    assert html =~ "Correction acceptée : Awa"
+    assert html =~ "Bulletin recalculé."
+    refute has_element?(view, card)
 
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review?tab=decided")
     assert has_element?(view, "#decided-#{ctx.c.id}", "Acceptée")
   end
 
-  test "the censeur refuses a request", ctx do
+  test "pending requests are cards; refusing asks a reason first", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
-    view |> element("#pending-#{ctx.c.id}") |> render_click()
-    assert view |> element("#refuse-correction") |> render_click() =~ "Correction refusée."
+    assert has_element?(view, "#correction-card-#{ctx.c.id}", "12 → 14")
+    refute has_element?(view, "#refuse-form-#{ctx.c.id}")
+    view |> element("#refuse-#{ctx.c.id}") |> render_click()
+    assert has_element?(view, "#refuse-form-#{ctx.c.id}")
+
+    html =
+      view |> form("#refuse-form-#{ctx.c.id}", %{"refusal" => %{"note" => ""}}) |> render_submit()
+
+    assert html =~ "Indiquez le motif du refus."
+    assert [_] = Assessment.list_corrections(ctx.censeur, :pending)
+
+    html =
+      view
+      |> form("#refuse-form-#{ctx.c.id}", %{"refusal" => %{"note" => "Copie absente"}})
+      |> render_submit()
+
+    assert html =~ "Demande refusée."
+
+    assert [%{status: :refused, decision_note: "Copie absente"}] =
+             Assessment.list_corrections(ctx.censeur, :decided)
 
     [mark | _] =
       Assessment.list_marks(ctx.head, ctx.a) |> Enum.filter(&(&1.student_id == ctx.s1.id))
@@ -72,33 +90,9 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert Decimal.equal?(mark.score, 12)
   end
 
-  test "the censeur refuses with a note", ctx do
+  test "the journal is on the same page under the cards", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
-    view |> element("#pending-#{ctx.c.id}") |> render_click()
-
-    view
-    |> form("#decision-form", %{"decision" => %{"note" => "Joindre la copie"}})
-    |> render_change()
-
-    view |> element("#refuse-correction") |> render_click()
-
-    assert [%{decision_note: "Joindre la copie"}] =
-             Assessment.list_corrections(ctx.censeur, :decided)
-  end
-
-  test "a stale request says it must be redone", ctx do
-    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
-    view |> element("#pending-#{ctx.c.id}") |> render_click()
-    MarksFixtures.lock!(ctx, Date.add(Reference.today(), 30))
-    :ok = Assessment.upsert_marks(ctx.t, ctx.a, [%{student_id: ctx.s1.id, score: Decimal.new(9)}])
-    MarksFixtures.lock!(ctx, Date.add(Reference.today(), -1))
-
-    assert view |> element("#approve-correction") |> render_click() =~
-             "La note a changé depuis la demande : demande à refaire."
-  end
-
-  test "the journal lists saves, requests and the lock", ctx do
-    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review?tab=journal")
+    assert has_element?(view, "#journal")
     journal = view |> element("#journal") |> render()
     assert journal =~ "Devoir 1"
     assert journal =~ "2 notes"
@@ -108,15 +102,38 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert journal =~ "Système"
   end
 
-  test "a note over 500 characters is named as the reason", ctx do
+  test "an accepted request carries its optional note", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
-    view |> element("#pending-#{ctx.c.id}") |> render_click()
 
     view
-    |> form("#decision-form", %{"decision" => %{"note" => String.duplicate("x", 501)}})
-    |> render_change()
+    |> form("#accept-form-#{ctx.c.id}", %{"accept" => %{"note" => "Vu avec la copie"}})
+    |> render_submit()
 
-    html = view |> element("#refuse-correction") |> render_click()
+    assert [%{status: :approved, decision_note: "Vu avec la copie"}] =
+             Assessment.list_corrections(ctx.censeur, :decided)
+  end
+
+  test "a stale request says it must be redone", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    MarksFixtures.lock!(ctx, Date.add(Reference.today(), 30))
+    :ok = Assessment.upsert_marks(ctx.t, ctx.a, [%{student_id: ctx.s1.id, score: Decimal.new(9)}])
+    MarksFixtures.lock!(ctx, Date.add(Reference.today(), -1))
+
+    assert view
+           |> form("#accept-form-#{ctx.c.id}", %{"accept" => %{"note" => ""}})
+           |> render_submit() =~
+             "La note a changé depuis la demande : demande à refaire."
+  end
+
+  test "a refusal note over 500 characters is named as the reason", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    view |> element("#refuse-#{ctx.c.id}") |> render_click()
+
+    html =
+      view
+      |> form("#refuse-form-#{ctx.c.id}", %{"refusal" => %{"note" => String.duplicate("x", 501)}})
+      |> render_submit()
+
     assert html =~ "La note dépasse 500 caractères."
     assert [_] = Assessment.list_corrections(ctx.censeur, :pending)
   end

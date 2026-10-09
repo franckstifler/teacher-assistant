@@ -32,24 +32,35 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
   defp decide(changeset, decision, context) do
     case locked_row(changeset) do
       %{status: :pending} = current ->
-        if decision == :approved and stale?(current, context) do
-          Ash.Changeset.add_error(changeset,
-            field: :status,
-            message: "stale: the mark changed since the request"
-          )
-        else
-          Ash.Changeset.force_change_attributes(changeset, %{
-            status: decision,
-            decider_user_id: context.actor.id,
-            decided_at: DateTime.utc_now(),
-            decision_note: Ash.Changeset.get_argument(changeset, :decision_note)
-          })
+        cond do
+          decision == :approved and stale?(current, context) ->
+            Ash.Changeset.add_error(changeset,
+              field: :status,
+              message: "stale: the mark changed since the request"
+            )
+
+          decision == :refused and blank?(Ash.Changeset.get_argument(changeset, :decision_note)) ->
+            Ash.Changeset.add_error(changeset,
+              field: :decision_note,
+              message: "a refusal needs a note"
+            )
+
+          true ->
+            Ash.Changeset.force_change_attributes(changeset, %{
+              status: decision,
+              decider_user_id: context.actor.id,
+              decided_at: DateTime.utc_now(),
+              decision_note: Ash.Changeset.get_argument(changeset, :decision_note)
+            })
         end
 
       _decided_or_gone ->
         Ash.Changeset.add_error(changeset, field: :status, message: "already decided")
     end
   end
+
+  defp blank?(nil), do: true
+  defp blank?(note) when is_binary(note), do: String.trim(note) == ""
 
   # Internal read under the action's own authorization, hence `authorize?: false`.
   defp locked_row(%{data: %{id: id}, tenant: tenant}) do

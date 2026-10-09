@@ -130,10 +130,21 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
     assert [%{status: :pending}] = Assessment.list_corrections(ctx.censeur, :pending)
   end
 
+  test "refusing without a note is rejected", ctx do
+    lock(ctx)
+    {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
+    assert {:error, _} = Assessment.refuse_correction(ctx.censeur, c, "   ")
+    assert {:error, _} = Assessment.refuse_correction(ctx.censeur, c)
+    assert [%{status: :pending}] = Assessment.list_corrections(ctx.censeur, :pending)
+  end
+
   test "refusing leaves the mark and journals the refusal", ctx do
     lock(ctx)
     {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
-    assert {:ok, %{status: :refused}} = Assessment.refuse_correction(ctx.censeur, c)
+
+    assert {:ok, %{status: :refused}} =
+             Assessment.refuse_correction(ctx.censeur, c, "Copie absente")
+
     assert Decimal.equal?(mark_of(ctx).score, 12)
     assert [%{action: :correction_refusee} | _] = Assessment.list_mark_events(ctx.head)
     assert [%{status: :refused}] = Assessment.list_corrections(ctx.censeur, :decided)
@@ -143,7 +154,7 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
     lock(ctx)
     {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
     assert Assessment.unseen_decisions_count(ctx.t) == 0
-    {:ok, _} = Assessment.refuse_correction(ctx.censeur, c)
+    {:ok, _} = Assessment.refuse_correction(ctx.censeur, c, "Non")
     assert Assessment.unseen_decisions_count(ctx.t) == 1
     :ok = Assessment.mark_corrections_seen(ctx.t)
     assert Assessment.unseen_decisions_count(ctx.t) == 0
@@ -175,7 +186,7 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
   test "a decision taken from a stale page cannot overturn another", ctx do
     lock(ctx)
     {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
-    {:ok, _} = Assessment.refuse_correction(ctx.head, c)
+    {:ok, _} = Assessment.refuse_correction(ctx.head, c, "Non")
 
     assert {:error, _} = Assessment.approve_correction(ctx.censeur, c)
     assert Decimal.equal?(mark_of(ctx).score, 12)
@@ -183,7 +194,7 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
 
     {:ok, c2} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(15)))
     {:ok, _} = Assessment.approve_correction(ctx.head, c2)
-    assert {:error, _} = Assessment.refuse_correction(ctx.censeur, c2)
+    assert {:error, _} = Assessment.refuse_correction(ctx.censeur, c2, "Non")
     assert Decimal.equal?(mark_of(ctx).score, 15)
 
     assert Enum.count(Assessment.list_mark_events(ctx.head), &(&1.action == :correction_refusee)) ==

@@ -1,20 +1,23 @@
 defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   @moduledoc """
-  Censorat → Corrections de notes (spec D3c/D3a): requests awaiting a decision, those
-  decided, and the marks journal. Admin axis only (Proviseur, Censeur).
+  Censorat → Corrections de notes (spec D3c/D3a, Pilotage §2.7): requests awaiting a
+  decision as cards (a refusal needs a reason), those decided, and the marks journal
+  under the cards. Admin axis only (Proviseur, Censeur).
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Assessment, Organization}
-  alias TeacherAssistant.Academics.{Lock, MarkCorrectionMotive, MarkEntry}
+  alias TeacherAssistant.Academics.{Lock, MarkCorrectionMotive, MarkEntry, Reference}
+  alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.CorrectionsLive
 
-  @tabs ~w(pending decided journal)
+  @tabs ~w(pending decided)
+  @max_note 500
 
   def mount(_params, _session, socket) do
     if Assessment.can_decide_corrections?(socket.assigns.current_scope) do
-      {:ok, assign(socket, selected: nil)}
+      {:ok, socket |> assign(refusing: nil, refuse_form: nil, corrections: []) |> assign_empty()}
     else
       {:ok,
        socket
@@ -25,44 +28,83 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
 
   def handle_params(params, _uri, socket) do
     tab = if params["tab"] in @tabs, do: params["tab"], else: "pending"
-    {:noreply, socket |> assign(tab: tab, selected: nil) |> load_tab()}
+    {:noreply, socket |> assign(tab: tab, refusing: nil, refuse_form: nil) |> load_tab()}
   end
 
-  def handle_event("select", %{"id" => id}, socket) do
-    selected = Enum.find(socket.assigns.corrections, &(&1.id == id))
+  def handle_event("start-refuse", %{"id" => id}, socket),
+    do: {:noreply, assign(socket, refusing: id, refuse_form: refuse_form(id, "", nil))}
 
-    averages =
-      selected && Assessment.correction_averages(socket.assigns.current_scope, selected)
+  def handle_event("cancel-refuse", _params, socket),
+    do: {:noreply, assign(socket, refusing: nil, refuse_form: nil)}
 
-    {:noreply,
-     assign(socket, selected: selected, averages: averages, decision_form: decision_form())}
+  def handle_event("accept", %{"accept" => %{"id" => id} = params}, socket) do
+    note = params["note"]
+
+    with_correction(socket, id, fn correction ->
+      if too_long?(note) do
+        {:noreply, put_flash(socket, :error, gettext("La note dépasse 500 caractères."))}
+      else
+        message =
+          gettext("Correction acceptée : %{student} %{change}. Bulletin recalculé.",
+            student: correction.student.full_name,
+            change: change(correction)
+          )
+
+        record_decision(socket, &Assessment.approve_correction/3, correction, message, note)
+      end
+    end)
   end
 
-  def handle_event("note", %{"decision" => params}, socket),
-    do: {:noreply, assign(socket, decision_form: to_form(params, as: :decision))}
+  def handle_event("refuse", %{"refusal" => %{"id" => id} = params}, socket) do
+    note = params["note"]
 
-  def handle_event("approve", _params, socket),
-    do: decide(socket, &Assessment.approve_correction/3, gettext("Correction acceptée."))
+    with_correction(socket, id, fn correction ->
+      case refusal_error(note) do
+        nil ->
+          record_decision(
+            socket,
+            &Assessment.refuse_correction/3,
+            correction,
+            gettext("Demande refusée. L'enseignant est prévenu."),
+            note
+          )
 
-  def handle_event("refuse", _params, socket),
-    do: decide(socket, &Assessment.refuse_correction/3, gettext("Correction refusée."))
+        error ->
+          {:noreply, assign(socket, refusing: id, refuse_form: refuse_form(id, note, error))}
+      end
+    end)
+  end
 
-  defp decide(%{assigns: %{selected: nil}} = socket, _fun, _message), do: {:noreply, socket}
-
-  defp decide(socket, fun, message) do
-    note = socket.assigns.decision_form[:note].value
-
-    if String.length(String.trim(note || "")) > 500 do
-      {:noreply, put_flash(socket, :error, gettext("La note dépasse 500 caractères."))}
-    else
-      record_decision(socket, fun, message, note)
+  defp with_correction(socket, id, fun) do
+    case Enum.find(socket.assigns.corrections, &(&1.id == id)) do
+      nil -> {:noreply, load_tab(socket)}
+      correction -> fun.(correction)
     end
   end
 
-  defp record_decision(socket, fun, message, note) do
-    case fun.(socket.assigns.current_scope, socket.assigns.selected, note) do
+  defp too_long?(note), do: String.length(String.trim(note || "")) > @max_note
+
+  defp refusal_error(note) do
+    cond do
+      String.trim(note || "") == "" -> gettext("Indiquez le motif du refus.")
+      too_long?(note) -> gettext("La note dépasse 500 caractères.")
+      true -> nil
+    end
+  end
+
+  # The error is rendered by the template, so the form carries only the values.
+  defp refuse_form(id, note, error) do
+    to_form(%{"id" => id, "note" => note || "", "error" => error}, as: :refusal)
+  end
+
+  defp record_decision(socket, fun, correction, message, note) do
+    case fun.(socket.assigns.current_scope, correction, note) do
       {:ok, _correction} ->
-        {:noreply, socket |> put_flash(:info, message) |> assign(selected: nil) |> load_tab()}
+        {:noreply,
+         socket
+         |> put_flash(:info, message)
+         |> assign(refusing: nil, refuse_form: nil)
+         |> load_tab()}
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
@@ -77,14 +119,18 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
     end
   end
 
-  defp decision_form, do: to_form(%{"note" => ""}, as: :decision)
-
-  defp load_tab(%{assigns: %{tab: "journal"}} = socket),
-    do: assign(socket, corrections: [], journal: journal(socket.assigns.current_scope))
+  defp assign_empty(socket), do: assign(socket, journal: [], averages: %{})
 
   defp load_tab(%{assigns: %{tab: tab}} = socket) do
-    status = String.to_existing_atom(tab)
-    assign(socket, corrections: Assessment.list_corrections(socket.assigns.current_scope, status))
+    scope = socket.assigns.current_scope
+    corrections = Assessment.list_corrections(scope, String.to_existing_atom(tab))
+
+    if tab == "pending" do
+      averages = Map.new(corrections, &{&1.id, Assessment.correction_averages(scope, &1)})
+      assign(socket, corrections: corrections, averages: averages, journal: journal(scope))
+    else
+      assign(socket, corrections: corrections, averages: %{}, journal: [])
+    end
   end
 
   # Journal lines, newest first: one per save (a batch of marks), per correction step,
@@ -182,6 +228,24 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   defp local_time(%DateTime{} = at),
     do: at |> DateTime.add(3600) |> Calendar.strftime("%d/%m %H:%M")
 
+  defp change(c),
+    do:
+      value(c.current_status, c.current_score) <>
+        " → " <> value(c.requested_status, c.requested_score)
+
+  defp average_change({before, after_}), do: average(before) <> " → " <> average(after_)
+
+  defp requested_at(%DateTime{} = at) do
+    local = DateTime.add(at, 3600)
+
+    "#{Dates.relative(DateTime.to_date(local), Reference.today())} #{Calendar.strftime(local, "%H:%M")}"
+  end
+
+  defp pending_count_label(count) do
+    ngettext("%{count} demande en attente", "%{count} demandes en attente", count) <>
+      " · " <> gettext("une note ne change qu'après votre décision")
+  end
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
@@ -189,16 +253,13 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
         <.page_header
           eyebrow={gettext("Censorat · intégrité des notes")}
           title={gettext("Corrections de notes")}
+          subtitle={if @tab == "pending", do: pending_count_label(length(@corrections))}
         />
 
         <nav role="tablist" class="tabs tabs-box w-fit">
           <.link
             :for={
-              {tab, label} <- [
-                {"pending", gettext("En attente")},
-                {"decided", gettext("Traitées")},
-                {"journal", gettext("Journal")}
-              ]
+              {tab, label} <- [{"pending", gettext("En attente")}, {"decided", gettext("Traitées")}]
             }
             id={"review-tab-#{tab}"}
             role="tab"
@@ -209,95 +270,129 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
           </.link>
         </nav>
 
-        <div :if={@tab == "pending"} class="grid gap-4 lg:grid-cols-[3fr_2fr]">
-          <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>{gettext("Date")}</th>
-                  <th>{gettext("Enseignant")}</th>
-                  <th>{gettext("Élève")}</th>
-                  <th>{gettext("Évaluation")}</th>
-                  <th>{gettext("Avant → après")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :if={@corrections == []}>
-                  <td colspan="5" class="text-center text-base-content/60">
-                    {gettext("Aucune demande en attente.")}
-                  </td>
-                </tr>
-                <tr
-                  :for={c <- @corrections}
-                  id={"pending-#{c.id}"}
-                  phx-click="select"
-                  phx-value-id={c.id}
-                  class={[
-                    "cursor-pointer transition hover:bg-base-200",
-                    @selected && @selected.id == c.id && "bg-base-200"
-                  ]}
-                >
-                  <td class="ta-num">{Calendar.strftime(c.inserted_at, "%d/%m")}</td>
-                  <td>{c.requester && author(c.requester)}</td>
-                  <td>{c.student.full_name} · {c.assessment.teaching_context.class_group.label}</td>
-                  <td>{c.assessment.label}</td>
-                  <td class="ta-num">
-                    {value(c.current_status, c.current_score)} → {value(
-                      c.requested_status,
-                      c.requested_score
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <div :if={@tab == "pending"} class="space-y-8">
+          <p :if={@corrections == []} class="ta-panel text-center text-base-content/60">
+            {gettext("Aucune demande en attente.")}
+          </p>
+
+          <div class="grid gap-4 lg:grid-cols-2">
+            <article :for={c <- @corrections} id={"correction-card-#{c.id}"} class="ta-leaf space-y-3">
+              <div>
+                <p class="font-semibold">{c.student.full_name}</p>
+                <p class="text-sm text-base-content/70">
+                  {c.assessment.teaching_context.class_group.label} · {c.assessment.teaching_context.subject} · {gettext(
+                    "Séquence %{n}",
+                    n: c.assessment.sequence.number
+                  )} · {c.assessment.label}
+                </p>
+              </div>
+
+              <p class="ta-num text-3xl">{change(c)}</p>
+              <p class="text-sm text-base-content/70">
+                {gettext("Moyenne de séquence : %{change}", change: average_change(@averages[c.id]))}
+              </p>
+              <span class="badge badge-outline">{MarkCorrectionMotive.label(c.motive)}</span>
+              <p class="text-xs text-base-content/60">
+                {gettext("Demandée par %{name} · %{when}",
+                  name: (c.requester && author(c.requester)) || "—",
+                  when: requested_at(c.inserted_at)
+                )}
+              </p>
+
+              <.form
+                :if={@refusing != c.id}
+                for={to_form(%{"id" => c.id, "note" => ""}, as: :accept)}
+                id={"accept-form-#{c.id}"}
+                phx-submit="accept"
+                class="space-y-2"
+              >
+                <input type="hidden" name="accept[id]" value={c.id} />
+                <.input
+                  type="text"
+                  name="accept[note]"
+                  id={"accept-note-#{c.id}"}
+                  value=""
+                  label={gettext("Note pour l'enseignant (facultatif)")}
+                  maxlength="500"
+                />
+                <div class="flex flex-wrap gap-2">
+                  <button type="submit" class="btn btn-primary btn-sm">
+                    <.icon name="hero-check" class="size-4" /> {gettext("Accepter")}
+                  </button>
+                  <button
+                    id={"refuse-#{c.id}"}
+                    type="button"
+                    phx-click="start-refuse"
+                    phx-value-id={c.id}
+                    class="btn btn-ghost btn-sm"
+                  >
+                    {gettext("Refuser")}
+                  </button>
+                </div>
+              </.form>
+
+              <.form
+                :if={@refusing == c.id}
+                for={@refuse_form}
+                id={"refuse-form-#{c.id}"}
+                phx-submit="refuse"
+                class="space-y-2"
+              >
+                <input type="hidden" name="refusal[id]" value={c.id} />
+                <.input
+                  type="textarea"
+                  field={@refuse_form[:note]}
+                  label={gettext("Motif du refus")}
+                  rows="2"
+                  maxlength="600"
+                  required
+                />
+                <p :if={@refuse_form[:error].value} role="alert" class="text-sm text-error">
+                  {@refuse_form[:error].value}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <button type="submit" class="btn btn-error btn-sm">
+                    {gettext("Confirmer le refus")}
+                  </button>
+                  <button type="button" phx-click="cancel-refuse" class="btn btn-ghost btn-sm">
+                    {gettext("Annuler")}
+                  </button>
+                </div>
+              </.form>
+            </article>
           </div>
 
-          <aside :if={@selected} id="correction-detail" class="ta-leaf space-y-3 p-4">
-            <h2 class="font-display text-lg">
-              {@selected.student.full_name} · {@selected.assessment.label}
-            </h2>
-            <dl class="grid grid-cols-2 gap-2 text-sm">
-              <dt class="text-base-content/60">{gettext("Note actuelle")}</dt>
-              <dd class="ta-num">{value(@selected.current_status, @selected.current_score)}</dd>
-              <dt class="text-base-content/60">{gettext("Note demandée")}</dt>
-              <dd class="ta-num font-semibold">
-                {value(@selected.requested_status, @selected.requested_score)}
-              </dd>
-              <dt class="text-base-content/60">{gettext("Motif")}</dt>
-              <dd>{MarkCorrectionMotive.label(@selected.motive)}</dd>
-              <dt class="text-base-content/60">{gettext("Moyenne de séquence de l'élève")}</dt>
-              <dd class="ta-num">
-                {average(elem(@averages, 0))} → {average(elem(@averages, 1))}
-              </dd>
-            </dl>
-            <.form for={@decision_form} id="decision-form" phx-change="note" class="space-y-2">
-              <.input
-                type="textarea"
-                field={@decision_form[:note]}
-                label={gettext("Note pour l'enseignant")}
-                rows="2"
-                maxlength="500"
-              />
-              <div class="flex gap-2">
-                <button
-                  id="approve-correction"
-                  type="button"
-                  phx-click="approve"
-                  class="btn btn-primary btn-sm"
-                >
-                  {gettext("Accepter")}
-                </button>
-                <button
-                  id="refuse-correction"
-                  type="button"
-                  phx-click="refuse"
-                  class="btn btn-ghost btn-sm"
-                >
-                  {gettext("Refuser")}
-                </button>
-              </div>
-            </.form>
-          </aside>
+          <section id="journal" class="space-y-2">
+            <h2 class="font-display text-lg">{gettext("Journal des notes")}</h2>
+            <p class="text-sm text-base-content/70">
+              {gettext("Toute modification après verrouillage est tracée.")}
+            </p>
+            <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>{gettext("Horodatage")}</th>
+                    <th>{gettext("Auteur")}</th>
+                    <th>{gettext("Action")}</th>
+                    <th>{gettext("Détail")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :if={@journal == []}>
+                    <td colspan="4" class="text-center text-base-content/60">
+                      {gettext("Le journal est vide.")}
+                    </td>
+                  </tr>
+                  <tr :for={line <- @journal} id={"journal-#{line.id}"}>
+                    <td class="ta-num whitespace-nowrap">{local_time(line.at)}</td>
+                    <td>{line.who}</td>
+                    <td>{line.what}</td>
+                    <td class="ta-num">{line.detail}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
         <div
@@ -324,43 +419,8 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
                 <td class="ta-num">{c.decided_at && local_time(c.decided_at)}</td>
                 <td>{c.requester && author(c.requester)}</td>
                 <td>{c.student.full_name} · {c.assessment.teaching_context.class_group.label}</td>
-                <td class="ta-num">
-                  {value(c.current_status, c.current_score)} → {value(
-                    c.requested_status,
-                    c.requested_score
-                  )}
-                </td>
+                <td class="ta-num">{change(c)}</td>
                 <td><CorrectionsLive.correction_status status={c.status} /></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div
-          :if={@tab == "journal"}
-          id="journal"
-          class="overflow-x-auto rounded-box border border-base-300 bg-base-100"
-        >
-          <table class="table">
-            <thead>
-              <tr>
-                <th>{gettext("Horodatage")}</th>
-                <th>{gettext("Auteur")}</th>
-                <th>{gettext("Action")}</th>
-                <th>{gettext("Détail")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :if={@journal == []}>
-                <td colspan="4" class="text-center text-base-content/60">
-                  {gettext("Le journal est vide.")}
-                </td>
-              </tr>
-              <tr :for={line <- @journal} id={"journal-#{line.id}"}>
-                <td class="ta-num whitespace-nowrap">{local_time(line.at)}</td>
-                <td>{line.who}</td>
-                <td>{line.what}</td>
-                <td class="ta-num">{line.detail}</td>
               </tr>
             </tbody>
           </table>

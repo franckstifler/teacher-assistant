@@ -173,7 +173,7 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
     close(ctx)
 
     assert closed_error?(Assessment.approve_correction(ctx.head, pending))
-    assert closed_error?(Assessment.refuse_correction(ctx.head, pending))
+    assert closed_error?(Assessment.refuse_correction(ctx.head, pending, "Non"))
 
     assert closed_error?(
              Assessment.request_correction(ctx.t, %{

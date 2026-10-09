@@ -346,7 +346,7 @@ defmodule TeacherAssistant.Assessment do
     :student,
     :requester,
     :decider,
-    assessment: [teaching_context: [:class_group]]
+    assessment: [:sequence, teaching_context: [:class_group]]
   ]
 
   @doc "Asks to change a locked mark (the course's teacher only); notifies the deciders."
