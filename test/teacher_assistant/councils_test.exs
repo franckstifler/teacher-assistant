@@ -241,4 +241,45 @@ defmodule TeacherAssistant.CouncilsTest do
       refute Map.has_key?(view.council.outcomes[ctx.awa.id], :passage)
     end
   end
+
+  describe "scheduling and status" do
+    test "schedule sets date and time, creating the council", ctx do
+      {:ok, c} =
+        Councils.schedule(ctx.scope, ctx.cg, {:trimester, ctx.term}, ~D[2025-10-14], ~T[14:00:00])
+
+      assert c.held_on == ~D[2025-10-14] and c.starts_at == ~T[14:00:00]
+      assert Councils.status(c, false) == :planned
+    end
+
+    test "a council created by a decision save is still to plan", ctx do
+      {:ok, _} =
+        Councils.set_decision(ctx.scope, ctx.cg, {:trimester, ctx.term}, ctx.awa.id, %{
+          "distinction_choice" => ""
+        })
+
+      stored = Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term})
+      assert stored.id != nil and stored.starts_at == nil
+      assert Councils.status(stored, false) == :to_plan
+    end
+
+    test "status: no council, held, held + published" do
+      assert Councils.status(nil, false) == :to_plan
+      held = %TeacherAssistant.Academics.ClassCouncil{status: :held, starts_at: ~T[14:00:00]}
+      assert Councils.status(held, false) == :held
+      assert Councils.status(held, true) == :closed
+    end
+
+    test "a teacher cannot schedule", ctx do
+      teacher = TeacherFixtures.member_scope_fixture(ctx.scope)
+
+      assert {:error, _} =
+               Councils.schedule(
+                 teacher,
+                 ctx.cg,
+                 {:trimester, ctx.term},
+                 ~D[2025-10-14],
+                 ~T[14:00:00]
+               )
+    end
+  end
 end

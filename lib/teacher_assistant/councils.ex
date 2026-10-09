@@ -59,13 +59,33 @@ defmodule TeacherAssistant.Councils do
 
   @doc "Saves the header (`held_on`, `chair`, `attendees`, `observations`), creating the council."
   def save_header(%Scope{} = scope, %ClassGroup{} = cg, period, %{} = params) do
-    attrs = Map.take(params, ~w(held_on chair attendees observations))
+    attrs = Map.take(params, ~w(held_on starts_at chair attendees observations))
 
     with :ok <- unlocked(scope, cg, period),
          {:ok, council} <- ensure(scope, cg, period) do
       council |> Ash.Changeset.for_update(:edit, attrs, scope: scope) |> Ash.update()
     end
   end
+
+  @doc "Plans the council on `date` at `time` (creating it if needed)."
+  def schedule(%Scope{} = scope, %ClassGroup{} = cg, period, %Date{} = date, %Time{} = time) do
+    with :ok <- unlocked(scope, cg, period),
+         {:ok, council} <- ensure(scope, cg, period) do
+      council
+      |> Ash.Changeset.for_update(:schedule, %{held_on: date, starts_at: time}, scope: scope)
+      |> Ash.update()
+    end
+  end
+
+  @doc """
+  The council's state for the lists (spec 2026-10-09 §1.1): to plan until a time is
+  set, planned while open, held, closed once the period's bulletins are published.
+  """
+  def status(nil, _published?), do: :to_plan
+  def status(%ClassCouncil{status: :held}, true), do: :closed
+  def status(%ClassCouncil{status: :held}, false), do: :held
+  def status(%ClassCouncil{starts_at: nil}, _published?), do: :to_plan
+  def status(%ClassCouncil{}, _published?), do: :planned
 
   @doc """
   Records the council's decision for a student. `""` (or a missing key) means no choice /

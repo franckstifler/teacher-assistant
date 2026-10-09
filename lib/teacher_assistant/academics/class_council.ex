@@ -63,6 +63,7 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
         :term_id,
         :period_key,
         :held_on,
+        :starts_at,
         :chair,
         :attendees,
         :observations
@@ -70,7 +71,11 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
     end
 
     update :edit do
-      accept [:held_on, :chair, :attendees, :observations]
+      accept [:held_on, :starts_at, :chair, :attendees, :observations]
+    end
+
+    update :schedule do
+      accept [:held_on, :starts_at]
     end
 
     update :hold do
@@ -116,6 +121,7 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
     # `Organization.period_param/1` of the period: "trim:<term id>" or "annee" (spec I4).
     attribute :period_key, :string, allow_nil?: false, public?: true
     attribute :held_on, :date, public?: true
+    attribute :starts_at, :time, public?: true
     attribute :chair, :string, public?: true, constraints: [max_length: 200]
     attribute :attendees, :string, public?: true, constraints: [max_length: 2000]
     attribute :observations, :string, public?: true, constraints: [max_length: 4000]
