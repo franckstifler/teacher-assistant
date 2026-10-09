@@ -81,21 +81,26 @@ defmodule TeacherAssistantWeb.School.NotificationsLive do
             type="button"
             phx-click="open"
             phx-value-id={n.id}
-            data-unread={is_nil(n.read_at)}
+            data-unread={is_nil(n.read_at) && "true"}
             class={[
-              "flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-base-200",
-              is_nil(n.read_at) && "font-semibold"
+              "flex w-full items-start gap-3 rounded-box px-3 py-2.5 text-left transition-colors hover:bg-base-200",
+              is_nil(n.read_at) && "bg-warning/5"
             ]}
           >
             <span class={[
               "mt-2 size-2 shrink-0 rounded-full",
-              if(is_nil(n.read_at), do: "bg-primary", else: "bg-transparent")
+              if(is_nil(n.read_at), do: "bg-warning", else: "bg-transparent")
             ]}></span>
             <span class="min-w-0 flex-1">
-              <span class="block text-[0.92rem]">{NotificationText.text(n)}</span>
-              <span class="ta-num block text-xs font-normal text-base-content/55">
-                {NotificationText.when_text(n)}
+              <span class={["block text-[0.92rem]", is_nil(n.read_at) && "font-bold"]}>
+                {NotificationText.title(n)}
               </span>
+              <span data-role="detail" class="block text-xs text-base-content/70">
+                {NotificationText.detail(n)}
+              </span>
+            </span>
+            <span class="ta-num whitespace-nowrap text-right text-xs text-base-content/70">
+              {NotificationText.when_text(n)}
             </span>
             <.icon name="hero-chevron-right" class="mt-1 size-4 shrink-0 text-base-content/30" />
           </button>

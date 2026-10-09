@@ -393,17 +393,24 @@ defmodule TeacherAssistantWeb.Layouts do
               phx-click="notification:open"
               phx-value-id={n.id}
               class={[
-                "flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-base-200",
-                is_nil(n.read_at) && "font-semibold"
+                "flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-base-200"
               ]}
             >
               <span class={[
                 "mt-1.5 size-2 shrink-0 rounded-full",
-                if(is_nil(n.read_at), do: "bg-primary", else: "bg-transparent")
+                if(is_nil(n.read_at), do: "bg-warning", else: "bg-transparent")
               ]}></span>
               <span class="min-w-0 flex-1">
-                <span class="block">{NotificationText.text(n)}</span>
-                <span class="ta-num block text-[0.7rem] font-normal text-base-content/50">
+                <span class={["block", is_nil(n.read_at) && "font-semibold"]}>
+                  {NotificationText.title(n)}
+                </span>
+                <span
+                  :if={NotificationText.detail(n)}
+                  class="block text-xs font-normal text-base-content/70"
+                >
+                  {NotificationText.detail(n)}
+                </span>
+                <span class="ta-num block text-[0.7rem] font-normal text-base-content/70">
                   {NotificationText.when_text(n)}
                 </span>
               </span>

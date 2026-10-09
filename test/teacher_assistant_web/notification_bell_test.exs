@@ -26,11 +26,8 @@ defmodule TeacherAssistantWeb.NotificationBellTest do
     assert has_element?(view, "#notification-bell-count", "1")
     assert has_element?(view, "#notification-bell-mobile .badge", "1")
 
-    assert has_element?(
-             view,
-             "#notification-bell li",
-             "Saisie en retard : Maths · 3e A · Séquence 2"
-           )
+    assert has_element?(view, "#notification-bell li", "Saisie en retard")
+    assert has_element?(view, "#notification-bell li", "Maths · 3e A · Séquence 2")
 
     assert has_element?(view, ~s|#bell-see-all[href="/school/notifications"]|)
   end

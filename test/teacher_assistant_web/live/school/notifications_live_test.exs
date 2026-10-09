@@ -30,6 +30,12 @@ defmodule TeacherAssistantWeb.School.NotificationsLiveTest do
     refute has_element?(view, "#notification-#{maths.id}[data-unread]")
     assert html =~ ~r/SVT.*Maths/s
 
+    assert has_element?(
+             view,
+             "#notification-#{svt.id} [data-role='detail']",
+             "SVT · 3e A · Séquence 1"
+           )
+
     assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
              view |> element("#notification-#{svt.id}") |> render_click()
 

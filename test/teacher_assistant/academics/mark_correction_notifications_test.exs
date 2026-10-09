@@ -44,7 +44,8 @@ defmodule TeacherAssistant.Academics.MarkCorrectionNotificationsTest do
              "student" => "Awa",
              "subject" => "Maths",
              "class" => ctx.cg.label,
-             "assessment" => "Devoir 1"
+             "assessment" => "Devoir 1",
+             "change" => "12 → 14"
            }
 
     assert %{unread: 1} = Notifications.bell(ctx.head)

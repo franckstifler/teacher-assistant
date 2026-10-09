@@ -28,6 +28,7 @@ defmodule TeacherAssistant.Assessment do
     GradingRules,
     Mark,
     MarkCorrection,
+    MarkEntry,
     MarkEvent,
     Marks,
     Sequence,
@@ -346,7 +347,10 @@ defmodule TeacherAssistant.Assessment do
         scope,
         :correction_requested,
         others(scope, Notifications.admin_ids(scope)),
-        Map.put(correction_params(correction), :teacher, user_name(correction.requester)),
+        correction
+        |> correction_params()
+        |> Map.put(:teacher, user_name(correction.requester))
+        |> Map.put(:change, correction_change(correction)),
         "/school/corrections/review"
       )
 
@@ -446,6 +450,11 @@ defmodule TeacherAssistant.Assessment do
       class: tc.class_group && tc.class_group.label,
       assessment: assessment.label
     }
+  end
+
+  defp correction_change(%MarkCorrection{} = c) do
+    "#{MarkEntry.format(c.current_status, c.current_score)} → " <>
+      MarkEntry.format(c.requested_status, c.requested_score)
   end
 
   # Nobody is notified of their own action; a requester gone from the school (nil) is skipped.
