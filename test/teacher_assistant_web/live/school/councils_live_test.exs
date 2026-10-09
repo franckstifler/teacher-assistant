@@ -47,11 +47,73 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
   test "the list shows each class with its entry rate and status", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
     assert has_element?(view, "#council-row-#{ctx.cg.id}", "4e B")
-    assert has_element?(view, "#council-row-#{ctx.cg.id}", "Saisie incomplète")
-    assert has_element?(view, "#councils-ready", "0 /")
+    assert has_element?(view, "#council-row-#{ctx.cg.id}", "Notes 50 %")
 
-    view |> element("#council-row-#{ctx.cg.id} a") |> render_click()
+    view |> element("#class-link-#{ctx.cg.id}") |> render_click()
     assert_redirect(view, council_path(ctx.cg, ctx.term))
+  end
+
+  describe "list and inline planning (Task 9)" do
+    test "summary, statuses and CTAs", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+      assert has_element?(view, "#councils-summary", "à planifier")
+
+      assert has_element?(
+               view,
+               "#council-row-#{ctx.cg.id} [data-status='to_plan']",
+               "À planifier"
+             )
+
+      assert has_element?(view, "#plan-#{ctx.cg.id}")
+    end
+
+    test "« Planifier » saves date and time inline", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+      view |> element("#plan-#{ctx.cg.id}") |> render_click()
+
+      view
+      |> form("#plan-form-#{ctx.cg.id}", %{"plan" => %{"date" => "2025-10-14", "time" => "14:00"}})
+      |> render_submit()
+
+      assert has_element?(view, "#council-row-#{ctx.cg.id} [data-status='planned']", "Planifié")
+      assert has_element?(view, "#council-row-#{ctx.cg.id}", "14:00")
+      assert has_element?(view, "#council-row-#{ctx.cg.id}", "Préparer")
+      assert has_element?(view, "#councils-summary", "1 planifié")
+    end
+
+    test "an invalid or missing time shows a form error", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+      view |> element("#plan-#{ctx.cg.id}") |> render_click()
+
+      view
+      |> form("#plan-form-#{ctx.cg.id}", %{"plan" => %{"date" => "2025-10-14", "time" => ""}})
+      |> render_submit()
+
+      assert has_element?(view, "#plan-form-#{ctx.cg.id} [data-plan-error]")
+      assert has_element?(view, "#council-row-#{ctx.cg.id} [data-status='to_plan']")
+    end
+
+    test "a locked council flashes", ctx do
+      {:ok, _} = TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+
+      render_submit(view, "plan", %{
+        "plan" => %{"id" => ctx.cg.id, "date" => "2025-10-14", "time" => "14:00"}
+      })
+
+      assert render(view) =~ "Conseil verrouillé : bulletins publiés."
+    end
+
+    test "a held council links to its PV", ctx do
+      {:ok, _} = Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
+      {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+
+      assert has_element?(
+               view,
+               "#council-row-#{ctx.cg.id} a[href^='/school/councils/#{ctx.cg.id}/print']",
+               "Voir le PV"
+             )
+    end
   end
 
   test "the page saves the header and shows the proposals by rank", ctx do
