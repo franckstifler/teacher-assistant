@@ -91,7 +91,8 @@ defmodule TeacherAssistant.ReportCardsTest do
 
     [n] = fm |> TeacherAssistant.Notifications.inbox(1) |> Map.get(:results)
     assert n.params["class"] == "6e P"
-    assert n.params["period"] == "Trimestre 1"
+    assert n.params["period_kind"] == "trimester"
+    assert n.params["position"] == "1"
     assert n.link == "/school/bulletins?class=#{cg.id}&period=trim:#{term.id}"
   end
 

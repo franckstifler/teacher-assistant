@@ -137,7 +137,7 @@ defmodule TeacherAssistant.ReportCards do
 
   # The class's form master and teachers hear of the publication; never the publisher.
   # A notification failure must not undo the publication.
-  defp notify_published(scope, cg, {_, subject} = period) do
+  defp notify_published(scope, cg, period) do
     teachers = for tc <- Curriculum.list_assignments_for_class(scope, cg), do: tc.teacher_user_id
     recipients = [cg.form_master_user_id | teachers]
     recipients = Enum.reject(recipients, &(is_nil(&1) or &1 == scope.current_user.id))
@@ -148,10 +148,11 @@ defmodule TeacherAssistant.ReportCards do
       recipients,
       %{
         class: cg.label,
-        period: publication_period_label(period),
+        period_kind: elem(period, 0),
+        position: period_position(period),
         by: Accounts.User.display_name(scope.current_user)
       },
-      "/school/bulletins?class=#{cg.id}&period=#{Organization.period_param({elem(period, 0), subject})}"
+      "/school/bulletins?class=#{cg.id}&period=#{Organization.period_param(period)}"
     )
   rescue
     error ->
@@ -159,10 +160,8 @@ defmodule TeacherAssistant.ReportCards do
       :error
   end
 
-  defp publication_period_label({:trimester, %Term{position: n}}),
-    do: gettext("Trimestre %{n}", n: n)
-
-  defp publication_period_label({:annual, _}), do: gettext("Année")
+  defp period_position({:trimester, %Term{position: n}}), do: n
+  defp period_position(_), do: ""
 
   @doc "Withdraws a publication; `reason` is required."
   def withdraw(%Scope{} = scope, %BulletinPublication{} = pub, reason) do

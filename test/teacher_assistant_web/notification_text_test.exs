@@ -61,12 +61,18 @@ defmodule TeacherAssistantWeb.NotificationTextTest do
     note =
       n(:bulletins_published, %{
         "class" => "6e A",
-        "period" => "Trimestre 1",
+        "period_kind" => "trimester",
+        "position" => "1",
         "by" => "Marie Ekotto"
       })
 
     assert NotificationText.title(note) == "Bulletins Trimestre 1 publiés"
     assert NotificationText.detail(note) == "6e A · par Marie Ekotto"
+  end
+
+  test "bulletins published for the year" do
+    note = n(:bulletins_published, %{"class" => "6e A", "period_kind" => "annual"})
+    assert NotificationText.title(note) == "Bulletins Année publiés"
   end
 
   test "member joined" do

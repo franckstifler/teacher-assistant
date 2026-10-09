@@ -257,7 +257,10 @@ defmodule TeacherAssistant.Accounts do
       )
     end
   rescue
-    _ -> :error
+    error ->
+      require Logger
+      Logger.warning("member_joined notification failed: #{Exception.message(error)}")
+      :error
   end
 
   defp check_acceptable(%SchoolInvitation{status: :pending} = inv) do

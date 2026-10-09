@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.NotificationText do
   def title(%{kind: :roll_call_reminder}), do: gettext("Appel non fait")
 
   def title(%{kind: :bulletins_published, params: p}) do
-    gettext("Bulletins %{period} publiés", period: get(p, "period"))
+    gettext("Bulletins %{period} publiés", period: period_label(p))
   end
 
   def title(%{kind: :member_joined, params: p}) do
@@ -101,6 +101,14 @@ defmodule TeacherAssistantWeb.NotificationText do
       present -> Enum.join(present, " · ")
     end
   end
+
+  # Built at display time so it follows the reader's language.
+  defp period_label(%{"period_kind" => "annual"}), do: gettext("Année")
+
+  defp period_label(%{"period_kind" => "trimester", "position" => n}),
+    do: gettext("Trimestre %{n}", n: n)
+
+  defp period_label(_), do: "—"
 
   defp by_text(params) do
     case present(params, "by") do
