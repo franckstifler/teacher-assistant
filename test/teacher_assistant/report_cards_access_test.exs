@@ -60,11 +60,14 @@ defmodule TeacherAssistant.ReportCardsAccessTest do
     assert ctx.tscope |> ReportCards.visible_classes(ctx.year) |> Enum.map(& &1.id) == [ctx.cg.id]
   end
 
-  test "periods are the terms then the year", ctx do
+  test "periods are the séquences, then the terms, then the year", ctx do
+    terms = Organization.list_terms(ctx.scope, ctx.year)
     params = ctx.scope |> ReportCards.periods(ctx.year) |> Enum.map(&elem(&1, 0))
+    n_seq = ctx.scope |> Organization.list_sequences(ctx.year) |> length()
     assert List.last(params) == "annee"
-    assert length(params) == length(Organization.list_terms(ctx.scope, ctx.year)) + 1
-    assert hd(params) == "trim:" <> ctx.term.id
+    assert length(params) == n_seq + length(terms) + 1
+    assert hd(params) =~ "seq:"
+    assert ("trim:" <> ctx.term.id) in params
   end
 
   test "entry rate over the term's séquences", ctx do

@@ -200,6 +200,28 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert id == republished.id
   end
 
+  test "publish checklist: notes, conduct, council", ctx do
+    %{scope: scope, cg: cg, term: term} = ctx
+    checks = ReportCards.publish_checklist(scope, cg, {:trimester, term})
+
+    assert [
+             %{key: :notes, ok?: false, data: %{rate: rate, unassigned: _}},
+             %{key: :conduct, ok?: false, data: %{entered: 0, effectif: 1}},
+             %{key: :council, ok?: false, data: %{status: :to_plan}}
+           ] = checks
+
+    assert rate < 100
+
+    {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
+
+    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}] =
+             ReportCards.publish_checklist(scope, cg, {:trimester, term})
+  end
+
+  test "a séquence is never publishable", %{scope: scope, cg: cg, seq: seq} do
+    assert {:error, :not_publishable} = ReportCards.publish(scope, cg, {:sequence, seq})
+  end
+
   describe "class council (I3)" do
     test "publishing a trimester or the year needs its held council", ctx do
       %{scope: scope, cg: cg, term: term, year: year} = ctx

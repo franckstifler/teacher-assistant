@@ -1,11 +1,10 @@
 defmodule TeacherAssistantWeb.School.BulletinsLive do
   @moduledoc """
-  Bulletins (spec I2, mockup Censeur → "Bulletins"): one class and one period
-  (a trimester or the year) at a time — the ranked list, a side panel with the
-  selected student's report card in short, print buttons, and for the Proviseur and
-  Censeur the mark-entry rate, publishing (with a confirmation below 100 %),
-  withdrawal with a reason and the history. Teachers of the class see published
-  periods only, read-only.
+  Bulletins (spec I2, Pilotage redesign §2.3): one class and one period at a time —
+  a séquence (read-only), a trimester or the year. The ranked list with a side card
+  for the selected student; for the Proviseur and Censeur a banner (published, or a
+  draft with its pre-publish checklist and the publish button), withdrawal with a
+  reason and the history. Teachers of the class see published periods only.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -22,7 +21,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
        assign(socket,
          year: year,
          classes: classes,
-         periods: ReportCards.periods(scope, year),
+         periods: periods_for(scope, year),
          can_publish?: ReportCards.can_publish?(scope),
          confirm?: false,
          withdrawing?: false
@@ -30,6 +29,15 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
+  end
+
+  # Séquence report cards are live figures: only the school's managers see them.
+  defp periods_for(scope, year) do
+    periods = ReportCards.periods(scope, year)
+
+    if ReportCards.can_publish?(scope),
+      do: periods,
+      else: Enum.reject(periods, &match?({_, _, {:sequence, _}}, &1))
   end
 
   def handle_params(params, _uri, socket) do
@@ -78,11 +86,20 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
       view: view,
       rows: rows,
       selected: Enum.find(rows, &(&1.student.id == student_id)) || List.first(rows),
-      rate: if(can_publish?, do: ReportCards.entry_rate(scope, cg, period)),
+      publishable?: publishable?(period),
+      checks:
+        checks(can_publish? and status == :draft and publishable?(period), scope, cg, period),
+      rate:
+        if(can_publish? and publishable?(period), do: ReportCards.entry_rate(scope, cg, period)),
       council_held?: council_held?(can_publish?, scope, cg, period),
       history: if(can_publish?, do: ReportCards.history(scope, cg, period), else: [])
     )
   end
+
+  defp publishable?({kind, _}), do: kind in [:trimester, :annual]
+
+  defp checks(true, scope, cg, period), do: ReportCards.publish_checklist(scope, cg, period)
+  defp checks(false, _scope, _cg, _period), do: []
 
   # Spec I3/I4: a trimester or the year is published only once its class council is held.
   defp council_held?(true, scope, cg, {kind, _} = period) when kind in [:trimester, :annual],
@@ -185,10 +202,6 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     ~p"/school/bulletins?#{query}"
   end
 
-  defp print_one(assigns, row),
-    do:
-      ~p"/school/classes/#{assigns.cg.id}/students/#{row.enrollment.id}/bulletin/print?period=#{assigns.period_param}"
-
   defp period_label(periods, param),
     do: Enum.find_value(periods, fn {p, label, _} -> p == param && label end)
 
@@ -207,8 +220,44 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   defp coef(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal)
   defp coef(_), do: "—"
 
-  defp hours(nil), do: "—"
-  defp hours(c), do: c.justified_hours |> Decimal.add(c.unjustified_hours) |> fmt()
+  defp low?(%Decimal{} = d), do: Decimal.lt?(d, 10)
+  defp low?(_), do: false
+
+  defp short_date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
+  defp short_date(_), do: "—"
+
+  defp ordinal(nil), do: "—"
+  defp ordinal(1), do: pgettext("ordinal rank", "1er")
+  defp ordinal(2), do: pgettext("ordinal rank", "2e")
+  defp ordinal(3), do: pgettext("ordinal rank", "3e")
+  defp ordinal(n), do: pgettext("ordinal rank", "%{n}e", n: n)
+
+  defp check_text(%{key: :notes, data: %{rate: rate, unassigned: 0}}),
+    do: gettext("Notes : %{rate} saisies", rate: rate_text(rate))
+
+  defp check_text(%{key: :notes, data: %{rate: rate, unassigned: n}}),
+    do:
+      ngettext(
+        "Notes : %{rate} saisies (%{count} matière sans enseignant)",
+        "Notes : %{rate} saisies (%{count} matières sans enseignant)",
+        n,
+        rate: rate_text(rate)
+      )
+
+  defp check_text(%{key: :conduct, data: %{entered: entered, effectif: effectif}}),
+    do: gettext("Conduite : %{entered} / %{effectif} notes", entered: entered, effectif: effectif)
+
+  defp check_text(%{key: :council, data: %{status: :held, date: date}}),
+    do: gettext("Conseil de classe : tenu le %{date}", date: short_date(date))
+
+  defp check_text(%{key: :council, data: %{status: :planned, date: date, time: time}}),
+    do:
+      gettext("Conseil de classe : prévu le %{date} à %{time}",
+        date: short_date(date),
+        time: Calendar.strftime(time, "%H:%M")
+      )
+
+  defp check_text(%{key: :council}), do: gettext("Conseil de classe : à planifier")
 
   defp rate_text(nil), do: "—"
   defp rate_text(rate), do: "#{rate} %"
@@ -218,12 +267,8 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="bulletins" class="space-y-4">
         <.page_header
-          eyebrow={
-            if @can_publish?,
-              do: gettext("Censorat · bulletins"),
-              else: gettext("Bulletins · lecture seule")
-          }
-          title={gettext("Bulletins · %{class}", class: @cg.label)}
+          eyebrow={gettext("Bulletins · %{class}", class: @cg.label)}
+          title={gettext("Bulletins")}
         />
 
         <div id="bulletins-classes" class="flex flex-wrap gap-2">
@@ -240,34 +285,80 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
           </.link>
         </div>
 
-        <div role="tablist" class="tabs tabs-box w-fit">
+        <div role="tablist" class="tabs tabs-box max-w-full flex-nowrap overflow-x-auto">
           <.link
             :for={{param, label, _} <- @periods}
             id={"period-#{dom_id(param)}"}
             role="tab"
-            patch={patch_to(assigns, %{period: param})}
-            class={["tab", param == @period_param && "tab-active"]}
+            patch={patch_to(assigns, %{period: param, student: nil})}
+            class={["tab shrink-0", param == @period_param && "tab-active"]}
           >
             {label}
           </.link>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-          <span
-            id="bulletins-status"
-            class={["badge", if(@status == :published, do: "badge-success", else: "badge-warning")]}
+        <div
+          :if={@status == :published}
+          id="published-banner"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-primary/45 bg-primary/10 p-3 text-sm"
+        >
+          <p>
+            {gettext("Publiés le %{date} par %{who}",
+              date: date(@publication),
+              who: who(@publication.published_by)
+            )} · {gettext("visibles par les professeurs principaux et imprimables.")}
+          </p>
+          <a
+            id="print-class"
+            href={~p"/school/classes/#{@cg.id}/bulletin/print?period=#{@period_param}"}
+            target="_blank"
+            class="btn btn-ghost btn-sm gap-1"
           >
-            {if @status == :published,
-              do:
-                gettext("Publié le %{date} par %{who}",
-                  date: date(@publication),
-                  who: who(@publication.published_by)
-                ),
-              else: gettext("Brouillon")}
-          </span>
-          <span :if={@can_publish?} id="bulletins-rate" class="ta-num text-sm text-base-content/70">
-            {gettext("Saisie des notes : %{rate}", rate: rate_text(@rate))}
-          </span>
+            <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer toute la classe")}
+          </a>
+        </div>
+
+        <div
+          :if={@status == :draft and @publishable? and @can_publish?}
+          id="draft-banner"
+          class="space-y-3 rounded-box border border-warning/45 bg-warning/10 p-3 text-sm"
+        >
+          <p class="font-semibold">
+            {gettext("%{period} — pas encore publiés", period: period_label(@periods, @period_param))}
+          </p>
+          <ul id="publish-checks" class="space-y-1">
+            <li :for={check <- @checks} data-check={check.key} class="flex items-start gap-2">
+              <span class={["font-bold", if(check.ok?, do: "text-primary", else: "text-warning")]}>
+                {if check.ok?, do: "✓", else: "!"}
+              </span>
+              <span>{check_text(check)}</span>
+            </li>
+          </ul>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              id="publish-bulletins"
+              type="button"
+              phx-click="publish"
+              disabled={not @council_held?}
+              class="btn btn-primary btn-sm"
+            >
+              {gettext("Publier les bulletins")}
+            </button>
+            <span :if={not @council_held?} id="council-not-held" class="text-sm text-warning">
+              {gettext("Conseil de classe non tenu")} ·
+              <.link navigate={council_path(@cg, @period)} class="link">
+                {gettext("Ouvrir le conseil")}
+              </.link>
+            </span>
+            <a
+              id="print-class"
+              href={~p"/school/classes/#{@cg.id}/bulletin/print?period=#{@period_param}"}
+              target="_blank"
+              class="btn btn-ghost btn-sm gap-1"
+            >
+              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer toute la classe")}
+            </a>
+          </div>
         </div>
 
         <div :if={@status == :not_published} id="bulletins-not-published">
@@ -278,32 +369,28 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
           />
         </div>
 
-        <div
-          :if={@status != :not_published}
-          class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]"
-        >
-          <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-            <table id="bulletins-table" class="table">
+        <div :if={@status != :not_published} class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div class="min-w-0 overflow-x-auto rounded-box border border-base-300 bg-base-100">
+            <table id="bulletin-ranking" class="table">
               <thead>
                 <tr>
                   <th>{gettext("Rang")}</th>
                   <th>{gettext("Élève")}</th>
-                  <th class="text-right">{gettext("Moy. gén.")}</th>
-                  <th>{gettext("Appréciation")}</th>
+                  <th class="text-right">{gettext("Moyenne")}</th>
                   <th>{gettext("Distinction")}</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr
                   :for={row <- @rows}
                   id={"bulletins-row-#{row.student.id}"}
+                  phx-click={JS.patch(patch_to(assigns, %{student: row.student.id}))}
                   class={[
-                    "transition-colors",
+                    "cursor-pointer transition-colors hover:bg-base-200",
                     @selected && @selected.student.id == row.student.id && "bg-primary/10"
                   ]}
                 >
-                  <td class="ta-num">{row.data.rank || "—"}</td>
+                  <td class="ta-num">{ordinal(row.data.rank)}</td>
                   <td>
                     <.link
                       data-role="select"
@@ -313,25 +400,16 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
                       {row.student.full_name}
                     </.link>
                   </td>
-                  <td class="ta-num text-right font-semibold">
+                  <td class={[
+                    "ta-num text-right font-semibold",
+                    low?(row.data.moyenne_generale) && "text-error"
+                  ]}>
                     {fmt(row.data.moyenne_generale)}
                   </td>
-                  <td><.mention_badge :if={row.data.mention} mention={row.data.mention} /></td>
                   <td>
                     <.distinction_badge distinction={
                       ReportCards.final_distinction(@view, row.student.id, row.data)
                     } />
-                  </td>
-                  <td>
-                    <a
-                      id={"print-#{row.student.id}"}
-                      href={print_one(assigns, row)}
-                      target="_blank"
-                      class="btn btn-ghost btn-xs"
-                      aria-label={gettext("Imprimer")}
-                    >
-                      <.icon name="hero-printer" class="size-4" />
-                    </a>
                   </td>
                 </tr>
               </tbody>
@@ -343,58 +421,35 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
             id="student-panel"
             class="self-start space-y-3 rounded-box border border-primary/40 bg-base-100 p-4"
           >
-            <p class="ta-eyebrow">
-              {gettext("Bulletin")} · {period_label(@periods, @period_param)} · {@cg.label}
-            </p>
             <h2 class="text-lg font-semibold">{@selected.student.full_name}</h2>
+            <p class="ta-num text-sm text-base-content/70">
+              {ordinal(@selected.data.rank)} / {@view.results.effectif} · {gettext("moyenne")} {fmt(
+                @selected.data.moyenne_generale
+              )}
+            </p>
             <dl class="divide-y divide-base-300 text-sm">
               <div :for={s <- @selected.data.subjects} class="flex justify-between gap-2 py-1">
                 <dt>{s.label} · {gettext("coef")} {coef(s.coefficient)}</dt>
-                <dd class="ta-num">{fmt(s.average)}</dd>
-              </div>
-              <div class="flex justify-between py-1 font-semibold">
-                <dt>{gettext("Moyenne générale")}</dt>
-                <dd class="ta-num">{fmt(@selected.data.moyenne_generale)}</dd>
-              </div>
-              <div class="flex justify-between py-1">
-                <dt>{gettext("Rang")}</dt>
-                <dd class="ta-num">{@selected.data.rank || "—"} / {@view.results.effectif}</dd>
-              </div>
-              <div class="flex justify-between py-1">
-                <dt>{gettext("Absences")}</dt>
-                <dd class="ta-num">
-                  {hours(@view.conduct[@selected.enrollment.id])} {gettext("h")}
-                </dd>
+                <dd class={["ta-num", low?(s.average) && "text-error"]}>{fmt(s.average)}</dd>
               </div>
             </dl>
-            <div class="flex flex-wrap gap-2">
-              <.mention_badge :if={@selected.data.mention} mention={@selected.data.mention} />
-              <.distinction_badge distinction={
-                ReportCards.final_distinction(@view, @selected.student.id, @selected.data)
-              } />
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <.link
-                navigate={
-                  ~p"/school/classes/#{@cg.id}/students/#{@selected.enrollment.id}/bulletin?period=#{@period_param}"
-                }
-                class="btn btn-ghost btn-sm"
-              >
-                {gettext("Ouvrir le bulletin")}
-              </.link>
-              <a
-                href={print_one(assigns, @selected)}
-                target="_blank"
-                class="btn btn-ghost btn-sm gap-1"
-              >
-                <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer")}
-              </a>
-            </div>
+            <.link
+              navigate={
+                ~p"/school/classes/#{@cg.id}/students/#{@selected.enrollment.id}/bulletin?period=#{@period_param}"
+              }
+              class="btn btn-ghost btn-sm"
+            >
+              {gettext("Ouvrir →")}
+            </.link>
           </aside>
         </div>
 
-        <div :if={@status != :not_published} class="flex flex-wrap items-center gap-2">
+        <div
+          :if={@status == :draft and @rows != []}
+          class="flex flex-wrap items-center gap-2"
+        >
           <a
+            :if={not (@publishable? and @can_publish?)}
             id="print-class"
             href={~p"/school/classes/#{@cg.id}/bulletin/print?period=#{@period_param}"}
             target="_blank"
@@ -402,31 +457,10 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
           >
             <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer toute la classe")}
           </a>
+        </div>
+
+        <div :if={@can_publish? and @status == :published and not @withdrawing?}>
           <button
-            :if={@can_publish? and @status == :draft}
-            id="publish"
-            type="button"
-            phx-click="publish"
-            disabled={not @council_held?}
-            class="btn btn-primary btn-sm"
-          >
-            {gettext("Publier les bulletins de la classe")}
-          </button>
-          <span
-            :if={@can_publish? and @status == :draft and not @council_held?}
-            id="council-not-held"
-            class="text-sm text-warning"
-          >
-            {gettext("Conseil de classe non tenu")} ·
-            <.link
-              navigate={council_path(@cg, @period)}
-              class="link"
-            >
-              {gettext("Ouvrir le conseil")}
-            </.link>
-          </span>
-          <button
-            :if={@can_publish? and @status == :published and not @withdrawing?}
             id="ask-withdraw"
             type="button"
             phx-click="ask_withdraw"

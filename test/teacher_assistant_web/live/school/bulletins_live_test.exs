@@ -45,12 +45,12 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   test "lists the class with average, appreciation and distinction; first student in the panel",
        ctx do
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
-    assert has_element?(view, "#bulletins-status", "Brouillon")
+    assert has_element?(view, "#draft-banner", "pas encore publiés")
     assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "15")
     assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Encouragements")
     assert has_element?(view, "#student-panel", "Djoumessi Arnaud")
     assert has_element?(view, "#student-panel", "Maths · coef 4")
-    assert has_element?(view, "#print-#{ctx.dj.student.id}[href*='/bulletin/print?period=trim']")
+    refute has_element?(view, "#print-#{ctx.dj.student.id}")
     assert has_element?(view, "#print-class")
   end
 
@@ -63,14 +63,14 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   test "incomplete entry asks for confirmation, then publishes", ctx do
     {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
-    assert has_element?(view, "#bulletins-rate", "25 %")
-    view |> element("#publish") |> render_click()
+    assert has_element?(view, "#publish-checks [data-check='notes']", "25 %")
+    view |> element("#publish-bulletins") |> render_click()
     assert has_element?(view, "#publish-confirm", "Saisie incomplète")
     assert ReportCards.current_publication(ctx.scope, ctx.cg, {:trimester, ctx.term}) == nil
 
     view |> element("#confirm-publish") |> render_click()
     assert render(view) =~ "Bulletins publiés."
-    assert has_element?(view, "#bulletins-status", "Publié le")
+    assert has_element?(view, "#published-banner", "Publiés le")
     assert ReportCards.current_publication(ctx.scope, ctx.cg, {:trimester, ctx.term})
   end
 
@@ -80,11 +80,11 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     view |> element("#ask-withdraw") |> render_click()
 
     view |> form("#withdraw-form", %{reason: "  "}) |> render_submit()
-    assert has_element?(view, "#bulletins-status", "Publié le")
+    assert has_element?(view, "#published-banner", "Publiés le")
 
     view |> form("#withdraw-form", %{reason: "Note de maths erronée"}) |> render_submit()
     assert render(view) =~ "Bulletins dépubliés."
-    assert has_element?(view, "#bulletins-status", "Brouillon")
+    assert has_element?(view, "#draft-banner", "pas encore publiés")
     assert has_element?(view, "#bulletins-history", "Note de maths erronée")
   end
 
@@ -96,14 +96,14 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
 
     {:ok, view, _} = live(tconn, bulletins_path(ctx.cg, ctx.term))
     assert has_element?(view, "#bulletins-not-published")
-    refute has_element?(view, "#publish")
-    refute has_element?(view, "#bulletins-rate")
+    refute has_element?(view, "#publish-bulletins")
+    refute has_element?(view, "#publish-checks")
 
     {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
     {:ok, view, _} = live(tconn, bulletins_path(ctx.cg, ctx.term))
     assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}")
     refute has_element?(view, "#ask-withdraw")
-    refute has_element?(view, "#publish")
+    refute has_element?(view, "#publish-bulletins")
   end
 
   test "someone with no class to see is sent home", ctx do
@@ -127,7 +127,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     view |> form("#withdraw-form", %{reason: "Me too"}) |> render_submit()
 
     assert render(view) =~ "Ces bulletins ont déjà été dépubliés."
-    assert has_element?(view, "#bulletins-status", "Brouillon")
+    assert has_element?(view, "#draft-banner", "pas encore publiés")
     assert has_element?(view, "#bulletins-history", "Another admin")
     refute has_element?(view, "#bulletins-history", "Me too")
   end
@@ -146,15 +146,59 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
         )
 
       {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
-      assert has_element?(view, "#publish[disabled]")
+      assert has_element?(view, "#publish-bulletins[disabled]")
       assert has_element?(view, "#council-not-held", "Conseil de classe non tenu")
       assert has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Tableau d")
       refute has_element?(view, "#bulletins-row-#{ctx.dj.student.id}", "Encouragements")
 
       {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
       {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
-      refute has_element?(view, "#publish[disabled]")
+      refute has_element?(view, "#publish-bulletins[disabled]")
       refute has_element?(view, "#council-not-held")
+    end
+  end
+
+  describe "pilotage redesign (spec §2.3)" do
+    test "a draft trimester shows its banner and checklist", ctx do
+      {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+      assert has_element?(view, "#draft-banner", "pas encore publiés")
+      assert has_element?(view, "#publish-checks [data-check='notes']", "Notes")
+      assert has_element?(view, "#publish-checks [data-check='conduct']", "Conduite : 0 / 2")
+      assert has_element?(view, "#publish-checks [data-check='council']", "à planifier")
+      assert has_element?(view, "#publish-bulletins")
+    end
+
+    test "a published trimester shows the published banner", ctx do
+      {:ok, _} = TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
+      {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+      assert has_element?(view, "#published-banner", "visibles par les professeurs principaux")
+      assert has_element?(view, "#published-banner #print-class")
+      refute has_element?(view, "#draft-banner")
+    end
+
+    test "a séquence tab is read-only", ctx do
+      [seq | _] = ctx.term.sequences
+      param = Organization.period_param({:sequence, seq})
+      {:ok, view, _} = live(ctx.conn, ~p"/school/bulletins?class=#{ctx.cg.id}&period=#{param}")
+      refute has_element?(view, "#publish-bulletins")
+      refute has_element?(view, "#draft-banner")
+      refute has_element?(view, "#published-banner")
+      assert has_element?(view, "#bulletin-ranking")
+      assert has_element?(view, "#period-#{String.replace(param, ":", "-")}", "Séquence 1")
+    end
+
+    test "ranks are ordinal and averages under 10 are red", ctx do
+      {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+      assert has_element?(view, "#bulletin-ranking", "1er")
+      assert has_element?(view, "#student-panel", "1er / 2")
+    end
+
+    test "a teacher does not see séquence tabs", ctx do
+      %{teacher: teacher} =
+        TeacherFixtures.school_teacher_fixture(ctx.scope, %{class_group: ctx.cg, subject: "SVT"})
+
+      {:ok, view, _} = live(conn_for(ctx.scope, teacher), bulletins_path(ctx.cg, ctx.term))
+      refute has_element?(view, "[id^='period-seq-']")
     end
   end
 end

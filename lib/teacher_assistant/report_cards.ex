@@ -21,6 +21,8 @@ defmodule TeacherAssistant.ReportCards do
     Organization
   }
 
+  alias TeacherAssistant.Councils
+
   alias TeacherAssistant.Accounts.Checks
 
   alias TeacherAssistant.Academics.{
@@ -275,18 +277,66 @@ defmodule TeacherAssistant.ReportCards do
     end
   end
 
-  @doc "The publishable periods of the year: its trimesters, then the year."
+  @doc """
+  The periods a bulletins page offers: the year's séquences (read-only), then its
+  trimesters, then the year. Only trimesters and the year can be published.
+  """
   def periods(%Scope{} = scope, %AcademicYear{} = year) do
-    terms =
+    terms = Organization.list_terms(scope, year)
+
+    sequences =
       scope
-      |> Organization.list_terms(year)
-      |> Enum.map(fn t ->
+      |> Organization.list_sequences(year)
+      |> Enum.sort_by(& &1.number)
+      |> Enum.map(fn s ->
+        period = {:sequence, s}
+        {Organization.period_param(period), gettext("Séquence %{n}", n: s.number), period}
+      end)
+
+    trimesters =
+      Enum.map(terms, fn t ->
         period = {:trimester, t}
         {Organization.period_param(period), gettext("Trimestre %{n}", n: t.position), period}
       end)
 
-    terms ++ [{"annee", gettext("Année"), {:annual, year}}]
+    sequences ++ trimesters ++ [{"annee", gettext("Année"), {:annual, year}}]
   end
+
+  @doc """
+  The pre-publish checks for a class and period: marks entered (`rate`, subjects
+  without a teacher), conduct marks entered, and the class council. Each is
+  `%{key, ok?, data}`; the page words them.
+  """
+  def publish_checklist(%Scope{} = scope, %ClassGroup{} = cg, period) do
+    rate = entry_rate_or_nil(scope, cg, period)
+    unassigned = scope |> Curriculum.unassigned_subjects_by_class([cg]) |> Map.get(cg.id, [])
+    discipline = Discipline.class_discipline(scope, cg, period)
+    entered = Enum.count(discipline, fn {_id, d} -> d.note_de_conduite != nil end)
+    council = Councils.council(scope, cg, period)
+    stored = if council.id, do: council
+    status = Councils.status(stored, false)
+
+    [
+      %{
+        key: :notes,
+        ok?: rate == 100 and unassigned == [],
+        data: %{rate: rate, unassigned: length(unassigned)}
+      },
+      %{
+        key: :conduct,
+        ok?: entered == map_size(discipline),
+        data: %{entered: entered, effectif: map_size(discipline)}
+      },
+      %{
+        key: :council,
+        ok?: status == :held,
+        data: %{status: status, date: council.held_on, time: council.starts_at}
+      }
+    ]
+  end
+
+  defp entry_rate_or_nil(_scope, _cg, {:sequence, _}), do: nil
+  defp entry_rate_or_nil(scope, cg, period), do: entry_rate(scope, cg, period)
 
   @doc "The class's mark-entry rate over the period's séquences (rounded down; nil = nothing to measure)."
   def entry_rate(%Scope{} = scope, %ClassGroup{} = cg, {:trimester, %Term{} = term}),
