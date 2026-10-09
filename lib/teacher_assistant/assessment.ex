@@ -364,7 +364,12 @@ defmodule TeacherAssistant.Assessment do
 
   # --- Correction requests (spec D3c) -----------------------------------------
 
-  @correction_loads [:student, :requester, :decider, assessment: [teaching_context: [:class_group]]]
+  @correction_loads [
+    :student,
+    :requester,
+    :decider,
+    assessment: [teaching_context: [:class_group]]
+  ]
 
   @doc "Asks to change a locked mark (the course's teacher only); notifies the deciders."
   def request_correction(%Scope{} = scope, attrs) do

@@ -189,6 +189,7 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
     assert Enum.count(Assessment.list_mark_events(ctx.head), &(&1.action == :correction_refusee)) ==
              1
   end
+
   describe "decision note and motives" do
     setup ctx do
       lock(ctx)

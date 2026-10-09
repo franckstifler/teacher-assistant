@@ -333,7 +333,12 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     enrollment: e1
   } do
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Bello Nana", sex: :m})
-    e2 = scope |> Enrollment.list_roster(cg) |> Enum.map(& &1.enrollment) |> Enum.find(&(&1.id != e1.id))
+
+    e2 =
+      scope
+      |> Enrollment.list_roster(cg)
+      |> Enum.map(& &1.enrollment)
+      |> Enum.find(&(&1.id != e1.id))
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
     view |> element("#att-#{e1.id}-absent") |> render_click()

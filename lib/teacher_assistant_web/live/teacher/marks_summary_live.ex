@@ -129,7 +129,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
           <:actions>
             <.link
               id="back-to-entry"
-              navigate={~p"/teacher/contexts/#{@ctx.id}/marks?#{if @seq, do: [seq: @seq.id], else: []}"}
+              navigate={
+                ~p"/teacher/contexts/#{@ctx.id}/marks?#{if @seq, do: [seq: @seq.id], else: []}"
+              }
               class="btn btn-outline btn-sm"
             >
               <.icon name="hero-arrow-left" class="size-4" /> {gettext("Retour à la saisie")}

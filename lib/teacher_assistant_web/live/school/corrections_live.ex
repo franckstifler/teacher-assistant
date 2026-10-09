@@ -169,9 +169,7 @@ defmodule TeacherAssistantWeb.School.CorrectionsLive do
           eyebrow={gettext("Démarches · notes verrouillées")}
           title={gettext("Corrections de notes")}
           subtitle={
-            gettext(
-              "Une note verrouillée ne change qu'après validation du censeur. Tout est tracé."
-            )
+            gettext("Une note verrouillée ne change qu'après validation du censeur. Tout est tracé.")
           }
         >
           <:actions>

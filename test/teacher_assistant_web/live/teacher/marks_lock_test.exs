@@ -35,6 +35,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
     assert view |> element("#locked-banner") |> render() =~ "verrouillée"
+
     assert has_element?(
              view,
              "#locked-request-link[href='/school/corrections/new?assessment=#{ctx.a.id}']"

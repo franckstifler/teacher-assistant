@@ -146,7 +146,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
     blur(view, ctx.s_menu.id, "13")
 
-    assert [%{student_id: sid}] = Assessment.list_marks(scope, column.by_class_group_id[ctx.menu.id])
+    assert [%{student_id: sid}] =
+             Assessment.list_marks(scope, column.by_class_group_id[ctx.menu.id])
+
     assert sid == ctx.s_menu.id
     assert Assessment.list_marks(scope, column.by_class_group_id[ctx.maco.id]) == []
   end

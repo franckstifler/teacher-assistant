@@ -140,14 +140,24 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
 
     test "falls back to the school's service", %{conn: conn} do
       {:ok, view, _} = live(conn, ~p"/school/timetable/me")
-      assert has_element?(view, "#my-timetable-hours", "14 h par semaine · service attendu : 18 h")
+
+      assert has_element?(
+               view,
+               "#my-timetable-hours",
+               "14 h par semaine · service attendu : 18 h"
+             )
     end
 
     test "uses the teacher's own service when set", %{conn: conn, scope: scope, head: head} do
       member = Enum.find(Accounts.list_members(scope), &(&1.user_id == head.id))
       {:ok, _} = Accounts.set_member_service(scope, member, "12")
       {:ok, view, _} = live(conn, ~p"/school/timetable/me")
-      assert has_element?(view, "#my-timetable-hours", "14 h par semaine · service attendu : 12 h")
+
+      assert has_element?(
+               view,
+               "#my-timetable-hours",
+               "14 h par semaine · service attendu : 12 h"
+             )
     end
   end
 
