@@ -45,9 +45,10 @@ correction explanation text (decided out in cycle 4), the fees « Recouvrement �
   council update. `Councils.schedule(scope, class_group, period, date, time)` creates
   the council row when absent.
 - Derived status, one function in `Councils` used by the list and the council page:
-  - `:to_plan` — no council row, or no `held_on` of its own (the term's
-    `class_council_date` no longer counts as planned);
-  - `:planned` — own `held_on`, status `:open`;
+  - `:to_plan` — no council row, or no `starts_at` (scheduling always sets date and
+    time; a council created early by a decision save carries only the term's default
+    date, which does not count as planned);
+  - `:planned` — `starts_at` set, status `:open`;
   - `:held` — status `:held`, the period's bulletins not published;
   - `:closed` — status `:held` and the period's bulletins published for the class.
 - « Clôturer le conseil » is today's « Marquer le conseil tenu », renamed; « Rouvrir »
@@ -188,8 +189,9 @@ One migration (generated with `mix ash.codegen --dev`, final name at the end):
 
 - Top bar: « ← Bulletins de la <classe> », « Fiche élève » (student page), « Imprimer ».
   Period select kept.
-- The bulletin rendered as a paper sheet on screen, from a function component shared
-  with the print template (no duplicated markup): bilingual header with logo, period
+- The bulletin rendered as a paper sheet on screen by embedding the existing print
+  document (`…/bulletin/print`, a standalone page with its own styles) in an
+  A4-proportioned frame — one markup for screen and print: bilingual header with logo, period
   title, year; identity (name, class, effectif, matricule, birth, repeater, form
   master); subject table (subject + teacher, coef., mark /20, mark × coef.,
   appreciation, rank); totals, average, rank; boxes Discipline, Classe, Distinction;
@@ -267,8 +269,9 @@ One migration (generated with `mix ash.codegen --dev`, final name at the end):
 
 - First Oban workers: production needs Oban running with the cron entries; tests use
   `testing: :manual` and `perform_job/2`.
-- The shared bulletin component must keep the print output identical for elements
-  already shown today (print tests stay green).
+- The print document gains columns/blocks only behind new elements; output for
+  elements already shown today stays identical (print tests stay green).
+- Oban is configured but not started today: the supervision tree gains it.
 - Size: the largest cycle so far. Order of work: data and notifications → corrections,
   notifications, séquences → dashboard → councils list, council → bulletin elements,
   bulletin, bulletins list → translations, final migration, browser pass.
