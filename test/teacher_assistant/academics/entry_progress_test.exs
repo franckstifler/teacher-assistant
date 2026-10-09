@@ -273,4 +273,20 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
 
     assert rates[ctx.cg2.id] == 25
   end
+
+  test "context_cells/4 matches the grid cell for each given context", ctx do
+    mark(ctx, ctx.a1, ctx.s1)
+    grid = EntryProgress.grid(ctx.head, ctx.year, ctx.seq)
+    expected = cell(grid, ctx.cg, "Maths")
+    cells = EntryProgress.context_cells(ctx.head, ctx.year, ctx.seq, [ctx.tc])
+
+    assert cells[ctx.tc.id] == %{
+             entered: expected.entered,
+             expected: expected.expected,
+             pct: expected.pct
+           }
+
+    assert cells[ctx.tc.id].entered == 1
+    assert map_size(cells) == 1
+  end
 end

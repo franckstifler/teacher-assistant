@@ -44,15 +44,13 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
     cells =
       Map.new(contexts, fn tc ->
-        taking =
-          enrolled
-          |> Map.get(tc.class_group_id, MapSet.new())
-          |> MapSet.difference(Map.get(exempt, tc.id, MapSet.new()))
-
-        tc_assessments = Map.get(assessments_by_tc, tc.id, [])
-
         {{tc.class_group_id, column_key(tc)},
-         cell(tc, taking, tc_assessments, marks_by_assessment)}
+         cell(
+           tc,
+           taking(tc, enrolled, exempt),
+           Map.get(assessments_by_tc, tc.id, []),
+           marks_by_assessment
+         )}
       end)
 
     subjects = subjects(contexts)
@@ -76,6 +74,30 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       late_teacher_count: late |> Enum.uniq_by(&(&1.teacher && &1.teacher.id)) |> length(),
       council_date: council_date(scope, seq)
     }
+  end
+
+  @doc """
+  The `grid/3` cell figures of the given courses only (« Mes cours » cards):
+  `%{tc_id => %{entered:, expected:, pct:}}`. Contexts need `:class_group_id`.
+  """
+  def context_cells(%Scope{}, _year, _seq, []), do: %{}
+
+  def context_cells(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, contexts) do
+    ids = MapSet.new(contexts, & &1.id)
+    enrolled = load_enrolled(scope, year)
+    exempt = load_exempt(scope, contexts)
+
+    assessments =
+      scope |> load_assessments(seq) |> Enum.filter(&MapSet.member?(ids, &1.teaching_context_id))
+
+    marks_by_assessment = scope |> load_marks(assessments) |> Enum.group_by(& &1.assessment_id)
+    assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
+
+    Map.new(contexts, fn tc ->
+      tc_assessments = Map.get(assessments_by_tc, tc.id, [])
+      cell = cell(tc, taking(tc, enrolled, exempt), tc_assessments, marks_by_assessment)
+      {tc.id, Map.take(cell, [:entered, :expected, :pct])}
+    end)
   end
 
   @doc """
@@ -177,6 +199,13 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   # --- Pure computation ----------------------------------------------------------
 
+  # Students taking the course: its class's enrollments minus its exemptions.
+  defp taking(tc, enrolled, exempt) do
+    enrolled
+    |> Map.get(tc.class_group_id, MapSet.new())
+    |> MapSet.difference(Map.get(exempt, tc.id, MapSet.new()))
+  end
+
   defp cell(tc, taking, assessments, marks_by_assessment) do
     marks =
       assessments
@@ -189,7 +218,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
     %{
       teaching_context: tc,
-      teacher: tc.teacher,
+      teacher: Map.get(tc, :teacher),
       entered: entered,
       expected: expected,
       # A course with students but no assessment yet is "Rien saisi" (0 %).

@@ -207,4 +207,50 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       assert has_element?(view, "#dashboard-my-courses a[href='/school/courses']")
     end
   end
+
+  describe "course card facts" do
+    setup %{scope: scope, year: year, school: school, teacher: teacher} do
+      {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e Z", level: "6ème"})
+      maths = Enum.find(Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
+
+      :ok =
+        Curriculum.update_coefficient_grid(scope, %{
+          "cells" => %{maths.id => %{Curriculum.cell_token({:francophone, "6ème", nil}) => "4"}},
+          "groups" => %{}
+        })
+
+      {:ok, tc} = Curriculum.place_assignment(scope, cg, maths, teacher.id, "4")
+      {:ok, cg} = Enrollment.set_form_master(scope, cg, teacher.id)
+      {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+      {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Bob", sex: :m})
+
+      seq =
+        TeacherAssistant.Assessment.default_sequence(
+          Organization.list_sequences(scope, year),
+          TeacherAssistant.Academics.Reference.today()
+        )
+
+      :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
+      {:ok, a} = TeacherAssistant.Assessment.create_assessment(scope, tc, seq, %{label: "D1"})
+
+      :ok =
+        TeacherAssistant.Assessment.upsert_marks(scope, a, [
+          %{student_id: s1.id, score: Decimal.new(12)}
+        ])
+
+      %{card_tc: tc, conn: conn_for(school, teacher)}
+    end
+
+    test "a card shows students, coefficient, PP and séquence progress", %{
+      conn: conn,
+      card_tc: tc
+    } do
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+      card = "#course-#{tc.id}"
+      assert has_element?(view, card, "2 élèves")
+      assert has_element?(view, card, "coef. 4")
+      assert has_element?(view, "#{card} [data-role='pp']")
+      assert has_element?(view, "#{card} [data-role='progress']", "1 / 2")
+    end
+  end
 end
