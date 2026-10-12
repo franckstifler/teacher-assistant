@@ -217,3 +217,24 @@ unflag every new fuzzy entry (guard test exists).
 Bulk import by matricule or by order; photo garbage collection; face detection /
 auto-centring; card back side, barcode or QR on cards; photos for staff; parent
 or student self-upload; offline capture beyond the in-memory retry queue.
+
+## 13. Amendments (plan writing, 2026-10-12)
+
+- **Gate:** reuse `Enrollment.can_manage_register?/1` (admin or conduct axis,
+  enrollment.ex) instead of a new `can_manage_student_photos?/1`.
+- **Entry points:** the SG/surveillant cannot open the Élèves tab
+  (`ClassShell.allowed?(…, :students)` = `class_manager?`). The « Photos » link
+  goes in the `<:actions>` of **both** the Élèves tab (`class_live.ex`) and the
+  register tab (`register_live.ex`), shown when `can_manage_register?`.
+  `ClassPhotosLive` does **not** use `class_shell` (its `tab` attr only takes
+  real tabs); it has its own breadcrumb Classes › <classe> › Photos.
+- **Avatars:** roll call (`roll_call.ex`) shows no avatar today — not touched.
+  Avatars go in the class roster, `/school/students` and the student header.
+- **JS:** one hook `PhotoStudio` in `assets/js/hooks/photo_studio.js`,
+  registered in `app.js` next to the colocated hooks; it owns the crop screen,
+  the séance and the shared upload/retry queue (one module instead of two).
+- **Components:** `TeacherAssistantWeb.StudentPhotoComponents` holds
+  `student_avatar/1`, `student_photo_url/1` and the studio markup (verified
+  routes are not available in `core_components.ex`).
+- **Cards access:** like the other print controllers, a refused user is
+  redirected to `/school` (no 404).
