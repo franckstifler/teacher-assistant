@@ -93,7 +93,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
           </ul>
         </div>
 
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <.kpi_link
             id="kpi-entry"
             navigate={~p"/school/sequences"}
@@ -369,16 +369,16 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     <.link
       id={@id}
       navigate={@navigate}
-      class="ta-leaf group flex flex-col gap-1 transition hover:-translate-y-0.5 hover:border-primary/60 hover:no-underline"
+      class="ta-section group flex flex-col gap-0.5 p-3 transition-colors hover:border-base-content/30 hover:no-underline sm:p-4"
     >
-      <span class="ta-eyebrow flex items-center justify-between gap-2">
+      <span class="flex items-center justify-between gap-2 text-[0.8rem] font-medium text-base-content/75">
         {@label}
         <.icon
-          name="hero-arrow-up-right"
-          class="size-3.5 opacity-0 transition group-hover:opacity-70"
+          name="hero-chevron-right"
+          class="size-3.5 opacity-50 transition-transform group-hover:translate-x-0.5"
         />
       </span>
-      <span class={["ta-num text-3xl font-semibold leading-tight", kpi_tone(@tone)]}>
+      <span class={["ta-num text-2xl font-semibold leading-tight sm:text-3xl", kpi_tone(@tone)]}>
         {@value}
       </span>
       <span class="text-xs text-base-content/70">{@sub}</span>
@@ -395,13 +395,20 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   defp todo_row(assigns) do
     ~H"""
-    <li id={@id} class="ta-row-rule flex items-center gap-3 py-2.5 last:border-b-0">
-      <span class={["w-1 self-stretch shrink-0 rounded-full", mark_tone(@tone)]} aria-hidden="true"></span>
-      <div class="flex min-w-0 flex-1 flex-col">
-        <span class="text-[0.9rem] font-semibold leading-snug">{@title}</span>
-        <span :if={@sub} class="text-[0.76rem] text-base-content/70">{@sub}</span>
-      </div>
-      <.link navigate={@navigate} class="btn btn-outline btn-xs shrink-0">{@cta}</.link>
+    <li id={@id} class="ta-row-rule last:border-b-0">
+      <.link
+        navigate={@navigate}
+        class="flex min-h-14 items-center gap-3 rounded-lg py-2.5 hover:no-underline sm:min-h-0"
+      >
+        <span class={["size-2 shrink-0 rounded-full", mark_tone(@tone)]} aria-hidden="true"></span>
+        <span class="flex min-w-0 flex-1 flex-col">
+          <span class="text-[0.95rem] font-semibold leading-snug">{@title}</span>
+          <span :if={@sub} class="text-[0.8rem] text-base-content/70">{@sub}</span>
+        </span>
+        <span class="btn btn-outline btn-xs hidden shrink-0 sm:inline-flex">{@cta}</span>
+        <span class="sr-only sm:hidden">{@cta}</span>
+        <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45 sm:hidden" />
+      </.link>
     </li>
     """
   end

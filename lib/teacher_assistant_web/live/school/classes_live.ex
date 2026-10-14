@@ -219,13 +219,20 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       navigate={~p"/school/classes/#{@row.cg.id}"}
       id={"class-card-#{@row.cg.id}"}
       class={[
-        "group flex flex-col gap-3 rounded-[0.6rem] border border-l-4 bg-base-100 p-4 transition",
-        "hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-md",
-        if(@row.unassigned > 0, do: "border-base-300 border-l-error", else: "border-base-300")
+        "ta-section group flex flex-col gap-2 p-3 transition-colors sm:gap-3 sm:p-4",
+        "hover:border-base-content/30"
       ]}
     >
       <span class="flex items-start justify-between gap-2">
-        <span class="font-display text-lg font-semibold leading-tight">{@row.cg.label}</span>
+        <span class="flex items-center gap-2 font-display text-lg font-semibold leading-tight">
+          <span
+            :if={@row.unassigned > 0}
+            class="size-2 rounded-full bg-error"
+            title={gettext("À compléter")}
+            aria-hidden="true"
+          ></span>
+          {@row.cg.label}
+        </span>
         <span class="ta-num rounded bg-base-200 px-1.5 py-0.5 text-[0.7rem] text-base-content/70">
           {@row.cg.serie || @row.cg.level}
         </span>

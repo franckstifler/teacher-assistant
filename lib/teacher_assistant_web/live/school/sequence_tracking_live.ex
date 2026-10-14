@@ -269,7 +269,59 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 {gettext("Aucun cours n'est encore attribué pour cette année.")}
               </p>
 
-              <div :if={@grid.subjects != []} class="overflow-x-auto">
+              <%!-- Phone: one row per class, its unfinished subjects listed with a direct « Relancer ». --%>
+              <div :if={@grid.subjects != []} id="entry-list" class="-mx-1 flex flex-col sm:hidden">
+                <div
+                  :for={row <- @grid.rows}
+                  id={"entry-row-#{row.class_group.id}"}
+                  class="ta-row-rule flex flex-col gap-1.5 px-1 py-2.5 last:border-b-0"
+                >
+                  <% open = lagging(row, @grid.subjects) %>
+                  <span class="flex items-center justify-between gap-2">
+                    <span class="font-semibold">{row.class_group.label}</span>
+                    <span :if={open == []} class="text-sm text-primary">{gettext("Complet")} ✓</span>
+                    <span :if={open != []} class="text-sm text-base-content/70">
+                      {ngettext(
+                        "%{count} matière à compléter",
+                        "%{count} matières à compléter",
+                        length(open)
+                      )}
+                    </span>
+                  </span>
+                  <span
+                    :for={{subject, cell} <- open}
+                    class="flex min-h-11 items-center gap-2 text-sm"
+                  >
+                    <span class={[
+                      "size-2 shrink-0 rounded-full",
+                      if(cell.pct == 0, do: "bg-error", else: "bg-warning")
+                    ]}></span>
+                    <span class="min-w-0 flex-1 truncate">
+                      <span class="font-medium">{subject.label}</span>
+                      <span class="ta-num text-base-content/70">· {cell.pct} %</span>
+                      <span class="block truncate text-xs text-base-content/60">
+                        {teacher_name(cell.teacher)}
+                        <span :if={@reminders[cell.teaching_context.id]}>
+                          · {gettext("relancé le %{date}",
+                            date: Dates.short(@reminders[cell.teaching_context.id])
+                          )}
+                        </span>
+                      </span>
+                    </span>
+                    <button
+                      :if={cell.teacher && !@reminders[cell.teaching_context.id]}
+                      type="button"
+                      class="btn btn-sm btn-outline"
+                      phx-click="remind"
+                      phx-value-tc={cell.teaching_context.id}
+                    >
+                      {gettext("Relancer")}
+                    </button>
+                  </span>
+                </div>
+              </div>
+
+              <div :if={@grid.subjects != []} class="hidden overflow-x-auto sm:block">
                 <div
                   id="entry-grid"
                   class="grid gap-[3px]"
@@ -502,6 +554,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   defp cell_bg(100), do: "bg-primary/20 text-primary hover:bg-primary/30"
   defp cell_bg(0), do: "bg-error/20 text-error hover:bg-error/30"
   defp cell_bg(_), do: "bg-warning/20 text-warning hover:bg-warning/30"
+
+  # A class's subjects that still lack marks (cells with students, under 100 %).
+  defp lagging(row, subjects) do
+    for subject <- subjects,
+        cell = row.cells[subject.key],
+        cell && cell.pct != nil && cell.pct < 100,
+        do: {subject, cell}
+  end
 
   defp pct_text(100), do: "✓"
   defp pct_text(pct), do: "#{pct} %"
