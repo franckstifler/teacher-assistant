@@ -149,9 +149,61 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           </span>
         </div>
 
+        <div :if={@roster != []} id="class-roster-list" class="ta-section sm:hidden">
+          <div
+            :for={{row, n} <- Enum.with_index(visible_roster(@roster, @filter, @rq), 1)}
+            id={"roster-item-#{row.enrollment.id}"}
+            class="ta-list-row !pr-2"
+          >
+            <.link
+              navigate={~p"/school/students/#{row.student.id}"}
+              class="flex min-w-0 flex-1 items-center gap-3"
+            >
+              <.student_avatar student={row.student} class="size-10 text-xs" />
+              <span class="flex min-w-0 flex-col">
+                <span class="truncate font-medium">
+                  <span class="ta-num mr-1 text-xs text-base-content/50">{n}</span>{row.student.full_name}
+                </span>
+                <span class="truncate text-sm text-base-content/65">
+                  <%= if guardian = @guardians[row.student.id] do %>
+                    {guardian.full_name} · {guardian.phone}
+                  <% else %>
+                    <span class="text-warning">{gettext("Aucun contact")}</span>
+                  <% end %>
+                </span>
+              </span>
+              <span
+                :if={row.enrollment.repeater}
+                class="shrink-0 rounded bg-warning/20 px-1.5 text-[0.7rem] font-semibold text-warning"
+              >
+                {gettext("Redoublant")}
+              </span>
+            </.link>
+            <.action_menu id={"roster-actions-#{row.enrollment.id}"} label={gettext("Gérer l'élève")}>
+              <:item
+                :for={target <- @transfer_targets}
+                click={
+                  JS.push("transfer",
+                    value: %{"enrollment-id" => row.enrollment.id, "class-id" => target.id}
+                  )
+                }
+              >
+                {gettext("Transférer vers %{class}", class: target.label)}
+              </:item>
+              <:item
+                danger
+                click={JS.push("withdraw", value: %{"enrollment-id" => row.enrollment.id})}
+                confirm={gettext("Retirer cet élève de la classe ?")}
+              >
+                {gettext("Retirer de la classe…")}
+              </:item>
+            </.action_menu>
+          </div>
+        </div>
+
         <div
           :if={@roster != []}
-          class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100"
+          class="hidden overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100 sm:block"
         >
           <table id="class-roster" class="table">
             <thead>
@@ -205,7 +257,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 </td>
                 <td class="text-right">
                   <details id={"row-menu-#{row.enrollment.id}"} class="dropdown dropdown-end">
-                    <summary class="btn btn-ghost btn-xs">{gettext("Gérer")} ▾</summary>
+                    <summary class="btn btn-ghost btn-sm">{gettext("Gérer")} ▾</summary>
                     <ul class="menu dropdown-content z-30 mt-1 w-60 rounded-box border border-base-300 bg-base-100 p-1 text-left shadow-lg">
                       <li>
                         <.link navigate={~p"/school/students/#{row.student.id}"}>

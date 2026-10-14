@@ -247,17 +247,24 @@ defmodule TeacherAssistantWeb.UIComponents do
   end
 
   @doc """
-  « ⋯ » menu for a row's or a page's secondary actions. Each `item` is a button
-  (pass `phx-click`, `phx-value-*`, `data-confirm` through its attributes) or a
-  link (`navigate`/`href`); `danger` items come last, in coral.
+  « ⋯ » menu for a row's or a page's secondary actions. Each `item` is a link
+  (`navigate`/`href`) or a button running `click` (an event name or a `JS`
+  command, e.g. `JS.push("transfer", value: %{id: id})`), with an optional
+  `confirm` question; `danger` items come last, in coral.
   """
   attr :id, :string, required: true
   attr :label, :string, default: nil, doc: "accessible name of the « ⋯ » button"
   attr :class, :any, default: nil
 
-  slot :item,
-    required: true,
-    doc: "optional `navigate`, `href`, `danger`, `icon`; other attributes go on the button"
+  slot :item, required: true do
+    attr :navigate, :string
+    attr :href, :string
+    attr :click, :any
+    attr :confirm, :string
+    attr :danger, :boolean
+    attr :icon, :string
+    attr :id, :string
+  end
 
   def action_menu(assigns) do
     ~H"""
@@ -291,10 +298,12 @@ defmodule TeacherAssistantWeb.UIComponents do
           </.link>
           <button
             :if={!(item[:navigate] || item[:href])}
+            id={item[:id]}
             type="button"
             role="menuitem"
             class={["min-h-11", item[:danger] && "text-error"]}
-            {assigns_to_attributes(item, [:navigate, :href, :danger, :icon, :inner_block, :__slot__])}
+            phx-click={item[:click]}
+            data-confirm={item[:confirm]}
           >
             <.icon :if={item[:icon]} name={item.icon} class="size-4" />
             {render_slot(item)}
