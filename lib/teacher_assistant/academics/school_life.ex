@@ -212,6 +212,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       period: slot.period,
       class_group: slot.class_group,
       teacher: tc && tc.teacher,
+      teaching_context_id: tc && tc.id,
       subject: tc && subject_label(tc),
       status: status,
       absent: absent

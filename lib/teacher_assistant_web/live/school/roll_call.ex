@@ -229,48 +229,62 @@ defmodule TeacherAssistantWeb.School.RollCall do
   # --- rendering ---------------------------------------------------------------
 
   @doc """
-  The roll-call panel: eyebrow and title, « Tous présents » (`all_present` event), the
-  counts, one row per student with a Présent / Absent / Retard control (`set`
-  events), and a footer with the record button (`record` event).
+  The roll-call panel (UI review 2026-10-14): eyebrow and title with optional
+  `actions`, « Tous présents » (`all_present` event), the counts, one row per
+  student — full name and a compact P / A / R segmented control (`set` events),
+  late minutes under a late student — and a footer sticky at the bottom of the
+  screen with the record button (`record` event), « Valider l'appel · 1 absent,
+  0 retard ».
   """
   attr :roll, :map, required: true
   attr :title, :string, required: true
   attr :eyebrow, :string, default: nil
+  slot :actions, doc: "extra header links (« Saisir des notes », close)"
 
   def roll_panel(assigns) do
     ~H"""
-    <div
-      id="roll-panel"
-      class="ta-panel flex flex-col gap-3 !p-0 shadow-[0_6px_20px_oklch(0%_0_0/0.16)]"
-    >
-      <div class="flex flex-wrap items-start justify-between gap-2 px-[18px] pt-4">
-        <div class="min-w-0">
-          <p :if={@eyebrow} class="ta-eyebrow">{@eyebrow}</p>
-          <h2 class="font-display text-[1.3rem] font-semibold leading-tight">{@title}</h2>
+    <div id="roll-panel" class="ta-panel flex flex-col !p-0 shadow-[0_6px_20px_oklch(0%_0_0/0.16)]">
+      <div class="flex flex-col gap-3 px-4 pt-4 sm:px-[18px]">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p :if={@eyebrow} class="ta-eyebrow">{@eyebrow}</p>
+            <h2 class="mt-0.5 font-display text-[1.3rem] font-semibold leading-tight">{@title}</h2>
+          </div>
+          <div :if={@actions != []} class="flex shrink-0 items-center gap-1">
+            {render_slot(@actions)}
+          </div>
         </div>
-        <button
-          id="all-present"
-          type="button"
-          phx-click="all_present"
-          class="btn btn-outline btn-sm"
-        >
-          <.icon name="hero-check" class="size-4" /> {gettext("Tous présents")}
-        </button>
+
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div id="roll-counts" class="ta-num flex flex-wrap gap-1.5 text-[0.8rem]">
+            <span class="rounded-full bg-base-200 px-2.5 py-1 font-semibold text-base-content/80">
+              {ngettext("%{count} présent", "%{count} présents", count(@roll, :present))}
+            </span>
+            <span class={[
+              "rounded-full px-2.5 py-1 font-semibold",
+              count_class(:absent, count(@roll, :absent))
+            ]}>
+              {ngettext("%{count} absent", "%{count} absents", count(@roll, :absent))}
+            </span>
+            <span class={[
+              "rounded-full px-2.5 py-1 font-semibold",
+              count_class(:late, count(@roll, :late))
+            ]}>
+              {ngettext("%{count} retard", "%{count} retards", count(@roll, :late))}
+            </span>
+          </div>
+          <button
+            id="all-present"
+            type="button"
+            phx-click="all_present"
+            class="btn btn-ghost btn-sm min-h-11 gap-1 px-2.5 sm:min-h-0"
+          >
+            <.icon name="hero-check" class="size-4" /> {gettext("Tous présents")}
+          </button>
+        </div>
       </div>
 
-      <div id="roll-counts" class="ta-num flex flex-wrap gap-2 px-[18px] text-[0.8rem]">
-        <span class="rounded-full bg-primary/15 px-2.5 py-1 font-semibold text-primary">
-          {ngettext("%{count} présent", "%{count} présents", count(@roll, :present))}
-        </span>
-        <span class="rounded-full bg-error/20 px-2.5 py-1 font-semibold text-error">
-          {ngettext("%{count} absent", "%{count} absents", count(@roll, :absent))}
-        </span>
-        <span class="rounded-full bg-warning/20 px-2.5 py-1 font-semibold text-warning">
-          {ngettext("%{count} retard", "%{count} retards", count(@roll, :late))}
-        </span>
-      </div>
-
-      <div class="px-[18px]">
+      <div class="px-4 pb-1 pt-2 sm:px-[18px]">
         <%= if @roll.groups do %>
           <div :for={group <- @roll.groups} id={"attendance-class-#{group.class_group.id}"}>
             <h3 class="ta-eyebrow pt-2">{group.class_group.label}</h3>
@@ -283,18 +297,22 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
       <div
         id="roll-footer"
-        class="flex flex-wrap items-center justify-between gap-3 rounded-b-box bg-base-200 px-[18px] py-3"
+        class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 rounded-b-box border-t border-base-300 bg-base-200/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-[18px]"
       >
-        <span class="ta-num text-[0.85rem] text-base-content/80">
-          {if @roll.taken?, do: gettext("Appel enregistré."), else: summary(@roll)}
+        <span :if={@roll.taken?} class="mr-auto flex items-center gap-1.5 text-[0.85rem] text-success">
+          <.icon name="hero-check-circle" class="size-4" /> {gettext("Appel enregistré.")}
         </span>
         <button
           id="record-roll"
           type="button"
           phx-click="record"
-          class="btn btn-primary h-[42px] px-5 text-[0.95rem]"
+          phx-disable-with={gettext("Enregistrement…")}
+          class={[
+            "btn h-11 px-5 text-[0.95rem] max-sm:flex-1",
+            if(@roll.taken?, do: "btn-outline", else: "btn-primary")
+          ]}
         >
-          {if @roll.taken?, do: gettext("Modifier l'appel"), else: gettext("Valider l'appel")}
+          {record_label(@roll)}
         </button>
       </div>
     </div>
@@ -308,24 +326,29 @@ defmodule TeacherAssistantWeb.School.RollCall do
     assigns = assign(assigns, :statuses, @statuses)
 
     ~H"""
-    <ol class="flex flex-col border-t border-base-300/70">
+    <ol class="flex flex-col">
       <li
         :for={{student, n} <- Enum.with_index(@students, 1)}
         id={"student-row-#{student.enrollment_id}"}
-        class="ta-row-rule flex flex-wrap items-center gap-2.5 py-[5px]"
+        class="ta-row-rule grid grid-cols-[1.4rem_minmax(0,1fr)_auto] items-center gap-x-2 py-2 last:border-b-0"
       >
-        <span class="ta-num w-[22px] text-[0.72rem] text-base-content/65">{n}</span>
-        <span class="flex min-w-0 flex-1 flex-col">
-          <span class="truncate text-[0.92rem]">{student.student_name}</span>
+        <span class="ta-num text-[0.72rem] text-base-content/60">{n}</span>
+        <span class="flex min-w-0 flex-col">
+          <span class={[
+            "break-words text-[0.95rem] leading-snug",
+            @roll.marks[student.enrollment_id] != :present && "font-semibold"
+          ]}>
+            {student.student_name}
+          </span>
           <span
             :if={(@roll.flags[student.enrollment_id] || []) != []}
-            class="text-[0.72rem] text-warning"
+            class="text-[0.75rem] text-warning"
           >
             {absent_flag(@roll.flags[student.enrollment_id])}
           </span>
         </span>
         <div
-          class="flex overflow-hidden rounded-[0.4rem] border border-base-300"
+          class="flex overflow-hidden rounded-field border border-base-300"
           role="group"
           aria-label={student.student_name}
         >
@@ -337,21 +360,29 @@ defmodule TeacherAssistantWeb.School.RollCall do
             phx-value-enrollment_id={student.enrollment_id}
             phx-value-status={status}
             aria-pressed={to_string(@roll.marks[student.enrollment_id] == status)}
+            aria-label={AttendanceStatus.label(status)}
             title={AttendanceStatus.label(status)}
             class={[
-              "h-[34px] min-w-[76px] cursor-pointer px-2 text-[0.8rem] font-semibold transition-colors max-sm:min-w-0 max-sm:px-1.5",
+              "grid h-[38px] w-10 cursor-pointer place-items-center text-[0.85rem] font-semibold transition-colors",
+              "border-base-300 not-first:border-l",
               status_class(status, @roll.marks[student.enrollment_id] == status)
             ]}
           >
-            {AttendanceStatus.label(status)}
+            {status |> AttendanceStatus.label() |> String.first()}
           </button>
         </div>
         <form
           :if={@roll.marks[student.enrollment_id] == :late}
           id={"late-minutes-form-#{student.enrollment_id}"}
           phx-change="minutes"
-          class="flex items-center gap-1"
+          class="col-span-2 col-start-2 flex items-center gap-1.5 pt-1.5"
         >
+          <label
+            for={"late-minutes-#{student.enrollment_id}"}
+            class="text-[0.78rem] text-base-content/70"
+          >
+            {gettext("Minutes de retard")}
+          </label>
           <input
             id={"late-minutes-#{student.enrollment_id}"}
             type="number"
@@ -361,24 +392,24 @@ defmodule TeacherAssistantWeb.School.RollCall do
             name={"minutes[#{student.enrollment_id}]"}
             value={@roll.minutes[student.enrollment_id]}
             placeholder={gettext("min")}
-            aria-label={gettext("Minutes de retard")}
-            class="input input-xs w-16 text-right"
+            class="input input-sm ta-num w-20 text-right"
           />
-          <span class="text-[0.72rem] text-base-content/70">{gettext("min")}</span>
+          <span class="text-[0.78rem] text-base-content/70">{gettext("min")}</span>
         </form>
       </li>
     </ol>
     """
   end
 
-  defp summary(roll) do
-    [
-      ngettext("%{count} présent", "%{count} présents", count(roll, :present)),
-      ngettext("%{count} absent", "%{count} absents", count(roll, :absent)),
-      ngettext("%{count} retard", "%{count} retards", count(roll, :late))
-    ]
-    |> Enum.join(" · ")
-  end
+  # « Valider l'appel · 1 absent, 0 retard » before recording, « Modifier l'appel » after.
+  defp record_label(%{taken?: true}), do: gettext("Modifier l'appel")
+
+  defp record_label(roll),
+    do:
+      gettext("Valider l'appel") <>
+        " · " <>
+        ngettext("%{count} absent", "%{count} absents", count(roll, :absent)) <>
+        ", " <> ngettext("%{count} retard", "%{count} retards", count(roll, :late))
 
   defp absent_flag(periods) do
     labels = Enum.map_join(periods, ", ", & &1.label)
@@ -388,8 +419,15 @@ defmodule TeacherAssistantWeb.School.RollCall do
       else: gettext("Absent en %{periods} — aujourd'hui", periods: labels)
   end
 
-  defp status_class(:present, true), do: "bg-primary/20 text-primary"
-  defp status_class(:absent, true), do: "bg-error text-primary-content"
-  defp status_class(:late, true), do: "bg-warning text-primary-content"
-  defp status_class(_status, false), do: "text-base-content/70 hover:bg-base-content/10"
+  # Colour only when the count means something: some absent, some late.
+  defp count_class(_status, 0), do: "bg-base-200 text-base-content/70"
+  defp count_class(:absent, _n), do: "bg-error/15 text-error"
+  defp count_class(:late, _n), do: "bg-warning/20 text-warning"
+
+  defp status_class(:present, true), do: "bg-success/20 text-success"
+  defp status_class(:absent, true), do: "bg-error text-error-content"
+  defp status_class(:late, true), do: "bg-warning text-warning-content"
+
+  defp status_class(_status, false),
+    do: "bg-base-100 text-base-content/55 hover:bg-base-content/8"
 end

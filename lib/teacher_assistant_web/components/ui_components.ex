@@ -259,6 +259,7 @@ defmodule TeacherAssistantWeb.UIComponents do
   slot :item, required: true do
     attr :navigate, :string
     attr :href, :string
+    attr :target, :string
     attr :click, :any
     attr :confirm, :string
     attr :danger, :boolean
@@ -291,6 +292,7 @@ defmodule TeacherAssistantWeb.UIComponents do
             role="menuitem"
             navigate={item[:navigate]}
             href={item[:href]}
+            target={item[:target]}
             class={["min-h-11", item[:danger] && "text-error"]}
           >
             <.icon :if={item[:icon]} name={item.icon} class="size-4" />

@@ -203,7 +203,14 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
 
   describe "council page (Task 10)" do
     defp path(ctx), do: council_path(ctx.cg, ctx.term)
-    defp chip(s, c), do: "#decision-#{s.id}-#{c}"
+    defp select(s), do: "#choice-#{s.id}"
+    defp option(s, c), do: "#choice-#{s.id} option[value='#{c}']"
+
+    defp choose(view, s, choice),
+      do:
+        view
+        |> form("#choice-form-#{s.id}", %{"choice" => choice})
+        |> render_change()
 
     test "header line, details disclosure and footnote", ctx do
       {:ok, view, html} = live(ctx.conn, path(ctx))
@@ -214,10 +221,27 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
       assert has_element?(view, "#council a", "Conseils de classe")
     end
 
-    test "chips: the proposal is pre-pressed, a click saves only the distinction choice", ctx do
+    test "rows show rank, average and the decision as one select; PV in the menu", ctx do
       {:ok, view, _} = live(ctx.conn, path(ctx))
-      assert has_element?(view, "#{chip(ctx.tch, "avertissement_travail")}[aria-pressed='true']")
-      assert has_element?(view, "#{chip(ctx.tch, "tableau_honneur")}[aria-pressed='false']")
+      assert has_element?(view, "#council-row-#{ctx.dj.id}", "15,00")
+      assert has_element?(view, "#council-row-#{ctx.tch.id} .text-error", "7,00")
+      assert has_element?(view, "#council-row-#{ctx.dj.id} .badge", "Encouragements")
+      assert has_element?(view, "#decisions-summary #count-encouragements", "1")
+      assert has_element?(view, "#decisions-summary #count-avertissement_travail", "1")
+      refute has_element?(view, "#decisions-summary #count-felicitations")
+
+      assert has_element?(
+               view,
+               "#council-actions a[href^='/school/councils/#{ctx.cg.id}/print']",
+               "Imprimer le PV"
+             )
+    end
+
+    test "the select preselects the proposal; a change saves only the distinction choice",
+         ctx do
+      {:ok, view, _} = live(ctx.conn, path(ctx))
+      assert has_element?(view, "#{option(ctx.tch, "avertissement_travail")}[selected]")
+      refute has_element?(view, "#{option(ctx.tch, "tableau_honneur")}[selected]")
 
       view
       |> form("#decision-#{ctx.tch.id}", %{
@@ -225,9 +249,11 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
       })
       |> render_change()
 
-      view |> element(chip(ctx.tch, "tableau_honneur")) |> render_click()
-      assert has_element?(view, "#{chip(ctx.tch, "tableau_honneur")}[aria-pressed='true']")
-      assert has_element?(view, "#{chip(ctx.tch, "avertissement_travail")}[aria-pressed='false']")
+      choose(view, ctx.tch, "tableau_honneur")
+      assert has_element?(view, "#{option(ctx.tch, "tableau_honneur")}[selected]")
+      refute has_element?(view, "#{option(ctx.tch, "avertissement_travail")}[selected]")
+      assert has_element?(view, "#saved-#{ctx.tch.id}")
+      assert has_element?(view, "#decisions-summary #count-tableau_honneur", "1")
 
       assert [d] = Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions
       assert d.distinction_choice == :tableau_honneur
@@ -235,25 +261,25 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
       assert d.appreciation == "Doit se ressaisir"
     end
 
-    test "chips lock after « Clôturer », and the server refuses choose when held", ctx do
+    test "the select locks after « Clôturer », and the server refuses choose when held", ctx do
       {:ok, view, _} = live(ctx.conn, path(ctx))
       view |> element("#close-council") |> render_click()
       view |> element("#confirm-hold") |> render_click()
       assert has_element?(view, "#close-council[disabled]", "Conseil clôturé")
-      assert has_element?(view, "#{chip(ctx.dj, "tableau_honneur")}[disabled]")
+      assert has_element?(view, "#{select(ctx.dj)}[disabled]")
       assert has_element?(view, "#reopen-council")
 
       render_click(view, "choose", %{"student_id" => ctx.dj.id, "choice" => "tableau_honneur"})
       assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
 
       view |> element("#reopen-council") |> render_click()
-      refute has_element?(view, "#{chip(ctx.dj, "tableau_honneur")}[disabled]")
+      refute has_element?(view, "#{select(ctx.dj)}[disabled]")
     end
 
     test "a locked council refuses choose", ctx do
       {:ok, _} = TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
       {:ok, view, _} = live(ctx.conn, path(ctx))
-      assert has_element?(view, "#{chip(ctx.dj, "tableau_honneur")}[disabled]")
+      assert has_element?(view, "#{select(ctx.dj)}[disabled]")
       render_click(view, "choose", %{"student_id" => ctx.dj.id, "choice" => "tableau_honneur"})
       assert Councils.council(ctx.scope, ctx.cg, {:trimester, ctx.term}).decisions == []
     end

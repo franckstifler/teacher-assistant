@@ -76,7 +76,7 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     n = length(TeacherAssistant.Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
     assert n > 0
     {:ok, view, _} = live(conn, ~p"/school/classes")
-    assert has_element?(view, "#class-card-#{cg.id}.border-l-error")
+    assert has_element?(view, "#class-card-#{cg.id} [title='À compléter']")
 
     assert has_element?(
              view,

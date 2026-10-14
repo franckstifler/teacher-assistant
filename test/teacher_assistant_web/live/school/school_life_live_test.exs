@@ -76,16 +76,63 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "Fait"
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "1 absent"
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Non fait"
-    assert has_element?(view, "#my-day h1", "Ma journée")
+    assert has_element?(view, "#my-day h1", "Bonjour")
+    assert has_element?(view, "#today-slots h2", "Ma journée")
     assert has_element?(view, "#my-day header", "2 cours aujourd'hui")
-    # the missed slot is selected on arrival, its roll call beside the list
+    # a break between two lessons is a thin separator — none between p1 and p2
+    refute has_element?(view, "#today-slots", "Récréation")
+    # nothing under way at 13:00 and nothing left: the hero is the missed lesson,
+    # its roll call closed until « Faire l'appel »
+    assert has_element?(view, "#now-card", "Appel non fait")
+    assert has_element?(view, "#now-card", "6e A · Maths")
+    assert has_element?(view, "#now-marks[href^='/teacher/contexts/']")
+    refute has_element?(view, "#roll-panel")
+
+    view |> element("#now-call") |> render_click()
+    assert_patch(view, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
     assert view |> element("#roll-panel") |> render() =~ ctx.p2.label
+    refute has_element?(view, "#now-card")
+    assert has_element?(view, "#slot-#{ctx.cg.id}-#{ctx.p2.id}[aria-current='true']")
+
+    view |> element("#close-roll") |> render_click()
+    assert_patch(view, ~p"/school/today")
+    refute has_element?(view, "#roll-panel")
+  end
+
+  test "Ma journée: the hero is the lesson under way, a roll call opens from the timeline",
+       %{conn: conn} = ctx do
+    # a third lesson, 13:30–14:20 on Monday: the next one at 13:00
+    [_, _, _, _, _, _, p7 | _] =
+      ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+    tc = ctx.cg.id |> Timetabling.list_for_class!(scope: ctx.scope) |> hd()
+
+    {:ok, _} =
+      Timetabling.place_slot(ctx.scope, ctx.cg, %{
+        day: :monday,
+        period_id: p7.id,
+        teaching_context_id: tc.teaching_context_id
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/today")
+    assert has_element?(view, "#now-card", "Prochain cours")
+    assert has_element?(view, "#now-state", "L'appel s'ouvrira à 13:30")
+    refute has_element?(view, "#now-call")
+    # the lunch break sits between p2 and p7; upcoming lessons are not links
+    assert has_element?(view, "#today-slots", "Pause")
+    refute has_element?(view, "a#slot-#{ctx.cg.id}-#{p7.id}")
+
+    view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#record-roll", "Modifier l'appel")
+    assert has_element?(view, "#roll-footer", "Appel enregistré")
   end
 
   test "Ma journée records the selected slot's roll call in place", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
 
+    assert has_element?(view, "#record-roll", "Valider l'appel · 0 absent, 0 retard")
     view |> element("#att-#{ctx.e.id}-late") |> render_click()
+    assert has_element?(view, "#record-roll", "Valider l'appel · 0 absent, 1 retard")
     view |> element("#record-roll") |> render_click()
 
     assert has_element?(view, "#record-roll", "Modifier l'appel")
@@ -106,8 +153,27 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#kpi-absents") |> render() =~ "1"
     assert view |> element("#kpi-to-justify") |> render() =~ "1"
 
+    assert has_element?(view, "#calls-summary", "1 appel manquant aujourd'hui")
     assert has_element?(view, "#grid-#{ctx.cg.id}")
-    assert view |> element("#roll-call-grid") |> render() =~ "?"
+    # p1 done (1 absent, success), p2 finished without a roll call (error)
+    grid = view |> element("#roll-call-grid") |> render()
+    assert grid =~ "!"
+    assert grid =~ "bg-error/15"
+    assert grid =~ "bg-success/12"
+
+    assert has_element?(
+             view,
+             "#roll-call-grid a[href='/school/classes/#{ctx.cg.id}/attendance/#{ctx.p2.id}?date=2025-09-15']"
+           )
+
+    # phone: one row per class with its lessons' strip, linking to today's register
+    assert has_element?(view, "#class-day-#{ctx.cg.id}", "1 manquant")
+
+    assert has_element?(
+             view,
+             "a#class-day-#{ctx.cg.id}[href='/school/classes/#{ctx.cg.id}/register?date=2025-09-15']"
+           )
+
     assert has_element?(view, "#missed-#{ctx.cg.id}-#{ctx.p2.id}")
     assert view |> element("#recent-sanctions") |> render() =~ "parents à notifier"
     assert has_element?(view, "#all-sanctions[href='/school/sanctions']")
