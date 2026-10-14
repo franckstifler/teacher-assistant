@@ -212,8 +212,9 @@ defmodule TeacherAssistantWeb.School.NewYearLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="new-year" class="mx-auto flex w-full max-w-3xl flex-col gap-5">
-        <.page_header
-          eyebrow={gettext("Paramètres · Année")}
+        <.back_header
+          back={~p"/school/settings/year"}
+          back_label={gettext("Année scolaire et calendrier")}
           title={gettext("Préparer l'année suivante")}
           subtitle={gettext("À partir de %{name}", name: @year.name)}
         />

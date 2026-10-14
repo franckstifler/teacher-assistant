@@ -1,5 +1,5 @@
 defmodule TeacherAssistantWeb.School.SettingsEyebrowsTest do
-  @moduledoc "Every page of the « Paramètres » menu says so above its title."
+  @moduledoc "Every settings page leads back to the Paramètres hub (or one of its pages) above its title."
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
@@ -12,9 +12,8 @@ defmodule TeacherAssistantWeb.School.SettingsEyebrowsTest do
            /school/settings/roles /school/settings/header) do
     test "#{path} is under « Paramètres »", %{conn: conn} do
       {:ok, view, _} = live(conn, unquote(path))
-      # an eyebrow, or the `back_header` link back to the Paramètres hub
-      assert has_element?(view, "header p.ta-eyebrow", "Paramètres") or
-               has_element?(view, "header a[href='/school/settings']", "Paramètres")
+      # the `back_header` link back to the hub, or to a hub page (the header's parent)
+      assert has_element?(view, "header a[href^='/school/settings']")
     end
   end
 end

@@ -119,7 +119,11 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="official-header" class="space-y-6">
-        <.page_header eyebrow={gettext("Paramètres")} title={gettext("En-tête et signature")} />
+        <.back_header
+          back={~p"/school/settings/profile"}
+          back_label={gettext("Profil et en-tête officiel")}
+          title={gettext("En-tête et signature")}
+        />
 
         <.form for={%{}} id="header-lines-form" phx-submit="save_lines" class="ta-panel space-y-3">
           <h2 class="ta-eyebrow">{gettext("En-tête officiel")}</h2>

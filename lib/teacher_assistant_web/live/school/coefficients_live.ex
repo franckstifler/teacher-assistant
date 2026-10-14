@@ -37,7 +37,11 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="coefficients" class="space-y-6">
-        <.page_header eyebrow={gettext("Paramètres")} title={gettext("Matières & coefficients")} />
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Matières & coefficients")}
+        />
         <p class="text-sm text-base-content/70">
           {gettext(
             "Case vide : matière non enseignée à ce niveau. Bordure ambre : une classe a un coefficient propre."

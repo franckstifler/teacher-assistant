@@ -23,8 +23,9 @@ defmodule TeacherAssistantWeb.School.YearLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="past-year" class="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <.page_header
-          eyebrow={gettext("Paramètres · Année")}
+        <.back_header
+          back={~p"/school/settings/year"}
+          back_label={gettext("Année scolaire et calendrier")}
           title={@year.name}
           subtitle={
             if @year.status == :closed,

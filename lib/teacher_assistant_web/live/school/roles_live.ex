@@ -21,7 +21,11 @@ defmodule TeacherAssistantWeb.School.RolesLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="roles" class="space-y-4">
-        <.page_header eyebrow={gettext("Paramètres")} title={gettext("Rôles et droits")} />
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Rôles et droits")}
+        />
         <p class="text-sm text-base-content/70">
           {gettext("Les droits suivent le rôle ; ils ne sont pas modifiables pour l'instant.")}
         </p>
