@@ -141,7 +141,83 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
       >
       </p>
 
-      <%!-- Séance overlay: filled in Task 5. --%>
+      <div data-role="session" class="fixed inset-0 z-50 hidden flex-col bg-black text-white">
+        <header class="flex items-center justify-between gap-2 p-3">
+          <div class="min-w-0">
+            <p data-role="progress" class="ta-num text-xs opacity-70"></p>
+            <p data-role="name" class="truncate text-lg font-semibold"></p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" data-role="skip" class="btn btn-ghost btn-sm text-white">{gettext(
+              "Passer"
+            )}</button>
+            <button type="button" data-role="quit" class="btn btn-ghost btn-sm text-white">{gettext(
+              "Quitter"
+            )}</button>
+          </div>
+        </header>
+        <div class="relative flex-1 overflow-hidden">
+          <video data-role="video" playsinline muted class="absolute inset-0 size-full object-cover"></video>
+          <canvas
+            data-role="still"
+            width="600"
+            height="800"
+            class="absolute inset-0 m-auto hidden aspect-[3/4] h-full max-w-full"
+          ></canvas>
+          <div
+            data-role="frame"
+            class="pointer-events-none absolute inset-0 m-auto aspect-[3/4] h-full max-w-full rounded-box border-2 border-white/80"
+          >
+            <div class="absolute left-1/2 top-[12%] h-[62%] w-[62%] -translate-x-1/2 rounded-[50%] border-2 border-dashed border-white/60">
+            </div>
+          </div>
+          <p
+            data-role="camera-error"
+            class="absolute inset-x-4 top-1/3 hidden rounded-box bg-base-100 p-4 text-center text-base-content"
+          >
+            {gettext("Caméra indisponible. Choisissez une photo à la place.")}
+            <button type="button" data-role="fallback" class="btn btn-primary btn-sm mt-3 w-full">{gettext(
+              "Choisir une photo"
+            )}</button>
+          </p>
+        </div>
+        <footer class="flex items-center justify-center gap-6 p-5">
+          <button
+            type="button"
+            data-role="flip"
+            class="btn btn-circle btn-ghost text-white"
+            aria-label={gettext("Changer de caméra")}
+          >
+            <.icon name="hero-arrow-path" class="size-6" />
+          </button>
+          <button
+            type="button"
+            data-role="shutter"
+            class="size-18 rounded-full border-4 border-white bg-white/20 transition active:scale-95"
+            aria-label={gettext("Prendre la photo")}
+          ></button>
+          <button type="button" data-role="retake" class="btn btn-ghost hidden text-white">{gettext(
+            "Reprendre"
+          )}</button>
+          <button type="button" data-role="accept" class="btn btn-primary hidden">{gettext("Valider")} ✓</button>
+        </footer>
+        <div
+          data-role="summary"
+          class="absolute inset-0 hidden flex-col items-center justify-center gap-4 bg-black/95 p-6 text-center"
+        >
+          <p
+            data-role="summary-text"
+            class="text-lg"
+            data-template={
+              gettext("%{taken} photos prises, %{skipped} passées", taken: "__T__", skipped: "__S__")
+            }
+          >
+          </p>
+          <button type="button" data-role="summary-close" class="btn btn-primary">{gettext(
+            "Retour à la grille"
+          )}</button>
+        </div>
+      </div>
     </div>
     """
   end

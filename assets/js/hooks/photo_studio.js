@@ -1,6 +1,6 @@
 // Spec 2026-10-12 §7: crop / séance / upload queue for student photos.
 // Output is always a 600×800 JPEG (q 0.85) named `<studentId>.jpg`.
-const W = 600, H = 800, QUALITY = 0.85
+const W = 600, H = 800, QUALITY = 0.85, MAX_IN_FLIGHT = 3
 
 export const toJpeg = (canvas) =>
   new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", QUALITY))
@@ -19,6 +19,7 @@ export const PhotoStudio = {
   mounted() {
     this.pending = new Map() // studentId -> File, until the server acks
     this.failed = new Set()
+    this.inFlight = new Set()
     this.$ = (role) => this.el.querySelector(`[data-role="${role}"]`)
 
     this.$("file").addEventListener("change", (e) => {
@@ -46,11 +47,11 @@ export const PhotoStudio = {
     this.handleEvent("photo:stored", ({student_id}) => {
       this.pending.delete(student_id)
       this.failed.delete(student_id)
-      this.renderPending()
+      this.settle(student_id)
     })
     this.handleEvent("photo:failed", ({student_id}) => {
       if (this.pending.has(student_id)) this.failed.add(student_id)
-      this.renderPending()
+      this.settle(student_id)
     })
     this.$("pending").addEventListener("click", () => this.retry())
     if (this.setupSession) this.setupSession()
@@ -65,20 +66,34 @@ export const PhotoStudio = {
   },
 
   // --- queue -------------------------------------------------------------
+  // At most MAX_IN_FLIGHT uploads at a time, under the server's max_entries,
+  // so a fast séance never trips `too_many_files`; the rest wait their turn.
   async submit(studentId, blob) {
     const file = new File([blob], `${studentId}.jpg`, {type: "image/jpeg"})
     this.pending.set(studentId, file)
     this.failed.delete(studentId)
-    this.renderPending()
-    this.upload("photo", [file])
+    this.pump()
   },
 
-  retry() {
+  pump() {
     for (const [id, file] of this.pending) {
-      this.failed.delete(id)
+      if (this.inFlight.size >= MAX_IN_FLIGHT) break
+      if (this.inFlight.has(id) || this.failed.has(id)) continue
+      this.inFlight.add(id)
       this.upload("photo", [file])
     }
     this.renderPending()
+  },
+
+  settle(studentId) {
+    this.inFlight.delete(studentId)
+    this.pump()
+  },
+
+  retry() {
+    this.inFlight.clear()
+    this.failed.clear()
+    this.pump()
   },
 
   renderPending() {
@@ -114,13 +129,15 @@ export const PhotoStudio = {
       redraw()
     })
     canvas.addEventListener("pointerup", () => { last = null })
-    this.$("crop-cancel").addEventListener("click", () => this.closeCrop())
+    this.$("crop-cancel").addEventListener("click", () => { this.afterCrop = null; this.closeCrop() })
     this.$("crop-ok").addEventListener("click", async () => {
       const {studentId, onDone} = this.crop
       const blob = await toJpeg(canvas)
       this.closeCrop()
       this.submit(studentId, blob)
       onDone?.()
+      this.afterCrop?.()
+      this.afterCrop = null
     })
     this.redrawCrop = redraw
   },
@@ -144,5 +161,110 @@ export const PhotoStudio = {
     this.crop?.bitmap.close?.()
     this.crop = null
     this.$("crop").classList.replace("flex", "hidden")
+  },
+
+  // --- séance --------------------------------------------------------------
+  setupSession() {
+    const $ = this.$
+    this.el.addEventListener("photo:session-start", () => this.startSession())
+    $("quit").addEventListener("click", () => this.endSession())
+    $("summary-close").addEventListener("click", () => this.closeSession())
+    $("skip").addEventListener("click", () => { this.skipped++; this.next() })
+    $("flip").addEventListener("click", () => {
+      this.facing = this.facing === "environment" ? "user" : "environment"
+      this.startCamera()
+    })
+    $("shutter").addEventListener("click", () => this.shoot())
+    $("retake").addEventListener("click", () => this.showLive())
+    $("accept").addEventListener("click", async () => {
+      const blob = await toJpeg($("still"))
+      this.submit(this.current().id, blob)
+      this.taken++
+      this.next()
+    })
+    $("fallback").addEventListener("click", () => {
+      this.targetId = this.current().id
+      this.afterCrop = () => { this.taken++; this.next() }
+      this.$("file").click()
+    })
+    this.facing = "environment"
+  },
+
+  current() { return this.queue[this.index] },
+
+  async startSession() {
+    this.queue = JSON.parse(this.el.dataset.queue || "[]")
+    if (this.queue.length === 0) return
+    this.index = 0; this.taken = 0; this.skipped = 0
+    this.$("session").classList.replace("hidden", "flex")
+    this.$("summary").classList.replace("flex", "hidden")
+    try { this.wakeLock = await navigator.wakeLock?.request("screen") } catch (_e) { this.wakeLock = null }
+    await this.startCamera()
+    this.showStudent()
+  },
+
+  async startCamera() {
+    this.stopCamera()
+    const video = this.$("video")
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        video: {facingMode: this.facing, width: {ideal: 1280}, height: {ideal: 1280}}, audio: false,
+      })
+      video.srcObject = this.stream
+      await video.play()
+      this.$("camera-error").classList.add("hidden")
+    } catch (_e) {
+      this.$("camera-error").classList.remove("hidden")
+    }
+  },
+
+  stopCamera() {
+    this.stream?.getTracks().forEach((t) => t.stop())
+    this.stream = null
+  },
+
+  showStudent() {
+    const s = this.current()
+    this.$("name").textContent = s.name
+    this.$("progress").textContent = `${this.index + 1}/${this.queue.length}`
+    this.showLive()
+  },
+
+  showLive() {
+    for (const r of ["still", "retake", "accept"]) this.$(r).classList.add("hidden")
+    for (const r of ["video", "shutter", "flip"]) this.$(r).classList.remove("hidden")
+  },
+
+  shoot() {
+    const video = this.$("video")
+    const vw = video.videoWidth, vh = video.videoHeight
+    if (!vw) return
+    // Capture exactly what the on-screen 3:4 frame shows: map its rectangle back
+    // through the video's object-cover scaling into video pixels.
+    const vr = video.getBoundingClientRect(), fr = this.$("frame").getBoundingClientRect()
+    const s = Math.max(vr.width / vw, vr.height / vh)
+    const ox = (vr.width - vw * s) / 2, oy = (vr.height - vh * s) / 2
+    const ctx = this.$("still").getContext("2d")
+    ctx.drawImage(video, (fr.left - vr.left - ox) / s, (fr.top - vr.top - oy) / s, fr.width / s, fr.height / s, 0, 0, W, H)
+    for (const r of ["video", "shutter", "flip"]) this.$(r).classList.add("hidden")
+    for (const r of ["still", "retake", "accept"]) this.$(r).classList.remove("hidden")
+  },
+
+  next() {
+    this.index++
+    if (this.index >= this.queue.length) return this.endSession()
+    this.showStudent()
+  },
+
+  endSession() {
+    this.stopCamera()
+    this.wakeLock?.release?.()
+    const el = this.$("summary-text")
+    el.textContent = el.dataset.template.replace("__T__", this.taken).replace("__S__", this.skipped)
+    this.$("summary").classList.replace("hidden", "flex")
+  },
+
+  closeSession() {
+    this.$("session").classList.replace("flex", "hidden")
   },
 }
