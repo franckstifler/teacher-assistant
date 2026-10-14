@@ -20,7 +20,8 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
        |> assign(
          cg: cg,
          date: date,
-         can_edit?: TeacherAssistant.Discipline.can_manage_conduct?(scope)
+         can_edit?: TeacherAssistant.Discipline.can_manage_conduct?(scope),
+         can_manage_register?: Enrollment.can_manage_register?(scope)
        )
        |> ClassShell.assign_shell()
        |> load_register()}
@@ -143,6 +144,16 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <.class_shell cg={@cg} shell={@shell} tab={:register}>
+        <:actions>
+          <.link
+            :if={@can_manage_register?}
+            navigate={~p"/school/classes/#{@cg.id}/photos"}
+            id="go-to-photos"
+            class="btn btn-ghost btn-sm"
+          >
+            {gettext("Photos")}
+          </.link>
+        </:actions>
         <form id="register-date-form" phx-submit="pick_date" class="flex items-end gap-2">
           <label class="form-control">
             <span class="ta-eyebrow block mb-1">{gettext("Date")}</span>

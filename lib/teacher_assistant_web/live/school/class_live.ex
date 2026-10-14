@@ -30,6 +30,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          cg: cg,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
          can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
+         can_manage_register?: Enrollment.can_manage_register?(scope),
          filter: :all,
          rq: "",
          drawer: nil
@@ -53,6 +54,14 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <.class_shell cg={@cg} shell={@shell} tab={:students}>
         <:actions>
+          <.link
+            :if={@can_manage_register?}
+            navigate={~p"/school/classes/#{@cg.id}/photos"}
+            id="go-to-photos"
+            class="btn btn-ghost btn-sm"
+          >
+            {gettext("Photos")}
+          </.link>
           <.link
             navigate={~p"/school/bulletins?class=#{@cg.id}"}
             id="go-to-bulletins"
