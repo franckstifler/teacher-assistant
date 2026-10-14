@@ -204,4 +204,84 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
 
     refute has_element?(view, "#guardian-edit-form")
   end
+
+  describe "photo" do
+    test "the SG uploads the student's photo from the profile", %{
+      scope: scope,
+      school: school,
+      awa: awa
+    } do
+      sg = member_scope_fixture(scope, %{roles: [:discipline_master]})
+      {:ok, view, _html} = live(conn_for(school, sg.current_user), ~p"/school/students/#{awa.id}")
+
+      view |> element("#student-photo-button") |> render_click()
+      assert has_element?(view, "#photo-sheet")
+
+      view
+      |> file_input("#photo-upload-form", :photo, [
+        %{
+          name: "#{awa.id}.jpg",
+          content: File.read!("test/support/fixtures/files/1x1.jpg"),
+          type: "image/jpeg"
+        }
+      ])
+      |> render_upload("#{awa.id}.jpg")
+
+      assert {:ok, %{photo_path: path}} = Enrollment.fetch_owned_student(scope, awa.id)
+      assert is_binary(path)
+      assert_push_event(view, "photo:stored", %{student_id: student_id})
+      assert student_id == awa.id
+
+      assert has_element?(
+               view,
+               ~s(#student-header img[src^="/school/students/#{awa.id}/photo?v="])
+             )
+    end
+
+    test "a photo named after another student is refused", %{
+      conn: conn,
+      scope: scope,
+      cg: cg,
+      awa: awa
+    } do
+      {:ok, ben} = Enrollment.add_student(scope, cg, %{full_name: "Ben", sex: :m})
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+
+      html =
+        view
+        |> file_input("#photo-upload-form", :photo, [
+          %{
+            name: "#{ben.id}.jpg",
+            content: File.read!("test/support/fixtures/files/1x1.jpg"),
+            type: "image/jpeg"
+          }
+        ])
+        |> render_upload("#{ben.id}.jpg")
+
+      assert html =~ "ne correspond pas"
+      assert {:ok, %{photo_path: nil}} = Enrollment.fetch_owned_student(scope, ben.id)
+    end
+
+    test "the student's teacher cannot change the photo", %{
+      scope: scope,
+      school: school,
+      cg: cg,
+      awa: awa
+    } do
+      %{teacher: teacher} = school_teacher_fixture(scope, %{class_group: cg})
+      {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/students/#{awa.id}")
+
+      refute has_element?(view, "#student-photo-button")
+      refute has_element?(view, "#photo-upload-form")
+    end
+
+    test "the ID card link targets the current class", %{conn: conn, cg: cg, awa: awa} do
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+
+      assert has_element?(
+               view,
+               ~s(#student-card[href="/school/classes/#{cg.id}/cards/print?student=#{awa.id}"])
+             )
+    end
+  end
 end

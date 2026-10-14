@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   """
   use TeacherAssistantWeb, :live_view
 
-  import TeacherAssistantWeb.StudentPhotoComponents, only: [student_avatar: 1]
+  import TeacherAssistantWeb.StudentPhotoComponents
 
   alias TeacherAssistant.{Attendance, Councils, Discipline, Enrollment, Organization, ReportCards}
 
@@ -37,9 +37,12 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          adding_guardian: false,
          match: [],
          match_children: %{},
-         guardian_edit: nil
+         guardian_edit: nil,
+         sheet: false,
+         confirm_remove?: false
        )
        |> assign_guardian_form(%{})
+       |> allow_photo_upload_for(access)
        |> load()}
     else
       {:error, _} ->
@@ -50,6 +53,35 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
       :none ->
         {:ok, socket |> Authz.put_not_allowed() |> push_navigate(to: ~p"/school")}
+    end
+  end
+
+  defp allow_photo_upload_for(socket, :manage), do: allow_photo_upload(socket, &handle_progress/3)
+  defp allow_photo_upload_for(socket, _access), do: socket
+
+  # Spec 2026-10-12 §8: the photo sheet on the student page.
+  defp handle_progress(:photo, %{done?: false}, socket), do: {:noreply, socket}
+
+  defp handle_progress(:photo, entry, socket) do
+    %{student: student} = socket.assigns
+
+    if entry_student_id(entry) == student.id do
+      case store_entry(socket, student, entry) do
+        {:ok, updated} ->
+          {:noreply, socket |> assign(student: updated, sheet: false) |> photo_stored(student.id)}
+
+        {:error, message} ->
+          {:noreply, photo_failed(socket, student.id, message)}
+      end
+    else
+      discard_entry(socket, entry)
+
+      {:noreply,
+       photo_failed(
+         socket,
+         entry_student_id(entry),
+         gettext("Cette photo ne correspond pas à cet élève.")
+       )}
     end
   end
 
@@ -239,6 +271,30 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   end
 
   # Any write event from a read-only visitor.
+  def handle_event("validate_photo", _params, socket), do: {:noreply, socket}
+
+  def handle_event("photo_unreadable", _params, socket),
+    do: {:noreply, put_flash(socket, :error, unreadable_message())}
+
+  def handle_event("open_sheet", _params, socket) when socket.assigns.access == :manage,
+    do: {:noreply, assign(socket, sheet: true, confirm_remove?: false)}
+
+  def handle_event("close_sheet", _params, socket),
+    do: {:noreply, assign(socket, sheet: false, confirm_remove?: false)}
+
+  def handle_event("ask_remove", _params, socket) when socket.assigns.access == :manage,
+    do: {:noreply, assign(socket, confirm_remove?: true)}
+
+  def handle_event("remove_photo", _params, socket) when socket.assigns.access == :manage do
+    case remove_photo(socket, socket.assigns.student) do
+      {:ok, student} ->
+        {:noreply, assign(socket, student: student, sheet: false, confirm_remove?: false)}
+
+      {:error, message} ->
+        {:noreply, put_flash(socket, :error, message)}
+    end
+  end
+
   def handle_event(_event, _params, socket), do: {:noreply, Authz.put_not_allowed(socket)}
 
   defp run_on_link(socket, id, fun) do
@@ -340,7 +396,24 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
         <header id="student-header" class="flex flex-wrap items-end justify-between gap-4">
           <div class="flex min-w-0 items-center gap-4">
-            <.student_avatar student={@student} class="size-14 text-lg" />
+            <button
+              :if={@access == :manage}
+              id="student-photo-button"
+              type="button"
+              phx-click="open_sheet"
+              aria-label={gettext("Changer la photo")}
+              class="group relative shrink-0 rounded-full transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <.student_avatar student={@student} class="size-14 text-lg" />
+              <span class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-base-content text-base-100 shadow">
+                <.icon name="hero-camera-mini" class="size-3" />
+              </span>
+            </button>
+            <.student_avatar
+              :if={@access != :manage}
+              student={@student}
+              class="size-14 text-lg"
+            />
             <div class="min-w-0 space-y-1.5">
               <h1 class="font-display text-3xl font-semibold leading-none sm:text-[2.2rem]">
                 {@student.full_name}
@@ -370,6 +443,15 @@ defmodule TeacherAssistantWeb.School.StudentLive do
             >
               {gettext("Bulletin")}
             </.link>
+            <a
+              :if={@access == :manage}
+              id="student-card"
+              href={~p"/school/classes/#{@current.class_group_id}/cards/print?student=#{@student.id}"}
+              target="_blank"
+              class="btn btn-ghost btn-sm"
+            >
+              {gettext("Carte scolaire")}
+            </a>
             <.link
               :if={@register?}
               id="student-absences"
@@ -720,6 +802,11 @@ defmodule TeacherAssistantWeb.School.StudentLive do
             </article>
           </div>
         </div>
+        <%= if @access == :manage do %>
+          <.photo_sheet :if={@sheet} student={@student} confirm_remove?={@confirm_remove?} />
+          <.photo_upload_form upload={@uploads.photo} />
+          <.photo_studio id="photo-studio" student_id={@student.id} />
+        <% end %>
       </section>
     </Layouts.app>
     """

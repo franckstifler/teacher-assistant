@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
   @moduledoc "Spec 2026-10-12 §7: a class's photos — grid, per-student sheet, chained séance."
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Enrollment, StudentPhotos}
+  alias TeacherAssistant.Enrollment
   alias TeacherAssistantWeb.Authz
   import TeacherAssistantWeb.StudentPhotoComponents
 
@@ -23,19 +23,16 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
        )
        |> assign(roster: Enrollment.list_roster(scope, cg))
        |> assign_queue()
-       |> allow_upload(:photo,
-         accept: ~w(.jpg .jpeg),
-         max_entries: 5,
-         max_file_size: 1_000_000,
-         auto_upload: true,
-         progress: &handle_progress/3
-       )}
+       |> allow_photo_upload(&handle_progress/3)}
     else
       _ -> {:ok, socket |> Authz.put_not_allowed() |> push_navigate(to: ~p"/school")}
     end
   end
 
   def handle_event("validate_photo", _params, socket), do: {:noreply, socket}
+
+  def handle_event("photo_unreadable", _params, socket),
+    do: {:noreply, put_flash(socket, :error, unreadable_message())}
 
   def handle_event("toggle_missing", _params, socket),
     do: {:noreply, update(socket, :only_missing?, &(!&1))}
@@ -54,11 +51,11 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
 
   def handle_event("remove_photo", _params, socket) do
     with %{student: student} <- row(socket, socket.assigns.sheet),
-         {:ok, updated} <- StudentPhotos.remove(socket.assigns.current_scope, student) do
+         {:ok, updated} <- remove_photo(socket, student) do
       {:noreply, socket |> replace_student(updated) |> assign(sheet: nil, confirm_remove?: false)}
     else
-      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
-      _ -> {:noreply, put_flash(socket, :error, gettext("Impossible de supprimer la photo."))}
+      {:error, message} -> {:noreply, put_flash(socket, :error, message)}
+      nil -> {:noreply, assign(socket, sheet: nil, confirm_remove?: false)}
     end
   end
 
@@ -68,41 +65,22 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
   defp handle_progress(:photo, %{done?: false}, socket), do: {:noreply, socket}
 
   defp handle_progress(:photo, entry, socket) do
-    student_id = Path.rootname(entry.client_name)
+    student_id = entry_student_id(entry)
 
-    case row(socket, student_id) do
+    with %{student: student} <- row(socket, student_id),
+         {:ok, updated} <- store_entry(socket, student, entry) do
+      {:noreply,
+       socket |> replace_student(updated) |> assign(sheet: nil) |> photo_stored(student_id)}
+    else
       nil ->
-        consume_uploaded_entry(socket, entry, fn _ -> {:ok, nil} end)
-        {:noreply, failed(socket, student_id, gettext("Cet élève n'est pas dans cette classe."))}
+        discard_entry(socket, entry)
 
-      %{student: student} ->
-        result =
-          consume_uploaded_entry(socket, entry, fn %{path: tmp} ->
-            {:ok, StudentPhotos.store(socket.assigns.current_scope, student, tmp)}
-          end)
+        {:noreply,
+         photo_failed(socket, student_id, gettext("Cet élève n'est pas dans cette classe."))}
 
-        case result do
-          {:ok, updated} ->
-            {:noreply,
-             socket
-             |> replace_student(updated)
-             |> assign(sheet: nil)
-             |> push_event("photo:stored", %{student_id: student_id})}
-
-          {:error, %Ash.Error.Forbidden{}} ->
-            {:noreply, failed(socket, student_id, Authz.not_allowed_message())}
-
-          {:error, _} ->
-            {:noreply,
-             failed(socket, student_id, gettext("Photo refusée : fichier JPEG d'1 Mo maximum."))}
-        end
+      {:error, message} ->
+        {:noreply, photo_failed(socket, student_id, message)}
     end
-  end
-
-  defp failed(socket, student_id, message) do
-    socket
-    |> put_flash(:error, message)
-    |> push_event("photo:failed", %{student_id: student_id, message: message})
   end
 
   defp row(socket, id), do: Enum.find(socket.assigns.roster, &(&1.student.id == id))
@@ -191,14 +169,7 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
           </label>
         </div>
 
-        <form
-          id="photo-upload-form"
-          phx-change="validate_photo"
-          phx-submit="validate_photo"
-          class="hidden"
-        >
-          <.live_file_input upload={@uploads.photo} />
-        </form>
+        <.photo_upload_form upload={@uploads.photo} />
 
         <ul :if={@uploads.photo.entries != []} id="photo-uploads" class="space-y-1 text-sm">
           <li :for={entry <- @uploads.photo.entries} class="flex items-center gap-2">
