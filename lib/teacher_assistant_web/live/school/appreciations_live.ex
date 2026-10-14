@@ -238,11 +238,11 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
                 type="button"
                 phx-click="remove_band"
                 phx-value-index={i}
-                class="size-[34px] cursor-pointer rounded-[0.4rem] border border-base-300 text-base-content/75 transition-colors hover:border-error hover:text-error"
+                class="grid size-10 cursor-pointer place-items-center rounded-[0.4rem] border border-base-300 text-base-content/75 transition-colors hover:border-error hover:text-error"
                 title={gettext("Supprimer")}
                 aria-label={gettext("Supprimer")}
               >
-                ×
+                <.icon name="hero-trash" class="size-4" />
               </button>
             </div>
           </.form>

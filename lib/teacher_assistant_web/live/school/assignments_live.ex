@@ -276,7 +276,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
                   <button
                     type="button"
                     phx-click="close"
-                    class="btn btn-ghost btn-xs"
+                    class="btn btn-ghost btn-sm"
                     aria-label={gettext("Fermer")}
                   >
                     <.icon name="hero-x-mark" class="size-4" />

@@ -252,7 +252,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                     :if={is_nil(sanction.parents_notified_on) and @can_edit?}
                     id={"notify-parents-#{sanction.id}"}
                     type="button"
-                    class="btn btn-ghost btn-xs"
+                    class="btn btn-ghost btn-sm"
                     phx-click="mark_parents_notified"
                     phx-value-sanction_id={sanction.id}
                   >
@@ -269,12 +269,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                   <button
                     id={"delete-sanction-#{sanction.id}"}
                     type="button"
-                    class="btn btn-ghost btn-xs"
+                    class="btn btn-ghost btn-sm btn-square text-error"
                     phx-click="delete_sanction"
                     phx-value-sanction_id={sanction.id}
                     data-confirm={gettext("Supprimer cette sanction ?")}
+                    aria-label={gettext("Supprimer")}
+                    title={gettext("Supprimer")}
                   >
-                    {gettext("Supprimer")}
+                    <.icon name="hero-trash" class="size-4" />
                   </button>
                 </td>
               </tr>
@@ -347,7 +349,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
               :if={@can_edit? and sequence_period?(@period)}
               id="conduct-link"
               navigate={~p"/school/conduct?class=#{@cg.id}&seq=#{elem(@period, 1).id}"}
-              class="btn btn-ghost btn-xs"
+              class="btn btn-ghost btn-sm"
             >
               <.icon name="hero-pencil-square" class="size-4" />
               {gettext("Saisir sur la page Conduite")}
