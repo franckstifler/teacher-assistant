@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Drawer do
   @moduledoc """
-  A side panel over the page (spec 2026-10-08), rendered by the server: the page
+  A side panel over the page (spec 2026-10-08) — a bottom sheet on phones —
+  rendered by the server: the page
   shows it with `:if` and closes it by handling `on_close`. Focus stays inside
   while it is open; Escape and the backdrop close it.
   """
@@ -36,13 +37,25 @@ defmodule TeacherAssistantWeb.Drawer do
       <.focus_wrap
         id={"#{@id}-panel"}
         phx-mounted={
-          JS.transition({"ease-out duration-200", "translate-x-full", "translate-x-0"})
+          JS.transition(
+            {"ease-out duration-200", "translate-y-full sm:translate-y-0 sm:translate-x-full",
+             "translate-y-0 sm:translate-x-0"}
+          )
           |> JS.focus_first()
         }
         phx-key="escape"
         phx-window-keydown={@on_close}
-        class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-base-300 bg-base-100 shadow-2xl"
+        class={[
+          "absolute flex w-full flex-col bg-base-100 shadow-2xl",
+          "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t border-base-300",
+          "sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:max-h-none sm:max-w-md sm:rounded-none sm:border-l sm:border-t-0"
+        ]}
       >
+        <span
+          class="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-base-300 sm:hidden"
+          aria-hidden="true"
+        >
+        </span>
         <header class="flex items-start justify-between gap-3 border-b border-base-300 px-5 py-4">
           <div>
             <p :if={@eyebrow} class="ta-eyebrow">{@eyebrow}</p>
@@ -62,7 +75,7 @@ defmodule TeacherAssistantWeb.Drawer do
         </div>
         <footer
           :if={@footer != []}
-          class="flex flex-wrap justify-end gap-2 border-t border-base-300 px-5 py-4"
+          class="flex flex-wrap justify-end gap-2 border-t border-base-300 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
         >
           {render_slot(@footer)}
         </footer>

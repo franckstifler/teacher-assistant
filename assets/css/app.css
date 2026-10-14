@@ -167,10 +167,18 @@ h1, h2, h3, .ta-display {
   box-shadow: 0 10px 30px color-mix(in oklch, black 22%, transparent);
 }
 
+/* background-color only: the `background` shorthand would wipe daisyUI's select
+   chevron (a background-image), leaving every <select> looking like a text box. */
 .input, .select, .textarea {
-  background: color-mix(in oklch, var(--color-base-100) 94%, var(--color-primary) 6%);
+  background-color: color-mix(in oklch, var(--color-base-100) 94%, var(--color-primary) 6%);
   border-color: var(--color-base-300);
 }
+
+/* <.input> fields: stacked in normal flow they keep a little air below; inside a
+   flex/grid row the parent's gap spaces them, so a margin would only push the
+   field above the buttons and badges beside it. */
+.fieldset { margin-block-end: 0.5rem; }
+:is(.flex, .inline-flex, .grid) > .fieldset { margin-block-end: 0; }
 .input:focus, .select:focus, .textarea:focus,
 .input:focus-within, .select:focus-within, .textarea:focus-within {
   outline: 2px solid color-mix(in oklch, var(--color-primary) 38%, transparent);
@@ -460,6 +468,83 @@ h1, h2, h3, .ta-display {
 .ta-rail__item:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* =========================================================================
+   Shared page patterns (UIComponents)
+   ========================================================================= */
+
+/* a settings card and its rows: label + help left, control right */
+.ta-section {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  overflow: clip;
+}
+.ta-setting {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid color-mix(in oklch, var(--color-base-300) 55%, var(--color-base-100));
+}
+@media (min-width: 640px) {
+  .ta-setting {
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 20rem);
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.85rem 1.25rem;
+  }
+}
+.ta-setting__control > .fieldset { margin-block-end: 0; padding-block: 0; }
+
+/* a tappable list row — the phone replacement for a table row */
+.ta-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid color-mix(in oklch, var(--color-base-300) 55%, var(--color-base-100));
+  color: inherit;
+  transition: background-color 120ms ease;
+}
+.ta-list-row:first-child { border-top: 0; }
+a.ta-list-row:hover { background: color-mix(in oklch, var(--color-base-content) 5%, transparent); }
+.ta-list-row--selected { background: color-mix(in oklch, var(--color-primary) 12%, transparent); }
+
+/* the save bar: hidden until its DirtyForm differs from the saved values */
+.ta-savebar {
+  display: none;
+  position: sticky;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 20;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border: 1px solid color-mix(in oklch, var(--color-secondary) 45%, var(--color-base-300));
+  border-radius: calc(var(--radius-box) + 0.2rem);
+  background: color-mix(in oklch, var(--color-base-100) 92%, var(--color-base-content));
+  box-shadow: 0 14px 40px color-mix(in oklch, black 40%, transparent);
+}
+form[data-dirty] .ta-savebar {
+  display: flex;
+  animation: ta-rise 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ta-savebar__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--color-secondary);
+}
+@keyframes ta-rise {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  form[data-dirty] .ta-savebar { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

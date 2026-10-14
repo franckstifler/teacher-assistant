@@ -88,6 +88,7 @@ defmodule TeacherAssistantWeb do
       import Phoenix.HTML
       # Core UI components
       import TeacherAssistantWeb.CoreComponents
+      import TeacherAssistantWeb.UIComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

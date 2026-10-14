@@ -25,6 +25,7 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/teacher_assistant"
 import topbar from "../vendor/topbar"
 import {PhotoStudio} from "./hooks/photo_studio"
+import {DirtyForm} from "./hooks/dirty_form"
 
 const setTheme = (theme) => {
   if (theme === "system") {
@@ -47,7 +48,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PhotoStudio},
+  hooks: {...colocatedHooks, PhotoStudio, DirtyForm},
 })
 
 // Show progress bar on live navigation and form submits
