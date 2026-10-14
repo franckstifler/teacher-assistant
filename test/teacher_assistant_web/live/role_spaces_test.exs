@@ -70,11 +70,11 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     refute has_element?(view, "#subject-form")
   end
 
-  test "inside a course the per-course menu still shows", ctx do
+  test "inside a course its tabs show, with the space menu", ctx do
     {conn, tc} = member_conn(ctx, [:teacher], teaches?: true)
     conn = get(conn, ~p"/teacher/select-context/#{tc.id}")
     {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks")
-    assert has_element?(view, "#per-class-nav")
+    assert has_element?(view, "#teaching-nav")
     assert has_element?(view, "#nav-school-courses")
   end
 

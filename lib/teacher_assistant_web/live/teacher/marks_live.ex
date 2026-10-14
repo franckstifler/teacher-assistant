@@ -6,6 +6,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   always lands on their own class's.
   """
   use TeacherAssistantWeb, :live_view
+
+  import TeacherAssistantWeb.TeachingNav
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
@@ -573,6 +575,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-marks" class="space-y-4">
+        <.teaching_nav context_id={@ctx.id} current={:marks} />
         <.page_header
           eyebrow={gettext("Notes · %{subject}", subject: @ctx.subject)}
           title={gettext("Saisie des notes")}
@@ -645,6 +648,21 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
         <.locked_banner :if={@locked?} seq={@seq} assessment={@column} />
         <.open_banner :if={@seq && !@locked?} seq={@seq} today={@today} />
+
+        <div :if={@seq && @columns == []} id="marks-empty">
+          <.empty_state
+            icon="hero-pencil-square"
+            title={gettext("Aucune évaluation pour la séquence %{n}", n: @seq.number)}
+            message={
+              if @locked?,
+                do: gettext("Cette séquence est verrouillée."),
+                else:
+                  gettext(
+                    "Créez la première ci-dessus : son type, un nom (« Devoir 1 »), la note maximale, puis Ajouter. La liste des élèves s'affiche ensuite pour la saisie."
+                  )
+            }
+          />
+        </div>
 
         <div
           :if={@column}
@@ -788,7 +806,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp assessment_controls(assigns) do
     ~H"""
-    <form :if={@seq} id="assessment-select" phx-change="select_assessment" class="min-w-36 flex-1">
+    <form
+      :if={@seq && @columns != []}
+      id="assessment-select"
+      phx-change="select_assessment"
+      class="min-w-36 flex-1"
+    >
       <.input
         type="select"
         name="assessment"
@@ -809,18 +832,25 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         type="select"
         name="assessment[assessment_type_id]"
         value=""
-        options={[{gettext("Type"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
+        label={gettext("Type")}
+        options={[{gettext("Choisir"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
       />
-      <.input field={@form[:label]} placeholder={gettext("Nouvelle évaluation")} />
+      <.input
+        field={@form[:label]}
+        label={gettext("Nouvelle évaluation")}
+        placeholder={gettext("ex. Devoir 1")}
+      />
       <.input
         type="text"
         inputmode="decimal"
         name="assessment[max_score]"
+        label={gettext("Sur")}
         value={Decimal.to_string(@default_max, :normal)}
-        class="input input-bordered w-20"
-        aria-label={gettext("Note maximale")}
+        class="input w-20"
       />
-      <.button type="submit" class="btn btn-outline btn-sm">{gettext("Ajouter")}</.button>
+      <.button type="submit" class={if @columns == [], do: "btn btn-primary", else: "btn btn-outline"}>
+        {gettext("Ajouter")}
+      </.button>
     </.form>
     """
   end

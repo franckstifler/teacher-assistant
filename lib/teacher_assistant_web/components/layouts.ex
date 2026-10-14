@@ -45,15 +45,6 @@ defmodule TeacherAssistantWeb.Layouts do
     current_scope = assigns[:current_scope]
     current_user = current_scope && current_scope.current_user
 
-    units =
-      case current_scope do
-        %{current_workspace: %{}} ->
-          TeacherAssistant.Curriculum.list_units_for_scope(current_scope)
-
-        _ ->
-          []
-      end
-
     workspaces =
       if current_user,
         do: Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: current_user}),
@@ -70,12 +61,10 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:workspace_name, workspace_name(current_scope))
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
-      |> assign(:units, units)
       |> assign(:workspaces, workspaces)
       |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
       |> assign(:space, current_scope && current_scope.capabilities[:space])
       |> assign(:space_keys, (current_scope && current_scope.capabilities[:spaces]) || [])
-      |> assign(:current_context, current_scope && current_scope.current_context)
       |> assign(:bell, current_scope && (current_scope.capabilities || %{})[:notifications])
       |> assign(:current_path, assigns[:current_path])
 
@@ -178,38 +167,6 @@ defmodule TeacherAssistantWeb.Layouts do
               <.notification_bell :if={@bell} bell={@bell} />
             </div>
 
-            <div :if={@units != []} id="class-switcher" class="dropdown w-full">
-              <div
-                tabindex="0"
-                role="button"
-                class="flex w-full items-center gap-2 rounded-lg border border-[color:var(--ta-rail-line)] px-2.5 py-2 text-sm font-semibold"
-              >
-                <.icon name="hero-users" class="size-4 flex-none text-primary" />
-                <span class="min-w-0 flex-1 truncate text-left">
-                  {context_label(@current_context)}
-                </span>
-                <.icon
-                  name="hero-chevron-down"
-                  class="size-3.5 flex-none text-[color:var(--ta-rail-faint)]"
-                />
-              </div>
-              <ul
-                tabindex="0"
-                class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 text-base-content shadow"
-              >
-                <li
-                  :for={u <- @units}
-                  id={"class-switcher-item-#{TeacherAssistant.Curriculum.unit_select_id(@current_scope, u)}"}
-                >
-                  <.link href={
-                    ~p"/teacher/select-context/#{TeacherAssistant.Curriculum.unit_select_id(@current_scope, u)}?return_to=#{@current_path || "/school"}"
-                  }>
-                    {TeacherAssistant.Curriculum.unit_label(u)}
-                  </.link>
-                </li>
-              </ul>
-            </div>
-
             <div
               :if={@in_school? and length(@space_keys) > 1}
               id="space-switcher"
@@ -251,39 +208,6 @@ defmodule TeacherAssistantWeb.Layouts do
                   {item.label}
                 </.rail_link>
               <% end %>
-            </nav>
-
-            <nav
-              :if={@current_context}
-              id="per-class-nav"
-              class="flex flex-col gap-0.5"
-              aria-label={gettext("Class navigation")}
-            >
-              <p class="ta-rail__label truncate px-1.5 pb-1">{context_label(@current_context)}</p>
-              <.rail_link
-                id="nav-roster"
-                href={~p"/teacher/contexts/#{@current_context.id}/roster"}
-                icon="hero-user-group"
-                current_path={@current_path}
-              >
-                {gettext("Roster")}
-              </.rail_link>
-              <.rail_link
-                id="nav-marks"
-                href={~p"/teacher/contexts/#{@current_context.id}/marks"}
-                icon="hero-pencil-square"
-                current_path={@current_path}
-              >
-                {gettext("Marks")}
-              </.rail_link>
-              <.rail_link
-                id="nav-results"
-                href={~p"/teacher/contexts/#{@current_context.id}/marks/summary"}
-                icon="hero-trophy"
-                current_path={@current_path}
-              >
-                {gettext("Results")}
-              </.rail_link>
             </nav>
 
             <div class="mt-auto flex flex-col gap-2 border-t border-[color:var(--ta-rail-line)] pt-3">
@@ -469,12 +393,6 @@ defmodule TeacherAssistantWeb.Layouts do
     </.link>
     """
   end
-
-  defp context_label(%{subject: subject, class_group: %{label: label}}) when is_binary(label),
-    do: "#{subject} — #{label}"
-
-  defp context_label(%{level: level, subject: subject}), do: "#{level} · #{subject}"
-  defp context_label(_), do: Gettext.gettext(TeacherAssistantWeb.Gettext, "Select a class")
 
   defp workspace_name(%{current_workspace: %{name: name}}), do: name
   defp workspace_name(_), do: nil

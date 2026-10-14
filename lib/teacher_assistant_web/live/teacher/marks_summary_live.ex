@@ -1,5 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   use TeacherAssistantWeb, :live_view
+
+  import TeacherAssistantWeb.TeachingNav
   alias TeacherAssistant.Assessment
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Marks
@@ -114,6 +116,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-marks-summary" class="mx-auto max-w-2xl space-y-4">
+        <.teaching_nav context_id={@ctx.id} current={:summary} />
         <.page_header
           eyebrow={
             if @seq,

@@ -29,27 +29,20 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
     %{conn: conn, school: school, year: year, cg: cg, tc: tc, user: user}
   end
 
-  test "shell shows the class switcher with the active class and per-class tabs", %{
+  test "a course page offers Mes cours and its own tabs, not a rail switcher", %{
     conn: conn,
     tc: tc
   } do
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
-    assert has_element?(view, "#class-switcher")
-    assert has_element?(view, "#class-switcher-item-#{tc.id}")
-    assert has_element?(view, "#per-class-nav")
-    # per-class links point at the active context
-    assert has_element?(view, "#per-class-nav a[href='/teacher/contexts/#{tc.id}/marks']")
-  end
-
-  test "switcher items link through select-context carrying the current path", %{
-    conn: conn,
-    tc: tc
-  } do
-    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
+    refute has_element?(view, "#class-switcher")
+    refute has_element?(view, "#per-class-nav")
+    assert has_element?(view, "#teaching-nav-back[href='/school/courses']")
+    assert has_element?(view, "#teaching-nav-roster[aria-current='page']")
+    assert has_element?(view, "#teaching-nav-marks[href='/teacher/contexts/#{tc.id}/marks']")
 
     assert has_element?(
              view,
-             "#class-switcher-item-#{tc.id} a[href*='/teacher/select-context/#{tc.id}']"
+             "#teaching-nav-summary[href='/teacher/contexts/#{tc.id}/marks/summary']"
            )
   end
 
@@ -58,15 +51,6 @@ defmodule TeacherAssistantWeb.SchoolShellTest do
     {:ok, view, _html} = live(conn, ~p"/school/courses")
     assert has_element?(view, "#nav-school-courses[aria-current='page']")
     refute has_element?(view, "#nav-school-classes[aria-current='page']")
-  end
-
-  test "the switcher return_to carries the page the teacher is on", %{conn: conn, tc: tc} do
-    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
-
-    assert has_element?(
-             view,
-             "#class-switcher-item-#{tc.id} a[href*='return_to=%2Fteacher%2Fcontexts%2F']"
-           )
   end
 
   test "staff and settings nav items show for the head only", %{

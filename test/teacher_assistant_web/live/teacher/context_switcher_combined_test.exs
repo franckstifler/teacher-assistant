@@ -46,25 +46,14 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     }
   end
 
-  test "the class switcher shows one row for a combined course, not one per class", %{
+  test "Mes cours shows one card for a combined course, not one per class", %{
     conn: conn,
-    scope: scope,
-    course: course,
-    tc_a: tc_a
+    course: course
   } do
-    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_a.id}/roster")
+    conn = get(conn, ~p"/school/space/enseignant")
+    {:ok, view, html} = live(conn, ~p"/school/courses")
 
-    # exactly one switcher row for the whole course, labelled with the course label
-    assert has_element?(view, "#class-switcher", course.label)
-
-    item_ids =
-      view
-      |> render()
-      |> then(&Regex.scan(~r/id="class-switcher-item-([^"]+)"/, &1))
-
-    assert length(item_ids) == 1
-
-    representative_id = Curriculum.unit_select_id(scope, {:course, course})
-    assert has_element?(view, "#class-switcher-item-#{representative_id}", course.label)
+    assert has_element?(view, "#course-combined-#{course.id}", course.label)
+    assert length(Regex.scan(~r/id="course-[^"]+"/, html)) == 1
   end
 end

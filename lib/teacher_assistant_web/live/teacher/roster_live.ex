@@ -1,5 +1,7 @@
 defmodule TeacherAssistantWeb.Teacher.RosterLive do
   use TeacherAssistantWeb, :live_view
+
+  import TeacherAssistantWeb.TeachingNav
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
 
@@ -36,6 +38,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="teacher-roster" class="mx-auto max-w-2xl space-y-5">
+        <.teaching_nav context_id={@ctx.id} current={:roster} />
         <.page_header
           eyebrow={gettext("Roster")}
           title={"#{@ctx.subject} · #{@class_group.label}"}
