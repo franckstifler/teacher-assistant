@@ -59,12 +59,6 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
-// Runs the JS command stored in an element's attribute, on the server's request
-// (e.g. the Members page closes its drawer after a successful submit).
-window.addEventListener("phx:js-exec", ({detail}) => {
-  document.querySelectorAll(detail.to).forEach(el => liveSocket.execJS(el, el.getAttribute(detail.attr)))
-})
-
 // Members page: copy the temporary password (or the full message) shown once.
 window.addEventListener("phx:copy", (event) => {
   if (navigator.clipboard) navigator.clipboard.writeText(event.target.textContent.trim())

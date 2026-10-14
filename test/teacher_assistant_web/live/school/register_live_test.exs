@@ -95,6 +95,9 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
 
     assert html =~ "Awa Nkolo"
+    refute has_element?(view, "#student-day-drawer")
+    view |> element("#open-student-#{enrollment.id}") |> render_click()
+    assert has_element?(view, "#student-day-drawer", "Awa Nkolo")
     assert has_element?(view, "#justify-#{enrollment.id}")
 
     view
@@ -103,6 +106,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       "note" => "Certificat médical"
     })
     |> render_submit()
+
+    refute has_element?(view, "#student-day-drawer")
 
     conduct =
       Attendance.student_conduct(
@@ -118,9 +123,23 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
 
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :gt
     assert Decimal.compare(conduct.unjustified_hours, Decimal.new(0)) == :eq
+
+    # the phone row opens the same drawer, and the day can be un-justified
+    view |> element("#register-item-#{enrollment.id}") |> render_click()
+    view |> element("#unjustify-#{enrollment.id}") |> render_click()
+
+    conduct =
+      Attendance.student_conduct(
+        scope,
+        enrollment,
+        {:sequence,
+         Organization.current_sequence(scope, Organization.current_academic_year(scope), date)}
+      )
+
+    assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :eq
   end
 
-  test "absence hours render rounded, not as a long repeating decimal", %{
+  test "absence hours render rounded with a decimal comma, never a long decimal", %{
     conn: conn,
     cg: cg,
     date: date
@@ -128,9 +147,25 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, _view, html} =
       live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
 
-    # 50-minute period absence = 50/60 h; must display as 0.83, never 0.8333…
-    refute html =~ "0.8333"
-    assert html =~ "0.83"
+    # 50-minute period absence = 50/60 h; must display as 0,83 h, never 0.8333…
+    refute html =~ "0.83"
+    refute html =~ "0,8333"
+    assert html =~ "0,83 h"
+  end
+
+  test "each period shows a mark, in the grid and in the phone row", %{
+    conn: conn,
+    cg: cg,
+    date: date,
+    period: period,
+    enrollment: enrollment
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
+
+    assert has_element?(view, "#cell-#{enrollment.id}-#{period.id} .text-error", "A")
+    assert has_element?(view, "#register-item-#{enrollment.id} .text-error", "A")
+    assert has_element?(view, "#register-item-#{enrollment.id}", "Pas d'appel")
   end
 
   test "the date picker reloads a different day's grid", %{
@@ -147,14 +182,23 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     {:ok, view, html} =
       live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
 
-    assert html =~ Date.to_string(date)
+    # the day in words, never in ISO
+    assert html =~ "lundi 8 septembre"
+    refute html =~ Date.to_string(date) <> "<"
 
-    html =
-      view
-      |> form("#register-date-form", %{"date" => Date.to_iso8601(other_date)})
-      |> render_submit()
+    view
+    |> form("#register-date-form", %{"date" => Date.to_iso8601(other_date)})
+    |> render_change()
 
-    assert html =~ Date.to_string(other_date)
+    assert_patch(view, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(other_date)}")
+    assert has_element?(view, "#register-date", "lundi 15 septembre")
+
+    view |> element("#register-prev-day") |> render_click()
+    assert has_element?(view, "#register-date", "dimanche 14 septembre")
+
+    view |> element("#register-next-day") |> render_click()
+    view |> element("#register-next-day") |> render_click()
+    assert has_element?(view, "#register-date", "mardi 16 septembre")
   end
 
   test "a form master sees the grid read-only and a forged justify event is rejected", %{
@@ -178,6 +222,10 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
       live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
 
     assert html =~ "Awa Nkolo"
+    refute has_element?(view, "#open-student-#{enrollment.id}")
+    refute has_element?(view, "button#register-item-#{enrollment.id}")
+    render_hook(view, "open_student", %{"id" => enrollment.id})
+    refute has_element?(view, "#student-day-drawer")
     refute has_element?(view, "#justify-form-#{enrollment.id}")
 
     view

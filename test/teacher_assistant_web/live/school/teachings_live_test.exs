@@ -7,6 +7,11 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
 
   setup :register_and_log_in_user
 
+  defp open_assign(view), do: view |> element("#open-assign") |> render_click()
+
+  defp open_teaching(view, tc),
+    do: view |> element("#assignment-row-#{tc.id}") |> render_click()
+
   setup %{conn: conn, actor: user} do
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée D"})
@@ -34,9 +39,10 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       scope: scope
     } do
       {:ok, odd} = Enrollment.create_class_group(scope, year, %{label: "Sixième Z", level: "6e"})
-      {:ok, view, html} = live(conn, ~p"/school/classes/#{odd.id}/teachings")
+      {:ok, view, _html} = live(conn, ~p"/school/classes/#{odd.id}/teachings")
       assert has_element?(view, "#off-grid-hint")
-      assert html =~ "Mathématiques"
+      open_assign(view)
+      assert has_element?(view, "#assign-subject option", "Mathématiques")
     end
 
     test "an optional subject lists who takes it", %{conn: conn, cg: cg, user: head, scope: scope} do
@@ -54,7 +60,9 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
       assert has_element?(view, "#takers-#{tc.id}", "2/2")
 
-      view |> form("#takers-form-#{tc.id}", %{"takers" => [awa.id]}) |> render_submit()
+      open_teaching(view, tc)
+      assert has_element?(view, "#takers-form-#{tc.id}", "2/2")
+      view |> form("#teaching-form-#{tc.id}", %{"takers" => [awa.id]}) |> render_submit()
       assert TeacherAssistant.Curriculum.exempt_student_ids(scope, tc) == MapSet.new([bob.id])
       assert has_element?(view, "#takers-#{tc.id}", "1/2")
     end
@@ -82,10 +90,20 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      assert has_element?(view, "#assignment-row-#{tc.id}", "coef. 4")
+      open_teaching(view, tc)
       assert has_element?(view, "#coefficient-#{tc.id} input[value='4']")
       refute has_element?(view, "#reset-coefficient-#{tc.id}")
 
-      view |> form("#coefficient-#{tc.id}", %{"coefficient" => "3"}) |> render_change()
+      view
+      |> form("#teaching-form-#{tc.id}", %{"teaching" => %{"coefficient" => "3"}})
+      |> render_submit()
+
+      refute has_element?(view, "#teaching-drawer")
+      assert has_element?(view, "#assignment-row-#{tc.id}", "coef. 3")
+      assert has_element?(view, "#assignment-row-#{tc.id}", "propre à la classe")
+
+      open_teaching(view, tc)
       assert has_element?(view, "#coefficient-#{tc.id} input.border-warning[value='3']")
       assert render(view) =~ "modèle : 4"
 
@@ -101,8 +119,11 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
 
       {:ok, _} = TeacherAssistant.Curriculum.set_class_coefficients_allowed(scope, false)
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
-      refute has_element?(view, "#coefficient-#{tc.id} input")
       assert has_element?(view, "#assignment-row-#{tc.id}", "4")
+      open_teaching(view, tc)
+      assert has_element?(view, "#teaching-drawer")
+      refute has_element?(view, "#coefficient-#{tc.id} input")
+      refute has_element?(view, "#teaching-drawer input[name='teaching[coefficient]']")
     end
 
     test "an assignment with no grid cell is flagged", ctx do
@@ -136,13 +157,14 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
           default_coefficient: Decimal.new(4)
         })
 
-      {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
-      assert html =~ "Musique"
-      assert html =~ "name=\"assignment[subject]\""
+      {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_assign(view)
+      assert has_element?(view, "#assign-subject[name='assignment[subject]'] option", "Musique")
     end
 
     test "assigns a teacher to a subject", %{conn: conn, cg: cg, user: head, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_assign(view)
 
       view
       |> form("#assign-form", %{
@@ -165,6 +187,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Mathématiques"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_assign(view)
 
       view
       |> form("#assign-form", %{
@@ -186,6 +209,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       {:ok, _} = TeacherAssistant.Curriculum.create_progression_plan(scope, tc, %{title: "P"})
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
 
+      open_teaching(view, tc)
       view |> element("#unassign-#{tc.id}") |> render_click()
       assert [_] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
 
@@ -193,8 +217,11 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Anglais"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc2)
       view |> element("#unassign-#{tc2.id}") |> render_click()
       assert length(TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)) == 1
+      refute has_element?(view, "#teaching-drawer")
+      refute has_element?(view, "#assignment-row-#{tc2.id}")
     end
 
     test "assign takes the coefficient from the grid, without an override", %{
@@ -204,6 +231,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       scope: scope
     } do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_assign(view)
 
       view
       |> form("#assign-form", %{
@@ -222,7 +250,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       assert Decimal.equal?(tc.effective_coefficient, Decimal.new(4))
     end
 
-    test "editing a coefficient inline persists it", %{
+    test "editing a coefficient in the drawer persists it", %{
       conn: conn,
       cg: cg,
       user: head,
@@ -232,13 +260,59 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc)
 
       view
-      |> element("#coefficient-#{tc.id}")
-      |> render_change(%{"coefficient" => "3"})
+      |> form("#teaching-form-#{tc.id}", %{"teaching" => %{"coefficient" => "3,5"}})
+      |> render_submit()
 
       [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
-      assert Decimal.equal?(tc.coefficient, Decimal.new(3))
+      assert Decimal.equal?(tc.coefficient, Decimal.new("3.5"))
+      assert has_element?(view, "#assignment-row-#{tc.id}", "coef. 3,5")
+    end
+
+    test "the drawer saves the teacher and the weekly hours together", ctx do
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
+      grace = TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Grace Tabi"})
+      TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{user: grace})
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      assert has_element?(view, "#assignment-row-#{tc.id}", "4 h / sem.")
+      open_teaching(view, tc)
+
+      view
+      |> form("#teaching-form-#{tc.id}", %{
+        "teaching" => %{"user_id" => grace.id, "weekly_hours" => "6"}
+      })
+      |> render_submit()
+
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
+      assert tc.teacher_user_id == grace.id and tc.weekly_hours == 6
+      assert has_element?(view, "#assignment-row-#{tc.id}", "Grace Tabi")
+      assert has_element?(view, "#assignment-row-#{tc.id}", "6 h / sem.")
+    end
+
+    test "out-of-range hours are refused and the drawer stays open", ctx do
+      %{conn: conn, cg: cg, user: head, scope: scope} = ctx
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc)
+
+      html =
+        view
+        |> form("#teaching-form-#{tc.id}", %{"teaching" => %{"weekly_hours" => "99"}})
+        |> render_submit()
+
+      assert html =~ "entre 1 et 40"
+      assert has_element?(view, "#teaching-drawer")
+      [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
+      assert tc.weekly_hours == 4
     end
 
     test "a non-admin non-form-master cannot reach the class to change a coefficient", ctx do
@@ -287,6 +361,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc)
 
       view
       |> element("#teach-together-#{tc.id}")
@@ -297,6 +372,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
 
       assert reloaded_tc.combined_course_id
       assert reloaded_tc.combined_course_id == reloaded_tc2.combined_course_id
+      assert has_element?(view, "#combined-#{tc.id}", "avec 6e B")
     end
 
     test "combined row shows the real class labels (not the bare level) and a split control", %{
@@ -321,8 +397,10 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
 
       assert course.label == "Maths · 6e A+6e B"
 
-      {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
-      assert html =~ "Maths · 6e A+6e B"
+      {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      assert has_element?(view, "#combined-#{tc.id}", "avec 6e B")
+      open_teaching(view, tc)
+      assert has_element?(view, "#teaching-drawer", "Maths · 6e A+6e B")
       assert has_element?(view, "#split-#{tc.id}")
     end
 
@@ -342,6 +420,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       {:ok, _course} = TeacherAssistant.Curriculum.combine_course(scope, [tc, tc2])
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc)
       view |> element("#split-#{tc.id}") |> render_click()
 
       {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc.id)
@@ -364,9 +443,11 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Anglais"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc)
 
       # No eligible sibling for "Maths" exists, so the control is not shown at all.
       refute has_element?(view, "#teach-together-#{tc.id}")
+      assert has_element?(view, "#combine-section-#{tc.id}", "Aucune autre classe")
     end
   end
 
@@ -449,6 +530,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
 
     test "form master sees no assignments/form-master controls", %{fm_conn: conn, cg: cg} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      refute has_element?(view, "#open-assign")
       refute has_element?(view, "#assign-form")
       refute has_element?(view, "#form-master-form")
     end
@@ -474,9 +556,19 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
         TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
-      render_hook(view, "set_coefficient", %{"context-id" => tc.id, "coefficient" => "9"})
+      refute has_element?(view, "button#assignment-row-#{tc.id}")
+      render_hook(view, "edit_teaching", %{"id" => tc.id})
+      refute has_element?(view, "#teaching-drawer")
+
+      render_hook(view, "save_teaching", %{
+        "context-id" => tc.id,
+        "teaching" => %{"coefficient" => "9", "weekly_hours" => "7"}
+      })
+
+      assert render(view) =~ "autorisation"
       [tc] = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
       assert tc.coefficient == nil
+      assert tc.weekly_hours == 4
     end
 
     test "form master cannot set the form master (forged event)", %{
@@ -556,7 +648,9 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       assert has_element?(view, "#unassigned-subjects", "Mathématiques")
       assert has_element?(view, "#class-tab-teachings", "1")
 
+      assert has_element?(view, "#prefill-#{maths.id}", "Sans enseignant")
       view |> element("#prefill-#{maths.id}") |> render_click()
+      assert has_element?(view, "#assign-drawer")
       assert has_element?(view, "#assign-subject option[selected][value='Mathématiques']")
     end
   end
