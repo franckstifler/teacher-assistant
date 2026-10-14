@@ -97,4 +97,26 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLiveTest do
     {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/classes/#{cg.id}/register")
     assert has_element?(view, ~s(#go-to-photos[href="/school/classes/#{cg.id}/photos"]))
   end
+
+  test "a refused upload is cancelled and reported to the hook", %{
+    sg: sg,
+    ws: ws,
+    cg: cg,
+    awa: awa
+  } do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/classes/#{cg.id}/photos")
+    big = [<<0xFF, 0xD8, 0xFF>>, :binary.copy(<<0>>, 1_000_001)] |> IO.iodata_to_binary()
+
+    input =
+      file_input(view, "#photo-upload-form", :photo, [
+        %{name: "#{awa.id}.jpg", content: big, type: "image/jpeg"}
+      ])
+
+    # As in the browser: the form's change event carries the entry, which the server marks too large.
+    view |> element("#photo-upload-form") |> render_change(input)
+
+    assert_push_event(view, "photo:failed", %{student_id: student_id})
+    assert student_id == awa.id
+    refute has_element?(view, "#photo-uploads li")
+  end
 end

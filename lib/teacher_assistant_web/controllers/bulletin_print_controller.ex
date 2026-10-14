@@ -142,7 +142,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   def photo_url(pub, student) do
     case {Map.get(student, :photo_path), pub} do
       {nil, _} -> nil
-      {_, nil} -> ~p"/school/students/#{student.id}/photo"
+      {_, nil} -> TeacherAssistantWeb.StudentPhotoComponents.student_photo_url(student)
       {_, pub} -> ~p"/school/bulletins/#{pub.id}/photo/#{student.id}"
     end
   end

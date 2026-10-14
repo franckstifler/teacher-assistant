@@ -17,7 +17,7 @@ export function drawCover(ctx, source, sw, sh, zoom = 1, dx = 0, dy = 0) {
 
 export const PhotoStudio = {
   mounted() {
-    this.pending = new Map() // studentId -> File, until the server acks
+    this.pending = new Map() // studentId -> JPEG Blob, until the server acks
     this.failed = new Set()
     this.inFlight = new Set()
     this.$ = (role) => this.el.querySelector(`[data-role="${role}"]`)
@@ -69,18 +69,20 @@ export const PhotoStudio = {
   // At most MAX_IN_FLIGHT uploads at a time, under the server's max_entries,
   // so a fast séance never trips `too_many_files`; the rest wait their turn.
   async submit(studentId, blob) {
-    const file = new File([blob], `${studentId}.jpg`, {type: "image/jpeg"})
-    this.pending.set(studentId, file)
+    this.pending.set(studentId, blob)
     this.failed.delete(studentId)
     this.pump()
   },
 
   pump() {
-    for (const [id, file] of this.pending) {
+    for (const [id, blob] of this.pending) {
       if (this.inFlight.size >= MAX_IN_FLIGHT) break
       if (this.inFlight.has(id) || this.failed.has(id)) continue
       this.inFlight.add(id)
-      this.upload("photo", [file])
+      // A fresh File each attempt: LiveView tags a File with its upload ref and
+      // silently skips it once that ref is gone (consumed, or a new process after
+      // a reconnect), so re-sending the same object would never upload.
+      this.upload("photo", [new File([blob], `${id}.jpg`, {type: "image/jpeg"})])
     }
     this.renderPending()
   },
@@ -198,9 +200,9 @@ export const PhotoStudio = {
     this.index = 0; this.taken = 0; this.skipped = 0
     this.$("session").classList.replace("hidden", "flex")
     this.$("summary").classList.replace("flex", "hidden")
+    this.showStudent() // before the camera: its permission prompt can take a while
     try { this.wakeLock = await navigator.wakeLock?.request("screen") } catch (_e) { this.wakeLock = null }
     await this.startCamera()
-    this.showStudent()
   },
 
   async startCamera() {
@@ -239,13 +241,15 @@ export const PhotoStudio = {
     const video = this.$("video")
     const vw = video.videoWidth, vh = video.videoHeight
     if (!vw) return
-    // Capture exactly what the on-screen 3:4 frame shows: map its rectangle back
-    // through the video's object-cover scaling into video pixels.
+    // Capture exactly what the on-screen frame shows: map its largest centred 3:4
+    // rectangle back through the video's object-cover scaling into video pixels.
     const vr = video.getBoundingClientRect(), fr = this.$("frame").getBoundingClientRect()
+    const fw = Math.min(fr.width, fr.height * W / H), fh = fw * H / W
+    const fx = fr.left + (fr.width - fw) / 2, fy = fr.top + (fr.height - fh) / 2
     const s = Math.max(vr.width / vw, vr.height / vh)
     const ox = (vr.width - vw * s) / 2, oy = (vr.height - vh * s) / 2
     const ctx = this.$("still").getContext("2d")
-    ctx.drawImage(video, (fr.left - vr.left - ox) / s, (fr.top - vr.top - oy) / s, fr.width / s, fr.height / s, 0, 0, W, H)
+    ctx.drawImage(video, (fx - vr.left - ox) / s, (fy - vr.top - oy) / s, fw / s, fh / s, 0, 0, W, H)
     for (const r of ["video", "shutter", "flip"]) this.$(r).classList.add("hidden")
     for (const r of ["still", "retake", "accept"]) this.$(r).classList.remove("hidden")
   },

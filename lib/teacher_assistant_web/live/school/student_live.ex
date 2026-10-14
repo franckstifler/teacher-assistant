@@ -271,7 +271,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   end
 
   # Any write event from a read-only visitor.
-  def handle_event("validate_photo", _params, socket), do: {:noreply, socket}
+  def handle_event("validate_photo", _params, socket),
+    do: {:noreply, drop_refused_entries(socket)}
 
   def handle_event("photo_unreadable", _params, socket),
     do: {:noreply, put_flash(socket, :error, unreadable_message())}

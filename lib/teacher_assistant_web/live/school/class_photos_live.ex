@@ -29,7 +29,8 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
     end
   end
 
-  def handle_event("validate_photo", _params, socket), do: {:noreply, socket}
+  def handle_event("validate_photo", _params, socket),
+    do: {:noreply, drop_refused_entries(socket)}
 
   def handle_event("photo_unreadable", _params, socket),
     do: {:noreply, put_flash(socket, :error, unreadable_message())}
@@ -174,9 +175,6 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
         <ul :if={@uploads.photo.entries != []} id="photo-uploads" class="space-y-1 text-sm">
           <li :for={entry <- @uploads.photo.entries} class="flex items-center gap-2">
             <progress class="progress progress-primary w-24" value={entry.progress} max="100"></progress>
-            <span :for={err <- upload_errors(@uploads.photo, entry)} class="text-error">{upload_error(
-              err
-            )}</span>
             <button
               type="button"
               class="btn btn-ghost btn-xs"
@@ -230,9 +228,4 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
   end
 
   defp row_student(roster, id), do: Enum.find_value(roster, &(&1.student.id == id && &1.student))
-
-  defp upload_error(:too_large), do: gettext("Fichier trop lourd (1 Mo maximum).")
-  defp upload_error(:not_accepted), do: gettext("Seules les photos JPEG sont acceptées.")
-  defp upload_error(:too_many_files), do: gettext("Trop d'envois en même temps.")
-  defp upload_error(_), do: gettext("Envoi impossible.")
 end

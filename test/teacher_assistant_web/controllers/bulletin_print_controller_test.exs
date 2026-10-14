@@ -996,18 +996,33 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       [%{student: st} | _] = roster
 
       {:ok, first} = TeacherAssistant.StudentPhotos.store(scope, st, tmp_jpeg())
-      assert conn |> get(url) |> html_response(200) =~ ~s(src="/school/students/#{st.id}/photo")
-
       {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
-      {:ok, _second} = TeacherAssistant.StudentPhotos.store(scope, first, tmp_jpeg())
+
+      # A different file, so serving the current photo instead of the frozen one would show.
+      second_src = tmp_jpeg()
+      File.write!(second_src, "different tail", [:append])
+      {:ok, second} = TeacherAssistant.StudentPhotos.store(scope, first, second_src)
 
       html = conn |> get(url) |> html_response(200)
       assert html =~ ~s(src="/school/bulletins/#{pub.id}/photo/#{st.id}")
 
       frozen = get(conn, ~p"/school/bulletins/#{pub.id}/photo/#{st.id}")
       {:ok, first_abs} = TeacherAssistant.Uploads.resolve(first.photo_path)
+      {:ok, second_abs} = TeacherAssistant.Uploads.resolve(second.photo_path)
       assert frozen.status == 200
       assert frozen.resp_body == File.read!(first_abs)
+      refute frozen.resp_body == File.read!(second_abs)
+
+      # The draft of another period shows the current photo, versioned so no cache serves the old one.
+      seq_html =
+        conn
+        |> get(
+          ~p"/school/classes/#{cg.id}/bulletin/print?period=seq:#{hd(Organization.list_sequences(scope, scope.current_academic_year)).id}"
+        )
+        |> html_response(200)
+
+      assert seq_html =~
+               ~s(src="/school/students/#{st.id}/photo?v=#{Path.basename(second.photo_path, ".jpg")}")
     end
 
     test "a student published without photo prints no image", %{conn: conn, cg: cg, scope: scope} do
@@ -1056,8 +1071,8 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       student = %{id: Ecto.UUID.generate(), full_name: "Awa"}
       assert C.photo_url(%{id: Ecto.UUID.generate()}, student) == nil
 
-      assert C.photo_url(nil, Map.put(student, :photo_path, "x.jpg")) ==
-               "/school/students/#{student.id}/photo"
+      assert C.photo_url(nil, Map.put(student, :photo_path, "student_photos/w/abc.jpg")) ==
+               "/school/students/#{student.id}/photo?v=abc"
     end
 
     test "another school cannot read a frozen photo", %{cg: cg, scope: scope, roster: roster} do

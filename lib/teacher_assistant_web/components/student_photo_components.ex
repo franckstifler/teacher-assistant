@@ -7,16 +7,29 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
   import TeacherAssistantWeb.CoreComponents, only: [initials_avatar: 1, icon: 1]
 
   import Phoenix.LiveView,
-    only: [allow_upload: 3, consume_uploaded_entry: 3, push_event: 3, put_flash: 3]
+    only: [
+      allow_upload: 3,
+      cancel_upload: 3,
+      consume_uploaded_entry: 3,
+      push_event: 3,
+      put_flash: 3
+    ]
 
   alias TeacherAssistant.StudentPhotos
   alias TeacherAssistantWeb.Authz
 
-  @doc "The current photo URL; `v` changes with each new photo so caches never serve a replaced one."
+  @doc """
+  The current photo URL. `v` is the stored file's name, which changes with every new
+  photo, so a cached replaced photo is never served — also for snapshot maps, which
+  carry the path but no timestamp.
+  """
   def student_photo_url(%{id: id} = student) do
-    case Map.get(student, :photo_taken_at) do
-      %DateTime{} = at -> ~p"/school/students/#{id}/photo?v=#{DateTime.to_unix(at)}"
-      _ -> ~p"/school/students/#{id}/photo"
+    case Map.get(student, :photo_path) do
+      path when is_binary(path) ->
+        ~p"/school/students/#{id}/photo?v=#{Path.basename(path, ".jpg")}"
+
+      _ ->
+        ~p"/school/students/#{id}/photo"
     end
   end
 
@@ -47,7 +60,7 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
     ~H"""
     <div
       id="photo-sheet"
-      class="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       phx-window-keydown="close_sheet"
       phx-key="Escape"
     >
@@ -105,7 +118,7 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
 
       <div
         data-role="crop"
-        class="fixed inset-0 z-50 hidden flex-col items-center justify-center gap-4 bg-black/90 p-4 text-white"
+        class="fixed inset-0 z-[60] hidden flex-col items-center justify-center gap-4 bg-black/90 p-4 text-white"
       >
         <p class="text-sm opacity-80">
           {gettext("Faites glisser pour cadrer, zoomez avec le curseur.")}
@@ -134,7 +147,7 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
 
       <p
         data-role="pending"
-        class="fixed bottom-4 right-4 z-50 hidden rounded-full bg-base-content px-3 py-1.5 text-sm text-base-100 shadow-lg"
+        class="fixed bottom-4 right-4 z-[70] hidden rounded-full bg-base-content px-3 py-1.5 text-sm text-base-100 shadow-lg"
         data-label-one={gettext("1 photo en cours d'envoi")}
         data-label-many={gettext("%{count} photos en cours d'envoi", count: "__N__")}
         data-label-failed={gettext("Réessayer")}
@@ -156,17 +169,18 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
             )}</button>
           </div>
         </header>
-        <div class="relative flex-1 overflow-hidden">
+        <%!-- A size container, so the frame and the still are a true 3:4 box on any screen. --%>
+        <div class="relative flex-1 overflow-hidden [container-type:size]">
           <video data-role="video" playsinline muted class="absolute inset-0 size-full object-cover"></video>
           <canvas
             data-role="still"
             width="600"
             height="800"
-            class="absolute inset-0 m-auto hidden aspect-[3/4] h-full max-w-full"
+            class="absolute inset-0 m-auto hidden h-[min(100cqh,133.333cqw)] w-[min(100cqw,75cqh)]"
           ></canvas>
           <div
             data-role="frame"
-            class="pointer-events-none absolute inset-0 m-auto aspect-[3/4] h-full max-w-full rounded-box border-2 border-white/80"
+            class="pointer-events-none absolute inset-0 m-auto h-[min(100cqh,133.333cqw)] w-[min(100cqw,75cqh)] rounded-box border-2 border-white/80"
           >
             <div class="absolute left-1/2 top-[12%] h-[62%] w-[62%] -translate-x-1/2 rounded-[50%] border-2 border-dashed border-white/60">
             </div>
@@ -209,7 +223,10 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
             data-role="summary-text"
             class="text-lg"
             data-template={
-              gettext("%{taken} photos prises, %{skipped} passées", taken: "__T__", skipped: "__S__")
+              gettext("Photos prises : %{taken} · passées : %{skipped}",
+                taken: "__T__",
+                skipped: "__S__"
+              )
             }
           >
           </p>
@@ -250,6 +267,30 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
       {:error, _} -> {:error, gettext("Photo refusée : fichier JPEG d'1 Mo maximum.")}
     end
   end
+
+  @doc """
+  Cancels `:photo` entries the upload refused before they finished (too large, too
+  many at once…) and tells the hook, which otherwise waits for them forever.
+  """
+  def drop_refused_entries(socket) do
+    upload = socket.assigns.uploads.photo
+
+    upload.entries
+    |> Enum.filter(&(upload_errors(upload, &1) != []))
+    |> Enum.reduce(socket, fn entry, socket ->
+      socket
+      |> cancel_upload(:photo, entry.ref)
+      |> photo_failed(entry_student_id(entry), upload_error_message(upload_errors(upload, entry)))
+    end)
+  end
+
+  defp upload_error_message([:too_large | _]), do: gettext("Fichier trop lourd (1 Mo maximum).")
+
+  defp upload_error_message([:not_accepted | _]),
+    do: gettext("Seules les photos JPEG sont acceptées.")
+
+  defp upload_error_message([:too_many_files | _]), do: gettext("Trop d'envois en même temps.")
+  defp upload_error_message(_), do: gettext("Envoi impossible.")
 
   @doc "Drops a finished `:photo` entry without storing it."
   def discard_entry(socket, entry),
