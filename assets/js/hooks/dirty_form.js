@@ -25,11 +25,14 @@ const write = (el, value) => {
   } else el.value = value
 }
 
-// keyed by name (and value, for radios) — LiveView may replace the elements
-const key = (el) => (el.type === "radio" ? `${el.name}=${el.value}` : el.name)
+// keyed by name (and value, for radios and checkboxes, so `roles[]`-style lists
+// keep one entry per box) — LiveView may replace the elements
+const key = (el) =>
+  el.type === "radio" || el.type === "checkbox" ? `${el.name}=${el.value}` : el.name
 
+// field errors, or a server message marked `data-save-error`, keep the bar up
 const hasErrors = (form) =>
-  form.querySelector(".input-error, .select-error, .textarea-error") !== null
+  form.querySelector(".input-error, .select-error, .textarea-error, [data-save-error]") !== null
 
 export const DirtyForm = {
   mounted() {

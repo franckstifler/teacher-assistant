@@ -1,8 +1,15 @@
 defmodule TeacherAssistantWeb.School.PeriodsLive do
+  @moduledoc """
+  Paramètres → Horaires des cours (spec J1): the school week (lesson days, free
+  Wednesday afternoon, length of a lesson) in one form with a save bar, then the
+  day's periods as a list; a period is edited, added or deleted in a drawer.
+  """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Academics.{DayOfWeek, PeriodKind, SchoolCalendar}
   alias TeacherAssistant.{Accounts, Attendance}
+
+  import TeacherAssistantWeb.Drawer
 
   @blank_period %{"label" => "", "start_time" => "", "end_time" => "", "kind" => "lesson"}
 
@@ -22,11 +29,14 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
         {:ok,
          socket
          |> assign(:scope, scope)
+         |> assign(:page_title, gettext("Horaires des cours"))
          |> assign(
            calendar: Attendance.school_calendar(scope),
            minutes: profile.default_lesson_minutes,
+           editing: nil,
            new_period: @blank_period,
            days_error: nil,
+           period_error: nil,
            new_period_error: nil
          )
          |> load_periods()}
@@ -36,160 +46,256 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="periods-page" class="space-y-6">
-        <.page_header eyebrow={gettext("Paramètres")} title={gettext("Horaires")} />
+      <section id="periods-page" class="mx-auto max-w-3xl space-y-6">
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Horaires des cours")}
+        />
 
         <.form
           for={%{}}
           as={:days}
           id="days-form"
           phx-submit="save_days"
-          class="space-y-3 rounded-box border border-base-300 bg-base-100 p-4"
+          phx-hook="DirtyForm"
         >
-          <input type="hidden" name="days[lesson_days][]" value="" />
-          <div class="flex flex-wrap gap-3">
-            <label :for={day <- SchoolCalendar.all_days()} class="flex items-center gap-1.5 text-sm">
-              <input
-                type="checkbox"
-                name="days[lesson_days][]"
-                value={day}
-                checked={day in @calendar.lesson_days}
-                class="checkbox checkbox-sm"
+          <.settings_section id="week" title={gettext("Semaine")}>
+            <div class="ta-setting !block space-y-3" role="group" aria-labelledby="lesson-days-label">
+              <p id="lesson-days-label" class="text-[0.95rem] font-medium">
+                {gettext("Jours de classe")}
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  :for={day <- SchoolCalendar.all_days()}
+                  id={"day-chip-#{day}"}
+                  title={DayOfWeek.label(day)}
+                  class={[
+                    "grid h-11 min-w-11 cursor-pointer select-none place-items-center rounded-full border px-3 text-sm font-semibold transition-colors",
+                    "border-base-300 text-base-content/75 hover:border-base-content/40",
+                    "has-[:checked]:border-primary has-[:checked]:bg-primary/15 has-[:checked]:text-primary",
+                    "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary"
+                  ]}
+                >
+                  <input type="hidden" name={"days[lesson_days][#{day}]"} value="false" />
+                  <input
+                    type="checkbox"
+                    name={"days[lesson_days][#{day}]"}
+                    value="true"
+                    checked={day in @calendar.lesson_days}
+                    class="sr-only"
+                  />
+                  <span aria-hidden="true">{short_day(day)}</span>
+                  <span class="sr-only">{DayOfWeek.label(day)}</span>
+                </label>
+              </div>
+            </div>
+            <.toggle_row
+              name="days[wednesday_afternoon_off?]"
+              checked={@calendar.wednesday_afternoon_off?}
+              label={gettext("Mercredi après-midi libre")}
+              help={gettext("Aucun cours le mercredi à partir de 13 h.")}
+            />
+            <.settings_row label={gettext("Durée d'une heure de cours")} for="days-minutes">
+              <.unit_input
+                id="days-minutes"
+                name="days[default_lesson_minutes]"
+                value={@minutes}
+                inputmode="numeric"
+                unit={gettext("min")}
               />
-              {DayOfWeek.label(day)}
-            </label>
-          </div>
-          <.input
-            type="checkbox"
-            name="days[wednesday_afternoon_off?]"
-            value="true"
-            checked={@calendar.wednesday_afternoon_off?}
-            label={gettext("Mercredi après-midi libre (périodes à partir de 13 h)")}
-          />
-          <.input
-            name="days[default_lesson_minutes]"
-            value={@minutes}
-            inputmode="numeric"
-            label={gettext("Durée par défaut d'une heure de cours (min)")}
-            class="input input-sm w-24 text-right"
-          />
-          <p :if={@days_error} id="days-error" class="text-sm text-error">{@days_error}</p>
-          <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+            </.settings_row>
+            <%!-- `input-error` tells the DirtyForm hook the save failed: the bar stays. --%>
+            <p
+              :if={@days_error}
+              id="days-error"
+              role="alert"
+              data-save-error class="border-t border-base-300/60 px-4 py-3 text-sm text-error sm:px-5"
+            >
+              {@days_error}
+            </p>
+          </.settings_section>
+          <.save_bar />
         </.form>
 
-        <div class="overflow-x-auto">
-          <table :if={@periods != []} id="periods-table" class="table table-zebra">
-            <tbody>
-              <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
-                <td>
-                  <.form
-                    for={
-                      AshPhoenix.Form.for_update(period, :update,
-                        as: "period",
-                        scope: @current_scope
-                      )
-                      |> to_form()
-                    }
-                    id={"period-form-#{period.id}"}
-                    phx-submit="update_period"
-                    class="grid items-end gap-2 sm:grid-cols-6"
-                  >
-                    <input type="hidden" name="period_id" value={period.id} />
-                    <.input
-                      name="period[position]"
-                      value={period.position}
-                      label={gettext("Position")}
-                    />
-                    <.input name="period[label]" value={period.label} label={gettext("Libellé")} />
-                    <.input
-                      name="period[start_time]"
-                      type="time"
-                      value={period.start_time}
-                      label={gettext("Début")}
-                    />
-                    <.input
-                      name="period[end_time]"
-                      type="time"
-                      value={period.end_time}
-                      label={gettext("Fin")}
-                    />
-                    <.input
-                      name="period[kind]"
-                      type="select"
-                      value={period.kind}
-                      options={[
-                        {PeriodKind.label(:lesson), "lesson"},
-                        {PeriodKind.label(:break), "break"}
-                      ]}
-                      label={gettext("Type")}
-                    />
-                    <div class="flex gap-2">
-                      <button type="submit" class="btn btn-primary btn-sm">
-                        {gettext("Enregistrer")}
-                      </button>
-                      <button
-                        type="button"
-                        id={"period-delete-#{period.id}"}
-                        class="btn btn-ghost btn-sm"
-                        phx-click="delete_period"
-                        phx-value-id={period.id}
-                        data-confirm={gettext("Supprimer cette période ?")}
-                      >
-                        {gettext("Supprimer")}
-                      </button>
-                    </div>
-                  </.form>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <.form
-          for={%{}}
-          as={:new_period}
-          id="new-period-form"
-          phx-change="change_new_period"
-          phx-submit="create_period"
-          class="grid items-end gap-2 sm:grid-cols-5"
+        <.settings_section
+          id="periods"
+          title={gettext("La journée · %{count} cours", count: lesson_count(@periods))}
+          subtitle={@periods != [] && gettext("Touchez un créneau pour le modifier.")}
         >
-          <.input name="new_period[label]" value={@new_period["label"]} label={gettext("Libellé")} />
-          <.input
-            name="new_period[start_time]"
-            type="time"
-            value={@new_period["start_time"]}
-            label={gettext("Début")}
-          />
-          <.input
-            name="new_period[end_time]"
-            type="time"
-            value={@new_period["end_time"]}
-            label={gettext("Fin")}
-          />
-          <.input
-            name="new_period[kind]"
-            type="select"
-            value={@new_period["kind"]}
-            label={gettext("Type")}
-            options={[{PeriodKind.label(:lesson), "lesson"}, {PeriodKind.label(:break), "break"}]}
-          />
-          <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter une période")}</button>
-          <p :if={@new_period_error} id="new-period-error" class="text-sm text-error sm:col-span-5">
-            {@new_period_error}
-          </p>
-        </.form>
-
-        <.empty_state
-          :if={@periods == []}
-          icon="hero-clock"
-          title={gettext("Aucune période définie")}
-        >
-          <:action>
-            <button id="seed-periods" type="button" class="btn btn-primary btn-sm" phx-click="seed">
-              {gettext("Générer l'horaire par défaut")}
+          <:actions>
+            <button
+              id="new-period-button"
+              type="button"
+              class="btn btn-outline min-h-11"
+              phx-click="new_period"
+            >
+              <.icon name="hero-plus" class="size-4" />{gettext("Créneau")}
             </button>
-          </:action>
-        </.empty_state>
+          </:actions>
+          <div :if={@periods != []} id="periods-list">
+            <button
+              :for={period <- @periods}
+              type="button"
+              id={"period-row-#{period.id}"}
+              phx-click="edit_period"
+              phx-value-id={period.id}
+              class={[
+                "ta-list-row w-full text-left",
+                period.kind == :break && "bg-base-200/60 text-base-content/70",
+                selected?(@editing, period) && "ta-list-row--selected"
+              ]}
+            >
+              <span class="ta-num w-28 shrink-0 text-sm">
+                {hm(period.start_time)}–{hm(period.end_time)}
+              </span>
+              <span class={[
+                "min-w-0 flex-1 truncate text-[0.95rem]",
+                period.kind == :lesson && "font-medium"
+              ]}>
+                {period.label}
+              </span>
+              <span :if={period.kind == :break} class="shrink-0 text-xs">
+                {PeriodKind.label(:break)}
+              </span>
+              <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+            </button>
+          </div>
+          <div :if={@periods == []} class="px-4 pb-5 sm:px-5">
+            <.empty_state icon="hero-clock" title={gettext("Aucune période définie")}>
+              <:action>
+                <button id="seed-periods" type="button" class="btn btn-primary" phx-click="seed">
+                  {gettext("Générer l'horaire par défaut")}
+                </button>
+              </:action>
+            </.empty_state>
+          </div>
+        </.settings_section>
+
+        <.drawer
+          :if={@editing == :new}
+          id="period-drawer"
+          eyebrow={gettext("Horaires")}
+          title={gettext("Nouveau créneau")}
+          on_close={JS.push("close_period")}
+        >
+          <.form
+            for={%{}}
+            as={:new_period}
+            id="new-period-form"
+            phx-change="change_new_period"
+            phx-submit="create_period"
+            class="space-y-1"
+          >
+            <.input
+              name="new_period[label]"
+              value={@new_period["label"]}
+              label={gettext("Libellé")}
+              placeholder={gettext("Cours 7, Récréation…")}
+            />
+            <div class="grid grid-cols-2 gap-3">
+              <.input
+                name="new_period[start_time]"
+                type="time"
+                value={@new_period["start_time"]}
+                label={gettext("Début")}
+              />
+              <.input
+                name="new_period[end_time]"
+                type="time"
+                value={@new_period["end_time"]}
+                label={gettext("Fin")}
+              />
+            </div>
+            <.input
+              name="new_period[kind]"
+              type="select"
+              value={@new_period["kind"]}
+              label={gettext("Type")}
+              options={kind_options()}
+            />
+            <p :if={@new_period_error} id="new-period-error" role="alert" class="text-sm text-error">
+              {@new_period_error}
+            </p>
+          </.form>
+          <:footer>
+            <button type="button" class="btn btn-ghost" phx-click="close_period">
+              {gettext("Annuler")}
+            </button>
+            <button type="submit" form="new-period-form" class="btn btn-primary">
+              {gettext("Ajouter le créneau")}
+            </button>
+          </:footer>
+        </.drawer>
+
+        <.drawer
+          :if={is_struct(@editing)}
+          id="period-drawer"
+          eyebrow={gettext("Créneau")}
+          title={@editing.label}
+          on_close={JS.push("close_period")}
+        >
+          <.form
+            for={%{}}
+            as={:period}
+            id={"period-form-#{@editing.id}"}
+            phx-submit="update_period"
+            class="space-y-1"
+          >
+            <input type="hidden" name="period_id" value={@editing.id} />
+            <.input name="period[label]" value={@editing.label} label={gettext("Libellé")} />
+            <div class="grid grid-cols-2 gap-3">
+              <.input
+                name="period[start_time]"
+                type="time"
+                value={hm(@editing.start_time)}
+                label={gettext("Début")}
+              />
+              <.input
+                name="period[end_time]"
+                type="time"
+                value={hm(@editing.end_time)}
+                label={gettext("Fin")}
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <.input
+                name="period[kind]"
+                type="select"
+                value={@editing.kind}
+                options={kind_options()}
+                label={gettext("Type")}
+              />
+              <.input
+                name="period[position]"
+                type="number"
+                min="1"
+                inputmode="numeric"
+                value={@editing.position}
+                label={gettext("Position")}
+                class="input w-full ta-num"
+              />
+            </div>
+            <p :if={@period_error} id="period-error" role="alert" class="text-sm text-error">
+              {@period_error}
+            </p>
+          </.form>
+          <:footer>
+            <button
+              type="button"
+              id={"period-delete-#{@editing.id}"}
+              class="btn btn-ghost mr-auto text-error"
+              phx-click="delete_period"
+              phx-value-id={@editing.id}
+              data-confirm={gettext("Supprimer cette période ?")}
+            >
+              {gettext("Supprimer")}
+            </button>
+            <button type="submit" form={"period-form-#{@editing.id}"} class="btn btn-primary">
+              {gettext("Enregistrer")}
+            </button>
+          </:footer>
+        </.drawer>
       </section>
     </Layouts.app>
     """
@@ -197,6 +303,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
 
   def handle_event("save_days", %{"days" => params}, socket) do
     scope = socket.assigns.scope
+    params = Map.update(params, "lesson_days", [], &lesson_days/1)
 
     case Attendance.update_school_days(scope, params) do
       {:ok, profile} ->
@@ -224,6 +331,21 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
       {:error, _} ->
         {:noreply, assign(socket, days_error: gettext("Réglage non enregistré."))}
     end
+  end
+
+  def handle_event("new_period", _params, socket) do
+    {:noreply, assign(socket, editing: :new, new_period: @blank_period, new_period_error: nil)}
+  end
+
+  def handle_event("edit_period", %{"id" => id}, socket) do
+    case find_period(socket, id) do
+      nil -> {:noreply, socket}
+      period -> {:noreply, assign(socket, editing: period, period_error: nil)}
+    end
+  end
+
+  def handle_event("close_period", _params, socket) do
+    {:noreply, assign(socket, editing: nil, period_error: nil, new_period_error: nil)}
   end
 
   def handle_event("change_new_period", %{"new_period" => params}, socket) do
@@ -255,7 +377,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
       {:ok, _} ->
         {:noreply,
          socket
-         |> assign(new_period: @blank_period, new_period_error: nil)
+         |> assign(editing: nil, new_period: @blank_period, new_period_error: nil)
+         |> put_flash(:info, gettext("Créneau ajouté."))
          |> load_periods()}
 
       {:error, %Ash.Error.Forbidden{}} ->
@@ -264,6 +387,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
       {:error, %Ash.Error.Invalid{errors: errors}} ->
         {:noreply,
          assign(socket,
+           new_period: Map.merge(socket.assigns.new_period, params),
            new_period_error:
              Enum.map_join(errors, " ", &(Map.get(&1, :message) || Exception.message(&1)))
          )}
@@ -292,7 +416,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
 
         case moved_slots(scope, period, params) do
           [] -> submit_period(socket, scope, period, params)
-          counts -> {:noreply, put_flash(socket, :error, closed_message(counts))}
+          counts -> {:noreply, assign(socket, period_error: closed_message(counts))}
         end
     end
   end
@@ -302,17 +426,22 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
 
     with %{} = period <- find_period(socket, id),
          :ok <- Attendance.delete_period(scope, period) do
-      {:noreply, load_periods(socket)}
+      {:noreply,
+       socket
+       |> assign(editing: nil, period_error: nil)
+       |> put_flash(:info, gettext("Créneau supprimé."))
+       |> load_periods()}
     else
       nil ->
         {:noreply, socket}
 
       {:error, :has_slots} ->
         {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Cette période a des cours à l'emploi du temps et ne peut pas être supprimée.")
+         assign(socket,
+           period_error:
+             gettext(
+               "Cette période a des cours à l'emploi du temps et ne peut pas être supprimée."
+             )
          )}
 
       {:error, %Ash.Error.Forbidden{}} ->
@@ -327,13 +456,14 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
       {:ok, _period} ->
         {:noreply,
          socket
+         |> assign(editing: nil, period_error: nil)
          |> put_flash(:info, gettext("Période mise à jour."))
          |> load_periods()}
 
       {:error, form} ->
         if Authz.forbidden_form?(form),
           do: {:noreply, Authz.put_not_allowed(socket)},
-          else: {:noreply, put_flash(socket, :error, update_error(form))}
+          else: {:noreply, assign(socket, period_error: update_error(form))}
     end
   end
 
@@ -368,6 +498,12 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
     end
   end
 
+  # One field per day (`days[lesson_days][monday]` = "true" | "false") so the save
+  # bar can tell each chip apart; the domain takes the list of checked days.
+  defp lesson_days(%{} = by_day), do: for({day, "true"} <- by_day, do: day)
+  defp lesson_days(days) when is_list(days), do: days
+  defp lesson_days(_), do: []
+
   defp find_period(socket, id) do
     Enum.find(socket.assigns.periods, &(&1.id == id))
   end
@@ -375,6 +511,19 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
   defp load_periods(socket) do
     assign(socket, :periods, Attendance.list_periods(socket.assigns.scope))
   end
+
+  defp lesson_count(periods), do: Enum.count(periods, &(&1.kind == :lesson))
+
+  defp selected?(%{id: id}, %{id: id}), do: true
+  defp selected?(_editing, _period), do: false
+
+  defp kind_options,
+    do: [{PeriodKind.label(:lesson), "lesson"}, {PeriodKind.label(:break), "break"}]
+
+  # « Lun », « Mar »… for the day chips (the full name is read out to screen readers).
+  defp short_day(day), do: day |> DayOfWeek.label() |> String.slice(0, 3)
+
+  defp hm(%Time{} = time), do: Calendar.strftime(time, "%H:%M")
 
   # The HTML time input posts `HH:MM`; `Ash.Type.Time` needs full ISO
   # (`HH:MM:SS`), so widen the two time fields before the changeset casts them.

@@ -21,8 +21,11 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
     assert has_element?(view, "#evaluations-link")
 
     {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
-    assert has_element?(view, "#rule-annual_average_rule-mean_of_sequences.btn-primary")
+    assert has_element?(view, "#rule-annual_average_rule-mean_of_sequences[checked]")
+    refute has_element?(view, "#rule-annual_average_rule-mean_of_trimesters[checked]")
     assert render(view) =~ "règle officielle"
+    assert has_element?(view, "header a[href='/school/settings']", "Paramètres")
+    assert has_element?(view, "h1", "Évaluations et moyennes")
   end
 
   test "choosing quarter rounding changes a class bulletin", ctx do
@@ -47,6 +50,7 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
     view |> element("#rule-average_rounding-quarter") |> render_click()
     assert render(view) =~ "Réglage enregistré."
+    assert has_element?(view, "#rule-average_rounding-quarter[checked]")
 
     # The on-screen bulletin embeds the print document, which carries the figures.
     html =
@@ -73,16 +77,22 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
 
   test "admin manages assessment types", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+    refute has_element?(view, "#new-type-form")
+    view |> element("#new-type-button") |> render_click()
 
     view
     |> form("#new-type-form", %{"type" => %{"name" => "Oral", "default_weight" => "0,5"}})
     |> render_submit()
 
+    refute has_element?(view, "#type-drawer")
     oral = Enum.find(Assessment.list_assessment_types(scope), &(&1.name == "Oral"))
     assert Decimal.equal?(oral.default_weight, Decimal.new("0.5"))
+    assert has_element?(view, "#type-weight-#{oral.id}[value='0,5']")
 
     view
-    |> form("#type-#{oral.id}", %{"type" => %{"name" => "Oral", "default_weight" => "2"}})
+    |> form("#types-form", %{
+      "types" => %{oral.id => %{"name" => "Oral", "default_weight" => "2"}}
+    })
     |> render_submit()
 
     assert Decimal.equal?(
@@ -94,20 +104,87 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
     refute Enum.any?(Assessment.list_assessment_types(scope), &(&1.id == oral.id))
   end
 
+  test "every type saves through one form and one save", %{conn: conn, scope: scope} do
+    [a, b | _] = Assessment.list_assessment_types(scope)
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+    assert has_element?(view, "#types-form[phx-hook=DirtyForm] .ta-savebar")
+    assert has_element?(view, "#types-form button[type=submit]")
+    refute has_element?(view, "#type-#{a.id} button[type=submit]")
+
+    html =
+      view
+      |> form("#types-form", %{
+        "types" => %{
+          a.id => %{"name" => "Interro écrite", "default_weight" => "0,5"},
+          b.id => %{"name" => b.name, "default_weight" => "3"}
+        }
+      })
+      |> render_submit()
+
+    assert html =~ "Types enregistrés."
+    types = Map.new(Assessment.list_assessment_types(scope), &{&1.id, &1})
+    assert types[a.id].name == "Interro écrite"
+    assert Decimal.equal?(types[a.id].default_weight, Decimal.new("0.5"))
+    assert Decimal.equal?(types[b.id].default_weight, 3)
+  end
+
+  test "an invalid row saves nothing and flags its fields", %{conn: conn, scope: scope} do
+    [a, b | _] = Assessment.list_assessment_types(scope)
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+
+    view
+    |> form("#types-form", %{
+      "types" => %{
+        a.id => %{"name" => a.name, "default_weight" => "5"},
+        b.id => %{"name" => "", "default_weight" => "0"}
+      }
+    })
+    |> render_submit()
+
+    assert has_element?(view, "#types-error")
+    assert has_element?(view, "#type-name-#{b.id}.input-error")
+    refute has_element?(view, "#type-name-#{a.id}.input-error")
+    unchanged = Enum.find(Assessment.list_assessment_types(scope), &(&1.id == a.id))
+    assert Decimal.equal?(unchanged.default_weight, a.default_weight)
+  end
+
+  test "a duplicate name rolls every row back", %{conn: conn, scope: scope} do
+    [a, b | _] = Assessment.list_assessment_types(scope)
+    {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+
+    view
+    |> form("#types-form", %{
+      "types" => %{
+        a.id => %{"name" => a.name, "default_weight" => "7"},
+        b.id => %{"name" => a.name, "default_weight" => "1"}
+      }
+    })
+    |> render_submit()
+
+    assert has_element?(view, "#types-error", "même nom")
+    unchanged = Enum.find(Assessment.list_assessment_types(scope), &(&1.id == a.id))
+    assert Decimal.equal?(unchanged.default_weight, a.default_weight)
+  end
+
   test "a zero weight is refused", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
+    view |> element("#new-type-button") |> render_click()
 
     view
     |> form("#new-type-form", %{"type" => %{"name" => "Oral", "default_weight" => "0"}})
     |> render_submit()
 
-    assert render(view) =~ "Type non enregistré."
+    assert has_element?(view, "#type-drawer #new-type-error", "Type non enregistré.")
   end
 
   test "maximum mark and absence rule", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
-    assert has_element?(view, "#rule-absence_rule-zero.btn-primary")
-    view |> form("#default-max-form", %{"default_max_score" => "10"}) |> render_submit()
+    assert has_element?(view, "#rule-absence_rule-zero[checked]")
+
+    view
+    |> form("#entry-form", %{"entry" => %{"default_max_score" => "10"}})
+    |> render_submit()
+
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
     assert Decimal.equal?(profile.default_max_score, 10)
 
@@ -117,18 +194,37 @@ defmodule TeacherAssistantWeb.School.EvaluationsLiveTest do
 
   test "the admin sets the grade-entry grace days", %{conn: conn, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/settings/evaluations")
-    assert has_element?(view, "#entry-grace-days-form")
+    assert has_element?(view, "#entry-form[phx-hook=DirtyForm] .ta-savebar")
 
     html =
-      view |> form("#entry-grace-days-form", %{"entry_grace_days" => "7"}) |> render_submit()
+      view |> form("#entry-form", %{"entry" => %{"entry_grace_days" => "7"}}) |> render_submit()
 
-    assert html =~ "Délai de saisie enregistré."
+    assert html =~ "Réglage enregistré."
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
     assert profile.entry_grace_days == 7
 
     html =
-      view |> form("#entry-grace-days-form", %{"entry_grace_days" => "40"}) |> render_submit()
+      view
+      |> form("#entry-form", %{
+        "entry" => %{"default_max_score" => "15", "entry_grace_days" => "40"}
+      })
+      |> render_submit()
 
     assert html =~ "Réglage non enregistré."
+    assert has_element?(view, "#entry-grace-days-error")
+    refute has_element?(view, "#default-max-error")
+    # one update: the valid maximum is not saved alone
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    assert profile.entry_grace_days == 7
+    refute Decimal.equal?(profile.default_max_score, 15)
+
+    view
+    |> form("#entry-form", %{
+      "entry" => %{"default_max_score" => "abc", "entry_grace_days" => "7"}
+    })
+    |> render_submit()
+
+    assert has_element?(view, "#default-max-error")
+    refute has_element?(view, "#entry-grace-days-error")
   end
 end

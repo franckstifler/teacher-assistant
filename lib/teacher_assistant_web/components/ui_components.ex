@@ -160,7 +160,7 @@ defmodule TeacherAssistantWeb.UIComponents do
 
   def toggle_row(assigns) do
     ~H"""
-    <label class="ta-setting cursor-pointer">
+    <label class="ta-setting cursor-pointer !grid-cols-[minmax(0,1fr)_auto] items-center">
       <span class="min-w-0">
         <span class="text-[0.95rem] font-medium">{@label}</span>
         <span :if={@help} class="mt-0.5 block text-sm text-base-content/65">{@help}</span>

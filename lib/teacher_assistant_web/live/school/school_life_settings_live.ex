@@ -234,7 +234,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
             subtitle={gettext("Seules les sanctions cochées sont proposées.")}
           >
             <input type="hidden" name="school_life[sanction_types_in_use][]" value="" />
-            <label :for={t <- @types} class="ta-setting cursor-pointer">
+            <label :for={t <- @types} class="ta-setting cursor-pointer !grid-cols-[minmax(0,1fr)_auto] items-center">
               <span class="text-[0.95rem] font-medium">{SanctionType.label(t)}</span>
               <span class="ta-setting__control flex justify-end">
                 <input

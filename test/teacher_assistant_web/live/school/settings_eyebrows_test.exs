@@ -12,7 +12,9 @@ defmodule TeacherAssistantWeb.School.SettingsEyebrowsTest do
            /school/settings/roles /school/settings/header) do
     test "#{path} is under « Paramètres »", %{conn: conn} do
       {:ok, view, _} = live(conn, unquote(path))
-      assert has_element?(view, "header p.ta-eyebrow", "Paramètres")
+      # an eyebrow, or the `back_header` link back to the Paramètres hub
+      assert has_element?(view, "header p.ta-eyebrow", "Paramètres") or
+               has_element?(view, "header a[href='/school/settings']", "Paramètres")
     end
   end
 end

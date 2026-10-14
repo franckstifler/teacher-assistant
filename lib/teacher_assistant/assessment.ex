@@ -258,6 +258,26 @@ defmodule TeacherAssistant.Assessment do
     type |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
   end
 
+  @doc """
+  Saves several types at once (the settings list's one save), all or nothing:
+  `changes` is `[{%AssessmentType{}, %{name: …, default_weight: …}}]`. A refused
+  row (forbidden, duplicate name) rolls every write back.
+  """
+  def update_assessment_types(%Scope{} = scope, changes) when is_list(changes) do
+    Ash.transact(AssessmentType, fn ->
+      Enum.reduce_while(changes, :ok, fn {type, attrs}, :ok ->
+        case update_assessment_type(scope, type, attrs) do
+          {:ok, _} -> {:cont, :ok}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+    end)
+    |> case do
+      {:ok, :ok} -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
   @doc "Deletes a type no assessment uses; a used type is kept (`{:error, :in_use}`)."
   def delete_assessment_type(%Scope{} = scope, %AssessmentType{} = type) do
     case Ash.load!(type, :usage_count, scope: scope) do
@@ -639,6 +659,41 @@ defmodule TeacherAssistant.Assessment do
       other -> other
     end
   end
+
+  @doc """
+  Saves the grade-entry settings together — the default maximum mark and the grace
+  days — in one profile update. `{:error, {:invalid, fields}}` names the fields that
+  do not parse (nothing is saved); the profile validation bounds the days (0..30).
+  """
+  def update_entry_settings(%Scope{} = scope, %{} = params) do
+    max = TeacherAssistant.Curriculum.parse_coefficient(params["default_max_score"] || "")
+    days = parse_grace_days(params["entry_grace_days"] || "")
+
+    case {max, days} do
+      {{:ok, max}, {:ok, days}} ->
+        with {:ok, profile} <- TeacherAssistant.Accounts.fetch_school_profile(scope) do
+          TeacherAssistant.Accounts.update_school_profile(
+            profile,
+            %{default_max_score: max, entry_grace_days: days},
+            scope: scope
+          )
+        end
+
+      _ ->
+        {:error,
+         {:invalid,
+          for({field, :error} <- [default_max_score: max, entry_grace_days: days], do: field)}}
+    end
+  end
+
+  defp parse_grace_days(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {days, ""} -> {:ok, days}
+      _ -> :error
+    end
+  end
+
+  defp parse_grace_days(_), do: :error
 
   # --- Appreciations and distinctions (spec I1) -----------------------------------
 

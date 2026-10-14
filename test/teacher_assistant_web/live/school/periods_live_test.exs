@@ -47,6 +47,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     [period | _] = Attendance.list_periods(scope)
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")
+    view |> element("#period-row-#{period.id}") |> render_click()
+    assert has_element?(view, "#period-drawer")
 
     view
     |> form("#period-form-#{period.id}", %{
@@ -63,6 +65,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     [updated | _] = Attendance.list_periods(scope)
     assert updated.label == "Cours modifié"
     assert updated.start_time == ~T[07:40:00]
+    refute has_element?(view, "#period-drawer")
+    assert has_element?(view, "#period-row-#{period.id}", "07:40–08:20")
   end
 
   test "deleting a period with a referencing slot shows a friendly message and keeps it", ctx do
@@ -90,6 +94,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       })
 
     {:ok, view, _html} = live(conn, ~p"/school/periods")
+    view |> element("#period-row-#{period.id}") |> render_click()
 
     view
     |> element("#period-delete-#{period.id}")
@@ -131,7 +136,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       view
       |> form("#days-form", %{
         days: %{
-          "lesson_days" => ["monday", "tuesday", "wednesday", "thursday", "friday"],
+          "lesson_days" => %{"saturday" => "false"},
           "wednesday_afternoon_off?" => "true",
           "default_lesson_minutes" => "50"
         }
@@ -139,11 +144,29 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       |> render_submit()
 
       assert render(view) =~ "Réglage enregistré."
-      assert TeacherAssistant.Attendance.school_calendar(scope).wednesday_afternoon_off?
+      calendar = TeacherAssistant.Attendance.school_calendar(scope)
+      assert calendar.wednesday_afternoon_off?
+      assert calendar.lesson_days == ~w(monday tuesday wednesday thursday friday)a
+      refute has_element?(view, "#day-chip-saturday input[type=checkbox][checked]")
+      assert has_element?(view, "#day-chip-monday input[type=checkbox][checked]")
+    end
+
+    test "no lesson day at all is refused with an error in the card", %{conn: conn, scope: scope} do
+      {:ok, view, _} = live(conn, ~p"/school/periods")
+      days = Map.new(TeacherAssistant.Academics.SchoolCalendar.all_days(), &{&1, "false"})
+
+      view
+      |> form("#days-form", %{days: %{"lesson_days" => days, "default_lesson_minutes" => "50"}})
+      |> render_submit()
+
+      assert has_element?(view, "#days-form #days-error", "au moins un jour")
+      assert TeacherAssistant.Attendance.school_calendar(scope).lesson_days != []
     end
 
     test "adding a period pre-fills the end from the default length", %{conn: conn, scope: scope} do
       {:ok, view, _} = live(conn, ~p"/school/periods")
+      refute has_element?(view, "#new-period-form")
+      view |> element("#new-period-button") |> render_click()
       view |> form("#new-period-form", %{new_period: %{start_time: "16:00"}}) |> render_change()
 
       assert has_element?(
@@ -158,11 +181,14 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       |> render_submit()
 
       assert Enum.any?(TeacherAssistant.Attendance.list_periods(scope), &(&1.label == "Cours 10"))
+      refute has_element?(view, "#period-drawer")
+      assert has_element?(view, "#periods-list", "Cours 10")
     end
 
     test "an overlapping period shows the error", %{conn: conn, scope: scope} do
       :ok = Attendance.build_default_periods(scope)
       {:ok, view, _} = live(conn, ~p"/school/periods")
+      view |> element("#new-period-button") |> render_click()
 
       view
       |> form("#new-period-form", %{
@@ -170,7 +196,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       })
       |> render_submit()
 
-      assert has_element?(view, "#new-period-error", "Chevauche")
+      assert has_element?(view, "#period-drawer #new-period-error", "Chevauche")
     end
   end
 
@@ -207,6 +233,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
       })
 
     {:ok, view, _} = live(conn, ~p"/school/periods")
+    view |> element("#period-row-#{cours6.id}") |> render_click()
 
     view
     |> form("#period-form-#{cours6.id}", %{
@@ -220,15 +247,44 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     })
     |> render_submit()
 
-    assert render(view) =~ "retirez-les de l&#39;emploi du temps d&#39;abord"
+    assert has_element?(view, "#period-drawer #period-error", "retirez-les de l'emploi du temps")
 
     assert Enum.find(Attendance.list_periods(scope), &(&1.id == cours6.id)).start_time ==
              ~T[11:55:00]
   end
 
-  test "each period row labels its own fields; the table repeats no header", %{conn: conn} do
+  test "the day lists every period with its times; breaks are marked", %{conn: conn, scope: scope} do
+    periods = Attendance.list_periods(scope)
+    lessons = Enum.count(periods, &(&1.kind == :lesson))
     {:ok, view, _} = live(conn, ~p"/school/periods")
-    assert has_element?(view, "#periods-table tbody")
-    refute has_element?(view, "#periods-table thead")
+
+    assert has_element?(view, "#periods h2", "La journée · #{lessons} cours")
+    refute has_element?(view, "#periods-list form")
+
+    for p <- periods do
+      times =
+        Calendar.strftime(p.start_time, "%H:%M") <> "–" <> Calendar.strftime(p.end_time, "%H:%M")
+
+      assert has_element?(view, "#period-row-#{p.id}", times)
+    end
+
+    brk = Enum.find(periods, &(&1.kind == :break))
+    assert has_element?(view, "#period-row-#{brk.id}.bg-base-200\\/60", "Récréation")
+  end
+
+  test "the drawer closes without saving", %{conn: conn, scope: scope} do
+    [period | _] = Attendance.list_periods(scope)
+    {:ok, view, _} = live(conn, ~p"/school/periods")
+    view |> element("#period-row-#{period.id}") |> render_click()
+    assert has_element?(view, "#period-drawer #period-form-#{period.id}")
+    render_click(view, "close_period", %{})
+    refute has_element?(view, "#period-drawer")
+  end
+
+  test "the header links back to Paramètres; one form for the week", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/periods")
+    assert has_element?(view, "header a[href='/school/settings']", "Paramètres")
+    assert has_element?(view, "h1", "Horaires des cours")
+    assert has_element?(view, "#days-form[phx-hook=DirtyForm] .ta-savebar")
   end
 end
