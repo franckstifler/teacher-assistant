@@ -143,10 +143,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
     end
   end
 
-  defp coef_label(%Decimal{} = d),
-    do: d |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.replace(".", ",")
-
-  defp coef_label(n), do: to_string(n)
+  defp coef_label(n), do: TeacherAssistantWeb.Numbers.decimal(n, trim: true)
 
   defp progress_tone(%{expected: 0}), do: "bg-base-300"
   defp progress_tone(%{pct: 100}), do: "bg-primary"
@@ -231,7 +228,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
           <li
             :for={course <- @courses}
             id={"course-#{course.id}"}
-            class="ta-leaf flex flex-col gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-md"
+            class="ta-section flex flex-col gap-3 p-4"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
@@ -285,37 +282,42 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
               </div>
             </div>
 
-            <div class="mt-auto grid grid-cols-4 gap-1.5">
+            <div class="mt-auto space-y-2">
               <.link
                 navigate={~p"/teacher/contexts/#{course.context_id}/marks"}
-                class="btn btn-primary btn-sm px-1"
+                class="btn btn-primary w-full"
               >
-                {gettext("Notes")}
+                <.icon name="hero-pencil-square" class="size-4" />{gettext("Saisir les notes")}
               </.link>
-              <.link
-                :if={course.roll_call_period}
-                navigate={
-                  ~p"/school/classes/#{course.attendance_class_id}/attendance/#{course.roll_call_period.id}?date=#{Date.to_iso8601(@today)}"
-                }
-                class="btn btn-outline btn-sm px-1"
-              >
-                {gettext("Appel")}
-              </.link>
-              <span :if={!course.roll_call_period} class="btn btn-outline btn-sm btn-disabled px-1">
-                {gettext("Appel")}
-              </span>
-              <.link
-                navigate={~p"/teacher/contexts/#{course.context_id}/marks/summary"}
-                class="btn btn-outline btn-sm px-1"
-              >
-                {gettext("Résultats")}
-              </.link>
-              <.link
-                navigate={~p"/teacher/contexts/#{course.context_id}/roster"}
-                class="btn btn-outline btn-sm px-1"
-              >
-                {gettext("Élèves")}
-              </.link>
+              <div class="grid grid-cols-3 gap-2">
+                <.link
+                  :if={course.roll_call_period}
+                  navigate={
+                    ~p"/school/classes/#{course.attendance_class_id}/attendance/#{course.roll_call_period.id}?date=#{Date.to_iso8601(@today)}"
+                  }
+                  class="btn btn-ghost border-base-300 px-1"
+                >
+                  {gettext("Appel")}
+                </.link>
+                <span
+                  :if={!course.roll_call_period}
+                  class="btn btn-ghost btn-disabled border-base-300 px-1"
+                >
+                  {gettext("Appel")}
+                </span>
+                <.link
+                  navigate={~p"/teacher/contexts/#{course.context_id}/marks/summary"}
+                  class="btn btn-ghost border-base-300 px-1"
+                >
+                  {gettext("Résultats")}
+                </.link>
+                <.link
+                  navigate={~p"/teacher/contexts/#{course.context_id}/roster"}
+                  class="btn btn-ghost border-base-300 px-1"
+                >
+                  {gettext("Élèves")}
+                </.link>
+              </div>
             </div>
           </li>
         </ul>

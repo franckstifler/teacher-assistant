@@ -183,7 +183,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
-        <.settings_back title={gettext("Profil et en-tête officiel")} />
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Profil et en-tête officiel")}
+        />
 
         <.form
           :if={@can_rename_school? or (@can_edit_profile? and @profile_form)}
@@ -367,7 +371,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
-        <.settings_back title={gettext("Année scolaire et calendrier")} />
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Année scolaire et calendrier")}
+        />
 
         <.settings_section :if={@can_manage_calendar?} id="annee" title={gettext("Années scolaires")}>
           <:actions>
@@ -520,7 +528,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
-        <.settings_back title={gettext("Matières")} />
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Matières")}
+        />
 
         <section :if={@can_manage_subjects?} id="matieres" class="space-y-5">
           <.settings_section
@@ -649,22 +661,6 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         </.drawer>
       </section>
     </Layouts.app>
-    """
-  end
-
-  attr :title, :string, required: true
-
-  defp settings_back(assigns) do
-    ~H"""
-    <header class="space-y-1">
-      <.link
-        navigate={~p"/school/settings"}
-        class="link link-hover inline-flex items-center gap-1 text-sm font-semibold text-info"
-      >
-        <.icon name="hero-chevron-left" class="size-4" />{gettext("Paramètres")}
-      </.link>
-      <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{@title}</h1>
-    </header>
     """
   end
 

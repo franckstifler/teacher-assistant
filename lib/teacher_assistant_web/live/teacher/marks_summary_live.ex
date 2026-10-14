@@ -237,56 +237,45 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
             )}
           </p>
 
-          <table id="summary-table" class="w-full border-separate border-spacing-y-1">
-            <caption class="sr-only">{gettext("Per-student results")}</caption>
-            <thead class="hidden md:table-header-group">
-              <tr class="text-left">
-                <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Rang")}</th>
-                <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Élève")}</th>
-                <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Moyenne")}</th>
-                <th scope="col" class="ta-eyebrow px-3 pb-1">{gettext("Mention")}</th>
-              </tr>
-            </thead>
-            <tbody class="block space-y-1 md:table-row-group">
-              <tr :for={s <- @students} id={"summary-row-#{s.id}"} class="ta-leaf block md:table-row">
-                <td class="ta-num hidden text-base-content/60 md:table-cell md:px-3 md:py-2">
+          <div id="summary-table" class="ta-section">
+            <.list_row
+              :for={s <- @students}
+              id={"summary-row-#{s.id}"}
+              title={s.full_name}
+            >
+              <:leading>
+                <span class="ta-num grid size-9 place-items-center rounded-full bg-base-200 text-sm">
                   {@summary.per_student[s.id].rank || "—"}
-                </td>
-                <td class="flex items-center justify-between gap-2 md:table-cell md:px-3 md:py-2">
-                  <span>{s.full_name}</span>
-                  <span class="ta-num font-mono md:hidden">
+                </span>
+              </:leading>
+              <span :if={@summary.per_student[s.id].average} class="text-sm">
+                <.mention_badge mention={@summary.per_student[s.id].mention} />
+              </span>
+              <span
+                :if={is_nil(@summary.per_student[s.id].average)}
+                class="text-sm text-base-content/55"
+              >
+                {gettext("Pas de note")}
+              </span>
+              <:trailing>
+                <span class="flex flex-col items-end gap-1">
+                  <span class="ta-num text-base font-semibold">
                     {fmt(@summary.per_student[s.id].average)}
-                    <span :if={@summary.per_student[s.id].rank} class="opacity-60">
-                      ({@summary.per_student[s.id].rank})
-                    </span>
                   </span>
-                </td>
-                <td class="hidden md:table-cell md:px-3 md:py-2">
-                  <span class="flex items-center gap-2">
-                    <span class="ta-num font-mono">{fmt(@summary.per_student[s.id].average)}</span>
-                    <span
-                      :if={@summary.per_student[s.id].average}
-                      class="h-1.5 w-16 overflow-hidden rounded-full bg-base-300"
-                    >
-                      <span
-                        class="block h-full rounded-full bg-primary"
-                        style={"width: #{bar_width(@summary.per_student[s.id].average)}"}
-                      ></span>
-                    </span>
-                  </span>
-                </td>
-                <td class="block md:table-cell md:px-3 md:py-2">
-                  <.mention_badge
+                  <span
                     :if={@summary.per_student[s.id].average}
-                    mention={@summary.per_student[s.id].mention}
-                  />
-                  <span :if={is_nil(@summary.per_student[s.id].average)} class="text-base-content/40">
-                    —
+                    class="h-1.5 w-16 overflow-hidden rounded-full bg-base-300"
+                    aria-hidden="true"
+                  >
+                    <span
+                      class="block h-full rounded-full bg-primary"
+                      style={"width: #{bar_width(@summary.per_student[s.id].average)}"}
+                    ></span>
                   </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </span>
+              </:trailing>
+            </.list_row>
+          </div>
         <% else %>
           <p :if={@sequences == []} class="ta-leaf">
             {gettext("No séquences yet — set up the school year first.")}

@@ -44,6 +44,34 @@ defmodule TeacherAssistantWeb.UIComponents do
     """
   end
 
+  @doc """
+  A sub-page header: a back link to the parent page (« ‹ Paramètres »), the title,
+  an optional subtitle and actions on the right.
+  """
+  attr :back, :string, required: true, doc: "the parent page's path"
+  attr :back_label, :string, required: true
+  attr :title, :string, required: true
+  attr :subtitle, :string, default: nil
+  slot :actions
+
+  def back_header(assigns) do
+    ~H"""
+    <header class="flex flex-wrap items-end justify-between gap-3">
+      <div class="min-w-0 space-y-1">
+        <.link
+          navigate={@back}
+          class="inline-flex min-h-8 items-center gap-1 text-sm font-semibold text-info hover:underline"
+        >
+          <.icon name="hero-chevron-left" class="size-4" />{@back_label}
+        </.link>
+        <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{@title}</h1>
+        <p :if={@subtitle} class="text-[0.95rem] text-base-content/75">{@subtitle}</p>
+      </div>
+      <div :if={@actions != []} class="flex items-center gap-2">{render_slot(@actions)}</div>
+    </header>
+    """
+  end
+
   @doc "A settings card: a title, an optional line of help, then `settings_row`s."
   attr :id, :string, default: nil
   attr :title, :string, required: true
@@ -87,6 +115,67 @@ defmodule TeacherAssistantWeb.UIComponents do
       </div>
       <div class="ta-setting__control">{render_slot(@inner_block)}</div>
     </div>
+    """
+  end
+
+  @doc """
+  A short number field with its unit inside (« 50 min », « 0,5 pt ») for a
+  `settings_row`: full width on phones, a fixed width aligned right above.
+  A text field with `inputmode` so French decimals (« 0,5 ») are accepted.
+  """
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :value, :any, default: nil
+  attr :unit, :string, required: true
+  attr :placeholder, :string, default: nil
+  attr :inputmode, :string, default: "decimal"
+
+  def unit_input(assigns) do
+    ~H"""
+    <label class="input w-full sm:ml-auto sm:w-40">
+      <input
+        type="text"
+        id={@id}
+        name={@name}
+        value={@value}
+        placeholder={@placeholder}
+        inputmode={@inputmode}
+        class="ta-num grow text-right"
+      />
+      <span class="text-sm text-base-content/60">{@unit}</span>
+    </label>
+    """
+  end
+
+  @doc """
+  An on/off setting as a whole tappable row: label and help left, toggle right.
+  Sends "false" when off (hidden field), "true" when on.
+  """
+  attr :name, :string, required: true
+  attr :label, :string, required: true
+  attr :help, :string, default: nil
+  attr :checked, :boolean, default: false
+  attr :value, :string, default: "true"
+  attr :hidden_false, :boolean, default: true
+
+  def toggle_row(assigns) do
+    ~H"""
+    <label class="ta-setting cursor-pointer">
+      <span class="min-w-0">
+        <span class="text-[0.95rem] font-medium">{@label}</span>
+        <span :if={@help} class="mt-0.5 block text-sm text-base-content/65">{@help}</span>
+      </span>
+      <span class="ta-setting__control flex justify-end">
+        <input :if={@hidden_false} type="hidden" name={@name} value="false" />
+        <input
+          type="checkbox"
+          class="toggle toggle-primary"
+          name={@name}
+          value={@value}
+          checked={@checked}
+        />
+      </span>
+    </label>
     """
   end
 

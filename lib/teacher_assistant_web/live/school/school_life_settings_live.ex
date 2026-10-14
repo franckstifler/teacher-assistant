@@ -125,8 +125,12 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="school-life-settings" class="space-y-6">
-        <.page_header eyebrow={gettext("Paramètres")} title={gettext("Assiduité & discipline")} />
+      <section id="school-life-settings" class="mx-auto max-w-3xl space-y-6">
+        <.back_header
+          back={~p"/school/settings"}
+          back_label={gettext("Paramètres")}
+          title={gettext("Assiduité & discipline")}
+        />
 
         <.form
           for={%{}}
@@ -134,88 +138,118 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
           id="school-life-form"
           phx-change="preview"
           phx-submit="save"
-          class="space-y-6"
+          phx-hook="DirtyForm"
+          class="space-y-5"
         >
-          <fieldset class="space-y-3 rounded-box border border-base-300 bg-base-100 p-4">
-            <legend class="ta-eyebrow px-1">{gettext("Retards et absences")}</legend>
-            <.input
-              name="school_life[late_as_absence_minutes]"
-              value={shown(@rules.late_as_absence_minutes)}
-              label={gettext("Un retard compte comme une absence au-delà de (minutes)")}
-              placeholder={gettext("jamais")}
-              inputmode="numeric"
-              class="input input-sm w-24 text-right"
-            />
-            <.input
-              name="school_life[justification_deadline_days]"
-              value={shown(@rules.justification_deadline_days)}
-              label={gettext("Délai de justification (jours de cours)")}
-              placeholder={gettext("à tout moment")}
-              inputmode="numeric"
-              class="input input-sm w-24 text-right"
-            />
-            <.input
-              name="school_life[absence_alert_hours]"
-              value={shown(@rules.absence_alert_hours)}
-              label={gettext("Alerte après (heures d'absence non justifiée dans la séquence)")}
-              inputmode="numeric"
-              class="input input-sm w-24 text-right"
-            />
-          </fieldset>
+          <.settings_section title={gettext("Retards et absences")}>
+            <.settings_row
+              label={gettext("Un retard compte comme une absence")}
+              for="late-as-absence"
+              help={gettext("Au-delà de ce nombre de minutes. Vide : jamais.")}
+            >
+              <.unit_input
+                id="late-as-absence"
+                name="school_life[late_as_absence_minutes]"
+                value={shown(@rules.late_as_absence_minutes)}
+                placeholder={gettext("jamais")}
+                inputmode="numeric"
+                unit={gettext("min")}
+              />
+            </.settings_row>
+            <.settings_row
+              label={gettext("Délai de justification")}
+              for="justification-deadline"
+              help={gettext("En jours de cours. Vide : à tout moment.")}
+            >
+              <.unit_input
+                id="justification-deadline"
+                name="school_life[justification_deadline_days]"
+                value={shown(@rules.justification_deadline_days)}
+                placeholder={gettext("à tout moment")}
+                inputmode="numeric"
+                unit={gettext("jours")}
+              />
+            </.settings_row>
+            <.settings_row
+              label={gettext("Alerte d'absences")}
+              for="absence-alert"
+              help={gettext("Heures d'absence non justifiée dans la séquence.")}
+            >
+              <.unit_input
+                id="absence-alert"
+                name="school_life[absence_alert_hours]"
+                value={shown(@rules.absence_alert_hours)}
+                inputmode="numeric"
+                unit={gettext("h")}
+              />
+            </.settings_row>
+          </.settings_section>
 
-          <fieldset class="space-y-3 rounded-box border border-base-300 bg-base-100 p-4">
-            <legend class="ta-eyebrow px-1">{gettext("Barème de conduite")}</legend>
-            <p class="text-xs text-base-content/60">
-              {gettext("Chaque élève part de 20/20 par séquence ; chaque fait retire des points.")}
-            </p>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <.input
+          <.settings_section
+            title={gettext("Barème de conduite")}
+            subtitle={
+              gettext("Chaque élève part de 20/20 par séquence ; chaque fait retire des points.")
+            }
+          >
+            <.settings_row
+              label={gettext("Par heure d'absence non justifiée")}
+              for="points-absence-hour"
+            >
+              <.unit_input
+                id="points-absence-hour"
                 name="school_life[conduct_points_per_absence_hour]"
                 value={shown(@rules.points_per_absence_hour)}
-                label={gettext("Par heure d'absence non justifiée")}
                 inputmode="decimal"
-                class="input input-sm w-24 text-right"
+                unit={gettext("pt")}
               />
-              <.input
+            </.settings_row>
+            <.settings_row label={gettext("Par retard")} for="points-late">
+              <.unit_input
+                id="points-late"
                 name="school_life[conduct_points_per_late]"
                 value={shown(@rules.points_per_late)}
-                label={gettext("Par retard")}
                 inputmode="decimal"
-                class="input input-sm w-24 text-right"
+                unit={gettext("pt")}
               />
-              <.input
-                :for={t <- @types}
+            </.settings_row>
+            <.settings_row :for={t <- @types} label={SanctionType.label(t)} for={"points-#{t}"}>
+              <.unit_input
+                id={"points-#{t}"}
                 name={"school_life[sanction_points][#{t}]"}
                 value={shown(@rules.sanction_points[t])}
-                label={SanctionType.label(t)}
                 inputmode="decimal"
-                class="input input-sm w-24 text-right"
+                unit={gettext("pt")}
               />
-            </div>
-            <p id="conduct-example" class="rounded-box bg-base-200 px-3 py-2 text-sm">
-              {gettext("Exemple : 6 h non justifiées, 2 retards, 1 avertissement → %{mark}/20",
-                mark: shown(@example)
-              )}
+            </.settings_row>
+            <p id="conduct-example" class="ta-setting text-sm">
+              <span class="text-base-content/70">
+                {gettext("Exemple : 6 h non justifiées, 2 retards, 1 avertissement")}
+              </span>
+              <span class="ta-num text-right text-base font-semibold">{shown(@example)}/20</span>
             </p>
-          </fieldset>
+          </.settings_section>
 
-          <fieldset class="space-y-2 rounded-box border border-base-300 bg-base-100 p-4">
-            <legend class="ta-eyebrow px-1">{gettext("Sanctions utilisées")}</legend>
+          <.settings_section
+            title={gettext("Sanctions utilisées")}
+            subtitle={gettext("Seules les sanctions cochées sont proposées.")}
+          >
             <input type="hidden" name="school_life[sanction_types_in_use][]" value="" />
-            <label :for={t <- @types} class="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                class="toggle toggle-sm toggle-primary"
-                name="school_life[sanction_types_in_use][]"
-                value={t}
-                checked={t in @rules.sanction_types_in_use}
-              />
-              {SanctionType.label(t)}
+            <label :for={t <- @types} class="ta-setting cursor-pointer">
+              <span class="text-[0.95rem] font-medium">{SanctionType.label(t)}</span>
+              <span class="ta-setting__control flex justify-end">
+                <input
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                  name="school_life[sanction_types_in_use][]"
+                  value={t}
+                  checked={t in @rules.sanction_types_in_use}
+                />
+              </span>
             </label>
-          </fieldset>
+          </.settings_section>
 
           <p :if={@error} id="school-life-error" class="text-sm text-error">{@error}</p>
-          <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
+          <.save_bar />
         </.form>
       </section>
     </Layouts.app>
