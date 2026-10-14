@@ -170,6 +170,15 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
 
   defp day_label(d), do: DayOfWeek.label(d)
 
+  defp time(%Time{} = t), do: Calendar.strftime(t, "%H:%M")
+
+  defp teacher_of(assignments, teaching_context_id) do
+    case Enum.find(assignments, &(&1.id == teaching_context_id)) do
+      %{teacher: %{} = teacher} -> User.display_name(teacher)
+      _ -> nil
+    end
+  end
+
   defp status_badge_class(:under), do: "badge-warning"
   defp status_badge_class(:exact), do: "badge-success"
   defp status_badge_class(:over), do: "badge-error"
@@ -190,7 +199,40 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
           </a>
         </:actions>
 
-        <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
+        <%!-- Phones: the week read day by day; placing lessons needs the grid (≥sm). --%>
+        <div id="timetable-days" class="space-y-4 sm:hidden">
+          <p :if={@can_edit_timetable?} class="text-sm text-base-content/70">
+            {gettext("Pour placer les cours, ouvrez cette page sur un écran plus large.")}
+          </p>
+          <section :for={day <- @days} class="space-y-2">
+            <h2 class="text-sm font-semibold">{day_label(day)}</h2>
+            <div class="ta-section">
+              <%= for period <- @periods, period.kind != :break, slot = @slots[{day, period.id}] do %>
+                <.list_row
+                  title={slot.subject}
+                  meta={
+                    Enum.join(
+                      [
+                        "#{period.label} · #{time(period.start_time)}–#{time(period.end_time)}",
+                        teacher_of(@assignments, slot.teaching_context_id)
+                      ]
+                      |> Enum.reject(&is_nil/1),
+                      " · "
+                    )
+                  }
+                />
+              <% end %>
+              <p
+                :if={Enum.all?(@periods, &is_nil(@slots[{day, &1.id}]))}
+                class="px-4 py-3 text-sm text-base-content/60"
+              >
+                {gettext("Pas de cours")}
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <div class="hidden overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100 sm:block">
           <table id="timetable-grid" class="table">
             <thead>
               <tr>
@@ -249,7 +291,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
           </table>
         </div>
 
-        <div class="ta-leaf space-y-2">
+        <div class="ta-section space-y-2 p-4">
           <h2 class="text-sm font-semibold">{gettext("Heures par matière")}</h2>
           <ul id="timetable-tally" class="space-y-1 text-sm">
             <li :for={row <- @tally} id={"tally-#{row.teaching_context_id}"}>
