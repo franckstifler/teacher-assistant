@@ -6,6 +6,8 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  import TeacherAssistantWeb.StudentPhotoComponents, only: [student_avatar: 1]
+
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Sex
   alias TeacherAssistantWeb.School.EnrollDrawer
@@ -253,7 +255,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               >
                 <td>
                   <span class="flex items-center gap-3">
-                    <.initials_avatar name={e.student.full_name} />
+                    <.student_avatar student={e.student} />
                     <span class="min-w-0">
                       <.link
                         navigate={~p"/school/students/#{e.student.id}"}

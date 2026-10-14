@@ -35,6 +35,16 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     assert view |> element("tr", "Awa") |> render() =~ "Féminin"
   end
 
+  test "a student with a photo shows it in the roster", %{conn: conn, cg: cg, scope: scope} do
+    {:ok, %{student: st}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    tmp = Path.join(System.tmp_dir!(), "ta-#{System.unique_integer([:positive])}.jpg")
+    File.cp!("test/support/fixtures/files/1x1.jpg", tmp)
+    {:ok, _} = TeacherAssistant.StudentPhotos.store(scope, st, tmp)
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    assert render(view) =~ ~s(src="/school/students/#{st.id}/photo?v=)
+  end
+
   test "enrolls a new student (inscription) from the drawer", %{conn: conn, cg: cg, scope: scope} do
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
     view |> element("#enroll-button") |> render_click()

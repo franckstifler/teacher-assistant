@@ -8,6 +8,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  import TeacherAssistantWeb.StudentPhotoComponents, only: [student_avatar: 1]
+
   alias TeacherAssistant.{Attendance, Councils, Discipline, Enrollment, Organization, ReportCards}
 
   alias TeacherAssistant.Academics.{
@@ -338,7 +340,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
         <header id="student-header" class="flex flex-wrap items-end justify-between gap-4">
           <div class="flex min-w-0 items-center gap-4">
-            <.initials_avatar name={@student.full_name} class="size-14 text-lg" />
+            <.student_avatar student={@student} class="size-14 text-lg" />
             <div class="min-w-0 space-y-1.5">
               <h1 class="font-display text-3xl font-semibold leading-none sm:text-[2.2rem]">
                 {@student.full_name}
