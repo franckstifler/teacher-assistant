@@ -237,7 +237,32 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
         </div>
 
         <div class="overflow-x-auto rounded-[0.6rem] border border-base-300 bg-base-100">
-          <table class="table">
+          <div id="student-list" class="sm:hidden">
+            <.list_row
+              :for={e <- @page.results}
+              id={"student-m-#{e.student.id}"}
+              navigate={~p"/school/students/#{e.student.id}"}
+              title={e.student.full_name}
+              meta={
+                case e.student.primary_guardian_link do
+                  %{guardian: g} -> "#{e.class_group.label} · #{g.full_name}"
+                  _ -> "#{e.class_group.label} · " <> gettext("Aucun contact")
+                end
+              }
+              meta_class={!match?(%{guardian: _}, e.student.primary_guardian_link) && "!text-error"}
+            >
+              <:leading><.student_avatar student={e.student} class="size-10 text-xs" /></:leading>
+              <:trailing>
+                <span
+                  :if={e.repeater}
+                  class="rounded bg-warning/20 px-1.5 text-[0.7rem] font-semibold text-warning"
+                >
+                  {gettext("Redoublant")}
+                </span>
+              </:trailing>
+            </.list_row>
+          </div>
+          <table class="table hidden sm:table">
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>

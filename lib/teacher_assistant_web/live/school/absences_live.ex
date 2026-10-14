@@ -246,45 +246,47 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
             {gettext("Aucune absence pour ce filtre.")}
           </p>
           <div :for={row <- @page} id={"row-#{row.id}"} class="ta-row-rule flex flex-col">
-            <div class="flex flex-wrap items-center gap-3 px-4 py-[11px]">
-              <div class="flex min-w-0 flex-[1_1_220px] flex-col gap-0.5">
+            <div class="flex items-center gap-3 px-4 py-2.5">
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span class="flex flex-wrap items-center gap-1.5 font-semibold">
                   {row.student.full_name}
                   <span class="font-normal text-base-content/75">· {row.class_group.label}</span>
                   <.overdue_badge row={row} />
                 </span>
-                <span class="text-[0.78rem] text-base-content/80">
+                <span class="text-[0.8rem] text-base-content/80">
                   {when_text(row, @today, @lesson_count)}
                 </span>
+                <span class="text-[0.8rem] text-base-content/80">
+                  <%= if row.guardian do %>
+                    {row.guardian.full_name} ·
+                    <a href={"tel:#{row.guardian.phone_key}"} class="ta-num hover:underline">
+                      {row.guardian.phone}
+                    </a>
+                  <% else %>
+                    <span class="text-base-content/60">{gettext("Aucun contact")}</span>
+                  <% end %>
+                </span>
               </div>
-              <span class={[
-                "ta-num w-[52px] text-[0.86rem] font-semibold",
-                if(row.minutes >= 180, do: "text-error", else: "text-warning")
-              ]}>
-                {minutes_label(row.minutes)}
-              </span>
-              <span class="w-full text-[0.8rem] text-base-content/85 sm:w-[210px]">
-                <%= if row.guardian do %>
-                  {row.guardian.full_name} ·
-                  <a href={"tel:#{row.guardian.phone_key}"} class="ta-num hover:underline">
-                    {row.guardian.phone}
-                  </a>
-                <% else %>
-                  <span class="text-base-content/60">{gettext("Aucun contact")}</span>
-                <% end %>
-              </span>
-              <button
-                :if={not row.justified?}
-                id={"open-#{row.id}"}
-                type="button"
-                class="btn btn-outline btn-xs"
-                phx-click="open"
-                phx-value-row={row.id}
-                aria-expanded={to_string(@open == row.id)}
-              >
-                {gettext("Justifier")}
-              </button>
-              <.absence_status :if={row.justified?} row={row} />
+              <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <span class={[
+                  "ta-num text-[0.9rem] font-semibold",
+                  if(row.minutes >= 180, do: "text-error", else: "text-warning")
+                ]}>
+                  {minutes_label(row.minutes)}
+                </span>
+                <button
+                  :if={not row.justified?}
+                  id={"open-#{row.id}"}
+                  type="button"
+                  class="btn btn-outline btn-sm"
+                  phx-click="open"
+                  phx-value-row={row.id}
+                  aria-expanded={to_string(@open == row.id)}
+                >
+                  {gettext("Justifier")}
+                </button>
+                <.absence_status :if={row.justified?} row={row} />
+              </div>
             </div>
             <div
               :if={@open == row.id and not row.justified?}
