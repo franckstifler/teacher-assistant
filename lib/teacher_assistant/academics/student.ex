@@ -36,6 +36,19 @@ defmodule TeacherAssistant.Academics.Student do
       update: [:full_name, :sex, :matricule, :birth_date, :birth_place]
     ]
 
+    # Spec 2026-10-12 §2: photo files are written by `StudentPhotos`, never overwritten.
+    update :set_photo do
+      accept [:photo_path]
+      require_atomic? false
+      change set_attribute(:photo_taken_at, &DateTime.utc_now/0)
+    end
+
+    update :remove_photo do
+      accept []
+      change set_attribute(:photo_path, nil)
+      change set_attribute(:photo_taken_at, nil)
+    end
+
     read :owned do
       argument :id, :uuid, allow_nil?: false
       filter expr(id == ^arg(:id))
@@ -71,6 +84,10 @@ defmodule TeacherAssistant.Academics.Student do
       authorize_if {Checks.SchoolRole, any_of: :conduct}
       authorize_if expr(exists(enrollments, class_group.form_master_user_id == ^actor(:id)))
     end
+
+    policy action([:set_photo, :remove_photo]) do
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
+    end
   end
 
   validations do
@@ -95,6 +112,13 @@ defmodule TeacherAssistant.Academics.Student do
       allow_nil?: true,
       public?: true,
       constraints: [max_length: 120]
+
+    attribute :photo_path, :string,
+      allow_nil?: true,
+      public?: true,
+      constraints: [max_length: 255]
+
+    attribute :photo_taken_at, :utc_datetime_usec, allow_nil?: true, public?: true
 
     timestamps()
   end

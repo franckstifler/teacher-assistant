@@ -23,6 +23,8 @@ defmodule TeacherAssistant.Enrollment do
 
     resource Student do
       define :update_student, action: :update
+      define :set_student_photo, action: :set_photo
+      define :remove_student_photo, action: :remove_photo
     end
 
     resource Enrollment do
