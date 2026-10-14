@@ -9,6 +9,17 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     get(conn, ~p"/workspaces/select/#{school.id}")
   end
 
+  defp open_add(view, method \\ :phone) do
+    view |> element("#open-add-member") |> render_click()
+    if method == :email, do: view |> element("#method-email") |> render_click()
+    view
+  end
+
+  defp open_member(view, membership_id) do
+    view |> element("#member-row-#{membership_id}") |> render_click()
+    view
+  end
+
   test "head sees members, can invite, and sees the pending invitation", %{
     conn: conn,
     actor: user
@@ -24,8 +35,12 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
     assert has_element?(view, "#school-members")
-    assert has_element?(view, "#members-table")
-    assert has_element?(view, "#invite-form")
+    assert has_element?(view, "#members-list")
+    refute has_element?(view, "#add-member-drawer")
+
+    open_add(view, :email)
+    assert has_element?(view, "#method-email[aria-checked=true]")
+    refute has_element?(view, "#create-account-form")
 
     view
     |> form("#invite-form", %{
@@ -34,6 +49,8 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     |> render_submit()
 
     assert has_element?(view, "#invitations-list", "prof@example.com")
+    refute has_element?(view, "#add-member-drawer")
+    assert render(view) =~ "1 invitation en attente"
   end
 
   test "a non-head member does not see the invite form", %{conn: conn, actor: head} do
@@ -55,11 +72,15 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     conn = conn |> log_in_user(member) |> get(~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
-    assert has_element?(view, "#members-table")
-    refute has_element?(view, "#invite-form")
+    assert has_element?(view, "#members-list")
+    refute has_element?(view, "#open-add-member")
+    # a read-only list: no row opens an editor
+    refute has_element?(view, "button[id^='member-row-']")
+    render_click(view, "open_add", %{})
+    refute has_element?(view, "#add-member-drawer")
     # colleagues' password state is for staff managers only
-    refute has_element?(view, "#members-table th", "Compte")
-    refute has_element?(view, "#members-table", "Mot de passe géré par la personne")
+    refute has_element?(view, "#members-list", "Actif")
+    refute has_element?(view, "#members-list", "Mot de passe")
   end
 
   test "invite form includes the employment-type options", %{conn: conn, actor: user} do
@@ -73,7 +94,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
-    html = render(view)
+    html = view |> open_add() |> render()
     assert html =~ "Titulaire"
     assert html =~ "Contractuel"
     assert html =~ "Vacataire"
@@ -104,10 +125,14 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       |> Enum.find(&(&1.user_id == member.id))
 
     view
-    |> element("#member-status-form-#{membership.id}")
-    |> render_change(%{"status" => "titulaire"})
+    |> open_member(membership.id)
+    |> form("#member-form", %{"member" => %{"status" => "titulaire"}})
+    |> render_submit()
 
+    refute has_element?(view, "#member-drawer")
     assert has_element?(view, "#member-row-#{membership.id}", "Titulaire")
+    # the roles were left as they were
+    assert Enum.find(Accounts.list_members(scope), &(&1.id == membership.id)).roles == [:teacher]
 
     reloaded =
       scope
@@ -141,9 +166,13 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       |> Accounts.list_members()
       |> Enum.find(&(&1.user_id == member.id))
 
-    refute has_element?(view, "#member-status-form-#{membership.id}")
+    render_click(view, "edit_member", %{"id" => membership.id})
+    refute has_element?(view, "#member-form")
 
-    render_change(view, "set_status", %{"id" => membership.id, "status" => "titulaire"})
+    render_submit(view, "save_member", %{
+      "member_id" => membership.id,
+      "member" => %{"status" => "titulaire"}
+    })
 
     reloaded =
       scope
@@ -165,8 +194,137 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     conn = enter_school(conn, school)
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
-    view |> form("#service-#{m.id}", %{service: "12"}) |> render_submit()
+    view
+    |> open_member(m.id)
+    |> form("#member-form", %{"member" => %{"service" => "12"}})
+    |> render_submit()
+
     assert Enum.find(Accounts.list_members(scope), &(&1.id == m.id)).statutory_hours == 12
+    assert has_element?(view, "#member-row-#{m.id}", "h/sem.")
+  end
+
+  test "an out-of-range service keeps the drawer open with the error", %{conn: conn, scope: scope} do
+    m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+    {:ok, view, _html} = live(conn, ~p"/school/members")
+
+    view
+    |> open_member(m.id)
+    |> form("#member-form", %{"member" => %{"service" => "50"}})
+    |> render_submit()
+
+    assert has_element?(view, "#member-drawer #member-service-error", "entre 1 et 40")
+    assert has_element?(view, "#member-service[value='50']")
+    assert Enum.find(Accounts.list_members(scope), &(&1.id == m.id)).statutory_hours == nil
+  end
+
+  describe "the member drawer" do
+    test "the head changes roles with one save", %{conn: conn, scope: scope} do
+      m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view
+      |> open_member(m.id)
+      |> form("#member-form", %{"member" => %{"roles" => ["", "teacher", "hod"]}})
+      |> render_submit()
+
+      reloaded = Enum.find(Accounts.list_members(scope), &(&1.id == m.id))
+      assert Enum.sort(reloaded.roles) == Enum.sort([:teacher, :hod])
+      assert has_element?(view, "#member-row-#{m.id}", "Animateur péd.")
+    end
+
+    test "removing the last head's role is refused inside the drawer", %{
+      conn: conn,
+      scope: scope
+    } do
+      me = Enum.find(Accounts.list_members(scope), &(&1.user_id == scope.current_user.id))
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view
+      |> open_member(me.id)
+      |> form("#member-form", %{"member" => %{"roles" => ["", "teacher"]}})
+      |> render_submit()
+
+      assert has_element?(view, "#member-drawer #member-error", "dernier chef")
+      assert :head in Enum.find(Accounts.list_members(scope), &(&1.id == me.id)).roles
+    end
+
+    test "deactivating a member asks for confirmation and closes the drawer", %{
+      conn: conn,
+      scope: scope
+    } do
+      m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      open_member(view, m.id)
+      assert has_element?(view, "#member-deactivate-#{m.id}[data-confirm]")
+      view |> element("#member-deactivate-#{m.id}") |> render_click()
+
+      refute has_element?(view, "#member-drawer")
+      refute has_element?(view, "#member-row-#{m.id}")
+      refute Enum.any?(Accounts.list_members(scope), &(&1.id == m.id))
+    end
+
+    test "Fermer closes the drawer without saving", %{conn: conn, scope: scope} do
+      m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      open_member(view, m.id)
+      assert has_element?(view, "#member-drawer")
+      view |> element("#member-drawer footer button", "Fermer") |> render_click()
+      refute has_element?(view, "#member-drawer")
+    end
+  end
+
+  describe "search and role filter" do
+    setup %{scope: scope} do
+      {:ok, %{user: awa}} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Éloïse Awa",
+          phone: "677445566",
+          roles: [:bursar]
+        })
+
+      {:ok, %{user: ngo}} =
+        Accounts.add_member_by_phone(scope, %{
+          name: "Ngo Bilong",
+          phone: "699112233",
+          roles: [:teacher]
+        })
+
+      %{awa: awa, ngo: ngo}
+    end
+
+    test "search by name (accents ignored) and by phone digits", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      assert has_element?(view, "#members-list", "Éloïse Awa")
+      assert has_element?(view, "#members-list", "Ngo Bilong")
+
+      view |> form("#members-filter", %{"q" => "eloise"}) |> render_change()
+      assert has_element?(view, "#members-list", "Éloïse Awa")
+      refute has_element?(view, "#members-list", "Ngo Bilong")
+
+      view |> form("#members-filter", %{"q" => "699 11"}) |> render_change()
+      assert has_element?(view, "#members-list", "Ngo Bilong")
+      refute has_element?(view, "#members-list", "Éloïse Awa")
+
+      view |> form("#members-filter", %{"q" => "zzz"}) |> render_change()
+      refute has_element?(view, "#members-list")
+      assert render(view) =~ "Aucun membre ne correspond"
+    end
+
+    test "filter by role", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view |> form("#members-filter", %{"role" => "bursar"}) |> render_change()
+      assert has_element?(view, "#members-list", "Éloïse Awa")
+      refute has_element?(view, "#members-list", "Ngo Bilong")
+    end
+
+    test "the header counts members and accounts not yet used", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/school/members")
+      assert html =~ "3 membres"
+      assert html =~ "2 comptes en attente de première connexion"
+    end
   end
 
   describe "phone accounts" do
@@ -192,6 +350,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       {:ok, view, _html} = live(conn, ~p"/school/members")
 
       view
+      |> open_add()
       |> form("#create-account-form", %{
         "account" => %{"name" => "Awa Nji", "phone" => "6 77 12 34 56", "roles" => ["teacher"]}
       })
@@ -201,11 +360,10 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       assert has_element?(view, "#temporary-password-dialog", "Compte créé")
       assert has_element?(view, "#temporary-password-dialog", "6 77 12 34 56")
       assert view |> element("#temporary-password") |> render() =~ ~r/[a-z]{4}-[a-z]{4}-\d{4}/
-      assert has_element?(view, "#members-table", "Awa Nji")
-      assert has_element?(view, "#members-table", "6 77 12 34 56")
+      assert has_element?(view, "#members-list", "Awa Nji")
+      assert has_element?(view, "#members-list", "6 77 12 34 56")
       # the drawer is closed on success
-      refute has_element?(view, "#add-member-drawer[data-open]")
-      assert_push_event(view, "js-exec", %{to: "#add-member-drawer", attr: "data-hide"})
+      refute has_element?(view, "#add-member-drawer")
 
       view |> element("#close-temporary-password") |> render_click()
       refute has_element?(view, "#temporary-password-dialog")
@@ -214,15 +372,16 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
     test "invalid phone shows a field error and keeps the drawer open", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/school/members")
-      refute has_element?(view, "#add-member-drawer[data-open]")
+      refute has_element?(view, "#add-member-drawer")
 
       html =
         view
+        |> open_add()
         |> form("#create-account-form", %{"account" => %{"name" => "X", "phone" => "12"}})
         |> render_submit()
 
       assert html =~ "numéro de téléphone"
-      assert has_element?(view, "#add-member-drawer[data-open]")
+      assert has_element?(view, "#add-member-drawer")
       assert has_element?(view, "#add-member-drawer #create-account-form", "n'est pas valide")
       refute has_element?(view, "#temporary-password-dialog")
     end
@@ -237,10 +396,11 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       {:ok, view, _html} = live(conn, ~p"/school/members")
 
       view
+      |> open_add()
       |> form("#create-account-form", %{"account" => %{"name" => "Awa", "phone" => "677123456"}})
       |> render_submit()
 
-      assert has_element?(view, "#add-member-drawer[data-open] #add-member-error", "Déjà membre")
+      assert has_element?(view, "#add-member-drawer #add-member-error", "Déjà membre")
       refute has_element?(view, "#temporary-password-dialog")
     end
 
@@ -258,6 +418,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
       html =
         view
+        |> open_add()
         |> form("#create-account-form", %{
           "account" => %{"name" => "Autre", "phone" => "677123456"}
         })
@@ -268,7 +429,10 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       refute has_element?(view, "#temporary-password-dialog")
     end
 
-    test "the Compte column shows each account's state", %{conn: conn, scope: scope} do
+    test "each row shows the account state; the drawer explains it", %{
+      conn: conn,
+      scope: scope
+    } do
       {:ok, %{user: pending}} =
         Accounts.add_member_by_phone(scope, %{
           name: "Pending",
@@ -311,15 +475,26 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/school/members")
 
-      row = fn user -> "#member-row-#{member_for(scope, user.id).id}" end
+      id = fn user -> member_for(scope, user.id).id end
+      row = fn user -> "#member-row-#{id.(user)}" end
 
       assert has_element?(view, row.(pending), "Mot de passe temporaire")
-      assert has_element?(view, row.(pending), "expire le")
       assert has_element?(view, row.(pending), "TÉL")
       assert has_element?(view, row.(expired), "Mot de passe expiré")
-      assert has_element?(view, row.(settled), "Compte créé par l'établissement")
+      assert has_element?(view, row.(settled), "Actif")
       assert has_element?(view, row.(linked), "Compte lié")
-      assert has_element?(view, row.(scope.current_user), "Mot de passe géré par la personne")
+      assert has_element?(view, row.(scope.current_user), "Actif")
+
+      note = fn user ->
+        open_member(view, id.(user))
+        view |> element("#member-account") |> render()
+      end
+
+      assert note.(pending) =~ "expire le"
+      assert note.(expired) =~ "donnez-en un nouveau"
+      assert note.(settled) =~ "Compte créé par l&#39;établissement"
+      assert note.(linked) =~ "Créé par un autre établissement"
+      assert note.(scope.current_user) =~ "Mot de passe géré par la personne"
     end
 
     test "reset button only for accounts this school created", %{conn: conn, scope: scope} do
@@ -346,8 +521,11 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       own_m = member_for(scope, own.id)
       linked_m = member_for(scope, linked.id)
 
-      assert has_element?(view, "#reset-password-#{own_m.id}")
+      open_member(view, linked_m.id)
       refute has_element?(view, "#reset-password-#{linked_m.id}")
+
+      open_member(view, own_m.id)
+      assert has_element?(view, "#reset-password-#{own_m.id}")
 
       view |> element("#reset-password-#{own_m.id}") |> render_click()
       view |> element("#confirm-reset") |> render_click()
@@ -377,12 +555,14 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       {:ok, view, _html} = live(conn, ~p"/school/members")
       shared_m = member_for(scope, shared.id)
 
-      refute has_element?(view, "#reset-password-#{shared_m.id}")
       assert has_element?(view, "#member-row-#{shared_m.id}", "Mot de passe temporaire")
+
+      open_member(view, shared_m.id)
+      refute has_element?(view, "#reset-password-#{shared_m.id}")
 
       assert has_element?(
                view,
-               "#member-row-#{shared_m.id}",
+               "#member-account",
                "aussi utilisé dans un autre établissement"
              )
     end
@@ -394,6 +574,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       own_m = member_for(scope, own.id)
       {:ok, view, _html} = live(conn, ~p"/school/members")
 
+      open_member(view, own_m.id)
       view |> element("#reset-password-#{own_m.id}") |> render_click()
       assert has_element?(view, "#confirm-reset-dialog", "Nouveau mot de passe pour Own")
       refute has_element?(view, "#temporary-password-dialog")

@@ -17,8 +17,9 @@ defmodule TeacherAssistantWeb.School.StaffNamesTest do
 
   test "Membres shows the name", %{conn: conn, teacher: teacher} do
     {:ok, view, _} = live(conn, ~p"/school/members")
-    row = view |> element("tr", "Grace Tabi") |> render()
-    refute row =~ "<td>#{teacher.email}</td>"
+    row = view |> element("[id^='member-row-']", "Grace Tabi") |> render()
+    # the name is the row's title; the e-mail is only the contact line under it
+    refute row =~ ~r/font-medium">\s*#{Regex.escape(to_string(teacher.email))}\s*</
   end
 
   test "the class page shows the course teacher and the form-master picker by name",
