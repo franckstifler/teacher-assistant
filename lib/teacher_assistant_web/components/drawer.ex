@@ -54,8 +54,7 @@ defmodule TeacherAssistantWeb.Drawer do
         <span
           class="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-base-300 sm:hidden"
           aria-hidden="true"
-        >
-        </span>
+        ></span>
         <header class="flex items-start justify-between gap-3 border-b border-base-300 px-5 py-4">
           <div>
             <p :if={@eyebrow} class="ta-eyebrow">{@eyebrow}</p>

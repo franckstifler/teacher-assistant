@@ -155,7 +155,8 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
               :if={@types_error}
               id="types-error"
               role="alert"
-              data-save-error class="border-t border-base-300/60 px-4 py-3 text-sm text-error sm:px-5"
+              data-save-error
+              class="border-t border-base-300/60 px-4 py-3 text-sm text-error sm:px-5"
             >
               {@types_error}
             </p>
@@ -185,7 +186,8 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
               <p
                 :if={:default_max_score in @entry_errors}
                 id="default-max-error"
-                data-save-error class="mt-1.5 text-sm text-error sm:text-right"
+                data-save-error
+                class="mt-1.5 text-sm text-error sm:text-right"
               >
                 {gettext("Un nombre positif, par exemple 20.")}
               </p>
@@ -205,7 +207,8 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
               <p
                 :if={:entry_grace_days in @entry_errors}
                 id="entry-grace-days-error"
-                data-save-error class="mt-1.5 text-sm text-error sm:text-right"
+                data-save-error
+                class="mt-1.5 text-sm text-error sm:text-right"
               >
                 {gettext("Un nombre de jours entre 0 et 30.")}
               </p>

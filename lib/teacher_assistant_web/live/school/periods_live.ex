@@ -110,7 +110,8 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
               :if={@days_error}
               id="days-error"
               role="alert"
-              data-save-error class="border-t border-base-300/60 px-4 py-3 text-sm text-error sm:px-5"
+              data-save-error
+              class="border-t border-base-300/60 px-4 py-3 text-sm text-error sm:px-5"
             >
               {@days_error}
             </p>

@@ -13,7 +13,9 @@ defmodule TeacherAssistantWeb.Numbers do
   def decimal(nil, _opts), do: "—"
 
   def decimal(value, opts) when is_integer(value), do: value |> Decimal.new() |> decimal(opts)
-  def decimal(value, opts) when is_float(value), do: value |> Decimal.from_float() |> decimal(opts)
+
+  def decimal(value, opts) when is_float(value),
+    do: value |> Decimal.from_float() |> decimal(opts)
 
   def decimal(%Decimal{} = value, opts) do
     places = Keyword.get(opts, :places, 2)
