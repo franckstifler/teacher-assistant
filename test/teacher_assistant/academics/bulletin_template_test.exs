@@ -26,6 +26,7 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
   end
 
   @new_elements [
+    :photo,
     :subject_rank,
     :subject_teacher,
     :class_extremes,

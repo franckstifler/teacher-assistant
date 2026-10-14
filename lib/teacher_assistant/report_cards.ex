@@ -474,7 +474,8 @@ defmodule TeacherAssistant.ReportCards do
         matricule: s.matricule,
         sex: s.sex,
         birth_date: s.birth_date,
-        birth_place: s.birth_place
+        birth_place: s.birth_place,
+        photo_path: s.photo_path
       },
       enrollment: %{id: e.id, repeater: e.repeater}
     }

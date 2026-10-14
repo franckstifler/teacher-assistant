@@ -87,6 +87,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/school/timetable/me/print", TimetablePrintController, :me
     get "/school/logo", SchoolLogoController, :show
     get "/school/students/:id/photo", StudentPhotoController, :show
+    get "/school/bulletins/:publication_id/photo/:student_id", StudentPhotoController, :frozen
     get "/schools/invitations/:token", SchoolInvitationController, :show
     post "/schools/invitations/:token/accept", SchoolInvitationController, :accept
   end

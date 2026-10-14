@@ -228,12 +228,24 @@ defmodule TeacherAssistant.ReportCardsTest do
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:trimester, term})
       {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
       assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
-      assert pub.snapshot_version == 3
+      assert pub.snapshot_version == 4
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:annual, year})
       {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:annual, year})
       assert {:ok, annual} = ReportCards.publish(scope, cg, {:annual, year})
       [%{student: %{id: id}}] = annual.snapshot.roster
       assert annual.snapshot.council.outcomes[id].passage == :admis
+    end
+
+    test "the snapshot freezes the student's photo path (v4)", ctx do
+      %{scope: scope, cg: cg, term: term, st: st} = ctx
+      tmp = Path.join(System.tmp_dir!(), "ta-#{System.unique_integer([:positive])}.jpg")
+      File.cp!("test/support/fixtures/files/1x1.jpg", tmp)
+      {:ok, with_photo} = TeacherAssistant.StudentPhotos.store(scope, st, tmp)
+      {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
+      {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
+
+      assert [%{student: %{photo_path: path}}] = pub.snapshot.roster
+      assert path == with_photo.photo_path
     end
 
     test "the snapshot freezes the council", ctx do
@@ -298,7 +310,7 @@ defmodule TeacherAssistant.ReportCardsTest do
         scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
 
       {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
-      assert pub.snapshot_version == 3
+      assert pub.snapshot_version == 4
       assert %{language: :fr, elements: elements} = pub.snapshot.template
       assert :rank in elements
 

@@ -980,4 +980,99 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     assert csp =~ "frame-ancestors 'self'"
     refute "DENY" in Plug.Conn.get_resp_header(conn, "x-frame-options")
   end
+
+  describe "student photo (spec 2026-10-12 §6)" do
+    defp tmp_jpeg do
+      path = Path.join(System.tmp_dir!(), "ta-#{System.unique_integer([:positive])}.jpg")
+      File.cp!("test/support/fixtures/files/1x1.jpg", path)
+      path
+    end
+
+    test "a published bulletin keeps the photo of the publication; a draft shows the current one",
+         %{conn: conn, cg: cg, scope: scope, roster: roster} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      url = ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}"
+      [%{student: st} | _] = roster
+
+      {:ok, first} = TeacherAssistant.StudentPhotos.store(scope, st, tmp_jpeg())
+      assert conn |> get(url) |> html_response(200) =~ ~s(src="/school/students/#{st.id}/photo")
+
+      {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+      {:ok, _second} = TeacherAssistant.StudentPhotos.store(scope, first, tmp_jpeg())
+
+      html = conn |> get(url) |> html_response(200)
+      assert html =~ ~s(src="/school/bulletins/#{pub.id}/photo/#{st.id}")
+
+      frozen = get(conn, ~p"/school/bulletins/#{pub.id}/photo/#{st.id}")
+      {:ok, first_abs} = TeacherAssistant.Uploads.resolve(first.photo_path)
+      assert frozen.status == 200
+      assert frozen.resp_body == File.read!(first_abs)
+    end
+
+    test "a student published without photo prints no image", %{conn: conn, cg: cg, scope: scope} do
+      scope = with_year(scope)
+      term = first_term(scope)
+      {:ok, _pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+
+      html =
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}")
+        |> html_response(200)
+
+      refute html =~ ~s(class="student-photo")
+    end
+
+    test "unchecking the photo element hides it", %{
+      conn: conn,
+      cg: cg,
+      scope: scope,
+      roster: roster
+    } do
+      scope = with_year(scope)
+      term = first_term(scope)
+      [%{student: st} | _] = roster
+      {:ok, _} = TeacherAssistant.StudentPhotos.store(scope, st, tmp_jpeg())
+
+      {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+      {:ok, _} =
+        TeacherAssistant.Accounts.update_school_profile(
+          profile,
+          %{bulletin_elements: TeacherAssistant.Academics.BulletinElement.defaults() -- [:photo]},
+          scope: scope
+        )
+
+      html =
+        conn
+        |> get(~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}")
+        |> html_response(200)
+
+      refute html =~ ~s(class="student-photo")
+    end
+
+    test "photo_url/2: v1–v3 snapshot entries (no :photo_path key) give no image" do
+      alias TeacherAssistantWeb.BulletinPrintController, as: C
+      student = %{id: Ecto.UUID.generate(), full_name: "Awa"}
+      assert C.photo_url(%{id: Ecto.UUID.generate()}, student) == nil
+
+      assert C.photo_url(nil, Map.put(student, :photo_path, "x.jpg")) ==
+               "/school/students/#{student.id}/photo"
+    end
+
+    test "another school cannot read a frozen photo", %{cg: cg, scope: scope, roster: roster} do
+      scope = with_year(scope)
+      [%{student: st} | _] = roster
+      {:ok, _} = TeacherAssistant.StudentPhotos.store(scope, st, tmp_jpeg())
+
+      {:ok, pub} =
+        TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, first_term(scope))
+
+      %{head_user: h, workspace: w} =
+        TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      conn = build_conn() |> log_in_user(h) |> Plug.Conn.put_session(:workspace_id, w.id)
+      assert get(conn, ~p"/school/bulletins/#{pub.id}/photo/#{st.id}").status == 404
+    end
+  end
 end

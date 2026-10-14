@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Academics.BulletinElement do
       :subject_appreciation,
       :effectif,
       :birth,
+      :photo,
       :absences,
       :conduct,
       :pp_signature,
@@ -37,6 +38,7 @@ defmodule TeacherAssistant.Academics.BulletinElement do
   def label(:subject_appreciation), do: gettext("Appréciation (ou grade) par matière")
   def label(:effectif), do: gettext("Effectif")
   def label(:birth), do: gettext("Date et lieu de naissance")
+  def label(:photo), do: gettext("Photo de l'élève")
   def label(:absences), do: gettext("Absences")
   def label(:conduct), do: gettext("Conduite (note, consignes, sanctions)")
   def label(:pp_signature), do: gettext("Signature du professeur principal")

@@ -85,6 +85,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           conduct: view.conduct[enrollment.id],
           discipline: view.discipline[enrollment.id],
           qr_svg: qr_svg(verify_url, template),
+          photo_url: photo_url(pub, student),
           verify_url: verify_url
         }
       end)
@@ -133,6 +134,17 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   defp logo_present?(scope) do
     match?({:ok, %{logo_path: path}} when is_binary(path), Accounts.fetch_school_profile(scope))
+  end
+
+  @doc false
+  # Spec 2026-10-12 §6: published → the frozen file; draft → the current one;
+  # none (or a v1–v3 snapshot, which has no key) → no image.
+  def photo_url(pub, student) do
+    case {Map.get(student, :photo_path), pub} do
+      {nil, _} -> nil
+      {_, nil} -> ~p"/school/students/#{student.id}/photo"
+      {_, pub} -> ~p"/school/bulletins/#{pub.id}/photo/#{student.id}"
+    end
   end
 
   # Spec I5: only published cards carry a verification code, and only when chosen.

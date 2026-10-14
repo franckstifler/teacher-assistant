@@ -23,6 +23,10 @@
       .cartouche { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
       .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
       .cartouche .k { font-variant: small-caps; color: #444; width: 18%; }
+      .identity { display: flex; gap: 3mm; align-items: flex-start; }
+      .identity .cartouche { flex: 1; }
+      .student-photo { width: 25mm; height: 32mm; object-fit: cover; border: 0.3mm solid #000;
+                       margin-top: 8px; }
       table.body { width: 100%; border-collapse: collapse; margin-top: 8px; }
       table.body th, table.body td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
       table.body th { background: #f0f0f0; font-variant: small-caps; }
@@ -84,69 +88,77 @@
 
       <h1>{tr(@lang, fn -> gettext("Bulletin de notes") end)}</h1>
 
-      <table class="cartouche">
-        <tr>
-          <td class="k">{tr(@lang, fn -> gettext("Année scolaire") end)}</td>
-          <td>{@annee || "—"}</td>
-          <td class="k">{tr(@lang, fn -> gettext("Période") end)}</td>
-          <td>{@period_heading}</td>
-        </tr>
-        <tr>
-          <td class="k">{tr(@lang, fn -> gettext("Nom et prénoms") end)}</td>
-          <td>{b.student.full_name}</td>
-          <td class="k">{tr(@lang, fn -> gettext("Matricule") end)}</td>
-          <td>{b.student.matricule || "—"}</td>
-        </tr>
-        <tr>
-          <td class="k">{tr(@lang, fn -> gettext("Classe") end)}</td>
-          <td>{@cg.label} — {@cg.level}</td>
-          <td class="k">{tr(@lang, fn -> gettext("Sexe") end)}</td>
-          <td>{tr(@lang, fn -> sex_label(b.student.sex) end)}</td>
-        </tr>
-        <%!-- Snapshots published before KLM1 carry no birth keys. --%>
-        <tr :if={
-          show?(@template, :birth) and
-            (Map.get(b.student, :birth_date) || Map.get(b.student, :birth_place))
-        }>
-          <td class="k">{tr(@lang, fn -> gettext("Né(e) le") end)}</td>
-          <td>
-            {Map.get(b.student, :birth_date) &&
-              Calendar.strftime(b.student.birth_date, "%d/%m/%Y")}
-          </td>
-          <td class="k">{tr(@lang, fn -> gettext("à") end)}</td>
-          <td>{Map.get(b.student, :birth_place)}</td>
-        </tr>
-        <tr :if={show?(@template, :effectif)}>
-          <td class="k">{tr(@lang, fn -> gettext("Effectif") end)}</td>
-          <td>{@effectif}</td>
-          <td></td>
-          <td></td>
-        </tr>
-        <%!-- Snapshots published before the pilotage redesign may lack the repeater flag. --%>
-        <tr :if={
-          show?(@template, :repeater) or
-            (show?(@template, :form_master) and @professeur_principal)
-        }>
-          <%= if show?(@template, :repeater) and not is_nil(repeater?(b.enrollment)) do %>
-            <td class="k">{tr(@lang, fn -> gettext("Redoublant(e)") end)}</td>
+      <div class="identity">
+        <table class="cartouche">
+          <tr>
+            <td class="k">{tr(@lang, fn -> gettext("Année scolaire") end)}</td>
+            <td>{@annee || "—"}</td>
+            <td class="k">{tr(@lang, fn -> gettext("Période") end)}</td>
+            <td>{@period_heading}</td>
+          </tr>
+          <tr>
+            <td class="k">{tr(@lang, fn -> gettext("Nom et prénoms") end)}</td>
+            <td>{b.student.full_name}</td>
+            <td class="k">{tr(@lang, fn -> gettext("Matricule") end)}</td>
+            <td>{b.student.matricule || "—"}</td>
+          </tr>
+          <tr>
+            <td class="k">{tr(@lang, fn -> gettext("Classe") end)}</td>
+            <td>{@cg.label} — {@cg.level}</td>
+            <td class="k">{tr(@lang, fn -> gettext("Sexe") end)}</td>
+            <td>{tr(@lang, fn -> sex_label(b.student.sex) end)}</td>
+          </tr>
+          <%!-- Snapshots published before KLM1 carry no birth keys. --%>
+          <tr :if={
+            show?(@template, :birth) and
+              (Map.get(b.student, :birth_date) || Map.get(b.student, :birth_place))
+          }>
+            <td class="k">{tr(@lang, fn -> gettext("Né(e) le") end)}</td>
             <td>
-              {if repeater?(b.enrollment),
-                do: tr(@lang, fn -> gettext("oui") end),
-                else: tr(@lang, fn -> gettext("non") end)}
+              {Map.get(b.student, :birth_date) &&
+                Calendar.strftime(b.student.birth_date, "%d/%m/%Y")}
             </td>
-          <% else %>
+            <td class="k">{tr(@lang, fn -> gettext("à") end)}</td>
+            <td>{Map.get(b.student, :birth_place)}</td>
+          </tr>
+          <tr :if={show?(@template, :effectif)}>
+            <td class="k">{tr(@lang, fn -> gettext("Effectif") end)}</td>
+            <td>{@effectif}</td>
             <td></td>
             <td></td>
-          <% end %>
-          <%= if show?(@template, :form_master) and @professeur_principal do %>
-            <td class="k">{tr(@lang, fn -> gettext("Professeur principal") end)}</td>
-            <td>{@professeur_principal}</td>
-          <% else %>
-            <td></td>
-            <td></td>
-          <% end %>
-        </tr>
-      </table>
+          </tr>
+          <%!-- Snapshots published before the pilotage redesign may lack the repeater flag. --%>
+          <tr :if={
+            show?(@template, :repeater) or
+              (show?(@template, :form_master) and @professeur_principal)
+          }>
+            <%= if show?(@template, :repeater) and not is_nil(repeater?(b.enrollment)) do %>
+              <td class="k">{tr(@lang, fn -> gettext("Redoublant(e)") end)}</td>
+              <td>
+                {if repeater?(b.enrollment),
+                  do: tr(@lang, fn -> gettext("oui") end),
+                  else: tr(@lang, fn -> gettext("non") end)}
+              </td>
+            <% else %>
+              <td></td>
+              <td></td>
+            <% end %>
+            <%= if show?(@template, :form_master) and @professeur_principal do %>
+              <td class="k">{tr(@lang, fn -> gettext("Professeur principal") end)}</td>
+              <td>{@professeur_principal}</td>
+            <% else %>
+              <td></td>
+              <td></td>
+            <% end %>
+          </tr>
+        </table>
+        <img
+          :if={show?(@template, :photo) and b.photo_url}
+          class="student-photo"
+          src={b.photo_url}
+          alt=""
+        />
+      </div>
 
       <%= if b.data do %>
         <table class="body">

@@ -17,8 +17,9 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     assert :rank in s.elements and :pp_signature in s.elements
     assert :birth in s.elements
     assert :signature in s.elements and :stamp in s.elements
-    # 12 historical elements + 7 from the pilotage redesign, minus the QR.
-    assert length(s.elements) == 18
+    # 12 historical elements + 7 from the pilotage redesign + the photo, minus the QR.
+    assert :photo in s.elements
+    assert length(s.elements) == 19
     assert Enum.map(s.grade_scale, & &1.letter) == ~w(F E D C B A)
     refute s.custom_scale?
   end
@@ -53,7 +54,7 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     assert {:error, :invalid_setting} =
              Assessment.update_bulletin_settings(scope, %{
                "language" => "by_class",
-               "elements" => ["rank", "photo"]
+               "elements" => ["rank", "barcode"]
              })
 
     assert Assessment.bulletin_settings(scope).language == :by_class
