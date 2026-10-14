@@ -93,7 +93,7 @@ defmodule TeacherAssistantWeb.UIComponents do
   @doc """
   A tappable row (min 56px): `leading` (avatar, badge), the title and one meta
   line, an optional `trailing` value, then a chevron when it navigates.
-  Give it `navigate`/`patch` to link, or `phx-click` & co. through `rest`.
+  Give it `navigate`/`patch` to link, or `phx-click` (it is then a button).
   """
   attr :id, :string, default: nil
   attr :navigate, :string, default: nil
@@ -123,8 +123,19 @@ defmodule TeacherAssistantWeb.UIComponents do
       <.list_row_body {assigns} />
       <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
     </.link>
+    <button
+      :if={!@link? && @rest[:"phx-click"]}
+      type="button"
+      id={@id}
+      class={["ta-list-row w-full text-left", @selected && "ta-list-row--selected"]}
+      aria-current={@selected && "true"}
+      {@rest}
+    >
+      <.list_row_body {assigns} />
+      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+    </button>
     <div
-      :if={!@link?}
+      :if={!@link? && !@rest[:"phx-click"]}
       id={@id}
       class={["ta-list-row", @selected && "ta-list-row--selected"]}
       {@rest}

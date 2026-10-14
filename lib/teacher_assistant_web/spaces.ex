@@ -135,25 +135,16 @@ defmodule TeacherAssistantWeb.Spaces do
           sequences(facts[:late_teachers]),
           bulletins(),
           councils(),
+          correction_review(facts.pending_corrections)
+        ]),
+        section(gettext("Établissement"), [
           classes(),
           students(),
           timetable_editor(),
           members(),
-          correction_review(facts.pending_corrections)
-        ]),
-        section(gettext("Vie scolaire"), [conduct()]),
-        section(gettext("Paramètres"), [
-          settings(),
-          coefficients(),
-          evaluations(),
-          appreciations(),
-          passage(),
-          school_life_settings(),
-          bulletin_template(),
-          holidays(),
-          assignments(),
-          periods(),
-          roles()
+          conduct(),
+          # one entry: the settings hub links to every settings page
+          settings()
         ])
       ]
     }
@@ -169,24 +160,15 @@ defmodule TeacherAssistantWeb.Spaces do
           sequences(facts[:late_teachers]),
           bulletins(),
           councils(),
+          correction_review(facts.pending_corrections)
+        ]),
+        section(gettext("Établissement"), [
           classes(),
           students(),
           timetable_editor(),
           members(),
-          correction_review(facts.pending_corrections)
-        ]),
-        section(gettext("Vie scolaire"), [conduct()]),
-        section(gettext("Paramètres"), [
-          settings(),
-          coefficients(),
-          evaluations(),
-          appreciations(),
-          passage(),
-          school_life_settings(),
-          bulletin_template(),
-          holidays(),
-          assignments(),
-          roles()
+          conduct(),
+          settings()
         ])
       ]
     }
@@ -352,42 +334,6 @@ defmodule TeacherAssistantWeb.Spaces do
   defp settings,
     do: item("settings", gettext("Settings"), "hero-cog-6-tooth", ~p"/school/settings")
 
-  defp coefficients,
-    do:
-      item(
-        "coefficients",
-        gettext("Matières & coefficients"),
-        "hero-table-cells",
-        ~p"/school/settings/coefficients"
-      )
-
-  defp evaluations,
-    do:
-      item(
-        "evaluations",
-        gettext("Évaluations & moyennes"),
-        "hero-calculator",
-        ~p"/school/settings/evaluations"
-      )
-
-  defp appreciations,
-    do:
-      item(
-        "appreciations",
-        gettext("Appréciations & distinctions"),
-        "hero-academic-cap",
-        ~p"/school/settings/appreciations"
-      )
-
-  defp passage,
-    do:
-      item(
-        "passage",
-        gettext("Passage & redoublement"),
-        "hero-arrow-trending-up",
-        ~p"/school/settings/passage"
-      )
-
   defp school_life_settings,
     do:
       item(
@@ -395,36 +341,6 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Assiduité & discipline"),
         "hero-scale",
         ~p"/school/settings/school-life"
-      )
-
-  defp roles,
-    do: item("roles", gettext("Rôles et droits"), "hero-key", ~p"/school/settings/roles")
-
-  defp bulletin_template,
-    do:
-      item(
-        "bulletin_template",
-        gettext("Modèle de bulletin"),
-        "hero-document-duplicate",
-        ~p"/school/settings/bulletin"
-      )
-
-  defp holidays,
-    do:
-      item(
-        "holidays",
-        gettext("Congés & jours fériés"),
-        "hero-calendar",
-        ~p"/school/settings/holidays"
-      )
-
-  defp assignments,
-    do:
-      item(
-        "assignments",
-        gettext("Affectations"),
-        "hero-squares-2x2",
-        ~p"/school/settings/assignments"
       )
 
   defp timetable_editor,
@@ -441,6 +357,4 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp bulletins,
     do: item("bulletins", gettext("Bulletins"), "hero-document-text", ~p"/school/bulletins")
-
-  defp periods, do: item("periods", gettext("Horaires"), "hero-clock", ~p"/school/periods")
 end

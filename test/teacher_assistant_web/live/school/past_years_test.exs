@@ -25,11 +25,11 @@ defmodule TeacherAssistantWeb.School.PastYearsTest do
   end
 
   test "settings opens a closed year, which lists its classes", %{conn: conn} = ctx do
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
 
     assert has_element?(
              view,
-             ~s|#year-open-#{ctx.closed.id}[href="/school/years/#{ctx.closed.id}"]|
+             ~s|#year-row-#{ctx.closed.id}[href="/school/years/#{ctx.closed.id}"]|
            )
 
     {:ok, view, _} = live(conn, ~p"/school/years/#{ctx.closed.id}")

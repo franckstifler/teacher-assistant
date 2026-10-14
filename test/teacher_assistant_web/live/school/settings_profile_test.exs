@@ -22,7 +22,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
     end
 
     test "an admin edits the full school profile", %{conn: conn, scope: scope} do
-      {:ok, view, _} = live(conn, ~p"/school/settings")
+      {:ok, view, _} = live(conn, ~p"/school/settings/profile")
 
       view
       |> form("#school-profile-form", %{
@@ -87,11 +87,13 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       %{conn: conn, school: school, scope: school_scope(user, school)}
     end
 
-    test "an admin visiting settings does not crash and the profile form is absent", %{
+    test "an admin visiting settings does not crash and the profile fields are absent", %{
       conn: conn
     } do
-      assert {:ok, view, _html} = live(conn, ~p"/school/settings")
-      refute has_element?(view, "#school-profile-form")
+      assert {:ok, view, _html} = live(conn, ~p"/school/settings/profile")
+      # only the school's name (a Workspace field) remains editable
+      refute has_element?(view, "#school-profile-form [name='profile[short_name]']")
+      refute has_element?(view, "#school-logo-form")
     end
   end
 end

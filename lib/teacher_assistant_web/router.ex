@@ -148,6 +148,9 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/classes/:id/import", School.EnrollImportLive, :new
       live "/school/members", School.MembersLive, :index
       live "/school/settings", School.SettingsLive, :index
+      live "/school/settings/profile", School.SettingsLive, :profile
+      live "/school/settings/year", School.SettingsLive, :year
+      live "/school/settings/subjects", School.SettingsLive, :subjects
       live "/school/settings/coefficients", School.CoefficientsLive, :index
       live "/school/settings/evaluations", School.EvaluationsLive, :index
       live "/school/settings/appreciations", School.AppreciationsLive, :index

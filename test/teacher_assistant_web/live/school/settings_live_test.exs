@@ -22,10 +22,11 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   end
 
   test "head renames the school", %{conn: conn, school: school, scope: scope} do
-    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    {:ok, view, _html} = live(conn, ~p"/school/settings/profile")
 
-    assert has_element?(view, "#school-settings")
-    view |> form("#school-settings", %{"school" => %{"name" => "Nouveau Nom"}}) |> render_submit()
+    view
+    |> form("#school-profile-form", %{"school" => %{"name" => "Nouveau Nom"}})
+    |> render_submit()
 
     assert TeacherAssistant.Organization.get_workspace(school.id, scope: scope)
            |> elem(1)
@@ -48,7 +49,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     # The active year needs a class or the setup gate sends us to the wizard.
     {:ok, _} = Enrollment.create_class_group(scope, bare, %{label: "6e Z", level: "6ème"})
 
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
     assert has_element?(view, "#generate-calendar-#{bare.id}")
     view |> element("#generate-calendar-#{bare.id}") |> render_click()
     assert length(Organization.list_sequences(scope, bare)) == 6
@@ -57,7 +58,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
   test "settings lists the active year's séquences", %{conn: conn, scope: scope} do
     year = TeacherAssistant.Organization.current_academic_year(scope)
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
     assert has_element?(view, "#year-calendar-#{year.id}")
     assert has_element?(view, "#year-calendar-#{year.id}", "Séquence 6")
   end
@@ -87,7 +88,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert html =~ "nav-school-settings"
     assert has_element?(view, "#nav-school-settings")
 
-    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    {:ok, view, _html} = live(conn, ~p"/school/settings/year")
     assert has_element?(view, "#years-table")
   end
 
@@ -96,7 +97,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     year = Organization.current_academic_year(scope)
     %{closed: closed, next: next} = TeacherAssistant.TeacherFixtures.close_year!(scope, year)
 
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
     assert has_element?(view, "#year-row-#{next.id}", "Actif")
     assert has_element?(view, "#year-row-#{closed.id}", "Clôturée")
     refute has_element?(view, "#year-form")
@@ -104,7 +105,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   end
 
   test "head can add and remove a subject", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    {:ok, view, _html} = live(conn, ~p"/school/settings/subjects")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
@@ -112,13 +113,14 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
     assert render(view) =~ "Allemand"
 
+    view |> element("#subjects-table button", "Allemand") |> render_click()
     view |> element("[phx-click=\"delete_subject\"]", "Allemand") |> render_click()
     refute render(view) =~ "Allemand"
   end
 
   test "admin edits a subject's coefficient", %{conn: conn, scope: scope} do
     alias TeacherAssistant.Curriculum
-    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    {:ok, view, _html} = live(conn, ~p"/school/settings/subjects")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
@@ -126,6 +128,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
     subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
+
+    view |> element("#subject-row-#{subject.id}") |> render_click()
 
     view
     |> form("#subject-edit-form-#{subject.id}",
@@ -139,7 +143,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
   test "admin deactivates and reactivates a subject", %{conn: conn, scope: scope} do
     alias TeacherAssistant.Curriculum
-    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    {:ok, view, _html} = live(conn, ~p"/school/settings/subjects")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
@@ -148,6 +152,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     subject = Curriculum.list_subjects(scope) |> Enum.find(&(&1.name == "Allemand"))
     assert subject
 
+    view |> element("#subject-row-#{subject.id}") |> render_click()
     view |> element("#subject-toggle-active-#{subject.id}") |> render_click()
     deactivated = Curriculum.list_subjects(scope) |> Enum.find(&(&1.id == subject.id))
     assert deactivated.active? == false
@@ -165,7 +170,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     scope: scope
   } do
     alias TeacherAssistant.Curriculum
-    {:ok, view, _html} = live(conn, ~p"/school/settings")
+    {:ok, view, _html} = live(conn, ~p"/school/settings/subjects")
 
     view
     |> form("#subject-form", subject: %{name: "Allemand", bulletin_group: "g1_lettres"})
@@ -226,7 +231,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     year = Organization.current_academic_year(scope)
     [s1 | _] = Organization.list_sequences(scope, year)
     new_end = Date.add(s1.end_date, -2)
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
 
     view
     |> form("#calendar-form", %{
@@ -253,7 +258,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
   } do
     year = Organization.current_academic_year(scope)
     [s1, s2 | _] = Organization.list_sequences(scope, year)
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
 
     view
     |> form("#calendar-form", %{
@@ -280,7 +285,8 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     {:ok, _} =
       TeacherAssistant.Curriculum.assign_teacher(scope, cg, scope.current_user, %{subject: maths})
 
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/subjects")
+    view |> element("#subject-row-#{maths.id}") |> render_click()
     view |> element("#subject-delete-#{maths.id}") |> render_click()
     assert render(view) =~ "Matière utilisée par des classes : désactivez-la plutôt."
     assert Enum.any?(TeacherAssistant.Curriculum.list_subjects(scope), &(&1.id == maths.id))
@@ -306,7 +312,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
 
     year = Organization.current_academic_year(scope)
     [s1 | _] = Organization.list_sequences(scope, year)
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
 
     assert has_element?(view, "#year-calendar-#{year.id}", "Séquence 1")
     assert has_element?(view, "input[name='calendar[sequences][#{s1.id}][end_date]'][disabled]")

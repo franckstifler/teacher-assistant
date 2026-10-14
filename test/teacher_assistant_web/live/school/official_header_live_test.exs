@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
   setup :register_and_log_in_user
 
   test "the head edits the lines and resets them", %{conn: conn, scope: scope} do
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/profile")
     assert has_element?(view, "#official-header-link")
 
     {:ok, view, _} = live(conn, ~p"/school/settings/header")

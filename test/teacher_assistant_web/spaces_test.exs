@@ -74,12 +74,13 @@ defmodule TeacherAssistantWeb.SpacesTest do
 
     assert "nav-school-students" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-students" in item_ids(:censeur, facts([:vice_principal]))
-    assert "nav-school-school-life" in item_ids(:proviseur, facts([:head]))
-    assert "nav-school-school-life" in item_ids(:censeur, facts([:vice_principal]))
+    # every settings page is reached from the one Paramètres entry (its hub)
+    assert "nav-school-settings" in item_ids(:proviseur, facts([:head]))
+    assert "nav-school-settings" in item_ids(:censeur, facts([:vice_principal]))
+    refute "nav-school-school-life" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-conduct" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-conduct" in item_ids(:censeur, facts([:vice_principal]))
-    assert "nav-school-roles" in item_ids(:proviseur, facts([:head]))
-    assert "nav-school-roles" in item_ids(:censeur, facts([:vice_principal]))
+    refute "nav-school-roles" in item_ids(:proviseur, facts([:head]))
 
     refute "nav-school-sequences" in item_ids(:enseignant, facts([:teacher], teaches?: true))
 

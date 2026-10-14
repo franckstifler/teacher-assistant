@@ -86,7 +86,7 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
   end
 
   test "settings holds the limit and the rule", %{conn: conn, scope: scope} do
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/profile")
 
     view
     |> form("#school-profile-form", %{

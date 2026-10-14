@@ -6,6 +6,9 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
+  alias TeacherAssistantWeb.{Dates, Numbers}
+
+  import TeacherAssistantWeb.Drawer
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -24,6 +27,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
         |> assign(:subject_form, subject_form(scope))
+        |> assign(:editing_subject, nil)
         |> allow_upload(:logo,
           accept: ~w(.png .jpg .jpeg),
           max_entries: 1,
@@ -36,96 +40,257 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
-  def render(assigns) do
+  def handle_params(_params, _uri, socket) do
+    {:noreply, assign(socket, :page_title, page_title(socket.assigns.live_action))}
+  end
+
+  defp page_title(:profile), do: gettext("Profil et en-tête")
+  defp page_title(:year), do: gettext("Année scolaire et calendrier")
+  defp page_title(:subjects), do: gettext("Matières")
+  defp page_title(_), do: gettext("Paramètres")
+
+  def render(%{live_action: :index} = assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="school-settings-page" class="space-y-6">
-        <.page_header eyebrow={gettext("École")} title={gettext("Paramètres")} />
+      <section id="school-settings-page" class="mx-auto max-w-5xl space-y-8">
+        <.page_header
+          eyebrow={gettext("École")}
+          title={gettext("Paramètres")}
+          subtitle={gettext("Ce qu'on règle une fois par an. Le travail du jour est dans le menu.")}
+        />
 
-        <nav class="flex flex-wrap gap-3 border-b border-base-300 pb-3 text-sm">
-          <a href="#profil" class="link link-hover">{gettext("Profil")}</a>
-          <a href="#annee" class="link link-hover">{gettext("Année scolaire")}</a>
-          <a href="#matieres" class="link link-hover">{gettext("Matières")}</a>
-          <a href="#emploi" class="link link-hover">{gettext("Emploi du temps")}</a>
-          <.link navigate={~p"/school/classes"} class="link link-hover">{gettext("Classes")}</.link>
-        </nav>
+        <.hub_group
+          :if={@can_edit_profile? or @can_rename_school? or @years != [] or @can_manage_periods?}
+          title={gettext("L'établissement")}
+        >
+          <.hub_card
+            :if={@can_edit_profile? or @can_rename_school?}
+            id="hub-profile"
+            navigate={~p"/school/settings/profile"}
+            icon="hero-building-library"
+            title={gettext("Profil et en-tête officiel")}
+            text={gettext("Nom, type, coordonnées, logo, en-tête des documents imprimés.")}
+            status={profile_status(@profile)}
+          />
+          <.hub_card
+            id="hub-year"
+            navigate={~p"/school/settings/year"}
+            icon="hero-calendar-days"
+            title={gettext("Année scolaire et calendrier")}
+            text={gettext("Trimestres, séquences, limites de saisie, conseils de classe.")}
+            status={year_status(@active_year, @active_sequences)}
+          />
+          <.hub_card
+            :if={@can_manage_subjects?}
+            id="holidays-link"
+            navigate={~p"/school/settings/holidays"}
+            icon="hero-sun"
+            title={gettext("Congés & jours fériés")}
+            text={gettext("Les jours sans cours, exclus des appels.")}
+          />
+          <.hub_card
+            :if={@can_manage_periods?}
+            id="periods-link"
+            navigate={~p"/school/periods"}
+            icon="hero-clock"
+            title={gettext("Horaires des cours")}
+            text={gettext("Jours de classe, créneaux, récréations.")}
+          />
+        </.hub_group>
 
-        <section id="profil" class="space-y-6">
-          <.form
-            :if={@can_rename_school?}
-            for={@name_form}
-            id="school-settings"
-            phx-change="validate_name"
-            phx-submit="save"
-            class="ta-leaf space-y-3"
-          >
-            <.input field={@name_form[:name]} type="text" label={gettext("Nom de l'école")} />
-            <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-          </.form>
+        <.hub_group :if={@can_manage_subjects?} title={gettext("Notes et bulletins")}>
+          <.hub_card
+            id="hub-subjects"
+            navigate={~p"/school/settings/subjects"}
+            icon="hero-book-open"
+            title={gettext("Matières")}
+            text={gettext("Le catalogue des matières et leur groupe sur le bulletin.")}
+            status={
+              {:ok,
+               ngettext(
+                 "1 matière active",
+                 "%{count} matières actives",
+                 Enum.count(@subjects, & &1.active?)
+               )}
+            }
+          />
+          <.hub_card
+            id="coefficients-link"
+            navigate={~p"/school/settings/coefficients"}
+            icon="hero-table-cells"
+            title={gettext("Coefficients")}
+            text={gettext("La grille des coefficients par niveau et par série.")}
+          />
+          <.hub_card
+            id="evaluations-link"
+            navigate={~p"/school/settings/evaluations"}
+            icon="hero-calculator"
+            title={gettext("Évaluations & moyennes")}
+            text={gettext("Types d'évaluation, barème, calcul des moyennes.")}
+          />
+          <.hub_card
+            id="appreciations-link"
+            navigate={~p"/school/settings/appreciations"}
+            icon="hero-academic-cap"
+            title={gettext("Appréciations & distinctions")}
+            text={gettext("Mentions, tableau d'honneur, avertissements.")}
+          />
+          <.hub_card
+            id="passage-link"
+            navigate={~p"/school/settings/passage"}
+            icon="hero-arrow-trending-up"
+            title={gettext("Passage & redoublement")}
+            text={gettext("Seuils de passage par niveau.")}
+          />
+          <.hub_card
+            id="bulletin-template-link"
+            navigate={~p"/school/settings/bulletin"}
+            icon="hero-document-duplicate"
+            title={gettext("Modèle de bulletin")}
+            text={gettext("Mise en page et blocs affichés.")}
+          />
+        </.hub_group>
 
-          <div :if={@can_edit_profile? and @profile_form} class="ta-leaf space-y-3">
-            <h2 class="text-lg font-semibold">{gettext("Profil de l'école")}</h2>
+        <.hub_group :if={@can_manage_subjects?} title={gettext("Organisation et accès")}>
+          <.hub_card
+            id="assignments-link"
+            navigate={~p"/school/settings/assignments"}
+            icon="hero-squares-2x2"
+            title={gettext("Affectations")}
+            text={gettext("Qui enseigne quoi, dans quelle classe.")}
+          />
+          <.hub_card
+            id="school-life-link"
+            navigate={~p"/school/settings/school-life"}
+            icon="hero-scale"
+            title={gettext("Assiduité & discipline")}
+            text={gettext("Seuils d'absence et barème de conduite.")}
+          />
+          <.hub_card
+            id="roles-link"
+            navigate={~p"/school/settings/roles"}
+            icon="hero-key"
+            title={gettext("Rôles et droits")}
+            text={gettext("Ce que chaque rôle peut voir et faire.")}
+          />
+        </.hub_group>
+      </section>
+    </Layouts.app>
+    """
+  end
 
-            <.form
-              for={@profile_form}
-              id="school-profile-form"
-              phx-change="validate_profile"
-              phx-submit="save_profile"
-              class="space-y-3"
+  def render(%{live_action: :profile} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
+        <.settings_back title={gettext("Profil et en-tête officiel")} />
+
+        <.form
+          :if={@can_rename_school? or (@can_edit_profile? and @profile_form)}
+          for={@profile_form || to_form(%{}, as: :profile)}
+          id="school-profile-form"
+          phx-change="validate_profile"
+          phx-submit="save_profile"
+          phx-hook="DirtyForm"
+          class="space-y-5"
+        >
+          <.settings_section title={gettext("Identité")}>
+            <.settings_row
+              :if={@can_rename_school?}
+              label={gettext("Nom de l'école")}
+              for="school_name"
             >
-              <div class="grid gap-2 sm:grid-cols-2">
-                <.input field={@profile_form[:short_name]} label={gettext("Nom court")} />
+              <.input field={@name_form[:name]} type="text" />
+            </.settings_row>
+            <%= if @can_edit_profile? and @profile_form do %>
+              <.settings_row
+                label={gettext("Nom court")}
+                for="profile_short_name"
+                help={gettext("Affiché quand la place manque (en-têtes, téléphone).")}
+              >
+                <.input field={@profile_form[:short_name]} />
+              </.settings_row>
+              <.settings_row label={gettext("Type d'établissement")} for="profile_school_type">
                 <.input
                   type="select"
                   field={@profile_form[:school_type]}
-                  label={gettext("Type d'établissement")}
                   options={for t <- SchoolType.values(), do: {SchoolType.label(t), t}}
                   prompt={gettext("Sélectionner un type")}
                 />
+              </.settings_row>
+              <.settings_row label={gettext("Sous-système")} for="profile_subsystem">
                 <.input
                   type="select"
                   field={@profile_form[:subsystem]}
-                  label={gettext("Sous-système")}
                   options={for s <- SchoolSubsystem.values(), do: {SchoolSubsystem.label(s), s}}
                   prompt={gettext("Sélectionner un sous-système")}
                 />
+              </.settings_row>
+              <.settings_row label={gettext("Secteur")} for="profile_sector">
                 <.input
                   type="select"
                   field={@profile_form[:sector]}
-                  label={gettext("Secteur")}
                   options={for s <- SchoolSector.values(), do: {SchoolSector.label(s), s}}
                   prompt={gettext("Sélectionner un secteur")}
                 />
+              </.settings_row>
+            <% end %>
+          </.settings_section>
+
+          <%= if @can_edit_profile? and @profile_form do %>
+            <.settings_section title={gettext("Coordonnées")}>
+              <.settings_row label={gettext("Région")} for="profile_region">
                 <.input
                   type="select"
                   field={@profile_form[:region]}
-                  label={gettext("Région")}
                   options={for r <- CameroonRegion.values(), do: {CameroonRegion.label(r), r}}
                   prompt={gettext("Sélectionner une région")}
                 />
-                <.input field={@profile_form[:department]} label={gettext("Département")} />
-                <.input field={@profile_form[:town]} label={gettext("Ville")} />
-                <.input field={@profile_form[:phone]} label={gettext("Téléphone")} />
-                <.input field={@profile_form[:email]} label={gettext("Email")} />
-                <.input field={@profile_form[:address]} label={gettext("Adresse")} />
-                <.input
-                  field={@profile_form[:head_name]}
-                  label={gettext("Nom du chef d'établissement")}
-                />
-                <.input field={@profile_form[:motto]} label={gettext("Devise")} />
-                <.input
-                  field={@profile_form[:registration_number]}
-                  label={gettext("Numéro d'autorisation")}
-                />
-                <.input
-                  field={@profile_form[:max_class_size]}
-                  type="number"
-                  label={gettext("Effectif maximum par classe")}
-                />
+              </.settings_row>
+              <.settings_row label={gettext("Département")} for="profile_department">
+                <.input field={@profile_form[:department]} />
+              </.settings_row>
+              <.settings_row label={gettext("Ville")} for="profile_town">
+                <.input field={@profile_form[:town]} />
+              </.settings_row>
+              <.settings_row label={gettext("Adresse")} for="profile_address">
+                <.input field={@profile_form[:address]} />
+              </.settings_row>
+              <.settings_row label={gettext("Téléphone")} for="profile_phone">
+                <.input field={@profile_form[:phone]} type="tel" />
+              </.settings_row>
+              <.settings_row label={gettext("Email")} for="profile_email">
+                <.input field={@profile_form[:email]} type="email" />
+              </.settings_row>
+            </.settings_section>
+
+            <.settings_section title={gettext("Direction et documents")}>
+              <.settings_row label={gettext("Nom du chef d'établissement")} for="profile_head_name">
+                <.input field={@profile_form[:head_name]} />
+              </.settings_row>
+              <.settings_row label={gettext("Devise")} for="profile_motto">
+                <.input field={@profile_form[:motto]} />
+              </.settings_row>
+              <.settings_row
+                label={gettext("Numéro d'autorisation")}
+                for="profile_registration_number"
+              >
+                <.input field={@profile_form[:registration_number]} />
+              </.settings_row>
+            </.settings_section>
+
+            <.settings_section title={gettext("Classes")}>
+              <.settings_row
+                label={gettext("Effectif maximum par classe")}
+                for="profile_max_class_size"
+                help={gettext("Au-delà, la classe est signalée « pleine ».")}
+              >
+                <.input field={@profile_form[:max_class_size]} type="number" />
+              </.settings_row>
+              <.settings_row label={gettext("Nommage des classes")} for="profile_class_suffix">
                 <.input
                   field={@profile_form[:class_suffix]}
                   type="select"
-                  label={gettext("Nommage des classes")}
                   options={
                     Enum.map(
                       TeacherAssistant.Academics.ClassSuffix.values(),
@@ -133,436 +298,463 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                     )
                   }
                 />
-              </div>
-              <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-            </.form>
+              </.settings_row>
+            </.settings_section>
+          <% end %>
 
-            <.form
-              for={%{}}
-              id="school-logo-form"
-              phx-submit="save_logo"
-              phx-change="validate_logo"
-              multipart
-              class="space-y-3"
-            >
+          <.save_bar />
+        </.form>
+
+        <.settings_section
+          :if={@can_edit_profile? and @profile}
+          id="school-logo"
+          title={gettext("Logo et en-tête officiel")}
+          subtitle={gettext("Le logo apparaît sur les bulletins, les cartes et les impressions.")}
+        >
+          <.form
+            for={%{}}
+            id="school-logo-form"
+            phx-submit="save_logo"
+            phx-change="validate_logo"
+            multipart
+            class="ta-setting"
+          >
+            <div class="flex items-center gap-4">
               <img
                 :if={@profile.logo_path}
                 src={~p"/school/logo"}
                 alt={gettext("Logo de l'école")}
-                class="h-16 w-16 rounded object-cover"
+                class="size-16 rounded-lg border border-base-300 object-cover"
               />
+              <span
+                :if={!@profile.logo_path}
+                class="grid size-16 place-items-center rounded-lg border border-dashed border-base-300 text-base-content/50"
+              >
+                <.icon name="hero-photo" class="size-6" />
+              </span>
+              <span class="text-sm text-base-content/70">
+                {if @profile.logo_path,
+                  do: gettext("Logo actuel"),
+                  else: gettext("Pas encore de logo")}
+              </span>
+            </div>
+            <div class="ta-setting__control flex flex-wrap items-center gap-2">
               <.file_picker upload={@uploads.logo} />
-              <button type="submit" class="btn btn-secondary btn-sm">
-                {gettext("Téléverser le logo")}
+              <button :if={@uploads.logo.entries != []} type="submit" class="btn btn-primary">
+                {gettext("Enregistrer le logo")}
               </button>
-            </.form>
-
-            <.link
-              id="official-header-link"
-              navigate={~p"/school/settings/header"}
-              class="link link-primary text-sm"
-            >
-              {gettext("En-tête officiel, signature et cachet")}
-            </.link>
-          </div>
-        </section>
-
-        <section :if={@can_manage_calendar?} id="annee" class="space-y-4">
-          <h2 class="text-lg font-semibold">{gettext("Année scolaire")}</h2>
-
-          <div class="overflow-x-auto">
-            <table id="years-table" class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>{gettext("Nom")}</th>
-                  <th>{gettext("Début")}</th>
-                  <th>{gettext("Fin")}</th>
-                  <th>{gettext("Statut")}</th>
-                  <th><span class="sr-only">{gettext("Actions")}</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={year <- @years} id={"year-row-#{year.id}"}>
-                  <td>{year.name}</td>
-                  <td>{year.start_date}</td>
-                  <td>{year.end_date}</td>
-                  <td>
-                    <span :if={year.status == :closed} class="badge badge-ghost">
-                      {gettext("Clôturée")}
-                    </span>
-                    <span :if={year.status == :open and year.active} class="badge badge-primary">
-                      {gettext("Active")}
-                    </span>
-                    <span :if={year.status == :open and !year.active} class="badge badge-ghost">
-                      {gettext("Inactive")}
-                    </span>
-                  </td>
-                  <td class="text-right">
-                    <.link
-                      :if={year.status == :open and year.active}
-                      id="new-year-link"
-                      navigate={~p"/school/settings/new-year"}
-                      class="btn btn-primary btn-xs"
-                    >
-                      {gettext("Préparer l'année suivante")}
-                    </.link>
-                    <.link
-                      :if={year.status == :closed}
-                      id={"year-open-#{year.id}"}
-                      navigate={~p"/school/years/#{year.id}"}
-                      class="btn btn-ghost btn-xs"
-                    >
-                      {gettext("Consulter")}
-                    </.link>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div
-            :if={@active_year && @active_sequences == []}
-            id={"year-no-calendar-#{@active_year.id}"}
-            class="rounded-box border border-warning/40 bg-warning/10 p-4 text-sm"
+            </div>
+          </.form>
+          <.list_row
+            id="official-header-link"
+            navigate={~p"/school/settings/header"}
+            title={gettext("En-tête officiel, signature et cachet")}
+            meta={gettext("République, ministère, délégation, signature du chef d'établissement.")}
           >
-            <p>
-              {gettext("L'année %{name} n'a pas encore de trimestres ni de séquences.",
-                name: @active_year.name
-              )}
-            </p>
-            <button
-              id={"generate-calendar-#{@active_year.id}"}
-              type="button"
-              class="btn btn-primary btn-sm mt-2"
-              phx-click="generate_calendar"
-              phx-value-id={@active_year.id}
-            >
-              {gettext("Générer le calendrier")}
-            </button>
-          </div>
+            <:leading>
+              <span class="grid size-10 place-items-center rounded-lg bg-base-200">
+                <.icon name="hero-document-text" class="size-5" />
+              </span>
+            </:leading>
+          </.list_row>
+        </.settings_section>
+      </section>
+    </Layouts.app>
+    """
+  end
 
-          <.empty_state
-            :if={@years == []}
-            icon="hero-calendar"
-            title={gettext("No academic years yet")}
-          />
-        </section>
+  def render(%{live_action: :year} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
+        <.settings_back title={gettext("Année scolaire et calendrier")} />
+
+        <.settings_section :if={@can_manage_calendar?} id="annee" title={gettext("Années scolaires")}>
+          <:actions>
+            <.link
+              :if={@active_year && @active_year.status == :open}
+              id="new-year-link"
+              navigate={~p"/school/settings/new-year"}
+              class="btn btn-sm btn-primary"
+            >
+              {gettext("Préparer l'année suivante")}
+            </.link>
+          </:actions>
+          <div id="years-table">
+            <.list_row
+              :for={year <- @years}
+              id={"year-row-#{year.id}"}
+              navigate={year.status == :closed && ~p"/school/years/#{year.id}"}
+              title={year.name}
+              meta={"#{Dates.day_month(year.start_date)} #{year.start_date.year} → #{Dates.day_month(year.end_date)} #{year.end_date.year}"}
+            >
+              <:trailing>
+                <span :if={year.status == :closed} class="badge badge-ghost">{gettext("Clôturée")}</span>
+                <span :if={year.status == :open and year.active} class="badge badge-primary">
+                  {gettext("Active")}
+                </span>
+                <span :if={year.status == :open and !year.active} class="badge badge-ghost">
+                  {gettext("Inactive")}
+                </span>
+              </:trailing>
+            </.list_row>
+          </div>
+          <div :if={@years == []} class="px-5 pb-5">
+            <.empty_state icon="hero-calendar" title={gettext("No academic years yet")} />
+          </div>
+        </.settings_section>
+
+        <div
+          :if={@active_year && @active_sequences == []}
+          id={"year-no-calendar-#{@active_year.id}"}
+          class="rounded-box border border-warning/40 bg-warning/10 p-4 text-sm"
+        >
+          <p>
+            {gettext("L'année %{name} n'a pas encore de trimestres ni de séquences.",
+              name: @active_year.name
+            )}
+          </p>
+          <button
+            id={"generate-calendar-#{@active_year.id}"}
+            type="button"
+            class="btn btn-primary btn-sm mt-2"
+            phx-click="generate_calendar"
+            phx-value-id={@active_year.id}
+          >
+            {gettext("Générer le calendrier")}
+          </button>
+        </div>
 
         <%!-- Every member sees the calendar; only calendar managers can edit it. --%>
-        <section :if={@active_year && @active_sequences != []} id="calendrier" class="space-y-4">
-          <div
-            :if={@active_year && @active_sequences != []}
-            id={"year-calendar-#{@active_year.id}"}
-            class="rounded-box border border-base-300 bg-base-100 p-4"
-          >
-            <h3 class="text-sm font-semibold">
+        <section
+          :if={@active_year && @active_sequences != []}
+          id={"year-calendar-#{@active_year.id}"}
+          class="space-y-4"
+        >
+          <div>
+            <h2 class="text-lg font-semibold">
               {gettext("Trimestres et séquences")} · {@active_year.name}
-            </h3>
-            <p class="mt-1 text-xs text-base-content/70">
+            </h2>
+            <p class="mt-1 text-sm text-base-content/70">
               {gettext(
                 "Sans date limite, la saisie des notes ferme %{days} jours après la fin de la séquence.",
                 days: TeacherAssistant.Academics.Reference.entry_grace_days()
               )}
             </p>
-
-            <.form
-              for={to_form(%{}, as: :calendar)}
-              id="calendar-form"
-              phx-submit="save_calendar"
-              class="mt-3 space-y-3"
-            >
-              <div class="overflow-x-auto">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>{gettext("Séquence")}</th>
-                      <th>{gettext("Début")}</th>
-                      <th>{gettext("Fin")}</th>
-                      <th>{gettext("Limite de saisie")}</th>
-                      <th>{gettext("Conseil de classe")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr :for={seq <- @active_sequences} id={"sequence-#{seq.id}"} class="align-top">
-                      <td class="whitespace-nowrap">
-                        <span class="text-base-content/60">
-                          {gettext("Trimestre %{n}", n: seq.term.position)} ·
-                        </span>
-                        {gettext("Séquence %{n}", n: seq.number)}
-                      </td>
-                      <td :for={field <- [:start_date, :end_date, :entry_deadline]}>
-                        <.input
-                          type="date"
-                          name={"calendar[sequences][#{seq.id}][#{field}]"}
-                          value={
-                            calendar_value(
-                              @calendar_params,
-                              "sequences",
-                              seq.id,
-                              field,
-                              Map.get(seq, field)
-                            )
-                          }
-                          disabled={!@can_manage_calendar?}
-                          errors={calendar_errors(@calendar_errors, seq.id, field)}
-                        />
-                        <span
-                          :if={field == :entry_deadline and is_nil(seq.entry_deadline)}
-                          class="ta-num text-xs text-base-content/60"
-                        >
-                          {gettext("Par défaut : %{date}",
-                            date: Calendar.strftime(seq.grade_entry_deadline, "%d/%m/%Y")
-                          )}
-                        </span>
-                      </td>
-                      <td>
-                        <.input
-                          :if={seq.position_in_term == 2}
-                          type="date"
-                          name={"calendar[terms][#{seq.term_id}][class_council_date]"}
-                          value={
-                            calendar_value(
-                              @calendar_params,
-                              "terms",
-                              seq.term_id,
-                              :class_council_date,
-                              seq.term.class_council_date
-                            )
-                          }
-                          disabled={!@can_manage_calendar?}
-                          errors={calendar_errors(@calendar_errors, seq.term_id, :class_council_date)}
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <button :if={@can_manage_calendar?} type="submit" class="btn btn-primary btn-sm">
-                {gettext("Enregistrer le calendrier")}
-              </button>
-            </.form>
           </div>
-        </section>
 
-        <section :if={@can_manage_subjects?} id="matieres" class="space-y-4">
-          <h2 class="text-lg font-semibold">{gettext("Matières")}</h2>
-
-          <.link
-            id="coefficients-link"
-            navigate={~p"/school/settings/coefficients"}
-            class="link link-primary text-sm"
+          <.form
+            for={to_form(%{}, as: :calendar)}
+            id="calendar-form"
+            phx-submit="save_calendar"
+            phx-hook="DirtyForm"
+            class="space-y-4"
           >
-            {gettext("Coefficients par niveau et groupes du bulletin")}
-          </.link>
-
-          <.link
-            id="evaluations-link"
-            navigate={~p"/school/settings/evaluations"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Évaluations & moyennes")}
-          </.link>
-
-          <.link
-            id="appreciations-link"
-            navigate={~p"/school/settings/appreciations"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Appréciations & distinctions")}
-          </.link>
-
-          <.link
-            id="passage-link"
-            navigate={~p"/school/settings/passage"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Passage & redoublement")}
-          </.link>
-
-          <.link
-            id="roles-link"
-            navigate={~p"/school/settings/roles"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Rôles et droits")}
-          </.link>
-
-          <.link
-            id="school-life-link"
-            navigate={~p"/school/settings/school-life"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Assiduité & discipline")}
-          </.link>
-
-          <.link
-            id="bulletin-template-link"
-            navigate={~p"/school/settings/bulletin"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Modèle de bulletin")}
-          </.link>
-
-          <.link
-            id="holidays-link"
-            navigate={~p"/school/settings/holidays"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Congés & jours fériés")}
-          </.link>
-
-          <.link
-            id="assignments-link"
-            navigate={~p"/school/settings/assignments"}
-            class="link link-primary text-sm"
-          >
-            {gettext("Affectations")}
-          </.link>
-
-          <div class="overflow-x-auto">
-            <table :if={@subjects != []} id="subjects-table" class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>{gettext("Nom")}</th>
-                  <th>{gettext("Coefficient")}</th>
-                  <th>{gettext("Groupe du bulletin")}</th>
-                  <th>{gettext("Statut")}</th>
-                  <th><span class="sr-only">{gettext("Actions")}</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={s <- @subjects} id={"subject-row-#{s.id}"}>
-                  <td colspan="5">
-                    <.form
-                      for={
-                        AshPhoenix.Form.for_update(s, :update,
-                          as: "subject_edit",
-                          scope: @scope
+            <.settings_section
+              :for={{term, seqs} <- terms(@active_sequences)}
+              id={"term-#{term.id}"}
+              title={gettext("Trimestre %{n}", n: term.position)}
+            >
+              <div :for={seq <- seqs} id={"sequence-#{seq.id}"} class="ta-setting !block space-y-2">
+                <p class="text-sm font-semibold">{gettext("Séquence %{n}", n: seq.number)}</p>
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <div :for={field <- [:start_date, :end_date, :entry_deadline]}>
+                    <.input
+                      type="date"
+                      label={calendar_label(field)}
+                      name={"calendar[sequences][#{seq.id}][#{field}]"}
+                      value={
+                        calendar_value(
+                          @calendar_params,
+                          "sequences",
+                          seq.id,
+                          field,
+                          Map.get(seq, field)
                         )
-                        |> to_form()
                       }
-                      id={"subject-edit-form-#{s.id}"}
-                      phx-submit="update_subject"
-                      class="grid items-end gap-2 sm:grid-cols-6"
+                      disabled={!@can_manage_calendar?}
+                      errors={calendar_errors(@calendar_errors, seq.id, field)}
+                    />
+                    <p
+                      :if={field == :entry_deadline and is_nil(seq.entry_deadline)}
+                      class="mt-1 text-xs text-base-content/60"
                     >
-                      <input type="hidden" name="subject_id" value={s.id} />
-                      <.input name="subject_edit[name]" value={s.name} label={gettext("Nom")} />
-                      <.input
-                        name="subject_edit[default_coefficient]"
-                        value={s.default_coefficient}
-                        label={gettext("Coefficient")}
-                      />
-                      <.input
-                        name="subject_edit[bulletin_group]"
-                        type="select"
-                        value={to_string(s.bulletin_group)}
-                        options={bulletin_group_options()}
-                        label={gettext("Groupe du bulletin")}
-                      />
-                      <div>
-                        <span :if={s.active?} class="badge badge-primary">{gettext("Active")}</span>
-                        <span :if={!s.active?} class="badge badge-ghost">
-                          {gettext("Inactive")}
-                        </span>
-                      </div>
-                      <div class="flex flex-wrap gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                          {gettext("Enregistrer")}
-                        </button>
-                        <button
-                          type="button"
-                          id={"subject-toggle-active-#{s.id}"}
-                          class="btn btn-ghost btn-sm"
-                          phx-click="toggle_subject_active"
-                          phx-value-id={s.id}
-                        >
-                          {if s.active?, do: gettext("Désactiver"), else: gettext("Réactiver")}
-                        </button>
-                        <button
-                          type="button"
-                          id={"subject-delete-#{s.id}"}
-                          phx-click="delete_subject"
-                          phx-value-id={s.id}
-                          class="btn btn-ghost btn-sm text-error"
-                        >
-                          <span class="sr-only">{s.name}</span>
-                          {gettext("Supprimer")}
-                        </button>
-                      </div>
-                    </.form>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                      {gettext("Par défaut : %{date}", date: Dates.short(seq.grade_entry_deadline))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <.settings_row
+                label={gettext("Conseil de classe")}
+                for={"council-#{term.id}"}
+                help={gettext("Après la fin du trimestre.")}
+              >
+                <.input
+                  id={"council-#{term.id}"}
+                  type="date"
+                  name={"calendar[terms][#{term.id}][class_council_date]"}
+                  value={
+                    calendar_value(
+                      @calendar_params,
+                      "terms",
+                      term.id,
+                      :class_council_date,
+                      term.class_council_date
+                    )
+                  }
+                  disabled={!@can_manage_calendar?}
+                  errors={calendar_errors(@calendar_errors, term.id, :class_council_date)}
+                />
+              </.settings_row>
+            </.settings_section>
 
-          <.empty_state
-            :if={@subjects == []}
-            icon="hero-book-open"
-            title={gettext("Aucune matière pour l'instant")}
-          />
-
-          <div class="ta-leaf space-y-3">
-            <h3 class="text-sm font-semibold">{gettext("Ajouter une matière")}</h3>
-            <.form
-              for={@subject_form}
-              id="subject-form"
-              phx-change="validate_subject"
-              phx-submit="create_subject"
-              class="flex flex-wrap items-end gap-2"
-            >
-              <.input field={@subject_form[:name]} label={gettext("Nom de la matière")} />
-              <.input
-                field={@subject_form[:bulletin_group]}
-                type="select"
-                label={gettext("Groupe du bulletin")}
-                options={bulletin_group_options()}
-              />
-              <button type="submit" class="btn btn-primary btn-sm">{gettext("Ajouter")}</button>
-            </.form>
-          </div>
-        </section>
-
-        <section :if={@can_manage_periods?} id="emploi">
-          <.link navigate={~p"/school/periods"} class="link link-primary text-sm">
-            {gettext("Emploi du temps — périodes")}
-          </.link>
+            <.save_bar :if={@can_manage_calendar?} label={gettext("Enregistrer le calendrier")} />
+          </.form>
         </section>
       </section>
     </Layouts.app>
     """
   end
 
-  def handle_event("validate_name", %{"school" => params}, socket) do
-    {:noreply,
-     assign(socket, :name_form, AshPhoenix.Form.validate(socket.assigns.name_form, params))}
+  def render(%{live_action: :subjects} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
+        <.settings_back title={gettext("Matières")} />
+
+        <section :if={@can_manage_subjects?} id="matieres" class="space-y-5">
+          <.settings_section
+            title={gettext("Ajouter une matière")}
+            subtitle={gettext("Le coefficient se règle ensuite par niveau dans Coefficients.")}
+          >
+            <.form
+              for={@subject_form}
+              id="subject-form"
+              phx-change="validate_subject"
+              phx-submit="create_subject"
+              class="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5"
+            >
+              <div class="min-w-48 flex-1">
+                <.input field={@subject_form[:name]} label={gettext("Nom de la matière")} />
+              </div>
+              <div class="min-w-48">
+                <.input
+                  field={@subject_form[:bulletin_group]}
+                  type="select"
+                  label={gettext("Groupe du bulletin")}
+                  options={bulletin_group_options()}
+                />
+              </div>
+              <button type="submit" class="btn btn-primary">{gettext("Ajouter")}</button>
+            </.form>
+          </.settings_section>
+
+          <.settings_section
+            title={gettext("Catalogue")}
+            subtitle={gettext("Touchez une matière pour la modifier.")}
+          >
+            <div id="subjects-table">
+              <.list_row
+                :for={s <- @subjects}
+                id={"subject-row-#{s.id}"}
+                phx-click="edit_subject"
+                phx-value-id={s.id}
+                title={s.name}
+                meta={"#{BulletinGroup.label(s.bulletin_group)} · " <> gettext("coef. %{c}", c: Numbers.decimal(s.default_coefficient, trim: true))}
+                selected={@editing_subject && @editing_subject.id == s.id}
+              >
+                <:trailing>
+                  <span :if={!s.active?} class="badge badge-ghost">{gettext("Inactive")}</span>
+                </:trailing>
+              </.list_row>
+            </div>
+            <div :if={@subjects == []} class="px-5 pb-5">
+              <.empty_state icon="hero-book-open" title={gettext("Aucune matière pour l'instant")} />
+            </div>
+          </.settings_section>
+        </section>
+
+        <.drawer
+          :if={@editing_subject}
+          id="subject-drawer"
+          eyebrow={gettext("Matière")}
+          title={@editing_subject.name}
+          on_close={JS.push("close_subject")}
+        >
+          <.form
+            for={
+              AshPhoenix.Form.for_update(@editing_subject, :update, as: "subject_edit", scope: @scope)
+              |> to_form()
+            }
+            id={"subject-edit-form-#{@editing_subject.id}"}
+            phx-submit="update_subject"
+            class="space-y-1"
+          >
+            <input type="hidden" name="subject_id" value={@editing_subject.id} />
+            <.input name="subject_edit[name]" value={@editing_subject.name} label={gettext("Nom")} />
+            <.input
+              name="subject_edit[default_coefficient]"
+              value={@editing_subject.default_coefficient}
+              label={gettext("Coefficient par défaut")}
+              inputmode="decimal"
+            />
+            <.input
+              name="subject_edit[bulletin_group]"
+              type="select"
+              value={to_string(@editing_subject.bulletin_group)}
+              options={bulletin_group_options()}
+              label={gettext("Groupe du bulletin")}
+            />
+          </.form>
+          <div class="space-y-2 border-t border-base-300 pt-4">
+            <p class="text-sm text-base-content/70">
+              {if @editing_subject.active?,
+                do: gettext("Une matière désactivée n'est plus proposée aux classes."),
+                else: gettext("Cette matière est désactivée.")}
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                id={"subject-toggle-active-#{@editing_subject.id}"}
+                class="btn btn-ghost"
+                phx-click="toggle_subject_active"
+                phx-value-id={@editing_subject.id}
+              >
+                {if @editing_subject.active?, do: gettext("Désactiver"), else: gettext("Réactiver")}
+              </button>
+              <button
+                type="button"
+                id={"subject-delete-#{@editing_subject.id}"}
+                phx-click="delete_subject"
+                phx-value-id={@editing_subject.id}
+                data-confirm={gettext("Supprimer cette matière ?")}
+                class="btn btn-ghost text-error"
+              >
+                {gettext("Supprimer")}<span class="sr-only">{@editing_subject.name}</span>
+              </button>
+            </div>
+          </div>
+          <:footer>
+            <button type="button" class="btn btn-ghost" phx-click="close_subject">
+              {gettext("Fermer")}
+            </button>
+            <button
+              type="submit"
+              form={"subject-edit-form-#{@editing_subject.id}"}
+              class="btn btn-primary"
+            >
+              {gettext("Enregistrer")}
+            </button>
+          </:footer>
+        </.drawer>
+      </section>
+    </Layouts.app>
+    """
   end
 
-  def handle_event("save", %{"school" => params}, socket) do
-    scope = socket.assigns.scope
+  attr :title, :string, required: true
 
-    case AshPhoenix.Form.submit(socket.assigns.name_form, params: params) do
-      {:ok, school} ->
-        new_scope = %{scope | current_workspace: school}
+  defp settings_back(assigns) do
+    ~H"""
+    <header class="space-y-1">
+      <.link
+        navigate={~p"/school/settings"}
+        class="link link-hover inline-flex items-center gap-1 text-sm font-semibold text-info"
+      >
+        <.icon name="hero-chevron-left" class="size-4" />{gettext("Paramètres")}
+      </.link>
+      <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{@title}</h1>
+    </header>
+    """
+  end
 
-        {:noreply,
-         socket
-         |> assign(:scope, new_scope)
-         |> assign(:current_scope, new_scope)
-         |> assign(:name_form, name_form(new_scope))
-         |> put_flash(:info, gettext("École renommée avec succès."))}
+  attr :title, :string, required: true
+  slot :inner_block, required: true
 
-      {:error, form} ->
-        if Authz.forbidden_form?(form) do
-          {:noreply, Authz.put_not_allowed(socket)}
-        else
-          {:noreply,
-           socket
-           |> assign(:name_form, form)
-           |> put_flash(:error, gettext("Impossible de renommer l'école."))}
-        end
+  defp hub_group(assigns) do
+    ~H"""
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold">{@title}</h2>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{render_slot(@inner_block)}</div>
+    </section>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :navigate, :string, required: true
+  attr :icon, :string, required: true
+  attr :title, :string, required: true
+  attr :text, :string, required: true
+  attr :status, :any, default: nil, doc: "{:ok | :todo, text} or nil"
+
+  defp hub_card(assigns) do
+    ~H"""
+    <.link
+      id={@id}
+      navigate={@navigate}
+      class="ta-section group flex min-h-28 flex-col gap-2 p-4 transition-colors hover:border-base-content/30"
+    >
+      <span class="flex items-center gap-2.5 font-semibold">
+        <.icon name={@icon} class="size-5 text-primary" />
+        <span class="flex-1">{@title}</span>
+        <.icon
+          name="hero-chevron-right"
+          class="size-4 text-base-content/40 transition-transform group-hover:translate-x-0.5"
+        />
+      </span>
+      <span class="flex-1 text-sm text-base-content/70">{@text}</span>
+      <span
+        :if={@status}
+        class={[
+          "inline-flex items-center gap-1.5 text-xs font-semibold",
+          if(elem(@status, 0) == :ok, do: "text-success", else: "text-error")
+        ]}
+      >
+        <span class="size-1.5 rounded-full bg-current"></span>{elem(@status, 1)}
+      </span>
+    </.link>
+    """
+  end
+
+  @profile_fields ~w(short_name school_type region town phone head_name)a
+
+  defp profile_status(nil), do: nil
+
+  defp profile_status(profile) do
+    case Enum.count(@profile_fields, &(Map.get(profile, &1) in [nil, ""])) do
+      0 -> {:ok, gettext("Complet")}
+      n -> {:todo, ngettext("1 information manquante", "%{count} informations manquantes", n)}
     end
   end
+
+  defp year_status(nil, _), do: {:todo, gettext("Aucune année active")}
+  defp year_status(year, []), do: {:todo, gettext("%{name} · pas de calendrier", name: year.name)}
+
+  defp year_status(year, seqs),
+    do:
+      {:ok,
+       ngettext("%{name} · 1 séquence", "%{name} · %{count} séquences", length(seqs),
+         name: year.name
+       )}
+
+  defp terms(sequences) do
+    sequences
+    |> Enum.group_by(& &1.term_id)
+    |> Enum.map(fn {_id, [first | _] = seqs} -> {first.term, Enum.sort_by(seqs, & &1.number)} end)
+    |> Enum.sort_by(fn {term, _} -> term.position end)
+  end
+
+  defp calendar_label(:start_date), do: gettext("Début")
+  defp calendar_label(:end_date), do: gettext("Fin")
+  defp calendar_label(:entry_deadline), do: gettext("Limite de saisie")
+
+  def handle_event("edit_subject", %{"id" => id}, socket) do
+    {:noreply,
+     assign(socket, :editing_subject, Enum.find(socket.assigns.subjects, &(&1.id == id)))}
+  end
+
+  def handle_event("close_subject", _params, socket),
+    do: {:noreply, assign(socket, :editing_subject, nil)}
 
   def handle_event("save_calendar", %{"calendar" => params}, socket) do
     case Organization.update_calendar(socket.assigns.scope, socket.assigns.active_year, params) do
@@ -641,7 +833,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
            )}
 
         _ ->
-          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
+          {:noreply,
+           socket
+           |> assign(:subjects, Curriculum.list_subjects(scope))
+           |> assign(:editing_subject, nil)}
       end
     else
       _ -> {:noreply, socket}
@@ -668,6 +863,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           {:noreply,
            socket
            |> assign(:subjects, Curriculum.list_subjects(scope))
+           |> assign(:editing_subject, nil)
            |> put_flash(:info, gettext("Matière mise à jour."))}
 
         {:error, form} ->
@@ -692,8 +888,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           else: Curriculum.update_subject(scope, subject, %{active?: true})
 
       case result do
-        {:ok, _} ->
-          {:noreply, assign(socket, :subjects, Curriculum.list_subjects(scope))}
+        {:ok, updated} ->
+          {:noreply,
+           socket
+           |> assign(:subjects, Curriculum.list_subjects(scope))
+           |> assign(:editing_subject, updated)}
 
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
@@ -707,40 +906,28 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     end
   end
 
-  def handle_event("validate_profile", %{"profile" => params}, socket) do
-    if socket.assigns.profile_form do
-      {:noreply,
-       assign(
-         socket,
-         :profile_form,
-         AshPhoenix.Form.validate(socket.assigns.profile_form, params)
-       )}
-    else
-      {:noreply, socket}
-    end
+  # One form for the school's name (Workspace) and its profile (SchoolProfile):
+  # each part is validated and saved with its own resource and policy.
+  def handle_event("validate_profile", params, socket) do
+    socket =
+      socket
+      |> validate_part(:name_form, params["school"], socket.assigns.can_rename_school?)
+      |> validate_part(:profile_form, params["profile"], socket.assigns.profile_form != nil)
+
+    {:noreply, socket}
   end
 
-  def handle_event("save_profile", %{"profile" => attrs}, socket) do
-    if socket.assigns.profile do
-      case AshPhoenix.Form.submit(socket.assigns.profile_form, params: attrs) do
-        {:ok, _profile} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Profil de l'école mis à jour."))
-           |> load_profile()}
-
-        {:error, form} ->
-          if Authz.forbidden_form?(form) do
-            {:noreply, Authz.put_not_allowed(socket)}
-          else
-            {:noreply,
-             socket
-             |> assign(:profile_form, form)
-             |> put_flash(:error, gettext("Impossible de mettre à jour le profil."))}
-          end
-      end
+  def handle_event("save_profile", params, socket) do
+    with {:ok, socket} <- save_name(socket, params["school"]),
+         {:ok, socket} <- save_profile(socket, params["profile"]) do
+      {:noreply,
+       socket |> load_profile() |> put_flash(:info, gettext("Profil de l'école mis à jour."))}
     else
-      {:noreply, socket}
+      {:forbidden, socket} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, socket} ->
+        {:noreply, put_flash(socket, :error, gettext("Impossible de mettre à jour le profil."))}
     end
   end
 
@@ -792,6 +979,50 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       end
     else
       {:noreply, socket}
+    end
+  end
+
+  defp validate_part(socket, _key, nil, _allowed?), do: socket
+  defp validate_part(socket, _key, _params, false), do: socket
+
+  defp validate_part(socket, key, params, true),
+    do: assign(socket, key, AshPhoenix.Form.validate(socket.assigns[key], params))
+
+  defp save_name(socket, params) when is_nil(params) or not socket.assigns.can_rename_school?,
+    do: {:ok, socket}
+
+  defp save_name(socket, params) do
+    scope = socket.assigns.scope
+
+    case AshPhoenix.Form.submit(socket.assigns.name_form, params: params) do
+      {:ok, school} ->
+        new_scope = %{scope | current_workspace: school}
+
+        {:ok,
+         socket
+         |> assign(:scope, new_scope)
+         |> assign(:current_scope, new_scope)
+         |> assign(:name_form, name_form(new_scope))}
+
+      {:error, form} ->
+        if Authz.forbidden_form?(form),
+          do: {:forbidden, socket},
+          else: {:error, assign(socket, :name_form, form)}
+    end
+  end
+
+  defp save_profile(socket, params) when is_nil(params) or is_nil(socket.assigns.profile_form),
+    do: {:ok, socket}
+
+  defp save_profile(socket, params) do
+    case AshPhoenix.Form.submit(socket.assigns.profile_form, params: params) do
+      {:ok, _profile} ->
+        {:ok, socket}
+
+      {:error, form} ->
+        if Authz.forbidden_form?(form),
+          do: {:forbidden, socket},
+          else: {:error, assign(socket, :profile_form, form)}
     end
   end
 

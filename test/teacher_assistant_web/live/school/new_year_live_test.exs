@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.School.NewYearLiveTest do
   end
 
   test "settings links to the wizard for the open year", %{conn: conn} do
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
     assert has_element?(view, ~s|#new-year-link[href="/school/settings/new-year"]|)
   end
 

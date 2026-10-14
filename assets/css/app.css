@@ -509,7 +509,7 @@ h1, h2, h3, .ta-display {
   transition: background-color 120ms ease;
 }
 .ta-list-row:first-child { border-top: 0; }
-a.ta-list-row:hover { background: color-mix(in oklch, var(--color-base-content) 5%, transparent); }
+:is(a, button).ta-list-row:hover { background: color-mix(in oklch, var(--color-base-content) 5%, transparent); }
 .ta-list-row--selected { background: color-mix(in oklch, var(--color-primary) 12%, transparent); }
 
 /* the save bar: hidden until its DirtyForm differs from the saved values */

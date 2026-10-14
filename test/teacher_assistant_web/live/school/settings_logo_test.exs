@@ -18,7 +18,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
   end
 
   test "uploading a logo stores a file and sets logo_path", %{conn: conn, scope: scope} do
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/profile")
 
     logo =
       file_input(view, "#school-logo-form", :logo, [
@@ -41,7 +41,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
   end
 
   test "the served logo route returns the stored file", %{conn: conn, scope: scope} do
-    {:ok, view, _} = live(conn, ~p"/school/settings")
+    {:ok, view, _} = live(conn, ~p"/school/settings/profile")
 
     logo =
       file_input(view, "#school-logo-form", :logo, [

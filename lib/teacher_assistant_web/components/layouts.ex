@@ -429,6 +429,19 @@ defmodule TeacherAssistantWeb.Layouts do
     """
   end
 
+  # A page under an entry keeps it lit (a class under Classes, every settings page
+  # under Paramètres). "/school" (the dashboard) only matches itself.
+  @settings_pages ["/school/settings", "/school/periods", "/school/years"]
+
+  defp rail_active?(nil, _href), do: false
+  defp rail_active?(path, href) when path == href, do: true
+  defp rail_active?(_path, "/school"), do: false
+
+  defp rail_active?(path, "/school/settings"),
+    do: Enum.any?(@settings_pages, &(path == &1 or String.starts_with?(path, &1 <> "/")))
+
+  defp rail_active?(path, href), do: String.starts_with?(path, href <> "/")
+
   attr :id, :string, default: nil
   attr :href, :string, required: true
   attr :icon, :string, required: true
@@ -438,7 +451,7 @@ defmodule TeacherAssistantWeb.Layouts do
   slot :inner_block, required: true
 
   defp rail_link(assigns) do
-    assigns = assign(assigns, :active, assigns.current_path == assigns.href)
+    assigns = assign(assigns, :active, rail_active?(assigns.current_path, assigns.href))
 
     ~H"""
     <.link id={@id} navigate={@href} aria-current={@active && "page"} class="ta-rail__item">
