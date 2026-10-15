@@ -205,7 +205,11 @@ defmodule TeacherAssistantWeb.Router do
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
         {TeacherAssistantWeb.LiveUserAuth, :require_operator}
       ] do
+      live "/admin", Admin.OverviewLive
       live "/admin/schools", Admin.SchoolsLive
+      live "/admin/schools/:id", Admin.SchoolLive
+      live "/admin/users", Admin.UsersLive
+      live "/admin/journal", Admin.JournalLive
     end
   end
 

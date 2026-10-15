@@ -1,117 +1,139 @@
 defmodule TeacherAssistantWeb.Admin.SchoolsLive do
+  @moduledoc "Operator console spec §5: every school, searchable and filterable."
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts
-  alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
+  alias TeacherAssistant.{Accounts, Modules, Operator}
 
-  def mount(_params, _session, socket) do
-    {:ok, reload_schools(socket)}
+  alias TeacherAssistant.Accounts.{
+    CameroonRegion,
+    SchoolSubsystem,
+    SchoolType,
+    SchoolVerificationStatus
+  }
+
+  @params ~w(q status suspended module)
+
+  def mount(_params, _session, socket), do: {:ok, socket}
+
+  def handle_params(params, _uri, socket) do
+    filters = %{
+      q: params["q"] || "",
+      status: parse_status(params["status"]),
+      suspended: if(params["suspended"] == "1", do: true),
+      module: parse_module(params["module"])
+    }
+
+    {:noreply,
+     assign(socket,
+       filters: filters,
+       schools: Operator.list_schools(socket.assigns.current_scope, filters)
+     )}
+  end
+
+  def handle_event("filter", params, socket) do
+    params = params |> Map.take(@params) |> Map.reject(fn {_k, v} -> v in ["", nil] end)
+    {:noreply, push_patch(socket, to: ~p"/admin/schools?#{params}")}
+  end
+
+  defp parse_status(status) do
+    case SchoolVerificationStatus.match(status || "") do
+      {:ok, status} -> status
+      :error -> nil
+    end
+  end
+
+  defp parse_module(module) do
+    case Modules.Key.match(module || "") do
+      {:ok, key} -> key
+      :error -> nil
+    end
   end
 
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="admin-schools" class="space-y-6">
-        <.page_header
-          eyebrow={gettext("Opérateur")}
-          title={gettext("Établissements à vérifier")}
-        />
+        <.page_header eyebrow={gettext("Administration")} title={gettext("Établissements")} />
+
+        <form
+          id="schools-filter"
+          phx-change="filter"
+          phx-submit="filter"
+          class="flex flex-wrap items-center gap-2"
+        >
+          <input
+            type="search"
+            name="q"
+            value={@filters.q}
+            placeholder={gettext("Nom ou ville")}
+            class="input input-bordered input-sm"
+            phx-debounce="300"
+          />
+          <select name="status" class="select select-bordered select-sm">
+            <option value="">{gettext("Tous les statuts")}</option>
+            <option
+              :for={s <- SchoolVerificationStatus.values()}
+              value={s}
+              selected={@filters.status == s}
+            >
+              {SchoolVerificationStatus.label(s)}
+            </option>
+          </select>
+          <label class="label cursor-pointer gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="suspended"
+              value="1"
+              checked={@filters.suspended}
+              class="checkbox checkbox-sm"
+            />
+            {gettext("Suspendus")}
+          </label>
+          <select name="module" class="select select-bordered select-sm">
+            <option value="">{gettext("Tous les modules")}</option>
+            <option :for={k <- Modules.keys()} value={k} selected={@filters.module == k}>
+              {Modules.label(k)}
+            </option>
+          </select>
+        </form>
 
         <.empty_state
           :if={@schools == []}
-          icon="hero-check-badge"
-          title={gettext("Aucun établissement en attente de vérification")}
+          icon="hero-building-library"
+          title={gettext("Aucun établissement")}
         />
 
-        <div
-          :for={p <- @schools}
-          id={"school-row-#{p.workspace_id}"}
-          class="ta-leaf space-y-3 p-4"
+        <.link
+          :for={row <- @schools}
+          id={"school-row-#{row.workspace.id}"}
+          navigate={~p"/admin/schools/#{row.workspace.id}"}
+          class="ta-leaf block space-y-1 p-4"
         >
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div class="space-y-1">
-              <h2 class="font-semibold">{p.workspace.name}</h2>
-              <p class="text-sm text-base-content/70">
-                {SchoolType.label(p.school_type)} · {SchoolSubsystem.label(p.subsystem)} · {SchoolSector.label(
-                  p.sector
-                )} · {CameroonRegion.label(p.region)} · {p.town}
-              </p>
-              <p class="text-sm text-base-content/70">{Accounts.User.contact(p.owner_user)}</p>
-            </div>
-
-            <div class="flex flex-col items-end gap-2">
-              <button
-                id={"verify-#{p.workspace_id}"}
-                type="button"
-                class="btn btn-primary btn-sm"
-                phx-click="verify"
-                phx-value-id={p.workspace_id}
-              >
-                {gettext("Vérifier")}
-              </button>
-
-              <form
-                id={"reject-#{p.workspace_id}"}
-                phx-submit="reject"
-                class="flex items-center gap-2"
-              >
-                <input type="hidden" name="workspace_id" value={p.workspace_id} />
-                <input
-                  type="text"
-                  name="reason"
-                  placeholder={gettext("Motif du rejet")}
-                  class="input input-bordered input-sm"
-                />
-                <button type="submit" class="btn btn-ghost btn-sm">{gettext("Rejeter")}</button>
-              </form>
-            </div>
-          </div>
-        </div>
+          <span class="flex flex-wrap items-center gap-2">
+            <span class="font-semibold">{row.workspace.name}</span>
+            <span class="badge badge-sm">
+              {SchoolVerificationStatus.label(row.profile.verification_status)}
+            </span>
+            <span :if={row.workspace.suspended_at} class="badge badge-error badge-sm">
+              {gettext("Suspendu")}
+            </span>
+          </span>
+          <span class="block text-sm text-base-content/70">
+            {SchoolType.label(row.profile.school_type)} · {SchoolSubsystem.label(
+              row.profile.subsystem
+            )} · {CameroonRegion.label(row.profile.region)} · {row.profile.town}
+          </span>
+          <span :if={row.owner} class="block text-sm text-base-content/70">
+            {Accounts.User.contact(row.owner)}
+          </span>
+          <span class="flex flex-wrap gap-1">
+            <span :for={k <- row.workspace.modules} class="badge badge-outline badge-xs">
+              {Modules.label(k)}
+            </span>
+          </span>
+        </.link>
       </section>
     </Layouts.app>
     """
   end
-
-  def handle_event("verify", %{"id" => workspace_id}, socket) do
-    case find_profile(socket, workspace_id) do
-      nil ->
-        {:noreply, socket}
-
-      profile ->
-        scope = socket.assigns.current_scope
-
-        profile
-        |> Accounts.verify_school(scope.current_user.id, scope: scope)
-        |> after_decision(socket)
-    end
-  end
-
-  def handle_event("reject", %{"workspace_id" => workspace_id, "reason" => reason}, socket) do
-    case find_profile(socket, workspace_id) do
-      nil ->
-        {:noreply, socket}
-
-      profile ->
-        scope = socket.assigns.current_scope
-
-        profile
-        |> Accounts.reject_school(scope.current_user.id, reason, scope: scope)
-        |> after_decision(socket)
-    end
-  end
-
-  defp after_decision({:ok, _profile}, socket), do: {:noreply, reload_schools(socket)}
-
-  defp after_decision({:error, %Ash.Error.Forbidden{}}, socket),
-    do: {:noreply, Authz.put_not_allowed(socket)}
-
-  defp after_decision({:error, _error}, socket),
-    do: {:noreply, put_flash(socket, :error, gettext("Impossible d'enregistrer la décision."))}
-
-  defp find_profile(socket, workspace_id) do
-    Enum.find(socket.assigns.schools, &(to_string(&1.workspace_id) == to_string(workspace_id)))
-  end
-
-  defp reload_schools(socket),
-    do: assign(socket, :schools, Accounts.list_unverified_schools(socket.assigns.current_scope))
 end

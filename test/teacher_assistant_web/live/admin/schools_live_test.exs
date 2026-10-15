@@ -1,46 +1,30 @@
 defmodule TeacherAssistantWeb.Admin.SchoolsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Accounts
-  alias TeacherAssistant.Organization
   alias TeacherAssistant.TeacherFixtures
 
-  @attrs %{
-    name: "Lycée Op",
-    school_type: :lycee,
-    subsystem: :francophone,
-    sector: :public,
-    region: :centre,
-    town: "Yaoundé"
-  }
+  defp signed_in(conn, user),
+    do:
+      conn
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:user_id, user.id)
 
-  test "a non-admin is redirected", %{conn: conn} = _ctx do
+  test "a non-admin is redirected", %{conn: conn} do
     user = TeacherFixtures.user_fixture()
-
-    conn =
-      conn |> Phoenix.ConnTest.init_test_session(%{}) |> Plug.Conn.put_session(:user_id, user.id)
-
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/admin/schools")
+    assert {:error, {:redirect, %{to: "/"}}} = live(signed_in(conn, user), ~p"/admin/schools")
   end
 
-  test "an admin sees an unverified school and verifies it", %{conn: conn} do
-    head = TeacherFixtures.user_fixture()
-
-    {:ok, school} =
-      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, @attrs)
-
-    admin = TeacherFixtures.admin_user_fixture()
-
-    conn =
-      conn |> Phoenix.ConnTest.init_test_session(%{}) |> Plug.Conn.put_session(:user_id, admin.id)
-
-    {:ok, view, html} = live(conn, ~p"/admin/schools")
+  test "lists schools and filters to those awaiting verification", %{conn: conn} do
+    %{workspace: ws, head_user: head} = TeacherFixtures.school_fixture(%{name: "Lycée Op"})
+    op = TeacherFixtures.admin_user_fixture()
+    {:ok, view, html} = live(signed_in(conn, op), ~p"/admin/schools")
     assert html =~ "Lycée Op"
-    # The operator reads each school's name and its owner's email.
     assert html =~ to_string(head.email)
-    view |> element("#verify-#{school.id}") |> render_click()
 
-    {:ok, p} = Accounts.fetch_school_profile(school_scope(head, school))
-    assert p.verification_status == :verified
+    view |> form("#schools-filter", %{"status" => "unverified"}) |> render_change()
+    assert has_element?(view, "#school-row-#{ws.id}")
+
+    view |> form("#schools-filter", %{"status" => "verified"}) |> render_change()
+    refute has_element?(view, "#school-row-#{ws.id}")
   end
 end

@@ -16,6 +16,12 @@ defmodule TeacherAssistantWeb.Dates do
   def long(%Date{} = date),
     do: "#{weekday_long(Date.day_of_week(date))} #{date.day} #{month_long(date.month)}"
 
+  @doc ~S|"ven. 2 oct. 14:05" / "Fri 2 Oct 14:05", in Cameroon time (UTC+1).|
+  def short_datetime(%DateTime{} = at) do
+    local = DateTime.add(at, 3600)
+    "#{short(DateTime.to_date(local))} #{Calendar.strftime(local, "%H:%M")}"
+  end
+
   @doc ~S|"Aujourd'hui", "hier", else `short/1`.|
   def relative(%Date{} = date, %Date{} = today) do
     case Date.diff(today, date) do

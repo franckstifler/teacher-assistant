@@ -69,6 +69,7 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:space_keys, (current_scope && current_scope.capabilities[:spaces]) || [])
       |> assign(:bell, current_scope && (current_scope.capabilities || %{})[:notifications])
       |> assign(:current_path, assigns[:current_path])
+      |> assign(:operator?, current_user != nil and current_user.role == :admin)
 
     assigns =
       assign(assigns, :tabs, assigns.in_school? && assigns.space && Spaces.tab_bar(assigns.space))
@@ -241,6 +242,47 @@ defmodule TeacherAssistantWeb.Layouts do
                   {item.label}
                 </.rail_link>
               <% end %>
+            </nav>
+
+            <nav
+              :if={@operator?}
+              id="admin-nav"
+              class="flex flex-col gap-0.5"
+              aria-label={gettext("Administration")}
+            >
+              <p class="ta-rail__label px-1.5 pb-1 pt-2">{gettext("Administration")}</p>
+              <.rail_link
+                id="nav-admin-overview"
+                href={~p"/admin"}
+                icon="hero-chart-pie"
+                current_path={@current_path}
+              >
+                {gettext("Vue d'ensemble")}
+              </.rail_link>
+              <.rail_link
+                id="nav-admin-schools"
+                href={~p"/admin/schools"}
+                icon="hero-building-library"
+                current_path={@current_path}
+              >
+                {gettext("Établissements")}
+              </.rail_link>
+              <.rail_link
+                id="nav-admin-users"
+                href={~p"/admin/users"}
+                icon="hero-users"
+                current_path={@current_path}
+              >
+                {gettext("Utilisateurs")}
+              </.rail_link>
+              <.rail_link
+                id="nav-admin-journal"
+                href={~p"/admin/journal"}
+                icon="hero-document-text"
+                current_path={@current_path}
+              >
+                {gettext("Journal")}
+              </.rail_link>
             </nav>
 
             <div class="mt-auto flex flex-col gap-2 border-t border-[color:var(--ta-rail-line)] pt-3">
