@@ -19,6 +19,14 @@ defmodule TeacherAssistant.Scope do
   def school_verified?(%__MODULE__{school_verification_status: :verified}), do: true
   def school_verified?(_scope), do: false
 
+  @doc "Whether the school's module `key` is on. Always true outside a school."
+  def module?(%__MODULE__{current_workspace: %{modules: modules}}, key), do: key in modules
+  def module?(_scope, _key), do: true
+
+  @doc "Whether the scope's school is suspended."
+  def suspended?(%__MODULE__{current_workspace: %{suspended_at: %DateTime{}}}), do: true
+  def suspended?(_scope), do: false
+
   def academic_year_ready?(%__MODULE__{
         current_academic_year: %TeacherAssistant.Academics.AcademicYear{}
       }),

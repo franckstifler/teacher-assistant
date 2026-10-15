@@ -78,6 +78,23 @@ defmodule TeacherAssistant.Organization do
     |> Enum.map(& &1.workspace)
   end
 
+  @doc "Replaces a school's modules (operator only, journaled)."
+  def set_modules(%Scope{} = scope, %Workspace{} = ws, modules) when is_list(modules) do
+    ws
+    |> Ash.Changeset.for_update(:set_modules, %{modules: modules}, scope: scope)
+    |> Ash.update()
+  end
+
+  @doc "Suspends a school with a reason (operator only, journaled)."
+  def suspend_school(%Scope{} = scope, %Workspace{} = ws, reason) do
+    ws |> Ash.Changeset.for_update(:suspend, %{reason: reason}, scope: scope) |> Ash.update()
+  end
+
+  @doc "Lifts a school's suspension (operator only, journaled)."
+  def reactivate_school(%Scope{} = scope, %Workspace{} = ws) do
+    ws |> Ash.Changeset.for_update(:reactivate, %{}, scope: scope) |> Ash.update()
+  end
+
   # --- Academic calendar (AcademicYear / Term / Sequence) -------------------
 
   def create_academic_year(%Scope{} = scope, attrs) do

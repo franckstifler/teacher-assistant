@@ -145,16 +145,20 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     end
 
     update :verify do
+      require_atomic? false
       accept [:verified_by_user_id]
       change set_attribute(:verification_status, :verified)
       change set_attribute(:verified_at, &DateTime.utc_now/0)
       change set_attribute(:rejection_reason, nil)
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :school_verified}
     end
 
     update :reject do
+      require_atomic? false
       accept [:verified_by_user_id, :rejection_reason]
       change set_attribute(:verification_status, :rejected)
       change set_attribute(:verified_at, &DateTime.utc_now/0)
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :school_rejected}
     end
   end
 

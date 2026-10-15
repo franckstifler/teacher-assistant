@@ -47,3 +47,13 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# Tests create schools directly and use every screen (operator console spec §1).
+config :teacher_assistant, :new_school_modules, [
+  :notes,
+  :appel,
+  :discipline,
+  :emploi_du_temps,
+  :frais,
+  :photos
+]

@@ -45,6 +45,8 @@ defmodule TeacherAssistant.Academics.Workspace do
       accept [:name]
       argument :profile, :map, default: %{}
 
+      change set_attribute(:modules, &TeacherAssistant.Modules.new_school_default/0)
+
       # The owner is the actor (the policy requires one): nobody can create a
       # school on someone else's behalf.
       change after_action(fn changeset, workspace, context ->
@@ -67,9 +69,37 @@ defmodule TeacherAssistant.Academics.Workspace do
                end
              end)
     end
+
+    update :set_modules do
+      require_atomic? false
+      accept [:modules]
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :modules_changed}
+    end
+
+    update :suspend do
+      require_atomic? false
+      accept []
+      argument :reason, :string, allow_nil?: false, constraints: [max_length: 500, trim?: true]
+      change set_attribute(:suspended_at, &DateTime.utc_now/0)
+      change set_attribute(:suspension_reason, arg(:reason))
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :school_suspended}
+    end
+
+    update :reactivate do
+      require_atomic? false
+      accept []
+      change set_attribute(:suspended_at, nil)
+      change set_attribute(:suspension_reason, nil)
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :school_reactivated}
+    end
   end
 
   policies do
+    # Operator console spec §1–2: only the platform operator.
+    policy action([:set_modules, :suspend, :reactivate]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
     policy action(:create_school) do
       authorize_if actor_present()
     end
@@ -87,6 +117,14 @@ defmodule TeacherAssistant.Academics.Workspace do
   attributes do
     uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true
+
+    attribute :modules, {:array, TeacherAssistant.Modules.Key},
+      allow_nil?: false,
+      default: [],
+      public?: true
+
+    attribute :suspended_at, :utc_datetime, allow_nil?: true, public?: true
+    attribute :suspension_reason, :string, allow_nil?: true, public?: true
 
     timestamps()
   end

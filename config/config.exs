@@ -7,6 +7,9 @@
 # General application configuration
 import Config
 
+# Modules a new school starts with (operator console spec §1): none; the operator enables them.
+config :teacher_assistant, :new_school_modules, []
+
 config :teacher_assistant, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
