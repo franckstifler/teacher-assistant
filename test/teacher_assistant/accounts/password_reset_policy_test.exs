@@ -1,0 +1,63 @@
+defmodule TeacherAssistant.Accounts.PasswordResetPolicyTest do
+  use TeacherAssistant.DataCase, async: true
+
+  alias TeacherAssistant.{Accounts, Scope, TeacherFixtures}
+
+  setup do
+    %{scope: head} = TeacherFixtures.setup_complete_school_fixture()
+    op = %Scope{current_user: TeacherFixtures.admin_user_fixture()}
+    %{head: head, op: op}
+  end
+
+  defp member(head, roles) do
+    m = TeacherFixtures.membership_fixture(head, %{roles: roles})
+    {:ok, m} = Ash.load(m, :user, scope: head)
+    m
+  end
+
+  test "a head resets an invited (email) member", %{head: head, op: op} do
+    m = member(head, [:teacher])
+    assert m.user.created_in_workspace_id == nil
+    assert {:ok, password} = Accounts.reset_member_password(head, m)
+    assert is_binary(password)
+
+    assert [%{action: :password_reset, target_user_id: target}] =
+             Accounts.list_audit_events(op,
+               workspace_id: head.current_workspace.id,
+               action: :password_reset
+             )
+
+    assert target == m.user_id
+  end
+
+  test "a head cannot reset another head", %{head: head} do
+    m = member(head, [:head])
+    assert_forbidden(Accounts.reset_member_password(head, m))
+  end
+
+  test "a head cannot reset themself", %{head: head} do
+    {:ok, own} = Accounts.fetch_school_membership(head, head.current_user)
+    assert_forbidden(Accounts.reset_member_password(head, own))
+  end
+
+  test "a head cannot reset a member active in another school", %{head: head} do
+    m = member(head, [:teacher])
+    %{scope: other_head} = TeacherFixtures.school_fixture()
+    TeacherFixtures.membership_fixture(other_head, %{user: m.user, roles: [:teacher]})
+    assert_forbidden(Accounts.reset_member_password(head, m))
+  end
+
+  test "the operator resets anyone but an operator", %{head: head, op: op} do
+    m = member(head, [:head])
+    assert {:ok, _password} = Accounts.operator_reset_password(op, m.user)
+    assert {:ok, _password} = Accounts.operator_reset_password(op, head.current_user)
+
+    other_op = TeacherFixtures.admin_user_fixture()
+    assert_forbidden(Accounts.operator_reset_password(op, other_op))
+  end
+
+  test "a head cannot use the operator reset on a member of another school", %{head: head} do
+    %{head_user: stranger} = TeacherFixtures.school_fixture()
+    assert_forbidden(Accounts.operator_reset_password(head, stranger))
+  end
+end

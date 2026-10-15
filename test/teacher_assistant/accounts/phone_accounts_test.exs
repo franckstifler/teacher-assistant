@@ -147,6 +147,8 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
       head_a_in_b = TeacherAssistant.DataCase.school_scope(head_a, scope_b.current_workspace)
 
       {:ok, user_a} = create_by_school(scope_a, %{phone: "677123456"})
+      # As `Accounts.create_member` does: the new account is a member of A.
+      TeacherFixtures.membership_fixture(scope_a, %{user: user_a, roles: [:teacher]})
 
       # Cannot create an account for A while acting in B...
       assert {:error, %Ash.Error.Forbidden{}} =

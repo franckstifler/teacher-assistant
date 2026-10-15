@@ -389,10 +389,24 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
-  @doc "New temporary password for a member whose account this school created; signs them out everywhere."
+  @doc "New temporary password for a member of the scope's school (operator console spec §3); signs them out everywhere."
   def reset_member_password(%Scope{} = scope, %SchoolMembership{} = membership) do
     with {:ok, %{user: user}} <- Ash.load(membership, :user, scope: scope),
          {:ok, user} <-
+           user
+           |> Ash.Changeset.for_update(:reset_temporary_password, %{}, scope: scope)
+           |> Ash.update(),
+         :ok <- revoke_all_sessions(user) do
+      {:ok, user.__metadata__.temporary_password}
+    end
+  end
+
+  @doc """
+  New temporary password for any account but an operator's, by the operator (operator
+  console spec §3); signs the person out everywhere. Returns the clear password once.
+  """
+  def operator_reset_password(%Scope{} = scope, %User{} = user) do
+    with {:ok, user} <-
            user
            |> Ash.Changeset.for_update(:reset_temporary_password, %{}, scope: scope)
            |> Ash.update(),

@@ -156,6 +156,7 @@ defmodule TeacherAssistant.Accounts.User do
       accept []
       require_atomic? false
       change TeacherAssistant.Accounts.User.Changes.SetTemporaryPassword
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :password_reset}
     end
 
     update :set_own_password do
@@ -206,13 +207,17 @@ defmodule TeacherAssistant.Accounts.User do
       authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
     end
 
-    # Never an operator's account; only the school that created the account;
-    # never while the person is also active in another school (they would be
-    # taken over there too — decided by the user, 2026-10-07).
+    # Operator console spec §3, in order: never an operator's account; the operator
+    # resets anyone else; never yourself; never someone active in another school
+    # (they would be taken over there too — decided by the user, 2026-10-07); never
+    # another head; a head resets an active member of the school they act in.
     policy action(:reset_temporary_password) do
       forbid_if expr(role == :admin)
+      authorize_if actor_attribute_equals(:role, :admin)
+      forbid_if expr(id == ^actor(:id))
       forbid_if TeacherAssistant.Accounts.Checks.ActiveInAnotherSchool
-      authorize_if TeacherAssistant.Accounts.Checks.HeadOfCreatingSchool
+      forbid_if TeacherAssistant.Accounts.Checks.HeadOfActingSchool
+      authorize_if TeacherAssistant.Accounts.Checks.HeadOfMembersSchool
     end
 
     # Only the user, and only while a temporary password is pending: the action
