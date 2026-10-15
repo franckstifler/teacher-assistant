@@ -22,7 +22,12 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   def allowed?(scope, %ClassGroup{} = cg, :results), do: ReportCards.access(scope, cg) != :none
 
   @doc "The class's tabs the scope may open, in display order."
-  def visible_tabs(scope, %ClassGroup{} = cg), do: Enum.filter(@tabs, &allowed?(scope, cg, &1))
+  def visible_tabs(scope, %ClassGroup{} = cg) do
+    Enum.filter(@tabs, fn tab ->
+      allowed?(scope, cg, tab) and
+        TeacherAssistantWeb.Spaces.path_allowed?(scope, tab_url(cg, tab))
+    end)
+  end
 
   @doc "Where a tab lives. Timetable editors are sent to the school-wide editor."
   def tab_url(%ClassGroup{id: id}, :students), do: ~p"/school/classes/#{id}"

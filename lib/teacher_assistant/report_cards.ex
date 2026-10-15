@@ -70,7 +70,14 @@ defmodule TeacherAssistant.ReportCards do
   @doc "The class's printed-card template under the school's current settings (spec I5)."
   def template(%Scope{} = scope, %ClassGroup{} = cg) do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    BulletinTemplate.resolve(profile, scope.current_workspace.name, cg)
+    template = BulletinTemplate.resolve(profile, scope.current_workspace.name, cg)
+    # Operator console spec §1: no absences without roll call, no conduct without discipline.
+    hidden =
+      [absences: :appel, conduct: :discipline]
+      |> Enum.reject(fn {_element, module} -> Scope.module?(scope, module) end)
+      |> Enum.map(&elem(&1, 0))
+
+    %{template | elements: template.elements -- hidden}
   end
 
   @doc "The template a view renders with: its own (drafts, v3 snapshots), else the current settings."

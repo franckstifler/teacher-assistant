@@ -27,7 +27,7 @@ defmodule TeacherAssistant.Workers.MissedRollCalls do
   @doc false
   # One school failing is logged and skipped: it must not stop the schools after it.
   def run(scopes, fun) do
-    for scope <- scopes, Scope.school_verified?(scope) do
+    for scope <- scopes, Scope.school_verified?(scope), Scope.module?(scope, :appel) do
       try do
         fun.(scope)
       rescue

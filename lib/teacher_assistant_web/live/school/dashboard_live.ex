@@ -95,6 +95,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
         <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <.kpi_link
+            :if={Scope.module?(@current_scope, :notes)}
             id="kpi-entry"
             navigate={~p"/school/sequences"}
             label={entry_label(@sequence)}
@@ -109,6 +110,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
             }
           />
           <.kpi_link
+            :if={Scope.module?(@current_scope, :appel)}
             id="kpi-calls"
             navigate={~p"/school/day"}
             label={gettext("Appels aujourd'hui")}
@@ -117,6 +119,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
             sub={ngettext("%{count} non fait", "%{count} non faits", length(@calls.missed))}
           />
           <.kpi_link
+            :if={Scope.module?(@current_scope, :appel)}
             id="kpi-absences"
             navigate={~p"/school/absences"}
             label={gettext("Absences à justifier")}
@@ -132,6 +135,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
             }
           />
           <.kpi_link
+            :if={Scope.module?(@current_scope, :notes)}
             id="kpi-corrections"
             navigate={~p"/school/corrections/review"}
             label={gettext("Corrections")}

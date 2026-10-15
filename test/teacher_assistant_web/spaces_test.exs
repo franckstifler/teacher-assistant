@@ -215,4 +215,21 @@ defmodule TeacherAssistantWeb.SpacesCountsTest do
     assert Spaces.counts(:surveillant, scope).unjustified_absences == before
     assert Attendance.absences_to_justify(scope, today).count == before
   end
+
+  test "items of an off module are dropped from the menu" do
+    %{scope: scope} = TeacherFixtures.setup_complete_school_fixture()
+    op = %TeacherAssistant.Scope{current_user: TeacherFixtures.admin_user_fixture()}
+    {:ok, ws} = TeacherAssistant.Organization.set_modules(op, scope.current_workspace, [:appel])
+
+    paths =
+      %{scope | current_workspace: ws}
+      |> Spaces.put_space(nil)
+      |> then(& &1.capabilities.space.sections)
+      |> Enum.flat_map(& &1.items)
+      |> Enum.map(& &1.path)
+
+    refute "/school/bulletins" in paths
+    refute "/school/sequences" in paths
+    assert "/school/classes" in paths
+  end
 end

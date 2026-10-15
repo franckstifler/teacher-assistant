@@ -31,6 +31,7 @@ defmodule TeacherAssistant.Modules do
       W.School.BulletinTemplateLive
     ],
     appel: [
+      W.School.MyDayLive,
       W.School.AttendanceLive,
       W.School.RegisterLive,
       W.School.DayLive,
@@ -69,7 +70,6 @@ defmodule TeacherAssistant.Modules do
     W.School.ClassesLive,
     W.School.ClassLive,
     W.School.TeachingsLive,
-    W.School.MyDayLive,
     W.School.StudentsLive,
     W.School.StudentLive,
     W.School.EnrollImportLive,

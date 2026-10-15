@@ -55,7 +55,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       <.class_shell cg={@cg} shell={@shell} tab={:students}>
         <:actions>
           <.link
-            :if={@can_manage_register?}
+            :if={@can_manage_register? and TeacherAssistant.Scope.module?(@current_scope, :photos)}
             navigate={~p"/school/classes/#{@cg.id}/photos"}
             id="go-to-photos"
             class="btn btn-ghost btn-sm"
@@ -63,6 +63,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             {gettext("Photos")}
           </.link>
           <.link
+            :if={TeacherAssistant.Scope.module?(@current_scope, :notes)}
             navigate={~p"/school/bulletins?class=#{@cg.id}"}
             id="go-to-bulletins"
             class="btn btn-ghost btn-sm"

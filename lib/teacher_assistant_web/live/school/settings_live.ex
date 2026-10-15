@@ -59,12 +59,29 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           subtitle={gettext("Ce qu'on règle une fois par an. Le travail du jour est dans le menu.")}
         />
 
+        <section id="school-modules" class="ta-leaf space-y-2 p-4">
+          <h2 class="font-semibold">{gettext("Modules")}</h2>
+          <ul class="flex flex-wrap gap-2">
+            <li
+              :for={key <- @current_scope.current_workspace.modules}
+              id={"school-module-#{key}"}
+              class="badge badge-outline"
+            >
+              {TeacherAssistant.Modules.label(key)}
+            </li>
+          </ul>
+          <p class="text-sm text-base-content/70">
+            {gettext("Contactez l'administrateur pour en activer d'autres.")}
+          </p>
+        </section>
+
         <.hub_group
           :if={@can_edit_profile? or @can_rename_school? or @years != [] or @can_manage_periods?}
           title={gettext("L'établissement")}
         >
           <.hub_card
             :if={@can_edit_profile? or @can_rename_school?}
+            scope={@current_scope}
             id="hub-profile"
             navigate={~p"/school/settings/profile"}
             icon="hero-building-library"
@@ -73,6 +90,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             status={profile_status(@profile)}
           />
           <.hub_card
+            scope={@current_scope}
             id="hub-year"
             navigate={~p"/school/settings/year"}
             icon="hero-calendar-days"
@@ -82,6 +100,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           />
           <.hub_card
             :if={@can_manage_subjects?}
+            scope={@current_scope}
             id="holidays-link"
             navigate={~p"/school/settings/holidays"}
             icon="hero-sun"
@@ -90,6 +109,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
           />
           <.hub_card
             :if={@can_manage_periods?}
+            scope={@current_scope}
             id="periods-link"
             navigate={~p"/school/periods"}
             icon="hero-clock"
@@ -100,6 +120,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
         <.hub_group :if={@can_manage_subjects?} title={gettext("Notes et bulletins")}>
           <.hub_card
+            scope={@current_scope}
             id="hub-subjects"
             navigate={~p"/school/settings/subjects"}
             icon="hero-book-open"
@@ -115,6 +136,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             }
           />
           <.hub_card
+            scope={@current_scope}
             id="coefficients-link"
             navigate={~p"/school/settings/coefficients"}
             icon="hero-table-cells"
@@ -122,6 +144,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             text={gettext("La grille des coefficients par niveau et par série.")}
           />
           <.hub_card
+            scope={@current_scope}
             id="evaluations-link"
             navigate={~p"/school/settings/evaluations"}
             icon="hero-calculator"
@@ -129,6 +152,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             text={gettext("Types d'évaluation, barème, calcul des moyennes.")}
           />
           <.hub_card
+            scope={@current_scope}
             id="appreciations-link"
             navigate={~p"/school/settings/appreciations"}
             icon="hero-academic-cap"
@@ -136,6 +160,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             text={gettext("Mentions, tableau d'honneur, avertissements.")}
           />
           <.hub_card
+            scope={@current_scope}
             id="passage-link"
             navigate={~p"/school/settings/passage"}
             icon="hero-arrow-trending-up"
@@ -143,6 +168,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             text={gettext("Seuils de passage par niveau.")}
           />
           <.hub_card
+            scope={@current_scope}
             id="bulletin-template-link"
             navigate={~p"/school/settings/bulletin"}
             icon="hero-document-duplicate"
@@ -153,6 +179,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
         <.hub_group :if={@can_manage_subjects?} title={gettext("Organisation et accès")}>
           <.hub_card
+            scope={@current_scope}
             id="assignments-link"
             navigate={~p"/school/settings/assignments"}
             icon="hero-squares-2x2"
@@ -160,6 +187,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             text={gettext("Qui enseigne quoi, dans quelle classe.")}
           />
           <.hub_card
+            scope={@current_scope}
             id="school-life-link"
             navigate={~p"/school/settings/school-life"}
             icon="hero-scale"
@@ -167,6 +195,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             text={gettext("Seuils d'absence et barème de conduite.")}
           />
           <.hub_card
+            scope={@current_scope}
             id="roles-link"
             navigate={~p"/school/settings/roles"}
             icon="hero-key"
@@ -676,6 +705,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     """
   end
 
+  attr :scope, :map, required: true
   attr :id, :string, required: true
   attr :navigate, :string, required: true
   attr :icon, :string, required: true
@@ -683,9 +713,12 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   attr :text, :string, required: true
   attr :status, :any, default: nil, doc: "{:ok | :todo, text} or nil"
 
+  # A card leading to a module the school does not have is not shown (operator
+  # console spec §1).
   defp hub_card(assigns) do
     ~H"""
     <.link
+      :if={TeacherAssistantWeb.Spaces.path_allowed?(@scope, @navigate)}
       id={@id}
       navigate={@navigate}
       class="ta-section group flex min-h-28 flex-col gap-2 p-4 transition-colors hover:border-base-content/30"

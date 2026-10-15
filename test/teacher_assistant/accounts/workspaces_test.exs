@@ -155,4 +155,12 @@ defmodule TeacherAssistant.Accounts.WorkspacesTest do
     assert scope.current_workspace.id == school.id
     assert :head in scope.current_roles
   end
+
+  test "jobs skip suspended schools" do
+    %{workspace: ws} = TeacherFixtures.school_fixture()
+    op = %TeacherAssistant.Scope{current_user: TeacherFixtures.admin_user_fixture()}
+    assert Enum.any?(Workspaces.job_scopes(), &(&1.current_workspace.id == ws.id))
+    {:ok, _} = Organization.suspend_school(op, ws, "Impayé")
+    refute Enum.any?(Workspaces.job_scopes(), &(&1.current_workspace.id == ws.id))
+  end
 end

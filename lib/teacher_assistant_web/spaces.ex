@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.Spaces do
   }
 
   alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.{Modules, Scope}
 
   @order [:proviseur, :censeur, :surveillant, :intendant, :enseignant, :ecole]
   @by_role %{
@@ -53,12 +54,48 @@ defmodule TeacherAssistantWeb.Spaces do
     facts = facts(scope)
     keys = keys_for(facts)
     key = resolve(keys, parse_key(stored))
-    space = space(key, Map.merge(facts, counts(key, scope)))
+
+    space =
+      key
+      |> space(Map.merge(facts, counts(key, scope)))
+      |> drop_off_modules(scope)
 
     %{scope | capabilities: Map.merge(scope.capabilities || %{}, %{spaces: keys, space: space})}
   end
 
   def put_space(scope, _stored), do: scope
+
+  @doc """
+  Whether `path` leads to a screen the scope's school has: core, or a module it has
+  (operator console spec §1). Paths that are not routes count as allowed.
+  """
+  def path_allowed?(scope, path) do
+    case Phoenix.Router.route_info(TeacherAssistantWeb.Router, "GET", path, "") do
+      %{phoenix_live_view: {view, _action, _opts, _extra}} ->
+        allowed?(scope, Modules.module_for_view(view))
+
+      %{plug: controller, plug_opts: action} ->
+        allowed?(scope, Modules.module_for_controller(controller, action))
+
+      :error ->
+        true
+    end
+  end
+
+  defp allowed?(_scope, key) when key in [nil, :core], do: true
+  defp allowed?(scope, key), do: Scope.module?(scope, key)
+
+  # Menu items of modules the school does not have go; a home among them falls back to
+  # the class list, which every space can open.
+  defp drop_off_modules(space, scope) do
+    sections =
+      space.sections
+      |> Enum.map(fn s -> %{s | items: Enum.filter(s.items, &path_allowed?(scope, &1.path))} end)
+      |> Enum.reject(&(&1.items == []))
+
+    home = if path_allowed?(scope, space.home), do: space.home, else: ~p"/school/classes"
+    %{space | sections: sections, home: home}
+  end
 
   @doc "What the space-deciding facts are for a school scope (DB reads, once per mount)."
   def facts(%{current_workspace: %{}} = scope) do
@@ -71,11 +108,15 @@ defmodule TeacherAssistantWeb.Spaces do
       form_master?: year != nil and Enrollment.list_form_master_classes(scope, year) != [],
       # Menu badges (spec D3c), counted only for whom the item shows.
       pending_corrections:
-        if(Assessment.can_decide_corrections?(scope),
+        if(Scope.module?(scope, :notes) and Assessment.can_decide_corrections?(scope),
           do: Assessment.pending_corrections_count(scope),
           else: 0
         ),
-      decided_corrections: if(teaches?, do: Assessment.unseen_decisions_count(scope), else: 0)
+      decided_corrections:
+        if(teaches? and Scope.module?(scope, :notes),
+          do: Assessment.unseen_decisions_count(scope),
+          else: 0
+        )
     }
   end
 
@@ -84,35 +125,48 @@ defmodule TeacherAssistantWeb.Spaces do
   shown: late teachers on "Suivi des séquences", missed roll calls on "Aujourd'hui"
   and "Ma journée", unjustified absences on "Absences".
   """
+  # Badges are counted only for the modules the school has (operator console spec §1).
   def counts(key, %{current_academic_year: %{} = year} = scope)
       when key in [:proviseur, :censeur] do
-    case Assessment.default_sequence(Organization.list_sequences(scope, year), Reference.today()) do
-      nil -> %{}
-      seq -> %{late_teachers: Assessment.sequence_entry_grid(scope, year, seq).late_teacher_count}
+    with true <- Scope.module?(scope, :notes),
+         %{} = seq <-
+           Assessment.default_sequence(
+             Organization.list_sequences(scope, year),
+             Reference.today()
+           ) do
+      %{late_teachers: Assessment.sequence_entry_grid(scope, year, seq).late_teacher_count}
+    else
+      _ -> %{}
     end
   end
 
   def counts(:surveillant, scope) do
     today = Reference.today()
+    appel? = Scope.module?(scope, :appel)
 
     %{
-      missed_calls: length(Attendance.school_day(scope, today, Reference.now()).missed),
-      unjustified_absences: Attendance.absences_to_justify(scope, today).count,
+      missed_calls:
+        if(appel?, do: length(Attendance.school_day(scope, today, Reference.now()).missed)),
+      unjustified_absences: if(appel?, do: Attendance.absences_to_justify(scope, today).count),
       parents_to_notify:
-        case scope.current_academic_year do
-          nil -> 0
-          year -> Discipline.count_parents_to_notify(scope, year)
+        case {Scope.module?(scope, :discipline), scope.current_academic_year} do
+          {true, %{} = year} -> Discipline.count_parents_to_notify(scope, year)
+          _ -> nil
         end
     }
   end
 
   def counts(:enseignant, %{current_user: user} = scope) do
-    calls =
-      scope
-      |> Attendance.teacher_day(user, Reference.today(), Reference.now())
-      |> Enum.count(&(&1.status in [:in_progress, :missed]))
+    if Scope.module?(scope, :appel) do
+      calls =
+        scope
+        |> Attendance.teacher_day(user, Reference.today(), Reference.now())
+        |> Enum.count(&(&1.status in [:in_progress, :missed]))
 
-    %{calls_to_do: calls}
+      %{calls_to_do: calls}
+    else
+      %{}
+    end
   end
 
   def counts(_key, _scope), do: %{}

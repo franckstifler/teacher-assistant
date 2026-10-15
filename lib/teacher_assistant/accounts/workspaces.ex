@@ -37,6 +37,8 @@ defmodule TeacherAssistant.Accounts.Workspaces do
         _ -> []
       end
     end)
+    # Operator console spec §2: a suspended school gets no job run.
+    |> Enum.reject(&Scope.suspended?/1)
   end
 
   defp school_scope(user, ws, context_id) do

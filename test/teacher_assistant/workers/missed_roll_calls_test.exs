@@ -165,4 +165,16 @@ defmodule TeacherAssistant.Workers.MissedRollCallsTest do
     assert id == two.current_workspace.id
     refute_received {:ran, _}
   end
+
+  test "a school without the roll call module is skipped" do
+    calls = :counters.new(1, [])
+    %{scope: scope} = TeacherFixtures.setup_complete_school_fixture()
+    TeacherFixtures.verify_school!(scope)
+    op = %TeacherAssistant.Scope{current_user: TeacherFixtures.admin_user_fixture()}
+    {:ok, ws} = Organization.set_modules(op, scope.current_workspace, [:notes])
+
+    MissedRollCalls.run([%{scope | current_workspace: ws}], fn _ -> :counters.add(calls, 1, 1) end)
+
+    assert :counters.get(calls, 1) == 0
+  end
 end

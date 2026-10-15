@@ -736,18 +736,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
               <h2 class="font-display text-lg font-semibold">{gettext("Cette année")}</h2>
               <div class="grid grid-cols-2 gap-2">
                 <div
-                  :for={
-                    {id, label, value, tone} <- [
-                      {"unjustified", gettext("Absences injustifiées"),
-                       "#{@this_year.attendance.unjustified_hours} h",
-                       Decimal.gt?(@this_year.attendance.unjustified_hours, 0) && "text-warning"},
-                      {"justified", gettext("Absences justifiées"),
-                       "#{@this_year.attendance.justified_hours} h", nil},
-                      {"retards", gettext("Retards"), "#{@this_year.attendance.retards}", nil},
-                      {"consignes", gettext("Consignes"), "#{@this_year.discipline.consignes_count}",
-                       nil}
-                    ]
-                  }
+                  :for={{id, label, value, tone} <- this_year_tiles(@this_year, @current_scope)}
                   id={"this-year-#{id}"}
                   class="flex flex-col gap-0.5 rounded-[0.5rem] bg-base-200/60 px-3 py-2"
                 >
@@ -755,14 +744,23 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                   <span class={["ta-num text-xl font-semibold", tone]}>{value}</span>
                 </div>
               </div>
-              <ul :if={@this_year.discipline.sanctions != []} class="text-sm">
+              <ul
+                :if={
+                  TeacherAssistant.Scope.module?(@current_scope, :discipline) and
+                    @this_year.discipline.sanctions != []
+                }
+                class="text-sm"
+              >
                 <li :for={s <- @this_year.discipline.sanctions}>
                   <span class="ta-num">{format_date(s.date)}</span>
                   · {TeacherAssistant.Academics.SanctionType.label(s.type)}
                   <span :if={s.reason} class="text-base-content/70">— {s.reason}</span>
                 </li>
               </ul>
-              <p class="ta-num flex flex-wrap gap-x-3 border-t border-base-300 pt-2 text-sm">
+              <p
+                :if={TeacherAssistant.Scope.module?(@current_scope, :discipline)}
+                class="ta-num flex flex-wrap gap-x-3 border-t border-base-300 pt-2 text-sm"
+              >
                 <span class="text-base-content/70">{gettext("Conduite")}</span>
                 <span :for={{seq, value} <- @this_year.conduct}>
                   {gettext("Séq. %{n}", n: seq.number)} · <strong>{value || "—"}</strong>
@@ -811,5 +809,23 @@ defmodule TeacherAssistantWeb.School.StudentLive do
       </section>
     </Layouts.app>
     """
+  end
+
+  # The « Cette année » tiles of the modules the school has (operator console spec §1).
+  defp this_year_tiles(this_year, scope) do
+    [
+      {"unjustified", gettext("Absences injustifiées"),
+       "#{this_year.attendance.unjustified_hours} h",
+       Decimal.gt?(this_year.attendance.unjustified_hours, 0) && "text-warning", :appel},
+      {"justified", gettext("Absences justifiées"), "#{this_year.attendance.justified_hours} h",
+       nil, :appel},
+      {"retards", gettext("Retards"), "#{this_year.attendance.retards}", nil, :appel},
+      {"consignes", gettext("Consignes"), "#{this_year.discipline.consignes_count}", nil,
+       :discipline}
+    ]
+    |> Enum.filter(fn {_id, _label, _value, _tone, module} ->
+      TeacherAssistant.Scope.module?(scope, module)
+    end)
+    |> Enum.map(fn {id, label, value, tone, _module} -> {id, label, value, tone} end)
   end
 end
