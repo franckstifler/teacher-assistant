@@ -26,6 +26,7 @@ defmodule TeacherAssistant.Accounts do
 
     resource SchoolMembership
     resource TeacherAssistant.Accounts.Notification
+    resource TeacherAssistant.Accounts.AuditEvent
 
     resource SchoolInvitation do
       define :revoke_invitation, action: :revoke
@@ -126,6 +127,26 @@ defmodule TeacherAssistant.Accounts do
     |> Ash.Query.for_read(:active_for_workspace, %{}, scope: scope)
     |> Ash.read!()
   end
+
+  @doc """
+  The operator journal, newest first (operator console spec §4). Operator only.
+  Options: `workspace_id`, `action`, `limit` (default 50), `offset` (default 0).
+  """
+  def list_audit_events(%Scope{} = scope, opts) do
+    TeacherAssistant.Accounts.AuditEvent
+    |> Ash.Query.for_read(:read, %{}, scope: scope)
+    |> filter_audit(:workspace_id, opts[:workspace_id])
+    |> filter_audit(:action, opts[:action])
+    |> Ash.Query.sort(inserted_at: :desc, id: :desc)
+    |> Ash.Query.limit(opts[:limit] || 50)
+    |> Ash.Query.offset(opts[:offset] || 0)
+    |> Ash.Query.load([:actor, :target_user, :workspace])
+    |> Ash.read!()
+  end
+
+  defp filter_audit(query, _field, nil), do: query
+  defp filter_audit(query, :workspace_id, id), do: Ash.Query.filter(query, workspace_id == ^id)
+  defp filter_audit(query, :action, action), do: Ash.Query.filter(query, action == ^action)
 
   @doc "Active members' display names by user id, to name who issued or recorded something."
   def member_names(%Scope{} = scope) do
