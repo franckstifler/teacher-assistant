@@ -16,14 +16,29 @@ defmodule TeacherAssistant.Academics.Mark.AssessmentOpen do
   def validate(changeset, _opts, context) do
     assessment_id = mark_value(changeset, :assessment_id)
 
-    with {:ok, assessment} <- Ash.get(Assessment, assessment_id, scope: context),
-         {:ok, seq} <- Lock.fetch_sequence(assessment.sequence_id, context),
-         true <- Lock.locked?(seq),
-         false <- approved_correction?(changeset) do
-      {:error, field: :assessment_id, message: "locked"}
-    else
+    case lock_state(assessment_id, context) do
+      :locked ->
+        if approved_correction?(changeset),
+          do: :ok,
+          else: {:error, field: :assessment_id, message: "locked"}
+
       # A missing assessment is reported by the write itself (and `ScoreWithinMax`).
-      _ -> :ok
+      state when state in [:open, :missing] ->
+        :ok
+
+      # Refuse rather than fail open when the lock cannot be read.
+      {:error, _} ->
+        {:error, field: :assessment_id, message: "lock could not be checked"}
+    end
+  end
+
+  defp lock_state(nil, _context), do: :missing
+
+  defp lock_state(assessment_id, context) do
+    case Ash.get(Assessment, assessment_id, scope: context, not_found_error?: false) do
+      {:ok, nil} -> :missing
+      {:ok, assessment} -> Lock.sequence_state(assessment.sequence_id, context)
+      {:error, error} -> {:error, error}
     end
   end
 

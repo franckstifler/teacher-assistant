@@ -19,7 +19,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
        assign(socket,
          classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
          types: Attendance.school_life_rules(scope).sanction_types_in_use,
-         issuers: Map.new(Accounts.list_members(scope), &{&1.user_id, member_name(&1)}),
+         issuers: Accounts.member_names(scope),
          q: "",
          matches: [],
          entry: %{enrollment: nil, type: nil},
@@ -164,7 +164,6 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
     end
   end
 
-  defp member_name(member), do: member.user && Accounts.User.display_name(member.user)
   defp blank_to_nil(v) when v in [nil, ""], do: nil
   defp blank_to_nil(v), do: String.trim(v)
 

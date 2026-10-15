@@ -46,10 +46,7 @@ defmodule TeacherAssistantWeb.Layouts do
     current_scope = assigns[:current_scope]
     current_user = current_scope && current_scope.current_user
 
-    workspaces =
-      if current_user,
-        do: Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: current_user}),
-        else: []
+    workspaces = workspaces(current_scope, current_user)
 
     assigns =
       assigns
@@ -267,14 +264,14 @@ defmodule TeacherAssistantWeb.Layouts do
                 </.link>
                 <div id="locale-switch" class="flex items-center gap-0.5">
                   <.link
-                    navigate={~p"/locale/fr"}
+                    href={~p"/locale/fr"}
                     class="rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
                   >
                     FR
                   </.link>
                   <span class="text-[color:var(--ta-rail-faint)]">·</span>
                   <.link
-                    navigate={~p"/locale/en"}
+                    href={~p"/locale/en"}
                     class="rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
                   >
                     EN
@@ -799,4 +796,12 @@ defmodule TeacherAssistantWeb.Layouts do
         }
     end
   end
+
+  # School LiveViews get the list once per mount (`LiveUserAuth` :assign_capabilities);
+  # only pages outside a school (onboarding, controller pages) read it here.
+  defp workspaces(%{capabilities: %{workspaces: workspaces}}, _user), do: workspaces
+  defp workspaces(_scope, nil), do: []
+
+  defp workspaces(_scope, user),
+    do: Organization.list_workspaces_for(%TeacherAssistant.Scope{current_user: user})
 end

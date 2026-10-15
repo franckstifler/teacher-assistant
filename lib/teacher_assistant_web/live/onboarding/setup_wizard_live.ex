@@ -244,14 +244,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
   end
 
   def handle_event("create_year", %{"year" => params}, socket) do
-    scope = socket.assigns.current_scope
-
     case AshPhoenix.Form.submit(socket.assigns.year_form, params: params) do
       {:ok, year} ->
-        :ok = Organization.build_default_calendar(scope, year)
-        :ok = Attendance.build_default_periods(scope)
-        Seeding.seed_starter_classes(scope, year)
-
         # Deliberately land on the `:classes` step rather than re-deriving
         # via `initial_step/2` — seeding just populated classes, so the
         # derived step would jump straight past it to `:invite`. We want
@@ -387,8 +381,12 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   defp parse_invite_roles(roles) when is_list(roles) do
     roles
-    |> Enum.reject(&(&1 in [nil, ""]))
-    |> Enum.map(&String.to_existing_atom/1)
+    |> Enum.flat_map(fn role ->
+      case SchoolRole.match(role) do
+        {:ok, role} -> [role]
+        :error -> []
+      end
+    end)
     |> case do
       [] -> [:teacher]
       parsed -> parsed
@@ -397,7 +395,13 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   defp parse_membership_status(nil), do: nil
   defp parse_membership_status(""), do: nil
-  defp parse_membership_status(status) when is_binary(status), do: String.to_existing_atom(status)
+
+  defp parse_membership_status(status) when is_binary(status) do
+    case MembershipStatus.match(status) do
+      {:ok, status} -> status
+      :error -> nil
+    end
+  end
 
   defp class_streams_for(scope) do
     case TeacherAssistant.Accounts.fetch_school_profile(scope) do
@@ -448,10 +452,22 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
       as: "year",
       scope: scope,
       prepare_source: fn changeset ->
-        Ash.Changeset.change_attribute(changeset, :active, active?)
+        changeset
+        |> Ash.Changeset.change_attribute(:active, active?)
+        |> Ash.Changeset.after_action(fn _changeset, year -> build_year(scope, year) end)
       end
     )
     |> to_form()
+  end
+
+  # Runs inside the year's create transaction: if the calendar, the bell schedule or the
+  # starter classes fail, the year itself is rolled back rather than left half-built.
+  defp build_year(scope, year) do
+    with :ok <- Organization.build_default_calendar(scope, year),
+         :ok <- Attendance.build_default_periods(scope),
+         {:ok, _count} <- Seeding.seed_starter_classes(scope, year) do
+      {:ok, year}
+    end
   end
 
   # `identity_panel/1` is only reached if a head navigates back to `:identity`

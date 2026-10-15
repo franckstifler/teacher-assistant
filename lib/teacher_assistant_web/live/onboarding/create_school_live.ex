@@ -43,17 +43,23 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
 
   defp build_profile(p) do
     %{
-      school_type: to_atom(p["school_type"]),
-      subsystem: to_atom(p["subsystem"]),
-      sector: to_atom(p["sector"]),
-      region: to_atom(p["region"]),
+      school_type: to_enum(SchoolType, p["school_type"]),
+      subsystem: to_enum(SchoolSubsystem, p["subsystem"]),
+      sector: to_enum(SchoolSector, p["sector"]),
+      region: to_enum(CameroonRegion, p["region"]),
       town: p["town"]
     }
   end
 
-  defp to_atom(nil), do: nil
-  defp to_atom(""), do: nil
-  defp to_atom(s), do: String.to_existing_atom(s)
+  # An unknown value is passed on as is, so the action reports it as a field error.
+  defp to_enum(_mod, v) when v in [nil, ""], do: nil
+
+  defp to_enum(mod, v) do
+    case mod.match(v) do
+      {:ok, value} -> value
+      :error -> v
+    end
+  end
 
   # --- summary card (aside) --------------------------------------------------
 
@@ -77,8 +83,14 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
 
   defp enum_value(form, key, mod) do
     case form[key].value do
-      v when is_binary(v) and v != "" -> mod.label(String.to_existing_atom(v))
-      _ -> "—"
+      v when is_binary(v) and v != "" ->
+        case mod.match(v) do
+          {:ok, value} -> mod.label(value)
+          :error -> "—"
+        end
+
+      _ ->
+        "—"
     end
   end
 

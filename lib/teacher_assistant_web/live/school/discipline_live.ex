@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
   alias TeacherAssistantWeb.School.ClassShell
   import ClassShell, only: [class_shell: 1]
 
+  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance
   alias TeacherAssistant.Discipline
@@ -29,6 +30,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          terms: terms,
          can_edit?: Discipline.can_manage_conduct?(scope),
          roster: roster,
+         issuers: Accounts.member_names(scope),
          sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use,
          add_type: nil
        )
@@ -241,7 +243,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 <td>{Date.to_string(sanction.date)}</td>
                 <td>{SanctionLabels.duration(sanction) || "—"}</td>
                 <td>{sanction.reason || "—"}</td>
-                <td>{sanction.issued_by_user_id || "—"}</td>
+                <td>{@issuers[sanction.issued_by_user_id] || "—"}</td>
                 <td id={"parents-#{sanction.id}"}>
                   <span :if={sanction.parents_notified_on} class="text-xs text-base-content/70">
                     {gettext("Parents notifiés le %{date}",

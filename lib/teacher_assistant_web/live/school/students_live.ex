@@ -17,23 +17,28 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if scope.current_academic_year && Enrollment.can_manage_register?(scope) do
-      {:ok,
-       socket
-       |> assign(
-         classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
-         can_manage_classes?: Enrollment.can_manage_classes?(scope),
-         can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
-         drawer: nil
-       )
-       |> assign_counts()}
-    else
-      {:ok,
-       socket
-       |> put_flash(:error, gettext("La liste des élèves est réservée à l'administration."))
-       |> push_navigate(to: ~p"/school")}
+    cond do
+      not Enrollment.can_manage_register?(scope) ->
+        leave(socket, gettext("La liste des élèves est réservée à l'administration."))
+
+      is_nil(scope.current_academic_year) ->
+        leave(socket, gettext("No active academic year"))
+
+      true ->
+        {:ok,
+         socket
+         |> assign(
+           classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
+           can_manage_classes?: Enrollment.can_manage_classes?(scope),
+           can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
+           drawer: nil
+         )
+         |> assign_counts()}
     end
   end
+
+  defp leave(socket, message),
+    do: {:ok, socket |> put_flash(:error, message) |> push_navigate(to: ~p"/school")}
 
   defp assign_counts(socket) do
     scope = socket.assigns.current_scope

@@ -12,15 +12,12 @@ defmodule TeacherAssistant.Academics.Assessment.SequenceOpen do
     sequence_id =
       Ash.Changeset.get_attribute(changeset, :sequence_id) || changeset.data.sequence_id
 
-    case sequence_id && Lock.fetch_sequence(sequence_id, context) do
-      {:ok, seq} ->
-        if Lock.locked?(seq),
-          do: {:error, field: :sequence_id, message: "locked"},
-          else: :ok
-
+    case Lock.sequence_state(sequence_id, context) do
+      :locked -> {:error, field: :sequence_id, message: "locked"}
       # A missing séquence is the create's own required-field / FK error.
-      _ ->
-        :ok
+      state when state in [:open, :missing] -> :ok
+      # Refuse rather than fail open when the lock cannot be read.
+      {:error, _} -> {:error, field: :sequence_id, message: "lock could not be checked"}
     end
   end
 end

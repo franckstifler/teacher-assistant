@@ -127,6 +127,11 @@ defmodule TeacherAssistant.Accounts do
     |> Ash.read!()
   end
 
+  @doc "Active members' display names by user id, to name who issued or recorded something."
+  def member_names(%Scope{} = scope) do
+    Map.new(list_members(scope), &{&1.user_id, &1.user && User.display_name(&1.user)})
+  end
+
   def update_member_roles(%Scope{} = scope, %SchoolMembership{} = m, roles) do
     if removing_last_head?(scope, m, roles) do
       {:error, :last_head}

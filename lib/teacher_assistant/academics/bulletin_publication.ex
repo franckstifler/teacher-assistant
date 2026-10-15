@@ -30,9 +30,10 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
       reference :academic_year,
         on_delete: :delete,
         match_with: [workspace_id: :workspace_id],
-        match_type: :full
+        match_type: :full,
+        index?: true
 
-      reference :term, on_delete: :delete
+      reference :term, on_delete: :delete, index?: true
       reference :published_by, on_delete: :nilify
       reference :withdrawn_by, on_delete: :nilify
       reference :workspace, on_delete: :delete, index?: true

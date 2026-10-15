@@ -17,6 +17,13 @@ defmodule TeacherAssistant.Academics.MarkEvent do
     table "mark_events"
     repo TeacherAssistant.Repo
 
+    custom_indexes do
+      # The journal is read newest first, per school (attribute multitenancy prefixes
+      # workspace_id); `MarkCorrection` checks whether a correction was applied.
+      index [:inserted_at]
+      index [:mark_correction_id]
+    end
+
     references do
       reference :assessment, ignore?: true
       reference :student, ignore?: true

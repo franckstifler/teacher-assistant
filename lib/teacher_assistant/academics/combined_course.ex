@@ -102,26 +102,29 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
         course = input.arguments.course
         course_id = course.id
 
-        TeachingContext
-        |> Ash.Query.filter(combined_course_id == ^course_id)
-        |> Ash.read!(scope: scope)
-        |> Enum.each(fn ctx ->
-          {:ok, _ctx, notifications} =
-            ctx
-            |> Ash.Changeset.for_update(:update, %{combined_course_id: nil}, scope: scope)
-            |> Ash.update(return_notifications?: true)
-
-          Ash.Notifier.notify(notifications)
-        end)
-
-        ProgressionPlan
-        |> Ash.Query.filter(combined_course_id == ^course_id)
-        |> Ash.read!(scope: scope)
-        |> Enum.each(&Ash.destroy!(&1, scope: scope))
-
-        Ash.destroy!(course, scope: scope)
-
-        :ok
+        # Nested writes inside this transaction queue their notifications; Ash sends
+        # them once the transaction commits, never for a rolled-back split.
+        with {:ok, contexts} <-
+               TeachingContext
+               |> Ash.Query.filter(combined_course_id == ^course_id)
+               |> Ash.read(scope: scope),
+             :ok <- stamp_contexts(contexts, nil, scope),
+             {:ok, plans} <-
+               ProgressionPlan
+               |> Ash.Query.filter(combined_course_id == ^course_id)
+               |> Ash.read(scope: scope),
+             %Ash.BulkResult{status: :success} <-
+               Ash.bulk_destroy(plans, :destroy, %{},
+                 scope: scope,
+                 strategy: :stream,
+                 return_errors?: true
+               ),
+             :ok <- Ash.destroy(course, scope: scope) do
+          :ok
+        else
+          %Ash.BulkResult{errors: errors} -> {:error, errors}
+          {:error, error} -> {:error, error}
+        end
       end
     end
   end
@@ -198,14 +201,10 @@ defmodule TeacherAssistant.Academics.CombinedCourse do
     Enum.reduce_while(contexts, :ok, fn ctx, :ok ->
       ctx
       |> Ash.Changeset.for_update(:update, %{combined_course_id: course_id}, scope: scope)
-      |> Ash.update(return_notifications?: true)
+      |> Ash.update()
       |> case do
-        {:ok, _ctx, notifications} ->
-          Ash.Notifier.notify(notifications)
-          {:cont, :ok}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
+        {:ok, _ctx} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
       end
     end)
   end

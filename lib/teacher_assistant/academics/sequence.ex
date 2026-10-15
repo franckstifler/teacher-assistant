@@ -114,4 +114,8 @@ defmodule TeacherAssistant.Academics.Sequence do
       public? true
     end
   end
+
+  identities do
+    identity :unique_term_number, [:term_id, :number]
+  end
 end

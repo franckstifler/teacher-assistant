@@ -65,15 +65,10 @@ defmodule TeacherAssistant.MixProject do
   defp deps do
     [
       {:usage_rules, "~> 1.0", only: [:dev]},
-      {:cinder, "~> 0.14"},
       {:picosat_elixir, "~> 0.2"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:oban, "~> 2.22"},
       {:live_debugger, "~> 1.0", only: [:dev]},
-      {:ash_archival, "~> 2.0"},
-      {:ash_state_machine, "~> 0.2"},
-      {:oban_web, "~> 2.0"},
-      {:ash_oban, "~> 0.4"},
       {:ash_authentication_phoenix, "~> 2.0"},
       {:ash_authentication, "~> 4.0"},
       {:ash_postgres, "~> 2.0"},
@@ -130,7 +125,14 @@ defmodule TeacherAssistant.MixProject do
         "esbuild teacher_assistant --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warning-as-errors",
+        "deps.unlock --unused",
+        "format",
+        # Own OS process: extracting recompiles, which warns inside an already-consolidated VM.
+        "cmd env MIX_ENV=test mix gettext.extract --check-up-to-date",
+        "test"
+      ]
     ]
   end
 end

@@ -1,8 +1,5 @@
 [
   import_deps: [
-    :cinder,
-    :ash_state_machine,
-    :ash_oban,
     :oban,
     :ash_authentication_phoenix,
     :ash_authentication,

@@ -8,7 +8,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Request do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{Assessment, Lock, Mark}
+  alias TeacherAssistant.Academics.{Assessment, Enrollment, Lock, Mark}
   alias TeacherAssistant.Academics.Mark.Journal
 
   @impl true
@@ -39,6 +39,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Request do
     with {:ok, assessment} <- Ash.get(Assessment, assessment_id, scope: context),
          {:ok, seq} <- Lock.fetch_sequence(assessment.sequence_id, context),
          :ok <- require_locked(seq),
+         :ok <- require_enrolled(assessment, student_id, changeset.tenant),
          {:ok, requested} <- requested_value(changeset, assessment),
          current = Journal.snapshot(current_mark(assessment_id, student_id, context)),
          :ok <- require_change(requested, current) do
@@ -58,6 +59,19 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Request do
 
   defp require_locked(seq) do
     if Lock.locked?(seq), do: :ok, else: {:error, :assessment_id, "not locked"}
+  end
+
+  # Once approved, the correction writes a mark: the student must be in the assessment's
+  # class. Internal read, hence `authorize?: false`; the requester's own rights are checked
+  # by the action's policies.
+  defp require_enrolled(assessment, student_id, tenant) do
+    with {:ok, %{teaching_context: %{class_group_id: class_group_id}}} <-
+           Ash.load(assessment, :teaching_context, tenant: tenant, authorize?: false) do
+      Enrollment
+      |> Ash.Query.filter(class_group_id == ^class_group_id and student_id == ^student_id)
+      |> Ash.exists?(tenant: tenant, authorize?: false)
+      |> if(do: :ok, else: {:error, :student_id, "not enrolled in this class"})
+    end
   end
 
   # The requested value as a mark snapshot (nil = blank).

@@ -51,7 +51,11 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
       %{current_workspace: %{}} = scope ->
         capabilities = %{
           manage_staff: TeacherAssistant.Accounts.can_manage_staff?(scope),
-          manage_school: TeacherAssistant.Organization.can_manage_calendar?(scope)
+          manage_school: TeacherAssistant.Organization.can_manage_calendar?(scope),
+          workspaces:
+            TeacherAssistant.Organization.list_workspaces_for(%Scope{
+              current_user: scope.current_user
+            })
         }
 
         {:cont,

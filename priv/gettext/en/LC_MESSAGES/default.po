@@ -12,14 +12,14 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:195
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:499
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:515
 #, elixir-autogen, elixir-format
 msgid "Academic year"
 msgstr "Academic year"
 
 #: lib/teacher_assistant_web/components/core_components.ex:368
 #: lib/teacher_assistant_web/live/school/class_live.ex:216
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:234
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:236
 #: lib/teacher_assistant_web/live/school/fees_live.ex:345
 #: lib/teacher_assistant_web/live/school/fees_live.ex:480
 #: lib/teacher_assistant_web/live/school/fees_live.ex:598
@@ -32,8 +32,8 @@ msgstr "Actions"
 msgid "Admin"
 msgstr "Admin"
 
-#: lib/teacher_assistant_web/components/layouts.ex:654
-#: lib/teacher_assistant_web/components/layouts.ex:666
+#: lib/teacher_assistant_web/components/layouts.ex:651
+#: lib/teacher_assistant_web/components/layouts.ex:663
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Attempting to reconnect"
@@ -46,19 +46,19 @@ msgstr "Dashboard"
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:270
 #: lib/teacher_assistant_web/live/school/councils_live.ex:244
 #: lib/teacher_assistant_web/live/school/councils_live.ex:308
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:229
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:231
 #: lib/teacher_assistant_web/live/school/fees_live.ex:594
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:327
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:326
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr "Date"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:558
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:574
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Delete"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:516
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:532
 #, elixir-autogen, elixir-format
 msgid "End date"
 msgstr "End date"
@@ -68,35 +68,35 @@ msgstr "End date"
 msgid "Principal Teacher"
 msgstr "Principal Teacher"
 
-#: lib/teacher_assistant_web/components/layouts.ex:628
+#: lib/teacher_assistant_web/components/layouts.ex:625
 #, elixir-autogen, elixir-format
 msgid "School"
 msgstr "School"
 
-#: lib/teacher_assistant_web/components/layouts.ex:299
+#: lib/teacher_assistant_web/components/layouts.ex:296
 #, elixir-autogen, elixir-format
 msgid "Sign in"
 msgstr "Sign in"
 
-#: lib/teacher_assistant_web/components/layouts.ex:266
-#: lib/teacher_assistant_web/components/layouts.ex:572
+#: lib/teacher_assistant_web/components/layouts.ex:263
+#: lib/teacher_assistant_web/components/layouts.ex:569
 #, elixir-autogen, elixir-format
 msgid "Sign out"
 msgstr "Sign out"
 
-#: lib/teacher_assistant_web/components/layouts.ex:661
+#: lib/teacher_assistant_web/components/layouts.ex:658
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "Something went wrong!"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:515
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:531
 #, elixir-autogen, elixir-format
 msgid "Start date"
 msgstr "Start date"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:64
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:130
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:483
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:70
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:142
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:499
 #, elixir-autogen, elixir-format
 msgid "Subsystem"
 msgstr "Subsystem"
@@ -106,19 +106,19 @@ msgstr "Subsystem"
 msgid "Teacher"
 msgstr "Teacher"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:63
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:479
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:228
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:69
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:495
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:230
 #: lib/teacher_assistant_web/live/school/periods_live.ex:215
 #: lib/teacher_assistant_web/live/school/periods_live.ex:268
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:303
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:470
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:302
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:469
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:835
 #, elixir-autogen, elixir-format
 msgid "Type"
 msgstr "Type"
 
-#: lib/teacher_assistant_web/components/layouts.ex:649
+#: lib/teacher_assistant_web/components/layouts.ex:646
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "We can't find the internet"
@@ -133,7 +133,7 @@ msgstr "close"
 msgid "%{pct}% covered"
 msgstr "%{pct}% covered"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:92
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:104
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:55
 #: lib/teacher_assistant_web/live/school/classes_live.ex:75
 #, elixir-autogen, elixir-format
@@ -172,7 +172,7 @@ msgstr "Excellent"
 msgid "Insuffisant"
 msgstr "Below average"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:574
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:590
 #, elixir-autogen, elixir-format
 msgid "Level"
 msgstr "Level"
@@ -195,7 +195,7 @@ msgstr "Roster"
 #: lib/teacher_assistant_web/controllers/bulletin_print_controller.ex:162
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:146
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:211
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:208
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:210
 #: lib/teacher_assistant_web/live/school/results_live.ex:115
 #: lib/teacher_assistant_web/live/teacher/marks_summary_live.ex:149
 #, elixir-autogen, elixir-format
@@ -218,7 +218,7 @@ msgstr "%{count} student(s) without marks in this sequence"
 #: lib/teacher_assistant_web/live/school/council_live.ex:381
 #: lib/teacher_assistant_web/live/school/councils_live.ex:150
 #: lib/teacher_assistant_web/live/school/councils_live.ex:235
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:211
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:213
 #: lib/teacher_assistant_web/live/school/results_live.ex:118
 #: lib/teacher_assistant_web/live/school/student_live.ex:373
 #: lib/teacher_assistant_web/notification_text.ex:106
@@ -236,8 +236,8 @@ msgstr "Year"
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:272
 #: lib/teacher_assistant_web/live/school/councils_live.ex:243
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:107
-#: lib/teacher_assistant_web/live/school/students_live.ex:215
-#: lib/teacher_assistant_web/live/school/students_live.ex:270
+#: lib/teacher_assistant_web/live/school/students_live.ex:220
+#: lib/teacher_assistant_web/live/school/students_live.ex:275
 #, elixir-autogen, elixir-format
 msgid "Classe"
 msgstr "Class"
@@ -246,7 +246,7 @@ msgstr "Class"
 #: lib/teacher_assistant_web/controllers/page_html.ex:179
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:114
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:196
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:530
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:546
 #: lib/teacher_assistant_web/live/school/class_photos_live.ex:117
 #: lib/teacher_assistant_web/live/school/class_shell.ex:96
 #: lib/teacher_assistant_web/live/school/classes_live.ex:49
@@ -313,7 +313,7 @@ msgstr "Lowest"
 #: lib/teacher_assistant_web/live/school/class_live.ex:213
 #: lib/teacher_assistant_web/live/school/student_live.ex:507
 #: lib/teacher_assistant_web/live/school/student_live.ex:529
-#: lib/teacher_assistant_web/live/school/students_live.ex:269
+#: lib/teacher_assistant_web/live/school/students_live.ex:274
 #, elixir-autogen, elixir-format
 msgid "Matricule"
 msgstr "Student ID"
@@ -375,13 +375,13 @@ msgstr "students"
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:216
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:271
 #: lib/teacher_assistant_web/live/school/council_live.ex:426
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:227
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:361
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:229
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:363
 #: lib/teacher_assistant_web/live/school/fees_live.ex:475
 #: lib/teacher_assistant_web/live/school/register_live.ex:311
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:271
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:469
-#: lib/teacher_assistant_web/live/school/students_live.ex:268
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:270
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:468
+#: lib/teacher_assistant_web/live/school/students_live.ex:273
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:678
 #, elixir-autogen, elixir-format
 msgid "Élève"
@@ -411,7 +411,7 @@ msgstr "Class size"
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:112
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:149
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:85
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:211
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:213
 #: lib/teacher_assistant_web/live/school/results_live.ex:118
 #, elixir-autogen, elixir-format
 msgid "Année scolaire"
@@ -441,7 +441,7 @@ msgstr "Pedagogical coordinator"
 msgid "Aucun membre actif pour le moment"
 msgstr "No active members yet"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:644
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:660
 #, elixir-autogen, elixir-format
 msgid "Aucune invitation en attente"
 msgstr "No pending invitations"
@@ -475,7 +475,7 @@ msgstr "This invitation could not be found or has expired."
 msgid "Cette invitation est invalide."
 msgstr "This invitation is invalid."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:352
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:346
 #: lib/teacher_assistant_web/live/school/members_live.ex:810
 #, elixir-autogen, elixir-format
 msgid "Cette personne est déjà membre de l'école."
@@ -507,7 +507,7 @@ msgstr "Deactivate"
 msgid "Désactiver ce membre ?"
 msgstr "Deactivate this member?"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:614
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:630
 #: lib/teacher_assistant_web/live/school/members_live.ex:369
 #: lib/teacher_assistant_web/live/school/settings_live.ex:266
 #, elixir-autogen, elixir-format
@@ -522,7 +522,7 @@ msgstr "Email"
 #: lib/teacher_assistant_web/live/school/class_live.ex:350
 #: lib/teacher_assistant_web/live/school/council_live.ex:559
 #: lib/teacher_assistant_web/live/school/councils_live.ex:319
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:340
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:342
 #: lib/teacher_assistant_web/live/school/fees_live.ex:414
 #: lib/teacher_assistant_web/live/school/fees_live.ex:464
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:189
@@ -564,13 +564,13 @@ msgstr "Bursar (Intendant)"
 msgid "Invitation"
 msgstr "Invitation"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:640
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:656
 #: lib/teacher_assistant_web/live/school/members_live.ex:125
 #, elixir-autogen, elixir-format
 msgid "Invitations en attente"
 msgstr "Pending invitations"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:634
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:650
 #: lib/teacher_assistant_web/live/school/members_live.ex:402
 #, elixir-autogen, elixir-format
 msgid "Inviter"
@@ -648,12 +648,12 @@ msgstr "Revoke this invitation?"
 msgid "Rôles"
 msgstr "Roles"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:113
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:125
 #, elixir-autogen, elixir-format
 msgid "School name"
 msgstr "School name"
 
-#: lib/teacher_assistant_web/components/layouts.ex:231
+#: lib/teacher_assistant_web/components/layouts.ex:228
 #, elixir-autogen, elixir-format
 msgid "School navigation"
 msgstr "School navigation"
@@ -694,7 +694,7 @@ msgstr "Workspace not found or access denied"
 msgid "Workspace selected"
 msgstr "Workspace selected"
 
-#: lib/teacher_assistant_web/components/layouts.ex:186
+#: lib/teacher_assistant_web/components/layouts.ex:183
 #: lib/teacher_assistant_web/live/school/fees_live.ex:334
 #: lib/teacher_assistant_web/live/school/members_live.ex:45
 #: lib/teacher_assistant_web/live/school/members_live.ex:466
@@ -710,7 +710,7 @@ msgstr "School"
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:50
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:46
 #: lib/teacher_assistant_web/live/school/classes_live.ex:48
-#: lib/teacher_assistant_web/live/school/students_live.ex:172
+#: lib/teacher_assistant_web/live/school/students_live.ex:177
 #: lib/teacher_assistant_web/spaces.ex:140
 #: lib/teacher_assistant_web/spaces.ex:165
 #, elixir-autogen, elixir-format
@@ -728,7 +728,7 @@ msgstr "Active"
 msgid "Affecter"
 msgstr "Assign"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:265
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:259
 #, elixir-autogen, elixir-format
 msgid "Année scolaire créée."
 msgstr "Academic year created."
@@ -750,18 +750,18 @@ msgstr "No teacher assigned"
 msgid "Aucun élève inscrit"
 msgstr "No student enrolled"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:287
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:281
 #, elixir-autogen, elixir-format
 msgid "Class created."
 msgstr "Class created."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:307
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:301
 #: lib/teacher_assistant_web/live/school/class_live.ex:514
 #, elixir-autogen, elixir-format
 msgid "Class deleted."
 msgstr "Class deleted."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:295
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:289
 #, elixir-autogen, elixir-format
 msgid "Could not create the class."
 msgstr "Could not create the class."
@@ -772,7 +772,7 @@ msgstr "Could not create the class."
 msgid "Could not enroll the student."
 msgstr "Could not enroll the student."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:556
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:572
 #, elixir-autogen, elixir-format
 msgid "Delete this class?"
 msgstr "Delete this class?"
@@ -813,7 +813,7 @@ msgstr "Female"
 msgid "Go to settings"
 msgstr "Go to settings"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:274
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:268
 #, elixir-autogen, elixir-format
 msgid "Impossible de créer l'année scolaire."
 msgstr "Could not create the academic year."
@@ -834,7 +834,7 @@ msgstr "Enrollment"
 msgid "Inscrire"
 msgstr "Enroll"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:573
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:589
 #, elixir-autogen, elixir-format
 msgid "Label"
 msgstr "Label"
@@ -852,9 +852,9 @@ msgstr "Male"
 msgid "Matière"
 msgstr "Subject"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:62
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:475
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:514
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:68
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:491
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:530
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr "Name"
@@ -865,20 +865,21 @@ msgid "No academic years yet"
 msgstr "No academic years yet"
 
 #: lib/teacher_assistant_web/live/school/classes_live.ex:76
+#: lib/teacher_assistant_web/live/school/students_live.ex:25
 #, elixir-autogen, elixir-format
 msgid "No active academic year"
 msgstr "No active academic year"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:566
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:582
 #: lib/teacher_assistant_web/live/school/classes_live.ex:176
 #, elixir-autogen, elixir-format
 msgid "No classes yet"
 msgstr "No classes yet"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:123
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:277
-#: lib/teacher_assistant_web/live/school/students_live.ex:210
-#: lib/teacher_assistant_web/live/school/students_live.ex:211
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:276
+#: lib/teacher_assistant_web/live/school/students_live.ex:215
+#: lib/teacher_assistant_web/live/school/students_live.ex:216
 #, elixir-autogen, elixir-format
 msgid "Nom ou matricule"
 msgstr "Name or matricule"
@@ -886,8 +887,8 @@ msgstr "Name or matricule"
 #: lib/teacher_assistant_web/live/school/class_live.ex:179
 #: lib/teacher_assistant_web/live/school/class_live.ex:242
 #: lib/teacher_assistant_web/live/school/student_live.ex:789
-#: lib/teacher_assistant_web/live/school/students_live.ex:260
-#: lib/teacher_assistant_web/live/school/students_live.ex:297
+#: lib/teacher_assistant_web/live/school/students_live.ex:265
+#: lib/teacher_assistant_web/live/school/students_live.ex:302
 #, elixir-autogen, elixir-format
 msgid "Redoublant"
 msgstr "Repeater"
@@ -927,7 +928,7 @@ msgid "Set up an academic year before creating classes."
 msgstr "Set up an academic year before creating classes."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:566
-#: lib/teacher_assistant_web/live/school/students_live.ex:100
+#: lib/teacher_assistant_web/live/school/students_live.ex:105
 #, elixir-autogen, elixir-format
 msgid "Student re-enrolled."
 msgstr "Student re-enrolled."
@@ -947,7 +948,7 @@ msgstr "This assignment has marks or progressions — it cannot be removed."
 msgid "This class already has a teacher for this subject."
 msgstr "This class already has a teacher for this subject."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:318
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:312
 #: lib/teacher_assistant_web/live/school/class_live.ex:525
 #, elixir-autogen, elixir-format
 msgid "This class has students or teachers — remove them first."
@@ -989,7 +990,7 @@ msgstr "Assign subjects to this class to compute bulletins."
 msgid "Aucune donnée"
 msgstr "No data"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:220
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:222
 #: lib/teacher_assistant_web/live/school/results_live.ex:136
 #, elixir-autogen, elixir-format
 msgid "Aucune séquence"
@@ -1206,7 +1207,7 @@ msgid "Séq 2"
 msgstr "Seq 2"
 
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:145
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:207
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:209
 #: lib/teacher_assistant_web/live/school/results_live.ex:114
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:231
 #, elixir-autogen, elixir-format
@@ -1230,14 +1231,14 @@ msgstr "Term 3"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_controller.ex:163
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:148
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:210
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:212
 #: lib/teacher_assistant_web/live/school/results_live.ex:117
 #, elixir-autogen, elixir-format
 msgid "Trimestre"
 msgstr "Term"
 
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:147
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:209
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:211
 #: lib/teacher_assistant_web/live/school/results_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Trimestres"
@@ -1352,13 +1353,13 @@ msgstr "Saturday"
 
 #: lib/teacher_assistant_web/live/school/appreciations_live.ex:242
 #: lib/teacher_assistant_web/live/school/appreciations_live.ex:243
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:276
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:277
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:278
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:279
 #: lib/teacher_assistant_web/live/school/fees_live.ex:375
 #: lib/teacher_assistant_web/live/school/fees_live.ex:620
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:156
 #: lib/teacher_assistant_web/live/school/periods_live.ex:293
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:460
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:459
 #: lib/teacher_assistant_web/live/school/settings_live.ex:645
 #, elixir-autogen, elixir-format
 msgid "Supprimer"
@@ -1410,7 +1411,7 @@ msgid "Absent"
 msgstr "Absent"
 
 #: lib/teacher_assistant_web/live/school/attendance_live.ex:16
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:40
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:42
 #: lib/teacher_assistant_web/live/school/fees_live.ex:33
 #: lib/teacher_assistant_web/live/school/register_live.ex:38
 #, elixir-autogen, elixir-format
@@ -1491,7 +1492,7 @@ msgstr "Justify"
 msgid "Justifiées"
 msgstr "Justified"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:336
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:338
 #, elixir-autogen, elixir-format
 msgid "Motif (optionnel)"
 msgstr "Reason (optional)"
@@ -1532,13 +1533,13 @@ msgstr "Lateness"
 msgid "h"
 msgstr "h"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:294
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:296
 #, elixir-autogen, elixir-format
 msgid "Ajouter une sanction"
 msgstr "Add a sanction"
 
 #: lib/teacher_assistant_web/live/school/day_live.ex:272
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:289
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:291
 #: lib/teacher_assistant_web/sanction_labels.ex:29
 #, elixir-autogen, elixir-format
 msgid "Aucune sanction"
@@ -1565,18 +1566,18 @@ msgstr "Detention"
 msgid "Consignes"
 msgstr "Detentions"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:92
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:94
 #, elixir-autogen, elixir-format
 msgid "Could not record the sanction."
 msgstr "Could not record the sanction."
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:130
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:132
 #, elixir-autogen, elixir-format
 msgid "Could not remove the sanction."
 msgstr "Could not remove the sanction."
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:321
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:347
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:323
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:346
 #, elixir-autogen, elixir-format
 msgid "Durée (jours)"
 msgstr "Duration (days)"
@@ -1592,27 +1593,27 @@ msgid "Exclusion temporaire"
 msgstr "Temporary exclusion"
 
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:232
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:231
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:233
 #: lib/teacher_assistant_web/live/school/fees_live.ex:570
 #: lib/teacher_assistant_web/live/school/register_live.ex:453
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:358
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:357
 #, elixir-autogen, elixir-format
 msgid "Motif"
 msgstr "Reason"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:329
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:346
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:362
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:348
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:364
 #, elixir-autogen, elixir-format
 msgid "Note de conduite"
 msgstr "Conduct mark"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:79
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:81
 #, elixir-autogen, elixir-format
 msgid "Sanction recorded."
 msgstr "Sanction recorded."
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:124
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:126
 #, elixir-autogen, elixir-format
 msgid "Sanction removed."
 msgstr "Sanction removed."
@@ -1620,15 +1621,15 @@ msgstr "Sanction removed."
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:331
 #: lib/teacher_assistant_web/controllers/page_html.ex:190
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:243
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:251
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:250
 #: lib/teacher_assistant_web/spaces.ex:297
 #: lib/teacher_assistant_web/spaces.ex:388
 #, elixir-autogen, elixir-format
 msgid "Sanctions"
 msgstr "Sanctions"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:275
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:457
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:277
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:456
 #, elixir-autogen, elixir-format
 msgid "Supprimer cette sanction ?"
 msgstr "Delete this sanction?"
@@ -1638,7 +1639,7 @@ msgstr "Delete this sanction?"
 msgid "j"
 msgstr "d"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:232
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "Émis par"
 msgstr "Issued by"
@@ -1886,7 +1887,7 @@ msgstr "Adresse"
 
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:189
 #: lib/teacher_assistant_web/live/school/settings_live.ex:560
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:852
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:861
 #, elixir-autogen, elixir-format
 msgid "Ajouter"
 msgstr "Add"
@@ -1949,12 +1950,12 @@ msgstr "Choose a subject"
 msgid "Communautaire"
 msgstr "Communautaire"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:164
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:176
 #, elixir-autogen, elixir-format
 msgid "Create school"
 msgstr "Create a school"
 
-#: lib/teacher_assistant_web/components/layouts.ex:193
+#: lib/teacher_assistant_web/components/layouts.ex:190
 #, elixir-autogen, elixir-format
 msgid "Créer un établissement"
 msgstr "Create a school"
@@ -2150,9 +2151,9 @@ msgstr "School profile"
 msgid "Public"
 msgstr "Public"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:66
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:147
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:487
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:72
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:159
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:503
 #, elixir-autogen, elixir-format
 msgid "Region"
 msgstr "Region"
@@ -2177,12 +2178,12 @@ msgstr "Région"
 msgid "SAR/SM"
 msgstr "SAR/SM"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:109
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:121
 #, elixir-autogen, elixir-format
 msgid "School identity"
 msgstr "School identity"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:123
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:135
 #, elixir-autogen, elixir-format
 msgid "School type"
 msgstr "School type"
@@ -2192,28 +2193,28 @@ msgstr "School type"
 msgid "Secteur"
 msgstr "Secteur"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:65
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:140
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:71
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:152
 #, elixir-autogen, elixir-format
 msgid "Sector"
 msgstr "Sector"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:149
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:161
 #, elixir-autogen, elixir-format
 msgid "Select a region"
 msgstr "Select a region"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:125
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:137
 #, elixir-autogen, elixir-format
 msgid "Select a school type"
 msgstr "Select a school type"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:142
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:154
 #, elixir-autogen, elixir-format
 msgid "Select a sector"
 msgstr "Select a sector"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:132
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:144
 #, elixir-autogen, elixir-format
 msgid "Select a subsystem"
 msgstr "Select a subsystem"
@@ -2254,7 +2255,7 @@ msgstr "Sélectionner un type"
 msgid "Sélectionner une région"
 msgstr "Sélectionner une région"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:67
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:73
 #, elixir-autogen, elixir-format
 msgid "Town"
 msgstr "Town"
@@ -2425,12 +2426,12 @@ msgstr "<p><a href=\"%{url}\">Sign in</a></p>"
 msgid "<p>Vous avez été invité(e) à rejoindre <strong>%{school}</strong>.</p><p><a href=\"%{url}\">Accepter l'invitation</a></p>"
 msgstr "<p>You have been invited to join <strong>%{school}</strong>.</p><p><a href=\"%{url}\">Accept the invitation</a></p>"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:570
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:586
 #, elixir-autogen, elixir-format
 msgid "Add a class"
 msgstr "Add a class"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:584
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:600
 #, elixir-autogen, elixir-format
 msgid "Add class"
 msgstr "Add class"
@@ -2455,7 +2456,7 @@ msgstr "Calendar generated."
 msgid "Cette invitation a été envoyée à %{email}. Déconnectez-vous pour l'accepter avec cette adresse."
 msgstr "This invitation was sent to %{email}. Sign out to accept it with that address."
 
-#: lib/teacher_assistant_web/components/layouts.ex:145
+#: lib/teacher_assistant_web/components/layouts.ex:142
 #, elixir-autogen, elixir-format
 msgid "Close navigation"
 msgstr "Close navigation"
@@ -2465,7 +2466,7 @@ msgstr "Close navigation"
 msgid "Connectez-vous ici : %{url}"
 msgstr "Sign in here: %{url}"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:594
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:610
 #: lib/teacher_assistant_web/live/school/new_year_live.ex:277
 #: lib/teacher_assistant_web/live/school/new_year_live.ex:299
 #: lib/teacher_assistant_web/live/school/new_year_live.ex:340
@@ -2473,12 +2474,12 @@ msgstr "Sign in here: %{url}"
 msgid "Continuer"
 msgstr "Continue"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:519
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:535
 #, elixir-autogen, elixir-format
 msgid "Create the academic year"
 msgstr "Create the academic year"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:502
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:518
 #, elixir-autogen, elixir-format
 msgid "Create the academic year to unlock classes and enrollment."
 msgstr "Create the academic year to unlock classes and enrollment."
@@ -2496,7 +2497,7 @@ msgstr "Create an account to accept"
 msgid "Enseignement"
 msgstr "Teaching"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:182
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:194
 #, elixir-autogen, elixir-format
 msgid "Good to know"
 msgstr "Good to know"
@@ -2518,7 +2519,7 @@ msgstr "Identity"
 msgid "Identité"
 msgstr "Identity"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:348
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:342
 #: lib/teacher_assistant_web/live/school/members_live.ex:807
 #, elixir-autogen, elixir-format
 msgid "Invitation envoyée."
@@ -2529,18 +2530,18 @@ msgstr "Invitation sent."
 msgid "Invitation à rejoindre %{school}"
 msgstr "Invitation to join %{school}"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:607
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:623
 #, elixir-autogen, elixir-format
 msgid "Invite teachers and staff to join your school."
 msgstr "Invite teachers and staff to join your school."
 
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:197
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:604
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:620
 #, elixir-autogen, elixir-format
 msgid "Invite team"
 msgstr "Invite team"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:605
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:621
 #, elixir-autogen, elixir-format
 msgid "Invite your team"
 msgstr "Invite your team"
@@ -2565,7 +2566,7 @@ msgstr "Sequence dates set the mark-entry windows and the report card calculatio
 msgid "Les enseignants n'ont accès qu'à leurs classes. Les censeurs voient la discipline et la saisie ; l'intendant voit les frais."
 msgstr "Teachers only have access to their own classes. Censors see discipline and mark entry; the bursar sees fees."
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:114
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:126
 #, elixir-autogen, elixir-format
 msgid "Lycée bilingue de Nkolbisson"
 msgstr "Lycée bilingue de Nkolbisson"
@@ -2586,7 +2587,7 @@ msgstr "My courses"
 msgid "Mise en route"
 msgstr "Getting started"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:631
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:647
 #: lib/teacher_assistant_web/live/school/members_live.ex:339
 #: lib/teacher_assistant_web/live/school/members_live.ex:377
 #: lib/teacher_assistant_web/live/school/members_live.ex:452
@@ -2601,7 +2602,7 @@ msgstr "Not specified"
 msgid "Notes"
 msgstr "Notes"
 
-#: lib/teacher_assistant_web/components/layouts.ex:90
+#: lib/teacher_assistant_web/components/layouts.ex:87
 #, elixir-autogen, elixir-format
 msgid "Open navigation"
 msgstr "Open navigation"
@@ -2611,12 +2612,12 @@ msgstr "Open navigation"
 msgid "Ouvrir mes cours"
 msgstr "Open my courses"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:665
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:681
 #, elixir-autogen, elixir-format
 msgid "Passer pour l'instant"
 msgstr "Skip for now"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:531
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:547
 #, elixir-autogen, elixir-format
 msgid "Review your classes"
 msgstr "Review your classes"
@@ -2653,7 +2654,7 @@ msgstr "Results"
 msgid "Se connecter"
 msgstr "Sign in"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:500
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:516
 #, elixir-autogen, elixir-format
 msgid "Set up your academic year"
 msgstr "Set up your academic year"
@@ -2663,17 +2664,17 @@ msgstr "Set up your academic year"
 msgid "Set up your school"
 msgstr "Set up your school"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:469
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:485
 #, elixir-autogen, elixir-format
 msgid "Setup is complete — here's a quick recap."
 msgstr "Setup is complete — here's a quick recap."
 
-#: lib/teacher_assistant_web/components/layouts.ex:148
+#: lib/teacher_assistant_web/components/layouts.ex:145
 #, elixir-autogen, elixir-format
 msgid "Sidebar"
 msgstr "Sidebar"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:630
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:646
 #: lib/teacher_assistant_web/live/school/members_live.ex:338
 #: lib/teacher_assistant_web/live/school/members_live.ex:376
 #: lib/teacher_assistant_web/live/school/members_live.ex:451
@@ -2681,7 +2682,7 @@ msgstr "Sidebar"
 msgid "Statut d'emploi"
 msgstr "Employment status"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:172
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:184
 #, elixir-autogen, elixir-format
 msgid "Summary"
 msgstr "Summary"
@@ -2701,22 +2702,22 @@ msgstr "Summary"
 msgid "Séquence %{n}"
 msgstr "Sequence %{n}"
 
-#: lib/teacher_assistant_web/components/layouts.ex:100
+#: lib/teacher_assistant_web/components/layouts.ex:97
 #, elixir-autogen, elixir-format
 msgid "Teacher Assistant"
 msgstr "Teacher Assistant"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:662
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:678
 #, elixir-autogen, elixir-format
 msgid "Terminer la configuration"
 msgstr "Finish setup"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:97
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:109
 #, elixir-autogen, elixir-format
 msgid "These details appear on report cards and are used by our team for verification."
 msgstr "These details appear on report cards and are used by our team for verification."
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:155
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Town / borough"
 msgstr "Town / borough"
@@ -2767,27 +2768,27 @@ msgstr "You can split a class (2de A, 2de B…), change coefficients and import 
 msgid "Vérification"
 msgstr "Verification"
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:533
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:549
 #, elixir-autogen, elixir-format
 msgid "We've suggested starter classes below — edit them, then add at least one to continue."
 msgstr "We've suggested starter classes below — edit them, then add at least one to continue."
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:156
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:168
 #, elixir-autogen, elixir-format
 msgid "Yaoundé — Nkolbisson"
 msgstr "Yaoundé — Nkolbisson"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:184
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:196
 #, elixir-autogen, elixir-format
 msgid "You can set up the academic year, classes and staff invitations afterwards, from settings."
 msgstr "You can set up the academic year, classes and staff invitations afterwards, from settings."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:466
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:482
 #, elixir-autogen, elixir-format
 msgid "Your school"
 msgstr "Your school"
 
-#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:93
+#: lib/teacher_assistant_web/live/onboarding/create_school_live.ex:105
 #, elixir-autogen, elixir-format
 msgid "Your school's identity"
 msgstr "Your school's identity"
@@ -2808,7 +2809,7 @@ msgstr "verified"
 #: lib/teacher_assistant_web/live/school/class_shell.ex:171
 #: lib/teacher_assistant_web/live/school/courses_live.ex:318
 #: lib/teacher_assistant_web/live/school/student_live.ex:394
-#: lib/teacher_assistant_web/live/school/students_live.ex:174
+#: lib/teacher_assistant_web/live/school/students_live.ex:179
 #: lib/teacher_assistant_web/spaces.ex:280
 #: lib/teacher_assistant_web/spaces.ex:296
 #: lib/teacher_assistant_web/spaces.ex:400
@@ -2947,7 +2948,7 @@ msgstr "Save calendar"
 msgid "Impossible d'enregistrer la décision."
 msgstr "Could not save the decision."
 
-#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:358
+#: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:352
 #: lib/teacher_assistant_web/live/school/members_live.ex:816
 #, elixir-autogen, elixir-format
 msgid "Impossible d'envoyer l'invitation."
@@ -3221,7 +3222,7 @@ msgstr "Not graded (left out)"
 msgid "Note maximale"
 msgstr "Maximum mark"
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:913
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:922
 #, elixir-autogen, elixir-format
 msgid "Rattrapage attendu :"
 msgstr "Make-up expected:"
@@ -3307,8 +3308,8 @@ msgstr "See the grid"
 msgid "Coefficient propre dans : %{classes}. Réinitialisez-les pour désactiver."
 msgstr "Own coefficient in: %{classes}. Reset them to turn this off."
 
-#: lib/teacher_assistant_web/components/layouts.ex:206
-#: lib/teacher_assistant_web/components/layouts.ex:494
+#: lib/teacher_assistant_web/components/layouts.ex:203
+#: lib/teacher_assistant_web/components/layouts.ex:491
 #, elixir-autogen, elixir-format
 msgid "Espaces"
 msgstr "Spaces"
@@ -3336,7 +3337,7 @@ msgstr "Academic follow-up"
 
 #: lib/teacher_assistant_web/live/school/absences_live.ex:180
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:163
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:250
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:249
 #: lib/teacher_assistant_web/spaces.ex:183
 #, elixir-autogen, elixir-format
 msgid "Vie scolaire"
@@ -3717,8 +3718,8 @@ msgstr "My day"
 msgid "Maladie"
 msgstr "Illness"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:259
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:451
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:261
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:450
 #, elixir-autogen, elixir-format
 msgid "Marquer les parents notifiés"
 msgstr "Mark parents notified"
@@ -3738,18 +3739,18 @@ msgstr "Not taken"
 msgid "Non justifiée"
 msgstr "Unjustified"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:233
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:472
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:235
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:471
 #, elixir-autogen, elixir-format
 msgid "Parents"
 msgstr "Parents"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:247
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:249
 #, elixir-autogen, elixir-format
 msgid "Parents notifiés le %{date}"
 msgstr "Parents notified on %{date}"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:265
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:267
 #, elixir-autogen, elixir-format
 msgid "Parents à notifier"
 msgstr "Parents to notify"
@@ -5067,7 +5068,7 @@ msgid "Cours regroupé : modifiez-le depuis la fiche de la classe."
 msgstr "Combined course: change it from the class page."
 
 #: lib/teacher_assistant_web/components/drawer.ex:66
-#: lib/teacher_assistant_web/components/layouts.ex:485
+#: lib/teacher_assistant_web/components/layouts.ex:482
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:280
 #: lib/teacher_assistant_web/live/school/members_live.ex:525
 #: lib/teacher_assistant_web/live/school/register_live.ex:480
@@ -5260,7 +5261,7 @@ msgstr "No main contact"
 msgid "Aucun parent enregistré."
 msgstr "No parent recorded."
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:323
+#: lib/teacher_assistant_web/live/school/students_live.ex:328
 #, elixir-autogen, elixir-format
 msgid "Aucun élève ne correspond."
 msgstr "No student matches."
@@ -5272,7 +5273,7 @@ msgstr "This year"
 
 #: lib/teacher_assistant_web/live/school/student_live.ex:579
 #: lib/teacher_assistant_web/live/school/student_live.ex:616
-#: lib/teacher_assistant_web/live/school/students_live.ex:271
+#: lib/teacher_assistant_web/live/school/students_live.ex:276
 #, elixir-autogen, elixir-format
 msgid "Contact principal"
 msgstr "Main contact"
@@ -5320,7 +5321,7 @@ msgstr "Could not save the parent."
 msgid "Impossible de lier ce parent."
 msgstr "Could not link this parent."
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:33
+#: lib/teacher_assistant_web/live/school/students_live.ex:22
 #, elixir-autogen, elixir-format
 msgid "La liste des élèves est réservée à l'administration."
 msgstr "The student list is reserved for the administration."
@@ -5384,8 +5385,8 @@ msgid "Séq. %{n}"
 msgstr "Seq. %{n}"
 
 #: lib/teacher_assistant_web/live/school/absences_live.ex:234
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:385
-#: lib/teacher_assistant_web/live/school/students_live.ex:216
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:384
+#: lib/teacher_assistant_web/live/school/students_live.ex:221
 #, elixir-autogen, elixir-format
 msgid "Toutes les classes"
 msgstr "All classes"
@@ -5422,7 +5423,7 @@ msgstr "Attendance & discipline"
 msgid "Barème de conduite"
 msgstr "Conduct scale"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:96
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:98
 #, elixir-autogen, elixir-format
 msgid "Ce type de sanction n'est pas utilisé."
 msgstr "This sanction type is not in use."
@@ -5555,7 +5556,7 @@ msgstr "Validate the class"
 msgid "ajustée"
 msgstr "adjusted"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:258
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:257
 #, elixir-autogen, elixir-format
 msgid "%{count} sanction"
 msgid_plural "%{count} sanctions"
@@ -5570,14 +5571,14 @@ msgstr "At most 6 lines of 120 characters."
 #: lib/teacher_assistant_web/live/school/absences_live.ex:266
 #: lib/teacher_assistant_web/live/school/class_live.ex:171
 #: lib/teacher_assistant_web/live/school/class_live.ex:255
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:434
-#: lib/teacher_assistant_web/live/school/students_live.ex:249
-#: lib/teacher_assistant_web/live/school/students_live.ex:316
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:433
+#: lib/teacher_assistant_web/live/school/students_live.ex:254
+#: lib/teacher_assistant_web/live/school/students_live.ex:321
 #, elixir-autogen, elixir-format
 msgid "Aucun contact"
 msgstr "No contact"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:519
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:518
 #, elixir-autogen, elixir-format
 msgid "Aucune sanction."
 msgstr "No sanctions."
@@ -5674,7 +5675,7 @@ msgstr "Editable in “Header and signature”."
 msgid "Nommage des classes"
 msgstr "Class naming"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:268
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:267
 #, elixir-autogen, elixir-format
 msgid "Nouvelle sanction"
 msgstr "New sanction"
@@ -5684,7 +5685,7 @@ msgstr "New sanction"
 msgid "Numéros (6e 1, 6e 2)"
 msgstr "Numbers (6e 1, 6e 2)"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:426
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:425
 #, elixir-autogen, elixir-format
 msgid "Par %{name}"
 msgstr "By %{name}"
@@ -5728,7 +5729,7 @@ msgstr "Sanction not saved."
 msgid "Signature du chef d'établissement"
 msgstr "Head's signature"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:391
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:390
 #, elixir-autogen, elixir-format
 msgid "Tous les types"
 msgstr "All types"
@@ -5774,7 +5775,7 @@ msgstr "own class, read only (form master)"
 msgid "ses cours"
 msgstr "own courses"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:404
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:403
 #, elixir-autogen, elixir-format
 msgid "À notifier"
 msgstr "To notify"
@@ -5824,7 +5825,7 @@ msgstr "except header and signature"
 msgid "Aucune notification pour l'instant."
 msgstr "No notifications yet."
 
-#: lib/teacher_assistant_web/components/layouts.ex:348
+#: lib/teacher_assistant_web/components/layouts.ex:345
 #, elixir-autogen, elixir-format
 msgid "Aucune notification."
 msgstr "No notifications."
@@ -5853,10 +5854,10 @@ msgstr "The reminder could not be sent."
 msgid "Messagerie"
 msgstr "Messages"
 
-#: lib/teacher_assistant_web/components/layouts.ex:110
-#: lib/teacher_assistant_web/components/layouts.ex:319
-#: lib/teacher_assistant_web/components/layouts.ex:336
-#: lib/teacher_assistant_web/controllers/page_html.ex:268
+#: lib/teacher_assistant_web/components/layouts.ex:107
+#: lib/teacher_assistant_web/components/layouts.ex:316
+#: lib/teacher_assistant_web/components/layouts.ex:333
+#: lib/teacher_assistant_web/controllers/page_html.ex:266
 #: lib/teacher_assistant_web/live/school/notifications_live.ex:60
 #, elixir-autogen, elixir-format
 msgid "Notifications"
@@ -5886,13 +5887,13 @@ msgstr "Send a reminder"
 msgid "Relancé"
 msgstr "Reminded"
 
-#: lib/teacher_assistant_web/components/layouts.ex:344
+#: lib/teacher_assistant_web/components/layouts.ex:341
 #: lib/teacher_assistant_web/live/school/notifications_live.ex:64
 #, elixir-autogen, elixir-format
 msgid "Tout marquer comme lu"
 msgstr "Mark all as read"
 
-#: lib/teacher_assistant_web/components/layouts.ex:387
+#: lib/teacher_assistant_web/components/layouts.ex:384
 #, elixir-autogen, elixir-format
 msgid "Tout voir"
 msgstr "See all"
@@ -6121,7 +6122,7 @@ msgstr "No file chosen"
 msgid "Choisir une image"
 msgstr "Choose an image"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:355
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:357
 #, elixir-autogen, elixir-format
 msgid "Saisir sur la page Conduite"
 msgstr "Enter on the Conduct page"
@@ -6345,7 +6346,7 @@ msgstr "The old password stops working and %{name} is signed out of all devices.
 msgid "La personne reçoit un lien et crée son mot de passe elle-même."
 msgstr "The person receives a link and creates their own password."
 
-#: lib/teacher_assistant_web/components/layouts.ex:751
+#: lib/teacher_assistant_web/components/layouts.ex:748
 #, elixir-autogen, elixir-format
 msgid "Le mot de passe temporaire ne sert qu'une fois. Ensuite, personne à l'établissement ne connaît le vôtre."
 msgstr "The temporary password is only used once. After that, nobody at the school knows yours."
@@ -6437,7 +6438,7 @@ msgstr "Not signed in yet · expires on %{date}"
 msgid "Pour qui n'a pas d'e-mail. Vous recevez un mot de passe temporaire à transmettre."
 msgstr "For people without email. You get a temporary password to hand over."
 
-#: lib/teacher_assistant_web/components/layouts.ex:748
+#: lib/teacher_assistant_web/components/layouts.ex:745
 #, elixir-autogen, elixir-format
 msgid "Première connexion"
 msgstr "First sign-in"
@@ -6477,7 +6478,7 @@ msgstr "Pass the number and this password on to %{name} — in person, by SMS or
 msgid "TÉL"
 msgstr "TEL"
 
-#: lib/teacher_assistant_web/components/layouts.ex:749
+#: lib/teacher_assistant_web/components/layouts.ex:746
 #, elixir-autogen, elixir-format
 msgid "Un mot de passe rien qu'à vous."
 msgstr "A password that is yours alone."
@@ -6754,7 +6755,7 @@ msgstr "Enrol and add another"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:86
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:97
-#: lib/teacher_assistant_web/live/school/students_live.ex:192
+#: lib/teacher_assistant_web/live/school/students_live.ex:197
 #, elixir-autogen, elixir-format
 msgid "Inscrire un élève"
 msgstr "Enrol a student"
@@ -7042,7 +7043,7 @@ msgid_plural "%{count} inscriptions"
 msgstr[0] "%{count} enrolment"
 msgstr[1] "%{count} enrolments"
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:177
+#: lib/teacher_assistant_web/live/school/students_live.ex:182
 #, elixir-autogen, elixir-format
 msgid "%{count} inscrit en %{year}"
 msgid_plural "%{count} inscrits en %{year}"
@@ -7071,12 +7072,12 @@ msgid_plural "%{count} réinscriptions"
 msgstr[0] "%{count} re-enrolment"
 msgstr[1] "%{count} re-enrolments"
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:182
+#: lib/teacher_assistant_web/live/school/students_live.ex:187
 #, elixir-autogen, elixir-format
 msgid "%{count} sans contact parent"
 msgstr "%{count} without a parent contact"
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:330
+#: lib/teacher_assistant_web/live/school/students_live.ex:335
 #, elixir-autogen, elixir-format
 msgid "%{first}–%{last} sur %{total}"
 msgstr "%{first}–%{last} of %{total}"
@@ -7286,7 +7287,7 @@ msgstr "Parent not recorded for %{name}."
 msgid "Pas inscrit cette année"
 msgstr "Not enrolled this year"
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:343
+#: lib/teacher_assistant_web/live/school/students_live.ex:348
 #, elixir-autogen, elixir-format
 msgid "Précédent"
 msgstr "Previous"
@@ -7296,7 +7297,7 @@ msgstr "Previous"
 msgid "Retour à la %{class}"
 msgstr "Back to %{class}"
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:235
+#: lib/teacher_assistant_web/live/school/students_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "Sans contact parent · %{count}"
 msgstr "No parent contact · %{count}"
@@ -7311,7 +7312,7 @@ msgstr "Schooling at this school"
 msgid "Sexe manquant ou inconnu (M ou F)"
 msgstr "Sex missing or unknown (M or F)"
 
-#: lib/teacher_assistant_web/live/school/students_live.ex:351
+#: lib/teacher_assistant_web/live/school/students_live.ex:356
 #, elixir-autogen, elixir-format
 msgid "Suivant"
 msgstr "Next"
@@ -7399,7 +7400,7 @@ msgid_plural "%{count} absences à justifier"
 msgstr[0] "%{count} absence to justify"
 msgstr[1] "%{count} absences to justify"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:253
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:252
 #, elixir-autogen, elixir-format
 msgid "%{count} famille à prévenir"
 msgid_plural "%{count} familles à prévenir"
@@ -7480,7 +7481,7 @@ msgstr "Roll calls taken"
 msgid "Appliquer les suggestions"
 msgstr "Apply the suggestions"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:361
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:360
 #, elixir-autogen, elixir-format
 msgid "Bavardages répétés en Maths"
 msgstr "Repeated chatting in Maths"
@@ -7515,23 +7516,23 @@ msgstr "Disciplinary council"
 msgid "Convocation officielle"
 msgstr "Official summons"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:471
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:470
 #, elixir-autogen, elixir-format
 msgid "Date · motif"
 msgstr "Date · reason"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:230
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:232
 #, elixir-autogen, elixir-format
 msgid "Durée"
 msgstr "Duration"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:330
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:336
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:332
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:335
 #, elixir-autogen, elixir-format
 msgid "Durée (heures)"
 msgstr "Duration (hours)"
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:373
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:372
 #, elixir-autogen, elixir-format
 msgid "Enregistrer la sanction"
 msgstr "Save the sanction"
@@ -7547,23 +7548,23 @@ msgstr "Closed"
 msgid "Imprimer la classe"
 msgstr "Print the class"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:86
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:88
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:134
 #, elixir-autogen, elixir-format
 msgid "Indiquez la durée de la consigne, en heures."
 msgstr "Give the detention's length, in hours."
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:216
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:215
 #, elixir-autogen, elixir-format
 msgid "Le conseil de discipline est convoqué par le chef d'établissement ; la décision sera ajoutée après la séance."
 msgstr "The disciplinary council is convened by the head of school; the decision will be added after the meeting."
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:223
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:222
 #, elixir-autogen, elixir-format
 msgid "Les parents sont à prévenir : la sanction apparaît dans « À notifier »."
 msgstr "The parents must be told: the sanction shows under « To notify »."
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:512
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:511
 #, elixir-autogen, elixir-format
 msgid "Marquer notifiés"
 msgstr "Mark notified"
@@ -7578,7 +7579,7 @@ msgstr "Mark /20"
 msgid "Note de conduite /20 par séquence, portée sur le bulletin."
 msgstr "Conduct mark /20 per sequence, shown on the report card."
 
-#: lib/teacher_assistant_web/live/school/sanctions_live.ex:500
+#: lib/teacher_assistant_web/live/school/sanctions_live.ex:499
 #, elixir-autogen, elixir-format
 msgid "Notifiés le %{date}"
 msgstr "Notified on %{date}"
@@ -7655,7 +7656,7 @@ msgstr "in the current sequence"
 msgid "élèves sur au moins un créneau"
 msgstr "students absent from at least one slot"
 
-#: lib/teacher_assistant_web/live/school/discipline_live.ex:89
+#: lib/teacher_assistant_web/live/school/discipline_live.ex:91
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:137
 #, elixir-autogen, elixir-format
 msgid "Une consigne dure de 1 à 40 heures."
@@ -7737,7 +7738,7 @@ msgstr "Paper found"
 msgid "Demande envoyée à %{name} (censeur)."
 msgstr "Request sent to %{name} (vice-principal)."
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:880
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:889
 #, elixir-autogen, elixir-format
 msgid "Demander une correction →"
 msgstr "Request a correction →"
@@ -7827,7 +7828,7 @@ msgstr "Marks Seq. %{n}"
 msgid "Notes · %{subject}"
 msgstr "Marks · %{subject}"
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:840
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:841
 #, elixir-autogen, elixir-format
 msgid "Nouvelle évaluation"
 msgstr "New assessment"
@@ -7862,7 +7863,7 @@ msgstr "Mark distribution"
 msgid "Résultats · Séquence %{n}"
 msgstr "Results · Sequence %{n}"
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:897
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:906
 #, elixir-autogen, elixir-format
 msgid "Saisie ouverte jusqu'au %{date} (J-%{n}). Chaque note est enregistrée dès que vous quittez la case."
 msgstr "Entry open until %{date} (D-%{n}). Each mark is saved as soon as you leave its cell."
@@ -7877,7 +7878,7 @@ msgstr "Typical week"
 msgid "Séquence %{n} ouverte jusqu'au %{date}"
 msgstr "Sequence %{n} open until %{date}"
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:869
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:878
 #, elixir-autogen, elixir-format
 msgid "Séquence %{n} verrouillée depuis le %{date}."
 msgstr "Sequence %{n} locked since %{date}."
@@ -9582,7 +9583,7 @@ msgstr "Delete the type %{name}"
 msgid "Supprimer le type « %{name} » ?"
 msgstr "Delete the type “%{name}”?"
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:847
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:848
 #, elixir-autogen, elixir-format
 msgid "Sur"
 msgstr "Out of"
@@ -9751,7 +9752,7 @@ msgstr "with %{classes}"
 msgid "coef. %{c}"
 msgstr "coef. %{c}"
 
-#: lib/teacher_assistant_web/live/teacher/marks_live.ex:841
+#: lib/teacher_assistant_web/live/teacher/marks_live.ex:842
 #, elixir-autogen, elixir-format
 msgid "ex. Devoir 1"
 msgstr "e.g. Homework 1"
@@ -9802,23 +9803,23 @@ msgstr "Assessments and averages"
 msgid "Accueil"
 msgstr "Home"
 
-#: lib/teacher_assistant_web/components/layouts.ex:511
+#: lib/teacher_assistant_web/components/layouts.ex:508
 #, elixir-autogen, elixir-format
 msgid "Autres pages"
 msgstr "Other pages"
 
-#: lib/teacher_assistant_web/components/layouts.ex:697
+#: lib/teacher_assistant_web/components/layouts.ex:694
 #, elixir-autogen, elixir-format
 msgid "Craie"
 msgstr "Chalk"
 
-#: lib/teacher_assistant_web/components/layouts.ex:493
+#: lib/teacher_assistant_web/components/layouts.ex:490
 #, elixir-autogen, elixir-format
 msgid "Espace"
 msgstr "Space"
 
-#: lib/teacher_assistant_web/components/layouts.ex:103
-#: lib/teacher_assistant_web/components/layouts.ex:257
+#: lib/teacher_assistant_web/components/layouts.ex:100
+#: lib/teacher_assistant_web/components/layouts.ex:254
 #, elixir-autogen, elixir-format
 msgid "Espace %{space}"
 msgstr "%{space} space"
@@ -9829,29 +9830,29 @@ msgstr "%{space} space"
 msgid "Journée"
 msgstr "Day"
 
-#: lib/teacher_assistant_web/components/layouts.ex:542
+#: lib/teacher_assistant_web/components/layouts.ex:539
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "Langue"
 msgstr "Language"
 
-#: lib/teacher_assistant_web/components/layouts.ex:567
+#: lib/teacher_assistant_web/components/layouts.ex:564
 #, elixir-autogen, elixir-format
 msgid "Mot de passe"
 msgstr "Password"
 
-#: lib/teacher_assistant_web/components/layouts.ex:414
+#: lib/teacher_assistant_web/components/layouts.ex:411
 #, elixir-autogen, elixir-format
 msgid "Navigation principale"
 msgstr "Main navigation"
 
-#: lib/teacher_assistant_web/components/layouts.ex:441
-#: lib/teacher_assistant_web/components/layouts.ex:468
+#: lib/teacher_assistant_web/components/layouts.ex:438
+#: lib/teacher_assistant_web/components/layouts.ex:465
 #, elixir-autogen, elixir-format
 msgid "Plus"
 msgstr "More"
 
-#: lib/teacher_assistant_web/components/layouts.ex:689
+#: lib/teacher_assistant_web/components/layouts.ex:686
 #, elixir-autogen, elixir-format
 msgid "Sombre"
 msgstr "Dark"
@@ -9862,8 +9863,8 @@ msgstr "Dark"
 msgid "Suivi"
 msgstr "Tracking"
 
-#: lib/teacher_assistant_web/components/layouts.ex:537
-#: lib/teacher_assistant_web/components/layouts.ex:682
+#: lib/teacher_assistant_web/components/layouts.ex:534
+#: lib/teacher_assistant_web/components/layouts.ex:679
 #, elixir-autogen, elixir-format
 msgid "Thème"
 msgstr "Theme"
@@ -9878,7 +9879,7 @@ msgstr "Excused or unexcused absences, totalled per sequence"
 msgid "Aller au contenu"
 msgstr "Skip to content"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:248
+#: lib/teacher_assistant_web/controllers/page_html.ex:246
 #, elixir-autogen, elixir-format
 msgid "Année, séquences et trimestres, congés et jours fériés de l'établissement."
 msgstr "School year, sequences and terms, holidays and the school's days off."
@@ -9903,12 +9904,12 @@ msgstr "Mark-entry progress by class and subject"
 msgid "Bulletins figés une fois publiés, prévenus par notification"
 msgstr "Report cards frozen once published, with a notification"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:302
+#: lib/teacher_assistant_web/controllers/page_html.ex:300
 #, elixir-autogen, elixir-format
 msgid "Bulletins imprimables"
 msgstr "Printable report cards"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:246
+#: lib/teacher_assistant_web/controllers/page_html.ex:244
 #, elixir-autogen, elixir-format
 msgid "Calendrier scolaire"
 msgstr "School calendar"
@@ -9923,12 +9924,12 @@ msgstr "Cameroon"
 msgid "Chacun fait sa part, et tout le monde la voit."
 msgstr "Everyone does their part, and everyone can see it."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:357
+#: lib/teacher_assistant_web/controllers/page_html.ex:355
 #, elixir-autogen, elixir-format
 msgid "Chacun voit ce que son rôle lui permet : un enseignant voit ses classes, le surveillant général la vie scolaire, l'administration l'ensemble. Les données d'un établissement ne sont visibles que par ses membres."
 msgstr "Everyone sees what their role allows: a teacher sees their classes, the discipline master sees school life, the administration sees everything. A school's data is visible to its members only."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:338
+#: lib/teacher_assistant_web/controllers/page_html.ex:336
 #, elixir-autogen, elixir-format
 msgid "Chaque membre reçoit un compte à son numéro de téléphone, avec le rôle qui est le sien."
 msgstr "Each member gets an account on their phone number, with their own role."
@@ -9943,17 +9944,17 @@ msgstr "Each mark is saved as soon as the teacher leaves the box. Excused or une
 msgid "Chaque rôle a son espace"
 msgstr "Every role has its space"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:311
+#: lib/teacher_assistant_web/controllers/page_html.ex:309
 #, elixir-autogen, elixir-format
 msgid "Chaque écran est conçu pour un téléphone et des pages légères ; l'ordinateur reste là pour l'administration."
 msgstr "Every screen is designed for a phone, with light pages; the computer stays for the administration."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:295
+#: lib/teacher_assistant_web/controllers/page_html.ex:293
 #, elixir-autogen, elixir-format
 msgid "Coefficients et appréciations"
 msgstr "Coefficients and remarks"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:297
+#: lib/teacher_assistant_web/controllers/page_html.ex:295
 #, elixir-autogen, elixir-format
 msgid "Coefficients par niveau et par série, barème d'appréciations et distinctions de l'établissement."
 msgstr "Coefficients by level and stream, the school's remark scale and distinctions."
@@ -9963,12 +9964,12 @@ msgstr "Coefficients by level and stream, the school's remark scale and distinct
 msgid "Coefficients, moyennes, rangs, appréciations et distinctions se calculent à mesure que les notes arrivent. On voit ce qui manque encore, on tient le conseil de classe, on publie, puis on imprime toute la classe."
 msgstr "Coefficients, averages, ranks, remarks and distinctions are worked out as the marks come in. You see what is still missing, hold the class council, publish, then print the whole class."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:254
+#: lib/teacher_assistant_web/controllers/page_html.ex:252
 #, elixir-autogen, elixir-format
 msgid "Collez la liste d'une classe depuis votre tableur : chaque ligne est vérifiée avant l'import."
 msgstr "Paste a class list from your spreadsheet: every line is checked before the import."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:260
+#: lib/teacher_assistant_web/controllers/page_html.ex:258
 #, elixir-autogen, elixir-format
 msgid "Comptes par téléphone"
 msgstr "Phone-number accounts"
@@ -9978,7 +9979,7 @@ msgstr "Phone-number accounts"
 msgid "Conduite, sanctions et parents à prévenir"
 msgstr "Conduct, sanctions and parents to contact"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:329
+#: lib/teacher_assistant_web/controllers/page_html.ex:327
 #, elixir-autogen, elixir-format
 msgid "Configurez l'année"
 msgstr "Set up the year"
@@ -9988,7 +9989,7 @@ msgstr "Set up the year"
 msgid "Corrections de notes validées par l'administration"
 msgstr "Mark corrections approved by the administration"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:309
+#: lib/teacher_assistant_web/controllers/page_html.ex:307
 #, elixir-autogen, elixir-format
 msgid "D'abord le téléphone"
 msgstr "Phone first"
@@ -10013,7 +10014,7 @@ msgstr "Class timetables, with clashes flagged"
 msgid "Emplois du temps"
 msgstr "Timetables"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:304
+#: lib/teacher_assistant_web/controllers/page_html.ex:302
 #, elixir-autogen, elixir-format
 msgid "En-tête officiel, cachet et signature, pensés pour l'impression en noir et blanc."
 msgstr "Official header, stamp and signature, designed for black-and-white printing."
@@ -10023,7 +10024,7 @@ msgstr "Official header, stamp and signature, designed for black-and-white print
 msgid "Et tout le reste de l'année scolaire"
 msgstr "And the rest of the school year"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:348
+#: lib/teacher_assistant_web/controllers/page_html.ex:346
 #, elixir-autogen, elixir-format
 msgid "Faut-il un ordinateur ?"
 msgstr "Do we need a computer?"
@@ -10038,7 +10039,7 @@ msgstr "Features"
 msgid "Format officiel, lisible imprimé en noir et blanc"
 msgstr "Official format, readable printed in black and white"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:238
+#: lib/teacher_assistant_web/controllers/page_html.ex:236
 #, elixir-autogen, elixir-format
 msgid "Frais de scolarité"
 msgstr "School fees"
@@ -10053,7 +10054,7 @@ msgstr "French- and English-speaking"
 msgid "Francophone et anglophone · Cameroun"
 msgstr "French- and English-speaking · Cameroon"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:283
+#: lib/teacher_assistant_web/controllers/page_html.ex:281
 #, elixir-autogen, elixir-format
 msgid "Francophone et anglophone, avec leurs niveaux et leurs séries, dans une interface en français ou en anglais."
 msgstr "Francophone and anglophone, with their own levels and streams, in an interface in French or English."
@@ -10069,7 +10070,7 @@ msgstr "Free during the pilot phase"
 msgid "Grille par classe et par enseignant, quotas horaires par matière, conflits signalés, impression."
 msgstr "Grid per class and per teacher, weekly hours per subject, clashes flagged, printing."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:252
+#: lib/teacher_assistant_web/controllers/page_html.ex:250
 #, elixir-autogen, elixir-format
 msgid "Import des listes"
 msgstr "List import"
@@ -10079,12 +10080,12 @@ msgstr "List import"
 msgid "Inscrire un établissement"
 msgstr "Register a school"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:322
+#: lib/teacher_assistant_web/controllers/page_html.ex:320
 #, elixir-autogen, elixir-format
 msgid "Inscrivez l'établissement"
 msgstr "Register the school"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:336
+#: lib/teacher_assistant_web/controllers/page_html.ex:334
 #, elixir-autogen, elixir-format
 msgid "Invitez l'équipe"
 msgstr "Invite the staff"
@@ -10114,7 +10115,7 @@ msgstr "Roll call, marks, report cards, timetables and school life in one place.
 msgid "L'éditeur d'emploi du temps de la 6e A, avec les quotas horaires par matière"
 msgstr "The 6e A timetable editor, with weekly hours per subject"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:262
+#: lib/teacher_assistant_web/controllers/page_html.ex:260
 #, elixir-autogen, elixir-format
 msgid "L'équipe se connecte avec son numéro : pas besoin d'adresse e-mail pour commencer."
 msgstr "Staff sign in with their phone number: no e-mail address needed to start."
@@ -10159,7 +10160,7 @@ msgstr "The big picture: what is blocking, most urgent first, each class's mark 
 msgid "Le censeur relance avant la clôture, pas après"
 msgstr "The vice-principal chases before the deadline, not after"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:324
+#: lib/teacher_assistant_web/controllers/page_html.ex:322
 #, elixir-autogen, elixir-format
 msgid "Le chef d'établissement crée son compte et renseigne l'identité de l'établissement."
 msgstr "The head of school creates their account and fills in the school's details."
@@ -10195,12 +10196,12 @@ msgstr "Overdue roll calls flagged to the teacher"
 msgid "Les bulletins du trimestre 1 de la 6e A : ce qui manque, le classement et le détail d'une élève"
 msgstr "Term 1 report cards for 6e A: what is missing, the ranking and one student's detail"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:281
+#: lib/teacher_assistant_web/controllers/page_html.ex:279
 #, elixir-autogen, elixir-format
 msgid "Les deux sous-systèmes"
 msgstr "Both sub-systems"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:352
+#: lib/teacher_assistant_web/controllers/page_html.ex:350
 #, elixir-autogen, elixir-format
 msgid "Les enseignants doivent-ils avoir une adresse e-mail ?"
 msgstr "Do teachers need an e-mail address?"
@@ -10210,7 +10211,7 @@ msgstr "Do teachers need an e-mail address?"
 msgid "Les niveaux, les séquences, les coefficients et les bulletins sont ceux de vos établissements. Chaque établissement règle les siens : rien n'est figé dans le logiciel."
 msgstr "The levels, sequences, coefficients and report cards are your schools' own. Each school sets its own: nothing is hard-wired in the software."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:360
+#: lib/teacher_assistant_web/controllers/page_html.ex:358
 #, elixir-autogen, elixir-format
 msgid "Les établissements anglophones sont-ils pris en charge ?"
 msgstr "Are anglophone schools supported?"
@@ -10220,12 +10221,12 @@ msgstr "Are anglophone schools supported?"
 msgid "Lycées et collèges du Cameroun"
 msgstr "Secondary schools in Cameroon"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:349
+#: lib/teacher_assistant_web/controllers/page_html.ex:347
 #, elixir-autogen, elixir-format
 msgid "Non. L'appel, les notes et le suivi se font sur téléphone. Un ordinateur et une imprimante servent surtout à imprimer les bulletins, les emplois du temps et les cartes scolaires."
 msgstr "No. Roll call, marks and follow-up all work on a phone. A computer and a printer are mainly for printing report cards, timetables and ID cards."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:353
+#: lib/teacher_assistant_web/controllers/page_html.ex:351
 #, elixir-autogen, elixir-format
 msgid "Non. L'établissement crée leur compte avec leur numéro de téléphone et un mot de passe temporaire ; ils choisissent ensuite le leur."
 msgstr "No. The school creates their account with their phone number and a temporary password; they then choose their own."
@@ -10235,7 +10236,7 @@ msgstr "No. The school creates their account with their phone number and a tempo
 msgid "Notes et appel au même endroit"
 msgstr "Marks and roll call in one place"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:361
+#: lib/teacher_assistant_web/controllers/page_html.ex:359
 #, elixir-autogen, elixir-format
 msgid "Oui. Le sous-système anglophone a ses propres niveaux, et l'application se lit en français ou en anglais."
 msgstr "Yes. The anglophone sub-system has its own levels, and the app reads in French or English."
@@ -10260,12 +10261,12 @@ msgstr "Nobody re-types anyone else's work: the teacher's roll call feeds the di
 msgid "Photo de l'élève et code QR pour vérifier un bulletin"
 msgstr "Student photo and a QR code to verify a report card"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:232
+#: lib/teacher_assistant_web/controllers/page_html.ex:230
 #, elixir-autogen, elixir-format
 msgid "Photos des élèves prises en classe, cartes scolaires imprimées à 10 par feuille A4."
 msgstr "Student photos taken in class, ID cards printed 10 to an A4 sheet."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:230
+#: lib/teacher_assistant_web/controllers/page_html.ex:228
 #, elixir-autogen, elixir-format
 msgid "Photos et cartes scolaires"
 msgstr "Photos and ID cards"
@@ -10300,7 +10301,7 @@ msgstr "Frequently asked questions"
 msgid "Qui a fini, qui est en retard, matière par matière et classe par classe. Le censeur voit la saisie avancer et relance les enseignants pendant qu'il en est encore temps."
 msgstr "Who is done, who is behind, subject by subject and class by class. The vice-principal watches mark entry move and chases teachers while there is still time."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:356
+#: lib/teacher_assistant_web/controllers/page_html.ex:354
 #, elixir-autogen, elixir-format
 msgid "Qui voit quoi ?"
 msgstr "Who sees what?"
@@ -10310,7 +10311,7 @@ msgstr "Who sees what?"
 msgid "Relance des enseignants en retard"
 msgstr "Reminders to teachers who are behind"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:270
+#: lib/teacher_assistant_web/controllers/page_html.ex:268
 #, elixir-autogen, elixir-format
 msgid "Relances, corrections décidées, bulletins publiés : chacun est prévenu de ce qui le concerne."
 msgstr "Reminders, decided corrections, published report cards: everyone hears about what concerns them."
@@ -10340,7 +10341,7 @@ msgstr "Their lessons of the day, roll call, their classes' marks and their time
 msgid "Ses pages principales"
 msgstr "Main pages"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:290
+#: lib/teacher_assistant_web/controllers/page_html.ex:288
 #, elixir-autogen, elixir-format
 msgid "Six séquences, trois trimestres, dates de clôture de la saisie et moyennes conformes aux usages."
 msgstr "Six sequences, three terms, mark-entry deadlines and averages as schools compute them."
@@ -10350,7 +10351,7 @@ msgstr "Six sequences, three terms, mark-entry deadlines and averages as schools
 msgid "Sur téléphone, chacun retrouve en bas de l'écran les quatre pages dont il se sert le plus. Celui qui a deux rôles passe de l'un à l'autre en un geste."
 msgstr "On a phone, everyone finds the four pages they use most at the bottom of the screen. Someone with two roles switches between them in one tap."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:288
+#: lib/teacher_assistant_web/controllers/page_html.ex:286
 #, elixir-autogen, elixir-format
 msgid "Séquences et trimestres"
 msgstr "Sequences and terms"
@@ -10371,7 +10372,7 @@ msgstr "The whole school on one board."
 msgid "Toutes les fonctionnalités et tous les rôles, pour tout l'établissement. Le tarif par élève et par an sera annoncé avant la rentrée."
 msgstr "Every feature and every role, for the whole school. The price per student per year will be announced before the new school year."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:240
+#: lib/teacher_assistant_web/controllers/page_html.ex:238
 #, elixir-autogen, elixir-format
 msgid "Tranches par classe, paiements en espèces, Mobile Money ou virement, soldes par élève."
 msgstr "Instalments per class, payments in cash, Mobile Money or bank transfer, balances per student."
@@ -10381,7 +10382,7 @@ msgstr "Instalments per class, payments in cash, Mobile Money or bank transfer, 
 msgid "Trois étapes, sans installation."
 msgstr "Three steps, nothing to install."
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:331
+#: lib/teacher_assistant_web/controllers/page_html.ex:329
 #, elixir-autogen, elixir-format
 msgid "Un assistant guide l'année scolaire, les classes, les matières et les coefficients."
 msgstr "A wizard walks you through the school year, classes, subjects and coefficients."

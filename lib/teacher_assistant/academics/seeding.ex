@@ -10,15 +10,21 @@ defmodule TeacherAssistant.Academics.Seeding do
     if has_any_class?(scope) do
       {:ok, 0}
     else
-      {:ok, profile} = Accounts.fetch_school_profile(scope)
-      rows = SchoolTemplates.classes_for(profile.school_type, profile.subsystem)
+      with {:ok, profile} <- Accounts.fetch_school_profile(scope) do
+        rows = SchoolTemplates.classes_for(profile.school_type, profile.subsystem)
 
-      Enum.each(rows, fn %{label: label, level: level, serie: serie} ->
-        {:ok, _} =
-          Enrollment.create_class_group(scope, year, %{label: label, level: level, serie: serie})
-      end)
-
-      {:ok, length(rows)}
+        Enum.reduce_while(rows, {:ok, 0}, fn %{label: label, level: level, serie: serie},
+                                             {:ok, n} ->
+          case Enrollment.create_class_group(scope, year, %{
+                 label: label,
+                 level: level,
+                 serie: serie
+               }) do
+            {:ok, _} -> {:cont, {:ok, n + 1}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+        end)
+      end
     end
   end
 

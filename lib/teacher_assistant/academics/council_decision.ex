@@ -26,7 +26,8 @@ defmodule TeacherAssistant.Academics.CouncilDecision do
       reference :student,
         on_delete: :delete,
         match_with: [workspace_id: :workspace_id],
-        match_type: :full
+        match_type: :full,
+        index?: true
 
       reference :workspace, on_delete: :delete, index?: true
     end

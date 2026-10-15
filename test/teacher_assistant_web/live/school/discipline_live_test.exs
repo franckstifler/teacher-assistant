@@ -101,6 +101,10 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert sanction.type == :avertissement
     assert sanction.reason == "Bavardage"
 
+    row = view |> element("#sanction-row-#{sanction.id}") |> render()
+    assert row =~ Accounts.User.display_name(dm)
+    refute row =~ dm.id
+
     view
     |> element("#delete-sanction-#{sanction.id}")
     |> render_click()

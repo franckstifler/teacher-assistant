@@ -90,6 +90,28 @@ defmodule TeacherAssistant.Academics.MarkCorrectionTest do
              Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(15)))
   end
 
+  test "a student who is not in the assessment's class cannot be targeted", ctx do
+    lock(ctx)
+
+    {:ok, other_class} =
+      TeacherAssistant.Enrollment.create_class_group(ctx.head, ctx.year, %{
+        label: "Autre classe",
+        level: ctx.cg.level,
+        serie: ctx.cg.serie
+      })
+
+    {:ok, outsider} =
+      TeacherAssistant.Enrollment.add_student(ctx.head, other_class, %{full_name: "Cali", sex: :f})
+
+    assert {:error, error} =
+             Assessment.request_correction(
+               ctx.t,
+               req(ctx, student_id: outsider.id, requested_score: Decimal.new(14))
+             )
+
+    assert Exception.message(error) =~ "not enrolled"
+  end
+
   test "approval writes the mark and journals it; only admins decide", ctx do
     lock(ctx)
     {:ok, c} = Assessment.request_correction(ctx.t, req(ctx, requested_score: Decimal.new(14)))
