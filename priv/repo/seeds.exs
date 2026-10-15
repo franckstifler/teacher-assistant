@@ -62,6 +62,9 @@ if Mix.env() == :dev do
         workspace
     end
 
+  # New schools start with no module (operator console spec §1); the demo has them all.
+  {:ok, ws} = Organization.set_modules(head_scope, ws, TeacherAssistant.Modules.keys())
+
   {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, ws.id)
 
   # Create or fetch the active academic year.

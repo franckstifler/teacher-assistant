@@ -73,6 +73,16 @@ operator =
 {:ok, profile} = Accounts.fetch_school_profile(hs)
 {:ok, _} = Accounts.verify_school(profile, operator.id, actor: operator)
 
+# New schools start with no module (operator console spec §1); the demo has them all.
+{:ok, ws} =
+  Organization.set_modules(
+    %TeacherAssistant.Scope{current_user: operator},
+    ws,
+    TeacherAssistant.Modules.keys()
+  )
+
+hs = scope_of.(head, ws)
+
 member = fn email, name, roles ->
   u = user.(email, name)
 
