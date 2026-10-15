@@ -826,7 +826,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       for={@form}
       id="new-assessment-form"
       phx-submit="new_assessment"
-      class="flex flex-1 items-end gap-2"
+      class="grid flex-1 basis-full grid-cols-2 items-end gap-x-2 gap-y-3 sm:flex sm:basis-auto"
     >
       <.input
         type="select"
@@ -834,6 +834,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         value=""
         label={gettext("Type")}
         options={[{gettext("Choisir"), ""} | for(t <- @assessment_types, do: {t.name, t.id})]}
+        class="select w-full sm:min-w-[9rem]"
       />
       <.input
         field={@form[:label]}
@@ -846,9 +847,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         name="assessment[max_score]"
         label={gettext("Sur")}
         value={Decimal.to_string(@default_max, :normal)}
-        class="input w-20"
+        class="input w-full sm:w-20"
       />
-      <.button type="submit" class={if @columns == [], do: "btn btn-primary", else: "btn btn-outline"}>
+      <.button
+        type="submit"
+        class={
+          if(@columns == [],
+            do: "btn btn-primary w-full sm:w-auto",
+            else: "btn btn-outline w-full sm:w-auto"
+          )
+        }
+      >
         {gettext("Ajouter")}
       </.button>
     </.form>
