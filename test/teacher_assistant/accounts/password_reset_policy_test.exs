@@ -60,4 +60,20 @@ defmodule TeacherAssistant.Accounts.PasswordResetPolicyTest do
     %{head_user: stranger} = TeacherFixtures.school_fixture()
     assert_forbidden(Accounts.operator_reset_password(head, stranger))
   end
+
+  test "an operator's reset is journaled under the member's school, not the operator's",
+       %{head: head, op: op} do
+    m = member(head, [:teacher])
+    %{scope: other_head, workspace: other} = TeacherFixtures.school_fixture()
+    TeacherFixtures.membership_fixture(other_head, %{user: op.current_user, roles: [:teacher]})
+    op_in_other = school_scope(op.current_user, other)
+
+    assert {:ok, _} = Accounts.operator_reset_password(op_in_other, m.user)
+
+    assert [%{workspace_id: ws_id}] =
+             Accounts.list_audit_events(op, action: :password_reset)
+             |> Enum.filter(&(&1.target_user_id == m.user_id))
+
+    assert ws_id == head.current_workspace.id
+  end
 end

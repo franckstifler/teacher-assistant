@@ -71,7 +71,9 @@ defmodule TeacherAssistantWeb.Admin.SchoolLive do
   end
 
   def handle_event("reset_confirm", _params, %{assigns: %{reset_user: %{} = user}} = socket) do
-    case Accounts.operator_reset_password(socket.assigns.current_scope, user) do
+    %{current_scope: scope, school: %{workspace: ws}} = socket.assigns
+
+    case Accounts.operator_reset_password(scope, user, ws.id) do
       {:ok, password} ->
         {:noreply, socket |> assign(:reset_password, password) |> reload()}
 

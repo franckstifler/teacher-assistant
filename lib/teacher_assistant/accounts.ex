@@ -404,14 +404,33 @@ defmodule TeacherAssistant.Accounts do
   @doc """
   New temporary password for any account but an operator's, by the operator (operator
   console spec §3); signs the person out everywhere. Returns the clear password once.
+
+  Journaled under `workspace_id` (the school page the operator acts from), else the
+  person's only active school, else no school — never the operator's own session
+  school, which is unrelated.
   """
-  def operator_reset_password(%Scope{} = scope, %User{} = user) do
+  def operator_reset_password(%Scope{} = scope, %User{} = user, workspace_id \\ nil) do
+    workspace_id = workspace_id || only_active_school(user)
+
     with {:ok, user} <-
            user
-           |> Ash.Changeset.for_update(:reset_temporary_password, %{}, scope: scope)
+           |> Ash.Changeset.for_update(:reset_temporary_password, %{},
+             actor: scope.current_user,
+             context: %{audit_workspace_id: workspace_id}
+           )
            |> Ash.update(),
          :ok <- revoke_all_sessions(user) do
       {:ok, user.__metadata__.temporary_password}
+    end
+  end
+
+  defp only_active_school(%User{id: user_id}) do
+    SchoolMembership
+    |> Ash.Query.for_read(:active_for_user, %{user_id: user_id})
+    |> Ash.read!(authorize?: false)
+    |> case do
+      [%{workspace_id: id}] -> id
+      _ -> nil
     end
   end
 

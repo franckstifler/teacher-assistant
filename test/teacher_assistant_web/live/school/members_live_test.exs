@@ -592,4 +592,41 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       refute new_password =~ first
     end
   end
+
+  describe "account status after the operator console's reset rules" do
+    defp membership_of(scope, user_id),
+      do: Enum.find(Accounts.list_members(scope), &(&1.user_id == user_id))
+
+    test "a co-head is not said to use another school", %{conn: conn, scope: scope} do
+      {:ok, %{user: co_head}} =
+        Accounts.add_member_by_phone(scope, %{name: "Co", phone: "677000009", roles: [:head]})
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      m = membership_of(scope, co_head.id)
+      open_member(view, m.id)
+
+      refute view |> element("#member-account") |> render() =~ "autre établissement"
+      refute has_element?(view, "#reset-password-#{m.id}")
+    end
+
+    test "an invited member reset by the head shows the temporary password",
+         %{conn: conn, scope: scope} do
+      invited = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      m =
+        TeacherAssistant.TeacherFixtures.membership_fixture(scope, %{
+          user: invited,
+          roles: [:teacher]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      open_member(view, m.id)
+      refute view |> element("#member-account") |> render() =~ "géré par la personne"
+
+      view |> element("#reset-password-#{m.id}") |> render_click()
+      view |> element("#confirm-reset") |> render_click()
+
+      assert has_element?(view, "#member-row-#{m.id}", "Mot de passe temporaire")
+    end
+  end
 end

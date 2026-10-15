@@ -34,6 +34,9 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Record do
   # Matched on the changeset's resource module (an atom), not on struct patterns: a
   # struct pattern would make this change a compile-time dependent of the resources
   # that use it.
+  # Set by callers acting across schools (the operator's reset), where the tenant is
+  # not the school the action concerns.
+  defp workspace_id(_record, %{context: %{audit_workspace_id: id}}), do: id
   defp workspace_id(%{id: id}, %{resource: TeacherAssistant.Academics.Workspace}), do: id
   defp workspace_id(%{workspace_id: id}, _changeset) when is_binary(id), do: id
   defp workspace_id(_record, %{tenant: tenant}) when is_binary(tenant), do: tenant

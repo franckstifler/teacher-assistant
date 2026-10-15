@@ -1077,12 +1077,14 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   # --- Account status -------------------------------------------------------------
 
-  # Only computed for staff managers (heads of this school), so a non-operator
-  # account this school created that still cannot be reset is one the person
+  # Only computed for staff managers (heads of this school). An account this school
+  # created that still cannot be reset, and that is neither an operator's, the
+  # viewer's own nor another head's (operator console spec §3), is one the person
   # also uses in another school (see `Checks.ActiveInAnotherSchool`).
-  defp account_status(%User{} = user, workspace_id, resettable?) do
+  defp account_status(%User{} = user, roles, workspace_id, resettable?, viewer_id) do
     cond do
-      user.created_in_workspace_id == workspace_id and not resettable? and user.role != :admin ->
+      user.created_in_workspace_id == workspace_id and not resettable? and user.role != :admin and
+        user.id != viewer_id and :head not in roles ->
         %{
           created_here_status(user)
           | note:
@@ -1094,8 +1096,15 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       user.created_in_workspace_id == workspace_id ->
         created_here_status(user)
 
+      # An invited account the head has reset (operator console spec §3).
+      is_nil(user.created_in_workspace_id) and user.must_change_password ->
+        created_here_status(user)
+
       user.phone && user.created_in_workspace_id ->
         linked_status()
+
+      resettable? ->
+        %{kind: :active, label: gettext("Actif"), note: gettext("Compte personnel")}
 
       true ->
         self_managed_status()
@@ -1286,7 +1295,14 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       if socket.assigns.can_manage_staff?,
         do:
           Map.new(members, fn m ->
-            {m.id, account_status(m.user, workspace_id, MapSet.member?(resettable, m.id))}
+            {m.id,
+             account_status(
+               m.user,
+               m.roles,
+               workspace_id,
+               MapSet.member?(resettable, m.id),
+               scope.current_user.id
+             )}
           end),
         else: %{}
 
