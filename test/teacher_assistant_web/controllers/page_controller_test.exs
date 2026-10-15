@@ -1,25 +1,33 @@
 defmodule TeacherAssistantWeb.PageControllerTest do
   use TeacherAssistantWeb.ConnCase
 
-  test "GET / renders the landing page with both audience lanes", %{conn: conn} do
+  test "GET / renders the schools landing page", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
     assert html =~ "Teacher Assistant"
-    # hero headline (pixel-matched French landing design)
-    assert html =~ "Tout l'établissement sur un seul tableau"
-    # the two ways in — school vs teacher — live in the #portes section
-    assert html =~ ~s(id="portes")
-    assert html =~ "Deux façons de commencer"
-    # each role has its screen, and there's a pricing section
-    assert html =~ ~s(id="roles")
-    assert html =~ ~s(id="prix")
+    assert html =~ "Tout l&#39;établissement sur un seul tableau"
+    # a school day role by role, the roles, Cameroon specifics and the pilot price
+    for id <- ~w(journee bulletins roles terrain tarif questions),
+        do: assert(html =~ ~s(id="#{id}"))
+
+    assert html =~ "Gratuit pendant la phase pilote"
+    # real screens of the app
+    assert html =~ "/images/landing/roll-call.webp"
+  end
+
+  test "GET / speaks to schools only: no solo-teacher lane", %{conn: conn} do
+    html = conn |> get(~p"/") |> html_response(200)
+
+    refute html =~ "Enseignant seul"
+    refute html =~ "je commence seul"
+    refute html =~ "carnet"
+    refute html =~ ~s(href="/register")
+    refute html =~ ~s(id="portes")
   end
 
   test "GET / links to every entry point the front door needs", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
-    # account + session
-    assert html =~ ~s(href="/register")
     assert html =~ ~s(href="/sign-in")
     # school onboarding intent (carries you to school setup after auth)
     assert html =~ ~s(href="/schools/start")

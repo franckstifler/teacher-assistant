@@ -752,6 +752,58 @@ form[data-dirty] .ta-savebar {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* =========================================================================
+   Landing page (PageHTML.home): screens of the app in device frames
+   ========================================================================= */
+.ta-landing { scroll-behavior: smooth; }
+.ta-landing__nav {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ta-text-2);
+  transition: color 120ms ease, background-color 120ms ease;
+}
+.ta-landing__nav:hover { color: var(--color-base-content); background: var(--ta-raised); }
+
+/* a phone: the captures are dark, so the frame is the board in both themes */
+.ta-device {
+  padding: 0.4rem;
+  border-radius: 2.1rem;
+  background: #0B1310;
+  box-shadow: 0 0 0 1px #26362F, 0 30px 60px -24px rgb(4 8 6 / 0.55);
+}
+.ta-device img { display: block; width: 100%; height: auto; border-radius: 1.75rem; }
+
+/* a desktop window */
+.ta-window {
+  overflow: hidden;
+  border-radius: var(--radius-box);
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-100);
+  box-shadow: 0 30px 70px -30px rgb(4 8 6 / 0.5);
+}
+.ta-window img { display: block; width: 100%; height: auto; }
+
+/* a printed sheet */
+.ta-paper {
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px rgb(23 35 30 / 0.12), 0 24px 50px -20px rgb(4 8 6 / 0.55);
+}
+@media (min-width: 768px) { .ta-paper { transform: rotate(2deg); } }
+.ta-paper img { display: block; width: 100%; height: auto; }
+
+/* one image per reading mode (the hero shows the dashboard in the visitor's theme) */
+[data-theme="light"] .ta-only-dark { display: none; }
+:root:not([data-theme="light"]) .ta-only-light { display: none; }
+
+.ta-landing details > summary::-webkit-details-marker { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   form[data-dirty] .ta-savebar { animation: none; }
 }
@@ -761,5 +813,6 @@ form[data-dirty] .ta-savebar {
   .btn:hover { transform: none; }
   .ta-rail__item { transition: none; }
   .ta-sheet:popover-open { animation: none; }
+  .ta-landing { scroll-behavior: auto; }
   .drawer-side, .drawer-overlay { transition-duration: 0.01ms !important; }
 }
