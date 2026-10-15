@@ -1,6 +1,8 @@
 defmodule TeacherAssistantWeb.SchoolLogoController do
   use TeacherAssistantWeb, :controller
 
+  plug TeacherAssistantWeb.Plug.SchoolAccess
+
   alias TeacherAssistant.Accounts
 
   def show(conn, params) do

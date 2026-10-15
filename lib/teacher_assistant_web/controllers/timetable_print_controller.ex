@@ -1,6 +1,8 @@
 defmodule TeacherAssistantWeb.TimetablePrintController do
   use TeacherAssistantWeb, :controller
 
+  plug TeacherAssistantWeb.Plug.SchoolAccess
+
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Attendance

@@ -100,6 +100,8 @@ defmodule TeacherAssistantWeb.Router do
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_active_school},
+        {TeacherAssistantWeb.LiveUserAuth, :require_module},
         {TeacherAssistantWeb.LiveUserAuth, :assign_capabilities},
         {TeacherAssistantWeb.LiveUserAuth, :assign_space},
         {TeacherAssistantWeb.NotificationHooks, :default},
@@ -114,6 +116,8 @@ defmodule TeacherAssistantWeb.Router do
       session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
       on_mount: [
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_active_school},
+        {TeacherAssistantWeb.LiveUserAuth, :require_module},
         {TeacherAssistantWeb.LiveUserAuth, :assign_capabilities},
         {TeacherAssistantWeb.LiveUserAuth, :assign_space},
         {TeacherAssistantWeb.NotificationHooks, :default},
@@ -187,6 +191,13 @@ defmodule TeacherAssistantWeb.Router do
       layout: {TeacherAssistantWeb.Layouts, :auth},
       on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
       live "/account/password", Account.PasswordLive
+    end
+
+    # Operator console spec §2: outside :school_workspace, so it is not itself refused.
+    ash_authentication_live_session :suspended,
+      session: [{TeacherAssistantWeb.LiveUserAuth, :session_context, []}],
+      on_mount: [{TeacherAssistantWeb.LiveUserAuth, :live_user_required}] do
+      live "/school/suspended", School.SuspendedLive
     end
 
     ash_authentication_live_session :operator,

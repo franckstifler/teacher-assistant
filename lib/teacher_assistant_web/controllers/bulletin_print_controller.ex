@@ -1,6 +1,8 @@
 defmodule TeacherAssistantWeb.BulletinPrintController do
   use TeacherAssistantWeb, :controller
 
+  plug TeacherAssistantWeb.Plug.SchoolAccess
+
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization

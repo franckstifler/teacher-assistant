@@ -8,6 +8,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   alias TeacherAssistant.Accounts.Workspaces
   alias TeacherAssistant.Scope
   use TeacherAssistantWeb, :verified_routes
+  use Gettext, backend: TeacherAssistantWeb.Gettext
 
   def session_context(conn) do
     %{
@@ -110,6 +111,31 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
 
       true ->
         {:halt, Phoenix.LiveView.push_navigate(socket, to: ~p"/school/setup")}
+    end
+  end
+
+  # Operator console spec §2: a suspended school's members wait on /school/suspended.
+  def on_mount(:require_active_school, _params, _session, socket) do
+    if Scope.suspended?(socket.assigns.current_scope),
+      do: {:halt, Phoenix.LiveView.push_navigate(socket, to: ~p"/school/suspended")},
+      else: {:cont, socket}
+  end
+
+  # Operator console spec §1: a screen of a module the school does not have is refused,
+  # typed URL included. Menus hide it too, but this is the guard.
+  def on_mount(:require_module, _params, _session, socket) do
+    key = TeacherAssistant.Modules.module_for_view(socket.view)
+
+    if key in [nil, :core] or Scope.module?(socket.assigns.current_scope, key) do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(
+         :error,
+         gettext("Ce module n'est pas activé pour votre établissement.")
+       )
+       |> Phoenix.LiveView.push_navigate(to: ~p"/school")}
     end
   end
 

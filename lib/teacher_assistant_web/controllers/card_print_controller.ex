@@ -1,6 +1,8 @@
 defmodule TeacherAssistantWeb.CardPrintController do
   use TeacherAssistantWeb, :controller
 
+  plug TeacherAssistantWeb.Plug.SchoolAccess
+
   alias TeacherAssistant.{Accounts, Enrollment, Organization, ReportCards}
 
   @doc "Spec 2026-10-12 §9: printable school ID cards, 10 per A4 page."

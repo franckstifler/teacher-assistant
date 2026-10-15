@@ -7,6 +7,8 @@ defmodule TeacherAssistantWeb.CouncilPrintController do
   """
   use TeacherAssistantWeb, :controller
 
+  plug TeacherAssistantWeb.Plug.SchoolAccess
+
   alias TeacherAssistant.{Assessment, Councils, Enrollment, Organization, ReportCards}
   alias TeacherAssistant.Academics.{ConductWarning, Distinction, PassageDecision}
 

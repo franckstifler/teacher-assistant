@@ -1,6 +1,8 @@
 defmodule TeacherAssistantWeb.StudentPhotoController do
   use TeacherAssistantWeb, :controller
 
+  plug TeacherAssistantWeb.Plug.SchoolAccess
+
   alias TeacherAssistant.{Enrollment, Uploads}
   alias TeacherAssistant.Academics.BulletinPublication
 
