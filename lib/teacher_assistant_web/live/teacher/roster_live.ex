@@ -49,7 +49,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
             {length(@students)} {gettext("students")}
           </span>
           <span class="ta-num">{Map.get(sex_counts(@students), :f, 0)} {gettext("Filles")}</span>
-          <span class="text-base-content/40">·</span>
+          <span class="text-base-content/70">·</span>
           <span class="ta-num">{Map.get(sex_counts(@students), :m, 0)} {gettext("Garçons")}</span>
         </div>
 

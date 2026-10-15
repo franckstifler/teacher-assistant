@@ -235,7 +235,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
   # The row's second line: hours, coefficient and the flags that matter.
   defp teaching_details(assigns) do
     ~H"""
-    <span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/65">
+    <span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
       <span>
         {gettext("%{hours} h / sem.", hours: @tc.weekly_hours)} · {gettext("coef. %{c}",
           c: Numbers.decimal(@tc.effective_coefficient, trim: true)
@@ -300,7 +300,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
         <div :if={@tc.combined_course_id} class="fieldset">
           <span class="label mb-1">{gettext("Heures par semaine")}</span>
           <p class="ta-num text-base">{@tc.weekly_hours}</p>
-          <p class="text-xs text-base-content/65">
+          <p class="text-xs text-base-content/70">
             {gettext("Communes aux classes regroupées : séparez-les pour les changer.")}
           </p>
         </div>
@@ -314,7 +314,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
             inputmode="decimal"
             class={if @tc.coefficient, do: "w-full input border-warning", else: "w-full input"}
           />
-          <div class="-mt-1 flex flex-wrap items-center gap-x-2 text-xs text-base-content/65">
+          <div class="-mt-1 flex flex-wrap items-center gap-x-2 text-xs text-base-content/70">
             <span :if={!@tc.coefficient}>{gettext("Valeur de la grille des coefficients.")}</span>
             <span :if={@tc.coefficient && @tc.grid_coefficient}>
               {gettext("Propre à la classe — modèle : %{value}",
@@ -336,7 +336,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
         <div :if={!@class_coefficients_allowed?} class="fieldset">
           <span class="label mb-1">{gettext("Coefficient")}</span>
           <p class="ta-num text-base">{Numbers.decimal(@tc.effective_coefficient, trim: true)}</p>
-          <p class="text-xs text-base-content/65">
+          <p class="text-xs text-base-content/70">
             {gettext("Les coefficients propres à une classe sont désactivés.")}
           </p>
         </div>
@@ -344,7 +344,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
         <fieldset :if={@exempt} id={"takers-form-#{@tc.id}"} class="space-y-1 pt-3">
           <legend class="text-sm font-semibold">
             {gettext("Élèves concernés")}
-            <span class="ta-num font-normal text-base-content/65">
+            <span class="ta-num font-normal text-base-content/70">
               ({length(@roster_students) - MapSet.size(@exempt)}/{length(@roster_students)})
             </span>
           </legend>

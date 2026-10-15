@@ -74,7 +74,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
               "inline-flex items-center gap-2 rounded-full border px-3 py-1 font-semibold",
               if(reached?(stage, @stage),
                 do: "border-primary text-base-content",
-                else: "border-base-300 text-base-content/60"
+                else: "border-base-300 text-base-content/70"
               )
             ]}
           >

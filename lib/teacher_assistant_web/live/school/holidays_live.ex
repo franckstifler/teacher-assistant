@@ -159,7 +159,7 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
               </tr>
             </tbody>
           </table>
-          <p :if={@holidays == []} id="holidays-empty" class="p-4 text-sm text-base-content/60">
+          <p :if={@holidays == []} id="holidays-empty" class="p-4 text-sm text-base-content/70">
             {gettext("Aucun congé ni jour férié pour cette année.")}
           </p>
         </div>

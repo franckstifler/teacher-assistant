@@ -103,7 +103,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                 <% end %>
                 <p
                   :if={Enum.all?(@periods, &(cell_slots(@grid, day, &1.id) == []))}
-                  class="px-4 py-3 text-sm text-base-content/60"
+                  class="px-4 py-3 text-sm text-base-content/70"
                 >
                   {gettext("Pas de cours")}
                 </p>
@@ -168,7 +168,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                       <% else %>
                         <td
                           id={"cell-#{day}-#{period.id}"}
-                          class="closed-cell bg-base-300/50 text-center text-xs text-base-content/50"
+                          class="closed-cell bg-base-300/50 text-center text-xs text-base-content/70"
                         >
                           {gettext("Fermé")}
                         </td>

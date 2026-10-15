@@ -225,7 +225,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
             phx-click="toggle_no_contact"
             aria-pressed={to_string(@no_contact)}
             class={[
-              "ta-num rounded-full border px-3 py-1 text-sm font-semibold transition-colors",
+              "rounded-full border px-3 py-1 text-sm font-semibold transition-colors",
               if(@no_contact,
                 do: "border-error/50 bg-error/15 text-error",
                 else: "border-base-300 text-base-content/80 hover:text-base-content"
@@ -288,7 +288,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
                       >
                         {e.student.full_name}
                       </.link>
-                      <span class="flex items-center gap-1.5 text-xs text-base-content/60">
+                      <span class="flex items-center gap-1.5 text-xs text-base-content/70">
                         {Sex.label(e.student.sex)}
                         <span
                           :if={e.repeater}
@@ -310,7 +310,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
                   <%= case e.student.primary_guardian_link do %>
                     <% %{guardian: g} -> %>
                       <span>{g.full_name}</span>
-                      <span class="text-base-content/60">·</span>
+                      <span class="text-base-content/70">·</span>
                       <a href={"tel:#{g.phone_key}"} class="ta-num link link-hover">{g.phone}</a>
                     <% _ -> %>
                       <span class="text-xs font-semibold text-error">{gettext("Aucun contact")}</span>
@@ -319,7 +319,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               </tr>
             </tbody>
           </table>
-          <p :if={@page.results == []} id="students-empty" class="p-4 text-sm text-base-content/60">
+          <p :if={@page.results == []} id="students-empty" class="p-4 text-sm text-base-content/70">
             {gettext("Aucun élève ne correspond.")}
           </p>
           <div

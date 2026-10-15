@@ -332,7 +332,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
         id={"student-row-#{student.enrollment_id}"}
         class="ta-row-rule grid grid-cols-[1.4rem_minmax(0,1fr)_auto] items-center gap-x-2 py-2 last:border-b-0"
       >
-        <span class="ta-num text-[0.72rem] text-base-content/60">{n}</span>
+        <span class="ta-num text-[0.72rem] text-base-content/70">{n}</span>
         <span class="flex min-w-0 flex-col">
           <span class={[
             "break-words text-[0.95rem] leading-snug",
@@ -429,5 +429,5 @@ defmodule TeacherAssistantWeb.School.RollCall do
   defp status_class(:late, true), do: "bg-warning text-warning-content"
 
   defp status_class(_status, false),
-    do: "bg-base-100 text-base-content/55 hover:bg-base-content/8"
+    do: "bg-base-100 text-base-content/70 hover:bg-base-content/8"
 end

@@ -54,6 +54,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
+// The phone « Plus » sheet is a native popover: close it when a link in it navigates.
+window.addEventListener("phx:page-loading-start", () =>
+  document.querySelectorAll("[popover]:popover-open").forEach(p => p.hidePopover()))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page

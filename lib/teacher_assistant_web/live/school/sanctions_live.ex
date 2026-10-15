@@ -515,7 +515,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                   </tr>
                 </tbody>
               </table>
-              <p :if={@page.results == []} class="p-4 text-sm text-base-content/60">
+              <p :if={@page.results == []} class="p-4 text-sm text-base-content/70">
                 {gettext("Aucune sanction.")}
               </p>
               <nav

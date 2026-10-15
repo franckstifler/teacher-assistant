@@ -263,7 +263,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                       {shown(Decimal.round(row.unjustified_hours, 1))} h
                     </td>
                     <td class="hidden sm:table-cell">
-                      <span :if={row.sanctions == []} class="text-base-content/60">—</span>
+                      <span :if={row.sanctions == []} class="text-base-content/70">—</span>
                       <span
                         :for={s <- row.sanctions}
                         class="badge badge-sm badge-ghost mr-1"

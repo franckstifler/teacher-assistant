@@ -228,7 +228,7 @@ defmodule TeacherAssistantWeb.School.NewYearLive do
               cond do
                 n == @step -> "border-primary bg-primary/15 text-primary"
                 n < @step -> "border-base-300 text-base-content/80"
-                true -> "border-base-300 text-base-content/40"
+                true -> "border-base-300 text-base-content/70"
               end
             ]}
           >

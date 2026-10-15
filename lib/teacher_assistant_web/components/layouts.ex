@@ -7,6 +7,7 @@ defmodule TeacherAssistantWeb.Layouts do
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Organization
   alias TeacherAssistantWeb.NotificationText
+  alias TeacherAssistantWeb.Spaces
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -59,6 +60,10 @@ defmodule TeacherAssistantWeb.Layouts do
           String.upcase(String.slice(User.display_name(current_user), 0, 1))
       )
       |> assign(:workspace_name, workspace_name(current_scope))
+      |> assign(
+        :workspace_id,
+        current_scope && current_scope.current_workspace && current_scope.current_workspace.id
+      )
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspace_type_label, workspace_type_label(current_scope))
       |> assign(:workspaces, workspaces)
@@ -68,47 +73,73 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:bell, current_scope && (current_scope.capabilities || %{})[:notifications])
       |> assign(:current_path, assigns[:current_path])
 
+    assigns =
+      assign(assigns, :tabs, assigns.in_school? && assigns.space && Spaces.tab_bar(assigns.space))
+
     ~H"""
     <%= if @current_user do %>
       <div class="drawer lg:drawer-open">
         <input id="app-drawer" type="checkbox" class="drawer-toggle" />
 
         <div class="drawer-content flex min-h-screen flex-col bg-base-200 text-base-content">
-          <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-base-300 bg-base-100/95 px-4 py-2.5 backdrop-blur lg:hidden">
+          <header class="sticky top-0 z-30 flex min-h-14 items-center gap-2.5 border-b border-base-300 bg-base-200/95 py-1.5 pl-4 pr-1.5 backdrop-blur lg:hidden">
+            <%!-- Without a role space (no school yet) there is no tab bar: the drawer is the menu. --%>
             <label
+              :if={!@tabs}
               for="app-drawer"
               aria-label={gettext("Open navigation")}
-              class="btn btn-ghost btn-sm btn-square"
+              class="-ml-2 grid size-11 place-items-center rounded-lg"
             >
               <.icon name="hero-bars-3" class="size-5" />
             </label>
-            <span class="grid size-8 place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
+            <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
               TA
             </span>
-            <span class="min-w-0 truncate text-sm font-semibold ta-display">
-              {@workspace_name || gettext("Teacher Assistant")}
+            <span class="min-w-0 flex-1 leading-tight">
+              <span class="block truncate text-sm font-semibold">
+                {@workspace_name || gettext("Teacher Assistant")}
+              </span>
+              <span :if={@space} class="ta-text-2 block truncate text-xs">
+                {gettext("Espace %{space}", space: String.downcase(@space.label))}
+              </span>
             </span>
             <.link
               :if={@bell}
               id="notification-bell-mobile"
               navigate={~p"/school/notifications"}
               aria-label={gettext("Notifications")}
-              class="btn btn-ghost btn-sm btn-square relative ml-auto"
+              class="relative grid size-11 flex-none place-items-center rounded-lg"
             >
-              <.icon name="hero-bell" class="size-5" />
+              <.icon name="hero-bell" class="size-[1.375rem]" />
               <span
                 :if={@bell.unread > 0}
-                class="badge badge-error badge-xs ta-num absolute -right-1 -top-1"
+                class="badge badge-error badge-xs ta-num absolute right-1 top-1"
               >
                 {@bell.unread}
               </span>
             </.link>
           </header>
 
-          <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
+          <main class={[
+            "mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6",
+            @tabs && "pb-28 lg:pb-6"
+          ]}>
             {render_slot(@inner_block)}
           </main>
         </div>
+
+        <.tab_bar :if={@tabs} tabs={@tabs} current_path={@current_path} />
+        <.more_sheet
+          :if={@tabs}
+          more={@tabs.more}
+          current_user={@current_user}
+          user_initial={@user_initial}
+          space={@space}
+          space_keys={@space_keys}
+          workspaces={@workspaces}
+          workspace_id={@workspace_id}
+          current_path={@current_path}
+        />
 
         <div class="drawer-side z-40">
           <label for="app-drawer" aria-label={gettext("Close navigation")} class="drawer-overlay"></label>
@@ -131,7 +162,7 @@ defmodule TeacherAssistantWeb.Layouts do
                     <span class="block truncate text-sm font-semibold ta-display">
                       {@workspace_name}
                     </span>
-                    <span class="ta-num block truncate text-[0.6rem] uppercase tracking-widest text-[color:var(--ta-rail-faint)]">
+                    <span class="block truncate text-xs text-[color:var(--ta-rail-faint)]">
                       {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
                     </span>
                   </span>
@@ -180,8 +211,13 @@ defmodule TeacherAssistantWeb.Layouts do
                 href={~p"/school/space/#{key}"}
                 aria-current={@space && @space.key == key && "true"}
                 class={[
-                  "btn btn-xs rounded-full",
-                  if(@space && @space.key == key, do: "btn-primary", else: "btn-ghost")
+                  "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-medium transition-colors",
+                  if(@space && @space.key == key,
+                    do:
+                      "bg-[color:var(--ta-rail-active-bg)] font-semibold text-[color:var(--ta-rail-active-fg)]",
+                    else:
+                      "text-[color:var(--ta-rail-muted)] hover:bg-[color:var(--ta-rail-hover)] hover:text-[color:var(--ta-rail-fg)]"
+                  )
                 ]}
               >
                 {TeacherAssistantWeb.Spaces.label(key)}
@@ -212,16 +248,18 @@ defmodule TeacherAssistantWeb.Layouts do
 
             <div class="mt-auto flex flex-col gap-2 border-t border-[color:var(--ta-rail-line)] pt-3">
               <div class="flex items-center gap-2.5 px-1.5">
-                <span class="grid size-8 flex-none place-items-center rounded-full bg-[color:var(--ta-rail-hover)] ta-num text-xs font-semibold uppercase">
+                <span class="grid size-8 flex-none place-items-center rounded-full bg-[#2B4A3D] text-xs font-semibold text-[#CFE9DC]">
                   {@user_initial}
                 </span>
                 <span class="min-w-0 flex-1 leading-tight">
-                  <span class="block truncate text-xs font-semibold">{User.display_name(@current_user)}</span>
-                  <span class="ta-num block truncate text-[0.6rem] uppercase tracking-wide text-[color:var(--ta-rail-muted)]">
-                    {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
+                  <span class="block truncate text-sm font-semibold">{User.display_name(@current_user)}</span>
+                  <span class="block truncate text-xs text-[color:var(--ta-rail-faint)]">
+                    {(@space && gettext("Espace %{space}", space: String.downcase(@space.label))) ||
+                      @role_label}
                   </span>
                 </span>
               </div>
+              <.theme_toggle id="theme-toggle-rail" />
               <div class="flex items-center gap-1">
                 <.link href={~p"/sign-out"} method="delete" class="ta-rail__item flex-1">
                   <.icon name="hero-arrow-right-on-rectangle" class="size-4 flex-none" />
@@ -230,14 +268,14 @@ defmodule TeacherAssistantWeb.Layouts do
                 <div id="locale-switch" class="flex items-center gap-0.5">
                   <.link
                     navigate={~p"/locale/fr"}
-                    class="ta-num rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
+                    class="rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
                   >
                     FR
                   </.link>
                   <span class="text-[color:var(--ta-rail-faint)]">·</span>
                   <.link
                     navigate={~p"/locale/en"}
-                    class="ta-num rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
+                    class="rounded px-2 py-1 text-xs font-semibold text-[color:var(--ta-rail-muted)] hover:text-[color:var(--ta-rail-fg)]"
                   >
                     EN
                   </.link>
@@ -306,7 +344,7 @@ defmodule TeacherAssistantWeb.Layouts do
             {gettext("Tout marquer comme lu")}
           </button>
         </div>
-        <p :if={@bell.latest == []} class="px-2 py-3 text-sm text-base-content/60">
+        <p :if={@bell.latest == []} class="px-2 py-3 text-sm text-base-content/70">
           {gettext("Aucune notification.")}
         </p>
         <ul class="flex max-h-[60vh] flex-col gap-0.5 overflow-y-auto">
@@ -347,6 +385,191 @@ defmodule TeacherAssistantWeb.Layouts do
           class="mt-1 block rounded-lg px-2 py-1.5 text-center text-xs font-semibold text-primary transition-colors hover:bg-base-200"
         >
           {gettext("Tout voir")}
+        </.link>
+      </div>
+    </div>
+    """
+  end
+
+  attr :tabs, :map, required: true
+  attr :current_path, :string, default: nil
+
+  # The phone tab bar (<lg): four tabs of the role space, then « Plus », which
+  # opens the sheet holding the rest of the menu and the account.
+  defp tab_bar(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :more_active?,
+        Enum.any?(assigns.tabs.more, fn s ->
+          Enum.any?(s.items, &rail_active?(assigns.current_path, &1.path))
+        end)
+      )
+      |> assign(
+        :more_badge?,
+        Enum.any?(assigns.tabs.more, fn s -> Enum.any?(s.items, &((&1[:badge] || 0) > 0)) end)
+      )
+
+    ~H"""
+    <nav id="tab-bar" class="ta-tabbar lg:hidden" aria-label={gettext("Navigation principale")}>
+      <.link
+        :for={tab <- @tabs.primary}
+        id={"tab-#{tab.id}"}
+        navigate={tab.path}
+        aria-current={tab_active?(@current_path, tab) && "page"}
+        class="ta-tab"
+      >
+        <span class="ta-tab__icon">
+          <.icon name={tab.icon} class="size-5" />
+          <span :if={(tab[:badge] || 0) > 0} class={["ta-tab__badge", tab_badge_class(tab)]}>
+            {tab.badge}
+          </span>
+        </span>
+        <span class="ta-tab__label">{tab.label}</span>
+      </.link>
+      <button
+        id="tab-more"
+        type="button"
+        popovertarget="more-sheet"
+        aria-current={@more_active? && "page"}
+        class="ta-tab"
+      >
+        <span class="ta-tab__icon">
+          <.icon name="hero-bars-3" class="size-5" />
+          <span :if={@more_badge?} class="ta-tab__dot" aria-hidden="true"></span>
+        </span>
+        <span class="ta-tab__label">{gettext("Plus")}</span>
+      </button>
+    </nav>
+    """
+  end
+
+  defp tab_active?(path, %{match: [_ | _] = prefixes}),
+    do: path != nil and Enum.any?(prefixes, &String.starts_with?(path, &1))
+
+  defp tab_active?(path, tab), do: rail_active?(path, tab.path)
+
+  defp tab_badge_class(%{badge_tone: :error}), do: "bg-error text-error-content"
+  defp tab_badge_class(_tab), do: "bg-warning text-warning-content"
+
+  attr :more, :list, required: true
+  attr :current_user, :map, required: true
+  attr :user_initial, :string, default: nil
+  attr :space, :map, required: true
+  attr :space_keys, :list, default: []
+  attr :workspaces, :list, default: []
+  attr :workspace_id, :string, default: nil
+  attr :current_path, :string, default: nil
+
+  # The « Plus » sheet: a native popover (light-dismiss and Escape for free, and
+  # it works on pages without a live connection). app.js closes it on navigation.
+  defp more_sheet(assigns) do
+    ~H"""
+    <div id="more-sheet" popover class="ta-sheet" aria-label={gettext("Plus")}>
+      <span class="ta-sheet__grip" aria-hidden="true"></span>
+
+      <div class="flex items-center gap-3">
+        <span class="grid size-11 flex-none place-items-center rounded-full bg-primary/20 font-semibold text-base-content">
+          {@user_initial}
+        </span>
+        <span class="min-w-0 flex-1 leading-tight">
+          <span class="block truncate font-semibold">{User.display_name(@current_user)}</span>
+          <span :if={User.contact(@current_user)} class="ta-text-2 block truncate text-sm">
+            {User.contact(@current_user)}
+          </span>
+        </span>
+        <button
+          type="button"
+          popovertarget="more-sheet"
+          popovertargetaction="hide"
+          aria-label={gettext("Fermer")}
+          class="grid size-11 flex-none place-items-center rounded-lg"
+        >
+          <.icon name="hero-x-mark" class="size-5" />
+        </button>
+      </div>
+
+      <div :if={length(@space_keys) > 1} class="flex flex-col gap-2">
+        <span class="ta-eyebrow">{gettext("Espace")}</span>
+        <div class="flex flex-wrap gap-2" role="navigation" aria-label={gettext("Espaces")}>
+          <.link
+            :for={key <- @space_keys}
+            id={"sheet-space-#{key}"}
+            href={~p"/school/space/#{key}"}
+            aria-current={@space.key == key && "true"}
+            class="ta-chip"
+          >
+            {Spaces.label(key)}
+          </.link>
+        </div>
+      </div>
+
+      <nav
+        :if={@more != []}
+        id="more-nav"
+        class="grid grid-cols-3 gap-2"
+        aria-label={gettext("Autres pages")}
+      >
+        <%= for section <- @more, item <- section.items do %>
+          <.link
+            id={"more-#{item.id}"}
+            navigate={item.path}
+            aria-current={rail_active?(@current_path, item.path) && "page"}
+            class="ta-tile"
+          >
+            <span class="flex items-start justify-between gap-1">
+              <.icon name={item.icon} class="size-5 text-primary" />
+              <span
+                :if={(item[:badge] || 0) > 0}
+                class={["ta-tab__badge !static", tab_badge_class(item)]}
+              >
+                {item.badge}
+              </span>
+            </span>
+            <span>{item.label}</span>
+          </.link>
+        <% end %>
+      </nav>
+
+      <div class="flex flex-col">
+        <div class="ta-sheet__row">
+          <.icon name="hero-moon" class="ta-text-2 size-5 flex-none" />
+          <span class="flex-1">{gettext("Thème")}</span>
+          <.theme_toggle id="theme-toggle-sheet" />
+        </div>
+        <div class="ta-sheet__row">
+          <.icon name="hero-language" class="ta-text-2 size-5 flex-none" />
+          <span class="flex-1">{gettext("Langue")}</span>
+          <div class="ta-seg">
+            <.link
+              :for={{code, label} <- [{"fr", "FR"}, {"en", "EN"}]}
+              href={~p"/locale/#{code}"}
+              aria-current={Gettext.get_locale(TeacherAssistantWeb.Gettext) == code && "true"}
+              class="ta-seg__btn"
+            >
+              {label}
+            </.link>
+          </div>
+        </div>
+        <.link
+          :for={ws <- @workspaces}
+          :if={length(@workspaces) > 1}
+          href={~p"/workspaces/select/#{ws.id}"}
+          aria-current={ws.id == @workspace_id && "true"}
+          class="ta-sheet__row"
+        >
+          <.icon name="hero-building-library" class="ta-text-2 size-5 flex-none" />
+          <span class="min-w-0 flex-1 truncate">{ws.name}</span>
+          <.icon :if={ws.id == @workspace_id} name="hero-check" class="size-5 text-primary" />
+        </.link>
+        <.link navigate={~p"/account/password"} class="ta-sheet__row">
+          <.icon name="hero-key" class="ta-text-2 size-5 flex-none" />
+          <span class="flex-1">{gettext("Mot de passe")}</span>
+          <.icon name="hero-chevron-right" class="ta-text-2 size-4" />
+        </.link>
+        <.link href={~p"/sign-out"} method="delete" class="ta-sheet__row !border-b-0 text-error">
+          <.icon name="hero-arrow-right-on-rectangle" class="size-5 flex-none" />
+          <span class="flex-1">{gettext("Sign out")}</span>
         </.link>
       </div>
     </div>
@@ -448,37 +671,30 @@ defmodule TeacherAssistantWeb.Layouts do
   end
 
   @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
-
-  See <head> in root.html.heex which applies the theme before page load.
+  The reading-mode switch: the board (dark, the default) or craie (light). The
+  current one is marked by CSS from `<html data-theme>`, which app.js sets
+  before the page paints (see `setTheme`).
   """
+  attr :id, :string, required: true
+
   def theme_toggle(assigns) do
     ~H"""
-    <div class="relative flex flex-row items-center rounded-md border border-base-300 bg-base-200">
-      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-[left]" />
-
+    <div id={@id} class="ta-seg" role="group" aria-label={gettext("Thème")}>
       <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="system"
-      >
-        <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="light"
-      >
-        <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
+        type="button"
+        class="ta-seg__btn"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="dark"
       >
-        <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
+        {gettext("Sombre")}
+      </button>
+      <button
+        type="button"
+        class="ta-seg__btn"
+        phx-click={JS.dispatch("phx:set-theme")}
+        data-phx-theme="light"
+      >
+        {gettext("Craie")}
       </button>
     </div>
     """

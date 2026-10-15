@@ -224,7 +224,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
               <% end %>
               <p
                 :if={Enum.all?(@periods, &is_nil(@slots[{day, &1.id}]))}
-                class="px-4 py-3 text-sm text-base-content/60"
+                class="px-4 py-3 text-sm text-base-content/70"
               >
                 {gettext("Pas de cours")}
               </p>
@@ -243,7 +243,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
             <tbody>
               <tr :for={period <- @periods} id={"period-row-#{period.id}"}>
                 <%= if period.kind == :break do %>
-                  <td colspan={length(@days) + 1} class="text-center italic text-base-content/60">
+                  <td colspan={length(@days) + 1} class="text-center italic text-base-content/70">
                     {period.label}
                   </td>
                 <% else %>
@@ -279,7 +279,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                     <% else %>
                       <td
                         id={"cell-#{day}-#{period.id}"}
-                        class="closed-cell bg-base-200/60 text-center text-xs text-base-content/50"
+                        class="closed-cell bg-base-200/60 text-center text-xs text-base-content/70"
                       >
                         {gettext("Libre")}
                       </td>

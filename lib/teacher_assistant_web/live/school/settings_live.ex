@@ -332,7 +332,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               />
               <span
                 :if={!@profile.logo_path}
-                class="grid size-16 place-items-center rounded-lg border border-dashed border-base-300 text-base-content/50"
+                class="grid size-16 place-items-center rounded-lg border border-dashed border-base-300 text-base-content/70"
               >
                 <.icon name="hero-photo" class="size-6" />
               </span>
@@ -485,7 +485,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
                     />
                     <p
                       :if={field == :entry_deadline and is_nil(seq.entry_deadline)}
-                      class="mt-1 text-xs text-base-content/60"
+                      class="mt-1 text-xs text-base-content/70"
                     >
                       {gettext("Par défaut : %{date}", date: Dates.short(seq.grade_entry_deadline))}
                     </p>
@@ -695,7 +695,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         <span class="flex-1">{@title}</span>
         <.icon
           name="hero-chevron-right"
-          class="size-4 text-base-content/40 transition-transform group-hover:translate-x-0.5"
+          class="size-4 text-base-content/70 transition-transform group-hover:translate-x-0.5"
         />
       </span>
       <span class="flex-1 text-sm text-base-content/70">{@text}</span>

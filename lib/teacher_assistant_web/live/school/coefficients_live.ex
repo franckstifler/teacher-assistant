@@ -150,7 +150,7 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
           <div class="flex items-center justify-between gap-4 p-4">
             <div>
               <p class="font-medium">{gettext("Autoriser un coefficient propre à une classe")}</p>
-              <p class="text-xs text-base-content/60">
+              <p class="text-xs text-base-content/70">
                 {gettext("Modifiable depuis la page de la classe.")}
               </p>
               <p

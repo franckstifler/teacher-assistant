@@ -421,7 +421,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
               </span>
             </p>
           </header>
-          <div class="hidden grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_5.5rem_15rem] gap-3 border-t border-base-300 px-4 py-2 text-xs text-base-content/60 md:grid">
+          <div class="hidden grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_5.5rem_15rem] gap-3 border-t border-base-300 px-4 py-2 text-xs text-base-content/70 md:grid">
             <span>{gettext("Rang")}</span>
             <span>{gettext("Élève")}</span>
             <span class="text-right">{gettext("Moyenne")}</span>
@@ -607,7 +607,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
                 <.distinction_badge distinction={row.data && row.data.distinction} />
               </div>
               <div>
-                <span class="mb-1 block text-xs text-base-content/60">{gettext("Conduite")}</span>
+                <span class="mb-1 block text-xs text-base-content/70">{gettext("Conduite")}</span>
                 <.input
                   type="select"
                   name="decision[conduct_warning]"
@@ -619,7 +619,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
                 />
               </div>
               <div class="lg:col-span-2">
-                <span class="mb-1 block text-xs text-base-content/60">
+                <span class="mb-1 block text-xs text-base-content/70">
                   {gettext("Appréciation")}
                 </span>
                 <.input

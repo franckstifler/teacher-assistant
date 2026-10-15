@@ -141,7 +141,7 @@ defmodule TeacherAssistantWeb.School.EnrollDrawer do
               "ta-num mr-auto self-center text-xs",
               if(elem(@target, 1).count + 1 > elem(@target, 1).max,
                 do: "font-semibold text-warning",
-                else: "text-base-content/60"
+                else: "text-base-content/70"
               )
             ]}
           >
@@ -375,7 +375,7 @@ defmodule TeacherAssistantWeb.School.EnrollDrawer do
         >
           <span class="min-w-0 text-sm">
             <span class="block font-semibold">{student.full_name}</span>
-            <span class="ta-num block text-xs text-base-content/60">
+            <span class="ta-num block text-xs text-base-content/70">
               {Enum.join(Enum.reject([student.matricule, last_class(student)], &is_nil/1), " · ")}
             </span>
           </span>

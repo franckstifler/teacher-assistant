@@ -347,14 +347,14 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                   <%= if p.kind == :break do %>
                     <td
                       colspan={length(@calendar.lesson_days) + 1}
-                      class="py-0.5 text-center text-xs italic text-base-content/50"
+                      class="py-0.5 text-center text-xs italic text-base-content/70"
                     >
                       {p.label}
                     </td>
                   <% else %>
                     <td class="whitespace-nowrap text-xs">
                       <span class="font-semibold">{p.label}</span>
-                      <span class="block text-base-content/60">{hm(p.start_time)}</span>
+                      <span class="block text-base-content/70">{hm(p.start_time)}</span>
                     </td>
                     <td :for={d <- @calendar.lesson_days} class="p-1">
                       <% slot = @grid[{d, p.id}] %>
@@ -362,7 +362,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                         <% not SchoolCalendar.open_cell?(@calendar, d, p) -> %>
                           <div
                             id={"cell-#{d}-#{p.id}"}
-                            class="closed-cell flex h-11 items-center rounded bg-base-200/60 px-1.5 text-xs text-base-content/55"
+                            class="closed-cell flex h-11 items-center rounded bg-base-200/60 px-1.5 text-xs text-base-content/70"
                           >
                             {gettext("Fermé")}
                           </div>
@@ -378,7 +378,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                               clash?(@clashes, @cg, d, p.id) &&
                                 "clash-cell border border-error bg-error/30",
                               !clash?(@clashes, @cg, d, p.id) && slot && "bg-primary/15",
-                              !slot && "border border-dashed border-base-300 text-base-content/50",
+                              !slot && "border border-dashed border-base-300 text-base-content/70",
                               @selected == {d, p.id} && "ring-2 ring-base-content"
                             ]}
                           >

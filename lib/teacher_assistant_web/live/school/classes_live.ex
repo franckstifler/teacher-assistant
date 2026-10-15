@@ -149,7 +149,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           >
             <div class="flex items-baseline gap-3">
               <h2 class="font-display text-xl font-semibold">{cycle_label(cycle)}</h2>
-              <span class="ta-num text-xs text-base-content/60">
+              <span class="ta-num text-xs text-base-content/70">
                 {ngettext("%{count} classe", "%{count} classes", length(rows))} · {ngettext(
                   "%{count} élève",
                   "%{count} élèves",
@@ -274,7 +274,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
         </span>
         <span
           id={"class-unassigned-#{@row.cg.id}"}
-          class={if @row.unassigned > 0, do: "font-semibold text-error", else: "text-base-content/60"}
+          class={if @row.unassigned > 0, do: "font-semibold text-error", else: "text-base-content/70"}
         >
           {if @row.unassigned > 0,
             do:
@@ -387,7 +387,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             phx-debounce="200"
             class="input input-sm w-full"
           />
-          <span class="block text-xs text-base-content/60">{@nc.suffix_hint}</span>
+          <span class="block text-xs text-base-content/70">{@nc.suffix_hint}</span>
         </div>
         <div class="space-y-1">
           <label for={@form[:max_size].id} class="ta-eyebrow block">
@@ -401,7 +401,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             placeholder={@profile && @profile.max_class_size && to_string(@profile.max_class_size)}
             class="input input-sm w-full"
           />
-          <span class="block text-xs text-base-content/60">
+          <span class="block text-xs text-base-content/70">
             {gettext("Alerte au-delà, sans bloquer")}
           </span>
         </div>

@@ -104,7 +104,7 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     set :h2_class, "#{@heading} text-center"
     set :h2_text, "À bientôt"
     set :info_text, "Voulez-vous vraiment vous déconnecter ?"
-    set :info_text_class, "text-sm text-base-content/65 mb-4 text-center"
+    set :info_text_class, "text-sm text-base-content/70 mb-4 text-center"
     set :button_text, "Se déconnecter"
     set :button_class, "btn btn-primary btn-block"
   end

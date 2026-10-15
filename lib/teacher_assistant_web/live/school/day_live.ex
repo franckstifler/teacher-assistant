@@ -292,7 +292,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
                     </span>
                   </span>
                 </span>
-                <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+                <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
               </.link>
             </li>
           </ul>
@@ -363,7 +363,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
       class="ta-list-row"
     >
       <.class_day_body {assigns} />
-      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
     </.link>
     <div :if={!@detail?} id={"class-day-#{@row.class_group.id}"} class="ta-list-row">
       <.class_day_body {assigns} />

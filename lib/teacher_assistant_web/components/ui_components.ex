@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.UIComponents do
       <div class="min-w-0">
         <label :if={@for} for={@for} class="text-[0.95rem] font-medium">{@label}</label>
         <span :if={!@for} class="text-[0.95rem] font-medium">{@label}</span>
-        <p :if={@help} class="mt-0.5 text-sm text-base-content/65">{@help}</p>
+        <p :if={@help} class="mt-0.5 text-sm text-base-content/70">{@help}</p>
       </div>
       <div class="ta-setting__control">{render_slot(@inner_block)}</div>
     </div>
@@ -142,7 +142,7 @@ defmodule TeacherAssistantWeb.UIComponents do
         inputmode={@inputmode}
         class="ta-num grow text-right"
       />
-      <span class="text-sm text-base-content/60">{@unit}</span>
+      <span class="text-sm text-base-content/70">{@unit}</span>
     </label>
     """
   end
@@ -163,7 +163,7 @@ defmodule TeacherAssistantWeb.UIComponents do
     <label class="ta-setting cursor-pointer !grid-cols-[minmax(0,1fr)_auto] items-center">
       <span class="min-w-0">
         <span class="text-[0.95rem] font-medium">{@label}</span>
-        <span :if={@help} class="mt-0.5 block text-sm text-base-content/65">{@help}</span>
+        <span :if={@help} class="mt-0.5 block text-sm text-base-content/70">{@help}</span>
       </span>
       <span class="ta-setting__control flex justify-end">
         <input :if={@hidden_false} type="hidden" name={@name} value="false" />
@@ -210,7 +210,7 @@ defmodule TeacherAssistantWeb.UIComponents do
       {@rest}
     >
       <.list_row_body {assigns} />
-      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
     </.link>
     <button
       :if={!@link? && @rest[:"phx-click"]}
@@ -221,7 +221,7 @@ defmodule TeacherAssistantWeb.UIComponents do
       {@rest}
     >
       <.list_row_body {assigns} />
-      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
     </button>
     <div
       :if={!@link? && !@rest[:"phx-click"]}
@@ -239,7 +239,7 @@ defmodule TeacherAssistantWeb.UIComponents do
     <span :if={@leading != []} class="shrink-0">{render_slot(@leading)}</span>
     <span class="flex min-w-0 flex-1 flex-col">
       <span class="truncate text-[0.95rem] font-medium">{@title}</span>
-      <span :if={@meta} class={["truncate text-sm text-base-content/65", @meta_class]}>{@meta}</span>
+      <span :if={@meta} class={["truncate text-sm text-base-content/70", @meta_class]}>{@meta}</span>
       {render_slot(@inner_block)}
     </span>
     <span :if={@trailing != []} class="shrink-0 text-right">{render_slot(@trailing)}</span>

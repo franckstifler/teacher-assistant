@@ -70,9 +70,9 @@ defmodule TeacherAssistantWeb.School.NotificationsLive do
           <p
             :if={@page.results == []}
             id="notifications-empty"
-            class="flex items-center gap-2 p-5 text-sm text-base-content/60"
+            class="flex items-center gap-2 p-5 text-sm text-base-content/70"
           >
-            <.icon name="hero-bell-slash" class="size-5 text-base-content/40" />
+            <.icon name="hero-bell-slash" class="size-5 text-base-content/70" />
             {gettext("Aucune notification pour l'instant.")}
           </p>
           <button
@@ -117,7 +117,7 @@ defmodule TeacherAssistantWeb.School.NotificationsLive do
             patch={~p"/school/notifications?page=#{p}"}
             aria-current={p == @page_number && "page"}
             class={[
-              "ta-num rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:border-primary",
+              "rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:border-primary",
               if(p == @page_number,
                 do: "border-primary bg-primary/15 text-primary",
                 else: "border-base-300 text-base-content/70"

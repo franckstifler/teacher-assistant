@@ -217,7 +217,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           id="no-sequences"
           class="ta-leaf flex items-start gap-3 text-sm text-base-content/80"
         >
-          <.icon name="hero-calendar-days" class="size-5 shrink-0 text-base-content/50" />
+          <.icon name="hero-calendar-days" class="size-5 shrink-0 text-base-content/70" />
           <p>
             {gettext(
               "Aucune séquence pour l'année en cours. Définissez le calendrier dans les paramètres pour suivre la saisie des notes."
@@ -237,7 +237,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
               patch={~p"/school/sequences?seq=#{s.id}"}
               aria-current={s.id == @seq.id && "page"}
               class={[
-                "ta-num rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                "rounded-full border px-3 py-1 text-sm font-medium transition-colors",
                 if(s.id == @seq.id,
                   do: "border-primary bg-primary text-primary-content",
                   else: "border-base-300 text-base-content/70 hover:border-primary"
@@ -265,7 +265,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 </div>
               </div>
 
-              <p :if={@grid.subjects == []} class="text-sm text-base-content/60">
+              <p :if={@grid.subjects == []} class="text-sm text-base-content/70">
                 {gettext("Aucun cours n'est encore attribué pour cette année.")}
               </p>
 
@@ -299,7 +299,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                     <span class="min-w-0 flex-1 truncate">
                       <span class="font-medium">{subject.label}</span>
                       <span class="ta-num text-base-content/70">· {cell.pct} %</span>
-                      <span class="block truncate text-xs text-base-content/60">
+                      <span class="block truncate text-xs text-base-content/70">
                         {teacher_name(cell.teacher)}
                         <span :if={@reminders[cell.teaching_context.id]}>
                           · {gettext("relancé le %{date}",
@@ -417,7 +417,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 <h2 class="ta-eyebrow">
                   {gettext("À relancer · %{n}", n: length(@grid.late))}
                 </h2>
-                <p :if={@grid.late == []} class="py-2 text-sm text-base-content/60">
+                <p :if={@grid.late == []} class="py-2 text-sm text-base-content/70">
                   {gettext("Personne : tous les cours sont saisis à 100 %.")}
                 </p>
                 <ul :if={@grid.late != []} class="flex flex-col">
@@ -498,7 +498,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     <span
       id={@id}
       title={@title <> " · " <> gettext("aucun élève")}
-      class="ta-num flex h-9 items-center justify-center rounded-md bg-base-300/40 text-xs text-base-content/50"
+      class="ta-num flex h-9 items-center justify-center rounded-md bg-base-300/40 text-xs text-base-content/70"
     >
       ·
     </span>

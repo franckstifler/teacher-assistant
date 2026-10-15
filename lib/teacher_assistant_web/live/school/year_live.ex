@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.School.YearLive do
           }
         />
         <div class="ta-panel flex flex-col !p-0">
-          <p :if={@classes == []} id="past-year-empty" class="p-4 text-sm text-base-content/60">
+          <p :if={@classes == []} id="past-year-empty" class="p-4 text-sm text-base-content/70">
             {gettext("Aucune classe cette année-là.")}
           </p>
           <div

@@ -116,7 +116,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
     ~H|<.mention_badge mention={@mention} />|
   end
 
-  defp appreciation(assigns), do: ~H|<span class="text-base-content/40">—</span>|
+  defp appreciation(assigns), do: ~H|<span class="text-base-content/70">—</span>|
 
   # The mark on /20, nil when not a number.
   defp scaled({:ok, {:graded, d}}, %Decimal{} = max),

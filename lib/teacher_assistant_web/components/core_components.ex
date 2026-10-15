@@ -298,7 +298,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
       <span :for={entry <- @upload.entries} class="truncate text-xs text-base-content/70">
         {entry.client_name}
       </span>
-      <span :if={@upload.entries == []} class="text-xs text-base-content/50">
+      <span :if={@upload.entries == []} class="text-xs text-base-content/70">
         {gettext("Aucun fichier choisi")}
       </span>
     </div>
@@ -633,7 +633,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
     """
   end
 
-  @doc "A KPI tile: mono label, big mono value in `tone`, short caption."
+  @doc "A KPI tile: label, big mono figure in `tone`, short caption."
   attr :id, :string, required: true
   attr :label, :string, required: true
   attr :value, :string, required: true
@@ -643,11 +643,11 @@ defmodule TeacherAssistantWeb.CoreComponents do
   def kpi(assigns) do
     ~H"""
     <div id={@id} class="ta-panel flex flex-col gap-1 !py-3">
-      <span class="ta-num text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-base-content/70">
+      <span class="ta-text-2 text-[0.8125rem] font-medium">
         {@label}
       </span>
-      <span class={["ta-num text-[1.6rem] font-semibold leading-tight", @tone]}>{@value}</span>
-      <span :if={@sub} class="text-[0.76rem] text-base-content/70">{@sub}</span>
+      <span class={["ta-num text-[1.6rem] font-medium leading-tight", @tone]}>{@value}</span>
+      <span :if={@sub} class="ta-text-2 text-[0.8125rem]">{@sub}</span>
     </div>
     """
   end
@@ -678,7 +678,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
         @tone == :behind && "text-warning",
         @tone == :error && "text-error"
       ]}>
-        {@value}<span :if={@suffix} class="text-base font-normal text-base-content/55">{@suffix}</span>
+        {@value}<span :if={@suffix} class="text-base font-normal text-base-content/70">{@suffix}</span>
       </p>
     </div>
     """

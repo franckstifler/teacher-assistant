@@ -263,7 +263,7 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
                       {row.guardian.phone}
                     </a>
                   <% else %>
-                    <span class="text-base-content/60">{gettext("Aucun contact")}</span>
+                    <span class="text-base-content/70">{gettext("Aucun contact")}</span>
                   <% end %>
                 </span>
               </div>

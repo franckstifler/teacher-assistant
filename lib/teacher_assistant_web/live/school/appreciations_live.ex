@@ -197,7 +197,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
           <.form for={%{}} as={:bands} id="bands-form" phx-change="edit_bands" class="flex flex-col">
             <div class={[
               band_grid(),
-              "ta-num py-1 text-[0.64rem] font-semibold uppercase tracking-[0.06em] text-base-content/75"
+              "ta-text-2 py-1 text-xs font-medium"
             ]}>
               <span>{gettext("De")}</span><span></span><span>{gettext("À (exclu)")}</span>
               <span>{gettext("Appréciation")}</span><span></span>

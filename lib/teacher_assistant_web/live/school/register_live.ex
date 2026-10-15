@@ -184,7 +184,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   defp status_word(:absent), do: gettext("Absent")
   defp status_word(:late), do: gettext("En retard")
 
-  defp mark_class(nil), do: "bg-base-200 text-base-content/35"
+  defp mark_class(nil), do: "bg-base-200 text-base-content/70"
   defp mark_class(:present), do: "bg-success/15 text-success"
   defp mark_class(:absent), do: "bg-error/15 text-error"
   defp mark_class(:late), do: "bg-warning/20 text-warning"

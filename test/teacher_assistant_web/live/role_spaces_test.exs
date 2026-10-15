@@ -63,6 +63,23 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#nav-school-courses")
   end
 
+  test "on phones the space's tab bar leads, the rest sits in the « Plus » sheet", ctx do
+    {conn, tc} = member_conn(ctx, [:vice_principal, :teacher], teaches?: true)
+    {:ok, view, _} = live(conn, ~p"/school/sequences")
+    assert has_element?(view, "#tab-nav-school-sequences[aria-current=page]")
+    assert has_element?(view, "#tab-nav-school-timetable-editor")
+    assert has_element?(view, "#tab-more[popovertarget=more-sheet]")
+    assert has_element?(view, "#more-sheet #more-nav-school-members")
+    refute has_element?(view, "#more-sheet #more-nav-school-sequences")
+    assert has_element?(view, "#more-sheet #sheet-space-enseignant")
+
+    conn = get(conn, ~p"/school/space/enseignant")
+    conn = get(conn, ~p"/teacher/select-context/#{tc.id}")
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks")
+    assert has_element?(view, "#tab-nav-school-marks[aria-current=page]")
+    refute has_element?(view, "#tab-nav-school-courses[aria-current=page]")
+  end
+
   test "a hidden screen stays read-only when typed directly", ctx do
     {conn, _} = member_conn(ctx, [:teacher], teaches?: true)
     {:ok, view, _} = live(conn, ~p"/school/settings")

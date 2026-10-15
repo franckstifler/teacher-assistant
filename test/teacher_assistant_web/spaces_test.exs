@@ -44,6 +44,56 @@ defmodule TeacherAssistantWeb.SpacesTest do
     assert Spaces.parse_key("admin") == nil
   end
 
+  defp tab_labels(key, facts),
+    do: for(tab <- Spaces.tab_bar(Spaces.space(key, facts)).primary, do: tab.label)
+
+  describe "tab_bar/1 (phone navigation)" do
+    test "each role space gets its four primary tabs" do
+      assert tab_labels(:proviseur, facts([:head])) == [
+               "Accueil",
+               "Classes",
+               "Élèves",
+               "Bulletins"
+             ]
+
+      assert tab_labels(:censeur, facts([:vice_principal])) ==
+               ["Suivi", "Emploi du temps", "Classes", "Bulletins"]
+
+      assert tab_labels(:surveillant, facts([:discipline_master])) ==
+               ["Journée", "Absences", "Élèves", "Sanctions"]
+
+      assert tab_labels(:enseignant, facts([:teacher], teaches?: true)) ==
+               ["Aujourd'hui", "Mes cours", "Notes", "Emploi du temps"]
+    end
+
+    test "« Plus » holds the rest of the menu, never a primary tab" do
+      %{primary: primary, more: more} = Spaces.tab_bar(Spaces.space(:proviseur, facts([:head])))
+      more_paths = for s <- more, item <- s.items, do: item.path
+
+      assert "/school/sequences" in more_paths
+      assert "/school/settings" in more_paths
+      refute Enum.any?(primary, &(&1.path in more_paths))
+    end
+
+    test "Notes opens the course list and is lit by a course's marks pages" do
+      %{primary: primary, more: more} =
+        Spaces.tab_bar(Spaces.space(:enseignant, facts([:teacher], teaches?: true)))
+
+      notes = Enum.find(primary, &(&1.label == "Notes"))
+      assert notes.path == "/school/courses"
+      assert notes.match == ["/teacher/contexts"]
+      refute "/school/courses" in for(s <- more, item <- s.items, do: item.path)
+    end
+
+    test "missing chosen items are topped up from the menu" do
+      # a form master who does not teach: no « Ma journée », no « Mes cours »
+      assert tab_labels(:enseignant, facts([:teacher], form_master?: true)) ==
+               ["Emploi du temps", "Classes", "Bulletins"]
+
+      assert tab_labels(:intendant, facts([:bursar])) == ["Classes"]
+    end
+  end
+
   test "homes and menus" do
     assert Spaces.space(:proviseur, facts([:head])).home == "/school"
     assert Spaces.space(:censeur, facts([:vice_principal])).home == "/school/sequences"

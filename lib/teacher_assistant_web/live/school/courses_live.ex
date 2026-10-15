@@ -269,7 +269,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 <span :if={course.progress.expected > 0} class="ta-num font-semibold">
                   {course.progress.entered} / {course.progress.expected}
                 </span>
-                <span :if={course.progress.expected == 0} class="text-base-content/60">
+                <span :if={course.progress.expected == 0} class="text-base-content/70">
                   {gettext("aucune évaluation")}
                 </span>
               </div>

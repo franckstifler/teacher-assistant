@@ -146,11 +146,11 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
             <span class="flex items-center gap-2">
               <.icon
                 name={if done?, do: "hero-check-circle", else: "hero-minus-circle"}
-                class={"size-4 shrink-0 " <> if(done?, do: "text-primary", else: "text-base-content/40")}
+                class={"size-4 shrink-0 " <> if(done?, do: "text-primary", else: "text-base-content/70")}
               />
               {label}
             </span>
-            <span class="ta-num shrink-0 text-xs text-base-content/60">{value}</span>
+            <span class="ta-num shrink-0 text-xs text-base-content/70">{value}</span>
           </li>
         </ul>
       </div>
@@ -236,7 +236,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
 
   defp step_badge_class(:done), do: "bg-primary text-primary-content"
   defp step_badge_class(:current), do: "border-2 border-primary text-primary"
-  defp step_badge_class(:upcoming), do: "bg-base-300 text-base-content/50"
+  defp step_badge_class(:upcoming), do: "bg-base-300 text-base-content/70"
 
   def handle_event("validate_year", %{"year" => params}, socket) do
     {:noreply,
@@ -544,8 +544,8 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
         >
           <span class="text-sm">
             <span class="font-medium">{cg.label}</span>
-            <span class="text-base-content/60">· {cg.level}</span>
-            <span :if={cg.serie} class="text-base-content/60">· {cg.serie}</span>
+            <span class="text-base-content/70">· {cg.level}</span>
+            <span :if={cg.serie} class="text-base-content/70">· {cg.serie}</span>
           </span>
           <button
             id={"wizard-class-delete-#{cg.id}"}
@@ -650,7 +650,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
         >
           <div class="text-sm">
             <span class="font-medium">{inv.email}</span>
-            <span class="text-base-content/60">
+            <span class="text-base-content/70">
               — {inv.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
             </span>
           </div>

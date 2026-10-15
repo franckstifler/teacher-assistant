@@ -109,7 +109,7 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
                   "input w-24 shrink-0 sm:w-28",
                   :default_weight in error_fields(@type_errors, t) && "input-error"
                 ]}>
-                  <span class="text-sm text-base-content/60" aria-hidden="true">×</span>
+                  <span class="text-sm text-base-content/70" aria-hidden="true">×</span>
                   <input
                     type="text"
                     id={"type-weight-#{t.id}"}
@@ -134,7 +134,7 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
                 </button>
                 <span
                   :if={t.usage_count > 0}
-                  class="grid size-11 shrink-0 place-items-center text-base-content/40"
+                  class="grid size-11 shrink-0 place-items-center text-base-content/70"
                   title={
                     ngettext(
                       "Utilisé par 1 évaluation : il ne peut pas être supprimé.",
@@ -256,7 +256,7 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
                 />
                 <span class="min-w-0">
                   <span class="block text-sm font-medium">{enum.label(value)}</span>
-                  <span :if={value == official} class="block text-xs text-base-content/60">
+                  <span :if={value == official} class="block text-xs text-base-content/70">
                     {if field == "absence_rule",
                       do: gettext("pratique courante"),
                       else: gettext("règle officielle")}
@@ -269,7 +269,7 @@ defmodule TeacherAssistantWeb.School.EvaluationsLive do
           <label for="toggle-shared-ranks" class="ta-setting cursor-pointer">
             <span class="min-w-0">
               <span class="text-[0.95rem] font-medium">{gettext("Rang ex æquo")}</span>
-              <span class="mt-0.5 block text-sm text-base-content/65">
+              <span class="mt-0.5 block text-sm text-base-content/70">
                 {gettext("Désactivé : départage par la moyenne non arrondie, puis par le nom.")}
               </span>
             </span>

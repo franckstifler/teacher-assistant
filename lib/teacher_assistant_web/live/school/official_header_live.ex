@@ -127,7 +127,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
 
         <.form for={%{}} id="header-lines-form" phx-submit="save_lines" class="ta-panel space-y-3">
           <h2 class="ta-eyebrow">{gettext("En-tête officiel")}</h2>
-          <p class="text-xs text-base-content/60">
+          <p class="text-xs text-base-content/70">
             {gettext("Une ligne par ligne d'en-tête, 6 au plus.")}
           </p>
           <textarea name="lines" rows="6" class="textarea textarea-bordered w-full">{Enum.join(@lines, "\n")}</textarea>

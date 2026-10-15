@@ -236,6 +236,85 @@ defmodule TeacherAssistantWeb.Spaces do
     }
   end
 
+  @doc """
+  The phone tab bar of a space (UI review 2026-10): up to four `primary` tabs,
+  each an item of the space's menu under a short label, and the menu `more`
+  sections minus those items (the « Plus » sheet). A space whose chosen items
+  are missing (a member who does not teach…) is topped up from its menu in
+  order. A tab's `match`, when set, lists the path prefixes that light it
+  instead of its own path.
+  """
+  def tab_bar(%{key: key, sections: sections}) do
+    items = Enum.flat_map(sections, & &1.items)
+    by_id = Map.new(items, &{&1.id, &1})
+
+    chosen =
+      for {id, label, overrides} <- tab_spec(key),
+          item = by_id["nav-school-" <> id],
+          item != nil do
+        Map.merge(%{item | label: label}, Map.put_new(overrides, :match, nil))
+      end
+
+    taken = MapSet.new(chosen, & &1.path)
+
+    top_up =
+      items
+      |> Enum.reject(&MapSet.member?(taken, &1.path))
+      |> Enum.map(&Map.put(&1, :match, nil))
+
+    primary = Enum.take(chosen ++ top_up, 4)
+    shown = MapSet.new(primary, & &1.path)
+
+    more =
+      sections
+      |> Enum.map(fn s -> %{s | items: Enum.reject(s.items, &MapSet.member?(shown, &1.path))} end)
+      |> Enum.reject(&(&1.items == []))
+
+    %{primary: primary, more: more}
+  end
+
+  defp tab_spec(:proviseur),
+    do: [
+      {"dashboard", gettext("Accueil"), %{}},
+      {"classes", gettext("Classes"), %{}},
+      {"students", gettext("Élèves"), %{}},
+      {"bulletins", gettext("Bulletins"), %{}}
+    ]
+
+  defp tab_spec(:censeur),
+    do: [
+      {"sequences", gettext("Suivi"), %{}},
+      {"timetable-editor", gettext("Emploi du temps"), %{}},
+      {"classes", gettext("Classes"), %{}},
+      {"bulletins", gettext("Bulletins"), %{}}
+    ]
+
+  defp tab_spec(:surveillant),
+    do: [
+      {"day", gettext("Journée"), %{}},
+      {"absences", gettext("Absences"), %{}},
+      {"students", gettext("Élèves"), %{}},
+      {"sanctions", gettext("Sanctions"), %{}}
+    ]
+
+  # « Notes » opens the course list (marks are entered per course) and stays lit
+  # on a course's marks pages; « Mes cours » is the list itself.
+  defp tab_spec(:enseignant),
+    do: [
+      {"today", gettext("Aujourd'hui"), %{}},
+      {"courses", gettext("Mes cours"), %{}},
+      {"courses", gettext("Notes"),
+       %{
+         id: "nav-school-marks",
+         icon: "hero-pencil-square",
+         badge: nil,
+         match: ["/teacher/contexts"]
+       }},
+      {"timetable-me", gettext("Emploi du temps"), %{}}
+    ]
+
+  defp tab_spec(_key), do: []
+
   defp section(label, items), do: %{label: label, items: items}
 
   defp item(id, label, icon, path, badge \\ nil, badge_tone \\ :warning),

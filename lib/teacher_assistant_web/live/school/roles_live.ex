@@ -45,7 +45,7 @@ defmodule TeacherAssistantWeb.School.RolesLive do
                     <% :yes -> %>
                       <.icon name="hero-check" class="size-4 text-primary" />
                     <% :no -> %>
-                      <span class="text-base-content/30">—</span>
+                      <span class="text-base-content/70">—</span>
                     <% {:note, text} -> %>
                       <span class="text-base-content/80">{text}</span>
                   <% end %>

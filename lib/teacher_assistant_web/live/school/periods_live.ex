@@ -159,7 +159,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLive do
               <span :if={period.kind == :break} class="shrink-0 text-xs">
                 {PeriodKind.label(:break)}
               </span>
-              <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+              <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
             </button>
           </div>
           <div :if={@periods == []} class="px-4 pb-5 sm:px-5">

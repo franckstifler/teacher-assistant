@@ -132,7 +132,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             meta={invitation_meta(inv)}
           >
             <:leading>
-              <span class="grid size-10 place-items-center rounded-full bg-base-200 text-base-content/60">
+              <span class="grid size-10 place-items-center rounded-full bg-base-200 text-base-content/70">
                 <.icon name="hero-envelope" class="size-5" />
               </span>
             </:leading>
@@ -199,7 +199,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       </:leading>
       <span
         :if={@member.user.name && User.contact(@member.user)}
-        class="mt-0.5 flex min-w-0 items-center gap-1.5 text-sm text-base-content/65"
+        class="mt-0.5 flex min-w-0 items-center gap-1.5 text-sm text-base-content/70"
       >
         <span class="ta-num shrink-0 rounded border border-base-300 px-1 text-[0.6rem] font-semibold leading-4 tracking-wide">
           {if @member.user.email, do: "@", else: gettext("TÉL")}
@@ -208,7 +208,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           {User.contact(@member.user)}
         </span>
       </span>
-      <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/65">
+      <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/70">
         <span
           :for={role <- @member.roles}
           class="rounded-full border border-base-300 px-2 py-0.5 font-medium text-base-content/80"
@@ -325,7 +325,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
               required
             />
           </div>
-          <p class="text-xs text-base-content/60">
+          <p class="text-xs text-base-content/70">
             {gettext(
               "9 chiffres, commençant par 6 (mobile) ou 2 (fixe). Écrivez-le comme vous voulez."
             )}
@@ -428,7 +428,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           <p :if={User.contact(@member.user)} class={["truncate", !@member.user.email && "ta-num"]}>
             {User.contact(@member.user)}
           </p>
-          <p class="text-base-content/65">
+          <p class="text-base-content/70">
             {@member.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
           </p>
         </div>
@@ -474,7 +474,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           >
             <.icon name="hero-exclamation-circle" class="size-5" />{msg}
           </p>
-          <p class="text-xs text-base-content/60">
+          <p class="text-xs text-base-content/70">
             {gettext("Laissez vide pour appliquer le service par défaut de l'école.")}
           </p>
         </div>
@@ -558,11 +558,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       <span class="flex items-center gap-2 text-sm font-semibold">
         <.icon
           name={@icon}
-          class="size-4 text-base-content/60 group-aria-checked:text-primary"
+          class="size-4 text-base-content/70 group-aria-checked:text-primary"
         />
         {@title}
       </span>
-      <span class="mt-1 block text-xs leading-snug text-base-content/65">{@hint}</span>
+      <span class="mt-1 block text-xs leading-snug text-base-content/70">{@hint}</span>
     </button>
     """
   end
@@ -663,11 +663,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
         <div class="space-y-3 rounded-box border border-base-300 bg-base-200/60 p-4">
           <div :if={@info.login}>
-            <p class="ta-eyebrow text-base-content/60">{gettext("Identifiant")}</p>
+            <p class="ta-eyebrow text-base-content/70">{gettext("Identifiant")}</p>
             <p class="ta-num mt-0.5">{@info.login}</p>
           </div>
           <div>
-            <p class="ta-eyebrow text-base-content/60">{gettext("Mot de passe temporaire")}</p>
+            <p class="ta-eyebrow text-base-content/70">{gettext("Mot de passe temporaire")}</p>
             <p
               id="temporary-password"
               class="ta-num mt-1 select-all break-all text-2xl font-semibold tracking-wide"

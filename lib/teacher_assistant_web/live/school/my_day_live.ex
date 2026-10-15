@@ -215,7 +215,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
                 </span>
                 <.icon
                   name="hero-chevron-down"
-                  class="size-4 shrink-0 text-base-content/55 transition-transform group-open:rotate-180"
+                  class="size-4 shrink-0 text-base-content/70 transition-transform group-open:rotate-180"
                 />
               </summary>
               <ul class="border-t border-base-300">
@@ -231,14 +231,14 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
                       <span class="text-[0.92rem] font-medium leading-snug">
                         {m.class_group.label} · {m.subject}
                       </span>
-                      <span class="ta-num text-[0.75rem] text-base-content/65">
+                      <span class="tabular-nums text-[0.75rem] text-base-content/70">
                         {Dates.short(m.date)} · {m.period.label} · {hm(m.period.start_time)}
                       </span>
                     </span>
                     <span class="shrink-0 text-sm font-semibold text-primary">
                       {gettext("Faire l'appel")}
                     </span>
-                    <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45" />
+                    <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
                   </.link>
                 </li>
               </ul>
@@ -271,7 +271,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     ~H"""
     <li class="flex items-center gap-2 px-4 py-1.5" aria-hidden="true">
       <span class="h-px flex-1 bg-base-300"></span>
-      <span class="ta-num text-[0.7rem] text-base-content/55">
+      <span class="tabular-nums text-[0.7rem] text-base-content/70">
         {@period.label} · {hm(@period.start_time)}
       </span>
       <span class="h-px flex-1 bg-base-300"></span>
@@ -460,7 +460,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     ~H"""
     <span class="ta-num flex flex-col text-[0.85rem] font-semibold leading-tight">
       {hm(@slot.period.start_time)}
-      <span class="text-[0.7rem] font-normal text-base-content/55">
+      <span class="text-[0.7rem] font-normal text-base-content/70">
         {hm(@slot.period.end_time)}
       </span>
     </span>
@@ -472,7 +472,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
       ]}>
         {@slot.class_group.label} · {@slot.subject}
       </span>
-      <span class="ta-num text-[0.72rem] text-base-content/65">
+      <span class="tabular-nums text-[0.72rem] text-base-content/70">
         <%= if @slot.status == :done do %>
           {ngettext("%{count} absent", "%{count} absents", @slot.absent)}
         <% else %>
@@ -524,7 +524,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp tone_class(:now), do: "bg-warning text-warning-content"
   defp tone_class(:error), do: "bg-error/15 text-error"
-  defp tone_class(:muted), do: "text-base-content/60"
+  defp tone_class(:muted), do: "text-base-content/70"
 
   defp roll_title(roll),
     do:

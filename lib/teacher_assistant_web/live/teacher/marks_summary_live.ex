@@ -256,7 +256,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
               </span>
               <span
                 :if={is_nil(@summary.per_student[s.id].average)}
-                class="text-sm text-base-content/55"
+                class="text-sm text-base-content/70"
               >
                 {gettext("Pas de note")}
               </span>

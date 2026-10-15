@@ -162,9 +162,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
               <.student_avatar student={row.student} class="size-10 text-xs" />
               <span class="flex min-w-0 flex-col">
                 <span class="truncate font-medium">
-                  <span class="ta-num mr-1 text-xs text-base-content/50">{n}</span>{row.student.full_name}
+                  <span class="ta-num mr-1 text-xs text-base-content/70">{n}</span>{row.student.full_name}
                 </span>
-                <span class="truncate text-sm text-base-content/65">
+                <span class="truncate text-sm text-base-content/70">
                   <%= if guardian = @guardians[row.student.id] do %>
                     {guardian.full_name} · {guardian.phone}
                   <% else %>
@@ -222,7 +222,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 id={"roster-row-#{row.enrollment.id}"}
                 class="hover:bg-base-200/60"
               >
-                <td class="ta-num text-base-content/60">{n}</td>
+                <td class="ta-num text-base-content/70">{n}</td>
                 <td>
                   <span class="flex items-center gap-3">
                     <.student_avatar student={row.student} />
@@ -233,7 +233,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                       >
                         {row.student.full_name}
                       </.link>
-                      <span class="flex items-center gap-1.5 text-xs text-base-content/60">
+                      <span class="flex items-center gap-1.5 text-xs text-base-content/70">
                         {row.student.sex && Sex.label(row.student.sex)}
                         <span
                           :if={row.enrollment.repeater}
@@ -250,7 +250,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 <td class="text-sm">
                   <%= if guardian = @guardians[row.student.id] do %>
                     <span class="block">{guardian.full_name}</span>
-                    <span class="ta-num block text-xs text-base-content/60">{guardian.phone}</span>
+                    <span class="ta-num block text-xs text-base-content/70">{guardian.phone}</span>
                   <% else %>
                     <span class="text-xs font-semibold text-warning">{gettext("Aucun contact")}</span>
                   <% end %>
@@ -336,7 +336,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             placeholder={school_max_placeholder(@current_scope)}
             class="input input-sm w-full"
           />
-          <p class="text-xs text-base-content/60">
+          <p class="text-xs text-base-content/70">
             {gettext(
               "Laissez vide pour suivre l'effectif de l'établissement. Alerte au-delà, sans bloquer."
             )}

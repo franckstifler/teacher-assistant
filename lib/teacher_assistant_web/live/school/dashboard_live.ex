@@ -144,7 +144,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         <div class="grid gap-4 lg:grid-cols-5">
           <div id="todo" class="ta-panel flex min-w-0 flex-col gap-1 lg:col-span-3">
             <h2 class="ta-eyebrow pb-1">{gettext("À traiter · %{n}", n: @todo_count)}</h2>
-            <p :if={@todo_count == 0} id="todo-empty" class="py-2 text-sm text-base-content/60">
+            <p :if={@todo_count == 0} id="todo-empty" class="py-2 text-sm text-base-content/70">
               {gettext("Rien à traiter")}
             </p>
             <ul class="flex flex-col">
@@ -316,7 +316,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         <div :if={@my_classes != []} id="my-classes" class="ta-leaf space-y-2">
           <div class="flex items-center justify-between gap-3">
             <h2 class="ta-eyebrow">{gettext("Mes classes")}</h2>
-            <span class="ta-num text-xs text-base-content/60">
+            <span class="ta-num text-xs text-base-content/70">
               {ngettext("%{count} classe", "%{count} classes", length(@my_classes),
                 count: length(@my_classes)
               )}
@@ -329,7 +329,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                 class="flex items-center justify-between gap-3 font-semibold hover:text-primary hover:no-underline"
               >
                 <span class="truncate">{c.label}</span>
-                <span class="ta-num shrink-0 text-xs font-normal text-base-content/60">
+                <span class="ta-num shrink-0 text-xs font-normal text-base-content/70">
                   {c.level}
                 </span>
               </.link>
@@ -350,7 +350,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     <li id={@id} class="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
       <.icon
         name={if @done?, do: "hero-check-circle", else: "hero-x-circle"}
-        class={"size-4 shrink-0 " <> if(@done?, do: "text-primary", else: "text-base-content/40")}
+        class={"size-4 shrink-0 " <> if(@done?, do: "text-primary", else: "text-base-content/70")}
       />
       {render_slot(@inner_block)}
     </li>
@@ -407,7 +407,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         </span>
         <span class="btn btn-outline btn-xs hidden shrink-0 sm:inline-flex">{@cta}</span>
         <span class="sr-only sm:hidden">{@cta}</span>
-        <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/45 sm:hidden" />
+        <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70 sm:hidden" />
       </.link>
     </li>
     """
@@ -416,7 +416,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   defp kpi_tone(:ok), do: "text-primary"
   defp kpi_tone(:warn), do: "text-warning"
   defp kpi_tone(:error), do: "text-error"
-  defp kpi_tone(:none), do: "text-base-content/50"
+  defp kpi_tone(:none), do: "text-base-content/70"
 
   defp mark_tone(:warning), do: "bg-warning"
   defp mark_tone(:error), do: "bg-error"

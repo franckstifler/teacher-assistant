@@ -569,7 +569,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                   <span class="flex min-w-0 flex-col gap-0.5">
                     <span class="flex flex-wrap items-center gap-2">
                       <span class="font-semibold">{l.guardian.full_name}</span>
-                      <span class="text-sm text-base-content/60">
+                      <span class="text-sm text-base-content/70">
                         {GuardianRelationship.label(l.guardian.relationship)}
                       </span>
                       <span
@@ -586,7 +586,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                       </span>
                     </span>
                     <span :if={l.guardian.email} class="text-xs">{l.guardian.email}</span>
-                    <span id={"guardian-meta-#{l.id}"} class="text-xs text-base-content/60">
+                    <span id={"guardian-meta-#{l.id}"} class="text-xs text-base-content/70">
                       {messages_in(l.guardian.language)}
                       <%= case other_children(@children, l.guardian_id, @student.id) do %>
                         <% "" -> %>
@@ -660,7 +660,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                   </button>
                 </div>
               </.form>
-              <p :if={@links == []} class="text-sm text-base-content/60">
+              <p :if={@links == []} class="text-sm text-base-content/70">
                 {gettext("Aucun parent enregistré.")}
               </p>
 
@@ -759,7 +759,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 <li :for={s <- @this_year.discipline.sanctions}>
                   <span class="ta-num">{format_date(s.date)}</span>
                   · {TeacherAssistant.Academics.SanctionType.label(s.type)}
-                  <span :if={s.reason} class="text-base-content/60">— {s.reason}</span>
+                  <span :if={s.reason} class="text-base-content/70">— {s.reason}</span>
                 </li>
               </ul>
               <p class="ta-num flex flex-wrap gap-x-3 border-t border-base-300 pt-2 text-sm">

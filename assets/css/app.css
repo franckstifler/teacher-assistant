@@ -38,80 +38,88 @@
 }
 
 /* ==========================================================================
-   "Tableau" — visual identity for TeacherAssistant
-   The classroom chalkboard: deep slate-green board, chalk-white text, and
-   colored-chalk accents (green = covered, yellow = now, coral = behind, sky =
-   links). The chalkboard is the DEFAULT; a light "craie" reading mode is the
-   alternate for bright daylight. We override daisyUI's color tokens so every
-   existing utility (bg-base-100, btn-primary, badge-success …) adopts it.
+   "Tableau, affiné" — visual identity for TeacherAssistant (UI review 2026-10)
+   A deep slate-green board, chalk-white text. Colour means status only:
+   green = done / the action, yellow = in progress, coral = late or wrong,
+   sky = links and information. Nothing decorative is coloured. The board is
+   the DEFAULT; a light "craie" reading mode is the alternate for daylight.
+   We override daisyUI's color tokens so every existing utility (bg-base-100,
+   btn-primary, badge-success …) adopts it. Every text colour below keeps
+   at least 4.5:1 on the ground, surface and raised/low surfaces.
    ========================================================================== */
 
 /* shared tokens */
 :root {
-  --radius-selector: 0.4rem;
-  --radius-field: 0.4rem;
-  --radius-box: 0.7rem;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.6rem;
+  --radius-box: 0.875rem;
   --border: 1px;
 
-  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-/* chalkboard — the default look */
+/* the board — the default look */
 :root, [data-theme="dark"] {
   color-scheme: dark;
 
-  --color-base-100: oklch(38% 0.04 164);     /* lifted panel (a clean patch of board) */
-  --color-base-200: oklch(33% 0.035 164);    /* the board itself / page */
-  --color-base-300: oklch(50% 0.035 164);    /* chalk-dust hairlines */
-  --color-base-content: oklch(95% 0.012 150); /* chalk */
+  --color-base-100: #16221D;    /* surface: panels, cards */
+  --color-base-200: #0E1714;    /* ground: the page */
+  --color-base-300: #26362F;    /* hairline */
+  --color-base-content: #EEF2EC; /* chalk text */
+  --ta-raised: #1D2B25;         /* a surface on a surface: tiles, inputs */
+  --ta-text-2: #A9B8B0;         /* secondary text */
 
-  --color-primary: oklch(80% 0.13 162);          /* fresh chalk green = covered */
-  --color-primary-content: oklch(26% 0.05 164);
-  --color-secondary: oklch(83% 0.13 85);         /* chalk yellow = now */
-  --color-secondary-content: oklch(26% 0.06 85);
-  --color-accent: oklch(73% 0.13 30);            /* chalk coral = behind */
-  --color-accent-content: oklch(24% 0.06 30);
-  --color-neutral: oklch(90% 0.012 150);
-  --color-neutral-content: oklch(28% 0.04 164);
+  --color-primary: #7FD9AE;     /* green: done, and the main action */
+  --color-primary-content: #0B1F17;
+  --color-secondary: #F2C55C;   /* yellow: in progress */
+  --color-secondary-content: #0E1714;
+  --color-accent: #F08A6C;      /* coral: late, wrong */
+  --color-accent-content: #0E1714;
+  --color-neutral: #1D2B25;
+  --color-neutral-content: #EEF2EC;
 
-  --color-info: oklch(78% 0.07 230);             /* chalk sky = links */
-  --color-info-content: oklch(24% 0.04 230);
-  --color-success: oklch(80% 0.13 158);
-  --color-success-content: oklch(24% 0.04 158);
-  --color-warning: oklch(83% 0.13 85);
-  --color-warning-content: oklch(26% 0.06 85);
-  --color-error: oklch(72% 0.15 30);
-  --color-error-content: oklch(24% 0.05 30);
+  --color-info: #8CC2EE;
+  --color-info-content: #0E1714;
+  --color-success: #7FD9AE;
+  --color-success-content: #0B1F17;
+  --color-warning: #F2C55C;
+  --color-warning-content: #0E1714;
+  --color-error: #F08A6C;
+  --color-error-content: #0E1714;
 
   --ta-rule-strong: color-mix(in oklch, var(--color-base-content) 30%, transparent);
 }
 
-/* craie — the light daylight reading mode */
+/* craie — the light daylight reading mode. The status hues are the review's
+   swatches darkened just enough to keep 4.5:1 as text on their own 20% tint
+   (the soft chips: `bg-warning/20 text-warning`) over the low surface. */
 [data-theme="light"] {
   color-scheme: light;
 
-  --color-base-100: oklch(98.6% 0.008 95);   /* bright paper */
-  --color-base-200: oklch(96% 0.013 95);     /* paper / page */
-  --color-base-300: oklch(88% 0.02 95);      /* hairlines */
-  --color-base-content: oklch(28% 0.03 164); /* dark board ink */
+  --color-base-100: #FFFFFF;    /* surface */
+  --color-base-200: #F6F4EE;    /* ground */
+  --color-base-300: #E4E0D6;    /* hairline */
+  --color-base-content: #17231E; /* ink */
+  --ta-raised: #EFEBE2;         /* low surface */
+  --ta-text-2: #55635C;
 
-  --color-primary: oklch(46% 0.09 164);
-  --color-primary-content: oklch(98% 0.02 150);
-  --color-secondary: oklch(72% 0.13 80);
-  --color-secondary-content: oklch(28% 0.06 80);
-  --color-accent: oklch(57% 0.16 30);
-  --color-accent-content: oklch(98% 0.012 30);
-  --color-neutral: oklch(30% 0.035 164);
-  --color-neutral-content: oklch(96% 0.012 95);
+  --color-primary: #196244;
+  --color-primary-content: #FFFFFF;
+  --color-secondary: #714F0C;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #913B23;
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #17231E;
+  --color-neutral-content: #FFFFFF;
 
-  --color-info: oklch(56% 0.1 230);
-  --color-info-content: oklch(98% 0.01 230);
-  --color-success: oklch(52% 0.11 158);
-  --color-success-content: oklch(98% 0.01 158);
-  --color-warning: oklch(72% 0.13 80);
-  --color-warning-content: oklch(26% 0.06 80);
-  --color-error: oklch(56% 0.17 30);
-  --color-error-content: oklch(98% 0.012 30);
+  --color-info: #265886;
+  --color-info-content: #FFFFFF;
+  --color-success: #196244;
+  --color-success-content: #FFFFFF;
+  --color-warning: #714F0C;
+  --color-warning-content: #FFFFFF;
+  --color-error: #913B23;
+  --color-error-content: #FFFFFF;
 
   --ta-rule-strong: color-mix(in oklch, var(--color-base-content) 22%, transparent);
 }
@@ -123,15 +131,7 @@ html { background: var(--color-base-200); }
 body {
   font-family: var(--font-body);
   color: var(--color-base-content);
-  /* the board: a faint chalk glow wiped across the top, over the slate */
-  background:
-    radial-gradient(
-      120% 70% at 50% -15%,
-      color-mix(in oklch, var(--color-base-content) 7%, transparent),
-      transparent 60%
-    ),
-    var(--color-base-200);
-  background-attachment: fixed;
+  background: var(--color-base-200);
   font-feature-settings: "kern", "liga", "calt";
   -webkit-font-smoothing: antialiased;
 }
@@ -164,13 +164,13 @@ h1, h2, h3, .ta-display {
 .card {
   border: 1px solid var(--color-base-300);
   background: var(--color-base-100);
-  box-shadow: 0 10px 30px color-mix(in oklch, black 22%, transparent);
+  box-shadow: none;
 }
 
 /* background-color only: the `background` shorthand would wipe daisyUI's select
    chevron (a background-image), leaving every <select> looking like a text box. */
 .input, .select, .textarea {
-  background-color: color-mix(in oklch, var(--color-base-100) 94%, var(--color-primary) 6%);
+  background-color: var(--ta-raised);
   border-color: var(--color-base-300);
 }
 
@@ -186,14 +186,19 @@ h1, h2, h3, .ta-display {
   border-color: var(--color-primary);
 }
 
-.label { font-weight: 600; color: color-mix(in oklch, var(--color-base-content) 78%, transparent); }
+.label { font-weight: 500; color: var(--ta-text-2); }
 .badge { font-weight: 650; white-space: nowrap; }
 .table thead th {
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ta-text-2);
 }
+
+/* daisyUI dims inactive tabs and table footers below 4.5:1 — use the
+   secondary text colour instead */
+.tab { color: var(--ta-text-2); }
+.tab:is(.tab-active, [aria-selected="true"], [aria-current]) { color: var(--color-base-content); }
+.table :where(tfoot) :where(th, td) { color: var(--ta-text-2); }
 
 /* visible keyboard focus everywhere */
 :where(a, button, [role="button"]):focus-visible {
@@ -204,34 +209,23 @@ h1, h2, h3, .ta-display {
 
 /* ---- identity primitives ------------------------------------------------- */
 
-/* eyebrow / section label — set in the ledger mono voice */
+/* eyebrow / meta line above a title — plain sans, secondary text (no mono capitals) */
 .ta-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: color-mix(in oklch, var(--color-primary) 72%, var(--color-base-content));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ta-text-2);
 }
 
-/* a "leaf" of the cahier: a clean patch of board with the margin rule */
+/* secondary text, the same tone everywhere */
+.ta-text-2 { color: var(--ta-text-2); }
+
+/* a "leaf" of the cahier: a plain panel */
 .ta-leaf {
   position: relative;
   background: var(--color-base-100);
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
-  padding: 0.9rem 1rem 0.9rem 1.6rem;
-  box-shadow: 0 6px 20px color-mix(in oklch, black 16%, transparent);
-}
-.ta-leaf::before {
-  content: "";
-  position: absolute;
-  left: 0.85rem;
-  top: 0.55rem;
-  bottom: 0.55rem;
-  width: 2px;
-  border-radius: 2px;
-  background: color-mix(in oklch, var(--color-accent) 75%, transparent);
+  padding: 0.9rem 1rem;
 }
 
 /* a plain board panel (no margin rule) — the role-space screens' cards */
@@ -269,6 +263,7 @@ h1, h2, h3, .ta-display {
 }
 .ta-switch:checked { background: var(--color-primary); }
 .ta-switch:checked::after { left: 23px; }
+[data-theme="light"] .ta-switch::after { background: #FFFFFF; }
 
 /* chalk-marker underline for a heading word */
 .ta-mark {
@@ -291,7 +286,6 @@ h1, h2, h3, .ta-display {
     var(--color-base-200);
   border: 1px solid var(--color-base-300);
   border-radius: calc(var(--radius-box) + 0.2rem);
-  box-shadow: 0 16px 50px color-mix(in oklch, black 28%, transparent);
 }
 
 /* full-screen chalkboard backdrop for the AshAuthentication pages */
@@ -414,45 +408,51 @@ h1, h2, h3, .ta-display {
 }
 
 /* =========================================================================
-   Navigation rail — the board, stood on its side. A slab of dark chalkboard
-   that stays dark in BOTH reading modes (the rail is always the board),
-   built only from existing tokens (the primary chalk hue folded into black)
-   so it introduces no new theme colours. On lg+ it sits fixed at the left;
-   on phones it slides in as a daisyUI drawer.
+   Navigation rail (lg+) — the board stood on its side. It stays dark in BOTH
+   reading modes (the rail is always the board). On phones the bottom tab bar
+   and its « Plus » sheet replace it.
    ========================================================================= */
 .ta-rail {
-  --ta-rail-fg: color-mix(in oklch, var(--color-primary) 8%, white);
-  --ta-rail-muted: color-mix(in oklch, var(--ta-rail-fg) 62%, transparent);
-  --ta-rail-faint: color-mix(in oklch, var(--ta-rail-fg) 44%, transparent);
-  --ta-rail-line: color-mix(in oklch, white 14%, transparent);
-  --ta-rail-hover: color-mix(in oklch, white 9%, transparent);
-  --ta-rail-active-bg: color-mix(in oklch, var(--color-primary) 30%, transparent);
-  --ta-rail-active-fg: color-mix(in oklch, var(--color-primary) 6%, white);
+  --ta-rail-fg: #EEF2EC;
+  --ta-rail-muted: #C3CFC8;
+  --ta-rail-faint: #8D9D95;
+  --ta-rail-line: #1F2E28;
+  --ta-rail-hover: #16221D;
+  --ta-rail-active-bg: #173A2B;
+  --ta-rail-active-fg: #7FD9AE;
 
-  background: color-mix(in oklch, var(--color-primary) 20%, black);
+  background: #0B1310;
+  border-right: 1px solid var(--ta-rail-line);
   color: var(--ta-rail-fg);
 }
 
-/* group heading — the ledger mono voice, dimmed to chalk-dust */
+/* the rail is always the board: its own badges keep the board's status colours */
+.ta-rail__item,
+#notification-bell > [role="button"] {
+  --color-warning: #F2C55C;
+  --color-warning-content: #0E1714;
+  --color-error: #F08A6C;
+  --color-error-content: #0E1714;
+}
+
+/* group heading — plain sans, dimmed */
 .ta-rail__label {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
   color: var(--ta-rail-faint);
 }
 
-/* a nav row — quiet until hover, chalk-green wash when it is the current page */
+/* a nav row — quiet until hover, green wash when it is the current page */
 .ta-rail__item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  border-radius: var(--radius-field);
-  padding: 0.45rem 0.55rem;
-  font-size: 0.85rem;
-  font-weight: 600;
+  min-height: 2.375rem;
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.875rem;
+  font-weight: 500;
   text-align: left;
   color: var(--ta-rail-muted);
   transition: background-color 150ms ease, color 150ms ease;
@@ -464,10 +464,219 @@ h1, h2, h3, .ta-display {
 .ta-rail__item[aria-current="page"] {
   background: var(--ta-rail-active-bg);
   color: var(--ta-rail-active-fg);
+  font-weight: 600;
 }
 .ta-rail__item:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid #7FD9AE;
   outline-offset: 2px;
+}
+
+/* =========================================================================
+   Phone navigation (<lg): the bottom tab bar and its « Plus » sheet
+   ========================================================================= */
+.ta-tabbar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 0.375rem 0.25rem calc(0.375rem + env(safe-area-inset-bottom));
+  background: var(--color-base-100);
+  border-top: 1px solid var(--color-base-300);
+}
+.ta-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  min-height: 3.25rem;
+  padding-top: 0.125rem;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  font-weight: 500;
+  text-align: center;
+  color: var(--ta-text-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.ta-tab__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.375rem;
+  height: 1.875rem;
+  border-radius: 999px;
+  transition: background-color 150ms ease;
+}
+.ta-tab__label { max-width: 100%; overflow-wrap: anywhere; }
+.ta-tab[aria-current="page"] { color: var(--color-primary); font-weight: 600; }
+.ta-tab[aria-current="page"] .ta-tab__icon {
+  background: color-mix(in oklch, var(--color-primary) 18%, transparent);
+}
+.ta-tab__badge {
+  position: absolute;
+  top: -0.25rem;
+  right: 0.35rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding-inline: 0.3rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.15rem;
+  text-align: center;
+}
+.ta-tab__dot {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.85rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-warning);
+}
+
+/* the rail takes over on lg+ (unlayered CSS outranks Tailwind's `lg:hidden`) */
+@media (min-width: 1024px) {
+  .ta-tabbar, .ta-sheet { display: none !important; }
+}
+
+/* the save bar rides above the tab bar on phones */
+@media (max-width: 1023.98px) {
+  body:has(.ta-tabbar) .ta-savebar { bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+}
+
+/* the « Plus » sheet — a native popover pinned to the bottom of the screen.
+   Only the open state sets `display`, so the UA keeps a closed one hidden. */
+.ta-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 88dvh;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+  color: var(--color-base-content);
+  background: var(--color-base-100);
+  border: 0;
+  border-top: 1px solid var(--color-base-300);
+  border-radius: 1.375rem 1.375rem 0 0;
+}
+.ta-sheet:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  animation: ta-sheet-up 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ta-sheet::backdrop { background: rgb(4 8 6 / 0.62); }
+@media (min-width: 640px) {
+  .ta-sheet { inset: auto 0 0 0; max-width: 32rem; margin-inline: auto; }
+}
+.ta-sheet__grip {
+  align-self: center;
+  width: 2.5rem;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background: var(--color-base-300);
+}
+.ta-sheet__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding-inline: 0.25rem;
+  border-bottom: 1px solid var(--color-base-300);
+  font-size: 0.9375rem;
+}
+@keyframes ta-sheet-up {
+  from { transform: translateY(1.5rem); opacity: 0.4; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* a page tile in the sheet */
+.ta-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 4.875rem;
+  padding: 0.75rem;
+  border-radius: 0.875rem;
+  background: var(--ta-raised);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  transition: background-color 120ms ease;
+}
+.ta-tile:hover { background: color-mix(in oklch, var(--ta-raised) 85%, var(--color-base-content)); }
+.ta-tile[aria-current="page"] { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+/* a pill link (space switcher) */
+.ta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: 0.9rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--ta-raised);
+}
+.ta-chip[aria-current="true"] {
+  background: var(--color-base-content);
+  color: var(--color-base-200);
+  font-weight: 600;
+}
+
+/* a segmented switch (theme, language) */
+.ta-seg {
+  --ta-seg-bg: var(--color-base-200);
+  --ta-seg-on: var(--color-base-300);
+  --ta-seg-fg: var(--ta-text-2);
+  --ta-seg-on-fg: var(--color-base-content);
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: 0.625rem;
+  background: var(--ta-seg-bg);
+}
+.ta-seg__btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.25rem;
+  padding-inline: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ta-seg-fg);
+  cursor: pointer;
+}
+.ta-seg__btn:hover { color: var(--ta-seg-on-fg); }
+.ta-sheet .ta-seg__btn { min-height: 2.75rem; }
+.ta-seg__btn[aria-current="true"],
+:root:not([data-theme="light"]) .ta-seg__btn[data-phx-theme="dark"],
+[data-theme="light"] .ta-seg__btn[data-phx-theme="light"] {
+  background: var(--ta-seg-on);
+  color: var(--ta-seg-on-fg);
+  font-weight: 600;
+}
+[data-theme="light"] .ta-seg {
+  --ta-seg-bg: var(--ta-raised);
+  --ta-seg-on: var(--color-base-100);
+}
+[data-theme="light"] :is(.ta-seg__btn[data-phx-theme="light"], .ta-seg__btn[aria-current="true"]) { box-shadow: 0 1px 2px rgb(23 35 30 / 0.12); }
+.ta-rail .ta-seg {
+  --ta-seg-bg: #16221D;
+  --ta-seg-on: #26362F;
+  --ta-seg-fg: #C3CFC8;
+  --ta-seg-on-fg: #EEF2EC;
+  align-self: flex-start;
+  margin-inline: 0.375rem;
 }
 
 /* =========================================================================
@@ -551,5 +760,6 @@ form[data-dirty] .ta-savebar {
   .btn, .ta-ribbon__fill { transition: none; }
   .btn:hover { transform: none; }
   .ta-rail__item { transition: none; }
+  .ta-sheet:popover-open { animation: none; }
   .drawer-side, .drawer-overlay { transition-duration: 0.01ms !important; }
 }

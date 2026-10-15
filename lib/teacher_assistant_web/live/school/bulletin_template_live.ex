@@ -140,7 +140,7 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
               />
               {BulletinLanguage.label(lang)}
             </label>
-            <p class="text-xs text-base-content/60">
+            <p class="text-xs text-base-content/70">
               {gettext(
                 "Classes francophones : appréciation par matière. Classes anglophones : grade et remarque."
               )}
@@ -250,7 +250,7 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
               class="inline-block h-10"
             />
           </div>
-          <p class="mt-2 text-xs text-base-content/60">
+          <p class="mt-2 text-xs text-base-content/70">
             <.link navigate={~p"/school/settings/header"} class="link">
               {gettext("Modifiable dans « En-tête et signature ».")}
             </.link>

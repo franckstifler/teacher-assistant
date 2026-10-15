@@ -271,7 +271,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
         </nav>
 
         <div :if={@tab == "pending"} class="space-y-8">
-          <p :if={@corrections == []} class="ta-panel text-center text-base-content/60">
+          <p :if={@corrections == []} class="ta-panel text-center text-base-content/70">
             {gettext("Aucune demande en attente.")}
           </p>
 
@@ -292,7 +292,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
                 {gettext("Moyenne de séquence : %{change}", change: average_change(@averages[c.id]))}
               </p>
               <span class="badge badge-outline">{MarkCorrectionMotive.label(c.motive)}</span>
-              <p class="text-xs text-base-content/60">
+              <p class="text-xs text-base-content/70">
                 {gettext("Demandée par %{name} · %{when}",
                   name: (c.requester && author(c.requester)) || "—",
                   when: requested_at(c.inserted_at)
@@ -379,7 +379,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
                 </thead>
                 <tbody>
                   <tr :if={@journal == []}>
-                    <td colspan="4" class="text-center text-base-content/60">
+                    <td colspan="4" class="text-center text-base-content/70">
                       {gettext("Le journal est vide.")}
                     </td>
                   </tr>
@@ -411,7 +411,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
             </thead>
             <tbody>
               <tr :if={@corrections == []}>
-                <td colspan="5" class="text-center text-base-content/60">
+                <td colspan="5" class="text-center text-base-content/70">
                   {gettext("Aucune demande traitée.")}
                 </td>
               </tr>
