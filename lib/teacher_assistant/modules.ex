@@ -46,7 +46,9 @@ defmodule TeacherAssistant.Modules do
     emploi_du_temps: [
       W.School.TimetableLive,
       W.School.TimetableEditorLive,
-      W.School.MyTimetableLive
+      W.School.MyTimetableLive,
+      W.School.AvailabilityLive,
+      W.School.RoomsLive
     ],
     frais: [W.School.FeesLive],
     photos: [W.School.ClassPhotosLive]

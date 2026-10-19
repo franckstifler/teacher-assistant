@@ -390,7 +390,7 @@ msgstr ""
 msgid "Élève"
 msgstr ""
 
-#: lib/teacher_assistant/modules.ex:96
+#: lib/teacher_assistant/modules.ex:98
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:326
 #: lib/teacher_assistant_web/live/school/class_shell.ex:180
 #, elixir-autogen, elixir-format
@@ -1276,7 +1276,7 @@ msgid "Cours"
 msgstr ""
 
 #: lib/teacher_assistant/accounts/school_role.ex:108
-#: lib/teacher_assistant/modules.ex:97
+#: lib/teacher_assistant/modules.ex:99
 #: lib/teacher_assistant_web/controllers/page_html.ex:178
 #: lib/teacher_assistant_web/controllers/page_html.ex:203
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:6
@@ -9432,7 +9432,7 @@ msgstr ""
 msgid "Nom, type, coordonnées, logo, en-tête des documents imprimés."
 msgstr ""
 
-#: lib/teacher_assistant/modules.ex:94
+#: lib/teacher_assistant/modules.ex:96
 #: lib/teacher_assistant_web/live/school/settings_live.ex:132
 #, elixir-autogen, elixir-format
 msgid "Notes et bulletins"
@@ -10070,7 +10070,7 @@ msgstr ""
 msgid "Format officiel, lisible imprimé en noir et blanc"
 msgstr ""
 
-#: lib/teacher_assistant/modules.ex:98
+#: lib/teacher_assistant/modules.ex:100
 #: lib/teacher_assistant_web/controllers/page_html.ex:236
 #, elixir-autogen, elixir-format
 msgid "Frais de scolarité"
@@ -10464,7 +10464,7 @@ msgstr ""
 msgid "Administration"
 msgstr ""
 
-#: lib/teacher_assistant/modules.ex:95
+#: lib/teacher_assistant/modules.ex:97
 #, elixir-autogen, elixir-format
 msgid "Appel et absences"
 msgstr ""
@@ -10558,7 +10558,7 @@ msgstr ""
 msgid "Notes saisies (7 jours)"
 msgstr ""
 
-#: lib/teacher_assistant/modules.ex:99
+#: lib/teacher_assistant/modules.ex:101
 #, elixir-autogen, elixir-format
 msgid "Photos et cartes"
 msgstr ""
