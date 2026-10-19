@@ -1017,6 +1017,148 @@ D2a grid, optional `combined_course_id`); `Curriculum.assign_teacher/4`, `reassi
 Out of scope: the « Enseignants » list (entry rates, « Relancer », N06); teacher subject qualifications;
 editing coefficients or combined courses from the grid.
 
+## J3 — Rooms and teacher unavailability (spec)
+
+Status: specced 2026-10-19 (picked up again after the 2026-10-01 postponement).
+
+Gaps: **T02, T03**. No mockup excerpt; the screens follow the J4 editor's look.
+
+Why: a censeur builds the week by hand. Two things break a hand-built timetable that J4 cannot see today:
+two classes sent to the same shared room (the lab, the computer room, a workshop, the sports ground) at the
+same time, and a lesson placed when its teacher is not at school (part-timers « vacataires » teaching in
+another school, a teacher's agreed free day). J3 makes both visible in the editor, the way J4 shows teacher
+clashes.
+
+User decisions (2026-10-19): rooms are **home rooms plus shared rooms** with a name, a capacity and a kind;
+a subject may have a **default room** that a placed lesson takes automatically; teacher unavailability is
+**whole days, half-days or single periods** on a weekly grid; **only the censeur (admin axis)** enters it;
+problems are **saved and shown in red, never refused**, like J4's teacher clashes; the move/swap/« Confier
+à » suggestions avoid them. Out of J3: automatic timetable generation, exam rooms.
+
+Existing code: `TimetableSlot` (class × day × period, unique per cell, `teaching_context_id`; admin axis
+writes), `Timetabling.place_slot/3`, `place_combined_slot/4`, `move_slot/4` (updates the row's day and
+period), `swap_slots/4` (**exchanges `teaching_context_id` between the two rows**, the rows stay put),
+`school_slots/1` (plain maps for `TimetableConflicts`), `reassign_candidates/3`; `TimetableConflicts`
+(pure: `clashes/1`, `count/1`, `busy?/5`, `suggestions/4`); `TimetableEditorLive` (`/school/timetable`);
+`ClassGroup` (per academic year, `max_size`); `Subject` (school catalog; `TeachingContext.subject_id` is
+optional); `Enrollment.student_counts/2`; `SchoolCalendar.open_cell?/3`; `Holiday` as the model of a
+small per-year tenant resource; `Spaces` menus.
+
+### Data
+
+1. New `Room` resource (tenant, attribute multitenancy like `Holiday`; admin axis writes, members read). Rooms
+   belong to the school, not to a year:
+   - `name` (non-empty, unique per school, case-insensitive);
+   - `kind`: new `Ash.Type.Enum` `RoomKind` — `classroom`, `laboratory`, `computer_room`, `workshop`,
+     `sports`, `other` (labels FR/EN: Salle de classe, Laboratoire, Salle informatique, Atelier, Terrain /
+     salle de sport, Autre);
+   - `capacity`: integer ≥ 1, nullable (nil = not checked);
+   - `active?`: boolean, default true.
+2. `ClassGroup.home_room_id` → `Room`, nullable, composite FK on `workspace_id`, `on_delete: :nilify`. Set
+   per class each year (a new year's classes start without one; copying it over is out of scope).
+3. `Subject.default_room_id` → `Room`, nullable, same FK style, `on_delete: :nilify`.
+4. `TimetableSlot.room_id` → `Room`, nullable, same FK style, `on_delete: :nilify`. **nil means the class's
+   home room.** Accepted by `:place`, `:create`, `:update`; `:place`'s upsert also updates `room_id`.
+5. New `TeacherUnavailability` resource (tenant; admin axis writes **and reads** — teachers do not see it in
+   J3): `academic_year_id`, `teacher_user_id`, `day` (`DayOfWeek`), `period_id` (lesson period). One row per
+   blocked cell; unique on (year, teacher, day, period). Year-open validation (`YearOpen`) like the slots.
+6. Migrations with `mix ash.codegen --dev`.
+
+### Where a lesson takes place
+
+7. A slot's **effective room** = `slot.room_id`, else its class's `home_room_id`, else none.
+8. Placing (`place_slot`, `place_combined_slot`) into an empty cell sets `room_id` to the subject's
+   `default_room_id` when the teaching context has a `subject_id` whose subject has one; otherwise nil.
+   Replacing a cell's occupant recomputes it the same way. A combined course gets the same room on every
+   member class.
+9. The room travels with the lesson: `move_slot` keeps the row (and so its `room_id`); `swap_slots` exchanges
+   `room_id` together with `teaching_context_id`.
+10. `Timetabling.set_slot_room(scope, class_group, {day, period_id}, room_id | nil)` changes one cell's room
+    (all member classes for a combined lesson). `nil` = back to the home room. Refused (`:invalid`) for an
+    inactive room or a room of another school.
+
+### Conflicts (extends `TimetableConflicts`, still pure)
+
+`school_slots/1` adds `room_id` (effective, rule 7), `class_size` (enrolled students of the class), and the
+year's unavailability is passed in as a set of `{teacher_id, day, period_id}`.
+
+11. **Room clash**: two or more slots with the same effective room at the same day and period, unless they all
+    belong to the same combined course. Shown on every slot involved.
+12. **Teacher unavailable**: a slot whose teacher has a `TeacherUnavailability` at its day and period.
+13. **Over capacity** (warning, my call — see below): a slot in a room with a capacity, where the class size
+    (summed over member classes for a combined course) is above it, **and the room is not that class's home
+    room**. Home rooms are not checked: crowded classrooms are the norm and would flood the screen.
+14. `count/1` (« n conflits à résoudre ») = teacher clashes + room clashes + unavailable slots, each problem
+    counted once (one per room/day/period for room clashes, one per slot for unavailability). Capacity
+    warnings are **not** counted.
+15. Suggestions for a selected problem lesson (teacher clash, room clash or unavailable), non-combined only:
+    - moves: an empty open cell of the class where the teacher is free **and available**, and the lesson's
+      effective room is free;
+    - swaps: as today, and additionally neither lesson lands on an unavailable time for its teacher or in an
+      occupied room (each lesson keeps its own room, rule 9);
+    - « Confier à » (`reassign_candidates`): also excludes teachers unavailable at any of the lesson's slots;
+      only offered for a teacher clash or unavailability, not a room clash.
+    `busy?/5` keeps its meaning; a new `available?` covers unavailability.
+
+### Screens
+
+16. **« Salles »** (`/school/settings/rooms`, admin axis, others redirected; linked from Settings and the
+    Proviseur/Censeur « Paramètres » menus):
+    - list of rooms: name, kind, capacity, active; add / edit inline; « Désactiver » (an inactive room is
+      kept on existing lessons but cannot be chosen again); « Supprimer » only for a room nothing uses (no
+      slot, class or subject), otherwise the button is replaced by « Désactiver »;
+    - « Salles des classes »: the active year's classes in the usual order, each with a select of active rooms
+      (« — » = none); a room already home to another class is labelled « (déjà : 3e A) » but still allowed
+      (schools running morning/afternoon shifts share rooms — the editor's room clash catches real overlaps).
+17. **Subjects settings** (`/school/settings/subjects`): a « Salle par défaut » select per subject (active
+    rooms, « — »).
+18. **« Disponibilités »** (`/school/timetable/availability`, admin axis; a link « Disponibilités des
+    enseignants » in the editor's header and an item in the Censeur menu next to « Emploi du temps »):
+    - a teacher picker (active members with the teacher role, those with blocked times first, then by name);
+      `?teacher=<id>` in the URL;
+    - the weekly grid with the same rows/columns as the editor (lesson days × lesson periods, closed cells
+      greyed); clicking a cell toggles it; the day header toggles the whole day; « Matin » / « Après-midi »
+      buttons per day toggle the periods starting before / at or after 13:00 (the J1 afternoon rule);
+    - cells already holding one of the teacher's lessons show the class (« 4e B ») so the censeur sees what
+      the block will break; blocking such a cell is allowed and shows up as a conflict in the editor;
+    - a one-line summary per teacher in the picker: « Indisponible : lundi, mercredi après-midi ».
+19. **Editor** (`TimetableEditorLive`):
+    - cell: subject, teacher, and the room name in small text when the effective room is not the home room
+      (a shared room); red as today for any counted problem; an amber border for an over-capacity warning;
+    - cell panel, problem text, one line per problem: « Salle informatique est déjà occupée par 3e A. »,
+      « M. Ngono n'est pas disponible le lundi à 07:30. », « 62 élèves pour 40 places en Labo SVT. » (amber);
+    - cell panel, a « Salle » select (active rooms; first option « Salle de la classe (B12) » or « Salle de la
+      classe » when none) calling `set_slot_room`;
+    - chips: the tooltip / red state also covers « indisponible à ce créneau »;
+    - class tab dots and the header count include the new problems.
+20. **Room shown elsewhere**: the class timetable print and « Mon emploi du temps » show the effective room
+    name under the subject when there is one.
+21. Strings through gettext (FR and EN); no new fuzzy entries left.
+
+### Tests
+
+22. `TimetableConflicts`: room clash, combined-course exemption, home room fallback, unavailability, capacity
+    rule (home room skipped, combined sum), count, suggestions avoiding rooms and unavailability.
+23. `Timetabling`: default room on place, room kept by move, exchanged by swap, `set_slot_room` (combined,
+    inactive, foreign room), reassign candidates skip unavailable teachers.
+24. Policies: rooms and unavailability writable only on the admin axis; unavailability unreadable for a plain
+    teacher.
+25. LiveView: rooms page (create, edit, deactivate, delete guard, home rooms), availability grid toggles (cell,
+    day, half-day), editor shows room clash / unavailable text and room select.
+
+Builder's calls (to check while reading): capacity is a warning, not counted, and skips home rooms (13–14);
+unavailability is per academic year and not copied to the next year; a room can be home to several classes;
+delete only when unused, otherwise deactivate; « Confier à » not offered for a pure room clash. Also: an
+inactive subject default is skipped when placing (inactive rooms already on lessons or classes still count for
+clashes); the room is recomputed only when the cell's `teaching_context_id` actually changes, so re-placing the
+same lesson keeps a hand-picked room; a combined lesson with no room set occupies each member class's home
+room (the censeur picks one shared room with `set_slot_room`); « nothing uses it » for delete covers every
+year.
+
+Out of scope: automatic generation; exam rooms and seating; rooms per period of the day; teachers entering
+or seeing their own unavailability; copying home rooms or unavailability into a new year; J5 replacements
+(will read `TeacherUnavailability` later).
+
 ## J4 — Censeur timetable editor (spec)
 
 Status: implemented 2026-10-01 (branch `j4-timetable-editor`, plan `docs/superpowers/plans/2026-10-01-j4-timetable-editor.md`); no visual check done.
