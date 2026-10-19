@@ -165,4 +165,13 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     scope = %{school_scope(head, school) | current_academic_year: nil}
     assert Timetabling.teacher_service(scope, head) == %{load: 0, service: nil}
   end
+
+  test "« Mon emploi du temps » shows the room under the subject", %{conn: conn} = ctx do
+    scope = school_scope(ctx.head, ctx.school)
+    {:ok, room} = Organization.create_room(scope, %{name: "Salle B12"})
+    {:ok, _} = Enrollment.set_home_room(scope, ctx.cg, room.id)
+
+    {:ok, _view, html} = live(conn, ~p"/school/timetable/me")
+    assert html =~ "Salle B12"
+  end
 end

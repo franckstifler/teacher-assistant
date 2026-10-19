@@ -98,7 +98,17 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                   <.list_row
                     navigate={day == @today_day && roll_call_path(slot, period, @today)}
                     title={"#{slot.class_label} · #{slot.subject}"}
-                    meta={"#{period.label} · #{time(period.start_time)}–#{time(period.end_time)}"}
+                    meta={
+                      Enum.join(
+                        [
+                          period.label,
+                          "#{time(period.start_time)}–#{time(period.end_time)}",
+                          slot.room_name
+                        ]
+                        |> Enum.reject(&is_nil/1),
+                        " · "
+                      )
+                    }
                   />
                 <% end %>
                 <p
@@ -156,6 +166,9 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                           >
                             <p class="font-semibold leading-tight">{slot.class_label}</p>
                             <p class="text-xs text-base-content/70">{slot.subject}</p>
+                            <p :if={slot.room_name} class="text-xs text-base-content/70">
+                              {slot.room_name}
+                            </p>
                             <.link
                               :if={day == @today_day}
                               navigate={roll_call_path(slot, period, @today)}

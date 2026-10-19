@@ -86,4 +86,13 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
 
     assert body =~ "Maths"
   end
+
+  test "the class print shows the room name", %{conn: conn, school: school, cg: cg, head: head} do
+    scope = school_scope(head, school)
+    {:ok, room} = Organization.create_room(scope, %{name: "Salle B12"})
+    {:ok, _} = Enrollment.set_home_room(scope, cg, room.id)
+
+    html = conn |> get(~p"/school/classes/#{cg.id}/timetable/print") |> html_response(200)
+    assert html =~ "Salle B12"
+  end
 end

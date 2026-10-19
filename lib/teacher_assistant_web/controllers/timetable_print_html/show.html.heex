@@ -26,6 +26,7 @@
       table.grid td.break-row { text-align: center; font-style: italic; color: #666; background: #f7f7f7; }
       table.grid td .subject { font-weight: bold; }
       table.grid td .teacher { font-size: 9pt; color: #444; display: block; }
+      table.grid td .room { font-size: 8pt; color: #666; display: block; font-style: italic; }
       @page { size: A4; margin: 15mm; }
       @media print {
         body { padding: 0; }
@@ -85,6 +86,7 @@
                     <span class="subject">{slot.subject}</span>
                     <span :if={@mode == :class} class="teacher">{slot.teacher_name}</span>
                     <span :if={@mode == :me} class="teacher">{slot.class_label}</span>
+                    <span :if={slot.room_name} class="room">{slot.room_name}</span>
                   <% end %>
                 </td>
               <% else %>
