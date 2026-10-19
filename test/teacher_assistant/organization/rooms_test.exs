@@ -109,4 +109,25 @@ defmodule TeacherAssistant.Organization.RoomsTest do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Bel B", sex: :m})
     assert Enrollment.class_sizes(scope, year)[cg.id] == 2
   end
+
+  test "set_home_room refuses an inactive room", %{scope: scope, cg: cg} do
+    room = room!(scope, %{name: "Vieille salle"})
+    {:ok, _} = Organization.update_room(scope, room, %{active?: false})
+    assert {:error, :invalid} = Enrollment.set_home_room(scope, cg, room.id)
+    assert {:ok, %{home_room_id: nil}} = Enrollment.set_home_room(scope, cg, nil)
+  end
+
+  test "rooms_in_use lists every room a class, a subject or a lesson uses", ctx do
+    %{scope: scope, cg: cg} = ctx
+    home = room!(scope, %{name: "B12"})
+    default = room!(scope, %{name: "Salle info"})
+    free = room!(scope, %{name: "B13"})
+    {:ok, _} = Enrollment.set_home_room(scope, cg, home.id)
+    [subject | _] = Curriculum.list_subjects(scope)
+    {:ok, _} = Curriculum.update_subject(scope, subject, %{default_room_id: default.id})
+
+    used = Organization.rooms_in_use(scope)
+    assert MapSet.member?(used, home.id) and MapSet.member?(used, default.id)
+    refute MapSet.member?(used, free.id)
+  end
 end

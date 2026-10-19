@@ -400,20 +400,32 @@ defmodule TeacherAssistant.Organization do
     if room_in_use?(scope, room), do: {:error, :in_use}, else: Ash.destroy(room, scope: scope)
   end
 
+  @room_users [
+    {TeacherAssistant.Academics.TimetableSlot, :room_id},
+    {TeacherAssistant.Academics.ClassGroup, :home_room_id},
+    {TeacherAssistant.Academics.Subject, :default_room_id}
+  ]
+
   @doc "Whether a lesson, a class (home room) or a subject (default room) of any year uses the room."
   def room_in_use?(%Scope{} = scope, %Room{id: id}) do
-    Enum.any?(
-      [
-        {TeacherAssistant.Academics.TimetableSlot, :room_id},
-        {TeacherAssistant.Academics.ClassGroup, :home_room_id},
-        {TeacherAssistant.Academics.Subject, :default_room_id}
-      ],
-      fn {resource, field} ->
-        resource
-        |> Ash.Query.do_filter([{field, id}])
-        |> Ash.exists?(scope: scope)
-      end
-    )
+    Enum.any?(@room_users, fn {resource, field} ->
+      resource
+      |> Ash.Query.do_filter([{field, id}])
+      |> Ash.exists?(scope: scope)
+    end)
+  end
+
+  @doc "The ids of every room a lesson, a class or a subject of any year uses: one query per kind."
+  def rooms_in_use(%Scope{} = scope) do
+    for {resource, field} <- @room_users,
+        record <-
+          resource
+          |> Ash.Query.do_filter(not: [{field, [is_nil: true]}])
+          |> Ash.Query.select([field])
+          |> Ash.Query.distinct(field)
+          |> Ash.read!(scope: scope),
+        into: MapSet.new(),
+        do: Map.fetch!(record, field)
   end
 
   # --- Holidays (spec J1) ---------------------------------------------------------

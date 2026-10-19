@@ -137,7 +137,7 @@ defmodule TeacherAssistant.Timetabling do
         _ ->
           if already_placed?(contexts, existing),
             do: {:ok, List.flatten(existing)},
-            else: place_combined(scope, contexts, day, period_id)
+            else: place_combined(scope, contexts, existing, day, period_id)
       end
     else
       :closed -> {:error, :closed_cell}
@@ -155,8 +155,18 @@ defmodule TeacherAssistant.Timetabling do
     end)
   end
 
-  defp place_combined(scope, contexts, day, period_id) do
-    room_id = default_room_id(scope, contexts)
+  # A member cell still holding the course keeps its room (maybe picked by hand) for every
+  # member; otherwise the subject's default room.
+  defp place_combined(scope, contexts, existing, day, period_id) do
+    tc_ids = MapSet.new(contexts, & &1.id)
+
+    room_id =
+      case existing
+           |> List.flatten()
+           |> Enum.find(&MapSet.member?(tc_ids, &1.teaching_context_id)) do
+        %TimetableSlot{room_id: room_id} -> room_id
+        nil -> default_room_id(scope, contexts)
+      end
 
     placements =
       Enum.map(contexts, fn tc ->

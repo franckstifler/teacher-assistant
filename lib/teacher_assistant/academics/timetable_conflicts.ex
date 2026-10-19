@@ -177,7 +177,7 @@ defmodule TeacherAssistant.Academics.TimetableConflicts do
     slots
     |> Enum.filter(fn o ->
       o.class_group_id == slot.class_group_id and o.id != slot.id and is_nil(o.combined_course_id) and
-        o.teacher_id != slot.teacher_id and MapSet.member?(open, {o.day, o.period_id})
+        not identical_lesson?(o, slot) and MapSet.member?(open, {o.day, o.period_id})
     end)
     |> Enum.sort_by(fn o -> Enum.find_index(open_cells, &(&1 == {o.day, o.period_id})) end)
     |> Enum.filter(fn o ->
@@ -212,6 +212,10 @@ defmodule TeacherAssistant.Academics.TimetableConflicts do
   end
 
   defp cell(slot), do: {slot.class_group_id, slot.day, slot.period_id}
+
+  # Swapping two lessons of the same course in the same room changes nothing.
+  defp identical_lesson?(a, b),
+    do: a.teaching_context_id == b.teaching_context_id and a.room_id == b.room_id
 
   defp unit(%{combined_course_id: nil, class_group_id: cg}), do: {:class, cg}
   defp unit(%{combined_course_id: cc}), do: {:combined, cc}

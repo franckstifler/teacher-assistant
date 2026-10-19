@@ -170,4 +170,19 @@ defmodule TeacherAssistant.Academics.TimetableRoomsTest do
 
     assert slot_at(ctx, ctx.a, :monday, ctx.p1).room_id == nil
   end
+
+  test "re-placing a combined course after one member cell changed keeps the hand-picked room",
+       ctx do
+    {:ok, it_b} = Curriculum.assign_teacher(ctx.scope, ctx.b, ctx.t1, %{subject: "Informatique"})
+    {:ok, course} = Curriculum.combine_course(ctx.scope, [ctx.it, it_b])
+    {:ok, _} = Timetabling.place_combined_slot(ctx.scope, course, :monday, ctx.p1.id)
+    :ok = Timetabling.set_slot_room(ctx.scope, ctx.a, {:monday, ctx.p1.id}, ctx.labo.id)
+
+    # 6e Q's cell gets another course, then the combined course goes back
+    {:ok, _} = place(ctx, ctx.a, ctx.maths, :monday, ctx.p1)
+    {:ok, _} = Timetabling.place_combined_slot(ctx.scope, course, :monday, ctx.p1.id)
+
+    assert slot_at(ctx, ctx.a, :monday, ctx.p1).room_id == ctx.labo.id
+    assert slot_at(ctx, ctx.b, :monday, ctx.p1).room_id == ctx.labo.id
+  end
 end

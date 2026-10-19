@@ -257,4 +257,45 @@ defmodule TeacherAssistant.Academics.TimetableConflictsTest do
     assert over[{"maco", :monday, "p1"}] == %{size: 55, capacity: 40, room_id: "b12"}
     assert over[{"eleq", :monday, "p1"}] == %{size: 55, capacity: 40, room_id: "b12"}
   end
+
+  test "a room clash can be fixed by swapping with the same teacher's lesson in another room" do
+    slots = [
+      # t's computer lesson clashes with 6b in the computer room
+      r(1, "6a", :monday, "p1", "t", "info", home: "b12"),
+      r(2, "6b", :monday, "p1", "u", "info"),
+      # t's other 6a lesson, in the home room, at tuesday p1
+      %{r(3, "6a", :tuesday, "p1", "t", "b12", home: "b12") | teaching_context_id: "tc-maths"}
+    ]
+
+    open = [{:monday, "p1"}, {:tuesday, "p1"}]
+
+    swaps =
+      slots
+      |> C.suggestions(open, "6a", {:monday, "p1"}, MapSet.new())
+      |> Enum.filter(&(&1.kind == :swap))
+
+    assert Enum.map(swaps, & &1.with.id) == [3]
+  end
+
+  test "no swap with an identical lesson (same course, same room)" do
+    slots = [
+      r(1, "6a", :monday, "p1", "t", "info"),
+      r(2, "6b", :monday, "p1", "u", "info"),
+      %{r(3, "6a", :tuesday, "p1", "t", "info") | teaching_context_id: "tc-1"}
+    ]
+
+    assert C.suggestions(slots, [{:monday, "p1"}, {:tuesday, "p1"}], "6a", {:monday, "p1"})
+           |> Enum.filter(&(&1.kind == :swap)) == []
+  end
+
+  test "a same-teacher swap never fixes a teacher clash, so none is offered" do
+    slots = [
+      s(1, "6a", :monday, "p1", "t"),
+      s(2, "6b", :monday, "p1", "t"),
+      s(3, "6a", :tuesday, "p1", "t")
+    ]
+
+    assert C.suggestions(slots, [{:monday, "p1"}, {:tuesday, "p1"}], "6a", {:monday, "p1"})
+           |> Enum.filter(&(&1.kind == :swap)) == []
+  end
 end

@@ -131,20 +131,32 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.update()
   end
 
-  @doc "Sets (or clears, with nil) the class's home room (spec J3)."
+  @doc """
+  Sets (or clears, with nil) the class's home room (spec J3); `{:error, :invalid}` for a
+  room that is not an active room of the school.
+  """
   def set_home_room(%Scope{} = scope, %ClassGroup{} = cg, room_id) do
-    cg
-    |> Ash.Changeset.for_update(:update, %{home_room_id: room_id}, scope: scope)
-    |> Ash.update()
+    if is_nil(room_id) or active_room?(scope, room_id) do
+      cg
+      |> Ash.Changeset.for_update(:update, %{home_room_id: room_id}, scope: scope)
+      |> Ash.update()
+    else
+      {:error, :invalid}
+    end
   end
 
-  @doc "Enrolled students per class of the year: `%{class_group_id => count}` (spec J3)."
-  def class_sizes(%Scope{} = scope, %AcademicYear{id: year_id}) do
-    Enrollment
-    |> Ash.Query.filter(academic_year_id == ^year_id)
-    |> Ash.Query.select([:class_group_id])
-    |> Ash.read!(scope: scope)
-    |> Enum.frequencies_by(& &1.class_group_id)
+  defp active_room?(scope, room_id),
+    do:
+      match?(
+        {:ok, %{active?: true}},
+        Ash.get(TeacherAssistant.Academics.Room, room_id, scope: scope)
+      )
+
+  @doc "Enrolled students per class of the year: `%{class_group_id => count}` (spec J3), one query."
+  def class_sizes(%Scope{} = scope, %AcademicYear{} = year) do
+    scope
+    |> list_class_groups(year, load: [:enrollment_count])
+    |> Map.new(&{&1.id, &1.enrollment_count})
   end
 
   @doc "Sets (or clears, with nil) the class's own maximum size."

@@ -32,7 +32,7 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
 
     assign(socket,
       rooms: rooms,
-      in_use: MapSet.new(for r <- rooms, Organization.room_in_use?(scope, r), do: r.id),
+      in_use: Organization.rooms_in_use(scope),
       classes: classes
     )
   end
