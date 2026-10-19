@@ -1019,7 +1019,7 @@ editing coefficients or combined courses from the grid.
 
 ## J3 — Rooms and teacher unavailability (spec)
 
-Status: specced 2026-10-19 (picked up again after the 2026-10-01 postponement).
+Status: implemented 2026-10-19 (branch `j3-rooms-availability`, plan `docs/superpowers/plans/2026-10-19-j3-rooms-availability.md`); no visual check done.
 
 Gaps: **T02, T03**. No mockup excerpt; the screens follow the J4 editor's look.
 
