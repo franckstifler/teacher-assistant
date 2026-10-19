@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
          %{} = year <- scope.current_academic_year,
          {:ok, profile} <- Accounts.fetch_school_profile(scope),
          true <- Accounts.can_edit_profile?(scope, profile) do
-      {:ok, socket |> assign(year: year, error: nil, editing: nil) |> load()}
+      {:ok, socket |> assign(year: year, error: nil) |> edit_holiday(nil) |> load()}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end
@@ -25,6 +25,9 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
       assign(socket,
         holidays: Organization.list_holidays(socket.assigns.current_scope, socket.assigns.year)
       )
+
+  def handle_event("change", %{"holiday" => params}, socket),
+    do: {:noreply, assign(socket, holiday_form: to_form(params, as: :holiday))}
 
   def handle_event("add", %{"holiday" => params}, socket) do
     scope = socket.assigns.current_scope
@@ -39,7 +42,8 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
            }) do
       {:noreply,
        socket
-       |> assign(error: nil, editing: nil)
+       |> assign(error: nil)
+       |> edit_holiday(nil)
        |> load()
        |> put_flash(:info, gettext("Jour enregistré."))}
     else
@@ -49,21 +53,28 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
       {:error, %Ash.Error.Invalid{errors: errors}} ->
         {:noreply,
          assign(socket,
+           holiday_form: to_form(params, as: :holiday),
            error: Enum.map_join(errors, " ", &(Map.get(&1, :message) || Exception.message(&1)))
          )}
 
       _ ->
-        {:noreply, assign(socket, error: gettext("Indiquez des dates valides."))}
+        {:noreply,
+         assign(socket,
+           holiday_form: to_form(params, as: :holiday),
+           error: gettext("Indiquez des dates valides.")
+         )}
     end
   end
 
   def handle_event("edit", %{"id" => id}, socket),
     do:
       {:noreply,
-       assign(socket, editing: Enum.find(socket.assigns.holidays, &(&1.id == id)), error: nil)}
+       socket
+       |> assign(error: nil)
+       |> edit_holiday(Enum.find(socket.assigns.holidays, &(&1.id == id)))}
 
   def handle_event("cancel_edit", _params, socket),
-    do: {:noreply, assign(socket, editing: nil, error: nil)}
+    do: {:noreply, socket |> assign(error: nil) |> edit_holiday(nil)}
 
   def handle_event("delete", %{"id" => id}, socket) do
     case Enum.find(socket.assigns.holidays, &(&1.id == id)) do
@@ -99,9 +110,24 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
   defp save_holiday(scope, %{editing: holiday}, attrs),
     do: Organization.update_holiday(scope, holiday, attrs)
 
-  defp field(nil, _key), do: ""
-  defp field(holiday, :label), do: holiday.label
-  defp field(holiday, key), do: Date.to_iso8601(Map.fetch!(holiday, key))
+  # The form adds a holiday (`nil`) or edits `holiday`; it is rebuilt from the server so
+  # it empties after a save.
+  defp edit_holiday(socket, holiday) do
+    params =
+      case holiday do
+        nil ->
+          %{"label" => "", "start_date" => "", "end_date" => ""}
+
+        h ->
+          %{
+            "label" => h.label || "",
+            "start_date" => Date.to_iso8601(h.start_date),
+            "end_date" => Date.to_iso8601(h.end_date)
+          }
+      end
+
+    assign(socket, editing: holiday, holiday_form: to_form(params, as: :holiday))
+  end
 
   # An empty « Au » means a single day.
   defp end_param(%{"end_date" => e}) when is_binary(e) and e != "", do: e
@@ -165,25 +191,15 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
         </div>
 
         <.form
-          for={%{}}
-          as={:holiday}
+          for={@holiday_form}
           id="holiday-form"
+          phx-change="change"
           phx-submit="add"
           class="grid items-end gap-2 rounded-box border border-base-300 bg-base-100 p-4 sm:grid-cols-4"
         >
-          <.input name="holiday[label]" value={field(@editing, :label)} label={gettext("Libellé")} />
-          <.input
-            name="holiday[start_date]"
-            type="date"
-            value={field(@editing, :start_date)}
-            label={gettext("Du")}
-          />
-          <.input
-            name="holiday[end_date]"
-            type="date"
-            value={field(@editing, :end_date)}
-            label={gettext("Au (facultatif)")}
-          />
+          <.input field={@holiday_form[:label]} label={gettext("Libellé")} />
+          <.input field={@holiday_form[:start_date]} type="date" label={gettext("Du")} />
+          <.input field={@holiday_form[:end_date]} type="date" label={gettext("Au (facultatif)")} />
           <div class="flex gap-2">
             <button type="submit" class="btn btn-primary btn-sm">
               {if @editing, do: gettext("Enregistrer"), else: gettext("Ajouter")}

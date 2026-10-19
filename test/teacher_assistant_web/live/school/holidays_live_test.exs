@@ -90,4 +90,32 @@ defmodule TeacherAssistantWeb.School.HolidaysLiveTest do
     assert has_element?(view, "#holidays-empty")
     refute has_element?(view, "#holidays-table")
   end
+
+  test "the form is empty again after a holiday is added", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/holidays")
+
+    params = %{
+      holiday: %{label: "Congés de Noël", start_date: "2025-12-19", end_date: "2026-01-04"}
+    }
+
+    view |> form("#holiday-form", params) |> render_change()
+
+    assert has_element?(
+             view,
+             "#holiday-form input[name='holiday[label]'][value='Congés de Noël']"
+           )
+
+    view |> form("#holiday-form", params) |> render_submit()
+    assert has_element?(view, "#holidays-table", "Congés de Noël")
+
+    refute has_element?(
+             view,
+             "#holiday-form input[name='holiday[label]'][value='Congés de Noël']"
+           )
+
+    refute has_element?(
+             view,
+             "#holiday-form input[name='holiday[start_date]'][value='2025-12-19']"
+           )
+  end
 end
