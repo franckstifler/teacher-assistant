@@ -467,7 +467,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                             phx-value-day={d}
                             phx-value-period={p.id}
                             class={[
-                              "h-11 w-full rounded px-1.5 text-left text-xs",
+                              "h-11 w-full overflow-hidden rounded px-1.5 text-left text-xs leading-tight",
                               problem?(@problems, @cg, d, p.id) &&
                                 "clash-cell border border-error bg-error/30",
                               !problem?(@problems, @cg, d, p.id) && slot && "bg-primary/15",

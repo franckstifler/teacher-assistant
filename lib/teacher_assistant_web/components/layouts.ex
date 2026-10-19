@@ -626,6 +626,9 @@ defmodule TeacherAssistantWeb.Layouts do
   defp rail_active?(path, "/school/settings"),
     do: Enum.any?(@settings_pages, &(path == &1 or String.starts_with?(path, &1 <> "/")))
 
+  # The editor's sub-pages (« Disponibilités », « Mon emploi du temps ») have their own item.
+  defp rail_active?(_path, "/school/timetable"), do: false
+
   defp rail_active?(path, href), do: String.starts_with?(path, href <> "/")
 
   attr :id, :string, default: nil

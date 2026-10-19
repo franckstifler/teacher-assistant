@@ -211,7 +211,7 @@ defmodule TeacherAssistantWeb.School.AvailabilityLive do
             <table id="avail-grid" class="table table-sm">
               <thead>
                 <tr>
-                  <th></th>
+                  <th class="sticky left-0 z-10 bg-base-100"></th>
                   <th :for={d <- @calendar.lesson_days} class="align-top">
                     <button
                       id={"avail-day-#{d}"}
@@ -253,7 +253,7 @@ defmodule TeacherAssistantWeb.School.AvailabilityLive do
               </thead>
               <tbody>
                 <tr :for={p <- @periods}>
-                  <td class="whitespace-nowrap text-xs">
+                  <td class="sticky left-0 z-10 whitespace-nowrap bg-base-100 text-xs">
                     <span class="font-semibold">{p.label}</span>
                     <span class="block text-base-content/70">{hm(p.start_time)}</span>
                   </td>

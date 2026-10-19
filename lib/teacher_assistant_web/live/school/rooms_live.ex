@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
     with %{} <- scope.current_workspace,
          true <- Timetabling.can_edit_timetable?(scope),
          %{} = year <- Organization.current_academic_year(scope) do
-      {:ok, socket |> assign(year: year, editing: nil, error: nil) |> load()}
+      {:ok, socket |> assign(year: year, error: nil) |> edit_room(nil) |> load()}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
@@ -37,6 +37,9 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
     )
   end
 
+  def handle_event("change_room", %{"room" => params}, socket),
+    do: {:noreply, assign(socket, room_form: to_form(params, as: :room))}
+
   def handle_event("save_room", %{"room" => params}, socket) do
     attrs = %{
       name: params["name"],
@@ -54,7 +57,8 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
       {:ok, _} ->
         {:noreply,
          socket
-         |> assign(editing: nil, error: nil)
+         |> assign(error: nil)
+         |> edit_room(nil)
          |> load()
          |> put_flash(:info, gettext("Salle enregistrée."))}
 
@@ -64,16 +68,17 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
       {:error, _} ->
         {:noreply,
          assign(socket,
+           room_form: to_form(params, as: :room),
            error: gettext("Vérifiez le nom (unique) et la capacité (au moins 1 place).")
          )}
     end
   end
 
   def handle_event("edit", %{"id" => id}, socket),
-    do: {:noreply, assign(socket, editing: find_room(socket, id), error: nil)}
+    do: {:noreply, socket |> assign(error: nil) |> edit_room(find_room(socket, id))}
 
   def handle_event("cancel_edit", _params, socket),
-    do: {:noreply, assign(socket, editing: nil, error: nil)}
+    do: {:noreply, socket |> assign(error: nil) |> edit_room(nil)}
 
   def handle_event("toggle_active", %{"id" => id}, socket) do
     with %{} = room <- find_room(socket, id) do
@@ -122,6 +127,25 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
 
   defp find_room(socket, id), do: Enum.find(socket.assigns.rooms, &(&1.id == id))
 
+  # The form adds a room (`nil`) or edits `room`; it is rebuilt from the server so it
+  # empties after a save.
+  defp edit_room(socket, room) do
+    params =
+      case room do
+        nil ->
+          %{"name" => "", "kind" => "classroom", "capacity" => ""}
+
+        room ->
+          %{
+            "name" => room.name,
+            "kind" => to_string(room.kind),
+            "capacity" => (room.capacity && to_string(room.capacity)) || ""
+          }
+      end
+
+    assign(socket, editing: room, room_form: to_form(params, as: :room))
+  end
+
   defp blank_to_nil(v) when v in [nil, ""], do: nil
   defp blank_to_nil(v), do: v
 
@@ -144,12 +168,6 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
     end
   end
 
-  defp field(nil, :kind), do: "classroom"
-  defp field(nil, _key), do: ""
-  defp field(room, :kind), do: to_string(room.kind)
-  defp field(room, :capacity), do: room.capacity && to_string(room.capacity)
-  defp field(room, key), do: Map.fetch!(room, key)
-
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
@@ -166,7 +184,7 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
             <thead>
               <tr>
                 <th>{gettext("Salle")}</th>
-                <th>{gettext("Type")}</th>
+                <th class="hidden sm:table-cell">{gettext("Type")}</th>
                 <th class="text-right">{gettext("Places")}</th>
                 <th></th>
               </tr>
@@ -178,39 +196,44 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
                   <span :if={!r.active?} class="badge badge-ghost badge-sm ml-1">
                     {pgettext("room", "Inactive")}
                   </span>
+                  <span class="block text-xs font-normal text-base-content/70 sm:hidden">
+                    {RoomKind.label(r.kind)}
+                  </span>
                 </td>
-                <td>{RoomKind.label(r.kind)}</td>
+                <td class="hidden sm:table-cell">{RoomKind.label(r.kind)}</td>
                 <td class="ta-num text-right">{r.capacity || "—"}</td>
-                <td class="whitespace-nowrap text-right">
-                  <button
-                    id={"edit-room-#{r.id}"}
-                    type="button"
-                    phx-click="edit"
-                    phx-value-id={r.id}
-                    class="btn btn-ghost btn-xs"
-                  >
-                    {gettext("Modifier")}
-                  </button>
-                  <button
-                    id={"deactivate-room-#{r.id}"}
-                    type="button"
-                    phx-click="toggle_active"
-                    phx-value-id={r.id}
-                    class="btn btn-ghost btn-xs"
-                  >
-                    {if r.active?, do: gettext("Désactiver"), else: gettext("Réactiver")}
-                  </button>
-                  <button
-                    :if={not MapSet.member?(@in_use, r.id)}
-                    id={"delete-room-#{r.id}"}
-                    type="button"
-                    phx-click="delete"
-                    phx-value-id={r.id}
-                    data-confirm={gettext("Supprimer cette salle ?")}
-                    class="btn btn-ghost btn-xs text-error"
-                  >
-                    {gettext("Supprimer")}
-                  </button>
+                <td class="text-right">
+                  <div class="flex flex-col items-end gap-0.5 sm:flex-row sm:justify-end">
+                    <button
+                      id={"edit-room-#{r.id}"}
+                      type="button"
+                      phx-click="edit"
+                      phx-value-id={r.id}
+                      class="btn btn-ghost btn-xs"
+                    >
+                      {gettext("Modifier")}
+                    </button>
+                    <button
+                      id={"deactivate-room-#{r.id}"}
+                      type="button"
+                      phx-click="toggle_active"
+                      phx-value-id={r.id}
+                      class="btn btn-ghost btn-xs"
+                    >
+                      {if r.active?, do: gettext("Désactiver"), else: gettext("Réactiver")}
+                    </button>
+                    <button
+                      :if={not MapSet.member?(@in_use, r.id)}
+                      id={"delete-room-#{r.id}"}
+                      type="button"
+                      phx-click="delete"
+                      phx-value-id={r.id}
+                      data-confirm={gettext("Supprimer cette salle ?")}
+                      class="btn btn-ghost btn-xs text-error"
+                    >
+                      {gettext("Supprimer")}
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -221,25 +244,23 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
         </div>
 
         <.form
-          for={%{}}
-          as={:room}
+          for={@room_form}
           id="room-form"
+          phx-change="change_room"
           phx-submit="save_room"
           class="grid items-end gap-2 rounded-box border border-base-300 bg-base-100 p-4 sm:grid-cols-4"
         >
-          <.input name="room[name]" value={field(@editing, :name)} label={gettext("Nom")} />
+          <.input field={@room_form[:name]} label={gettext("Nom")} />
           <.input
-            name="room[kind]"
+            field={@room_form[:kind]}
             type="select"
-            value={field(@editing, :kind)}
             options={kind_options()}
             label={gettext("Type")}
           />
           <.input
-            name="room[capacity]"
+            field={@room_form[:capacity]}
             type="number"
             min="1"
-            value={field(@editing, :capacity)}
             label={gettext("Places (facultatif)")}
           />
           <div class="flex gap-2">

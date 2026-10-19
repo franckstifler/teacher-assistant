@@ -104,4 +104,16 @@ defmodule TeacherAssistantWeb.School.RoomsLiveTest do
     render_change(view, "set_home_room", %{"class_id" => a.id, "room_id" => foreign.id})
     assert Ash.get!(TeacherAssistant.Academics.ClassGroup, a.id, scope: scope).home_room_id == nil
   end
+
+  test "the form is empty again after a room is added", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/rooms")
+    params = %{room: %{name: "Atelier 1", kind: "workshop", capacity: "25"}}
+    view |> form("#room-form", params) |> render_change()
+    assert has_element?(view, "#room-form input[name='room[name]'][value='Atelier 1']")
+
+    view |> form("#room-form", params) |> render_submit()
+    assert room(scope, "Atelier 1")
+    refute has_element?(view, "#room-form input[name='room[name]'][value='Atelier 1']")
+    refute has_element?(view, "#room-form input[name='room[capacity]'][value='25']")
+  end
 end

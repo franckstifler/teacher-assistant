@@ -105,4 +105,15 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     {:ok, view, _} = live(conn, ~p"/school/courses")
     assert has_element?(view, "#nav-school-corrections")
   end
+
+  test "on the availability page only « Disponibilités » is the current menu item", ctx do
+    {conn, _} = member_conn(ctx, [:vice_principal], [])
+    {:ok, view, _} = live(conn, ~p"/school/timetable/availability")
+    assert has_element?(view, "#nav-school-availability[aria-current=page]")
+    refute has_element?(view, "#nav-school-timetable-editor[aria-current=page]")
+    refute has_element?(view, "#tab-nav-school-timetable-editor[aria-current=page]")
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable")
+    assert has_element?(view, "#nav-school-timetable-editor[aria-current=page]")
+  end
 end
