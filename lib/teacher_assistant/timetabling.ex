@@ -616,13 +616,20 @@ defmodule TeacherAssistant.Timetabling do
         end
 
       Ash.transact([TimetableSlot], fn ->
-        Enum.each(slots, fn s ->
+        Enum.reduce_while(slots, :ok, fn s, :ok ->
           s
           |> Ash.Changeset.for_update(:update, %{room_id: room_id}, scope: scope)
-          |> Ash.update!()
+          |> Ash.update()
+          |> case do
+            {:ok, _} -> {:cont, :ok}
+            {:error, error} -> {:halt, Ash.DataLayer.rollback([TimetableSlot], error)}
+          end
         end)
       end)
-      |> ok()
+      |> case do
+        {:ok, :ok} -> :ok
+        {:error, _} = error -> error
+      end
     else
       _ -> {:error, :invalid}
     end

@@ -341,4 +341,22 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert Enum.find(Curriculum.list_subjects(scope), &(&1.id == subject.id)).default_room_id ==
              info.id
   end
+
+  test "saving a subject keeps a default room that was deactivated", %{conn: conn, scope: scope} do
+    alias TeacherAssistant.{Curriculum, Organization}
+    {:ok, info} = Organization.create_room(scope, %{name: "Salle info", kind: :computer_room})
+    [subject | _] = Curriculum.list_subjects(scope)
+    {:ok, subject} = Curriculum.update_subject(scope, subject, %{default_room_id: info.id})
+    {:ok, _} = Organization.update_room(scope, info, %{active?: false})
+
+    {:ok, view, _} = live(conn, ~p"/school/settings/subjects")
+    view |> element("#subject-row-#{subject.id}") |> render_click()
+
+    view
+    |> form("#subject-edit-form-#{subject.id}", subject_edit: %{name: subject.name <> " 2"})
+    |> render_submit()
+
+    assert Enum.find(Curriculum.list_subjects(scope), &(&1.id == subject.id)).default_room_id ==
+             info.id
+  end
 end

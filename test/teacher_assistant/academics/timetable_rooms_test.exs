@@ -159,4 +159,15 @@ defmodule TeacherAssistant.Academics.TimetableRoomsTest do
     [view] = Timetabling.teacher_timetable(ctx.scope, ctx.t1)[{:monday, ctx.p1.id}]
     assert view.room_name == "Salle info"
   end
+
+  test "set_slot_room returns an error instead of raising when the write is refused", ctx do
+    {:ok, _} = place(ctx, ctx.a, ctx.maths, :monday, ctx.p1)
+    teacher = TeacherFixtures.member_scope_fixture(ctx.scope)
+    teacher = %{teacher | current_academic_year: ctx.year}
+
+    assert {:error, _} =
+             Timetabling.set_slot_room(teacher, ctx.a, {:monday, ctx.p1.id}, ctx.labo.id)
+
+    assert slot_at(ctx, ctx.a, :monday, ctx.p1).room_id == nil
+  end
 end

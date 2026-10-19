@@ -71,6 +71,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
         over: %{},
         problems: MapSet.new(),
         rooms: [],
+        all_rooms: [],
         room_names: %{},
         count: 0,
         grid: %{},
@@ -103,6 +104,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
         |> MapSet.union(room_clashes |> Map.keys() |> MapSet.new())
         |> MapSet.union(unavailable_cells),
       rooms: Enum.filter(all_rooms, & &1.active?),
+      all_rooms: all_rooms,
       room_names: Map.new(all_rooms, &{&1.id, &1.name}),
       count: TimetableConflicts.count(slots, unavailable),
       grid: timetable.slots,
@@ -300,6 +302,10 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
       name -> gettext("Salle de la classe (%{room})", room: name)
     end
   end
+
+  # Active rooms, plus the lesson's own room when it was deactivated since.
+  defp room_options(all_rooms, selected),
+    do: Enum.filter(all_rooms, &(&1.active? or &1.id == selected))
 
   # The select's value: "" while the lesson is in the class's home room.
   defp selected_room(%{room_id: id}, cg) when id == cg.home_room_id, do: ""
@@ -595,7 +601,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                     {home_room_option(@room_names, @cg)}
                   </option>
                   <option
-                    :for={r <- @rooms}
+                    :for={r <- room_options(@all_rooms, selected_room(slot, @cg))}
                     :if={r.id != @cg.home_room_id}
                     value={r.id}
                     selected={selected_room(slot, @cg) == r.id}

@@ -316,4 +316,16 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
     assert has_element?(view, "#availability-link[href='/school/timetable/availability']")
   end
+
+  test "the room select shows a lesson's room even after the room was deactivated",
+       %{conn: conn} = ctx do
+    labo = room!(ctx.scope, %{name: "Labo", kind: :laboratory})
+    place!(ctx, ctx.a, ctx.ma)
+    :ok = Timetabling.set_slot_room(ctx.scope, ctx.a, {:monday, ctx.p1.id}, labo.id)
+    {:ok, _} = Organization.update_room(ctx.scope, labo, %{active?: false})
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#room-select option[selected]", "Labo")
+  end
 end

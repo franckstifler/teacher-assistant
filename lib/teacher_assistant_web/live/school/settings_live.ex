@@ -27,7 +27,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
         |> assign(:can_edit_timetable?, TeacherAssistant.Timetabling.can_edit_timetable?(scope))
-        |> assign(:rooms, Organization.list_active_rooms(scope))
+        |> assign(:rooms, Organization.list_rooms(scope))
         |> assign(:subject_form, subject_form(scope))
         |> assign(:editing_subject, nil)
         |> allow_upload(:logo,
@@ -661,7 +661,11 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               name="subject_edit[default_room_id]"
               type="select"
               value={@editing_subject.default_room_id}
-              options={Enum.map(@rooms, &{&1.name, &1.id})}
+              options={
+                for r <- @rooms,
+                    r.active? or r.id == @editing_subject.default_room_id,
+                    do: {r.name, r.id}
+              }
               prompt="—"
               label={gettext("Salle par défaut")}
             />

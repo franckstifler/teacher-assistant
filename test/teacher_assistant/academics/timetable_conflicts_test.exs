@@ -246,4 +246,15 @@ defmodule TeacherAssistant.Academics.TimetableConflictsTest do
     assert C.suggestions([r(1, "6a", :monday, "p1", "t", "info")], open, "6a", {:monday, "p1"}) ==
              []
   end
+
+  test "over capacity: a combined course in one member's home room still sums its classes" do
+    slots = [
+      r(1, "maco", :monday, "p1", "t", "b12", combined: "cc", home: "b12", size: 25),
+      r(2, "eleq", :monday, "p1", "t", "b12", combined: "cc", home: "b14", size: 30)
+    ]
+
+    over = C.over_capacity(slots, %{"b12" => 40})
+    assert over[{"maco", :monday, "p1"}] == %{size: 55, capacity: 40, room_id: "b12"}
+    assert over[{"eleq", :monday, "p1"}] == %{size: 55, capacity: 40, room_id: "b12"}
+  end
 end

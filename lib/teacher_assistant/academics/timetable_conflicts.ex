@@ -71,11 +71,10 @@ defmodule TeacherAssistant.Academics.TimetableConflicts do
   """
   def over_capacity(slots, capacities) do
     slots
-    |> Enum.filter(fn slot ->
-      not is_nil(slot.room_id) and slot.room_id != slot.home_room_id and
-        is_integer(capacities[slot.room_id])
-    end)
+    |> Enum.filter(&(not is_nil(&1.room_id) and is_integer(capacities[&1.room_id])))
     |> Enum.group_by(&{unit(&1), &1.room_id, &1.day, &1.period_id})
+    # A combined course is skipped only when the room is every member class's home room.
+    |> Enum.reject(fn {_key, group} -> Enum.all?(group, &(&1.room_id == &1.home_room_id)) end)
     |> Enum.flat_map(fn {{_unit, room_id, _day, _period}, group} ->
       size = group |> Enum.map(&(&1.class_size || 0)) |> Enum.sum()
       capacity = capacities[room_id]
