@@ -6,6 +6,10 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   subject to another free teacher within their service); hours placed against hours
   planned per subject. Combined courses (« regroupé ») are placed and cleared on all
   their classes.
+
+  Spec J3: a room clash and a lesson at a time its teacher is unavailable are shown and
+  counted like a teacher clash; a shared room too small for the class is an amber
+  warning, not counted. The cell panel picks the lesson's room.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -61,6 +65,13 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
       assign(socket,
         slots: [],
         clashes: %{},
+        room_clashes: %{},
+        unavailable: MapSet.new(),
+        unavailable_cells: MapSet.new(),
+        over: %{},
+        problems: MapSet.new(),
+        rooms: [],
+        room_names: %{},
         count: 0,
         grid: %{},
         tally: [],
@@ -72,11 +83,28 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
     %{current_scope: scope, cg: cg} = socket.assigns
     slots = Timetabling.school_slots(scope)
     timetable = Timetabling.class_timetable(scope, cg)
+    unavailable = Timetabling.unavailability(scope)
+    clashes = TimetableConflicts.clashes(slots)
+    room_clashes = TimetableConflicts.room_clashes(slots)
+    unavailable_cells = TimetableConflicts.unavailable_cells(slots, unavailable)
+    all_rooms = Organization.list_rooms(scope)
 
     assign(socket,
       slots: slots,
-      clashes: TimetableConflicts.clashes(slots),
-      count: TimetableConflicts.count(slots),
+      clashes: clashes,
+      room_clashes: room_clashes,
+      unavailable: unavailable,
+      unavailable_cells: unavailable_cells,
+      over: TimetableConflicts.over_capacity(slots, Map.new(all_rooms, &{&1.id, &1.capacity})),
+      problems:
+        clashes
+        |> Map.keys()
+        |> MapSet.new()
+        |> MapSet.union(room_clashes |> Map.keys() |> MapSet.new())
+        |> MapSet.union(unavailable_cells),
+      rooms: Enum.filter(all_rooms, & &1.active?),
+      room_names: Map.new(all_rooms, &{&1.id, &1.name}),
+      count: TimetableConflicts.count(slots, unavailable),
       grid: timetable.slots,
       tally: timetable.tally,
       assignments: Curriculum.list_assignments_for_class(scope, cg)
@@ -84,17 +112,22 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
     |> assign_fixes()
   end
 
-  # The selected clashing lesson's fixes: moves and swaps, then up to two teachers
-  # who could take the whole subject (« Confier à »).
+  # The selected problem lesson's fixes: moves and swaps, then — for a teacher clash or
+  # an unavailable teacher, not a room clash — up to two teachers who could take the
+  # whole subject (« Confier à »).
   defp assign_fixes(%{assigns: %{selected: {day, period_id} = cell} = assigns} = socket) do
     with %{teaching_context_id: tc_id} <- assigns.grid[cell],
-         true <- clash?(assigns.clashes, assigns.cg, day, period_id),
+         true <- problem?(assigns.problems, assigns.cg, day, period_id),
          %{} = tc <- Enum.find(assigns.assignments, &(&1.id == tc_id)) do
       reassigns =
-        assigns.current_scope
-        |> Timetabling.reassign_candidates(tc, assigns.slots)
-        |> Enum.take(2)
-        |> Enum.map(&Map.merge(&1, %{kind: :reassign, tc: tc}))
+        if clash?(assigns.clashes, assigns.cg, day, period_id) or
+             MapSet.member?(assigns.unavailable_cells, {assigns.cg.id, day, period_id}),
+           do:
+             assigns.current_scope
+             |> Timetabling.reassign_candidates(tc, assigns.slots, assigns.unavailable)
+             |> Enum.take(2)
+             |> Enum.map(&Map.merge(&1, %{kind: :reassign, tc: tc})),
+           else: []
 
       assign(socket, fixes: suggestions(assigns, cell) ++ reassigns)
     else
@@ -193,6 +226,19 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
     end
   end
 
+  def handle_event("set_room", %{"room_id" => room_id}, socket) do
+    room_id = if room_id == "", do: nil, else: room_id
+
+    with {day, period_id} <- socket.assigns.selected,
+         true <- is_nil(room_id) or Enum.any?(socket.assigns.rooms, &(&1.id == room_id)) do
+      socket.assigns.current_scope
+      |> Timetabling.set_slot_room(socket.assigns.cg, {day, period_id}, room_id)
+      |> after_write(socket)
+    else
+      _ -> after_write({:error, :invalid}, socket)
+    end
+  end
+
   defp after_write(result, socket) when result == :ok or elem(result, 0) == :ok,
     do: {:noreply, load(socket)}
 
@@ -224,12 +270,46 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   end
 
   defp suggestions(assigns, cell),
-    do: TimetableConflicts.suggestions(assigns.slots, open_cells(assigns), assigns.cg.id, cell)
+    do:
+      TimetableConflicts.suggestions(
+        assigns.slots,
+        open_cells(assigns),
+        assigns.cg.id,
+        cell,
+        assigns.unavailable
+      )
 
   defp clash?(clashes, cg, day, period_id), do: Map.has_key?(clashes, {cg.id, day, period_id})
 
-  defp class_has_clash?(clashes, cg),
-    do: Enum.any?(clashes, fn {{id, _, _}, _} -> id == cg.id end)
+  # Spec J3: a teacher clash, a room clash or an unavailable teacher.
+  defp problem?(problems, cg, day, period_id),
+    do: MapSet.member?(problems, {cg.id, day, period_id})
+
+  defp class_has_problem?(problems, cg), do: Enum.any?(problems, fn {id, _, _} -> id == cg.id end)
+
+  # The room shown in a cell: only a shared room (not the class's home room).
+  defp shown_room(%{room_id: id, room_name: name}, cg)
+       when not is_nil(id) and id != cg.home_room_id,
+       do: name
+
+  defp shown_room(_slot, _cg), do: nil
+
+  defp home_room_option(room_names, cg) do
+    case room_names[cg.home_room_id] do
+      nil -> gettext("Salle de la classe")
+      name -> gettext("Salle de la classe (%{room})", room: name)
+    end
+  end
+
+  # The select's value: "" while the lesson is in the class's home room.
+  defp selected_room(%{room_id: id}, cg) when id == cg.home_room_id, do: ""
+  defp selected_room(%{room_id: id}, _cg), do: id
+
+  defp teacher_unavailable?(assigns, tc) do
+    with {day, period_id} <- assigns.selected do
+      not TimetableConflicts.available?(assigns.unavailable, tc.teacher_user_id, day, period_id)
+    end
+  end
 
   defp label_of(classes, id), do: Enum.find_value(classes, "?", &(&1.id == id && &1.label))
 
@@ -299,6 +379,13 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
           subtitle={gettext("Cliquez sur une case pour placer ou déplacer un cours.")}
         >
           <:actions>
+            <.link
+              id="availability-link"
+              navigate={~p"/school/timetable/availability"}
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="hero-clock" class="size-4" /> {gettext("Disponibilités des enseignants")}
+            </.link>
             <a
               :if={@cg}
               id="print-timetable"
@@ -329,7 +416,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
             class={["btn btn-xs", if(@cg && c.id == @cg.id, do: "btn-primary", else: "btn-ghost")]}
           >
             {c.label}
-            <span :if={class_has_clash?(@clashes, c)} class="size-1.5 rounded-full bg-error"></span>
+            <span :if={class_has_problem?(@problems, c)} class="size-1.5 rounded-full bg-error"></span>
           </button>
         </div>
 
@@ -375,9 +462,12 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                             phx-value-period={p.id}
                             class={[
                               "h-11 w-full rounded px-1.5 text-left text-xs",
-                              clash?(@clashes, @cg, d, p.id) &&
+                              problem?(@problems, @cg, d, p.id) &&
                                 "clash-cell border border-error bg-error/30",
-                              !clash?(@clashes, @cg, d, p.id) && slot && "bg-primary/15",
+                              !problem?(@problems, @cg, d, p.id) && slot && "bg-primary/15",
+                              !problem?(@problems, @cg, d, p.id) &&
+                                Map.has_key?(@over, {@cg.id, d, p.id}) &&
+                                "capacity-cell border border-warning",
                               !slot && "border border-dashed border-base-300 text-base-content/70",
                               @selected == {d, p.id} && "ring-2 ring-base-content"
                             ]}
@@ -385,6 +475,12 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                             <%= if slot do %>
                               <span class="block truncate font-semibold">{slot.subject}</span>
                               <span class="block truncate text-base-content/70">{slot.teacher_name}</span>
+                              <span
+                                :if={room = shown_room(slot, @cg)}
+                                class="block truncate text-[0.65rem] text-base-content/70"
+                              >
+                                {room}
+                              </span>
                             <% else %>
                               <span class="font-semibold text-info">{gettext("+ Libre")}</span>
                             <% end %>
@@ -402,6 +498,8 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               <% {d, pid} = @selected %>
               <% p = period_of(@periods, pid) %>
               <% slot = @grid[@selected] %>
+              <% others = @room_clashes[{@cg.id, d, pid}] %>
+              <% over = @over[{@cg.id, d, pid}] %>
               <h2 class="font-semibold">
                 {DayOfWeek.label(d)} · {p.label} {hm(p.start_time)}–{hm(p.end_time)} · {@cg.label}
               </h2>
@@ -427,6 +525,46 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                     time: hm(p.start_time)
                   )}
                 </p>
+              <% end %>
+
+              <p
+                :if={slot && others}
+                id="room-conflict-text"
+                class="rounded-[0.5rem] border border-error/55 bg-error/12 p-2.5 text-sm"
+              >
+                <b class="text-error">{gettext("Conflit.")}</b>
+                {gettext("%{room} est déjà occupée par %{classes}.",
+                  room: slot.room_name,
+                  classes: others |> Enum.map(&label_of(@classes, &1)) |> Enum.join(", ")
+                )}
+              </p>
+
+              <p
+                :if={slot && MapSet.member?(@unavailable_cells, {@cg.id, d, pid})}
+                id="unavailable-text"
+                class="rounded-[0.5rem] border border-error/55 bg-error/12 p-2.5 text-sm"
+              >
+                <b class="text-error">{gettext("Conflit.")}</b>
+                {gettext("%{teacher} n'est pas disponible le %{day} à %{time}.",
+                  teacher: slot.teacher_name,
+                  day: String.downcase(DayOfWeek.label(d)),
+                  time: hm(p.start_time)
+                )}
+              </p>
+
+              <p
+                :if={slot && over}
+                id="capacity-text"
+                class="rounded-[0.5rem] border border-warning/55 bg-warning/12 p-2.5 text-sm"
+              >
+                {gettext("%{size} élèves pour %{capacity} places en %{room}.",
+                  size: over.size,
+                  capacity: over.capacity,
+                  room: @room_names[over.room_id]
+                )}
+              </p>
+
+              <%= if slot && problem?(@problems, @cg, d, pid) do %>
                 <p :if={@fixes == []} class="text-sm text-base-content/70">
                   {gettext("Aucune solution automatique")}
                 </p>
@@ -442,6 +580,31 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                 </button>
               <% end %>
 
+              <.form
+                :if={slot}
+                for={%{}}
+                id="room-select"
+                phx-change="set_room"
+                class="flex items-center gap-2"
+              >
+                <label for="room-select-input" class="text-sm text-base-content/70">
+                  {gettext("Salle")}
+                </label>
+                <select id="room-select-input" name="room_id" class="select select-sm flex-1">
+                  <option value="" selected={selected_room(slot, @cg) == ""}>
+                    {home_room_option(@room_names, @cg)}
+                  </option>
+                  <option
+                    :for={r <- @rooms}
+                    :if={r.id != @cg.home_room_id}
+                    value={r.id}
+                    selected={selected_room(slot, @cg) == r.id}
+                  >
+                    {r.name}
+                  </option>
+                </select>
+              </.form>
+
               <div class="flex flex-wrap gap-1.5">
                 <% busy_for = fn tc -> busy_elsewhere(assigns, tc) end %>
                 <button
@@ -451,15 +614,25 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                   phx-click="place"
                   phx-value-tc={tc.id}
                   title={
-                    (c = busy_for.(tc)) &&
-                      gettext("%{teacher} a déjà cours en %{class}",
-                        teacher: User.display_name(tc.teacher),
-                        class: c
-                      )
+                    cond do
+                      c = busy_for.(tc) ->
+                        gettext("%{teacher} a déjà cours en %{class}",
+                          teacher: User.display_name(tc.teacher),
+                          class: c
+                        )
+
+                      teacher_unavailable?(assigns, tc) ->
+                        gettext("%{teacher} est indisponible à ce créneau",
+                          teacher: User.display_name(tc.teacher)
+                        )
+
+                      true ->
+                        nil
+                    end
                   }
                   class={[
                     "badge badge-outline cursor-pointer py-3",
-                    busy_for.(tc) && "badge-error",
+                    (busy_for.(tc) || teacher_unavailable?(assigns, tc)) && "badge-error",
                     slot && slot.teaching_context_id == tc.id && "badge-primary"
                   ]}
                 >

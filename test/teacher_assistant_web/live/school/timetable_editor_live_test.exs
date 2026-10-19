@@ -197,4 +197,123 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
     refute Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p1.id}]
     refute Timetabling.class_timetable(ctx.scope, ctx.b).slots[{:monday, ctx.p1.id}]
   end
+
+  # --- J3: rooms and availability ---------------------------------------------------
+
+  defp place!(ctx, cg, tc, period \\ nil) do
+    {:ok, _} =
+      Timetabling.place_slot(ctx.scope, cg, %{
+        day: :monday,
+        period_id: (period || ctx.p1).id,
+        teaching_context_id: tc.id
+      })
+  end
+
+  defp room!(scope, attrs) do
+    {:ok, room} = Organization.create_room(scope, attrs)
+    room
+  end
+
+  defp slot_room(ctx, cg) do
+    [slot] = Timetabling.list_for_cell!(cg.id, :monday, ctx.p1.id, scope: ctx.scope)
+    slot.room_id
+  end
+
+  test "two classes in the computer room at the same time: red, counted, the panel names the other class",
+       %{conn: conn} = ctx do
+    info = room!(ctx.scope, %{name: "Salle info", kind: :computer_room})
+    t1 = TeacherFixtures.member_scope_fixture(ctx.scope).current_user
+    t2 = TeacherFixtures.member_scope_fixture(ctx.scope).current_user
+    {:ok, ia} = Curriculum.assign_teacher(ctx.scope, ctx.a, t1, %{subject: "Informatique"})
+    {:ok, ib} = Curriculum.assign_teacher(ctx.scope, ctx.b, t2, %{subject: "Informatique"})
+    subject = Ash.get!(TeacherAssistant.Academics.Subject, ia.subject_id, scope: ctx.scope)
+    {:ok, _} = Curriculum.update_subject(ctx.scope, subject, %{default_room_id: info.id})
+    place!(ctx, ctx.a, ia)
+    place!(ctx, ctx.b, ib)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, "#cell-monday-#{ctx.p1.id}.clash-cell", "Salle info")
+    assert has_element?(view, "#conflict-count", "1 conflit")
+
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#room-conflict-text", "Salle info est déjà occupée par 6e R.")
+  end
+
+  test "a lesson placed at the teacher's unavailable time: red, counted, named",
+       %{conn: conn} = ctx do
+    :ok = Timetabling.set_unavailable(ctx.scope, ctx.actor.id, [{:monday, ctx.p1.id}], true)
+    place!(ctx, ctx.a, ctx.ma)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, "#cell-monday-#{ctx.p1.id}.clash-cell")
+    assert has_element?(view, "#conflict-count", "1 conflit")
+
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+
+    assert view |> element("#unavailable-text") |> render() =~
+             "n&#39;est pas disponible le lundi à #{hm(ctx.p1.start_time)}."
+  end
+
+  test "a class larger than a shared room: amber capacity line, count unchanged",
+       %{conn: conn} = ctx do
+    labo = room!(ctx.scope, %{name: "Labo", kind: :laboratory, capacity: 1})
+    {:ok, _} = Enrollment.enroll_new(ctx.scope, ctx.a, %{full_name: "Awa A", sex: :f})
+    {:ok, _} = Enrollment.enroll_new(ctx.scope, ctx.a, %{full_name: "Bel B", sex: :m})
+    place!(ctx, ctx.a, ctx.ma)
+    :ok = Timetabling.set_slot_room(ctx.scope, ctx.a, {:monday, ctx.p1.id}, labo.id)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, "#cell-monday-#{ctx.p1.id}.capacity-cell")
+    assert has_element?(view, "#conflict-count", "Aucun conflit")
+
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#capacity-text", "2 élèves pour 1 places en Labo.")
+  end
+
+  test "the room select moves the lesson to a shared room and back to the home room",
+       %{conn: conn} = ctx do
+    labo = room!(ctx.scope, %{name: "Labo", kind: :laboratory})
+    b12 = room!(ctx.scope, %{name: "B12"})
+    {:ok, _} = Enrollment.set_home_room(ctx.scope, ctx.a, b12.id)
+    place!(ctx, ctx.a, ctx.ma)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#room-select option", "Salle de la classe (B12)")
+
+    view |> form("#room-select", %{room_id: labo.id}) |> render_change()
+    assert slot_room(ctx, ctx.a) == labo.id
+    assert has_element?(view, "#cell-monday-#{ctx.p1.id}", "Labo")
+
+    view |> form("#room-select", %{room_id: ""}) |> render_change()
+    assert slot_room(ctx, ctx.a) == nil
+  end
+
+  test "a move fix for an unavailable lesson lands on an available time", %{conn: conn} = ctx do
+    :ok = Timetabling.set_unavailable(ctx.scope, ctx.actor.id, [{:monday, ctx.p1.id}], true)
+    place!(ctx, ctx.a, ctx.ma)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    view |> element("#fix-0") |> render_click()
+
+    assert has_element?(view, "#conflict-count", "Aucun conflit")
+    refute Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p1.id}]
+  end
+
+  test "a crafted set_room with another school's room id changes nothing", %{conn: conn} = ctx do
+    %{scope: other} = TeacherFixtures.setup_complete_school_fixture()
+    {:ok, foreign} = Organization.create_room(other, %{name: "Ailleurs"})
+    place!(ctx, ctx.a, ctx.ma)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    render_change(view, "set_room", %{"room_id" => foreign.id})
+    assert slot_room(ctx, ctx.a) == nil
+  end
+
+  test "the header links to the availability page", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, "#availability-link[href='/school/timetable/availability']")
+  end
 end

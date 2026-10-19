@@ -199,12 +199,8 @@ defmodule TeacherAssistantWeb.School.AvailabilityLive do
               ]}
             >
               <span class="block font-semibold">{User.display_name(t)}</span>
-              <span
-                :if={s = summary(@blocked, t.id, @calendar, @periods)}
-                class="block text-xs text-warning"
-              >
-                {s}
-              </span>
+              <% s = summary(@blocked, t.id, @calendar, @periods) %>
+              <span :if={s} class="block text-xs text-warning">{s}</span>
             </button>
           </nav>
 
