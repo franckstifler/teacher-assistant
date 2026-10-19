@@ -101,4 +101,22 @@ defmodule TeacherAssistant.TimetablingReassignTest do
            |> Enum.filter(&(&1.teaching_context_id == ctx.tc.id))
            |> Enum.all?(&(&1.teacher_id == new.id))
   end
+
+  test "a teacher unavailable at one of the lesson's slots is not offered", ctx do
+    blocked = teacher(ctx.scope)
+    free = teacher(ctx.scope)
+    :ok = Timetabling.set_unavailable(ctx.scope, blocked.id, [{:monday, ctx.p1.id}], true)
+
+    ids =
+      ctx.scope
+      |> Timetabling.reassign_candidates(
+        ctx.tc,
+        Timetabling.school_slots(ctx.scope),
+        Timetabling.unavailability(ctx.scope)
+      )
+      |> Enum.map(& &1.user.id)
+
+    assert free.id in ids
+    refute blocked.id in ids
+  end
 end

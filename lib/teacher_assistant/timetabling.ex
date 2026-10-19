@@ -10,6 +10,8 @@ defmodule TeacherAssistant.Timetabling do
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
   alias TeacherAssistant.Academics.Period
+  alias TeacherAssistant.Academics.Room
+  alias TeacherAssistant.Academics.Subject
   alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableConflicts
@@ -47,6 +49,10 @@ defmodule TeacherAssistant.Timetabling do
   Rejects a `teaching_context_id` that doesn't belong to `class_group`, or an unknown
   period, with `{:error, :invalid}`, and a closed cell (spec J1) with
   `{:error, :closed_cell}`. A teacher clash is saved (spec J4): the editor shows it.
+
+  Spec J3: a new occupant takes its subject's default room (when active), else the
+  class's home room (`room_id` nil); placing the cell's own occupant again changes
+  nothing, so a room picked by hand stays.
   """
   def place_slot(
         %Scope{} = scope,
@@ -57,11 +63,24 @@ defmodule TeacherAssistant.Timetabling do
           teaching_context_id: teaching_context_id
         }
       ) do
-    with {:ok, %TeachingContext{class_group_id: cg_id}} when cg_id == cg.id <-
+    with {:ok, %TeachingContext{class_group_id: cg_id} = tc} when cg_id == cg.id <-
            Ash.get(TeachingContext, teaching_context_id, scope: scope),
          {:ok, %Period{} = period} <- Ash.get(Period, period_id, scope: scope),
          :open <- open_or_closed(scope, day, period) do
-      upsert_slot(scope, cg, teaching_context_id, period_id, day)
+      case list_for_cell!(cg.id, day, period_id, scope: scope) do
+        [%TimetableSlot{teaching_context_id: ^teaching_context_id} = slot] ->
+          {:ok, slot}
+
+        _ ->
+          upsert_slot(
+            scope,
+            cg,
+            teaching_context_id,
+            period_id,
+            day,
+            default_room_id(scope, [tc])
+          )
+      end
     else
       :closed -> {:error, :closed_cell}
       _ -> {:error, :invalid}
@@ -108,35 +127,65 @@ defmodule TeacherAssistant.Timetabling do
 
     with {:ok, %Period{} = period} <- Ash.get(Period, period_id, scope: scope),
          :open <- open_or_closed(scope, day, period) do
+      existing =
+        Enum.map(contexts, &list_for_cell!(&1.class_group_id, day, period_id, scope: scope))
+
       case contexts do
         [] ->
           {:error, :invalid}
 
         _ ->
-          placements =
-            Enum.map(contexts, fn tc ->
-              %{
-                class_group_id: tc.class_group_id,
-                teaching_context_id: tc.id
-              }
-            end)
-
-          TimetableSlot
-          |> Ash.ActionInput.for_action(
-            :place_combined,
-            %{
-              day: day,
-              period_id: period_id,
-              placements: placements
-            },
-            scope: scope
-          )
-          |> Ash.run_action()
+          if already_placed?(contexts, existing),
+            do: {:ok, List.flatten(existing)},
+            else: place_combined(scope, contexts, day, period_id)
       end
     else
       :closed -> {:error, :closed_cell}
       _ -> {:error, :invalid}
     end
+  end
+
+  # Every member class's cell already holds that class's context of the course.
+  defp already_placed?(contexts, existing) do
+    contexts
+    |> Enum.zip(existing)
+    |> Enum.all?(fn
+      {tc, [%TimetableSlot{teaching_context_id: id}]} -> id == tc.id
+      _ -> false
+    end)
+  end
+
+  defp place_combined(scope, contexts, day, period_id) do
+    room_id = default_room_id(scope, contexts)
+
+    placements =
+      Enum.map(contexts, fn tc ->
+        %{class_group_id: tc.class_group_id, teaching_context_id: tc.id, room_id: room_id}
+      end)
+
+    TimetableSlot
+    |> Ash.ActionInput.for_action(
+      :place_combined,
+      %{day: day, period_id: period_id, placements: placements},
+      scope: scope
+    )
+    |> Ash.run_action()
+  end
+
+  # Spec J3: the first of the contexts' subjects with an active default room, else nil.
+  defp default_room_id(scope, contexts) do
+    Enum.find_value(contexts, fn
+      %TeachingContext{subject_id: nil} ->
+        nil
+
+      %TeachingContext{subject_id: subject_id} ->
+        with {:ok, subject} <- Ash.get(Subject, subject_id, scope: scope, load: [:default_room]),
+             %Room{active?: true, id: id} <- subject.default_room do
+          id
+        else
+          _ -> nil
+        end
+    end)
   end
 
   # Spec J1: lessons only in open cells of the school calendar.
@@ -186,7 +235,8 @@ defmodule TeacherAssistant.Timetabling do
   Builds the class's timetable grid plus a weekly-hours tally.
 
   Returns `%{slots: %{{day, period_id} => slot_view}, tally: [tally_row]}`.
-  `slot_view` is `%{teaching_context_id, subject, teacher_name, day, period_id}` (`teacher_name`: the name, else the e-mail).
+  `slot_view` is `%{teaching_context_id, subject, teacher_name, day, period_id, room_id, room_name}`
+  (`teacher_name`: the name, else the e-mail; the room: the lesson's, else the class's home room, else nil).
   `tally_row` is `%{teaching_context_id, subject, placed, required, status}`,
   one row per assignment from `Curriculum.list_assignments_for_class/1` (zero-placement
   assignments included), with `status` in `[:under, :exact, :over]`.
@@ -251,18 +301,25 @@ defmodule TeacherAssistant.Timetabling do
       teacher_name: User.display_name(slot.teaching_context.teacher),
       day: slot.day,
       period_id: slot.period_id,
-      class_group_id: slot.class_group_id
+      class_group_id: slot.class_group_id,
+      # Spec J3: the lesson's room, else the class's home room.
+      room_id: slot.room_id || slot.class_group.home_room_id,
+      room_name: room_name(slot.room || slot.class_group.home_room)
     }
 
     if class_label, do: Map.put(base, :class_label, class_label), else: base
   end
+
+  defp room_name(%Room{name: name}), do: name
+  defp room_name(_none), do: nil
 
   defp upsert_slot(
          %Scope{} = scope,
          %ClassGroup{id: cg_id},
          teaching_context_id,
          period_id,
-         day
+         day,
+         room_id
        ) do
     TimetableSlot
     |> Ash.Changeset.for_create(
@@ -271,7 +328,8 @@ defmodule TeacherAssistant.Timetabling do
         class_group_id: cg_id,
         teaching_context_id: teaching_context_id,
         period_id: period_id,
-        day: day
+        day: day,
+        room_id: room_id
       },
       scope: scope
     )
@@ -357,13 +415,15 @@ defmodule TeacherAssistant.Timetabling do
     error in [Ash.Error.Forbidden, Ash.Error.Invalid] -> {:error, error}
   end
 
-  @doc "The active year's slots as plain maps for `TimetableConflicts` (spec J4)."
+  @doc "The active year's slots as plain maps for `TimetableConflicts` (specs J4, J3)."
   def school_slots(%Scope{current_academic_year: nil}), do: []
 
   def school_slots(%Scope{current_academic_year: year} = scope) do
+    sizes = TeacherAssistant.Enrollment.class_sizes(scope, year)
+
     TimetableSlot
     |> Ash.Query.filter(teaching_context.academic_year_id == ^year.id)
-    |> Ash.Query.load(:teaching_context)
+    |> Ash.Query.load([:teaching_context, :class_group])
     |> Ash.read!(scope: scope)
     |> Enum.map(fn s ->
       %{
@@ -373,7 +433,11 @@ defmodule TeacherAssistant.Timetabling do
         period_id: s.period_id,
         teaching_context_id: s.teaching_context_id,
         teacher_id: s.teaching_context.teacher_user_id,
-        combined_course_id: s.teaching_context.combined_course_id
+        combined_course_id: s.teaching_context.combined_course_id,
+        # Spec J3: the effective room — the lesson's own, else the class's home room.
+        room_id: s.room_id || s.class_group.home_room_id,
+        home_room_id: s.class_group.home_room_id,
+        class_size: Map.get(sizes, s.class_group_id, 0)
       }
     end)
   end
@@ -409,18 +473,27 @@ defmodule TeacherAssistant.Timetabling do
   could take `tc` (the whole subject of that class, every slot of it) — active
   teachers other than its own, free at every one of its slots in `slots` (as
   `school_slots/1` returns them), and still within their service (theirs, else
-  the school's) once its weekly hours are added. Those already
+  the school's) once its weekly hours are added, and not blocked (spec J3,
+  `unavailable` as `unavailability/1` returns it) at any of those slots. Those already
   teaching that subject come first, then the lightest load, then the name. Each
   is `%{user, load, service}`; none for a combined course.
   """
-  def reassign_candidates(%Scope{}, %TeachingContext{combined_course_id: cc}, _slots)
+  def reassign_candidates(scope, tc, slots, unavailable \\ MapSet.new())
+
+  def reassign_candidates(
+        %Scope{},
+        %TeachingContext{combined_course_id: cc},
+        _slots,
+        _unavailable
+      )
       when not is_nil(cc),
       do: []
 
   def reassign_candidates(
         %Scope{current_academic_year: year} = scope,
         %TeachingContext{} = tc,
-        slots
+        slots,
+        unavailable
       ) do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
     members = Accounts.list_members(scope)
@@ -448,7 +521,8 @@ defmodule TeacherAssistant.Timetabling do
         m.user_id != tc.teacher_user_id,
         Enum.all?(
           own_slots,
-          &(not TimetableConflicts.busy?(slots, m.user_id, &1.day, &1.period_id))
+          &(not TimetableConflicts.busy?(slots, m.user_id, &1.day, &1.period_id) and
+              TimetableConflicts.available?(unavailable, m.user_id, &1.day, &1.period_id))
         ),
         load = get_in(loads, [m.user_id, :load]) || 0,
         service = AssignmentGrid.service(grid, m.user_id),
@@ -487,13 +561,16 @@ defmodule TeacherAssistant.Timetabling do
     end
   end
 
-  @doc "Exchanges the class's lessons at two cells, in one transaction (spec J4)."
+  @doc """
+  Exchanges the class's lessons at two cells, in one transaction (spec J4); each lesson
+  takes its room along (spec J3).
+  """
   def swap_slots(%Scope{} = scope, %ClassGroup{} = cg, {ad, ap}, {bd, bp}) do
     with {:ok, a} <- single_slot(scope, cg, ad, ap),
          {:ok, b} <- single_slot(scope, cg, bd, bp) do
       Ash.transact([TimetableSlot], fn ->
-        with {:ok, _} <- set_context(scope, a, b.teaching_context_id),
-             {:ok, _} <- set_context(scope, b, a.teaching_context_id) do
+        with {:ok, _} <- set_lesson(scope, a, b),
+             {:ok, _} <- set_lesson(scope, b, a) do
           :ok
         end
       end)
@@ -505,11 +582,64 @@ defmodule TeacherAssistant.Timetabling do
     end
   end
 
-  defp set_context(scope, slot, tc_id),
+  # Puts `from`'s lesson (course and room) into `slot`'s cell.
+  defp set_lesson(scope, slot, from),
     do:
       slot
-      |> Ash.Changeset.for_update(:update, %{teaching_context_id: tc_id}, scope: scope)
+      |> Ash.Changeset.for_update(
+        :update,
+        %{teaching_context_id: from.teaching_context_id, room_id: from.room_id},
+        scope: scope
+      )
       |> Ash.update()
+
+  @doc """
+  Puts the class's lesson at `{day, period_id}` in `room_id`, or back in the class's home
+  room with nil (spec J3); a combined lesson changes on every member class, in one
+  transaction. `{:error, :invalid}` for an empty cell or a room that is not an active
+  room of the school.
+  """
+  def set_slot_room(%Scope{} = scope, %ClassGroup{} = cg, {day, period_id}, room_id) do
+    with [slot] <- list_for_cell!(cg.id, day, period_id, scope: scope),
+         :ok <- usable_room(scope, room_id) do
+      slot = Ash.load!(slot, :teaching_context, scope: scope)
+
+      slots =
+        case slot.teaching_context.combined_course_id do
+          nil ->
+            [slot]
+
+          course_id ->
+            course_id
+            |> Curriculum.contexts_of_course!(scope: scope)
+            |> Enum.flat_map(&list_for_cell!(&1.class_group_id, day, period_id, scope: scope))
+        end
+
+      Ash.transact([TimetableSlot], fn ->
+        Enum.each(slots, fn s ->
+          s
+          |> Ash.Changeset.for_update(:update, %{room_id: room_id}, scope: scope)
+          |> Ash.update!()
+        end)
+      end)
+      |> ok()
+    else
+      _ -> {:error, :invalid}
+    end
+  end
+
+  defp usable_room(_scope, nil), do: :ok
+
+  defp usable_room(scope, room_id) do
+    case Ash.get(Room, room_id, scope: scope) do
+      {:ok, %Room{active?: true}} -> :ok
+      _ -> :invalid
+    end
+  end
+
+  @doc "Every room's capacity (nil = not checked), active or not (spec J3)."
+  def room_capacities(%Scope{} = scope),
+    do: scope |> TeacherAssistant.Organization.list_rooms() |> Map.new(&{&1.id, &1.capacity})
 
   # The class's non-combined lesson at a cell.
   defp single_slot(scope, cg, day, period_id) do

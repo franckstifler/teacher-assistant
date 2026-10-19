@@ -64,7 +64,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       upsert? true
       upsert_identity :unique_cell
-      upsert_fields [:teaching_context_id]
+      upsert_fields [:teaching_context_id, :room_id]
     end
 
     read :for_class do
@@ -72,7 +72,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       filter expr(class_group_id == ^arg(:class_group_id))
 
-      prepare build(load: [teaching_context: :teacher])
+      prepare build(load: [:room, class_group: :home_room, teaching_context: :teacher])
     end
 
     read :for_workspace_teacher do
@@ -80,7 +80,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
       filter expr(teaching_context.teacher_user_id == ^arg(:teacher_user_id))
 
-      prepare build(load: [:class_group, teaching_context: :teacher])
+      prepare build(load: [:room, class_group: :home_room, teaching_context: :teacher])
     end
 
     read :for_cell do
@@ -255,7 +255,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
   end
 
   defp place_one(
-         %{class_group_id: cg_id, teaching_context_id: tc_id},
+         %{class_group_id: cg_id, teaching_context_id: tc_id} = placement,
          day,
          period_id,
          scope
@@ -267,7 +267,8 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
         class_group_id: cg_id,
         teaching_context_id: tc_id,
         period_id: period_id,
-        day: day
+        day: day,
+        room_id: placement[:room_id]
       },
       scope: scope
     )
