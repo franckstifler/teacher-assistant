@@ -26,6 +26,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:can_manage_subjects?, Curriculum.can_manage_subjects?(scope))
         |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
+        |> assign(:can_edit_timetable?, TeacherAssistant.Timetabling.can_edit_timetable?(scope))
+        |> assign(:rooms, Organization.list_active_rooms(scope))
         |> assign(:subject_form, subject_form(scope))
         |> assign(:editing_subject, nil)
         |> allow_upload(:logo,
@@ -106,6 +108,15 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             icon="hero-sun"
             title={gettext("Congés & jours fériés")}
             text={gettext("Les jours sans cours, exclus des appels.")}
+          />
+          <.hub_card
+            :if={@can_edit_timetable?}
+            scope={@current_scope}
+            id="rooms-link"
+            navigate={~p"/school/settings/rooms"}
+            icon="hero-building-office"
+            title={gettext("Salles")}
+            text={gettext("Salles, laboratoires et salles de classe.")}
           />
           <.hub_card
             :if={@can_manage_periods?}
@@ -645,6 +656,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               value={to_string(@editing_subject.bulletin_group)}
               options={bulletin_group_options()}
               label={gettext("Groupe du bulletin")}
+            />
+            <.input
+              name="subject_edit[default_room_id]"
+              type="select"
+              value={@editing_subject.default_room_id}
+              options={Enum.map(@rooms, &{&1.name, &1.id})}
+              prompt="—"
+              label={gettext("Salle par défaut")}
             />
           </.form>
           <div class="space-y-2 border-t border-base-300 pt-4">

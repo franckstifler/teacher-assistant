@@ -319,4 +319,26 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     refute has_element?(view, "#calendar-form button[type=submit]")
     refute has_element?(view, "#year-form")
   end
+
+  test "settings hub links to the rooms page", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+    assert has_element?(view, "#rooms-link")
+  end
+
+  test "a subject's default room is saved from the subjects page", %{conn: conn, scope: scope} do
+    alias TeacherAssistant.{Curriculum, Organization}
+    {:ok, info} = Organization.create_room(scope, %{name: "Salle info", kind: :computer_room})
+    [subject | _] = Curriculum.list_subjects(scope)
+
+    {:ok, view, _} = live(conn, ~p"/school/settings/subjects")
+    view |> element("#subject-row-#{subject.id}") |> render_click()
+    assert has_element?(view, "#subject-edit-form-#{subject.id} option", "Salle info")
+
+    view
+    |> form("#subject-edit-form-#{subject.id}", subject_edit: %{default_room_id: info.id})
+    |> render_submit()
+
+    assert Enum.find(Curriculum.list_subjects(scope), &(&1.id == subject.id)).default_room_id ==
+             info.id
+  end
 end
