@@ -220,6 +220,7 @@ defmodule TeacherAssistantWeb.Spaces do
           classes(),
           students(),
           timetable_editor(),
+          availability(),
           members(),
           conduct(),
           settings()
@@ -483,6 +484,15 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Emploi du temps"),
         "hero-table-cells",
         ~p"/school/timetable"
+      )
+
+  defp availability,
+    do:
+      item(
+        "availability",
+        gettext("Disponibilités"),
+        "hero-clock",
+        ~p"/school/timetable/availability"
       )
 
   defp councils,
