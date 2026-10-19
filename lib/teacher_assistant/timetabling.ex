@@ -328,7 +328,12 @@ defmodule TeacherAssistant.Timetabling do
               TeacherUnavailability
               |> Ash.Changeset.for_create(
                 :create,
-                %{academic_year_id: year.id, teacher_user_id: user_id, day: day, period_id: period_id},
+                %{
+                  academic_year_id: year.id,
+                  teacher_user_id: user_id,
+                  day: day,
+                  period_id: period_id
+                },
                 scope: scope
               )
               |> Ash.create!()

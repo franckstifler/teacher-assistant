@@ -68,7 +68,11 @@ defmodule TeacherAssistant.Organization.RoomsTest do
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
 
     {:ok, slot} =
-      Timetabling.place_slot(scope, cg, %{day: :monday, period_id: p.id, teaching_context_id: tc.id})
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p.id,
+        teaching_context_id: tc.id
+      })
 
     {:ok, slot} =
       slot |> Ash.Changeset.for_update(:update, %{room_id: room.id}, scope: scope) |> Ash.update()
@@ -89,6 +93,7 @@ defmodule TeacherAssistant.Organization.RoomsTest do
     assert id == room.id
 
     [subject | _] = Curriculum.list_subjects(scope)
+
     assert {:ok, %{default_room_id: ^id}} =
              Curriculum.update_subject(scope, subject, %{default_room_id: room.id})
   end

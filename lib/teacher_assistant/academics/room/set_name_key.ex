@@ -6,7 +6,11 @@ defmodule TeacherAssistant.Academics.Room.SetNameKey do
   def change(changeset, _opts, _context) do
     case Ash.Changeset.get_attribute(changeset, :name) do
       name when is_binary(name) ->
-        Ash.Changeset.force_change_attribute(changeset, :name_key, name |> String.trim() |> String.downcase())
+        Ash.Changeset.force_change_attribute(
+          changeset,
+          :name_key,
+          name |> String.trim() |> String.downcase()
+        )
 
       _ ->
         changeset

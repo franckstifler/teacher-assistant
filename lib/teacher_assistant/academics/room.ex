@@ -69,8 +69,17 @@ defmodule TeacherAssistant.Academics.Room do
       constraints: [trim?: true, allow_empty?: false, max_length: 80]
 
     attribute :name_key, :string, allow_nil?: false
-    attribute :kind, TeacherAssistant.Academics.RoomKind, allow_nil?: false, default: :classroom, public?: true
-    attribute :capacity, :integer, allow_nil?: true, public?: true, constraints: [min: 1, max: 1000]
+
+    attribute :kind, TeacherAssistant.Academics.RoomKind,
+      allow_nil?: false,
+      default: :classroom,
+      public?: true
+
+    attribute :capacity, :integer,
+      allow_nil?: true,
+      public?: true,
+      constraints: [min: 1, max: 1000]
+
     attribute :active?, :boolean, allow_nil?: false, default: true, public?: true
     timestamps()
   end

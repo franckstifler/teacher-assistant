@@ -26,7 +26,6 @@ defmodule TeacherAssistant.Academics.ClassGroup do
         match_type: :simple,
         index?: true
 
-
       reference :academic_year,
         match_with: [workspace_id: :workspace_id],
         match_type: :full,

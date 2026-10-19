@@ -34,25 +34,34 @@ defmodule TeacherAssistant.Academics.TeacherUnavailabilityTest do
     teacher_scope = %{teacher_scope | current_academic_year: ctx.year}
 
     assert Timetabling.unavailability(teacher_scope) == MapSet.new()
-    assert {:error, _} = Timetabling.set_unavailable(teacher_scope, t.id, [{:tuesday, p1.id}], true)
+
+    assert {:error, _} =
+             Timetabling.set_unavailable(teacher_scope, t.id, [{:tuesday, p1.id}], true)
+
     assert MapSet.size(Timetabling.unavailability(scope)) == 1
   end
 
   test "a user who is not a member, or a foreign period, is refused with :invalid", ctx do
     %{scope: scope, p1: p1} = ctx
     stranger = TeacherFixtures.user_fixture()
-    assert {:error, :invalid} = Timetabling.set_unavailable(scope, stranger.id, [{:monday, p1.id}], true)
+
+    assert {:error, :invalid} =
+             Timetabling.set_unavailable(scope, stranger.id, [{:monday, p1.id}], true)
 
     %{scope: other} = TeacherFixtures.setup_complete_school_fixture()
     _ = Attendance.build_default_periods(other)
     [fp | _] = Attendance.list_periods(other)
-    assert {:error, :invalid} = Timetabling.set_unavailable(scope, ctx.t.id, [{:monday, fp.id}], true)
+
+    assert {:error, :invalid} =
+             Timetabling.set_unavailable(scope, ctx.t.id, [{:monday, fp.id}], true)
+
     assert Timetabling.unavailability(scope) == MapSet.new()
   end
 
   test "a closed year refuses changes", ctx do
     %{scope: scope, t: t, p1: p1, year: year} = ctx
     %{next: _} = TeacherFixtures.close_year!(scope, year)
+
     TeacherAssistant.Academics.TeacherUnavailability
     |> Ash.Changeset.for_create(
       :create,
