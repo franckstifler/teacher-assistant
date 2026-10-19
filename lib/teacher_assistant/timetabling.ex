@@ -13,6 +13,7 @@ defmodule TeacherAssistant.Timetabling do
   alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TimetableConflicts
+  alias TeacherAssistant.Academics.TeacherUnavailability
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Scope
@@ -28,6 +29,8 @@ defmodule TeacherAssistant.Timetabling do
       define :list_for_cell, action: :for_cell, args: [:class_group_id, :day, :period_id]
       define :list_for_period, action: :for_period, args: [:period_id]
     end
+
+    resource TeacherUnavailability
   end
 
   authorization do
@@ -273,6 +276,80 @@ defmodule TeacherAssistant.Timetabling do
       scope: scope
     )
     |> Ash.create()
+  end
+
+  @doc """
+  The active year's blocked times (spec J3) as a set of `{teacher_user_id, day, period_id}`;
+  empty without an active year or for a scope that may not read them (admin axis only).
+  """
+  def unavailability(%Scope{current_academic_year: nil}), do: MapSet.new()
+
+  def unavailability(%Scope{current_academic_year: year} = scope) do
+    TeacherUnavailability
+    |> Ash.Query.for_read(:for_year, %{academic_year_id: year.id}, scope: scope)
+    |> Ash.read()
+    |> case do
+      {:ok, rows} -> MapSet.new(rows, &{&1.teacher_user_id, &1.day, &1.period_id})
+      {:error, _} -> MapSet.new()
+    end
+  end
+
+  @doc """
+  Blocks (`blocked?` true) or frees the teacher's `cells` (`[{day, period_id}]`) in the
+  active year, in one transaction; already-blocked or already-free cells are left alone.
+  `{:error, :invalid}` when the user is not an active member of the school or a period
+  is not one of its lesson periods.
+  """
+  def set_unavailable(%Scope{current_academic_year: nil}, _user_id, _cells, _blocked?),
+    do: {:error, :invalid}
+
+  def set_unavailable(%Scope{current_academic_year: year} = scope, user_id, cells, blocked?) do
+    lesson_ids =
+      scope
+      |> TeacherAssistant.Attendance.list_periods()
+      |> Enum.filter(&(&1.kind == :lesson))
+      |> MapSet.new(& &1.id)
+
+    with true <- Enum.any?(Accounts.list_members(scope), &(&1.user_id == user_id)),
+         true <- Enum.all?(cells, fn {_day, p} -> MapSet.member?(lesson_ids, p) end) do
+      Ash.transact([TeacherUnavailability], fn ->
+        existing =
+          TeacherUnavailability
+          |> Ash.Query.for_read(:for_year, %{academic_year_id: year.id}, scope: scope)
+          |> Ash.Query.filter(teacher_user_id == ^user_id)
+          |> Ash.read!()
+          |> Map.new(&{{&1.day, &1.period_id}, &1})
+
+        cells
+        |> Enum.uniq()
+        |> Enum.each(fn {day, period_id} = cell ->
+          case {blocked?, existing[cell]} do
+            {true, nil} ->
+              TeacherUnavailability
+              |> Ash.Changeset.for_create(
+                :create,
+                %{academic_year_id: year.id, teacher_user_id: user_id, day: day, period_id: period_id},
+                scope: scope
+              )
+              |> Ash.create!()
+
+            {false, %TeacherUnavailability{} = row} ->
+              Ash.destroy!(row, scope: scope)
+
+            _ ->
+              :ok
+          end
+        end)
+      end)
+      |> case do
+        {:ok, _} -> :ok
+        {:error, _} = error -> error
+      end
+    else
+      _ -> {:error, :invalid}
+    end
+  rescue
+    error in [Ash.Error.Forbidden, Ash.Error.Invalid] -> {:error, error}
   end
 
   @doc "The active year's slots as plain maps for `TimetableConflicts` (spec J4)."

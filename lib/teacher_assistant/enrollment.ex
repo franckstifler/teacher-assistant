@@ -131,6 +131,22 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.update()
   end
 
+  @doc "Sets (or clears, with nil) the class's home room (spec J3)."
+  def set_home_room(%Scope{} = scope, %ClassGroup{} = cg, room_id) do
+    cg
+    |> Ash.Changeset.for_update(:update, %{home_room_id: room_id}, scope: scope)
+    |> Ash.update()
+  end
+
+  @doc "Enrolled students per class of the year: `%{class_group_id => count}` (spec J3)."
+  def class_sizes(%Scope{} = scope, %AcademicYear{id: year_id}) do
+    Enrollment
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.Query.select([:class_group_id])
+    |> Ash.read!(scope: scope)
+    |> Enum.frequencies_by(& &1.class_group_id)
+  end
+
   @doc "Sets (or clears, with nil) the class's own maximum size."
   def set_class_max_size(%Scope{} = scope, %ClassGroup{} = cg, max_size) do
     cg

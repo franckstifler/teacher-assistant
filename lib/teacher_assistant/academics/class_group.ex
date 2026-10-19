@@ -20,6 +20,13 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     references do
       reference :form_master, on_delete: :nilify, index?: true
 
+      reference :home_room,
+        on_delete: {:nilify, [:home_room_id]},
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
+
+
       reference :academic_year,
         match_with: [workspace_id: :workspace_id],
         match_type: :full,
@@ -40,9 +47,18 @@ defmodule TeacherAssistant.Academics.ClassGroup do
         :subsystem,
         :academic_year_id,
         :max_size,
-        :form_master_user_id
+        :form_master_user_id,
+        :home_room_id
       ],
-      update: [:label, :level, :serie, :subsystem, :form_master_user_id, :max_size]
+      update: [
+        :label,
+        :level,
+        :serie,
+        :subsystem,
+        :form_master_user_id,
+        :max_size,
+        :home_room_id
+      ]
     ]
 
     read :for_workspace_and_year do
@@ -127,6 +143,13 @@ defmodule TeacherAssistant.Academics.ClassGroup do
 
     belongs_to :form_master, TeacherAssistant.Accounts.User do
       source_attribute :form_master_user_id
+      allow_nil? true
+      public? true
+    end
+
+    # Spec J3: the class's own room; nil = none set.
+    belongs_to :home_room, TeacherAssistant.Academics.Room do
+      source_attribute :home_room_id
       allow_nil? true
       public? true
     end

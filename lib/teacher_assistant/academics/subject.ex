@@ -13,6 +13,12 @@ defmodule TeacherAssistant.Academics.Subject do
 
     references do
       reference :workspace, on_delete: :delete, index?: true
+
+      reference :default_room,
+        on_delete: {:nilify, [:default_room_id]},
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
     end
 
     custom_indexes do
@@ -33,7 +39,8 @@ defmodule TeacherAssistant.Academics.Subject do
         :bulletin_group,
         :position,
         :active?,
-        :optional?
+        :optional?,
+        :default_room_id
       ]
     ]
 
@@ -47,7 +54,8 @@ defmodule TeacherAssistant.Academics.Subject do
         :bulletin_group,
         :position,
         :active?,
-        :optional?
+        :optional?,
+        :default_room_id
       ]
 
       change TeacherAssistant.Academics.Subject.SeedCoefficientCells
@@ -106,6 +114,13 @@ defmodule TeacherAssistant.Academics.Subject do
     belongs_to :workspace, TeacherAssistant.Academics.Workspace do
       source_attribute :workspace_id
       allow_nil? false
+      public? true
+    end
+
+    # Spec J3: where its lessons go by default; nil = the class's home room.
+    belongs_to :default_room, TeacherAssistant.Academics.Room do
+      source_attribute :default_room_id
+      allow_nil? true
       public? true
     end
   end

@@ -37,6 +37,12 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
         match_type: :full,
         index?: true
 
+      reference :room,
+        on_delete: {:nilify, [:room_id]},
+        match_with: [workspace_id: :workspace_id],
+        match_type: :simple,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
   end
@@ -45,8 +51,8 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     defaults [
       :read,
       :destroy,
-      create: [:class_group_id, :teaching_context_id, :period_id, :day],
-      update: [:class_group_id, :teaching_context_id, :period_id, :day]
+      create: [:class_group_id, :teaching_context_id, :period_id, :day, :room_id],
+      update: [:class_group_id, :teaching_context_id, :period_id, :day, :room_id]
     ]
 
     # Places (or replaces) the occupant of one (class_group, day, period)
@@ -54,7 +60,7 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     # cell keeps its id and only `teaching_context_id` changes — mirrors the
     # old `upsert_slot/4`'s read-then-branch, without the extra read.
     create :place do
-      accept [:class_group_id, :teaching_context_id, :period_id, :day]
+      accept [:class_group_id, :teaching_context_id, :period_id, :day, :room_id]
 
       upsert? true
       upsert_identity :unique_cell
@@ -227,6 +233,13 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
     belongs_to :period, TeacherAssistant.Academics.Period do
       source_attribute :period_id
       allow_nil? false
+      public? true
+    end
+
+    # Spec J3: nil = the class's home room.
+    belongs_to :room, TeacherAssistant.Academics.Room do
+      source_attribute :room_id
+      allow_nil? true
       public? true
     end
 

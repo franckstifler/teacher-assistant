@@ -5,6 +5,7 @@ defmodule TeacherAssistant.Organization do
     AcademicYear,
     CalendarRules,
     Holiday,
+    Room,
     SchoolCalendar,
     Sequence,
     Term,
@@ -40,6 +41,7 @@ defmodule TeacherAssistant.Organization do
     resource Term
     resource Sequence
     resource Holiday
+    resource Room
   end
 
   authorization do
@@ -373,6 +375,45 @@ defmodule TeacherAssistant.Organization do
     |> Enum.find(fn s ->
       Date.compare(date, s.start_date) != :lt and Date.compare(date, s.end_date) != :gt
     end)
+  end
+
+  # --- Rooms (spec J3) -------------------------------------------------------------
+
+  @doc "The school's rooms, by name."
+  def list_rooms(%Scope{} = scope) do
+    Room |> Ash.Query.for_read(:for_workspace, %{}, scope: scope) |> Ash.read!()
+  end
+
+  @doc "The rooms that can still be chosen (home room, default room, a lesson's room)."
+  def list_active_rooms(%Scope{} = scope), do: scope |> list_rooms() |> Enum.filter(& &1.active?)
+
+  def create_room(%Scope{} = scope, attrs) do
+    Room |> Ash.Changeset.for_create(:create, attrs, scope: scope) |> Ash.create()
+  end
+
+  def update_room(%Scope{} = scope, %Room{} = room, attrs) do
+    room |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
+  end
+
+  @doc "Deletes a room nothing uses (any year); `{:error, :in_use}` otherwise — deactivate it instead."
+  def delete_room(%Scope{} = scope, %Room{} = room) do
+    if room_in_use?(scope, room), do: {:error, :in_use}, else: Ash.destroy(room, scope: scope)
+  end
+
+  @doc "Whether a lesson, a class (home room) or a subject (default room) of any year uses the room."
+  def room_in_use?(%Scope{} = scope, %Room{id: id}) do
+    Enum.any?(
+      [
+        {TeacherAssistant.Academics.TimetableSlot, :room_id},
+        {TeacherAssistant.Academics.ClassGroup, :home_room_id},
+        {TeacherAssistant.Academics.Subject, :default_room_id}
+      ],
+      fn {resource, field} ->
+        resource
+        |> Ash.Query.do_filter([{field, id}])
+        |> Ash.exists?(scope: scope)
+      end
+    )
   end
 
   # --- Holidays (spec J1) ---------------------------------------------------------
