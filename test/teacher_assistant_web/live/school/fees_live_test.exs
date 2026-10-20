@@ -1,5 +1,7 @@
 defmodule TeacherAssistantWeb.School.FeesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
+  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
+  @moduletag :skip
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Fees

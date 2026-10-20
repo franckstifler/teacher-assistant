@@ -1,102 +1,91 @@
 defmodule TeacherAssistant.Academics.FeeBalanceTest do
   use ExUnit.Case, async: true
-  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
-  @moduletag :skip
 
-  alias TeacherAssistant.Academics.{FeeBalance, FeeTranche, Payment}
+  alias TeacherAssistant.Academics.FeeBalance, as: B
 
-  describe "compute/4" do
-    test "due_to_date sums only tranches due on/before on_date, excluding a future-dated tranche" do
-      tranches = [
-        %FeeTranche{amount: 10_000, due_date: ~D[2025-09-15]},
-        %FeeTranche{amount: 20_000, due_date: ~D[2025-12-15]}
-      ]
+  @types [:fe, :pta]
+  @tranches [%{due_date: ~D[2025-10-15], percent: 40}, %{due_date: ~D[2026-01-15], percent: 100}]
 
-      result = FeeBalance.compute(tranches, [], 0, ~D[2025-10-01])
+  test "dues subtract adjustments per type and never go below zero" do
+    assert B.dues(@types, %{fe: 50_000, pta: 10_000}, 0, nil, %{pta: 15_000}) ==
+             %{fe: 50_000, pta: 0}
 
-      assert result.total_due == 30_000
-      assert result.due_to_date == 10_000
-    end
+    assert B.dues([:arr | @types], %{fe: 50_000}, 7_000, :arr, %{}) ==
+             %{arr: 7_000, fe: 50_000, pta: 0}
+  end
 
-    test ":on_track when total_paid exactly equals due_to_date" do
-      tranches = [
-        %FeeTranche{amount: 10_000, due_date: ~D[2025-09-15]},
-        %FeeTranche{amount: 20_000, due_date: ~D[2025-12-15]}
-      ]
+  test "allocation fills types in order: 20_000 on 15_000 + 25_000 gives 15_000 then 5_000" do
+    assert B.allocate(20_000, @types, %{fe: 15_000, pta: 25_000}, %{}) == [fe: 15_000, pta: 5_000]
+  end
 
-      payments = [%Payment{amount: 10_000}]
+  test "allocation skips a fully paid type" do
+    assert B.allocate(3_000, @types, %{fe: 15_000, pta: 25_000}, %{fe: 15_000}) == [pta: 3_000]
+  end
 
-      result = FeeBalance.compute(tranches, payments, 0, ~D[2025-10-01])
+  test "an overpayment goes to the last type" do
+    assert B.allocate(5_000, @types, %{fe: 10_000, pta: 0}, %{fe: 10_000}) == [pta: 5_000]
+    assert B.allocate(12_000, @types, %{fe: 10_000, pta: 0}, %{}) == [fe: 10_000, pta: 2_000]
+  end
 
-      assert result.due_to_date == 10_000
-      assert result.total_paid == 10_000
-      assert result.status == :on_track
-    end
+  test "balance: due to date follows the latest passed cumulative percent" do
+    due = %{fe: 80_000, pta: 20_000}
+    assert B.balance(@types, due, %{}, @tranches, ~D[2025-10-01]).due_to_date == 0
+    assert B.balance(@types, due, %{}, @tranches, ~D[2025-11-01]).due_to_date == 40_000
+    assert B.balance(@types, due, %{}, @tranches, ~D[2026-02-01]).due_to_date == 100_000
+  end
 
-    test ":behind when total_paid is exactly one FCFA under due_to_date" do
-      tranches = [
-        %FeeTranche{amount: 10_000, due_date: ~D[2025-09-15]},
-        %FeeTranche{amount: 20_000, due_date: ~D[2025-12-15]}
-      ]
+  test "status: paid up, on track, behind" do
+    due = %{fe: 80_000, pta: 20_000}
+    on = ~D[2025-11-01]
+    assert B.balance(@types, due, %{fe: 80_000, pta: 20_000}, @tranches, on).status == :paid_up
+    assert B.balance(@types, due, %{fe: 40_000}, @tranches, on).status == :on_track
+    assert B.balance(@types, due, %{fe: 39_999}, @tranches, on).status == :behind
+  end
 
-      payments = [%Payment{amount: 9_999}]
+  test "balance lists each type with due, paid and left, and the totals" do
+    b = B.balance(@types, %{fe: 80_000, pta: 20_000}, %{fe: 50_000}, @tranches, ~D[2025-11-01])
 
-      result = FeeBalance.compute(tranches, payments, 0, ~D[2025-10-01])
+    assert b.by_type == [
+             %{type_id: :fe, due: 80_000, paid: 50_000, left: 30_000},
+             %{type_id: :pta, due: 20_000, paid: 0, left: 20_000}
+           ]
 
-      assert result.due_to_date == 10_000
-      assert result.total_paid == 9_999
-      assert result.status == :behind
-    end
+    assert {b.total_due, b.total_paid, b.left} == {100_000, 50_000, 50_000}
+  end
 
-    test ":paid_up on overpayment, with a negative balance" do
-      tranches = [
-        %FeeTranche{amount: 10_000, due_date: ~D[2025-09-15]}
-      ]
+  test "an overpaid balance has a negative left" do
+    b =
+      B.balance(
+        @types,
+        %{fe: 10_000, pta: 0},
+        %{fe: 10_000, pta: 5_000},
+        @tranches,
+        ~D[2025-11-01]
+      )
 
-      payments = [%Payment{amount: 15_000}]
+    assert b.left == -5_000 and b.status == :paid_up
+  end
 
-      result = FeeBalance.compute(tranches, payments, 0, ~D[2025-10-01])
+  test "recovery sums students and rounds rates down" do
+    on = ~D[2025-11-01]
+    due = %{fe: 60_000, pta: 0}
 
-      assert result.total_due == 10_000
-      assert result.total_paid == 15_000
-      assert result.balance == -5_000
-      assert result.status == :paid_up
-    end
+    balances = [
+      B.balance(@types, due, %{fe: 60_000}, @tranches, on),
+      B.balance(@types, due, %{fe: 10_000}, @tranches, on),
+      B.balance(@types, due, %{}, @tranches, on)
+    ]
 
-    test "adjustment_amount reduces total_due and due_to_date, both floored at 0" do
-      tranches = [
-        %FeeTranche{amount: 10_000, due_date: ~D[2025-09-15]},
-        %FeeTranche{amount: 20_000, due_date: ~D[2025-12-15]}
-      ]
+    assert B.recovery(balances) == %{
+             students: 3,
+             expected: 180_000,
+             expected_to_date: 72_000,
+             collected: 70_000,
+             rate: 38,
+             rate_to_date: 97,
+             behind: 2
+           }
 
-      result = FeeBalance.compute(tranches, [], 50_000, ~D[2025-10-01])
-
-      assert result.total_due == 0
-      assert result.due_to_date == 0
-    end
-
-    test "due_to_date includes a tranche due exactly on on_date, excludes one due the day after" do
-      tranches = [
-        %FeeTranche{amount: 10_000, due_date: ~D[2025-10-01]},
-        %FeeTranche{amount: 20_000, due_date: ~D[2025-10-02]}
-      ]
-
-      result = FeeBalance.compute(tranches, [], 0, ~D[2025-10-01])
-
-      assert result.total_due == 30_000
-      assert result.due_to_date == 10_000
-    end
-
-    test "empty tranches and payments yield an all-zero map and :paid_up" do
-      result = FeeBalance.compute([], [], 0, ~D[2025-10-01])
-
-      assert result == %{
-               total_due: 0,
-               total_paid: 0,
-               balance: 0,
-               due_to_date: 0,
-               status: :paid_up
-             }
-    end
+    assert B.recovery([]).rate == 0
   end
 end
