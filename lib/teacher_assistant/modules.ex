@@ -61,6 +61,7 @@ defmodule TeacherAssistant.Modules do
     {W.StudentPhotoController, :frozen} => :notes,
     {W.TimetablePrintController, :class} => :emploi_du_temps,
     {W.TimetablePrintController, :me} => :emploi_du_temps,
+    {W.ReceiptPrintController, :show} => :frais,
     {W.CardPrintController, :show} => :photos,
     {W.StudentPhotoController, :show} => :core,
     {W.SchoolLogoController, :show} => :core

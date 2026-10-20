@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Vérification d'un reçu")}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #f6f7f6; color: #111; margin: 0; padding: 24px 16px; }
+      main { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 24px; }
+      h1 { font-size: 1.3rem; margin: 0 0 12px; }
+      .ok { color: #11663a; } .ko { color: #9b2c1f; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0 0 12px; }
+      dt { color: #555; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0 0; }
+      td { padding: 4px 0; border-top: 1px solid #eee; } td.n { text-align: right; }
+      form { display: grid; gap: 8px; margin-top: 16px; }
+      label { font-size: .9rem; color: #555; }
+      input { font: inherit; padding: 8px 10px; border: 1px solid #bbb; border-radius: 8px; }
+      button { font: inherit; padding: 10px; border: 0; border-radius: 8px; background: #11663a; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <%= case @result do %>
+        <% {status, info} -> %>
+          <h1 :if={status == :valid} class="ok">✓ {gettext("Reçu authentique")}</h1>
+          <h1 :if={status == :cancelled} class="ko">{gettext("Reçu annulé")}</h1>
+          <dl>
+            <dt>{gettext("Reçu")}</dt><dd>{info.number}</dd>
+            <dt>{gettext("Établissement")}</dt><dd>{info.school_name}</dd>
+            <dt>{gettext("Élève")}</dt><dd>{info.student_name}</dd>
+            <dt>{gettext("Classe")}</dt><dd>{info.class_label}</dd>
+            <dt>{gettext("Date")}</dt><dd>{date(info.paid_on)}</dd>
+            <dt>{gettext("Montant")}</dt><dd><b>{Money.format_fcfa(info.amount)}</b></dd>
+            <dt>{gettext("Total payé")}</dt><dd>{Money.format_fcfa(info.paid_to_date)}</dd>
+            <dt>{gettext("Reste à payer")}</dt><dd>{left(info.left_after)}</dd>
+          </dl>
+          <table>
+            <tr :for={a <- info.allocations}>
+              <td>{a.name}</td>
+              <td class="n">{Money.format_fcfa(a.amount)}</td>
+            </tr>
+          </table>
+        <% :invalid -> %>
+          <h1 class="ko">{gettext("Reçu introuvable")}</h1>
+          <p>{gettext("Vérifiez le numéro et le code imprimés sur le reçu.")}</p>
+        <% nil -> %>
+          <h1>{gettext("Vérifier un reçu")}</h1>
+      <% end %>
+
+      <form :if={@form?} method="get" action={~p"/verify/receipt"}>
+        <label for="number">{gettext("Numéro du reçu")}</label>
+        <input id="number" name="number" placeholder="R2026-000123" autocomplete="off" required />
+        <label for="code">{gettext("Code")}</label>
+        <input id="code" name="code" maxlength="6" autocomplete="off" required />
+        <button type="submit">{gettext("Vérifier")}</button>
+      </form>
+    </main>
+  </body>
+</html>

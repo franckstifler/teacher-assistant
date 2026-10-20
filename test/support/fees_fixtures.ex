@@ -5,7 +5,11 @@ defmodule TeacherAssistant.FeesFixtures do
 
   def fees_school_fixture do
     %{scope: scope, year: year} = TeacherFixtures.setup_complete_school_fixture()
-    scope = %{scope | current_academic_year: year}
+    fees_setup(%{scope | current_academic_year: year}, year)
+  end
+
+  @doc "The same fee setup in an existing school (e.g. the logged-in user's in a ConnCase)."
+  def fees_setup(scope, year) do
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e Q", level: "6ème"})
     {:ok, _} = Fees.create_default_fee_types(scope, year)
     [fe, pta] = Fees.list_fee_types(scope, year)

@@ -41,6 +41,8 @@ defmodule TeacherAssistantWeb.Router do
 
     get "/locale/:locale", LocaleController, :set
     get "/verify/bulletin/:token", BulletinVerifyController, :show
+    get "/verify/receipt", ReceiptVerifyController, :lookup
+    get "/verify/receipt/:token", ReceiptVerifyController, :show
 
     sign_in_route live_view: TeacherAssistantWeb.Auth.SignInLive,
                   register_path: "/register",
@@ -86,6 +88,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/school/councils/:class_id/print", CouncilPrintController, :show
     get "/school/classes/:id/timetable/print", TimetablePrintController, :class
     get "/school/timetable/me/print", TimetablePrintController, :me
+    get "/school/fees/receipts/:id/print", ReceiptPrintController, :show
     get "/school/logo", SchoolLogoController, :show
     get "/school/students/:id/photo", StudentPhotoController, :show
     get "/school/bulletins/:publication_id/photo/:student_id", StudentPhotoController, :frozen
