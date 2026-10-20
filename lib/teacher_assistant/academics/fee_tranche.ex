@@ -1,4 +1,9 @@
 defmodule TeacherAssistant.Academics.FeeTranche do
+  @moduledoc """
+  A school-wide payment deadline of the year (Fees 1): by `due_date`, `percent` (cumulative)
+  of each student's total due should be paid. Percent works for every class whatever its
+  amounts.
+  """
   use Ash.Resource,
     otp_app: :teacher_assistant,
     domain: TeacherAssistant.Fees,
@@ -12,7 +17,7 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     repo TeacherAssistant.Repo
 
     references do
-      reference :class_group,
+      reference :academic_year,
         on_delete: :delete,
         match_with: [workspace_id: :workspace_id],
         match_type: :full,
@@ -20,52 +25,27 @@ defmodule TeacherAssistant.Academics.FeeTranche do
 
       reference :workspace, on_delete: :delete, index?: true
     end
-
-    # >= 0, not > 0: `Fees.add_tranche/2`'s own `validate_amount/1` guard
-    # already treats a zero-amount tranche as valid (see
-    # `FeeTrancheTest."amount accepts 0"`) — this is the DB-level backstop
-    # for that same rule, not a stricter one.
-    check_constraints do
-      check_constraint :amount, "fee_tranches_amount_non_negative_check",
-        check: "amount >= 0",
-        message: "must not be negative"
-    end
   end
 
   actions do
     defaults [
       :read,
       :destroy,
-      create: [
-        :label,
-        :amount,
-        :due_date,
-        :position,
-        :class_group_id
-      ],
-      update: [
-        :label,
-        :amount,
-        :due_date,
-        :position
-      ]
+      create: [:label, :percent, :due_date, :position, :academic_year_id],
+      update: [:label, :percent, :due_date, :position]
     ]
 
-    read :for_class_group do
-      argument :class_group_id, :uuid, allow_nil?: false
-
-      filter expr(class_group_id == ^arg(:class_group_id))
-
-      prepare build(sort: [position: :asc])
+    read :for_year do
+      argument :academic_year_id, :uuid, allow_nil?: false
+      filter expr(academic_year_id == ^arg(:academic_year_id))
+      prepare build(sort: [due_date: :asc, position: :asc])
     end
   end
 
   policies do
     policy action_type(:read) do
       # Row rules name a user, not a membership: require an active one.
-      forbid_unless {Checks.SchoolRole, any_of: :member}
-      authorize_if {Checks.SchoolRole, any_of: :fees}
-      authorize_if expr(class_group.form_master_user_id == ^actor(:id))
+      authorize_if {Checks.SchoolRole, any_of: :member}
     end
 
     policy action_type([:create, :update, :destroy]) do
@@ -74,7 +54,7 @@ defmodule TeacherAssistant.Academics.FeeTranche do
   end
 
   validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:class_group]},
+    validate {TeacherAssistant.Academics.YearOpen, path: []},
       on: [:create, :update, :destroy]
   end
 
@@ -87,7 +67,12 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     uuid_v7_primary_key :id
 
     attribute :label, :string, allow_nil?: false, public?: true
-    attribute :amount, :integer, allow_nil?: false, public?: true
+
+    attribute :percent, :integer,
+      allow_nil?: false,
+      public?: true,
+      constraints: [min: 1, max: 100]
+
     attribute :due_date, :date, allow_nil?: false, public?: true
     attribute :position, :integer, allow_nil?: false, public?: true
 
@@ -95,8 +80,8 @@ defmodule TeacherAssistant.Academics.FeeTranche do
   end
 
   relationships do
-    belongs_to :class_group, TeacherAssistant.Academics.ClassGroup do
-      source_attribute :class_group_id
+    belongs_to :academic_year, TeacherAssistant.Academics.AcademicYear do
+      source_attribute :academic_year_id
       allow_nil? false
       public? true
     end

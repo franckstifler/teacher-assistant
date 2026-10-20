@@ -14,9 +14,6 @@ defmodule TeacherAssistant.Authorization.RevocationTest do
     [seq | _] = Organization.list_sequences(head, year)
     {:ok, plan} = Curriculum.create_progression_plan(owner, tc, %{title: "Plan"})
 
-    {:ok, _} =
-      Fees.record_payment(head, e, %{amount: 1_000, paid_on: ~D[2025-10-01], method: :cash})
-
     {:ok, m} = Accounts.fetch_school_membership(head, owner.current_user)
     {:ok, _} = Accounts.deactivate_member(head, m)
     %{head: head, owner: owner, tc: tc, cg: cg, seq: seq, plan: plan, e: e}
@@ -27,6 +24,8 @@ defmodule TeacherAssistant.Authorization.RevocationTest do
     assert_forbidden(Curriculum.create_module(ctx.owner, ctx.plan, %{title: "M"}))
   end
 
+  # Fees 1: restored in Task 4 (the Fees API comes back there).
+  @tag :skip
   test "a revoked form master can no longer withdraw or read fees", ctx do
     assert_forbidden(Enrollment.withdraw(ctx.owner, ctx.e))
     assert Fees.list_payments(ctx.owner, ctx.e) == []

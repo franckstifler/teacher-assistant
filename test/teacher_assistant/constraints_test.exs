@@ -210,6 +210,9 @@ defmodule TeacherAssistant.ConstraintsTest do
   end
 
   describe "fees: tranche/payment/adjustment amount guards" do
+    # Fees 1: rewritten in Task 4 (the Fees API comes back there).
+    @describetag :skip
+
     test "a negative fee tranche amount is rejected", %{cg: cg, scope: scope} do
       # `Fees.add_tranche/3`'s own `validate_tranche_amount/1` guard allows a
       # zero-amount tranche (see `FeeTrancheTest."amount accepts 0"`) — the

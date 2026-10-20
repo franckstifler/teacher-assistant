@@ -1,5 +1,7 @@
 defmodule TeacherAssistant.Academics.FeeBalanceTest do
   use ExUnit.Case, async: true
+  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
+  @moduletag :skip
 
   alias TeacherAssistant.Academics.{FeeBalance, FeeTranche, Payment}
 

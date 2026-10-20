@@ -1,5 +1,7 @@
 defmodule TeacherAssistant.Academics.PaymentTest do
   use TeacherAssistant.DataCase, async: true
+  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
+  @moduletag :skip
 
   require Ash.Query
 

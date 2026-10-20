@@ -18,6 +18,12 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
         match_type: :full,
         index?: true
 
+      reference :fee_type,
+        on_delete: :delete,
+        match_with: [workspace_id: :workspace_id],
+        match_type: :full,
+        index?: true
+
       reference :workspace, on_delete: :delete, index?: true
     end
 
@@ -32,15 +38,16 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
     defaults [
       :read,
       :destroy,
-      create: [:amount, :reason, :recorded_by_user_id, :enrollment_id],
+      create: [:amount, :reason, :recorded_by_user_id, :enrollment_id, :fee_type_id],
       update: [:amount, :reason, :recorded_by_user_id]
     ]
 
     create :set do
-      accept [:amount, :reason, :recorded_by_user_id, :enrollment_id]
+      accept [:amount, :reason, :recorded_by_user_id, :enrollment_id, :fee_type_id]
 
       upsert? true
       upsert_identity :unique_adjustment
+      upsert_fields [:amount, :reason, :recorded_by_user_id]
     end
 
     read :for_enrollment do
@@ -101,9 +108,16 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
       allow_nil? false
       public? true
     end
+
+    # Fees 1: a reduction or waiver applies to one fee type.
+    belongs_to :fee_type, TeacherAssistant.Academics.FeeType do
+      source_attribute :fee_type_id
+      allow_nil? false
+      public? true
+    end
   end
 
   identities do
-    identity :unique_adjustment, [:enrollment_id]
+    identity :unique_adjustment, [:enrollment_id, :fee_type_id]
   end
 end

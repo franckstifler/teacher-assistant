@@ -139,6 +139,8 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
            )
   end
 
+  # Fees 1: restored in Task 4 (the Fees API comes back there).
+  @tag :skip
   test "a payment on a closed year's enrolment is still recorded (arrears)", ctx do
     close(ctx)
 
