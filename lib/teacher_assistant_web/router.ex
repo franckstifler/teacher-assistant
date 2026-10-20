@@ -138,6 +138,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/classes/:id/register", School.RegisterLive, :show
       live "/school/classes/:id/discipline", School.DisciplineLive, :show
       live "/school/classes/:id/fees", School.FeesLive, :show
+      live "/school/fees", School.FeesOverviewLive, :index
       live "/school/timetable", School.TimetableEditorLive, :index
       live "/school/timetable/me", School.MyTimetableLive, :index
       live "/school/timetable/availability", School.AvailabilityLive, :index

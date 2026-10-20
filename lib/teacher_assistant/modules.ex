@@ -50,7 +50,7 @@ defmodule TeacherAssistant.Modules do
       W.School.AvailabilityLive,
       W.School.RoomsLive
     ],
-    frais: [W.School.FeesLive, W.School.FeeSettingsLive],
+    frais: [W.School.FeesLive, W.School.FeeSettingsLive, W.School.FeesOverviewLive],
     photos: [W.School.ClassPhotosLive]
   }
 

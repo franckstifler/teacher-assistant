@@ -90,7 +90,11 @@ defmodule TeacherAssistantWeb.SpacesTest do
       assert tab_labels(:enseignant, facts([:teacher], form_master?: true)) ==
                ["Emploi du temps", "Classes", "Bulletins"]
 
-      assert tab_labels(:intendant, facts([:bursar])) == ["Classes"]
+      assert tab_labels(:intendant, facts([:bursar])) == [
+               "Frais",
+               "Classes",
+               "Paramètres des frais"
+             ]
     end
   end
 

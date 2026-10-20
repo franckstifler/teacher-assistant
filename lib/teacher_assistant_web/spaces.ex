@@ -194,6 +194,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Établissement"), [
           classes(),
           students(),
+          fees(),
           timetable_editor(),
           members(),
           conduct(),
@@ -219,6 +220,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Établissement"), [
           classes(),
           students(),
+          fees(),
           timetable_editor(),
           availability(),
           members(),
@@ -252,8 +254,8 @@ defmodule TeacherAssistantWeb.Spaces do
     %{
       key: :intendant,
       label: label(:intendant),
-      home: ~p"/school/classes",
-      sections: [section(gettext("Intendance"), [classes()])]
+      home: ~p"/school/fees",
+      sections: [section(gettext("Intendance"), [fees(), classes(), fee_settings()])]
     }
   end
 
@@ -484,6 +486,17 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Emploi du temps"),
         "hero-table-cells",
         ~p"/school/timetable"
+      )
+
+  defp fees, do: item("fees", gettext("Frais"), "hero-banknotes", ~p"/school/fees")
+
+  defp fee_settings,
+    do:
+      item(
+        "fee-settings",
+        gettext("Paramètres des frais"),
+        "hero-adjustments-horizontal",
+        ~p"/school/settings/fees"
       )
 
   defp availability,
