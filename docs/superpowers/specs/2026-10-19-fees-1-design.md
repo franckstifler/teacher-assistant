@@ -1,6 +1,6 @@
 # Fees 1 — fee types, tranches, payments with checkable receipts (design)
 
-Status: specced 2026-10-19. Part 2 (« Fees 2 ») is outlined at the end and specced later.
+Status: implemented 2026-10-20 (branch `fees-1`, plan `docs/superpowers/plans/2026-10-20-fees-1.md`); no visual check done. Part 2 (« Fees 2 ») is outlined at the end and specced later.
 
 ## Why
 
