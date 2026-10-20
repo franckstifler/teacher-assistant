@@ -50,9 +50,27 @@
 
       <form :if={@form?} method="get" action={~p"/verify/receipt"}>
         <label for="number">{gettext("Numéro du reçu")}</label>
-        <input id="number" name="number" placeholder="R2026-000123" autocomplete="off" required />
+        <input
+          id="number"
+          name="number"
+          placeholder="R2026-000123"
+          autocomplete="off"
+          autocapitalize="characters"
+          autocorrect="off"
+          spellcheck="false"
+          required
+        />
         <label for="code">{gettext("Code")}</label>
-        <input id="code" name="code" maxlength="6" autocomplete="off" required />
+        <input
+          id="code"
+          name="code"
+          maxlength="8"
+          autocomplete="off"
+          autocapitalize="characters"
+          autocorrect="off"
+          spellcheck="false"
+          required
+        />
         <button type="submit">{gettext("Vérifier")}</button>
       </form>
     </main>

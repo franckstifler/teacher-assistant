@@ -21,43 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "label",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "percent",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "due_date",
-      "type": "date"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "position",
+      "source": "amount",
       "type": "bigint"
     },
     {
@@ -98,25 +62,23 @@
         "index?": true,
         "index_where": null,
         "match_tenant?": false,
-        "match_type": "full",
-        "match_with": {
-          "workspace_id": "workspace_id"
-        },
+        "match_type": null,
+        "match_with": null,
         "multitenancy": {
-          "attribute": "workspace_id",
-          "global": false,
-          "strategy": "attribute"
+          "attribute": null,
+          "global": null,
+          "strategy": null
         },
-        "name": "fee_tranches_academic_year_id_fkey",
+        "name": "student_arrears_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "academic_years"
+        "table": "workspaces"
       },
       "scale": null,
       "size": null,
-      "source": "academic_year_id",
+      "source": "workspace_id",
       "type": "uuid"
     },
     {
@@ -133,34 +95,99 @@
         "index?": true,
         "index_where": null,
         "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
+        "match_type": "full",
+        "match_with": {
+          "workspace_id": "workspace_id"
         },
-        "name": "fee_tranches_workspace_id_fkey",
+        "multitenancy": {
+          "attribute": "workspace_id",
+          "global": false,
+          "strategy": "attribute"
+        },
+        "name": "student_arrears_enrollment_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "workspaces"
+        "table": "enrollments"
       },
       "scale": null,
       "size": null,
-      "source": "workspace_id",
+      "source": "enrollment_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": true,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": "full",
+        "match_with": {
+          "workspace_id": "workspace_id"
+        },
+        "multitenancy": {
+          "attribute": "workspace_id",
+          "global": false,
+          "strategy": "attribute"
+        },
+        "name": "student_arrears_from_academic_year_id_fkey",
+        "on_delete": "delete",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "academic_years"
+      },
+      "scale": null,
+      "size": null,
+      "source": "from_academic_year_id",
       "type": "uuid"
     }
   ],
   "base_filter": null,
-  "check_constraints": [],
+  "check_constraints": [
+    {
+      "attribute": [
+        "amount"
+      ],
+      "base_filter": null,
+      "check": "amount > 0",
+      "name": "student_arrears_amount_positive_check"
+    }
+  ],
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "7619E711286E664371B642318876B5BDA0000D85EA504755DFBA6C66CC3024BC",
-  "identities": [],
+  "hash": "9D16D4A5478450869F5F20C986627655727C4D384F75394248C9DB52CB935C36",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "student_arrears_unique_arrear_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "enrollment_id"
+        },
+        {
+          "type": "atom",
+          "value": "from_academic_year_id"
+        }
+      ],
+      "name": "unique_arrear",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": "workspace_id",
     "global": false,
@@ -168,5 +195,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "fee_tranches"
+  "table": "student_arrears"
 }

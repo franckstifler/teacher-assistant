@@ -219,8 +219,16 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     with true <- socket.assigns.can_edit?,
          %{enrollment: e} <- socket.assigns.student,
          %{} = type <- Enum.find(socket.assigns.types, &(&1.id == type_id)) do
-      Fees.clear_adjustment(scope(socket), e, type)
-      {:noreply, socket |> load() |> load_student()}
+      case Fees.clear_adjustment(scope(socket), e, type) do
+        :ok ->
+          {:noreply, socket |> load() |> load_student()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Modification non enregistrée."))}
+      end
     else
       _ -> {:noreply, socket}
     end

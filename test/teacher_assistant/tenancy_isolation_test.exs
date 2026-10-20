@@ -289,7 +289,9 @@ defmodule TeacherAssistant.TenancyIsolationTest do
         seq: System.unique_integer([:positive]),
         number: "R2030-000001",
         paid_to_date: 5_000,
-        left_after: 0
+        left_after: 0,
+        student_name: "Iso",
+        class_label: "Iso"
       },
       scope: scope
     )

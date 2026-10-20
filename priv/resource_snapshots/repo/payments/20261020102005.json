@@ -145,6 +145,30 @@
       "type": "bigint"
     },
     {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "student_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "class_label",
+      "type": "text"
+    },
+    {
       "allow_nil?": true,
       "default": "nil",
       "generated?": false,
@@ -370,7 +394,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "B07868FF82595834800FC717110EE1FB248EB6691B36BDE209927DC65F39C5C9",
+  "hash": "4AB31EEC839623F1FB957586FFDC429135796DDA98A450DF6FE87B1F79CF2F01",
   "identities": [
     {
       "all_tenants?": false,

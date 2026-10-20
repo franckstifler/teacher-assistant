@@ -33,11 +33,11 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "paid_to_date",
-      "type": "bigint"
+      "source": "reason",
+      "type": "text"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -45,8 +45,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "left_after",
-      "type": "bigint"
+      "source": "recorded_by_user_id",
+      "type": "uuid"
     },
     {
       "allow_nil?": false,
@@ -86,6 +86,41 @@
         "index?": true,
         "index_where": null,
         "match_tenant?": false,
+        "match_type": "full",
+        "match_with": {
+          "workspace_id": "workspace_id"
+        },
+        "multitenancy": {
+          "attribute": "workspace_id",
+          "global": false,
+          "strategy": "attribute"
+        },
+        "name": "fee_adjustments_enrollment_id_fkey",
+        "on_delete": "delete",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "enrollments"
+      },
+      "scale": null,
+      "size": null,
+      "source": "enrollment_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": true,
+        "index_where": null,
+        "match_tenant?": false,
         "match_type": null,
         "match_with": null,
         "multitenancy": {
@@ -93,7 +128,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "payment_allocations_workspace_id_fkey",
+        "name": "fee_adjustments_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -128,43 +163,8 @@
           "global": false,
           "strategy": "attribute"
         },
-        "name": "payment_allocations_payment_id_fkey",
+        "name": "fee_adjustments_fee_type_id_fkey",
         "on_delete": "delete",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "payments"
-      },
-      "scale": null,
-      "size": null,
-      "source": "payment_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": true,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": "full",
-        "match_with": {
-          "workspace_id": "workspace_id"
-        },
-        "multitenancy": {
-          "attribute": "workspace_id",
-          "global": false,
-          "strategy": "attribute"
-        },
-        "name": "payment_allocations_fee_type_id_fkey",
-        "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
@@ -184,15 +184,34 @@
       ],
       "base_filter": null,
       "check": "amount > 0",
-      "name": "payment_allocations_amount_positive_check"
+      "name": "fee_adjustments_amount_positive_check"
     }
   ],
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "BC3AC03FD7F8464D40379F4EA6DF17C879BE61EF51730E94D9D9ACB3CA9AE198",
-  "identities": [],
+  "hash": "F38A71B8D7A85F024653202AB5B13D52E17202A3B94A2B1FB4F264E887D59886",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "fee_adjustments_unique_adjustment_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "enrollment_id"
+        },
+        {
+          "type": "atom",
+          "value": "fee_type_id"
+        }
+      ],
+      "name": "unique_adjustment",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": "workspace_id",
     "global": false,
@@ -200,5 +219,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "payment_allocations"
+  "table": "fee_adjustments"
 }

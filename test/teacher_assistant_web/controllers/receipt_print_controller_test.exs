@@ -31,6 +31,9 @@ defmodule TeacherAssistantWeb.ReceiptPrintControllerTest do
     assert html =~ "<svg"
     assert html =~ ReceiptVerification.code(ReceiptVerification.token(p))
     assert html =~ "https://wa.me/237677123456?text="
+    [_, text] = Regex.run(~r{https://wa.me/237677123456\?text=([^"]+)}, html)
+    refute text =~ "+"
+    assert text =~ "%20"
     assert html =~ "Frais exigibles"
   end
 

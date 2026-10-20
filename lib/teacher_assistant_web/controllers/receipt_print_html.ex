@@ -22,8 +22,11 @@ defmodule TeacherAssistantWeb.ReceiptPrintHTML do
   """
   def whatsapp_url(phone, message) do
     case Phone.normalize(phone) do
-      {:ok, "+" <> digits} -> "https://wa.me/#{digits}?text=#{URI.encode_www_form(message)}"
-      _ -> nil
+      {:ok, "+" <> digits} ->
+        "https://wa.me/#{digits}?text=#{URI.encode(message, &URI.char_unreserved?/1)}"
+
+      _ ->
+        nil
     end
   end
 
@@ -37,8 +40,8 @@ defmodule TeacherAssistantWeb.ReceiptPrintHTML do
       number: p.number,
       date: date(p.paid_on),
       amount: Money.format_fcfa(p.amount),
-      student: receipt.student.full_name,
-      class: receipt.class_group.label,
+      student: receipt.student_name,
+      class: receipt.class_label,
       left: left(p.left_after),
       url: check_url
     )

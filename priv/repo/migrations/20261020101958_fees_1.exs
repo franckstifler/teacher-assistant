@@ -271,6 +271,8 @@ defmodule TeacherAssistant.Repo.Migrations.Fees1 do
       add :status, :text, null: false, default: "valid"
       add :paid_to_date, :bigint, null: false
       add :left_after, :bigint, null: false
+      add :student_name, :text, null: false
+      add :class_label, :text, null: false
       add :cancelled_at, :utc_datetime_usec
       add :cancelled_by_user_id, :uuid
       add :cancel_reason, :text
@@ -385,6 +387,8 @@ defmodule TeacherAssistant.Repo.Migrations.Fees1 do
       remove :cancel_reason
       remove :cancelled_by_user_id
       remove :cancelled_at
+      remove :class_label
+      remove :student_name
       remove :left_after
       remove :paid_to_date
       remove :status

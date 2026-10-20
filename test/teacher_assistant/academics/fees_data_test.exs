@@ -41,7 +41,9 @@ defmodule TeacherAssistant.Academics.FeesDataTest do
       seq: seq,
       number: "R2025-#{String.pad_leading(to_string(seq), 6, "0")}",
       paid_to_date: 5_000,
-      left_after: 0
+      left_after: 0,
+      student_name: "Awa A",
+      class_label: "6e Q"
     }
 
   test "fee type names are unique per year regardless of case", ctx do

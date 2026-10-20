@@ -42,10 +42,10 @@
       <h1>{gettext("Reçu n° %{number}", number: p.number)}</h1>
 
       <dl>
-        <dt>{gettext("Élève")}</dt><dd>{@receipt.student.full_name}</dd>
+        <dt>{gettext("Élève")}</dt><dd>{@receipt.student_name}</dd>
         <dt :if={@receipt.student.matricule}>{gettext("Matricule")}</dt>
         <dd :if={@receipt.student.matricule}>{@receipt.student.matricule}</dd>
-        <dt>{gettext("Classe")}</dt><dd>{@receipt.class_group.label}</dd>
+        <dt>{gettext("Classe")}</dt><dd>{@receipt.class_label}</dd>
         <dt>{gettext("Date")}</dt><dd>{date(p.paid_on)}</dd>
         <dt>{gettext("Mode")}</dt>
         <dd>{PaymentMethod.label(p.method)}<span :if={p.reference}> · {p.reference}</span></dd>

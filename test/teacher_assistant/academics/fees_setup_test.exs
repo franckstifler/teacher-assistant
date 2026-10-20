@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.FeesSetupTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.{Enrollment, Fees, Organization}
+  alias TeacherAssistant.{Enrollment, Fees}
   alias TeacherAssistant.Academics.{Payment, PaymentAllocation}
   alias TeacherAssistant.TeacherFixtures
 
@@ -40,7 +40,9 @@ defmodule TeacherAssistant.Academics.FeesSetupTest do
           seq: System.unique_integer([:positive]),
           number: "R-test",
           paid_to_date: amount,
-          left_after: 0
+          left_after: 0,
+          student_name: "x",
+          class_label: "x"
         },
         scope: scope
       )
@@ -209,5 +211,29 @@ defmodule TeacherAssistant.Academics.FeesSetupTest do
     assert {:ok, _} = Fees.set_adjustment(ctx.scope, e, pta, %{amount: 10_000, reason: "Exonéré"})
     assert {:error, :too_large} = Fees.set_adjustment(ctx.scope, e, fe, %{amount: 1, reason: "x"})
     assert :ok = Fees.clear_adjustment(ctx.scope, e, pta)
+  end
+
+  test "tranche percents must rise with their dates", ctx do
+    {:ok, t1} =
+      Fees.add_tranche(ctx.scope, ctx.year, %{label: "1re", due_date: ~D[2025-10-15], percent: 50})
+
+    assert {:error, :not_rising} =
+             Fees.add_tranche(ctx.scope, ctx.year, %{
+               label: "2e",
+               due_date: ~D[2026-01-15],
+               percent: 40
+             })
+
+    assert {:error, :not_rising} =
+             Fees.add_tranche(ctx.scope, ctx.year, %{
+               label: "0",
+               due_date: ~D[2025-09-15],
+               percent: 60
+             })
+
+    {:ok, _} =
+      Fees.add_tranche(ctx.scope, ctx.year, %{label: "2e", due_date: ~D[2026-01-15], percent: 100})
+
+    assert {:error, :not_rising} = Fees.update_tranche(ctx.scope, t1, %{percent: 100})
   end
 end

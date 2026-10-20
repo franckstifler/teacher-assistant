@@ -211,6 +211,12 @@ defmodule TeacherAssistant.Fees do
   end
 
   def add_tranche(%Scope{} = scope, %AcademicYear{} = year, attrs) do
+    with :ok <- check_rising(list_tranches(scope, year), attrs) do
+      insert_tranche(scope, year, attrs)
+    end
+  end
+
+  defp insert_tranche(scope, year, attrs) do
     FeeTranche
     |> Ash.Changeset.for_create(
       :create,
@@ -223,12 +229,37 @@ defmodule TeacherAssistant.Fees do
   end
 
   def update_tranche(%Scope{} = scope, %FeeTranche{} = tranche, attrs) do
-    tranche
-    |> Ash.Changeset.for_update(:update, Map.take(attrs, [:label, :due_date, :percent]),
-      scope: scope
-    )
-    |> Ash.update()
+    others =
+      scope
+      |> list_tranches(%AcademicYear{id: tranche.academic_year_id})
+      |> Enum.reject(&(&1.id == tranche.id))
+
+    proposed =
+      Map.merge(Map.take(tranche, [:due_date, :percent]), Map.take(attrs, [:due_date, :percent]))
+
+    with :ok <- check_rising(others, proposed) do
+      tranche
+      |> Ash.Changeset.for_update(:update, Map.take(attrs, [:label, :due_date, :percent]),
+        scope: scope
+      )
+      |> Ash.update()
+    end
   end
+
+  # Rule 3: cumulative percents rise with the due dates (a later tranche asks for more).
+  defp check_rising(tranches, %{due_date: %Date{}, percent: percent} = new)
+       when is_integer(percent) do
+    percents =
+      [new | tranches]
+      |> Enum.sort_by(& &1.due_date, Date)
+      |> Enum.map(& &1.percent)
+
+    if percents == Enum.sort(percents) and percents == Enum.dedup(percents),
+      do: :ok,
+      else: {:error, :not_rising}
+  end
+
+  defp check_rising(_tranches, _new), do: :ok
 
   def delete_tranche(%Scope{} = scope, %FeeTranche{} = tranche),
     do: Ash.destroy(tranche, scope: scope)
@@ -432,11 +463,17 @@ defmodule TeacherAssistant.Fees do
     end
   end
 
+  @doc "Removes the student's reduction on one fee type: `:ok`, or the refusal (closed year, rights)."
   def clear_adjustment(%Scope{} = scope, %Enrollment{id: e_id}, %FeeType{id: type_id}) do
     FeeAdjustment
     |> Ash.Query.filter(enrollment_id == ^e_id and fee_type_id == ^type_id)
     |> Ash.read!(scope: scope)
-    |> Enum.each(&Ash.destroy!(&1, scope: scope))
+    |> Enum.reduce_while(:ok, fn adjustment, :ok ->
+      case Ash.destroy(adjustment, scope: scope) do
+        :ok -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   @doc "The student's reductions, one per fee type."
@@ -480,6 +517,7 @@ defmodule TeacherAssistant.Fees do
         ])
 
         seq = next_seq(e.workspace_id, year.id)
+        e = Ash.load!(e, [:student, :class_group], scope: scope)
         balance = balances(scope, year, [e], Reference.today())[e.id]
         ids = Enum.map(balance.by_type, & &1.type_id)
         due = Map.new(balance.by_type, &{&1.type_id, &1.due})
@@ -502,7 +540,9 @@ defmodule TeacherAssistant.Fees do
                    number:
                      "R#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
                    paid_to_date: balance.total_paid + amount,
-                   left_after: balance.left - amount
+                   left_after: balance.left - amount,
+                   student_name: e.student.full_name,
+                   class_label: e.class_group.label
                  },
                  scope: scope
                )
@@ -614,6 +654,8 @@ defmodule TeacherAssistant.Fees do
          payment: p,
          student: p.enrollment.student,
          class_group: p.enrollment.class_group,
+         class_label: p.class_label,
+         student_name: p.student_name,
          school: scope.current_workspace,
          allocations: allocation_rows(p),
          recorded_by_name: user_name(p.recorded_by_user_id),
@@ -670,8 +712,8 @@ defmodule TeacherAssistant.Fees do
            paid_on: p.paid_on,
            amount: p.amount,
            method: p.method,
-           student_name: p.enrollment.student.full_name,
-           class_label: p.enrollment.class_group.label,
+           student_name: p.student_name,
+           class_label: p.class_label,
            allocations: Enum.map(allocation_rows(p), &Map.take(&1, [:name, :amount])),
            paid_to_date: p.paid_to_date,
            left_after: p.left_after
@@ -690,7 +732,7 @@ defmodule TeacherAssistant.Fees do
 
     TeacherAssistant.Repo.all(
       from p in "payments",
-        where: p.number == ^String.trim(number),
+        where: p.number == ^(number |> String.trim() |> String.upcase()),
         select: {type(p.workspace_id, Ecto.UUID), type(p.id, Ecto.UUID)}
     )
   end

@@ -166,6 +166,15 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
 
+        {:error, :not_rising} ->
+          {:noreply,
+           socket
+           |> tranche_error(params)
+           |> assign(
+             tranche_error:
+               gettext("Une tranche plus tardive doit demander un pourcentage plus grand.")
+           )}
+
         {:error, _} ->
           {:noreply, tranche_error(socket, params)}
       end

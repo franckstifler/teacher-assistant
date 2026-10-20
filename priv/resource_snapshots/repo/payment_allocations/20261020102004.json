@@ -26,6 +26,30 @@
     },
     {
       "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "paid_to_date",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "left_after",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
       "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
       "precision": null,
@@ -69,7 +93,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "student_arrears_workspace_id_fkey",
+        "name": "payment_allocations_workspace_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
@@ -104,16 +128,16 @@
           "global": false,
           "strategy": "attribute"
         },
-        "name": "student_arrears_enrollment_id_fkey",
+        "name": "payment_allocations_payment_id_fkey",
         "on_delete": "delete",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "enrollments"
+        "table": "payments"
       },
       "scale": null,
       "size": null,
-      "source": "enrollment_id",
+      "source": "payment_id",
       "type": "uuid"
     },
     {
@@ -139,16 +163,16 @@
           "global": false,
           "strategy": "attribute"
         },
-        "name": "student_arrears_from_academic_year_id_fkey",
-        "on_delete": "delete",
+        "name": "payment_allocations_fee_type_id_fkey",
+        "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "academic_years"
+        "table": "fee_types"
       },
       "scale": null,
       "size": null,
-      "source": "from_academic_year_id",
+      "source": "fee_type_id",
       "type": "uuid"
     }
   ],
@@ -160,34 +184,15 @@
       ],
       "base_filter": null,
       "check": "amount > 0",
-      "name": "student_arrears_amount_positive_check"
+      "name": "payment_allocations_amount_positive_check"
     }
   ],
   "create_table_options": null,
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "C6E2B909D636C6E68955466CE77B0C1B6191E9311BF6B44D8A3F55B5BEE6FD24",
-  "identities": [
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "student_arrears_unique_arrear_index",
-      "keys": [
-        {
-          "type": "atom",
-          "value": "enrollment_id"
-        },
-        {
-          "type": "atom",
-          "value": "from_academic_year_id"
-        }
-      ],
-      "name": "unique_arrear",
-      "nils_distinct?": true,
-      "where": null
-    }
-  ],
+  "hash": "A3D0187E5577E78EE3439FB3FABD34D3D14ED7AA8F438A49033792CD4F4F2C24",
+  "identities": [],
   "multitenancy": {
     "attribute": "workspace_id",
     "global": false,
@@ -195,5 +200,5 @@
   },
   "repo": "Elixir.TeacherAssistant.Repo",
   "schema": null,
-  "table": "student_arrears"
+  "table": "payment_allocations"
 }

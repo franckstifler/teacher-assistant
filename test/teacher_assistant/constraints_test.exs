@@ -247,7 +247,9 @@ defmodule TeacherAssistant.ConstraintsTest do
                    seq: 1,
                    number: "R2030-000001",
                    paid_to_date: 0,
-                   left_after: 0
+                   left_after: 0,
+                   student_name: "Awa",
+                   class_label: "X"
                  },
                  scope: scope
                )

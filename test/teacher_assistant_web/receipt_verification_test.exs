@@ -31,4 +31,19 @@ defmodule TeacherAssistantWeb.ReceiptVerificationTest do
     assert V.lookup(pa.number, "zzzzzz") == :invalid
     assert V.lookup("R1999-000001", V.code(V.token(pa))) == :invalid
   end
+
+  test "the typed code ignores case, spaces and O/0 or I/L/1 mix-ups, and is 6 unambiguous characters" do
+    ctx = fees_school_fixture()
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+    code = V.code(V.token(p))
+    assert code =~ ~r/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{6}$/
+
+    sloppy =
+      code
+      |> String.downcase()
+      |> String.replace("0", "o")
+      |> String.replace("1", "l")
+
+    assert {:valid, _} = V.lookup(" " <> String.downcase(p.number) <> " ", " " <> sloppy)
+  end
 end

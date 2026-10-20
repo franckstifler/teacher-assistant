@@ -45,7 +45,9 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
     conn: conn,
     payment: p
   } do
-    assert conn |> get(~p"/verify/receipt") |> html_response(200) =~ "Numéro du reçu"
+    html = conn |> get(~p"/verify/receipt") |> html_response(200)
+    assert html =~ "Numéro du reçu"
+    assert html =~ ~s(autocapitalize="characters")
     code = ReceiptVerification.code(ReceiptVerification.token(p))
 
     assert conn

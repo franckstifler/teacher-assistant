@@ -174,4 +174,24 @@ defmodule TeacherAssistant.Academics.FeesTest do
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa A", sex: :f})
     assert {:error, :no_fee_types} = Fees.record_payment(scope, e, cash(1_000))
   end
+
+  test "the receipt keeps the student's name and class of the day it was issued", ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+
+    {:ok, other} =
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e R", level: "6ème"})
+
+    {:ok, _} = Enrollment.transfer(ctx.scope, ctx.e, other)
+
+    assert {:valid, %{class_label: "6e Q", student_name: "Awa A"}} =
+             Fees.verification(ctx.scope.current_workspace.id, p.id)
+
+    assert {:ok, %{class_label: "6e Q"}} = Fees.receipt(ctx.scope, p.id)
+  end
+
+  test "removing a reduction in a closed year returns an error instead of crashing", ctx do
+    {:ok, _} = Fees.set_adjustment(ctx.scope, ctx.e, ctx.pta, %{amount: 1_000, reason: "x"})
+    TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    assert {:error, _} = Fees.clear_adjustment(ctx.scope, ctx.e, ctx.pta)
+  end
 end

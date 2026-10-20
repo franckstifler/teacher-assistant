@@ -62,7 +62,9 @@ defmodule TeacherAssistant.Academics.Payment do
         :seq,
         :number,
         :paid_to_date,
-        :left_after
+        :left_after,
+        :student_name,
+        :class_label
       ]
     ]
 
@@ -150,6 +152,9 @@ defmodule TeacherAssistant.Academics.Payment do
     # balance left, counting this payment.
     attribute :paid_to_date, :integer, allow_nil?: false, public?: true
     attribute :left_after, :integer, allow_nil?: false, public?: true
+    # …and who it was for, as printed (a later transfer or rename does not change the receipt).
+    attribute :student_name, :string, allow_nil?: false, public?: true
+    attribute :class_label, :string, allow_nil?: false, public?: true
 
     attribute :cancelled_at, :utc_datetime_usec, allow_nil?: true, public?: true
     attribute :cancelled_by_user_id, :uuid, allow_nil?: true, public?: true
