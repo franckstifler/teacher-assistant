@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Fees do
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.FeeType
   alias TeacherAssistant.Academics.PaymentAllocation
+  alias TeacherAssistant.Academics.Reference
   alias TeacherAssistant.Academics.SchoolTemplates
   alias TeacherAssistant.Academics.StudentArrear
   # `TeacherAssistant.Academics.Enrollment` is the resource struct every
@@ -448,6 +449,282 @@ defmodule TeacherAssistant.Fees do
     |> Ash.read!(scope: scope)
     |> Enum.map(& &1.amount)
     |> Enum.sum()
+  end
+
+  # --- Payments and receipts ----------------------------------------------------------
+
+  @valid_methods [:cash, :mobile_money, :bank_transfer, :other]
+
+  @doc """
+  Records a payment and issues its receipt in one transaction: the next receipt number
+  of the school's year, the split across fee types in payment order, and the frozen
+  paid-to-date and left figures. `attrs`: `amount`, `paid_on`, `method`, `reference`
+  (required for mobile money and bank transfer), `note`.
+  """
+  def record_payment(%Scope{} = scope, %Enrollment{} = e, attrs) do
+    amount = attrs[:amount] || attrs["amount"]
+    method = attrs[:method] || attrs["method"]
+    reference = blank_to_nil(attrs[:reference] || attrs["reference"])
+
+    with :ok <- check_payment(amount, method, reference),
+         :ok <- check_can_record(scope),
+         {:ok, year} <- Ash.get(AcademicYear, e.academic_year_id, scope: scope),
+         :ok <- check_has_fee_types(scope, year) do
+      Ash.transact([Payment, PaymentAllocation], fn ->
+        TeacherAssistant.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
+          "receipt:#{e.workspace_id}:#{year.id}"
+        ])
+
+        seq = next_seq(e.workspace_id, year.id)
+        balance = balances(scope, year, [e], Reference.today())[e.id]
+        ids = Enum.map(balance.by_type, & &1.type_id)
+        due = Map.new(balance.by_type, &{&1.type_id, &1.due})
+        paid = Map.new(balance.by_type, &{&1.type_id, &1.paid})
+
+        with {:ok, payment} <-
+               Payment
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{
+                   enrollment_id: e.id,
+                   academic_year_id: year.id,
+                   amount: amount,
+                   paid_on: attrs[:paid_on] || attrs["paid_on"] || Reference.today(),
+                   method: method,
+                   reference: reference,
+                   note: blank_to_nil(attrs[:note] || attrs["note"]),
+                   recorded_by_user_id: scope.current_user && scope.current_user.id,
+                   seq: seq,
+                   number:
+                     "R#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
+                   paid_to_date: balance.total_paid + amount,
+                   left_after: balance.left - amount
+                 },
+                 scope: scope
+               )
+               |> Ash.create() do
+          for {type_id, share} <- FeeBalance.allocate(amount, ids, due, paid) do
+            PaymentAllocation
+            |> Ash.Changeset.for_create(
+              :create,
+              %{
+                payment_id: payment.id,
+                fee_type_id: type_id,
+                amount: share,
+                paid_to_date: paid[type_id] + share,
+                left_after: due[type_id] - paid[type_id] - share
+              },
+              scope: scope
+            )
+            |> Ash.create!()
+          end
+
+          Ash.load!(payment, [allocations: :fee_type], scope: scope)
+        else
+          {:error, error} -> Ash.DataLayer.rollback([Payment], error)
+        end
+      end)
+    end
+  end
+
+  defp check_can_record(scope),
+    do: if(can_manage_fees?(scope), do: :ok, else: {:error, Ash.Error.Forbidden.exception([])})
+
+  defp check_has_fee_types(scope, year),
+    do:
+      if(Enum.any?(list_fee_types(scope, year), & &1.active?),
+        do: :ok,
+        else: {:error, :no_fee_types}
+      )
+
+  defp check_payment(amount, _method, _reference) when not (is_integer(amount) and amount > 0),
+    do: {:error, :invalid_amount}
+
+  defp check_payment(_amount, method, _reference) when method not in @valid_methods,
+    do: {:error, :invalid_method}
+
+  defp check_payment(_amount, method, nil) when method in [:mobile_money, :bank_transfer],
+    do: {:error, :reference_required}
+
+  defp check_payment(_amount, _method, _reference), do: :ok
+
+  # Under the transaction's advisory lock: the year's next receipt sequence number.
+  defp next_seq(workspace_id, year_id) do
+    Payment
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.max!(:seq, authorize?: false, tenant: workspace_id)
+    |> case do
+      nil -> 1
+      max -> max + 1
+    end
+  end
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp blank_to_nil(value), do: value
+
+  @doc "Cancels a receipt (with a reason); its money stops counting, later receipts keep their split."
+  def cancel_payment(%Scope{} = scope, %Payment{} = payment, reason) do
+    case blank_to_nil(reason) do
+      nil ->
+        {:error, :reason_required}
+
+      reason ->
+        payment
+        |> Ash.Changeset.for_update(:cancel, %{reason: reason}, scope: scope)
+        |> Ash.update()
+    end
+  end
+
+  @doc "The student's payments, newest first, with their split."
+  def list_payments(%Scope{} = scope, %Enrollment{id: id}),
+    do: list_payments_for_enrollment_id!(id, scope: scope)
+
+  def get_payment(%Scope{} = scope, id),
+    do: Ash.get(Payment, id, scope: scope, load: [allocations: :fee_type])
+
+  @doc "The year's latest receipts, with student and class."
+  def recent_payments(%Scope{} = scope, %AcademicYear{id: year_id}, limit \\ 20) do
+    Payment
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.Query.sort(seq: :desc)
+    |> Ash.Query.limit(limit)
+    |> Ash.Query.load(enrollment: [:student, :class_group])
+    |> Ash.read!(scope: scope)
+  end
+
+  @doc "Everything the printed receipt shows; `{:error, :not_found}` outside the scope's reach."
+  def receipt(%Scope{} = scope, payment_id) do
+    with {:ok, p} <-
+           Ash.get(Payment, payment_id,
+             scope: scope,
+             load: [allocations: :fee_type, enrollment: [:student, :class_group]]
+           ) do
+      {:ok,
+       %{
+         payment: p,
+         student: p.enrollment.student,
+         class_group: p.enrollment.class_group,
+         school: scope.current_workspace,
+         allocations: allocation_rows(p),
+         recorded_by_name: user_name(p.recorded_by_user_id),
+         guardians: guardian_phones(scope, p.enrollment.student)
+       }}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp guardian_phones(scope, student) do
+    for link <- TeacherAssistant.Enrollment.list_guardian_links(scope, student),
+        link.guardian.phone not in [nil, ""],
+        do: %{name: link.guardian.full_name, phone: link.guardian.phone}
+  end
+
+  defp allocation_rows(p) do
+    p.allocations
+    |> Enum.sort_by(& &1.fee_type.position)
+    |> Enum.map(
+      &%{
+        name: &1.fee_type.name,
+        amount: &1.amount,
+        paid_to_date: &1.paid_to_date,
+        left_after: &1.left_after
+      }
+    )
+  end
+
+  defp user_name(nil), do: nil
+
+  defp user_name(id) do
+    case Ash.get(TeacherAssistant.Accounts.User, id, authorize?: false) do
+      {:ok, user} -> TeacherAssistant.Accounts.User.display_name(user)
+      _ -> nil
+    end
+  end
+
+  @doc """
+  The public check of a receipt (no actor): `{:valid | :cancelled, map}` with only what
+  the receipt shows, or `:invalid`.
+  """
+  def verification(workspace_id, payment_id) do
+    case Ash.get(Payment, payment_id,
+           tenant: workspace_id,
+           authorize?: false,
+           load: [:workspace, allocations: :fee_type, enrollment: [:student, :class_group]]
+         ) do
+      {:ok, p} ->
+        {p.status,
+         %{
+           school_name: p.workspace.name,
+           number: p.number,
+           paid_on: p.paid_on,
+           amount: p.amount,
+           method: p.method,
+           student_name: p.enrollment.student.full_name,
+           class_label: p.enrollment.class_group.label,
+           allocations: Enum.map(allocation_rows(p), &Map.take(&1, [:name, :amount])),
+           paid_to_date: p.paid_to_date,
+           left_after: p.left_after
+         }}
+
+      _ ->
+        :invalid
+    end
+  rescue
+    Ash.Error.Invalid -> :invalid
+  end
+
+  @doc "`[{workspace_id, payment_id}]` of every school's receipt with this number (typed check)."
+  def find_by_number(number) when is_binary(number) do
+    import Ecto.Query
+
+    TeacherAssistant.Repo.all(
+      from p in "payments",
+        where: p.number == ^String.trim(number),
+        select: {type(p.workspace_id, Ecto.UUID), type(p.id, Ecto.UUID)}
+    )
+  end
+
+  # --- Balances and recovery ------------------------------------------------------------
+
+  @doc "The student's balance today (or `on_date`), each fee type with its name."
+  def student_fees(%Scope{} = scope, %Enrollment{} = e, on_date \\ Reference.today()) do
+    year = Ash.get!(AcademicYear, e.academic_year_id, scope: scope)
+    names = scope |> list_fee_types(year) |> Map.new(&{&1.id, &1.name})
+    balance = balances(scope, year, [e], on_date)[e.id]
+    %{balance | by_type: Enum.map(balance.by_type, &Map.put(&1, :name, names[&1.type_id]))}
+  end
+
+  @doc "`%{enrollment_id => balance}` for the class's roster."
+  def class_balances(%Scope{} = scope, %ClassGroup{} = cg, on_date \\ Reference.today()) do
+    year = Ash.get!(AcademicYear, cg.academic_year_id, scope: scope)
+
+    enrollments =
+      scope |> TeacherAssistant.Enrollment.list_roster(cg) |> Enum.map(& &1.enrollment)
+
+    balances(scope, year, enrollments, on_date)
+  end
+
+  @doc "Recovery figures for the school and per class (class order)."
+  def recovery(%Scope{} = scope, %AcademicYear{} = year, on_date \\ Reference.today()) do
+    enrollments = enrollments_of(scope, year)
+    balances = balances(scope, year, enrollments, on_date)
+    by_class = Enum.group_by(enrollments, & &1.class_group_id, &balances[&1.id])
+
+    %{
+      school: FeeBalance.recovery(Map.values(balances)),
+      classes:
+        Enum.map(
+          sorted_classes(scope, year),
+          &%{class_group: &1, recovery: FeeBalance.recovery(Map.get(by_class, &1.id, []))}
+        )
+    }
   end
 
   # --- Balances (shared by setup and payments) ------------------------------------------

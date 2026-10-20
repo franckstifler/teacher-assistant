@@ -24,9 +24,18 @@ defmodule TeacherAssistant.Authorization.RevocationTest do
     assert_forbidden(Curriculum.create_module(ctx.owner, ctx.plan, %{title: "M"}))
   end
 
-  # Fees 1: restored in Task 4 (the Fees API comes back there).
-  @tag :skip
   test "a revoked form master can no longer withdraw or read fees", ctx do
+    {:ok, _} =
+      Fees.create_default_fee_types(ctx.head, Organization.current_academic_year(ctx.head))
+
+    {:ok, _} =
+      Fees.record_payment(ctx.head, ctx.e, %{
+        amount: 1_000,
+        paid_on: ~D[2025-10-01],
+        method: :cash
+      })
+
+    assert Fees.list_payments(ctx.head, ctx.e) != []
     assert_forbidden(Enrollment.withdraw(ctx.owner, ctx.e))
     assert Fees.list_payments(ctx.owner, ctx.e) == []
   end

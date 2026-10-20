@@ -1,7 +1,5 @@
 defmodule TeacherAssistant.Authorization.FeesTest do
   use TeacherAssistant.DataCase, async: true
-  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
-  @moduletag :skip
 
   import TeacherAssistant.TeacherFixtures
 
@@ -16,7 +14,10 @@ defmodule TeacherAssistant.Authorization.FeesTest do
     fm = member_scope_fixture(head, %{roles: [:teacher]})
     {:ok, _} = Enrollment.set_form_master(head, cg, fm.current_user.id)
     teacher = member_scope_fixture(head, %{roles: [:teacher]})
-    %{ws: ws, head: head, bursar: bursar, fm: fm, teacher: teacher, cg: cg, e: e}
+    {:ok, _} = Fees.create_default_fee_types(head, year)
+    [_fe, pta] = Fees.list_fee_types(head, year)
+    {:ok, _} = Fees.set_class_fee(head, cg, pta, 10_000)
+    %{ws: ws, head: head, bursar: bursar, fm: fm, teacher: teacher, cg: cg, e: e, pta: pta}
   end
 
   defp payment, do: %{amount: 5_000, paid_on: ~D[2025-10-01], method: :cash}
@@ -36,20 +37,37 @@ defmodule TeacherAssistant.Authorization.FeesTest do
   end
 
   test "an adjustment must be a positive discount", ctx do
-    assert {:error, :invalid_amount} = Fees.set_adjustment(ctx.bursar, ctx.e, %{amount: 0})
-    assert {:error, :invalid_amount} = Fees.set_adjustment(ctx.bursar, ctx.e, %{amount: -500})
-    assert {:error, :invalid_amount} = Fees.set_adjustment(ctx.bursar, ctx.e, %{amount: nil})
-    assert {:ok, adj} = Fees.set_adjustment(ctx.bursar, ctx.e, %{amount: 2_000, reason: "Bourse"})
+    assert {:error, :invalid_amount} =
+             Fees.set_adjustment(ctx.bursar, ctx.e, ctx.pta, %{amount: 0})
+
+    assert {:error, :invalid_amount} =
+             Fees.set_adjustment(ctx.bursar, ctx.e, ctx.pta, %{amount: -500})
+
+    assert {:error, :invalid_amount} =
+             Fees.set_adjustment(ctx.bursar, ctx.e, ctx.pta, %{amount: nil})
+
+    assert {:ok, adj} =
+             Fees.set_adjustment(ctx.bursar, ctx.e, ctx.pta, %{amount: 2_000, reason: "Bourse"})
+
     assert adj.amount == 2_000
   end
 
   test "the database rejects a non-positive adjustment", ctx do
     assert {:error, %Ash.Error.Invalid{}} =
              FeeAdjustment
-             |> Ash.Changeset.for_create(:set, %{amount: -1, enrollment_id: ctx.e.id},
+             |> Ash.Changeset.for_create(
+               :set,
+               %{amount: -1, enrollment_id: ctx.e.id, fee_type_id: ctx.pta.id, reason: "x"},
                scope: ctx.bursar
              )
              |> Ash.create()
+  end
+
+  test "the fees axis cancels; form masters and teachers cannot", ctx do
+    {:ok, p} = Fees.record_payment(ctx.bursar, ctx.e, payment())
+    assert_forbidden(Fees.cancel_payment(ctx.fm, p, "x"))
+    assert_forbidden(Fees.cancel_payment(ctx.teacher, p, "x"))
+    assert {:ok, _} = Fees.cancel_payment(ctx.bursar, p, "Erreur")
   end
 
   test "can_manage_fees? follows the axis", ctx do

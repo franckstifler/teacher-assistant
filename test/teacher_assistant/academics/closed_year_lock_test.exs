@@ -139,12 +139,12 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
            )
   end
 
-  # Fees 1: restored in Task 4 (the Fees API comes back there).
-  @tag :skip
-  test "a payment on a closed year's enrolment is still recorded (arrears)", ctx do
+  # Fees 1 (rule 8): nothing is recorded in a closed year; old debts carry over instead.
+  test "a payment on a closed year's enrolment is refused", ctx do
+    {:ok, _} = Fees.create_default_fee_types(ctx.head, ctx.year)
     close(ctx)
 
-    assert {:ok, _} =
+    assert {:error, _} =
              Fees.record_payment(ctx.head, ctx.enrollment, %{
                amount: 5_000,
                paid_on: ~D[2026-09-10],

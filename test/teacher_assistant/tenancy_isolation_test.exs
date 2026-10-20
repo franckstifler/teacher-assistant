@@ -471,8 +471,6 @@ defmodule TeacherAssistant.TenancyIsolationTest do
            |> Ash.read!(scope: scope_of(a)) == before
   end
 
-  # Fees 1: restored in Task 4 (record_payment/list_payments come back there).
-  @tag :skip
   test "a payment can be recorded for school A's own enrollment (school B cannot see it), " <>
          "and recording a conduct mark against school B's sequence is rejected (F1)",
        %{a: a, b: b} = ctx do
@@ -480,6 +478,12 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
     assert {:error, :not_found} =
              TeacherAssistant.Enrollment.fetch_owned_enrollment(scope_of(b), e.id)
+
+    {:ok, _} =
+      TeacherAssistant.Fees.create_default_fee_types(
+        scope_of(a),
+        Organization.current_academic_year(scope_of(a))
+      )
 
     assert {:ok, _} =
              TeacherAssistant.Fees.record_payment(

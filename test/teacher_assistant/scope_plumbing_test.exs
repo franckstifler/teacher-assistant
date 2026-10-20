@@ -19,9 +19,10 @@ defmodule TeacherAssistant.ScopePlumbingTest do
     assert s.issued_by_user_id == head.current_user.id
   end
 
-  # Fees 1: restored in Task 4 (the Fees API comes back there).
-  @tag :skip
   test "Fees attributes a payment to the scope's user", %{head: head, e: e} do
+    year = TeacherAssistant.Organization.current_academic_year(head)
+    {:ok, _} = Fees.create_default_fee_types(head, year)
+
     {:ok, p} =
       Fees.record_payment(head, e, %{amount: 5_000, paid_on: ~D[2025-10-01], method: :cash})
 

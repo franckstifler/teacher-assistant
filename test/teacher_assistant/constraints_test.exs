@@ -6,7 +6,6 @@ defmodule TeacherAssistant.ConstraintsTest do
     AcademicYear,
     ConductMark,
     FeeAdjustment,
-    FeeTranche,
     Mark,
     Payment,
     Sequence
@@ -210,39 +209,26 @@ defmodule TeacherAssistant.ConstraintsTest do
   end
 
   describe "fees: tranche/payment/adjustment amount guards" do
-    # Fees 1: rewritten in Task 4 (the Fees API comes back there).
-    @describetag :skip
-
-    test "a negative fee tranche amount is rejected", %{cg: cg, scope: scope} do
-      # `Fees.add_tranche/3`'s own `validate_tranche_amount/1` guard allows a
-      # zero-amount tranche (see `FeeTrancheTest."amount accepts 0"`) — the
-      # DB-level `fee_tranches_amount_non_negative_check` mirrors that same
-      # rule (>= 0), not a stricter one, so only a negative amount is
-      # rejected here.
-      assert {:error, _} =
-               Fees.add_tranche(scope, cg, %{label: "T1", amount: -1, due_date: ~D[2030-10-01]})
+    setup %{scope: scope, year: year} do
+      {:ok, _} = Fees.create_default_fee_types(scope, year)
+      [fe, _pta] = Fees.list_fee_types(scope, year)
+      %{fe: fe}
     end
 
-    test "the fee_tranches amount_non_negative check constraint rejects a negative amount directly on the resource",
-         %{cg: cg, scope: scope} do
-      assert {:error, %Ash.Error.Invalid{}} =
-               FeeTranche
-               |> Ash.Changeset.for_create(
-                 :create,
-                 %{
+    test "a tranche percent outside 1..100 is rejected", %{scope: scope, year: year} do
+      for percent <- [0, 101, -5] do
+        assert {:error, _} =
+                 Fees.add_tranche(scope, year, %{
                    label: "T1",
-                   amount: -1,
-                   due_date: ~D[2030-10-01],
-                   position: 0,
-                   class_group_id: cg.id
-                 },
-                 scope: scope
-               )
-               |> Ash.create()
+                   percent: percent,
+                   due_date: ~D[2030-10-01]
+                 })
+      end
     end
 
     test "a non-positive payment amount is rejected", %{enrollment: e, scope: scope} do
-      assert {:error, _} = Fees.record_payment(scope, e, %{amount: 0, method: :cash})
+      assert {:error, :invalid_amount} =
+               Fees.record_payment(scope, e, %{amount: 0, method: :cash})
     end
 
     test "the payments amount_positive check constraint rejects a zero amount directly on the resource",
@@ -256,7 +242,12 @@ defmodule TeacherAssistant.ConstraintsTest do
                    paid_on: ~D[2030-10-01],
                    method: :cash,
                    recorded_by_user_id: head.id,
-                   enrollment_id: e.id
+                   enrollment_id: e.id,
+                   academic_year_id: e.academic_year_id,
+                   seq: 1,
+                   number: "R2030-000001",
+                   paid_to_date: 0,
+                   left_after: 0
                  },
                  scope: scope
                )
@@ -266,7 +257,8 @@ defmodule TeacherAssistant.ConstraintsTest do
     test "the fee_adjustments amount_positive check constraint rejects a zero amount", %{
       enrollment: e,
       head: head,
-      scope: scope
+      scope: scope,
+      fe: fe
     } do
       assert {:error, %Ash.Error.Invalid{}} =
                FeeAdjustment
@@ -276,7 +268,8 @@ defmodule TeacherAssistant.ConstraintsTest do
                    amount: 0,
                    reason: "erreur",
                    recorded_by_user_id: head.id,
-                   enrollment_id: e.id
+                   enrollment_id: e.id,
+                   fee_type_id: fe.id
                  },
                  scope: scope
                )
@@ -284,7 +277,7 @@ defmodule TeacherAssistant.ConstraintsTest do
 
       # The domain guard rejects it before any write.
       assert {:error, :invalid_amount} =
-               Fees.set_adjustment(scope, e, %{amount: 0, reason: "erreur"})
+               Fees.set_adjustment(scope, e, fe, %{amount: 0, reason: "erreur"})
     end
   end
 

@@ -1,496 +1,177 @@
 defmodule TeacherAssistant.Academics.FeesTest do
   use TeacherAssistant.DataCase, async: true
-  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
-  @moduletag :skip
 
-  require Ash.Query
+  import TeacherAssistant.FeesFixtures
 
-  alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Fees
-  alias TeacherAssistant.Academics.FeeAdjustment
-  alias TeacherAssistant.Academics.FeeTranche
-  alias TeacherAssistant.Academics.Payment
-  alias TeacherAssistant.Organization
+  alias TeacherAssistant.{Enrollment, Fees}
   alias TeacherAssistant.TeacherFixtures
 
   setup do
-    head = TeacherFixtures.user_fixture()
-
-    {:ok, ws} =
-      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
-        name: "Lycée Test"
-      })
-
-    scope = school_scope(head, ws)
-
-    {:ok, year} =
-      Organization.create_academic_year(scope, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
-
-    {:ok, _student1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
-    {:ok, _student2} = Enrollment.add_student(scope, cg, %{full_name: "Bilal", sex: :m})
-
-    [%{enrollment: enrollment1}, %{enrollment: enrollment2}] =
-      Enrollment.list_roster(scope, cg)
-
-    %{
-      ws: ws,
-      scope: scope,
-      year: year,
-      cg: cg,
-      head: head,
-      enrollment1: enrollment1,
-      enrollment2: enrollment2
-    }
+    fees_school_fixture()
   end
 
-  describe "add_tranche/3" do
-    test "persists with the class's workspace_id and position 0 for the first tranche", ctx do
-      assert {:ok, %FeeTranche{} = tranche} =
-               Fees.add_tranche(ctx.scope, ctx.cg, %{
-                 label: "1ère tranche",
-                 amount: 25_000,
-                 due_date: ~D[2025-10-15]
-               })
+  defp split(payment), do: Enum.map(payment.allocations, &{&1.fee_type.name, &1.amount})
 
-      assert tranche.workspace_id == ctx.ws.id
-      assert tranche.class_group_id == ctx.cg.id
-      assert tranche.position == 0
-    end
-
-    test "appends position for a second tranche", ctx do
-      {:ok, _first} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère tranche",
-          amount: 25_000,
-          due_date: ~D[2025-10-15]
-        })
-
-      assert {:ok, %FeeTranche{} = second} =
-               Fees.add_tranche(ctx.scope, ctx.cg, %{
-                 label: "2ème tranche",
-                 amount: 15_000,
-                 due_date: ~D[2025-12-15]
-               })
-
-      assert second.position == 1
-    end
-
-    test "rejects a negative amount", ctx do
-      assert {:error, :invalid_amount} =
-               Fees.add_tranche(ctx.scope, ctx.cg, %{
-                 label: "Invalide",
-                 amount: -1,
-                 due_date: ~D[2025-10-15]
-               })
-    end
-
-    test "translates an Ash write failure (nil due_date) to a tagged error, not a raw struct",
-         ctx do
-      assert {:error, :tranche_failed} =
-               Fees.add_tranche(ctx.scope, ctx.cg, %{
-                 label: "Sans date",
-                 amount: 10_000,
-                 due_date: nil
-               })
-    end
+  test "a payment is numbered R<year>-000001, then 000002", ctx do
+    {:ok, p1} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+    {:ok, p2} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+    assert {p1.number, p2.number} == {"R2025-000001", "R2025-000002"}
+    assert p1.recorded_by_user_id == ctx.scope.current_user.id
   end
 
-  describe "list_tranches/2" do
-    test "returns tranches ordered by position ascending", ctx do
-      {:ok, first} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère tranche",
-          amount: 25_000,
-          due_date: ~D[2025-10-15]
-        })
+  test "20_000 on a fresh student goes to Frais exigibles; the receipt freezes paid 20_000, left 40_000",
+       ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+    assert split(p) == [{"Frais exigibles", 20_000}]
+    assert {p.paid_to_date, p.left_after} == {20_000, 40_000}
+    [a] = p.allocations
+    assert {a.paid_to_date, a.left_after} == {20_000, 30_000}
 
-      {:ok, second} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "2ème tranche",
-          amount: 15_000,
-          due_date: ~D[2025-12-15]
-        })
-
-      assert Fees.list_tranches(ctx.scope, ctx.cg) |> Enum.map(& &1.id) == [first.id, second.id]
-    end
-
-    test "returns [] when the class has no tranches", ctx do
-      assert Fees.list_tranches(ctx.scope, ctx.cg) == []
-    end
+    {:ok, p2} = Fees.record_payment(ctx.scope, ctx.e, cash(35_000))
+    assert split(p2) == [{"Frais exigibles", 30_000}, {"PTA", 5_000}]
+    assert {p2.paid_to_date, p2.left_after} == {55_000, 5_000}
   end
 
-  describe "update_tranche/3" do
-    test "changes the amount", ctx do
-      {:ok, tranche} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère tranche",
-          amount: 25_000,
-          due_date: ~D[2025-10-15]
-        })
-
-      assert {:ok, updated} = Fees.update_tranche(ctx.scope, tranche, %{amount: 30_000})
-      assert updated.amount == 30_000
-    end
-
-    test "rejects a negative amount", ctx do
-      {:ok, tranche} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère tranche",
-          amount: 25_000,
-          due_date: ~D[2025-10-15]
-        })
-
-      assert {:error, :invalid_amount} = Fees.update_tranche(ctx.scope, tranche, %{amount: -5})
-    end
-
-    test "ignores a position key in attrs, leaving the append-managed position untouched",
-         ctx do
-      {:ok, _first} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère tranche",
-          amount: 25_000,
-          due_date: ~D[2025-10-15]
-        })
-
-      {:ok, second} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "2ème tranche",
-          amount: 15_000,
-          due_date: ~D[2025-12-15]
-        })
-
-      assert second.position == 1
-
-      assert {:ok, updated} =
-               Fees.update_tranche(ctx.scope, second, %{position: 99, amount: 5_000})
-
-      assert updated.amount == 5_000
-      assert updated.position == 1
-    end
+  test "the frozen figures do not change when the class amount changes later", ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+    {:ok, _} = Fees.set_class_fee(ctx.scope, ctx.cg, ctx.fe, 70_000)
+    {:ok, again} = Fees.get_payment(ctx.scope, p.id)
+    assert {again.paid_to_date, again.left_after} == {20_000, 40_000}
+    assert Fees.student_fees(ctx.scope, ctx.e).left == 60_000
   end
 
-  describe "delete_tranche/1" do
-    test "removes the row", ctx do
-      {:ok, tranche} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère tranche",
-          amount: 25_000,
-          due_date: ~D[2025-10-15]
-        })
-
-      assert :ok = Fees.delete_tranche(tranche, scope: ctx.scope)
-      assert Fees.list_tranches(ctx.scope, ctx.cg) == []
-    end
+  test "a payment beyond the total is accepted and shows Trop-perçu (negative left)", ctx do
+    {:ok, _} = Fees.record_payment(ctx.scope, ctx.e, cash(60_000))
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(5_000))
+    assert split(p) == [{"PTA", 5_000}]
+    assert p.left_after == -5_000
+    assert Fees.student_fees(ctx.scope, ctx.e).left == -5_000
   end
 
-  describe "record_payment/3" do
-    test "persists with the enrollment's workspace_id", ctx do
-      assert {:ok, %Payment{} = payment} =
-               Fees.record_payment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: 10_000, paid_on: ~D[2025-10-01], method: :cash}
-               )
-
-      assert payment.workspace_id == ctx.ws.id
-      assert payment.enrollment_id == ctx.enrollment1.id
-      assert payment.amount == 10_000
-      assert payment.method == :cash
-    end
-
-    test "rejects a zero amount", ctx do
-      assert {:error, :invalid_amount} =
-               Fees.record_payment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: 0, paid_on: ~D[2025-10-01], method: :cash}
-               )
-    end
-
-    test "rejects a negative amount", ctx do
-      assert {:error, :invalid_amount} =
-               Fees.record_payment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: -100, paid_on: ~D[2025-10-01], method: :cash}
-               )
-    end
-
-    test "rejects an invalid method", ctx do
-      assert {:error, :invalid_method} =
-               Fees.record_payment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: 10_000, paid_on: ~D[2025-10-01], method: :check}
-               )
-    end
-
-    test "translates an Ash write failure (nil paid_on) to a tagged error, not a raw struct",
-         ctx do
-      assert {:error, :payment_failed} =
-               Fees.record_payment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: 10_000, paid_on: nil, method: :cash}
-               )
-    end
+  test "a cancelled payment stops counting; later payments keep their split", ctx do
+    {:ok, p1} = Fees.record_payment(ctx.scope, ctx.e, cash(50_000))
+    {:ok, p2} = Fees.record_payment(ctx.scope, ctx.e, cash(5_000))
+    assert split(p2) == [{"PTA", 5_000}]
+    {:ok, c} = Fees.cancel_payment(ctx.scope, p1, "Mauvais élève")
+    assert c.status == :cancelled
+    assert Fees.student_fees(ctx.scope, ctx.e).total_paid == 5_000
+    {:ok, p2} = Fees.get_payment(ctx.scope, p2.id)
+    assert split(p2) == [{"PTA", 5_000}]
   end
 
-  describe "list_payments/2" do
-    test "returns payments newest first by paid_on", ctx do
-      {:ok, older} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
-        )
-
-      {:ok, newer} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-10-15], method: :mobile_money}
-        )
-
-      assert Fees.list_payments(ctx.scope, ctx.enrollment1) |> Enum.map(& &1.id) == [
-               newer.id,
-               older.id
-             ]
-    end
-
-    test "scopes to the given enrollment only", ctx do
-      {:ok, mine} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
-        )
-
-      {:ok, _other} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment2,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
-        )
-
-      assert Fees.list_payments(ctx.scope, ctx.enrollment1) |> Enum.map(& &1.id) == [mine.id]
-    end
+  test "cancel needs a reason", ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+    assert {:error, :reason_required} = Fees.cancel_payment(ctx.scope, p, "  ")
   end
 
-  describe "delete_payment/1" do
-    test "removes the row", ctx do
-      {:ok, payment} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 5_000, paid_on: ~D[2025-09-15], method: :cash}
-        )
+  test "amount, method and reference are checked", ctx do
+    assert {:error, :invalid_amount} = Fees.record_payment(ctx.scope, ctx.e, cash(0))
 
-      assert :ok = Fees.delete_payment(payment, scope: ctx.scope)
-      assert Fees.list_payments(ctx.scope, ctx.enrollment1) == []
-    end
+    assert {:error, :invalid_method} =
+             Fees.record_payment(ctx.scope, ctx.e, %{cash(1) | method: :card})
+
+    assert {:error, :reference_required} =
+             Fees.record_payment(ctx.scope, ctx.e, %{cash(1_000) | method: :mobile_money})
+
+    assert {:ok, %{reference: "MP2510"}} =
+             Fees.record_payment(
+               ctx.scope,
+               ctx.e,
+               Map.merge(cash(1_000), %{method: :mobile_money, reference: "MP2510"})
+             )
   end
 
-  describe "set_adjustment/3" do
-    test "persists with the enrollment's workspace_id", ctx do
-      assert {:ok, %FeeAdjustment{} = adjustment} =
-               Fees.set_adjustment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: 5_000, reason: "Bourse"}
-               )
+  test "a class without amounts: the money lands on the last type", ctx do
+    {:ok, other} =
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e R", level: "6ème"})
 
-      assert adjustment.workspace_id == ctx.ws.id
-      assert adjustment.enrollment_id == ctx.enrollment1.id
-      assert adjustment.amount == 5_000
-    end
+    {:ok, %{enrollment: e}} =
+      Enrollment.enroll_new(ctx.scope, other, %{full_name: "Bel B", sex: :m})
 
-    test "re-setting upserts: one row, latest value replaces", ctx do
-      {:ok, _} =
-        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 5_000, reason: "Bourse"})
-
-      assert {:ok, updated} =
-               Fees.set_adjustment(
-                 ctx.scope,
-                 ctx.enrollment1,
-                 %{amount: 8_000, reason: "Bourse+"}
-               )
-
-      assert updated.amount == 8_000
-
-      all =
-        FeeAdjustment
-        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
-        |> Ash.read!(scope: ctx.scope)
-
-      assert length(all) == 1
-      assert hd(all).amount == 8_000
-    end
-
-    test "rejects a negative amount", ctx do
-      assert {:error, :invalid_amount} =
-               Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: -1, reason: "x"})
-    end
+    assert {:ok, p} = Fees.record_payment(ctx.scope, e, cash(1_000))
+    assert p.left_after == -1_000
   end
 
-  describe "clear_adjustment/2" do
-    test "deletes the adjustment for the enrollment", ctx do
-      {:ok, _} =
-        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 5_000, reason: "Bourse"})
+  test "class balances and recovery: expected, to date, collected, rates, behind count", ctx do
+    {:ok, %{enrollment: e2}} =
+      Enrollment.enroll_new(ctx.scope, ctx.cg, %{full_name: "Bel B", sex: :m})
 
-      assert {:ok, 1} = Fees.clear_adjustment(ctx.scope, ctx.enrollment1)
+    {:ok, _} = Fees.record_payment(ctx.scope, ctx.e, cash(30_000))
+    on = ~D[2025-11-01]
 
-      assert FeeAdjustment
-             |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
-             |> Ash.read!(scope: ctx.scope) == []
-    end
+    balances = Fees.class_balances(ctx.scope, ctx.cg, on)
+    assert balances[ctx.e.id].status == :on_track
+    assert balances[e2.id].status == :behind
 
-    test "returns {:ok, 0} when no adjustment exists", ctx do
-      assert {:ok, 0} = Fees.clear_adjustment(ctx.scope, ctx.enrollment1)
-    end
+    %{school: school, classes: classes} = Fees.recovery(ctx.scope, ctx.year, on)
+    row = Enum.find(classes, &(&1.class_group.id == ctx.cg.id))
+
+    assert row.recovery == %{
+             students: 2,
+             expected: 120_000,
+             expected_to_date: 60_000,
+             collected: 30_000,
+             rate: 25,
+             rate_to_date: 50,
+             behind: 1
+           }
+
+    assert school.collected == 30_000
   end
 
-  describe "student_balance/3" do
-    test "composes tranches + partial payment into :behind with the right shortfall", ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère",
-          amount: 10_000,
-          due_date: ~D[2025-09-15]
-        })
+  test "arrears are paid before Frais exigibles", ctx do
+    %{next: next} = TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    scope = %{ctx.scope | current_academic_year: next}
+    [z] = scope |> Enrollment.list_class_groups(next) |> Enum.filter(&(&1.label == "6ème Z"))
+    {:ok, ne} = Enrollment.enroll_existing(scope, z, ctx.student)
+    {:ok, _} = Fees.create_default_fee_types(scope, next)
+    [fe | _] = Fees.list_fee_types(scope, next)
+    {:ok, _} = Fees.set_class_fee(scope, z, fe, 50_000)
+    {:ok, 1} = Fees.carry_arrears(scope, next, [ne.id])
 
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "2ème",
-          amount: 20_000,
-          due_date: ~D[2025-12-15]
-        })
-
-      {:ok, _} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 4_000, paid_on: ~D[2025-09-20], method: :cash}
-        )
-
-      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
-
-      assert balance.total_due == 30_000
-      assert balance.due_to_date == 10_000
-      assert balance.total_paid == 4_000
-      assert balance.balance == 26_000
-      assert balance.status == :behind
-    end
-
-    test "paying up to due_to_date reaches :paid_up once total_due is covered", ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère",
-          amount: 10_000,
-          due_date: ~D[2025-09-15]
-        })
-
-      {:ok, _} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 10_000, paid_on: ~D[2025-09-20], method: :cash}
-        )
-
-      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
-
-      assert balance.total_due == 10_000
-      assert balance.total_paid == 10_000
-      assert balance.balance == 0
-      assert balance.status == :paid_up
-    end
-
-    test "adjustment amount defaults to 0 when none set", ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère",
-          amount: 10_000,
-          due_date: ~D[2025-09-15]
-        })
-
-      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
-
-      assert balance.total_due == 10_000
-    end
-
-    test "reflects the adjustment amount, reducing total_due", ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère",
-          amount: 10_000,
-          due_date: ~D[2025-09-15]
-        })
-
-      {:ok, _} =
-        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 4_000, reason: "Bourse"})
-
-      balance = Fees.student_balance(ctx.scope, ctx.enrollment1, ~D[2025-10-01])
-
-      assert balance.total_due == 6_000
-    end
+    {:ok, p} = Fees.record_payment(scope, ne, cash(70_000, ~D[2026-10-01]))
+    assert split(p) == [{"Reliquat année précédente", 60_000}, {"Frais exigibles", 10_000}]
+    assert p.number == "R2026-000001"
   end
 
-  describe "class_balances/3" do
-    test "returns every roster enrollment in one pass; unpaid student shows schedule due/status",
-         ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère",
-          amount: 10_000,
-          due_date: ~D[2025-09-15]
-        })
+  test "verification shows the receipt without phone numbers; cancelled shows :cancelled; unknown :invalid",
+       ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+    ws = ctx.scope.current_workspace.id
 
-      {:ok, _} =
-        Fees.record_payment(
-          ctx.scope,
-          ctx.enrollment1,
-          %{amount: 10_000, paid_on: ~D[2025-09-20], method: :cash}
-        )
+    assert {:valid, v} = Fees.verification(ws, p.id)
+    assert v.number == "R2025-000001" and v.student_name == "Awa A" and v.class_label == "6e Q"
+    assert v.amount == 20_000 and v.paid_to_date == 20_000 and v.left_after == 40_000
+    assert v.allocations == [%{name: "Frais exigibles", amount: 20_000}]
+    refute Map.has_key?(v, :guardians) or Map.has_key?(v, :phone)
 
-      result = Fees.class_balances(ctx.scope, ctx.cg, ~D[2025-10-01])
+    {:ok, _} = Fees.cancel_payment(ctx.scope, p, "Erreur")
+    assert {:cancelled, _} = Fees.verification(ws, p.id)
+    assert :invalid = Fees.verification(ws, Ecto.UUID.generate())
+    assert :invalid = Fees.verification(Ecto.UUID.generate(), p.id)
+  end
 
-      assert map_size(result) == 2
+  test "find_by_number returns every school's payment with that number", ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+    other = fees_school_fixture()
+    {:ok, q} = Fees.record_payment(other.scope, other.e, cash(1_000))
 
-      b1 = result[ctx.enrollment1.id]
-      assert b1.total_paid == 10_000
-      assert b1.status == :paid_up
+    assert Enum.sort(Fees.find_by_number("R2025-000001")) ==
+             Enum.sort([
+               {ctx.scope.current_workspace.id, p.id},
+               {other.scope.current_workspace.id, q.id}
+             ])
+  end
 
-      b2 = result[ctx.enrollment2.id]
-      assert b2.total_due == 10_000
-      assert b2.total_paid == 0
-      assert b2.due_to_date == 10_000
-      assert b2.status == :behind
-    end
+  test "a payment in a closed year is refused", ctx do
+    TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    assert {:error, _} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+  end
 
-    test "reflects an adjustment for the affected student only", ctx do
-      {:ok, _} =
-        Fees.add_tranche(ctx.scope, ctx.cg, %{
-          label: "1ère",
-          amount: 10_000,
-          due_date: ~D[2025-09-15]
-        })
-
-      {:ok, _} =
-        Fees.set_adjustment(ctx.scope, ctx.enrollment1, %{amount: 10_000, reason: "Bourse"})
-
-      result = Fees.class_balances(ctx.scope, ctx.cg, ~D[2025-10-01])
-
-      assert result[ctx.enrollment1.id].total_due == 0
-      assert result[ctx.enrollment1.id].status == :paid_up
-
-      assert result[ctx.enrollment2.id].total_due == 10_000
-    end
+  test "a school without any fee type cannot record a payment" do
+    %{scope: scope, year: year} = TeacherFixtures.setup_complete_school_fixture()
+    [cg | _] = Enrollment.list_class_groups(scope, year)
+    {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa A", sex: :f})
+    assert {:error, :no_fee_types} = Fees.record_payment(scope, e, cash(1_000))
   end
 end
