@@ -27,6 +27,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
         |> assign(:name_form, name_form(scope))
         |> assign(:subjects, Curriculum.list_subjects(scope))
         |> assign(:can_edit_timetable?, TeacherAssistant.Timetabling.can_edit_timetable?(scope))
+        |> assign(:can_manage_fees?, TeacherAssistant.Fees.can_manage_fees?(scope))
         |> assign(:rooms, Organization.list_rooms(scope))
         |> assign(:subject_form, subject_form(scope))
         |> assign(:editing_subject, nil)
@@ -117,6 +118,15 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             icon="hero-building-office"
             title={gettext("Salles")}
             text={gettext("Salles, laboratoires et salles de classe.")}
+          />
+          <.hub_card
+            :if={@can_manage_fees?}
+            scope={@current_scope}
+            id="fee-settings-link"
+            navigate={~p"/school/settings/fees"}
+            icon="hero-banknotes"
+            title={gettext("Paramètres des frais")}
+            text={gettext("Types de frais, montants par classe, tranches, reliquats.")}
           />
           <.hub_card
             :if={@can_manage_periods?}
