@@ -181,7 +181,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       school: school,
       scope: scope
     } do
-      for {role, home} <- [bursar: "/school/classes", discipline_master: "/school/day"] do
+      for {role, home} <- [bursar: "/school/fees", discipline_master: "/school/day"] do
         staff = TeacherAssistant.TeacherFixtures.user_fixture()
 
         {:ok, inv} =

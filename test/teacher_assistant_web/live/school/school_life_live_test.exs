@@ -141,7 +141,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
 
   test "Ma journée sends non-teachers to their space home", ctx do
     conn = conn_with_roles(ctx.school, ctx.scope, [:bursar])
-    assert {:error, {:live_redirect, %{to: "/school/classes"}}} = live(conn, ~p"/school/today")
+    assert {:error, {:live_redirect, %{to: "/school/fees"}}} = live(conn, ~p"/school/today")
   end
 
   test "Aujourd'hui: KPIs, grid, « Relancer » and recent sanctions", %{conn: conn} = ctx do
