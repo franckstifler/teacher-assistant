@@ -1,632 +1,549 @@
 defmodule TeacherAssistantWeb.School.FeesLive do
+  @moduledoc """
+  A class's fees (Fees 1, rules 22–23): what each fee costs the class, then every
+  student's due, paid, left and status; `?student=` opens the student's fee card
+  (split per fee type, reductions, receipts, « Encaisser ») and `?late=1` keeps only the
+  students behind. The fees axis manages; the class's form master reads.
+  """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Fees
-  alias TeacherAssistant.Academics.PaymentMethod
-  alias TeacherAssistantWeb.Money
+  import TeacherAssistantWeb.Drawer
 
-  @payment_methods [:cash, :mobile_money, :bank_transfer, :other]
-  @method_strings Map.new(@payment_methods, &{Atom.to_string(&1), &1})
+  alias TeacherAssistant.{Enrollment, Fees}
+  alias TeacherAssistant.Academics.{PaymentMethod, Reference}
+  alias TeacherAssistantWeb.{Money, ReceiptPrintHTML, ReceiptVerification}
+
+  @methods [:cash, :mobile_money, :bank_transfer, :other]
+  @method_strings Map.new(@methods, &{Atom.to_string(&1), &1})
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
-         true <- authorized?(scope, cg) do
+         true <- Fees.can_manage_fees?(scope) or Enrollment.class_manager?(scope, cg),
+         {:ok, year} <-
+           Ash.get(TeacherAssistant.Academics.AcademicYear, cg.academic_year_id, scope: scope) do
       {:ok,
        socket
        |> assign(
          cg: cg,
+         year: year,
          can_edit?: Fees.can_manage_fees?(scope),
-         editing_id: nil,
-         roster: Enrollment.list_roster(scope, cg),
-         payment_methods: @payment_methods,
-         viewing_history_id: nil,
-         history_payments: []
+         student: nil,
+         last_receipt: nil,
+         payment_error: nil,
+         adjustment_error: nil
        )
-       |> load_tranches()
-       |> load_balances()}
+       |> reset_forms()
+       |> load()}
     else
-      false ->
-        {:ok,
-         socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
-
-      _ ->
-        {:ok, push_navigate(socket, to: ~p"/school/classes")}
+      _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  defp authorized?(scope, cg) do
-    Fees.can_manage_fees?(scope) or Enrollment.class_manager?(scope, cg)
+  def handle_params(params, _uri, socket) do
+    socket = assign(socket, late?: params["late"] == "1")
+
+    socket =
+      case Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["student"])) do
+        nil -> assign(socket, student: nil, last_receipt: nil)
+        row -> socket |> assign(student: row) |> load_student()
+      end
+
+    {:noreply, socket}
   end
 
-  defp load_tranches(socket) do
-    tranches = Fees.list_tranches(socket.assigns.current_scope, socket.assigns.cg)
-    total = Enum.reduce(tranches, 0, &(&1.amount + &2))
-    assign(socket, tranches: tranches, total: total)
+  defp scope(socket), do: socket.assigns.current_scope
+
+  defp load(socket) do
+    %{cg: cg, year: year} = socket.assigns
+    types = Fees.list_fee_types(scope(socket), year)
+    grid = Fees.class_fee_grid(scope(socket), year)
+
+    assign(socket,
+      types: types,
+      class_amounts:
+        for(
+          t <- types,
+          t.kind == :regular and t.active?,
+          amount = Map.get(grid, {cg.id, t.id}, 0),
+          amount > 0,
+          do: {t.name, amount}
+        ),
+      roster: Enrollment.list_roster(scope(socket), cg),
+      balances: Fees.class_balances(scope(socket), cg, Reference.today())
+    )
   end
 
-  defp load_balances(socket) do
-    balances =
-      Fees.class_balances(socket.assigns.current_scope, socket.assigns.cg, Date.utc_today())
+  defp load_student(%{assigns: %{student: nil}} = socket), do: socket
 
-    assign(socket, balances: balances)
+  defp load_student(%{assigns: %{student: row}} = socket),
+    do:
+      assign(socket,
+        student_fees: Fees.student_fees(scope(socket), row.enrollment),
+        payments: Fees.list_payments(scope(socket), row.enrollment),
+        adjustments: Fees.list_adjustments(scope(socket), row.enrollment)
+      )
+
+  # Forms come from the server so they empty after a save.
+  defp reset_forms(socket),
+    do:
+      assign(socket,
+        payment_form:
+          to_form(
+            %{
+              "amount" => "",
+              "paid_on" => Date.to_iso8601(Reference.today()),
+              "method" => "cash",
+              "reference" => ""
+            },
+            as: :payment
+          ),
+        adjustment_form:
+          to_form(%{"fee_type_id" => "", "amount" => "", "reason" => ""}, as: :adjustment)
+      )
+
+  # --- events --------------------------------------------------------------------------
+
+  def handle_event("toggle_late", _params, socket) do
+    query =
+      Enum.reject(
+        [
+          late: if(!socket.assigns.late?, do: "1"),
+          student: socket.assigns.student && socket.assigns.student.enrollment.id
+        ],
+        fn {_k, v} -> is_nil(v) end
+      )
+
+    {:noreply, push_patch(socket, to: ~p"/school/classes/#{socket.assigns.cg.id}/fees?#{query}")}
   end
 
-  defp load_history(socket, enrollment_id) do
-    case Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
-      %{} = row ->
-        assign(
-          socket,
-          history_payments: Fees.list_payments(socket.assigns.current_scope, row.enrollment)
-        )
+  def handle_event("change_payment", %{"payment" => params}, socket),
+    do: {:noreply, assign(socket, payment_form: to_form(params, as: :payment))}
 
-      nil ->
-        assign(socket, history_payments: [])
-    end
-  end
-
-  defp refresh_history_if_open(socket, enrollment_id) do
-    if socket.assigns.viewing_history_id == enrollment_id do
-      load_history(socket, enrollment_id)
-    else
-      socket
-    end
-  end
-
-  def handle_event("add_tranche", params, socket) do
-    scope = socket.assigns.current_scope
-
-    with {:ok, amount} <- parse_amount(params["amount"]),
-         {:ok, date} <- Date.from_iso8601(params["due_date"] || "") do
+  def handle_event("record_payment", %{"payment" => params}, socket) do
+    with true <- socket.assigns.can_edit?,
+         %{enrollment: e} <- socket.assigns.student do
       attrs = %{
-        label: presence(params["label"]),
-        amount: amount,
-        due_date: date
+        amount: parse_int(params["amount"]),
+        paid_on: parse_date(params["paid_on"]),
+        method: Map.get(@method_strings, params["method"]),
+        reference: params["reference"]
       }
 
-      case Fees.add_tranche(scope, socket.assigns.cg, attrs) do
-        {:ok, _tranche} ->
-          {:noreply, socket |> put_flash(:info, gettext("Tranche added.")) |> load_tranches()}
-
-        {:error, %Ash.Error.Forbidden{}} ->
-          {:noreply, Authz.put_not_allowed(socket)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not add the tranche."))}
-      end
-    else
-      _ -> {:noreply, socket}
-    end
-  end
-
-  def handle_event("edit_tranche", %{"tranche_id" => tranche_id}, socket) do
-    if socket.assigns.can_edit? do
-      {:noreply, assign(socket, editing_id: tranche_id)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("cancel_edit_tranche", _params, socket) do
-    {:noreply, assign(socket, editing_id: nil)}
-  end
-
-  def handle_event("update_tranche", %{"tranche_id" => tranche_id} = params, socket) do
-    scope = socket.assigns.current_scope
-
-    with %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)),
-         {:ok, amount} <- parse_amount(params["amount"]),
-         {:ok, date} <- Date.from_iso8601(params["due_date"] || "") do
-      attrs = %{
-        label: presence(params["label"]),
-        amount: amount,
-        due_date: date
-      }
-
-      case Fees.update_tranche(scope, tranche, attrs) do
-        {:ok, _tranche} ->
+      case Fees.record_payment(scope(socket), e, attrs) do
+        {:ok, payment} ->
           {:noreply,
            socket
-           |> put_flash(:info, gettext("Tranche updated."))
-           |> assign(editing_id: nil)
-           |> load_tranches()}
+           |> assign(payment_error: nil, last_receipt: receipt_view(socket, payment))
+           |> reset_forms()
+           |> load()
+           |> load_student()}
 
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
 
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not update the tranche."))}
-      end
-    else
-      _ -> {:noreply, socket}
-    end
-  end
-
-  def handle_event("delete_tranche", %{"tranche_id" => tranche_id}, socket) do
-    scope = socket.assigns.current_scope
-
-    with %{} = tranche <- Enum.find(socket.assigns.tranches, &(&1.id == tranche_id)) do
-      case Fees.delete_tranche(tranche, scope: scope) do
-        :ok ->
-          {:noreply, socket |> put_flash(:info, gettext("Tranche removed.")) |> load_tranches()}
-
-        {:error, %Ash.Error.Forbidden{}} ->
-          {:noreply, Authz.put_not_allowed(socket)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not remove the tranche."))}
-      end
-    else
-      _ -> {:noreply, socket}
-    end
-  end
-
-  def handle_event("toggle_history", %{"enrollment_id" => enrollment_id}, socket) do
-    current = socket.assigns.viewing_history_id
-
-    if current == enrollment_id do
-      {:noreply, assign(socket, viewing_history_id: nil, history_payments: [])}
-    else
-      {:noreply,
-       socket
-       |> assign(viewing_history_id: enrollment_id)
-       |> load_history(enrollment_id)}
-    end
-  end
-
-  def handle_event("record_payment", params, socket) do
-    scope = socket.assigns.current_scope
-
-    with %{} = row <-
-           Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
-         {:ok, amount} <- parse_positive_amount(params["amount"]),
-         {:ok, method} <- fetch_method(params["method"]),
-         {:ok, date} <- Date.from_iso8601(params["paid_on"] || "") do
-      attrs = %{
-        amount: amount,
-        paid_on: date,
-        method: method,
-        reference: presence(params["reference"]),
-        note: presence(params["note"])
-      }
-
-      case Fees.record_payment(scope, row.enrollment, attrs) do
-        {:ok, _payment} ->
+        {:error, reason} ->
           {:noreply,
-           socket
-           |> put_flash(:info, gettext("Payment recorded."))
-           |> load_balances()
-           |> refresh_history_if_open(row.enrollment.id)}
-
-        {:error, %Ash.Error.Forbidden{}} ->
-          {:noreply, Authz.put_not_allowed(socket)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not record the payment."))}
+           assign(socket,
+             payment_form: to_form(params, as: :payment),
+             payment_error: payment_error(reason)
+           )}
       end
     else
       _ -> {:noreply, socket}
     end
   end
 
-  def handle_event(
-        "delete_payment",
-        %{"payment_id" => payment_id, "enrollment_id" => enrollment_id},
-        socket
-      ) do
-    scope = socket.assigns.current_scope
-
-    with %{} = row <-
-           Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)),
-         %{} = payment <-
-           Enum.find(Fees.list_payments(scope, row.enrollment), &(&1.id == payment_id)) do
-      case Fees.delete_payment(payment, scope: scope) do
-        :ok ->
+  def handle_event("cancel_payment", %{"payment_id" => id, "reason" => reason}, socket) do
+    with true <- socket.assigns.can_edit?,
+         %{} <- socket.assigns.student,
+         %{} = payment <- Enum.find(socket.assigns.payments, &(&1.id == id)) do
+      case Fees.cancel_payment(scope(socket), payment, reason) do
+        {:ok, _} ->
           {:noreply,
-           socket
-           |> put_flash(:info, gettext("Payment removed."))
-           |> load_balances()
-           |> refresh_history_if_open(enrollment_id)}
+           socket |> put_flash(:info, gettext("Reçu annulé.")) |> load() |> load_student()}
+
+        {:error, :reason_required} ->
+          {:noreply, put_flash(socket, :error, gettext("Indiquez la raison de l'annulation."))}
 
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
 
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not remove the payment."))}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Modification non enregistrée."))}
       end
     else
       _ -> {:noreply, socket}
     end
   end
 
-  def handle_event("set_adjustment", params, socket) do
-    scope = socket.assigns.current_scope
+  def handle_event("change_adjustment", %{"adjustment" => params}, socket),
+    do: {:noreply, assign(socket, adjustment_form: to_form(params, as: :adjustment))}
 
-    with %{} = row <-
-           Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["enrollment_id"])),
-         {:ok, amount} <- parse_amount(params["amount"]) do
-      attrs = %{amount: amount, reason: presence(params["reason"])}
-
-      case Fees.set_adjustment(scope, row.enrollment, attrs) do
-        {:ok, _adjustment} ->
-          {:noreply, socket |> put_flash(:info, gettext("Adjustment saved.")) |> load_balances()}
-
-        {:error, %Ash.Error.Forbidden{}} ->
-          {:noreply, Authz.put_not_allowed(socket)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save the adjustment."))}
-      end
-    else
-      _ -> {:noreply, socket}
-    end
-  end
-
-  def handle_event("clear_adjustment", %{"enrollment_id" => enrollment_id}, socket) do
-    scope = socket.assigns.current_scope
-
-    with %{} = row <-
-           Enum.find(socket.assigns.roster, &(&1.enrollment.id == enrollment_id)) do
-      case Fees.clear_adjustment(scope, row.enrollment) do
-        {:ok, _count} ->
+  def handle_event("set_adjustment", %{"adjustment" => params}, socket) do
+    with true <- socket.assigns.can_edit?,
+         %{enrollment: e} <- socket.assigns.student,
+         %{} = type <- Enum.find(socket.assigns.types, &(&1.id == params["fee_type_id"])) do
+      case Fees.set_adjustment(scope(socket), e, type, %{
+             amount: parse_int(params["amount"]),
+             reason: params["reason"]
+           }) do
+        {:ok, _} ->
           {:noreply,
-           socket |> put_flash(:info, gettext("Adjustment cleared.")) |> load_balances()}
+           socket |> assign(adjustment_error: nil) |> reset_forms() |> load() |> load_student()}
 
         {:error, %Ash.Error.Forbidden{}} ->
           {:noreply, Authz.put_not_allowed(socket)}
 
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not clear the adjustment."))}
+        {:error, :too_large} ->
+          {:noreply,
+           assign(socket,
+             adjustment_form: to_form(params, as: :adjustment),
+             adjustment_error: gettext("La réduction dépasse ce que l'élève doit pour ce frais.")
+           )}
+
+        {:error, _} ->
+          {:noreply,
+           assign(socket,
+             adjustment_form: to_form(params, as: :adjustment),
+             adjustment_error: gettext("Indiquez un montant positif et une raison.")
+           )}
       end
     else
       _ -> {:noreply, socket}
     end
   end
 
-  defp fetch_method(str) when is_binary(str) do
-    case Map.fetch(@method_strings, str) do
-      {:ok, method} -> {:ok, method}
-      :error -> {:error, :invalid_method}
+  def handle_event("remove_adjustment", %{"type" => type_id}, socket) do
+    with true <- socket.assigns.can_edit?,
+         %{enrollment: e} <- socket.assigns.student,
+         %{} = type <- Enum.find(socket.assigns.types, &(&1.id == type_id)) do
+      Fees.clear_adjustment(scope(socket), e, type)
+      {:noreply, socket |> load() |> load_student()}
+    else
+      _ -> {:noreply, socket}
     end
   end
 
-  defp fetch_method(_), do: {:error, :invalid_method}
+  # --- helpers ---------------------------------------------------------------------------
 
-  defp parse_positive_amount(str) when is_binary(str) do
-    case Integer.parse(str) do
-      {n, ""} when n > 0 -> {:ok, n}
-      _ -> {:error, :invalid_amount}
+  defp receipt_view(socket, payment) do
+    {:ok, receipt} = Fees.receipt(scope(socket), payment.id)
+    check_url = url(~p"/verify/receipt/#{ReceiptVerification.token(payment)}")
+    message = ReceiptPrintHTML.whatsapp_message(receipt, check_url)
+
+    %{
+      payment: payment,
+      whatsapp:
+        receipt.guardians
+        |> Enum.map(&%{name: &1.name, url: ReceiptPrintHTML.whatsapp_url(&1.phone, message)})
+        |> Enum.filter(& &1.url)
+    }
+  end
+
+  defp payment_error(:invalid_amount), do: gettext("Indiquez un montant positif.")
+  defp payment_error(:invalid_method), do: gettext("Choisissez un mode de paiement.")
+
+  defp payment_error(:reference_required),
+    do: gettext("La référence est obligatoire pour le mobile money et le virement.")
+
+  defp payment_error(:no_fee_types),
+    do: gettext("Aucun frais n'est défini pour cette année : voir Paramètres des frais.")
+
+  defp payment_error(_reason), do: gettext("Paiement non enregistré.")
+
+  defp parse_int(value) when is_binary(value) do
+    case value |> String.replace(~r/\s/u, "") |> Integer.parse() do
+      {n, ""} -> n
+      _ -> nil
     end
   end
 
-  defp parse_positive_amount(_), do: {:error, :invalid_amount}
+  defp parse_int(_value), do: nil
 
-  defp method_label(m), do: PaymentMethod.label(m)
-
-  defp status_chip(%{status: :paid_up}), do: gettext("Soldé")
-  defp status_chip(%{status: :on_track}), do: gettext("À jour")
-
-  defp status_chip(%{status: :behind} = balance) do
-    shortfall = balance.due_to_date - balance.total_paid
-    gettext("En retard (−%{amount})", amount: Money.format_fcfa(shortfall))
-  end
-
-  defp parse_amount(str) when is_binary(str) do
-    case Integer.parse(str) do
-      {n, ""} when n >= 0 -> {:ok, n}
-      _ -> {:error, :invalid_amount}
+  defp parse_date(value) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} -> date
+      _ -> nil
     end
   end
 
-  defp parse_amount(_), do: {:error, :invalid_amount}
+  defp parse_date(_value), do: nil
 
-  defp presence(nil), do: nil
-  defp presence(""), do: nil
-  defp presence(v), do: v
+  defp visible_roster(roster, balances, true),
+    do: Enum.filter(roster, &(balances[&1.enrollment.id].status == :behind))
+
+  defp visible_roster(roster, _balances, false), do: roster
+
+  defp type_name(types, id), do: Enum.find_value(types, "?", &(&1.id == id && &1.name))
+
+  defp status_badge(:paid_up), do: {gettext("À jour"), "badge-success"}
+  defp status_badge(:on_track), do: {gettext("Dans les temps"), "badge-ghost"}
+  defp status_badge(:behind), do: {gettext("En retard"), "badge-warning"}
+
+  defp student_path(cg, row, late?),
+    do:
+      ~p"/school/classes/#{cg.id}/fees?#{Enum.reject([late: late? && "1", student: row.enrollment.id], fn {_, v} -> !v end)}"
+
+  defp close_path(cg, late?),
+    do: ~p"/school/classes/#{cg.id}/fees?#{if late?, do: [late: "1"], else: []}"
+
+  defp adjustment_types(types, fees) do
+    with_due = MapSet.new(for t <- fees.by_type, t.due > 0 or t.left != 0, do: t.type_id)
+    Enum.filter(types, &(&1.active? and (MapSet.member?(with_due, &1.id) or &1.kind == :regular)))
+  end
 
   def render(assigns) do
+    assigns = assign(assigns, :methods, @methods)
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="class-fees" class="space-y-6">
         <.page_header
-          eyebrow={gettext("École")}
+          eyebrow={gettext("Frais")}
           title={"#{@cg.label} — #{gettext("Frais scolaires")}"}
-        />
+        >
+          <:actions>
+            <.link :if={@can_edit?} navigate={~p"/school/settings/fees"} class="btn btn-ghost btn-sm">
+              <.icon name="hero-cog-6-tooth" class="size-4" /> {gettext("Paramètres des frais")}
+            </.link>
+          </:actions>
+        </.page_header>
 
-        <div class="overflow-x-auto">
-          <table id="fee-schedule" class="table table-zebra">
+        <div id="fees-summary" class="flex flex-wrap gap-2">
+          <span :for={{name, amount} <- @class_amounts} class="badge badge-outline py-3">
+            {name} · {Money.format_fcfa(amount)}
+          </span>
+          <span :if={@class_amounts == []} class="text-sm text-base-content/70">
+            {gettext("Aucun montant pour cette classe.")}
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="late-filter"
+            type="button"
+            phx-click="toggle_late"
+            class={["btn btn-sm", if(@late?, do: "btn-warning", else: "btn-ghost")]}
+          >
+            <.icon name="hero-funnel" class="size-4" /> {gettext("En retard seulement")}
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+          <table id="fees-roster" class="table table-sm">
             <thead>
               <tr>
-                <th>{gettext("Libellé")}</th>
-                <th>{gettext("Montant")}</th>
-                <th>{gettext("Échéance")}</th>
-                <th :if={@can_edit?}><span class="sr-only">{gettext("Actions")}</span></th>
+                <th>{gettext("Élève")}</th>
+                <th class="text-right">{gettext("Dû")}</th>
+                <th class="text-right">{gettext("Payé")}</th>
+                <th class="text-right">{gettext("Reste")}</th>
+                <th>{gettext("Situation")}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               <tr
-                :for={tranche <- @tranches}
-                :if={@editing_id != tranche.id}
-                id={"tranche-row-#{tranche.id}"}
+                :for={row <- visible_roster(@roster, @balances, @late?)}
+                id={"fee-row-#{row.enrollment.id}"}
               >
-                <td>{tranche.label}</td>
-                <td>{Money.format_fcfa(tranche.amount)}</td>
-                <td>{Date.to_string(tranche.due_date)}</td>
-                <td :if={@can_edit?} class="flex gap-2">
-                  <button
-                    id={"edit-tranche-#{tranche.id}"}
-                    type="button"
-                    class="btn btn-ghost btn-xs"
-                    phx-click="edit_tranche"
-                    phx-value-tranche_id={tranche.id}
-                  >
-                    {gettext("Éditer")}
-                  </button>
-                  <button
-                    id={"delete-tranche-#{tranche.id}"}
-                    type="button"
-                    class="btn btn-ghost btn-xs"
-                    phx-click="delete_tranche"
-                    phx-value-tranche_id={tranche.id}
-                    data-confirm={gettext("Supprimer cette tranche ?")}
-                  >
-                    {gettext("Supprimer")}
-                  </button>
-                </td>
-              </tr>
-              <tr
-                :for={tranche <- @tranches}
-                :if={@can_edit? and @editing_id == tranche.id}
-                id={"tranche-row-#{tranche.id}"}
-              >
-                <td colspan="4">
-                  <form
-                    id={"tranche-edit-form-#{tranche.id}"}
-                    phx-submit="update_tranche"
-                    class="grid gap-2 sm:grid-cols-4 items-center"
-                  >
-                    <input type="hidden" name="tranche_id" value={tranche.id} />
-                    <input
-                      type="text"
-                      name="label"
-                      value={tranche.label}
-                      placeholder={gettext("Libellé")}
-                      class="input input-bordered input-sm"
-                    />
-                    <input
-                      type="number"
-                      name="amount"
-                      min="0"
-                      value={tranche.amount}
-                      placeholder={gettext("Montant (FCFA)")}
-                      class="input input-bordered input-sm"
-                    />
-                    <input
-                      type="date"
-                      name="due_date"
-                      value={Date.to_string(tranche.due_date)}
-                      class="input input-bordered input-sm"
-                    />
-                    <div class="flex gap-2">
-                      <button type="submit" class="btn btn-primary btn-xs">
-                        {gettext("Enregistrer")}
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-ghost btn-xs"
-                        phx-click="cancel_edit_tranche"
-                      >
-                        {gettext("Annuler")}
-                      </button>
-                    </div>
-                  </form>
+                <% b = @balances[row.enrollment.id] %>
+                <% {label, tone} = status_badge(b.status) %>
+                <td class="font-semibold">{row.student.full_name}</td>
+                <td class="ta-num whitespace-nowrap text-right">{Money.format_fcfa(b.total_due)}</td>
+                <td class="ta-num whitespace-nowrap text-right">{Money.format_fcfa(b.total_paid)}</td>
+                <td class="ta-num whitespace-nowrap text-right">{ReceiptPrintHTML.left(b.left)}</td>
+                <td><span class={["badge badge-sm", tone]}>{label}</span></td>
+                <td class="text-right">
+                  <.link patch={student_path(@cg, row, @late?)} class="btn btn-ghost btn-xs">
+                    {if @can_edit?, do: gettext("Encaisser"), else: gettext("Voir")}
+                  </.link>
                 </td>
               </tr>
             </tbody>
-            <tfoot>
-              <tr>
-                <th>{gettext("Total")}</th>
-                <th>{Money.format_fcfa(@total)}</th>
-                <th></th>
-                <th :if={@can_edit?}></th>
-              </tr>
-            </tfoot>
           </table>
-
-          <.empty_state
-            :if={@tranches == []}
-            icon="hero-banknotes"
-            title={gettext("Aucune tranche définie")}
-          />
         </div>
 
-        <div :if={@can_edit?} class="ta-leaf space-y-3">
-          <h2 class="text-sm font-semibold">{gettext("Ajouter une tranche")}</h2>
-          <form id="fees-add-form" phx-submit="add_tranche" class="space-y-2">
-            <div class="grid gap-2 sm:grid-cols-3">
-              <input
-                type="text"
-                name="label"
-                placeholder={gettext("Libellé")}
-                class="input input-bordered input-sm"
-              />
-              <input
-                type="number"
-                name="amount"
-                min="0"
-                placeholder={gettext("Montant (FCFA)")}
-                class="input input-bordered input-sm"
-              />
-              <input type="date" name="due_date" class="input input-bordered input-sm" />
+        <.drawer
+          :if={@student}
+          id="student-fees"
+          eyebrow={@cg.label}
+          title={@student.student.full_name}
+          on_close={JS.patch(close_path(@cg, @late?))}
+        >
+          <div class="space-y-5">
+            <div
+              :if={@last_receipt}
+              id="last-receipt"
+              class="space-y-2 rounded-box bg-success/12 p-3 text-sm"
+            >
+              <p class="font-semibold">
+                {gettext("Reçu n° %{number} enregistré.", number: @last_receipt.payment.number)}
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <a
+                  id="print-receipt"
+                  href={~p"/school/fees/receipts/#{@last_receipt.payment.id}/print"}
+                  target="_blank"
+                  class="btn btn-primary btn-xs"
+                >
+                  <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer le reçu")}
+                </a>
+                <a
+                  :for={w <- @last_receipt.whatsapp}
+                  href={w.url}
+                  target="_blank"
+                  rel="noopener"
+                  class="btn btn-outline btn-xs"
+                >
+                  {gettext("Envoyer par WhatsApp à %{name}", name: w.name)}
+                </a>
+              </div>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>
-          </form>
-        </div>
 
-        <div class="space-y-4">
-          <h2 class="text-lg font-semibold">{gettext("Paiements & soldes")}</h2>
-
-          <div class="overflow-x-auto">
-            <table id="balances-table" class="table table-zebra">
+            <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>{gettext("Élève")}</th>
-                  <th>{gettext("Total dû")}</th>
-                  <th>{gettext("Total payé")}</th>
-                  <th>{gettext("Solde")}</th>
-                  <th>{gettext("Statut")}</th>
-                  <th :if={@can_edit?}><span class="sr-only">{gettext("Actions")}</span></th>
+                  <th>{gettext("Frais")}</th>
+                  <th class="text-right">{gettext("Dû")}</th>
+                  <th class="text-right">{gettext("Payé")}</th>
+                  <th class="text-right">{gettext("Reste")}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr :for={row <- @roster} id={"balance-row-#{row.enrollment.id}"}>
-                  <% balance = Map.get(@balances, row.enrollment.id) %>
-                  <td>{row.student.full_name}</td>
-                  <td>{Money.format_fcfa(balance.total_due)}</td>
-                  <td>{Money.format_fcfa(balance.total_paid)}</td>
-                  <td>{Money.format_fcfa(balance.balance)}</td>
-                  <td>
-                    <span id={"status-chip-#{row.enrollment.id}"} class="badge badge-sm">
-                      {status_chip(balance)}
-                    </span>
-                  </td>
-                  <td :if={@can_edit?}>
-                    <button
-                      id={"toggle-history-#{row.enrollment.id}"}
-                      type="button"
-                      class="btn btn-ghost btn-xs"
-                      phx-click="toggle_history"
-                      phx-value-enrollment_id={row.enrollment.id}
-                    >
-                      {gettext("Historique")}
-                    </button>
-                  </td>
+                <tr :for={t <- @student_fees.by_type}>
+                  <td>{t.name}</td>
+                  <td class="ta-num text-right">{Money.format_fcfa(t.due)}</td>
+                  <td class="ta-num text-right">{Money.format_fcfa(t.paid)}</td>
+                  <td class="ta-num text-right">{ReceiptPrintHTML.left(t.left)}</td>
+                </tr>
+                <tr class="font-semibold">
+                  <td>{gettext("Total")}</td>
+                  <td class="ta-num text-right">{Money.format_fcfa(@student_fees.total_due)}</td>
+                  <td class="ta-num text-right">{Money.format_fcfa(@student_fees.total_paid)}</td>
+                  <td class="ta-num text-right">{ReceiptPrintHTML.left(@student_fees.left)}</td>
                 </tr>
               </tbody>
             </table>
-          </div>
 
-          <div :if={@can_edit?} class="space-y-6">
-            <div :for={row <- @roster} class="ta-leaf space-y-3">
-              <h3 class="text-sm font-semibold">{row.student.full_name}</h3>
+            <.form
+              :if={@can_edit?}
+              for={@payment_form}
+              id="payment-form"
+              phx-change="change_payment"
+              phx-submit="record_payment"
+              class="space-y-1 rounded-box border border-base-300 p-3"
+            >
+              <h3 class="font-semibold">{gettext("Encaisser")}</h3>
+              <.input
+                field={@payment_form[:amount]}
+                label={gettext("Montant (FCFA)")}
+                inputmode="numeric"
+              />
+              <.input field={@payment_form[:paid_on]} type="date" label={gettext("Date")} />
+              <.input
+                field={@payment_form[:method]}
+                type="select"
+                options={Enum.map(@methods, &{PaymentMethod.label(&1), &1})}
+                label={gettext("Mode")}
+              />
+              <.input
+                :if={@payment_form[:method].value in ["mobile_money", "bank_transfer"]}
+                field={@payment_form[:reference]}
+                label={gettext("Référence de la transaction")}
+              />
+              <p :if={@payment_error} id="payment-error" class="text-sm text-error">
+                {@payment_error}
+              </p>
+              <button type="submit" class="btn btn-primary btn-sm w-full">{gettext(
+                "Enregistrer et émettre le reçu"
+              )}</button>
+            </.form>
 
-              <form
-                id={"record-payment-form-#{row.enrollment.id}"}
-                phx-submit="record_payment"
-                class="grid gap-2 sm:grid-cols-6 items-center"
+            <section class="space-y-2">
+              <h3 class="font-semibold">{gettext("Reçus")}</h3>
+              <p :if={@payments == []} class="text-sm text-base-content/70">
+                {gettext("Aucun paiement.")}
+              </p>
+              <div
+                :for={p <- @payments}
+                id={"payment-#{p.id}"}
+                class="space-y-1 rounded-box border border-base-300 p-2 text-sm"
               >
-                <input type="hidden" name="enrollment_id" value={row.enrollment.id} />
-                <input
-                  type="number"
-                  name="amount"
-                  min="1"
-                  placeholder={gettext("Montant (FCFA)")}
-                  class="input input-bordered input-sm"
-                />
-                <input
-                  type="date"
-                  name="paid_on"
-                  value={Date.to_iso8601(Date.utc_today())}
-                  class="input input-bordered input-sm"
-                />
-                <select name="method" class="select select-bordered select-sm">
-                  <option :for={m <- @payment_methods} value={m}>{method_label(m)}</option>
-                </select>
-                <input
-                  type="text"
-                  name="reference"
-                  placeholder={gettext("Référence (optionnel)")}
-                  class="input input-bordered input-sm"
-                />
-                <input
-                  type="text"
-                  name="note"
-                  placeholder={gettext("Note (optionnel)")}
-                  class="input input-bordered input-sm"
-                />
-                <button type="submit" class="btn btn-primary btn-xs">
-                  {gettext("Enregistrer le paiement")}
-                </button>
-              </form>
-
-              <form
-                id={"adjustment-form-#{row.enrollment.id}"}
-                phx-submit="set_adjustment"
-                class="grid gap-2 sm:grid-cols-4 items-center"
-              >
-                <input type="hidden" name="enrollment_id" value={row.enrollment.id} />
-                <input
-                  type="number"
-                  name="amount"
-                  min="0"
-                  placeholder={gettext("Ajustement (FCFA)")}
-                  class="input input-bordered input-sm"
-                />
-                <input
-                  type="text"
-                  name="reason"
-                  placeholder={gettext("Motif")}
-                  class="input input-bordered input-sm"
-                />
-                <div class="flex gap-2">
-                  <button type="submit" class="btn btn-secondary btn-xs">
-                    {gettext("Appliquer l'ajustement")}
-                  </button>
-                  <button
-                    id={"clear-adjustment-#{row.enrollment.id}"}
-                    type="button"
-                    class="btn btn-ghost btn-xs"
-                    phx-click="clear_adjustment"
-                    phx-value-enrollment_id={row.enrollment.id}
-                    data-confirm={gettext("Effacer l'ajustement ?")}
-                  >
-                    {gettext("Effacer")}
-                  </button>
+                <div class="flex items-center justify-between gap-2">
+                  <a
+                    href={~p"/school/fees/receipts/#{p.id}/print"}
+                    target="_blank"
+                    class="link font-semibold"
+                  >{p.number}</a>
+                  <span class="ta-num">{Money.format_fcfa(p.amount)}</span>
                 </div>
-              </form>
-
-              <div :if={@viewing_history_id == row.enrollment.id} class="overflow-x-auto">
-                <table id={"payment-history-#{row.enrollment.id}"} class="table table-zebra table-sm">
-                  <thead>
-                    <tr>
-                      <th>{gettext("Date")}</th>
-                      <th>{gettext("Montant")}</th>
-                      <th>{gettext("Méthode")}</th>
-                      <th>{gettext("Référence")}</th>
-                      <th><span class="sr-only">{gettext("Actions")}</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      :for={payment <- @history_payments}
-                      id={"payment-row-#{payment.id}"}
-                    >
-                      <td>{Date.to_string(payment.paid_on)}</td>
-                      <td>{Money.format_fcfa(payment.amount)}</td>
-                      <td>{method_label(payment.method)}</td>
-                      <td>{payment.reference || "—"}</td>
-                      <td>
-                        <button
-                          id={"delete-payment-#{payment.id}"}
-                          type="button"
-                          class="btn btn-ghost btn-xs"
-                          phx-click="delete_payment"
-                          phx-value-payment_id={payment.id}
-                          phx-value-enrollment_id={row.enrollment.id}
-                          data-confirm={gettext("Supprimer ce paiement ?")}
-                        >
-                          {gettext("Supprimer")}
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div class="flex items-center justify-between gap-2 text-base-content/70">
+                  <span>{ReceiptPrintHTML.date(p.paid_on)} · {PaymentMethod.label(p.method)}</span>
+                  <span :if={p.status == :cancelled} class="badge badge-error badge-sm">{gettext(
+                    "Annulé"
+                  )}</span>
+                </div>
+                <form
+                  :if={@can_edit? and p.status == :valid}
+                  id={"cancel-form-#{p.id}"}
+                  phx-submit="cancel_payment"
+                  class="flex gap-1"
+                >
+                  <input type="hidden" name="payment_id" value={p.id} />
+                  <input
+                    name="reason"
+                    placeholder={gettext("Raison de l'annulation")}
+                    class="input input-xs flex-1"
+                    aria-label={gettext("Raison de l'annulation")}
+                  />
+                  <button type="submit" class="btn btn-ghost btn-xs text-error">{gettext("Annuler")}</button>
+                </form>
               </div>
-            </div>
+            </section>
+
+            <.form
+              :if={@can_edit?}
+              for={@adjustment_form}
+              id="adjustment-form"
+              phx-change="change_adjustment"
+              phx-submit="set_adjustment"
+              class="space-y-1 rounded-box border border-base-300 p-3"
+            >
+              <h3 class="font-semibold">{gettext("Réduction ou exonération")}</h3>
+              <ul :if={@adjustments != []} class="space-y-1 text-sm">
+                <li :for={a <- @adjustments} class="flex items-center justify-between gap-2">
+                  <span>{type_name(@types, a.fee_type_id)} · −{Money.format_fcfa(a.amount)} · {a.reason}</span>
+                  <button
+                    id={"remove-adjustment-#{a.fee_type_id}"}
+                    type="button"
+                    phx-click="remove_adjustment"
+                    phx-value-type={a.fee_type_id}
+                    class="btn btn-ghost btn-xs"
+                  >
+                    {gettext("Retirer")}
+                  </button>
+                </li>
+              </ul>
+              <.input
+                field={@adjustment_form[:fee_type_id]}
+                type="select"
+                prompt={gettext("Frais")}
+                options={Enum.map(adjustment_types(@types, @student_fees), &{&1.name, &1.id})}
+                label={gettext("Frais")}
+              />
+              <.input
+                field={@adjustment_form[:amount]}
+                label={gettext("Montant de la réduction")}
+                inputmode="numeric"
+              />
+              <.input field={@adjustment_form[:reason]} label={gettext("Raison")} />
+              <p :if={@adjustment_error} class="text-sm text-error">{@adjustment_error}</p>
+              <button type="submit" class="btn btn-ghost btn-sm">{gettext("Appliquer")}</button>
+            </.form>
           </div>
-        </div>
+        </.drawer>
       </section>
     </Layouts.app>
     """

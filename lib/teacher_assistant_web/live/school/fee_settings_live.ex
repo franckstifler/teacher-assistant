@@ -75,7 +75,7 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
     end
   end
 
-  def handle_event("rename_type", %{"id" => id, "name" => name}, socket) do
+  def handle_event("rename_type", %{"type_id" => id, "name" => name}, socket) do
     with %{} = type <- find_type(socket, id) do
       socket |> result(Fees.rename_fee_type(scope(socket), type, name))
     else
@@ -339,7 +339,7 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
                 <span class="badge badge-ghost badge-sm">{gettext("toujours en premier")}</span>
               <% else %>
                 <form id={"rename-type-#{t.id}"} phx-submit="rename_type" class="flex-1">
-                  <input type="hidden" name="id" value={t.id} />
+                  <input type="hidden" name="type_id" value={t.id} />
                   <input
                     name="name"
                     value={t.name}

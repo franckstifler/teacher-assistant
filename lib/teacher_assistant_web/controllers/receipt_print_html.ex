@@ -7,12 +7,12 @@ defmodule TeacherAssistantWeb.ReceiptPrintHTML do
 
   embed_templates "receipt_print_html/*"
 
-  defp date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
+  def date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
 
-  defp left(left) when left < 0,
+  def left(left) when left < 0,
     do: gettext("Trop-perçu : %{amount}", amount: Money.format_fcfa(-left))
 
-  defp left(left), do: Money.format_fcfa(left)
+  def left(left), do: Money.format_fcfa(left)
 
   defp in_words(amount), do: AmountInWords.fr(amount) <> " " <> gettext("francs CFA")
 
@@ -27,7 +27,8 @@ defmodule TeacherAssistantWeb.ReceiptPrintHTML do
     end
   end
 
-  defp whatsapp_message(receipt, check_url) do
+  @doc "The WhatsApp text for a receipt (French): school, number, date, amount, student, balance, check link."
+  def whatsapp_message(receipt, check_url) do
     p = receipt.payment
 
     gettext(

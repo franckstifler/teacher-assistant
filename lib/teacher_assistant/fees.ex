@@ -439,6 +439,10 @@ defmodule TeacherAssistant.Fees do
     |> Enum.each(&Ash.destroy!(&1, scope: scope))
   end
 
+  @doc "The student's reductions, one per fee type."
+  def list_adjustments(%Scope{} = scope, %Enrollment{id: id}),
+    do: list_adjustments_for_enrollment_id!(id, scope: scope)
+
   # What the type costs the student before any reduction.
   defp base_due(scope, e, %FeeType{kind: :arrears}),
     do: scope |> arrears_by_enrollment([e.id]) |> Map.get(e.id, 0)

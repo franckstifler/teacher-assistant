@@ -1,477 +1,143 @@
 defmodule TeacherAssistantWeb.School.FeesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
-  # Fees 1: rewritten in a later task (see docs/superpowers/plans/2026-10-20-fees-1.md).
-  @moduletag :skip
   import Phoenix.LiveViewTest
-  alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Fees
-  alias TeacherAssistant.Accounts
-  alias TeacherAssistant.Organization
+  import TeacherAssistant.FeesFixtures
+
+  alias TeacherAssistant.{Enrollment, Fees, Organization, TeacherFixtures}
 
   setup :register_and_log_in_user
 
-  setup %{conn: conn, actor: head} do
-    {:ok, school} =
-      Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{name: "Lycée F"})
-
-    scope = school_scope(head, school)
-
-    {:ok, year} =
-      Organization.create_academic_year(scope, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    :ok = Organization.build_default_calendar(scope, year)
-
-    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
-
-    conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-
-    %{conn: conn, school: school, year: year, cg: cg, head: head, scope: scope}
-  end
-
-  defp conn_for(school, user) do
-    Phoenix.ConnTest.build_conn()
-    |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_id, user.id)
-    |> Plug.Conn.put_session(:workspace_id, school.id)
-  end
-
-  test "a fees manager adds a tranche, sees it, and deletes it", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    bursar = TeacherAssistant.TeacherFixtures.user_fixture()
-
-    {:ok, inv} =
-      Accounts.invite_member(school_scope(head, school), %{
-        email: to_string(bursar.email),
-        roles: [:bursar]
-      })
+  setup %{scope: scope} do
+    year = Organization.current_academic_year(scope)
+    ctx = fees_setup(%{scope | current_academic_year: year}, year)
 
     {:ok, _} =
-      Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: bursar}, inv.token)
-
-    conn = conn_for(school, bursar)
-
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    assert has_element?(view, "#fees-add-form")
-
-    view
-    |> form("#fees-add-form", %{
-      "label" => "1ère tranche",
-      "amount" => "25000",
-      "due_date" => "2025-10-01"
-    })
-    |> render_submit()
-
-    assert [tranche] = Fees.list_tranches(scope, cg)
-    assert tranche.label == "1ère tranche"
-    assert tranche.amount == 25_000
-
-    view
-    |> element("#delete-tranche-#{tranche.id}")
-    |> render_click()
-
-    assert Fees.list_tranches(scope, cg) == []
-  end
-
-  test "a negative or non-numeric amount is rejected without persisting", %{
-    cg: cg,
-    school: school,
-    head: head,
-    scope: scope
-  } do
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    view
-    |> form("#fees-add-form", %{
-      "label" => "Bad",
-      "amount" => "-500",
-      "due_date" => "2025-10-01"
-    })
-    |> render_submit()
-
-    assert Fees.list_tranches(scope, cg) == []
-
-    view
-    |> form("#fees-add-form", %{
-      "label" => "Bad",
-      "amount" => "not-a-number",
-      "due_date" => "2025-10-01"
-    })
-    |> render_submit()
-
-    assert Fees.list_tranches(scope, cg) == []
-  end
-
-  test "a fees manager edits a tranche's label and amount", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    assert has_element?(view, "#edit-tranche-#{tranche.id}")
-
-    view
-    |> element("#edit-tranche-#{tranche.id}")
-    |> render_click()
-
-    assert has_element?(view, "#tranche-edit-form-#{tranche.id}")
-
-    view
-    |> form("#tranche-edit-form-#{tranche.id}", %{
-      "tranche_id" => tranche.id,
-      "label" => "Tranche 1 modifiée",
-      "amount" => "15000",
-      "due_date" => "2025-11-01"
-    })
-    |> render_submit()
-
-    assert [updated] = Fees.list_tranches(scope, cg)
-    assert updated.label == "Tranche 1 modifiée"
-    assert updated.amount == 15_000
-    assert updated.due_date == ~D[2025-11-01]
-  end
-
-  test "an invalid amount on edit is rejected without persisting", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    view
-    |> element("#edit-tranche-#{tranche.id}")
-    |> render_click()
-
-    view
-    |> form("#tranche-edit-form-#{tranche.id}", %{
-      "tranche_id" => tranche.id,
-      "label" => "Tranche 1",
-      "amount" => "-500",
-      "due_date" => "2025-10-01"
-    })
-    |> render_submit()
-
-    assert [unchanged] = Fees.list_tranches(scope, cg)
-    assert unchanged.amount == 10_000
-  end
-
-  test "a form master sees read-only rows and forged events are rejected", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    fm = TeacherAssistant.TeacherFixtures.user_fixture()
-
-    {:ok, inv} =
-      Accounts.invite_member(school_scope(head, school), %{
-        email: to_string(fm.email),
-        roles: [:teacher]
+      Enrollment.add_guardian(ctx.scope, ctx.student, %{
+        full_name: "Mère A",
+        relationship: :mere,
+        phone: "677123456"
       })
 
-    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: fm}, inv.token)
-    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
+    {:ok, %{enrollment: e2}} =
+      Enrollment.enroll_new(ctx.scope, ctx.cg, %{full_name: "Bel B", sex: :m})
 
-    conn = conn_for(school, fm)
-
-    {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    assert html =~ "Tranche 1"
-    refute has_element?(view, "#fees-add-form")
-
-    [tranche] = Fees.list_tranches(scope, cg)
-    refute has_element?(view, "#delete-tranche-#{tranche.id}")
-    refute has_element?(view, "#edit-tranche-#{tranche.id}")
-
-    view
-    |> render_hook("add_tranche", %{
-      "label" => "forged",
-      "amount" => "5000",
-      "due_date" => "2025-10-01"
-    })
-
-    view
-    |> render_hook("delete_tranche", %{"tranche_id" => tranche.id})
-
-    view
-    |> render_hook("update_tranche", %{
-      "tranche_id" => tranche.id,
-      "label" => "forged edit",
-      "amount" => "1",
-      "due_date" => "2025-10-01"
-    })
-
-    assert Fees.list_tranches(scope, cg) == [tranche]
+    Map.put(ctx, :e2, e2)
   end
 
-  test "a plain teacher who is not the form master is redirected to /school", %{
-    school: school,
-    cg: cg,
-    head: head
-  } do
-    other = TeacherAssistant.TeacherFixtures.user_fixture()
+  defp conn_for(scope, user),
+    do:
+      build_conn()
+      |> log_in_user(user)
+      |> Plug.Conn.put_session(:workspace_id, scope.current_workspace.id)
 
-    {:ok, inv} =
-      Accounts.invite_member(school_scope(head, school), %{
-        email: to_string(other.email),
-        roles: [:teacher]
+  defp page(ctx, query \\ ""), do: "/school/classes/#{ctx.cg.id}/fees" <> query
+
+  test "the roster shows due, paid, left and status per student", %{conn: conn} = ctx do
+    {:ok, _} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+    {:ok, view, _} = live(conn, page(ctx))
+    assert has_element?(view, "#fee-row-#{ctx.e.id}", "60 000")
+    assert has_element?(view, "#fee-row-#{ctx.e.id}", "20 000")
+    assert has_element?(view, "#fee-row-#{ctx.e.id}", "40 000")
+    assert has_element?(view, "#fees-summary", "Frais exigibles")
+  end
+
+  test "Encaisser records a payment and shows the receipt number with print and WhatsApp links",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+    view
+    |> form("#payment-form", payment: %{amount: "15000", paid_on: "2025-10-02", method: "cash"})
+    |> render_submit()
+
+    [p] = Fees.list_payments(ctx.scope, ctx.e)
+    assert has_element?(view, "#last-receipt", p.number)
+    assert has_element?(view, "#print-receipt[href='/school/fees/receipts/#{p.id}/print']")
+    assert has_element?(view, "#last-receipt a[href^='https://wa.me/237677123456?text=']")
+    refute has_element?(view, "#payment-form input[name='payment[amount]'][value='15000']")
+  end
+
+  test "mobile money without a reference shows an error and writes nothing",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+    view
+    |> form("#payment-form",
+      payment: %{amount: "15000", paid_on: "2025-10-02", method: "mobile_money"}
+    )
+    |> render_submit()
+
+    assert has_element?(view, "#payment-error")
+    assert Fees.list_payments(ctx.scope, ctx.e) == []
+  end
+
+  test "Annuler with a reason cancels; without a reason it is refused", %{conn: conn} = ctx do
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+    {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+    view |> form("#cancel-form-#{p.id}", %{reason: " "}) |> render_submit()
+    assert {:ok, %{status: :valid}} = Fees.get_payment(ctx.scope, p.id)
+
+    view |> form("#cancel-form-#{p.id}", %{reason: "Erreur de montant"}) |> render_submit()
+    assert {:ok, %{status: :cancelled}} = Fees.get_payment(ctx.scope, p.id)
+    assert has_element?(view, "#payment-#{p.id}", "Annulé")
+  end
+
+  test "an adjustment on PTA lowers the student's due", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+    view
+    |> form("#adjustment-form",
+      adjustment: %{fee_type_id: ctx.pta.id, amount: "10000", reason: "Enfant du personnel"}
+    )
+    |> render_submit()
+
+    assert Fees.student_fees(ctx.scope, ctx.e).total_due == 50_000
+    assert has_element?(view, "#fee-row-#{ctx.e.id}", "50 000")
+  end
+
+  test "the late filter shows only students behind", %{conn: conn} = ctx do
+    # The test clock is frozen before the fixture's first tranche: add one already due.
+    {:ok, _} =
+      Fees.add_tranche(ctx.scope, ctx.year, %{
+        label: "Inscription",
+        due_date: ~D[2025-09-10],
+        percent: 10
       })
 
-    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: other}, inv.token)
+    {:ok, _} = Fees.record_payment(ctx.scope, ctx.e, cash(60_000))
+    {:ok, view, _} = live(conn, page(ctx, "?late=1"))
+    refute has_element?(view, "#fee-row-#{ctx.e.id}")
+    assert has_element?(view, "#fee-row-#{ctx.e2.id}")
+  end
 
-    conn = conn_for(school, other)
+  test "a form master sees the page read-only", ctx do
+    fm = TeacherFixtures.member_scope_fixture(ctx.scope)
+    {:ok, _} = Enrollment.set_form_master(ctx.scope, ctx.cg, fm.current_user.id)
+    {:ok, _} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+
+    {:ok, view, _} = live(conn_for(ctx.scope, fm.current_user), page(ctx, "?student=#{ctx.e.id}"))
+    assert has_element?(view, "#fee-row-#{ctx.e.id}", "20 000")
+    refute has_element?(view, "#payment-form")
+    refute has_element?(view, "[id^='cancel-form-']")
+    refute has_element?(view, "#adjustment-form")
+  end
+
+  test "a teacher is redirected; crafted events from a form master write nothing", ctx do
+    teacher = TeacherFixtures.member_scope_fixture(ctx.scope)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
-             live(conn, ~p"/school/classes/#{cg.id}/fees")
-  end
+             live(conn_for(ctx.scope, teacher.current_user), page(ctx))
 
-  test "a fees manager records a payment and the balance + status chip update", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Nkeng", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
+    fm = TeacherFixtures.member_scope_fixture(ctx.scope)
+    {:ok, _} = Enrollment.set_form_master(ctx.scope, ctx.cg, fm.current_user.id)
+    {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))
+    {:ok, view, _} = live(conn_for(ctx.scope, fm.current_user), page(ctx, "?student=#{ctx.e.id}"))
 
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    assert has_element?(view, "#record-payment-form-#{enrollment.id}")
-
-    view
-    |> form("#record-payment-form-#{enrollment.id}", %{
-      "amount" => "4000",
-      "paid_on" => "2025-10-05",
-      "method" => "cash",
-      "reference" => "R-1",
-      "note" => "part payment"
-    })
-    |> render_submit()
-
-    assert [payment] = Fees.list_payments(scope, enrollment)
-    assert payment.amount == 4000
-    assert payment.method == :cash
-
-    balance = Fees.student_balance(scope, enrollment)
-    assert balance.total_paid == 4000
-    assert balance.status == :behind
-
-    html = render(view)
-    assert html =~ "En retard"
-  end
-
-  test "a fees manager sets an adjustment and the due drops", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Bella Fon", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
-
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    view
-    |> form("#adjustment-form-#{enrollment.id}", %{
-      "amount" => "2000",
-      "reason" => "scholarship"
-    })
-    |> render_submit()
-
-    balance = Fees.student_balance(scope, enrollment)
-    assert balance.total_due == 8000
-  end
-
-  test "a fees manager deletes a payment", %{school: school, cg: cg, head: head, scope: scope} do
-    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Chris Mbua", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
-
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    {:ok, payment} =
-      Fees.record_payment(
-        scope,
-        enrollment,
-        %{amount: 5000, paid_on: ~D[2025-10-05], method: :cash}
-      )
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    view
-    |> element("#toggle-history-#{enrollment.id}")
-    |> render_click()
-
-    assert has_element?(view, "#delete-payment-#{payment.id}")
-
-    html =
-      view
-      |> element("#delete-payment-#{payment.id}")
-      |> render_click()
-
-    assert Fees.list_payments(scope, enrollment) == []
-    refute html =~ "delete-payment-#{payment.id}"
-    refute has_element?(view, "#delete-payment-#{payment.id}")
-  end
-
-  test "status chip shows Soldé when fully paid", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Dora Ateh", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
-
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    {:ok, _payment} =
-      Fees.record_payment(
-        scope,
-        enrollment,
-        %{amount: 10_000, paid_on: ~D[2025-10-05], method: :cash}
-      )
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    html = render(view)
-    assert html =~ "Soldé"
-    refute html =~ "En retard"
-  end
-
-  test "a form master sees balances read-only and forged payment/adjustment events are rejected",
-       %{school: school, cg: cg, head: head, scope: scope} do
-    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Eyoh Bate", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
-
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    fm = TeacherAssistant.TeacherFixtures.user_fixture()
-
-    {:ok, inv} =
-      Accounts.invite_member(school_scope(head, school), %{
-        email: to_string(fm.email),
-        roles: [:teacher]
-      })
-
-    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: fm}, inv.token)
-    {:ok, _} = Enrollment.set_form_master(scope, cg, fm.id)
-
-    conn = conn_for(school, fm)
-
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    refute has_element?(view, "#record-payment-form-#{enrollment.id}")
-    refute has_element?(view, "#adjustment-form-#{enrollment.id}")
-
-    view
-    |> render_hook("record_payment", %{
-      "enrollment_id" => enrollment.id,
-      "amount" => "5000",
-      "paid_on" => "2025-10-05",
-      "method" => "cash"
+    render_submit(view, "record_payment", %{
+      "payment" => %{"amount" => "1000", "method" => "cash"}
     })
 
-    view
-    |> render_hook("set_adjustment", %{
-      "enrollment_id" => enrollment.id,
-      "amount" => "2000",
-      "reason" => "forged"
-    })
-
-    assert Fees.list_payments(scope, enrollment) == []
-    assert Fees.student_balance(scope, enrollment).total_due == 10_000
-  end
-
-  test "a zero or non-numeric payment amount is rejected", %{
-    school: school,
-    cg: cg,
-    head: head,
-    scope: scope
-  } do
-    {:ok, _student} = Enrollment.add_student(scope, cg, %{full_name: "Fon Ngu", sex: :f})
-    [%{enrollment: enrollment}] = Enrollment.list_roster(scope, cg)
-
-    {:ok, _tranche} =
-      Fees.add_tranche(scope, cg, %{label: "Tranche 1", amount: 10_000, due_date: ~D[2025-10-01]})
-
-    conn = conn_for(school, head)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/fees")
-
-    view
-    |> form("#record-payment-form-#{enrollment.id}", %{
-      "amount" => "0",
-      "paid_on" => "2025-10-05",
-      "method" => "cash"
-    })
-    |> render_submit()
-
-    view
-    |> form("#record-payment-form-#{enrollment.id}", %{
-      "amount" => "not-a-number",
-      "paid_on" => "2025-10-05",
-      "method" => "cash"
-    })
-    |> render_submit()
-
-    assert Fees.list_payments(scope, enrollment) == []
-  end
-
-  test "cross-school class id redirects to /school/classes", %{conn: conn} do
-    other = TeacherAssistant.TeacherFixtures.user_fixture()
-
-    {:ok, os} =
-      Organization.create_school(%TeacherAssistant.Scope{current_user: other}, %{name: "Autre"})
-
-    other_scope = school_scope(other, os)
-
-    {:ok, oy} =
-      Organization.create_academic_year(other_scope, %{
-        name: "2025-2026",
-        start_date: ~D[2025-09-08],
-        end_date: ~D[2026-07-31],
-        active: true
-      })
-
-    {:ok, ocg} = Enrollment.create_class_group(other_scope, oy, %{label: "6e Z", level: "6ème"})
-
-    assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
-             live(conn, ~p"/school/classes/#{ocg.id}/fees")
+    render_submit(view, "cancel_payment", %{"payment_id" => p.id, "reason" => "x"})
+    assert [%{status: :valid}] = Fees.list_payments(ctx.scope, ctx.e)
   end
 end
