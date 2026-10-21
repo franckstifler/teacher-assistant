@@ -116,4 +116,12 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
     assert Enum.find(all_students, &(&1.enrollment_id == enr_menu.id)).status == :absent
     assert Enum.find(all_students, &(&1.enrollment_id == enr_maco.id)).status == :present
   end
+
+  # Fees 2: a combined roll pre-fills the sent-home students of every member class.
+  test "a combined course pre-fills sent-home students of each class", ctx do
+    {:ok, _} = TeacherAssistant.FeeControl.record_send_out(ctx.scope, ctx.enr_menu, ctx.date)
+    {:ok, view, _html} = live(ctx.conn, att_path(ctx.maco, ctx.period, ctx.date))
+    assert has_element?(view, "#sent-home-#{ctx.enr_menu.id}")
+    refute has_element?(view, "#sent-home-#{ctx.enr_maco.id}")
+  end
 end

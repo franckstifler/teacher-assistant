@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
   """
   use TeacherAssistantWeb, :html
 
-  alias TeacherAssistant.{Attendance, Curriculum, Discipline, Enrollment, Scope}
+  alias TeacherAssistant.{Attendance, Curriculum, Discipline, Enrollment, FeeControl, Scope}
   alias TeacherAssistant.Academics.{AttendanceStatus, CombinedCourse, TeachingContext}
   alias TeacherAssistant.Academics.TimetableSlot
 
@@ -50,7 +50,11 @@ defmodule TeacherAssistantWeb.School.RollCall do
   def set(roll, enrollment_id, status) do
     status = Map.get(@valid_statuses, status)
 
-    if status && Enum.any?(roll.students, &(&1.enrollment_id == enrollment_id)) do
+    # Fees 2: a student sent home for fees can only be found back in the room (present).
+    sent_home? = roll.marks[enrollment_id] == :sent_home
+
+    if status && (not sent_home? or status == :present) &&
+         Enum.any?(roll.students, &(&1.enrollment_id == enrollment_id)) do
       roll = put_in(roll, [:marks, enrollment_id], status)
       # Minutes belong to a late only (spec KLM2).
       if status == :late, do: roll, else: put_in(roll, [:minutes, enrollment_id], nil)
@@ -119,7 +123,11 @@ defmodule TeacherAssistantWeb.School.RollCall do
   def all_present(roll),
     do: %{
       roll
-      | marks: Map.new(roll.marks, fn {id, _status} -> {id, :present} end),
+      | marks:
+          Map.new(roll.marks, fn
+            {id, :sent_home} -> {id, :sent_home}
+            {id, _status} -> {id, :present}
+          end),
         minutes: Map.new(roll.minutes, fn {id, _minutes} -> {id, nil} end)
     }
 
@@ -130,20 +138,36 @@ defmodule TeacherAssistantWeb.School.RollCall do
   defp reload(scope, %{course: %CombinedCourse{} = course} = roll) do
     groups = Attendance.combined_period_roll(scope, course, roll.period, roll.date)
     students = Enum.flat_map(groups, & &1.students)
-    put_students(roll, students, groups: groups, flags: %{})
+    put_students(roll, students, sent_home(scope, roll, students), groups: groups, flags: %{})
   end
 
   defp reload(scope, roll) do
     %{students: students} = Attendance.period_roll(scope, roll.cg, roll.period, roll.date)
-    put_students(roll, students, groups: nil, flags: earlier_absences(scope, roll))
+
+    put_students(roll, students, sent_home(scope, roll, students),
+      groups: nil,
+      flags: earlier_absences(scope, roll)
+    )
   end
 
-  defp put_students(roll, students, extra) do
+  # Fees 2: the students the bursar sent home that day.
+  defp sent_home(scope, roll, students),
+    do: FeeControl.sent_home_ids(scope, Enum.map(students, & &1.enrollment_id), roll.date)
+
+  # A roll not taken yet starts with everyone present, except the students sent home
+  # for fees; a roll already taken keeps what the teacher recorded.
+  defp put_students(roll, students, sent_home, extra) do
+    taken? = Enum.any?(students, &(&1.status != nil))
+
+    default = fn id ->
+      if not taken? and MapSet.member?(sent_home, id), do: :sent_home, else: :present
+    end
+
     Map.merge(roll, %{
       students: Enum.map(students, &Map.take(&1, [:enrollment_id, :student_name])),
-      marks: Map.new(students, &{&1.enrollment_id, &1.status || :present}),
+      marks: Map.new(students, &{&1.enrollment_id, &1.status || default.(&1.enrollment_id)}),
       minutes: Map.new(students, &{&1.enrollment_id, Map.get(&1, :late_minutes)}),
-      taken?: Enum.any?(students, &(&1.status != nil)),
+      taken?: taken?,
       groups: extra[:groups],
       flags: extra[:flags]
     })
@@ -272,6 +296,16 @@ defmodule TeacherAssistantWeb.School.RollCall do
             ]}>
               {ngettext("%{count} retard", "%{count} retards", count(@roll, :late))}
             </span>
+            <span
+              :if={count(@roll, :sent_home) > 0}
+              class="rounded-full bg-info/15 px-2.5 py-1 font-semibold text-info"
+            >
+              {ngettext(
+                "%{count} renvoyé pour frais",
+                "%{count} renvoyés pour frais",
+                count(@roll, :sent_home)
+              )}
+            </span>
           </div>
           <button
             id="all-present"
@@ -348,6 +382,31 @@ defmodule TeacherAssistantWeb.School.RollCall do
           </span>
         </span>
         <div
+          :if={@roll.marks[student.enrollment_id] == :sent_home}
+          class="flex items-center gap-1.5"
+        >
+          <span
+            id={"sent-home-#{student.enrollment_id}"}
+            class="rounded-full bg-info/15 px-2.5 py-1 text-[0.78rem] font-semibold text-info"
+          >
+            {AttendanceStatus.label(:sent_home)}
+          </span>
+          <button
+            type="button"
+            id={"att-#{student.enrollment_id}-present"}
+            phx-click="set"
+            phx-value-enrollment_id={student.enrollment_id}
+            phx-value-status="present"
+            aria-pressed="false"
+            title={gettext("Il est en classe : présent")}
+            aria-label={gettext("Il est en classe : présent")}
+            class="btn btn-ghost btn-xs h-[38px] w-10 border border-base-300"
+          >
+            {:present |> AttendanceStatus.label() |> String.first()}
+          </button>
+        </div>
+        <div
+          :if={@roll.marks[student.enrollment_id] != :sent_home}
           class="flex overflow-hidden rounded-field border border-base-300"
           role="group"
           aria-label={student.student_name}

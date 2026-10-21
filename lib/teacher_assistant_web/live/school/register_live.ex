@@ -178,16 +178,19 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   defp status_label(:present), do: gettext("P")
   defp status_label(:absent), do: gettext("A")
   defp status_label(:late), do: gettext("R")
+  defp status_label(:sent_home), do: gettext("RF")
 
   defp status_word(nil), do: gettext("Pas d'appel")
   defp status_word(:present), do: gettext("Présent")
   defp status_word(:absent), do: gettext("Absent")
   defp status_word(:late), do: gettext("En retard")
+  defp status_word(:sent_home), do: gettext("Renvoyé pour frais")
 
   defp mark_class(nil), do: "bg-base-200 text-base-content/70"
   defp mark_class(:present), do: "bg-success/15 text-success"
   defp mark_class(:absent), do: "bg-error/15 text-error"
   defp mark_class(:late), do: "bg-warning/20 text-warning"
+  defp mark_class(:sent_home), do: "bg-info/15 text-info"
 
   defp absent_today?(student), do: Enum.any?(student.cells, fn {_id, s} -> s == :absent end)
 

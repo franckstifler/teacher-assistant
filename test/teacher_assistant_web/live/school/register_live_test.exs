@@ -168,6 +168,26 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     assert has_element?(view, "#register-item-#{enrollment.id}", "Pas d'appel")
   end
 
+  # Fees 2: a lesson missed because the student was sent home for fees is not an absence.
+  test "a sent-home mark shows RF, not an absence", %{
+    conn: conn,
+    cg: cg,
+    date: date,
+    period: period,
+    tc: tc,
+    scope: scope,
+    enrollment: enrollment
+  } do
+    {:ok, 1} =
+      Attendance.record_period(scope, cg, period, tc, date, [{enrollment.id, :sent_home}])
+
+    {:ok, view, _html} =
+      live(conn, ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}")
+
+    assert has_element?(view, "#cell-#{enrollment.id}-#{period.id} .text-info", "RF")
+    refute has_element?(view, "#cell-#{enrollment.id}-#{period.id} .text-error")
+  end
+
   test "the date picker reloads a different day's grid", %{
     conn: conn,
     cg: cg,
