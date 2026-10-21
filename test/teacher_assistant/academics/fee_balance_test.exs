@@ -88,4 +88,39 @@ defmodule TeacherAssistant.Academics.FeeBalanceTest do
 
     assert B.recovery([]).rate == 0
   end
+
+  describe "overdue_by_type/1 (Fees 2)" do
+    defp bal(rows, due_to_date),
+      do: %{
+        by_type: Enum.map(rows, fn {id, due, paid} -> %{type_id: id, due: due, paid: paid} end),
+        due_to_date: due_to_date,
+        total_paid: rows |> Enum.map(&elem(&1, 2)) |> Enum.sum()
+      }
+
+    test "fills due_to_date in payment order" do
+      assert B.overdue_by_type(bal([{:a, 50_000, 0}, {:b, 10_000, 0}], 24_000)) ==
+               [%{type_id: :a, amount: 24_000}]
+    end
+
+    test "later types get their share once earlier ones are full" do
+      assert B.overdue_by_type(bal([{:a, 20_000, 5_000}, {:b, 10_000, 0}], 24_000)) ==
+               [%{type_id: :a, amount: 15_000}, %{type_id: :b, amount: 4_000}]
+    end
+
+    test "the rows add up to due_to_date minus total paid when behind" do
+      for {rows, dtd} <- [
+            {[{:a, 50_000, 10_000}, {:b, 10_000, 0}], 24_000},
+            {[{:arr, 8_000, 0}, {:a, 50_000, 30_000}, {:b, 10_000, 0}], 54_400},
+            {[{:a, 30_000, 30_000}, {:b, 30_000, 0}], 48_000}
+          ] do
+        b = bal(rows, dtd)
+        sum = b |> B.overdue_by_type() |> Enum.map(& &1.amount) |> Enum.sum()
+        assert sum == dtd - b.total_paid
+      end
+    end
+
+    test "nothing overdue gives []" do
+      assert B.overdue_by_type(bal([{:a, 50_000, 30_000}, {:b, 10_000, 0}], 24_000)) == []
+    end
+  end
 end

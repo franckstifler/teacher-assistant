@@ -63,6 +63,21 @@ defmodule TeacherAssistant.Academics.FeeBalance do
     }
   end
 
+  @doc """
+  What a student owes toward the tranches due, per fee type (Fees 2 warnings): the
+  balance's `due_to_date` filled type by type in payment order, each type capped at its
+  due, minus what was paid on it. Returns `[%{type_id, amount}]` without zero rows.
+  """
+  def overdue_by_type(%{by_type: by_type, due_to_date: due_to_date}) do
+    {rows, _left} =
+      Enum.map_reduce(by_type, due_to_date, fn %{type_id: id, due: due, paid: paid}, left ->
+        share = min(due, left)
+        {%{type_id: id, amount: max(share - paid, 0)}, left - share}
+      end)
+
+    Enum.reject(rows, &(&1.amount == 0))
+  end
+
   defp percent_due(tranches, on_date) do
     tranches
     |> Enum.filter(&(Date.compare(&1.due_date, on_date) != :gt))
