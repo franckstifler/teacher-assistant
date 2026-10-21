@@ -1,6 +1,6 @@
 # Fees 2 — warnings, sending students home, return notes, « Renvoyé pour frais » (design)
 
-Status: design, 2026-10-21. Builds on Fees 1 (`docs/superpowers/specs/2026-10-19-fees-1-design.md`, on main).
+Status: implemented 2026-10-21 (branch `fees-2`, plan `docs/superpowers/plans/2026-10-21-fees-2.md`); no visual check done. Builds on Fees 1 (`docs/superpowers/specs/2026-10-19-fees-1-design.md`, on main).
 
 ## Why
 
