@@ -62,7 +62,7 @@ defmodule TeacherAssistant.Academics.FeeSendOut do
   end
 
   validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
+    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
   end
 
   multitenancy do
