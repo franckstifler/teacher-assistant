@@ -611,9 +611,11 @@ defmodule TeacherAssistant.Fees do
 
   defp check_payment(_amount, _method, _reference), do: :ok
 
-  # Under the transaction's advisory lock: the year's next receipt sequence number.
-  defp next_seq(workspace_id, year_id) do
-    Payment
+  @doc false
+  # Under the transaction's advisory lock: the year's next sequence number of a numbered
+  # paper (receipts; Fees 2 return notes and warnings).
+  def next_seq(resource \\ Payment, workspace_id, year_id) do
+    resource
     |> Ash.Query.filter(academic_year_id == ^year_id)
     |> Ash.max!(:seq, authorize?: false, tenant: workspace_id)
     |> case do
@@ -704,9 +706,10 @@ defmodule TeacherAssistant.Fees do
     )
   end
 
-  defp user_name(nil), do: nil
+  @doc false
+  def user_name(nil), do: nil
 
-  defp user_name(id) do
+  def user_name(id) do
     case Ash.get(TeacherAssistant.Accounts.User, id, authorize?: false) do
       {:ok, user} -> TeacherAssistant.Accounts.User.display_name(user)
       _ -> nil

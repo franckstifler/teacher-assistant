@@ -15,7 +15,8 @@ defmodule TeacherAssistant.FeeControl do
     Enrollment,
     FeeSendOut,
     Reference,
-    ReturnNote
+    ReturnNote,
+    ReturnNoteReason
   }
 
   # --- Class control list ---------------------------------------------------------------
@@ -136,4 +137,140 @@ defmodule TeacherAssistant.FeeControl do
       [] -> nil
     end
   end
+
+  # --- Return notes ---------------------------------------------------------------------
+
+  @doc """
+  Issues a numbered « Autorisation de retour en classe » (fees axis). `attrs`: `reason`
+  (`:promise | :payment | :exemption`), `valid_until` (required for a promise; a payment
+  defaults to the next tranche's due date, an exemption to the year's end), and an
+  `internal_note` never printed. Lifts the student's send-out of today.
+  """
+  def issue_note(%Scope{} = scope, %Enrollment{} = e, attrs) do
+    reason = attrs[:reason]
+    today = Reference.today()
+
+    with true <- reason in ReturnNoteReason.values() || {:error, :invalid_reason},
+         {:ok, year} <- Ash.get(AcademicYear, e.academic_year_id, scope: scope),
+         {:ok, valid_until} <- valid_until(scope, year, reason, attrs[:valid_until], today),
+         {:ok, note} <-
+           create_numbered(scope, ReturnNote, "A", e, year, %{
+             reason: reason,
+             issued_on: today,
+             valid_until: valid_until,
+             internal_note: blank_to_nil(attrs[:internal_note])
+           }) do
+      undo_send_out(scope, e, today)
+      {:ok, note}
+    end
+  end
+
+  defp valid_until(_scope, _year, :promise, nil, _today), do: {:error, :invalid_valid_until}
+
+  defp valid_until(scope, year, :payment, nil, today) do
+    scope
+    |> Fees.list_tranches(year)
+    |> Enum.find(&(Date.compare(&1.due_date, today) == :gt))
+    |> case do
+      nil -> {:ok, year.end_date}
+      tranche -> {:ok, tranche.due_date}
+    end
+  end
+
+  defp valid_until(_scope, year, :exemption, nil, _today), do: {:ok, year.end_date}
+
+  defp valid_until(_scope, _year, _reason, %Date{} = date, today) do
+    if Date.compare(date, today) == :lt, do: {:error, :invalid_valid_until}, else: {:ok, date}
+  end
+
+  defp valid_until(_scope, _year, _reason, _other, _today), do: {:error, :invalid_valid_until}
+
+  @doc "Cancels a note (with a reason): the student is late again from now on."
+  def cancel_note(%Scope{} = scope, %ReturnNote{} = note, reason), do: cancel(scope, note, reason)
+
+  @doc "The student's notes, newest first."
+  def list_notes(%Scope{} = scope, %Enrollment{id: id}),
+    do: Fees.list_notes_for_enrollment_ids!([id], scope: scope)
+
+  @doc "What the printed note shows; `{:error, :not_found}` outside the scope's reach."
+  def note(%Scope{} = scope, id) do
+    case Ash.get(ReturnNote, id, scope: scope) do
+      {:ok, note} ->
+        {:ok,
+         %{
+           note: note,
+           school: scope.current_workspace,
+           issued_by_name: Fees.user_name(note.issued_by_user_id)
+         }}
+
+      _ ->
+        {:error, :not_found}
+    end
+  rescue
+    Ash.Error.Invalid -> {:error, :not_found}
+  end
+
+  # --- Numbered papers (shared by notes and warnings) -----------------------------------
+
+  # Creates one numbered paper (`<prefix><start year>-000001`) under the same kind of
+  # advisory lock as receipts, with the student's name and class frozen.
+  defp create_numbered(scope, resource, prefix, e, year, attrs) do
+    Ash.transact([resource], fn ->
+      lock!(prefix, e.workspace_id, year.id)
+
+      case insert_numbered(scope, resource, prefix, e, year, attrs) do
+        {:ok, row} -> row
+        {:error, error} -> Ash.DataLayer.rollback([resource], error)
+      end
+    end)
+  end
+
+  defp lock!(prefix, workspace_id, year_id),
+    do:
+      TeacherAssistant.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        "paper-#{prefix}:#{workspace_id}:#{year_id}"
+      ])
+
+  defp insert_numbered(scope, resource, prefix, e, year, attrs) do
+    seq = Fees.next_seq(resource, e.workspace_id, year.id)
+    e = Ash.load!(e, [:student, :class_group], scope: scope)
+
+    resource
+    |> Ash.Changeset.for_create(
+      :create,
+      Map.merge(attrs, %{
+        enrollment_id: e.id,
+        academic_year_id: year.id,
+        seq: seq,
+        number:
+          "#{prefix}#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
+        student_name: e.student.full_name,
+        class_label: e.class_group.label,
+        issued_by_user_id: scope.current_user && scope.current_user.id
+      }),
+      scope: scope
+    )
+    |> Ash.create()
+  end
+
+  defp cancel(scope, row, reason) do
+    case blank_to_nil(reason) do
+      nil ->
+        {:error, :reason_required}
+
+      reason ->
+        row
+        |> Ash.Changeset.for_update(:cancel, %{reason: reason}, scope: scope)
+        |> Ash.update()
+    end
+  end
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp blank_to_nil(value), do: value
 end
