@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.ReceiptVerifyHTML do
   use TeacherAssistantWeb, :html
 
+  alias TeacherAssistant.Academics.ReturnNoteReason
   alias TeacherAssistantWeb.Money
 
   embed_templates "receipt_verify_html/*"

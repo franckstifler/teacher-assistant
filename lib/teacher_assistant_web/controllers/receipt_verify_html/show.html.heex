@@ -23,6 +23,42 @@
   <body>
     <main>
       <%= case @result do %>
+        <% {status, %{kind: :note} = info} -> %>
+          <h1 :if={status == :valid} class="ok">✓ {gettext("Autorisation valable aujourd'hui")}</h1>
+          <h1 :if={status == :expired} class="ko">
+            {gettext("Autorisation expirée depuis le %{date}", date: date(info.valid_until))}
+          </h1>
+          <h1 :if={status == :cancelled} class="ko">{gettext("Autorisation annulée")}</h1>
+          <dl>
+            <dt>{gettext("Autorisation")}</dt><dd>{info.number}</dd>
+            <dt>{gettext("Établissement")}</dt><dd>{info.school_name}</dd>
+            <dt>{gettext("Élève")}</dt><dd>{info.student_name}</dd>
+            <dt>{gettext("Classe")}</dt><dd>{info.class_label}</dd>
+            <dt>{gettext("Motif")}</dt><dd>{ReturnNoteReason.label(info.reason)}</dd>
+            <dt>{gettext("Délivrée le")}</dt><dd>{date(info.issued_on)}</dd>
+            <dt>{gettext("Valable jusqu'au")}</dt><dd><b>{date(info.valid_until)}</b></dd>
+          </dl>
+        <% {status, %{kind: :warning} = info} -> %>
+          <h1 :if={status == :valid} class="ok">✓ {gettext("Avis authentique")}</h1>
+          <h1 :if={status == :cancelled} class="ko">{gettext("Avis annulé")}</h1>
+          <dl>
+            <dt>{gettext("Avis")}</dt><dd>{info.number}</dd>
+            <dt>{gettext("Établissement")}</dt><dd>{info.school_name}</dd>
+            <dt>{gettext("Élève")}</dt><dd>{info.student_name}</dd>
+            <dt>{gettext("Classe")}</dt><dd>{info.class_label}</dd>
+            <dt>{gettext("Date")}</dt><dd>{date(info.issued_on)}</dd>
+            <dt>{gettext("À régler avant le")}</dt><dd><b>{date(info.pay_by)}</b></dd>
+          </dl>
+          <table>
+            <tr :for={l <- info.lines}>
+              <td>{l.name}</td>
+              <td class="n">{Money.format_fcfa(l.amount)}</td>
+            </tr>
+            <tr>
+              <td><b>{gettext("Dû à ce jour")}</b></td>
+              <td class="n"><b>{Money.format_fcfa(info.total)}</b></td>
+            </tr>
+          </table>
         <% {status, info} -> %>
           <h1 :if={status == :valid} class="ok">✓ {gettext("Reçu authentique")}</h1>
           <h1 :if={status == :cancelled} class="ko">{gettext("Reçu annulé")}</h1>

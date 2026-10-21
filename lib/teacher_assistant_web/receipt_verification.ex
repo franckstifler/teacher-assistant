@@ -7,17 +7,25 @@ defmodule TeacherAssistantWeb.ReceiptVerification do
   the token: Crockford base32 (no I, L, O, U), read back ignoring case, spaces and the
   O/0, I/L/1 mix-ups a phone keyboard or a reader makes.
   Rotating `secret_key_base` invalidates printed codes.
+
+  Fees 2 adds two more papers checked the same way: return notes (`A…` numbers) and
+  warnings (`V…`). Each kind has its own salt, so one kind's token or code never opens
+  another kind's paper.
   """
   import Bitwise
 
-  alias TeacherAssistant.Fees
+  alias TeacherAssistant.{FeeControl, Fees}
 
-  @salt "receipt-verify"
+  @salts %{receipt: "receipt-verify", note: "note-verify", warning: "warning-verify"}
   @tag_bytes 16
 
-  def token(%{workspace_id: ws, id: id}) do
+  @doc "A receipt's token (Fees 1)."
+  def token(record), do: token(:receipt, record)
+
+  @doc "The token of a `:receipt`, `:note` or `:warning`."
+  def token(kind, %{workspace_id: ws, id: id}) do
     ids = dump(ws) <> dump(id)
-    Base.url_encode64(ids <> tag(ids), padding: false)
+    Base.url_encode64(ids <> tag(kind, ids), padding: false)
   end
 
   @alphabet ~c"0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -40,42 +48,66 @@ defmodule TeacherAssistantWeb.ReceiptVerification do
     |> String.replace(["I", "L"], "1")
   end
 
-  def verify(token) when is_binary(token) do
+  @doc "A receipt's check (Fees 1)."
+  def verify(token), do: verify(:receipt, token)
+
+  @doc "What the school recorded for the paper of `kind` behind `token`, or `:invalid`."
+  def verify(kind, token) when is_binary(token) and is_map_key(@salts, kind) do
     with {:ok, <<ids::binary-size(32), tag::binary-size(@tag_bytes)>>} <-
            Base.url_decode64(token, padding: false),
-         true <- Plug.Crypto.secure_compare(tag, tag(ids)),
-         <<ws::binary-size(16), payment::binary-size(16)>> = ids,
+         true <- Plug.Crypto.secure_compare(tag, tag(kind, ids)),
+         <<ws::binary-size(16), id::binary-size(16)>> = ids,
          {:ok, ws} <- Ecto.UUID.load(ws),
-         {:ok, payment} <- Ecto.UUID.load(payment) do
-      Fees.verification(ws, payment)
+         {:ok, id} <- Ecto.UUID.load(id) do
+      record(kind, ws, id)
     else
       _ -> :invalid
     end
   end
 
-  def verify(_token), do: :invalid
+  def verify(_kind, _token), do: :invalid
 
-  @doc "The typed check: a receipt with this number whose code matches, else `:invalid`."
+  defp record(:receipt, ws, id), do: Fees.verification(ws, id)
+  defp record(:note, ws, id), do: FeeControl.note_verification(ws, id)
+  defp record(:warning, ws, id), do: FeeControl.warning_verification(ws, id)
+
+  @doc """
+  The typed check: a paper with this number whose code matches, else `:invalid`. The
+  number's letter tells the kind: `A` notes, `V` warnings, anything else receipts.
+  """
   def lookup(number, code) when is_binary(number) and is_binary(code) do
     code = normalize_code(code)
+    kind = kind_of(number)
 
     number
-    |> Fees.find_by_number()
+    |> find_by_number(kind)
     |> Enum.find_value(:invalid, fn {ws, id} ->
-      token = token(%{workspace_id: ws, id: id})
-      if Plug.Crypto.secure_compare(code(token), code), do: verify(token)
+      token = token(kind, %{workspace_id: ws, id: id})
+      if Plug.Crypto.secure_compare(code(token), code), do: verify(kind, token)
     end)
   end
 
   def lookup(_number, _code), do: :invalid
 
+  defp kind_of(number) do
+    case number |> String.trim() |> String.upcase() do
+      "A" <> _ -> :note
+      "V" <> _ -> :warning
+      _ -> :receipt
+    end
+  end
+
+  defp find_by_number(number, :receipt), do: Fees.find_by_number(number)
+  defp find_by_number(number, :note), do: FeeControl.find_note_by_number(number)
+  defp find_by_number(number, :warning), do: FeeControl.find_warning_by_number(number)
+
   def qr_svg(url), do: url |> EQRCode.encode() |> EQRCode.svg(width: 88)
 
-  defp tag(ids) do
+  defp tag(kind, ids) do
     key =
       Plug.Crypto.KeyGenerator.generate(
         TeacherAssistantWeb.Endpoint.config(:secret_key_base),
-        @salt
+        Map.fetch!(@salts, kind)
       )
 
     binary_part(:crypto.mac(:hmac, :sha256, key, ids), 0, @tag_bytes)

@@ -315,6 +315,79 @@ defmodule TeacherAssistant.FeeControl do
      )}
   end
 
+  # --- Public checks (no actor) ---------------------------------------------------------
+
+  @doc """
+  The public check of a note: `{:valid | :expired | :cancelled, map}` with only what the
+  note prints, or `:invalid`.
+  """
+  def note_verification(workspace_id, id) do
+    case Ash.get(ReturnNote, id, tenant: workspace_id, authorize?: false, load: [:workspace]) do
+      {:ok, n} ->
+        {note_status(n),
+         %{
+           kind: :note,
+           number: n.number,
+           school_name: n.workspace.name,
+           student_name: n.student_name,
+           class_label: n.class_label,
+           reason: n.reason,
+           issued_on: n.issued_on,
+           valid_until: n.valid_until
+         }}
+
+      _ ->
+        :invalid
+    end
+  rescue
+    Ash.Error.Invalid -> :invalid
+  end
+
+  defp note_status(%{status: :cancelled}), do: :cancelled
+
+  defp note_status(note),
+    do: if(Date.compare(note.valid_until, Reference.today()) == :lt, do: :expired, else: :valid)
+
+  @doc "The public check of a warning: `{:valid | :cancelled, map}` or `:invalid`."
+  def warning_verification(workspace_id, id) do
+    case Ash.get(FeeWarning, id, tenant: workspace_id, authorize?: false, load: [:workspace]) do
+      {:ok, w} ->
+        {w.status,
+         %{
+           kind: :warning,
+           number: w.number,
+           school_name: w.workspace.name,
+           student_name: w.student_name,
+           class_label: w.class_label,
+           issued_on: w.issued_on,
+           pay_by: w.pay_by,
+           lines: Enum.map(w.lines, &Map.take(&1, [:name, :amount])),
+           total: w.total
+         }}
+
+      _ ->
+        :invalid
+    end
+  rescue
+    Ash.Error.Invalid -> :invalid
+  end
+
+  @doc "`[{workspace_id, id}]` of every school's note with this number (typed check)."
+  def find_note_by_number(number), do: find_number("return_notes", number)
+
+  @doc "`[{workspace_id, id}]` of every school's warning with this number (typed check)."
+  def find_warning_by_number(number), do: find_number("fee_warnings", number)
+
+  defp find_number(table, number) when is_binary(number) do
+    import Ecto.Query
+
+    TeacherAssistant.Repo.all(
+      from p in table,
+        where: p.number == ^(number |> String.trim() |> String.upcase()),
+        select: {type(p.workspace_id, Ecto.UUID), type(p.id, Ecto.UUID)}
+    )
+  end
+
   # --- Numbered papers (shared by notes and warnings) -----------------------------------
 
   # Creates one numbered paper (`<prefix><start year>-000001`) under the same kind of

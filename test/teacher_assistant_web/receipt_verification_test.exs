@@ -46,4 +46,52 @@ defmodule TeacherAssistantWeb.ReceiptVerificationTest do
 
     assert {:valid, _} = V.lookup(" " <> String.downcase(p.number) <> " ", " " <> sloppy)
   end
+
+  describe "Fees 2 papers" do
+    setup do
+      ctx = fees_school_fixture()
+
+      {:ok, _} =
+        Fees.add_tranche(ctx.scope, ctx.year, %{label: "I", due_date: ~D[2025-09-01], percent: 40})
+
+      ctx
+    end
+
+    test "a note token verifies; a receipt token does not verify as a note", ctx do
+      {:ok, note} =
+        TeacherAssistant.FeeControl.issue_note(ctx.scope, ctx.e, %{
+          reason: :promise,
+          valid_until: ~D[2025-09-30]
+        })
+
+      assert {:valid, %{kind: :note, number: "A2025-000001", reason: :promise}} =
+               V.verify(:note, V.token(:note, note))
+
+      {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(1_000))
+      assert V.verify(:note, V.token(p)) == :invalid
+      assert V.code(V.token(:note, note)) != V.code(V.token(%{note | id: note.id}))
+    end
+
+    test "typed A-number + code finds the note, case-insensitive", ctx do
+      {:ok, note} =
+        TeacherAssistant.FeeControl.issue_note(ctx.scope, ctx.e, %{reason: :exemption})
+
+      code = V.code(V.token(:note, note))
+
+      assert {:valid, %{kind: :note}} =
+               V.lookup(String.downcase(note.number), String.downcase(code))
+
+      assert V.lookup(note.number, "000000") == :invalid
+    end
+
+    test "a warning verifies with its lines and total; typed V-number works", ctx do
+      {:ok, [w]} =
+        TeacherAssistant.FeeControl.issue_warnings(ctx.scope, [ctx.e], ~D[2025-09-22])
+
+      assert {:valid, %{kind: :warning, total: 24_000, lines: [%{amount: 24_000}]}} =
+               V.verify(:warning, V.token(:warning, w))
+
+      assert {:valid, %{kind: :warning}} = V.lookup(w.number, V.code(V.token(:warning, w)))
+    end
+  end
 end
