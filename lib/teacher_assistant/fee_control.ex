@@ -13,7 +13,9 @@ defmodule TeacherAssistant.FeeControl do
     AcademicYear,
     ClassGroup,
     Enrollment,
+    FeeBalance,
     FeeSendOut,
+    FeeWarning,
     Reference,
     ReturnNote,
     ReturnNoteReason
@@ -208,6 +210,109 @@ defmodule TeacherAssistant.FeeControl do
     end
   rescue
     Ash.Error.Invalid -> {:error, :not_found}
+  end
+
+  # --- Warnings -------------------------------------------------------------------------
+
+  @doc "The pay-by date a warning proposes: a week from today."
+  def default_pay_by, do: Date.add(Reference.today(), 7)
+
+  @doc """
+  Issues one numbered « Avis de retard de paiement » per student of `enrollments` who is
+  late today (others are skipped), with what they owe per fee type frozen and the
+  `pay_by` date. `{:error, :nothing_to_warn}` when nobody is late.
+  """
+  def issue_warnings(
+        %Scope{} = scope,
+        [%Enrollment{} = first | _] = enrollments,
+        %Date{} = pay_by
+      ) do
+    today = Reference.today()
+
+    with :ok <- check_pay_by(pay_by, today),
+         :ok <- check_can_warn(scope),
+         {:ok, year} <- Ash.get(AcademicYear, first.academic_year_id, scope: scope),
+         [_ | _] = owing <- owing(scope, year, enrollments, today) do
+      Ash.transact([FeeWarning], fn ->
+        lock!("V", first.workspace_id, year.id)
+
+        Enum.map(owing, fn {e, lines} ->
+          attrs = %{
+            issued_on: today,
+            pay_by: pay_by,
+            lines: lines,
+            total: Enum.sum(Enum.map(lines, & &1.amount))
+          }
+
+          case insert_numbered(scope, FeeWarning, "V", e, year, attrs) do
+            {:ok, warning} -> warning
+            {:error, error} -> Ash.DataLayer.rollback([FeeWarning], error)
+          end
+        end)
+      end)
+    else
+      [] -> {:error, :nothing_to_warn}
+      error -> error
+    end
+  end
+
+  def issue_warnings(_scope, [], _pay_by), do: {:error, :nothing_to_warn}
+
+  defp check_pay_by(pay_by, today),
+    do: if(Date.compare(pay_by, today) == :lt, do: {:error, :invalid_pay_by}, else: :ok)
+
+  defp check_can_warn(scope),
+    do:
+      if(Ash.can?({FeeWarning, :create}, scope),
+        do: :ok,
+        else: {:error, Ash.Error.Forbidden.exception([])}
+      )
+
+  # `[{enrollment, [%{name, amount}]}]` for the late students, in the given order.
+  defp owing(scope, year, enrollments, today) do
+    names = scope |> Fees.list_fee_types(year) |> Map.new(&{&1.id, &1.name})
+    balances = Fees.balances_for(scope, year, enrollments, today)
+
+    enrollments
+    |> Enum.filter(&(balances[&1.id].status == :behind))
+    |> Enum.map(fn e ->
+      lines =
+        balances[e.id]
+        |> FeeBalance.overdue_by_type()
+        |> Enum.map(&%{name: names[&1.type_id], amount: &1.amount})
+
+      {e, lines}
+    end)
+    |> Enum.reject(fn {_e, lines} -> lines == [] end)
+  end
+
+  @doc "Cancels a warning (with a reason)."
+  def cancel_warning(%Scope{} = scope, %FeeWarning{} = warning, reason),
+    do: cancel(scope, warning, reason)
+
+  @doc "The student's warnings, newest first."
+  def list_warnings(%Scope{} = scope, %Enrollment{id: id}),
+    do: Fees.list_warnings_for_enrollment_ids!([id], scope: scope)
+
+  @doc "What the printed warnings show, in the order of `ids` (unknown ids are left out)."
+  def warnings(%Scope{} = scope, ids) do
+    rows =
+      FeeWarning
+      |> Ash.Query.filter(id in ^ids)
+      |> Ash.read!(scope: scope)
+      |> Map.new(&{&1.id, &1})
+
+    {:ok,
+     ids
+     |> Enum.map(&rows[&1])
+     |> Enum.reject(&is_nil/1)
+     |> Enum.map(
+       &%{
+         warning: &1,
+         school: scope.current_workspace,
+         issued_by_name: Fees.user_name(&1.issued_by_user_id)
+       }
+     )}
   end
 
   # --- Numbered papers (shared by notes and warnings) -----------------------------------
