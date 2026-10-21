@@ -50,7 +50,12 @@ defmodule TeacherAssistant.Modules do
       W.School.AvailabilityLive,
       W.School.RoomsLive
     ],
-    frais: [W.School.FeesLive, W.School.FeeSettingsLive, W.School.FeesOverviewLive],
+    frais: [
+      W.School.FeesLive,
+      W.School.FeeSettingsLive,
+      W.School.FeesOverviewLive,
+      W.School.FeeControlLive
+    ],
     photos: [W.School.ClassPhotosLive]
   }
 
@@ -62,6 +67,9 @@ defmodule TeacherAssistant.Modules do
     {W.TimetablePrintController, :class} => :emploi_du_temps,
     {W.TimetablePrintController, :me} => :emploi_du_temps,
     {W.ReceiptPrintController, :show} => :frais,
+    {W.FeePaperPrintController, :note} => :frais,
+    {W.FeePaperPrintController, :warnings} => :frais,
+    {W.FeePaperPrintController, :control} => :frais,
     {W.CardPrintController, :show} => :photos,
     {W.StudentPhotoController, :show} => :core,
     {W.SchoolLogoController, :show} => :core

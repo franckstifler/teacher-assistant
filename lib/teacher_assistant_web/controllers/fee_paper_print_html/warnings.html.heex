@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Avis de retard de paiement")}</title>
+    <.paper_style />
+  </head>
+  <body>
+    <div :for={paper <- @papers} class="sheet">
+      <% w = paper.warning %>
+      <div :if={w.status == :cancelled} class="cancelled">{gettext("Avis annulé")}</div>
+      <.heading school={paper.school} />
+      <h1>{gettext("Avis de retard de paiement")}</h1>
+      <div class="number">n° {w.number} · {date(w.issued_on)}</div>
+
+      <p>
+        {gettext("Aux parents de")} <b>{w.student_name}</b> — {w.class_label}
+      </p>
+
+      <table>
+        <tr :for={l <- w.lines}>
+          <td>{l.name}</td>
+          <td class="n">{Money.format_fcfa(l.amount)}</td>
+        </tr>
+        <tr>
+          <th>{gettext("Dû à ce jour")}</th>
+          <th class="n">{Money.format_fcfa(w.total)}</th>
+        </tr>
+      </table>
+
+      <p>
+        {gettext("Merci de régler cette somme avant le %{date}.", date: date(w.pay_by))}
+        {gettext("Passé ce délai, l'élève pourra être renvoyé jusqu'au paiement.")}
+      </p>
+
+      <.check_foot paper={paper} />
+    </div>
+
+    <div class="actions">
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+    </div>
+  </body>
+</html>

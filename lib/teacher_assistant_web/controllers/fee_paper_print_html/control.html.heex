@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Contrôle des frais — %{class}", class: @cg.label)}</title>
+    <.paper_style />
+    <style>
+      body { font-size: 12pt; }
+      h2 { font-size: 13pt; margin: 16px 0 4px; }
+      h2.out { color: #9b2c1f; } h2.ok { color: #11663a; }
+      table td { border: 0; border-bottom: 1px solid #ddd; padding: 5px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <div class="school">{@school.name}</div>
+      <h1>{gettext("Contrôle des frais — %{class}", class: @cg.label)}</h1>
+      <div class="number">
+        {date(@date)} · {TeacherAssistantWeb.School.FeeControlLive.tranche_line(@control.tranche)}
+      </div>
+
+      <h2 class="out">
+        {gettext("Doivent sortir — %{count}", count: length(@control.must_leave))}
+      </h2>
+      <table>
+        <tr :for={row <- @control.must_leave}>
+          <td>{row.student.full_name}</td>
+          <td class="n">{gettext("reste %{amount}", amount: Money.format_amount(row.owed))}</td>
+        </tr>
+      </table>
+
+      <h2 class="ok">
+        {gettext("Autorisés malgré un retard — %{count}", count: length(@control.allowed))}
+      </h2>
+      <table>
+        <tr :for={row <- @control.allowed}>
+          <td>{row.student.full_name}</td>
+          <td class="n">{TeacherAssistantWeb.School.FeeControlLive.why(row.note)}</td>
+        </tr>
+      </table>
+
+      <p>
+        {ngettext(
+          "L'autre élève est à jour.",
+          "Les %{count} autres élèves sont à jour.",
+          @control.up_to_date
+        )}
+      </p>
+    </div>
+
+    <div class="actions">
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+    </div>
+  </body>
+</html>

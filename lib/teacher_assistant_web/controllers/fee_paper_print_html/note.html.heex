@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Autorisation n° %{number}", number: @paper.note.number)}</title>
+    <.paper_style />
+  </head>
+  <body>
+    <% n = @paper.note %>
+    <div class="sheet">
+      <div :if={n.status == :cancelled} class="cancelled">{gettext("Autorisation annulée")}</div>
+      <.heading school={@paper.school} />
+      <h1>{gettext("Autorisation de retour en classe")}</h1>
+      <div class="number">n° {n.number} · {date(n.issued_on)}</div>
+
+      <dl>
+        <dt>{gettext("Élève")}</dt><dd><b>{n.student_name}</b></dd>
+        <dt>{gettext("Classe")}</dt><dd>{n.class_label}</dd>
+        <dt>{gettext("Motif")}</dt><dd>{ReturnNoteReason.label(n.reason)}</dd>
+        <dt>{gettext("Valable jusqu'au")}</dt><dd><b>{date(n.valid_until)}</b></dd>
+      </dl>
+
+      <.check_foot paper={@paper} />
+    </div>
+
+    <div :if={n.status == :valid} class="actions">
+      <button type="button" onclick="window.print()">{gettext("Imprimer l'autorisation")}</button>
+    </div>
+  </body>
+</html>

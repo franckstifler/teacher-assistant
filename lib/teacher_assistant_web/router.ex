@@ -91,6 +91,9 @@ defmodule TeacherAssistantWeb.Router do
     get "/school/classes/:id/timetable/print", TimetablePrintController, :class
     get "/school/timetable/me/print", TimetablePrintController, :me
     get "/school/fees/receipts/:id/print", ReceiptPrintController, :show
+    get "/school/fees/notes/:id/print", FeePaperPrintController, :note
+    get "/school/fees/warnings/print", FeePaperPrintController, :warnings
+    get "/school/classes/:id/fees/control/print", FeePaperPrintController, :control
     get "/school/logo", SchoolLogoController, :show
     get "/school/students/:id/photo", StudentPhotoController, :show
     get "/school/bulletins/:publication_id/photo/:student_id", StudentPhotoController, :frozen
@@ -140,6 +143,7 @@ defmodule TeacherAssistantWeb.Router do
       live "/school/classes/:id/register", School.RegisterLive, :show
       live "/school/classes/:id/discipline", School.DisciplineLive, :show
       live "/school/classes/:id/fees", School.FeesLive, :show
+      live "/school/classes/:id/fees/control", School.FeeControlLive, :show
       live "/school/fees", School.FeesOverviewLive, :index
       live "/school/timetable", School.TimetableEditorLive, :index
       live "/school/timetable/me", School.MyTimetableLive, :index
