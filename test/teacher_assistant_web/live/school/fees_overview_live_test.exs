@@ -97,4 +97,13 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLiveTest do
     assert {:error, {_, %{to: to}}} = live(conn, ~p"/school/fees")
     assert to =~ "/school"
   end
+
+  test "the Frais page links each class to its control list", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/fees")
+
+    assert has_element?(
+             view,
+             "#control-#{ctx.cg.id}[href='/school/classes/#{ctx.cg.id}/fees/control']"
+           )
+  end
 end

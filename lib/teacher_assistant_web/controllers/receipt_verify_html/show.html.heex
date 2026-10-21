@@ -24,7 +24,9 @@
     <main>
       <%= case @result do %>
         <% {status, %{kind: :note} = info} -> %>
-          <h1 :if={status == :valid} class="ok">✓ {gettext("Autorisation valable aujourd'hui")}</h1>
+          <h1 :if={status == :valid} class="ok">
+            ✓ {gettext("Autorisation valable aujourd'hui")}
+          </h1>
           <h1 :if={status == :expired} class="ko">
             {gettext("Autorisation expirée depuis le %{date}", date: date(info.valid_until))}
           </h1>

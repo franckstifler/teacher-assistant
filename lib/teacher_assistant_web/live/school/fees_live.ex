@@ -8,9 +8,10 @@ defmodule TeacherAssistantWeb.School.FeesLive do
   use TeacherAssistantWeb, :live_view
 
   import TeacherAssistantWeb.Drawer
+  import TeacherAssistantWeb.School.FeeControlComponents
 
-  alias TeacherAssistant.{Enrollment, Fees}
-  alias TeacherAssistant.Academics.{PaymentMethod, Reference}
+  alias TeacherAssistant.{Enrollment, FeeControl, Fees}
+  alias TeacherAssistant.Academics.{PaymentMethod, Reference, ReturnNoteReason}
   alias TeacherAssistantWeb.{Money, ReceiptPrintHTML, ReceiptVerification}
 
   @methods [:cash, :mobile_money, :bank_transfer, :other]
@@ -32,7 +33,12 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          student: nil,
          last_receipt: nil,
          payment_error: nil,
-         adjustment_error: nil
+         adjustment_error: nil,
+         last_note: nil,
+         note_error: nil,
+         last_warnings: nil,
+         warn_open?: false,
+         warn_error: nil
        )
        |> reset_forms()
        |> load()}
@@ -46,8 +52,16 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
     socket =
       case Enum.find(socket.assigns.roster, &(&1.enrollment.id == params["student"])) do
-        nil -> assign(socket, student: nil, last_receipt: nil)
-        row -> socket |> assign(student: row) |> load_student()
+        nil ->
+          assign(socket, student: nil, last_receipt: nil, last_note: nil, note_error: nil)
+
+        %{enrollment: %{id: id}} = row ->
+          if socket.assigns.student && socket.assigns.student.enrollment.id == id,
+            do: socket |> assign(student: row) |> load_student(),
+            else:
+              socket
+              |> assign(student: row, last_note: nil, note_error: nil, last_warnings: nil)
+              |> load_student()
       end
 
     {:noreply, socket}
@@ -82,7 +96,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       assign(socket,
         student_fees: Fees.student_fees(scope(socket), row.enrollment),
         payments: Fees.list_payments(scope(socket), row.enrollment),
-        adjustments: Fees.list_adjustments(scope(socket), row.enrollment)
+        adjustments: Fees.list_adjustments(scope(socket), row.enrollment),
+        notes: FeeControl.list_notes(scope(socket), row.enrollment),
+        warnings: FeeControl.list_warnings(scope(socket), row.enrollment)
       )
 
   # Forms come from the server so they empty after a save.
@@ -100,7 +116,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
             as: :payment
           ),
         adjustment_form:
-          to_form(%{"fee_type_id" => "", "amount" => "", "reason" => ""}, as: :adjustment)
+          to_form(%{"fee_type_id" => "", "amount" => "", "reason" => ""}, as: :adjustment),
+        note_form:
+          to_form(%{"reason" => "promise", "valid_until" => "", "internal_note" => ""}, as: :note)
       )
 
   # --- events --------------------------------------------------------------------------
@@ -238,6 +256,132 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     end
   end
 
+  # --- Fees 2: return notes and warnings ---------------------------------------------------
+
+  def handle_event("change_note", %{"note" => params}, socket),
+    do: {:noreply, assign(socket, note_form: to_form(params, as: :note))}
+
+  def handle_event("issue_note", %{"note" => params}, socket) do
+    attrs = %{
+      reason: Enum.find(ReturnNoteReason.values(), &(Atom.to_string(&1) == params["reason"])),
+      valid_until: parse_date(params["valid_until"]),
+      internal_note: params["internal_note"]
+    }
+
+    issue_note(socket, attrs, params)
+  end
+
+  def handle_event("note_after_payment", _params, socket),
+    do: issue_note(socket, %{reason: :payment}, nil)
+
+  def handle_event("cancel_note", %{"note_id" => id, "reason" => reason}, socket),
+    do: cancel_paper(socket, :notes, id, reason, &FeeControl.cancel_note/3)
+
+  def handle_event("cancel_warning", %{"warning_id" => id, "reason" => reason}, socket),
+    do: cancel_paper(socket, :warnings, id, reason, &FeeControl.cancel_warning/3)
+
+  def handle_event("warn_student", _params, socket) do
+    with true <- socket.assigns.can_edit?,
+         %{enrollment: e} <- socket.assigns.student do
+      send_warnings(socket, [e], FeeControl.default_pay_by())
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("warn_class", _params, socket),
+    do: {:noreply, assign(socket, warn_open?: !socket.assigns.warn_open?, warn_error: nil)}
+
+  def handle_event("send_warnings", %{"warn" => params}, socket) do
+    ids = MapSet.new(params["ids"] || [])
+    chosen = for row <- socket.assigns.roster, row.enrollment.id in ids, do: row.enrollment
+
+    case parse_date(params["pay_by"]) do
+      nil -> {:noreply, assign(socket, warn_error: gettext("Indiquez une date."))}
+      pay_by -> send_warnings(socket, chosen, pay_by)
+    end
+  end
+
+  defp issue_note(socket, attrs, params) do
+    with true <- socket.assigns.can_edit?,
+         %{enrollment: e} <- socket.assigns.student do
+      case FeeControl.issue_note(scope(socket), e, attrs) do
+        {:ok, note} ->
+          {:noreply,
+           socket
+           |> assign(last_note: note, note_error: nil)
+           |> reset_forms()
+           |> load()
+           |> load_student()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, reason} ->
+          socket = assign(socket, note_error: note_error(reason))
+
+          {:noreply,
+           if(params, do: assign(socket, note_form: to_form(params, as: :note)), else: socket)}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp note_error(:invalid_valid_until),
+    do: gettext("Indiquez jusqu'à quand l'élève est autorisé (aujourd'hui ou plus tard).")
+
+  defp note_error(_reason), do: gettext("Autorisation non délivrée.")
+
+  defp send_warnings(socket, enrollments, pay_by) do
+    if socket.assigns.can_edit? do
+      case FeeControl.issue_warnings(scope(socket), enrollments, pay_by) do
+        {:ok, warnings} ->
+          {:noreply,
+           socket
+           |> assign(last_warnings: warnings, warn_open?: false, warn_error: nil)
+           |> load_student()}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, :nothing_to_warn} ->
+          {:noreply, assign(socket, warn_error: gettext("Aucun élève en retard."))}
+
+        {:error, :invalid_pay_by} ->
+          {:noreply,
+           assign(socket, warn_error: gettext("La date doit être aujourd'hui ou plus tard."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Avis non émis."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp cancel_paper(socket, list, id, reason, cancel) do
+    with true <- socket.assigns.can_edit?,
+         %{} <- socket.assigns.student,
+         %{} = paper <- Enum.find(Map.get(socket.assigns, list, []), &(&1.id == id)) do
+      case cancel.(scope(socket), paper, reason) do
+        {:ok, _} ->
+          {:noreply, socket |> clear_flash(:error) |> load() |> load_student()}
+
+        {:error, :reason_required} ->
+          {:noreply, put_flash(socket, :error, gettext("Indiquez la raison de l'annulation."))}
+
+        {:error, %Ash.Error.Forbidden{}} ->
+          {:noreply, Authz.put_not_allowed(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Modification non enregistrée."))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
   # --- helpers ---------------------------------------------------------------------------
 
   defp receipt_view(socket, payment) do
@@ -321,6 +465,24 @@ defmodule TeacherAssistantWeb.School.FeesLive do
           title={"#{@cg.label} — #{gettext("Frais scolaires")}"}
         >
           <:actions>
+            <.link
+              id="control-link"
+              navigate={~p"/school/classes/#{@cg.id}/fees/control"}
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="hero-clipboard-document-check" class="size-4" /> {gettext(
+                "Contrôle des frais"
+              )}
+            </.link>
+            <button
+              :if={@can_edit?}
+              id="warn-class"
+              type="button"
+              phx-click="warn_class"
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="hero-envelope" class="size-4" /> {gettext("Avis de retard")}
+            </button>
             <.link :if={@can_edit?} navigate={~p"/school/settings/fees"} class="btn btn-ghost btn-sm">
               <.icon name="hero-cog-6-tooth" class="size-4" /> {gettext("Paramètres des frais")}
             </.link>
@@ -335,6 +497,15 @@ defmodule TeacherAssistantWeb.School.FeesLive do
             {gettext("Aucun montant pour cette classe.")}
           </span>
         </div>
+
+        <.warn_class_form
+          :if={@warn_open?}
+          rows={Enum.filter(@roster, &(@balances[&1.enrollment.id].status == :behind))}
+          balances={@balances}
+          pay_by={FeeControl.default_pay_by()}
+          error={@warn_error}
+        />
+        <.last_warnings :if={@last_warnings && !@student} warnings={@last_warnings} />
 
         <div class="flex items-center gap-2">
           <button
@@ -419,6 +590,15 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                 >
                   {gettext("Envoyer par WhatsApp à %{name}", name: w.name)}
                 </a>
+                <button
+                  :if={@student_fees.status == :behind}
+                  id="note-after-payment"
+                  type="button"
+                  phx-click="note_after_payment"
+                  class="btn btn-outline btn-xs"
+                >
+                  {gettext("Imprimer une autorisation (paiement reçu)")}
+                </button>
               </div>
             </div>
 
@@ -540,6 +720,16 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                 </form>
               </div>
             </section>
+
+            <.student_papers
+              form={@note_form}
+              error={@note_error}
+              notes={@notes}
+              last_note={@last_note}
+              warnings={@warnings}
+              last_warnings={@last_warnings}
+              can_edit?={@can_edit?}
+            />
 
             <.form
               :if={@can_edit?}

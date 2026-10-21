@@ -140,4 +140,82 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     render_submit(view, "cancel_payment", %{"payment_id" => p.id, "reason" => "x"})
     assert [%{status: :valid}] = Fees.list_payments(ctx.scope, ctx.e)
   end
+
+  describe "Fees 2: notes and warnings" do
+    # Awa and Bel each owe 40 % today.
+    setup ctx do
+      {:ok, _} =
+        Fees.add_tranche(ctx.scope, ctx.year, %{label: "I", due_date: ~D[2025-09-01], percent: 40})
+
+      :ok
+    end
+
+    test "issue a promise note from the drawer and print it", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+      view
+      |> form("#note-form", note: %{reason: "promise", valid_until: "2025-09-30"})
+      |> render_submit()
+
+      [note] = TeacherAssistant.FeeControl.list_notes(ctx.scope, ctx.e)
+      assert note.reason == :promise and note.valid_until == ~D[2025-09-30]
+      assert has_element?(view, "#last-note a[href='/school/fees/notes/#{note.id}/print']")
+      assert has_element?(view, "#note-#{note.id}", note.number)
+    end
+
+    test "a promise without a date shows an error", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+      view |> form("#note-form", note: %{reason: "promise", valid_until: ""}) |> render_submit()
+      assert has_element?(view, "#note-error")
+      assert TeacherAssistant.FeeControl.list_notes(ctx.scope, ctx.e) == []
+    end
+
+    test "after a payment, offer a payment note when still behind", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+      view
+      |> form("#payment-form", payment: %{amount: "5000", paid_on: "2025-09-15", method: "cash"})
+      |> render_submit()
+
+      view |> element("#note-after-payment") |> render_click()
+      assert [%{reason: :payment}] = TeacherAssistant.FeeControl.list_notes(ctx.scope, ctx.e)
+    end
+
+    test "cancel a note with a reason", %{conn: conn} = ctx do
+      {:ok, note} =
+        TeacherAssistant.FeeControl.issue_note(ctx.scope, ctx.e, %{reason: :exemption})
+
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+
+      view
+      |> form("#cancel-note-#{note.id}", reason: "Erreur")
+      |> render_submit()
+
+      assert [%{status: :cancelled}] = TeacherAssistant.FeeControl.list_notes(ctx.scope, ctx.e)
+    end
+
+    test "warn one student from the drawer", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+      view |> element("#warn-student") |> render_click()
+      assert [w] = TeacherAssistant.FeeControl.list_warnings(ctx.scope, ctx.e)
+      assert has_element?(view, "#warning-#{w.id}", w.number)
+      assert has_element?(view, "#last-warnings a[href*='/school/fees/warnings/print']")
+    end
+
+    test "warn the class: issues warnings for behind students and links to print",
+         %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, page(ctx))
+      assert has_element?(view, "#control-link[href='/school/classes/#{ctx.cg.id}/fees/control']")
+      view |> element("#warn-class") |> render_click()
+      assert has_element?(view, "#warn-form input[value='#{ctx.e2.id}'][checked]")
+
+      view
+      |> form("#warn-form", warn: %{pay_by: "2025-09-22", ids: [ctx.e.id, ctx.e2.id]})
+      |> render_submit()
+
+      assert [_] = TeacherAssistant.FeeControl.list_warnings(ctx.scope, ctx.e)
+      assert [_] = TeacherAssistant.FeeControl.list_warnings(ctx.scope, ctx.e2)
+      assert has_element?(view, "#last-warnings a[href*='/school/fees/warnings/print']")
+    end
+  end
 end

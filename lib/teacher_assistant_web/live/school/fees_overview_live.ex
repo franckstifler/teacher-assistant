@@ -113,12 +113,25 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
                   class="hover:bg-base-200/60"
                 >
                   <td>
-                    <.link
-                      navigate={~p"/school/classes/#{row.class_group.id}/fees"}
-                      class="link font-semibold"
-                    >
-                      {row.class_group.label}
-                    </.link>
+                    <div class="flex items-center gap-1">
+                      <.link
+                        navigate={~p"/school/classes/#{row.class_group.id}/fees"}
+                        class="link font-semibold"
+                      >
+                        {row.class_group.label}
+                      </.link>
+                      <.link
+                        id={"control-#{row.class_group.id}"}
+                        navigate={~p"/school/classes/#{row.class_group.id}/fees/control"}
+                        class="btn btn-ghost btn-xs"
+                        title={gettext("Contrôle des frais")}
+                        aria-label={
+                          gettext("Contrôle des frais — %{class}", class: row.class_group.label)
+                        }
+                      >
+                        <.icon name="hero-clipboard-document-check" class="size-4" />
+                      </.link>
+                    </div>
                   </td>
                   <td class="ta-num hidden text-right sm:table-cell">{row.recovery.students}</td>
                   <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
