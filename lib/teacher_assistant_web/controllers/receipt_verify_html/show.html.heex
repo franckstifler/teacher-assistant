@@ -13,6 +13,7 @@
       dt { color: #555; }
       table { width: 100%; border-collapse: collapse; margin: 8px 0 0; }
       td { padding: 4px 0; border-top: 1px solid #eee; } td.n { text-align: right; }
+      .split { margin: 12px 0 0; color: #555; font-size: .9rem; }
       form { display: grid; gap: 8px; margin-top: 16px; }
       label { font-size: .9rem; color: #555; }
       input { font: inherit; padding: 8px 10px; border: 1px solid #bbb; border-radius: 8px; }
@@ -25,6 +26,11 @@
         <% {status, info} -> %>
           <h1 :if={status == :valid} class="ok">✓ {gettext("Reçu authentique")}</h1>
           <h1 :if={status == :cancelled} class="ko">{gettext("Reçu annulé")}</h1>
+          <p :if={status == :cancelled} class="ko">
+            {gettext("L'école a annulé ce reçu le %{date}. Ce paiement ne compte pas.",
+              date: date(info.cancelled_on)
+            )}
+          </p>
           <dl>
             <dt>{gettext("Reçu")}</dt><dd>{info.number}</dd>
             <dt>{gettext("Établissement")}</dt><dd>{info.school_name}</dd>
@@ -35,6 +41,7 @@
             <dt>{gettext("Total payé")}</dt><dd>{Money.format_fcfa(info.paid_to_date)}</dd>
             <dt>{gettext("Reste à payer")}</dt><dd>{left(info.left_after)}</dd>
           </dl>
+          <p class="split">{gettext("Ce reçu règle :")}</p>
           <table>
             <tr :for={a <- info.allocations}>
               <td>{a.name}</td>

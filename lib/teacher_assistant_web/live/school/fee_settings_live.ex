@@ -443,7 +443,7 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
                   </td>
                   <td :for={t <- @regular} class="min-w-36">
                     <div class="flex items-center gap-1">
-                      <form id={"fee-#{cg.id}-#{t.id}"} phx-change="set_fee" class="flex-1">
+                      <form id={"fee-#{cg.id}-#{t.id}"} phx-change="set_fee">
                         <input type="hidden" name="cg" value={cg.id} />
                         <input type="hidden" name="type" value={t.id} />
                         <input
@@ -456,6 +456,7 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
                         />
                       </form>
                       <button
+                        :if={Enum.count(@classes, &(&1.level == cg.level)) > 1}
                         id={"level-#{cg.id}-#{t.id}"}
                         type="button"
                         phx-click="set_level"
@@ -492,9 +493,9 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
             <table class="table table-sm">
               <tbody>
                 <tr :for={t <- @tranches} id={"tranche-#{t.id}"}>
-                  <td class="font-semibold">{t.label}</td>
-                  <td class="ta-num">{date(t.due_date)}</td>
-                  <td class="ta-num text-right">{t.percent} %</td>
+                  <td class="whitespace-nowrap font-semibold">{t.label}</td>
+                  <td class="ta-num whitespace-nowrap">{date(t.due_date)}</td>
+                  <td class="ta-num whitespace-nowrap text-right">{t.percent} %</td>
                   <td class="whitespace-nowrap text-right">
                     <button
                       type="button"

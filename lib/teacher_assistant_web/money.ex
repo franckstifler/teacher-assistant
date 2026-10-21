@@ -17,7 +17,15 @@ defmodule TeacherAssistantWeb.Money do
       iex> TeacherAssistantWeb.Money.format_fcfa(-1000)
       "-1 000 FCFA"
   """
-  def format_fcfa(amount) when is_integer(amount) do
+  def format_fcfa(amount) when is_integer(amount), do: format_amount(amount) <> " FCFA"
+
+  @doc """
+  The same grouping without the currency, for tables that say FCFA once.
+
+      iex> TeacherAssistantWeb.Money.format_amount(1234567)
+      "1 234 567"
+  """
+  def format_amount(amount) when is_integer(amount) do
     sign = if amount < 0, do: "-", else: ""
 
     grouped =
@@ -31,6 +39,6 @@ defmodule TeacherAssistantWeb.Money do
       |> Enum.join(" ")
       |> String.reverse()
 
-    sign <> grouped <> " FCFA"
+    sign <> grouped
   end
 end

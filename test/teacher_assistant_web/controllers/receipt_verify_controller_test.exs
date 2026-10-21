@@ -35,6 +35,7 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
     {:ok, _} = Fees.cancel_payment(ctx.scope, p, "Erreur")
     html = conn |> get(~p"/verify/receipt/#{ReceiptVerification.token(p)}") |> html_response(200)
     assert html =~ "Reçu annulé"
+    assert html =~ "Ce paiement ne compte pas."
   end
 
   test "a forged or truncated token says Reçu introuvable", %{conn: conn} do

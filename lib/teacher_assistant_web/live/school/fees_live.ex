@@ -162,7 +162,11 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       case Fees.cancel_payment(scope(socket), payment, reason) do
         {:ok, _} ->
           {:noreply,
-           socket |> put_flash(:info, gettext("Reçu annulé.")) |> load() |> load_student()}
+           socket
+           |> clear_flash(:error)
+           |> put_flash(:info, gettext("Reçu annulé."))
+           |> load()
+           |> load_student()}
 
         {:error, :reason_required} ->
           {:noreply, put_flash(socket, :error, gettext("Indiquez la raison de l'annulation."))}
@@ -302,6 +306,10 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     Enum.filter(types, &(&1.active? and (MapSet.member?(with_due, &1.id) or &1.kind == :regular)))
   end
 
+  # The drawer's per-fee table says FCFA once; an overpayment keeps its words.
+  defp left_amount(left) when left < 0, do: ReceiptPrintHTML.left(left)
+  defp left_amount(left), do: Money.format_amount(left)
+
   def render(assigns) do
     assigns = assign(assigns, :methods, @methods)
 
@@ -344,10 +352,10 @@ defmodule TeacherAssistantWeb.School.FeesLive do
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>
-                <th class="text-right">{gettext("Dû")}</th>
+                <th class="hidden text-right sm:table-cell">{gettext("Dû")}</th>
                 <th class="text-right">{gettext("Payé")}</th>
                 <th class="text-right">{gettext("Reste")}</th>
-                <th>{gettext("Situation")}</th>
+                <th class="hidden sm:table-cell">{gettext("Situation")}</th>
                 <th></th>
               </tr>
             </thead>
@@ -359,10 +367,14 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                 <% b = @balances[row.enrollment.id] %>
                 <% {label, tone} = status_badge(b.status) %>
                 <td class="font-semibold">{row.student.full_name}</td>
-                <td class="ta-num whitespace-nowrap text-right">{Money.format_fcfa(b.total_due)}</td>
+                <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
+                  {Money.format_fcfa(b.total_due)}
+                </td>
                 <td class="ta-num whitespace-nowrap text-right">{Money.format_fcfa(b.total_paid)}</td>
                 <td class="ta-num whitespace-nowrap text-right">{ReceiptPrintHTML.left(b.left)}</td>
-                <td><span class={["badge badge-sm", tone]}>{label}</span></td>
+                <td class="hidden sm:table-cell">
+                  <span class={["badge badge-sm", tone]}>{label}</span>
+                </td>
                 <td class="text-right">
                   <.link patch={student_path(@cg, row, @late?)} class="btn btn-ghost btn-xs">
                     {if @can_edit?, do: gettext("Encaisser"), else: gettext("Voir")}
@@ -419,18 +431,27 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                   <th class="text-right">{gettext("Reste")}</th>
                 </tr>
               </thead>
+              <caption class="caption-bottom pt-1 text-left text-xs text-base-content/60">
+                {gettext("Montants en FCFA")}
+              </caption>
               <tbody>
                 <tr :for={t <- @student_fees.by_type}>
                   <td>{t.name}</td>
-                  <td class="ta-num text-right">{Money.format_fcfa(t.due)}</td>
-                  <td class="ta-num text-right">{Money.format_fcfa(t.paid)}</td>
-                  <td class="ta-num text-right">{ReceiptPrintHTML.left(t.left)}</td>
+                  <td class="ta-num whitespace-nowrap text-right">{Money.format_amount(t.due)}</td>
+                  <td class="ta-num whitespace-nowrap text-right">{Money.format_amount(t.paid)}</td>
+                  <td class="ta-num whitespace-nowrap text-right">{left_amount(t.left)}</td>
                 </tr>
                 <tr class="font-semibold">
                   <td>{gettext("Total")}</td>
-                  <td class="ta-num text-right">{Money.format_fcfa(@student_fees.total_due)}</td>
-                  <td class="ta-num text-right">{Money.format_fcfa(@student_fees.total_paid)}</td>
-                  <td class="ta-num text-right">{ReceiptPrintHTML.left(@student_fees.left)}</td>
+                  <td class="ta-num whitespace-nowrap text-right">
+                    {Money.format_amount(@student_fees.total_due)}
+                  </td>
+                  <td class="ta-num whitespace-nowrap text-right">
+                    {Money.format_amount(@student_fees.total_paid)}
+                  </td>
+                  <td class="ta-num whitespace-nowrap text-right">
+                    {left_amount(@student_fees.left)}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -493,6 +514,9 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                     "Annulé"
                   )}</span>
                 </div>
+                <p :if={p.status == :cancelled and p.cancel_reason} class="text-base-content/70">
+                  {gettext("Raison : %{reason}", reason: p.cancel_reason)}
+                </p>
                 <form
                   :if={@can_edit? and p.status == :valid}
                   id={"cancel-form-#{p.id}"}
@@ -506,7 +530,13 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                     class="input input-xs flex-1"
                     aria-label={gettext("Raison de l'annulation")}
                   />
-                  <button type="submit" class="btn btn-ghost btn-xs text-error">{gettext("Annuler")}</button>
+                  <button
+                    type="submit"
+                    class="btn btn-ghost btn-xs text-error"
+                    data-confirm={gettext("Annuler ce reçu ? Le paiement ne comptera plus.")}
+                  >
+                    {gettext("Annuler le reçu")}
+                  </button>
                 </form>
               </div>
             </section>
@@ -537,7 +567,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
               <.input
                 field={@adjustment_form[:fee_type_id]}
                 type="select"
-                prompt={gettext("Frais")}
+                prompt={gettext("Choisir un frais")}
                 options={Enum.map(adjustment_types(@types, @student_fees), &{&1.name, &1.id})}
                 label={gettext("Frais")}
               />

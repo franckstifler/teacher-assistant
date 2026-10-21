@@ -57,6 +57,10 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLiveTest do
 
     view |> form("#fee-search", %{q: "a"}) |> render_change()
     refute has_element?(view, "#search-results a")
+    refute has_element?(view, "#search-empty")
+
+    view |> form("#fee-search", %{q: "zzzz"}) |> render_change()
+    assert has_element?(view, "#search-empty", "Aucun élève trouvé.")
   end
 
   test "recent payments list numbers linking to the receipt", %{conn: conn} = ctx do

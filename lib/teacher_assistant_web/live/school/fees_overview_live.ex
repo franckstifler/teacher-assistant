@@ -60,29 +60,31 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
         </.page_header>
 
         <% r = @recovery.school %>
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="ta-panel p-4">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div class="ta-panel p-3 sm:p-4">
             <p class="ta-eyebrow">{gettext("Recouvrement")}</p>
-            <p class={["ta-num text-3xl font-semibold", tone(r.rate)]}>{r.rate} %</p>
+            <p class={["ta-num text-2xl font-semibold sm:text-3xl", tone(r.rate)]}>{r.rate} %</p>
             <p class="text-sm text-base-content/70">{gettext("de l'année")}</p>
           </div>
-          <div class="ta-panel p-4">
+          <div class="ta-panel p-3 sm:p-4">
             <p class="ta-eyebrow">{gettext("À ce jour")}</p>
-            <p class={["ta-num text-3xl font-semibold", tone(r.rate_to_date)]}>{r.rate_to_date} %</p>
+            <p class={["ta-num text-2xl font-semibold sm:text-3xl", tone(r.rate_to_date)]}>
+              {r.rate_to_date} %
+            </p>
             <p class="text-sm text-base-content/70">{gettext("de ce qui est échu")}</p>
           </div>
-          <div class="ta-panel p-4">
+          <div class="ta-panel p-3 sm:p-4">
             <p class="ta-eyebrow">{gettext("Encaissé")}</p>
-            <p id="recovery-collected" class="ta-num text-xl font-semibold">
+            <p id="recovery-collected" class="ta-num text-lg font-semibold sm:text-xl">
               {Money.format_fcfa(r.collected)}
             </p>
             <p id="recovery-expected" class="text-sm text-base-content/70">
               {gettext("sur %{amount}", amount: Money.format_fcfa(r.expected))}
             </p>
           </div>
-          <div class="ta-panel p-4">
+          <div class="ta-panel p-3 sm:p-4">
             <p class="ta-eyebrow">{gettext("En retard")}</p>
-            <p class={["ta-num text-3xl font-semibold", r.behind > 0 && "text-warning"]}>
+            <p class={["ta-num text-2xl font-semibold sm:text-3xl", r.behind > 0 && "text-warning"]}>
               {r.behind}
             </p>
             <p class="text-sm text-base-content/70">
@@ -97,8 +99,8 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
               <thead>
                 <tr>
                   <th>{gettext("Classe")}</th>
-                  <th class="text-right">{gettext("Élèves")}</th>
-                  <th class="text-right">{gettext("Attendu")}</th>
+                  <th class="hidden text-right sm:table-cell">{gettext("Élèves")}</th>
+                  <th class="hidden text-right sm:table-cell">{gettext("Attendu")}</th>
                   <th class="text-right">{gettext("Encaissé")}</th>
                   <th class="text-right">%</th>
                   <th class="text-right">{gettext("En retard")}</th>
@@ -118,14 +120,14 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
                       {row.class_group.label}
                     </.link>
                   </td>
-                  <td class="ta-num text-right">{row.recovery.students}</td>
-                  <td class="ta-num whitespace-nowrap text-right">
+                  <td class="ta-num hidden text-right sm:table-cell">{row.recovery.students}</td>
+                  <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
                     {Money.format_fcfa(row.recovery.expected)}
                   </td>
                   <td class="ta-num whitespace-nowrap text-right">
                     {Money.format_fcfa(row.recovery.collected)}
                   </td>
-                  <td class={["ta-num text-right", tone(row.recovery.rate)]}>
+                  <td class={["ta-num whitespace-nowrap text-right", tone(row.recovery.rate)]}>
                     {row.recovery.rate} %
                   </td>
                   <td class="ta-num text-right">{row.recovery.behind}</td>
@@ -134,7 +136,7 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
             </table>
           </div>
 
-          <aside class="space-y-4">
+          <aside class="order-first space-y-4 lg:order-none">
             <div class="ta-panel space-y-2 p-4">
               <h2 class="ta-eyebrow">{gettext("Encaisser pour un élève")}</h2>
               <form id="fee-search" phx-change="search" phx-submit="search">
@@ -148,6 +150,13 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
                   class="input input-sm w-full"
                 />
               </form>
+              <p
+                :if={@results == [] and String.length(String.trim(@q)) >= 2}
+                id="search-empty"
+                class="text-sm text-base-content/70"
+              >
+                {gettext("Aucun élève trouvé.")}
+              </p>
               <ul id="search-results" class="space-y-1">
                 <li :for={e <- @results}>
                   <.link

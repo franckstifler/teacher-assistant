@@ -60,22 +60,21 @@
         <tr>
           <th>{gettext("Frais")}</th>
           <th class="n">{gettext("Ce reçu")}</th>
-          <th class="n">{gettext("Payé à ce jour")}</th>
-          <th class="n">{gettext("Reste")}</th>
         </tr>
         <tr :for={a <- @receipt.allocations}>
           <td>{a.name}</td>
           <td class="n">{Money.format_fcfa(a.amount)}</td>
-          <td class="n">{Money.format_fcfa(a.paid_to_date)}</td>
-          <td class="n">{left(a.left_after)}</td>
         </tr>
         <tr>
           <th>{gettext("Total")}</th>
           <th class="n">{Money.format_fcfa(p.amount)}</th>
-          <th class="n">{Money.format_fcfa(p.paid_to_date)}</th>
-          <th class="n">{left(p.left_after)}</th>
         </tr>
       </table>
+
+      <dl>
+        <dt>{gettext("Total payé à ce jour")}</dt><dd>{Money.format_fcfa(p.paid_to_date)}</dd>
+        <dt>{gettext("Reste à payer")}</dt><dd><b>{left(p.left_after)}</b></dd>
+      </dl>
 
       <div class="foot">
         <div>
@@ -94,7 +93,7 @@
       </div>
     </div>
 
-    <div class="actions">
+    <div :if={p.status == :valid} class="actions">
       <button type="button" class="primary" onclick="window.print()">
         {gettext("Imprimer le reçu")}
       </button>

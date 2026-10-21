@@ -716,7 +716,8 @@ defmodule TeacherAssistant.Fees do
            class_label: p.class_label,
            allocations: Enum.map(allocation_rows(p), &Map.take(&1, [:name, :amount])),
            paid_to_date: p.paid_to_date,
-           left_after: p.left_after
+           left_after: p.left_after,
+           cancelled_on: p.cancelled_at && DateTime.to_date(p.cancelled_at)
          }}
 
       _ ->
