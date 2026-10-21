@@ -119,6 +119,12 @@ defmodule TeacherAssistant.Academics.FeeBalanceTest do
       end
     end
 
+    test "a type paid beyond its due (reduction after payment) credits later types" do
+      # FE due 5 000 after a reduction but 10 000 paid; due to date 22 000 → owes 12 000.
+      b = bal([{:fe, 5_000, 10_000}, {:sc, 50_000, 0}], 22_000)
+      assert B.overdue_by_type(b) == [%{type_id: :sc, amount: 12_000}]
+    end
+
     test "nothing overdue gives []" do
       assert B.overdue_by_type(bal([{:a, 50_000, 30_000}, {:b, 10_000, 0}], 24_000)) == []
     end
