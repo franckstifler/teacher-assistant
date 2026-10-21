@@ -152,6 +152,34 @@ defmodule TeacherAssistant.Academics.ClosedYearLockTest do
              })
   end
 
+  # Fees 2: send-outs, return notes and warnings follow the same rule.
+  test "a send-out, a return note or a warning on a closed year is refused", ctx do
+    close(ctx)
+    base = %{enrollment_id: ctx.enrollment.id, academic_year_id: ctx.year.id}
+
+    papers = %{
+      student_name: "X",
+      class_label: "X",
+      seq: 1,
+      issued_on: ~D[2026-06-01]
+    }
+
+    for {resource, attrs} <- [
+          {TeacherAssistant.Academics.FeeSendOut, %{date: ~D[2026-06-01]}},
+          {TeacherAssistant.Academics.ReturnNote,
+           Map.merge(papers, %{number: "A1", reason: :promise, valid_until: ~D[2026-06-30]})},
+          {TeacherAssistant.Academics.FeeWarning,
+           Map.merge(papers, %{number: "V1", pay_by: ~D[2026-06-08], lines: [], total: 0})}
+        ] do
+      assert closed_error?(
+               resource
+               |> Ash.Changeset.for_create(:create, Map.merge(base, attrs), scope: ctx.head)
+               |> Ash.create()
+             ),
+             inspect(resource)
+    end
+  end
+
   test "an existing mark and assessment of a closed year can be neither changed nor deleted",
        ctx do
     mark = mark_of(ctx, ctx.s1)

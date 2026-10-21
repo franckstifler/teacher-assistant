@@ -273,6 +273,63 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     |> Ash.create!()
   end
 
+  defp row_for(A.FeeSendOut, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+
+    A.FeeSendOut
+    |> Ash.Changeset.for_create(
+      :create,
+      %{enrollment_id: e.id, academic_year_id: e.academic_year_id, date: ~D[2030-10-02]},
+      scope: scope_of(school)
+    )
+    |> Ash.create!()
+  end
+
+  defp row_for(A.ReturnNote, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+
+    A.ReturnNote
+    |> Ash.Changeset.for_create(
+      :create,
+      %{
+        enrollment_id: e.id,
+        academic_year_id: e.academic_year_id,
+        seq: System.unique_integer([:positive]),
+        number: "A2030-000001",
+        reason: :promise,
+        issued_on: ~D[2030-10-02],
+        valid_until: ~D[2030-10-09],
+        student_name: "Iso",
+        class_label: "Iso"
+      },
+      scope: scope_of(school)
+    )
+    |> Ash.create!()
+  end
+
+  defp row_for(A.FeeWarning, school, ctx) do
+    e = row_for(A.Enrollment, school, ctx)
+
+    A.FeeWarning
+    |> Ash.Changeset.for_create(
+      :create,
+      %{
+        enrollment_id: e.id,
+        academic_year_id: e.academic_year_id,
+        seq: System.unique_integer([:positive]),
+        number: "V2030-000001",
+        issued_on: ~D[2030-10-02],
+        pay_by: ~D[2030-10-09],
+        lines: [%{name: "PTA", amount: 1_000}],
+        total: 1_000,
+        student_name: "Iso",
+        class_label: "Iso"
+      },
+      scope: scope_of(school)
+    )
+    |> Ash.create!()
+  end
+
   defp row_for(A.Payment, school, ctx) do
     e = row_for(A.Enrollment, school, ctx)
     scope = scope_of(school)
@@ -363,7 +420,10 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.ConductMark,
     A.FeeTranche,
     A.Payment,
-    A.FeeAdjustment
+    A.FeeAdjustment,
+    A.FeeSendOut,
+    A.ReturnNote,
+    A.FeeWarning
   ]
 
   # Global multitenant resources (`global? true`): invisible under a different

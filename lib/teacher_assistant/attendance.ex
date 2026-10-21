@@ -53,7 +53,7 @@ defmodule TeacherAssistant.Attendance do
     authorize :by_default
   end
 
-  @valid_statuses [:present, :absent, :late]
+  @valid_statuses [:present, :absent, :late, :sent_home]
 
   @zero_totals %{
     justified_hours: Decimal.new(0),

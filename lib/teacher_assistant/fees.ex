@@ -45,6 +45,20 @@ defmodule TeacherAssistant.Fees do
         args: [:enrollment_ids]
     end
 
+    resource TeacherAssistant.Academics.FeeSendOut do
+      define :list_send_outs_on, action: :on_date, args: [:enrollment_ids, :date]
+    end
+
+    resource TeacherAssistant.Academics.ReturnNote do
+      define :list_notes_for_enrollment_ids, action: :for_enrollment_ids, args: [:enrollment_ids]
+    end
+
+    resource TeacherAssistant.Academics.FeeWarning do
+      define :list_warnings_for_enrollment_ids,
+        action: :for_enrollment_ids,
+        args: [:enrollment_ids]
+    end
+
     resource Payment do
       define :list_payments_for_enrollment_id, action: :for_enrollment, args: [:enrollment_id]
 
