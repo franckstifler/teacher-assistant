@@ -582,6 +582,11 @@ defmodule TeacherAssistant.Fees do
           {:error, error} -> Ash.DataLayer.rollback([Payment], error)
         end
       end)
+      |> tap(fn
+        # Fees 2: a student sent home today who is now up to date may go back to class.
+        {:ok, _payment} -> TeacherAssistant.FeeControl.lift_send_out_if_up_to_date(scope, e)
+        _ -> :ok
+      end)
     end
   end
 
@@ -791,6 +796,11 @@ defmodule TeacherAssistant.Fees do
   # --- Balances (shared by setup and payments) ------------------------------------------
 
   # `%{enrollment_id => FeeBalance.balance/5}` for `enrollments` of `year`, as of `on_date`.
+  @doc false
+  # Fees 2 (warnings) reuses the balance computation.
+  def balances_for(scope, year, enrollments, on_date),
+    do: balances(scope, year, enrollments, on_date)
+
   defp balances(scope, %AcademicYear{} = year, enrollments, on_date) do
     types = scope |> list_fee_types(year) |> Enum.filter(& &1.active?)
     type_ids = Enum.map(types, & &1.id)
