@@ -226,7 +226,7 @@ msgstr "%{count} student(s) without marks in this sequence"
 msgid "Année"
 msgstr "Year"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:137
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:139
 #: lib/teacher_assistant_web/controllers/bulletin_verify_html/show.html.heex:24
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:86
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:24
@@ -314,7 +314,7 @@ msgstr "Highest"
 msgid "Lowest"
 msgstr "Lowest"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:166
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:168
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:90
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:46
 #: lib/teacher_assistant_web/live/school/class_live.ex:214
@@ -348,8 +348,8 @@ msgid "Pass rate — filles / garçons"
 msgstr "Pass rate — girls / boys"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:42
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:228
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:358
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:230
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:363
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:116
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:439
 #: lib/teacher_assistant_web/live/school/council_live.ex:425
@@ -358,7 +358,7 @@ msgstr "Pass rate — girls / boys"
 msgid "Rang"
 msgstr "Position"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:155
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:157
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:87
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:233
 #: lib/teacher_assistant_web/live/school/student_live.ex:504
@@ -404,7 +404,7 @@ msgid "Discipline"
 msgstr "Discipline"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:46
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:169
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:171
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:76
 #: lib/teacher_assistant_web/live/school/classes_live.ex:242
 #: lib/teacher_assistant_web/live/school/council_live.ex:565
@@ -413,7 +413,7 @@ msgstr "Discipline"
 msgid "Effectif"
 msgstr "Class size"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:123
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:125
 #: lib/teacher_assistant_web/controllers/bulletin_verify_html.ex:8
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:25
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:52
@@ -637,7 +637,7 @@ msgid "Paramètres"
 msgstr "Settings"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:59
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:193
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:195
 #: lib/teacher_assistant_web/live/school/courses_live.ex:257
 #: lib/teacher_assistant_web/live/school/teachings_live.ex:89
 #, elixir-autogen, elixir-format
@@ -863,7 +863,7 @@ msgstr "Label"
 msgid "Masculin"
 msgstr "Male"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:211
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:213
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:84
 #: lib/teacher_assistant_web/live/school/settings_live.ex:652
 #: lib/teacher_assistant_web/live/school/teachings_live.ex:179
@@ -998,7 +998,7 @@ msgstr "This student is already enrolled this year."
 msgid "L'année scolaire n'a pas encore été créée."
 msgstr "The academic year hasn't been created yet."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:425
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:430
 #, elixir-autogen, elixir-format
 msgid "Appréciation du conseil de classe"
 msgstr "Class council assessment"
@@ -1084,7 +1084,7 @@ msgid "Imprimer toute la classe"
 msgstr "Print the whole class"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:43
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:396
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:401
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:77
 #: lib/teacher_assistant_web/live/school/council_live.ex:569
 #: lib/teacher_assistant_web/live/school/results_live.ex:165
@@ -1092,19 +1092,19 @@ msgstr "Print the whole class"
 msgid "Moyenne de la classe"
 msgstr "Class average"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:354
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:359
 #: lib/teacher_assistant_web/live/school/results_live.ex:219
 #, elixir-autogen, elixir-format
 msgid "Moyenne générale"
 msgstr "Overall average"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:308
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:310
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:189
 #, elixir-autogen, elixir-format
 msgid "No marks for this séquence yet."
 msgstr "No marks for this séquence yet."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:135
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:137
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:222
 #: lib/teacher_assistant_web/live/school/members_live.ex:302
 #: lib/teacher_assistant_web/live/school/results_live.ex:218
@@ -1121,7 +1121,7 @@ msgstr "Full name"
 msgid "Note"
 msgstr "Mark"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:222
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:224
 #, elixir-autogen, elixir-format
 msgid "Note×Coef"
 msgstr "Mark×Coef"
@@ -1141,7 +1141,7 @@ msgstr "Highest average"
 msgid "Tableau d'honneur"
 msgstr "Honour roll"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:413
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:418
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:78
 #: lib/teacher_assistant_web/live/school/council_live.ex:573
 #: lib/teacher_assistant_web/live/school/results_live.ex:170
@@ -1154,12 +1154,12 @@ msgstr "Pass rate"
 msgid "Total des coefficients"
 msgstr "Total coefficients"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:505
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:510
 #, elixir-autogen, elixir-format
 msgid "Visa Chef d'établissement"
 msgstr "Head of school signature"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:472
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:477
 #, elixir-autogen, elixir-format
 msgid "Visa Professeur Principal"
 msgstr "Form master signature"
@@ -1374,13 +1374,13 @@ msgstr "—"
 msgid "A"
 msgstr "A"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:325
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:327
 #: lib/teacher_assistant_web/live/school/student_live.ex:830
 #, elixir-autogen, elixir-format
 msgid "Absences justifiées"
 msgstr "Justified absences"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:321
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:323
 #, elixir-autogen, elixir-format
 msgid "Absences non justifiées"
 msgstr "Unjustified absences"
@@ -1502,7 +1502,7 @@ msgstr "R"
 msgid "Retard"
 msgstr "Late"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:329
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:331
 #: lib/teacher_assistant_web/live/school/day_live.ex:149
 #: lib/teacher_assistant_web/live/school/register_live.ex:322
 #: lib/teacher_assistant_web/live/school/student_live.ex:832
@@ -1544,7 +1544,7 @@ msgstr "Reprimand"
 msgid "Consigne"
 msgstr "Detention"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:335
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:337
 #: lib/teacher_assistant_web/live/school/student_live.ex:833
 #, elixir-autogen, elixir-format
 msgid "Consignes"
@@ -1585,7 +1585,7 @@ msgstr "Temporary exclusion"
 msgid "Motif"
 msgstr "Reason"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:339
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:341
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:348
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:364
 #, elixir-autogen, elixir-format
@@ -1602,7 +1602,7 @@ msgstr "Sanction recorded."
 msgid "Sanction removed."
 msgstr "Sanction removed."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:343
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:346
 #: lib/teacher_assistant_web/controllers/page_html.ex:190
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:243
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:250
@@ -1676,7 +1676,7 @@ msgstr "Method"
 msgid "Supprimer cette tranche ?"
 msgstr "Delete this tranche?"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:294
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:296
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:69
 #: lib/teacher_assistant_web/live/school/fee_settings_live.ex:436
 #: lib/teacher_assistant_web/live/school/fees_live.ex:445
@@ -2950,7 +2950,7 @@ msgstr "Not taught at this level per the grid"
 msgid "Revenir au modèle"
 msgstr "Back to default"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:283
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:285
 #, elixir-autogen, elixir-format
 msgid "Total groupe"
 msgstr "Group total"
@@ -2980,7 +2980,7 @@ msgstr "To the quarter point"
 msgid "Désactivé : départage par la moyenne non arrondie, puis par le nom."
 msgstr "Off: ties broken by the unrounded average, then by name."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:371
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:376
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:507
 #, elixir-autogen, elixir-format
 msgid "Moyenne annuelle"
@@ -3109,7 +3109,7 @@ msgstr "Optional"
 msgid "Élèves concernés"
 msgstr "Students taking it"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:305
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:307
 #, elixir-autogen, elixir-format
 msgid "R : rattrapage attendu"
 msgstr "R: make-up expected"
@@ -3631,7 +3631,7 @@ msgstr "Upcoming"
 msgid "+ Scinder la dernière tranche"
 msgstr "+ Split the last band"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:235
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:237
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:121
 #: lib/teacher_assistant_web/live/school/appreciations_live.ex:208
 #: lib/teacher_assistant_web/live/school/council_live.ex:623
@@ -3784,7 +3784,7 @@ msgstr "Not in the published report cards"
 msgid "Absent des bulletins publiés de cette période."
 msgstr "Not in this period's published report cards."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:81
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:83
 #, elixir-autogen, elixir-format
 msgid "BROUILLON"
 msgstr "DRAFT"
@@ -3878,7 +3878,7 @@ msgstr "Publish anyway"
 msgid "Publié"
 msgstr "Published"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:83
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:85
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:163
 #: lib/teacher_assistant_web/live/school/results_live.ex:142
 #, elixir-autogen, elixir-format
@@ -4560,8 +4560,8 @@ msgstr "Regional Delegation of Secondary Education for the South"
 msgid "Délégation régionale des Enseignements secondaires du Sud-Ouest"
 msgstr "Regional Delegation of Secondary Education for the South West"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:232
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:445
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:234
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:450
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:181
 #, elixir-autogen, elixir-format
 msgid "Grade"
@@ -4587,7 +4587,7 @@ msgstr "Peace – Work – Fatherland"
 msgid "QR de vérification"
 msgstr "Verification QR code"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:233
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:235
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:182
 #, elixir-autogen, elixir-format
 msgid "Remarque"
@@ -5182,7 +5182,7 @@ msgstr "Place of birth"
 msgid "Mère"
 msgstr "Mother"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:143
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:145
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:79
 #: lib/teacher_assistant_web/live/school/class_live.ex:215
 #, elixir-autogen, elixir-format
@@ -5233,7 +5233,7 @@ msgstr "Guardian"
 msgid "Élève introuvable."
 msgstr "Student not found."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:148
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:150
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:82
 #, elixir-autogen, elixir-format
 msgid "à"
@@ -5244,7 +5244,7 @@ msgstr "in"
 msgid "Parent mis à jour."
 msgstr "Parent updated."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:317
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:319
 #: lib/teacher_assistant_web/live/school/school_life_settings_live.ex:132
 #: lib/teacher_assistant_web/live/school/settings_live.ex:215
 #: lib/teacher_assistant_web/spaces.ex:477
@@ -6626,7 +6626,7 @@ msgstr "Student ID (optional)"
 msgid "NOM Prénoms"
 msgstr "SURNAME First names"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:152
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:154
 #: lib/teacher_assistant_web/live/school/classes_live.ex:328
 #, elixir-autogen, elixir-format
 msgid "Niveau"
@@ -8212,7 +8212,7 @@ msgstr "Schedule"
 msgid "Planifié"
 msgstr "Scheduled"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:401
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:406
 #, elixir-autogen, elixir-format
 msgid "Plus forte"
 msgstr "Highest"
@@ -8248,7 +8248,7 @@ msgid "Rang par matière"
 msgstr "Rank in each subject"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:58
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:182
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:184
 #, elixir-autogen, elixir-format
 msgid "Redoublant(e)"
 msgstr "Repeater"
@@ -8314,7 +8314,7 @@ msgid "Toute modification après verrouillage est tracée."
 msgstr "Any change after locking is logged."
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:60
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:469
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:474
 #, elixir-autogen, elixir-format
 msgid "Visa du parent"
 msgstr "Parent's signature"
@@ -8330,7 +8330,7 @@ msgstr "View"
 msgid "Voir le PV"
 msgstr "View the minutes"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:510
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:515
 #, elixir-autogen, elixir-format
 msgid "Vérifiable en ligne"
 msgstr "Verifiable online"
@@ -8350,12 +8350,12 @@ msgstr "awaiting decision"
 msgid "moyenne"
 msgstr "average"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:186
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "non"
 msgstr "no"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:185
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:187
 #, elixir-autogen, elixir-format
 msgid "oui"
 msgstr "yes"
@@ -8365,7 +8365,7 @@ msgstr "yes"
 msgid "par %{name}"
 msgstr "by %{name}"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:402
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:407
 #, elixir-autogen, elixir-format
 msgid "plus faible"
 msgstr "lowest"
@@ -11332,7 +11332,7 @@ msgstr "School code"
 msgid "Code invalide"
 msgstr "Invalid code"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:221
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:223
 #, elixir-autogen, elixir-format
 msgid "Coef."
 msgstr "Coef."
@@ -11364,7 +11364,7 @@ msgstr[1] "Competences: %{count} subjects without a competence"
 msgid "Compétences : toutes renseignées"
 msgstr "Competences: all filled in"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:213
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:215
 #, elixir-autogen, elixir-format
 msgid "Compétences évaluées"
 msgstr "Competences assessed"
@@ -11389,24 +11389,24 @@ msgstr "End-of-year council: to schedule"
 msgid "Conseil de fin d'année non tenu."
 msgstr "End-of-year council not held."
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:223
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:225
 #: lib/teacher_assistant_web/live/school/appreciations_live.ex:208
 #: lib/teacher_assistant_web/live/school/appreciations_live.ex:239
 #, elixir-autogen, elixir-format
 msgid "Cote"
 msgstr "Rating"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:383
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:388
 #, elixir-autogen, elixir-format
 msgid "Cotes"
 msgstr "Ratings"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:437
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:442
 #, elixir-autogen, elixir-format
 msgid "Distinction · Décision"
 msgstr "Distinction · Decision"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:479
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:484
 #, elixir-autogen, elixir-format
 msgid "Fait à %{town}, le %{date}"
 msgstr "Done at %{town}, on %{date}"
@@ -11417,7 +11417,7 @@ msgid "Français (à gauche)"
 msgstr "French (left)"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:66
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:160
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:162
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:93
 #: lib/teacher_assistant_web/live/school/student_live.ex:510
 #: lib/teacher_assistant_web/live/school/student_live.ex:537
@@ -11435,12 +11435,12 @@ msgstr "The Principal"
 msgid "Le Proviseur"
 msgstr "The Principal"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:225
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:227
 #, elixir-autogen, elixir-format
 msgid "Min – Max"
 msgstr "Min – Max"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:364
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:369
 #, elixir-autogen, elixir-format
 msgid "Moyenne trim. %{n}"
 msgstr "Term %{n} average"
@@ -11450,7 +11450,7 @@ msgstr "Term %{n} average"
 msgid "Moyennes des trimestres précédents"
 msgstr "Earlier terms' averages"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:409
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:414
 #, elixir-autogen, elixir-format
 msgid "Moyennes ≥ 10"
 msgstr "Averages ≥ 10"
@@ -11461,12 +11461,12 @@ msgid "Nom en anglais"
 msgstr "English name"
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:65
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:201
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:203
 #, elixir-autogen, elixir-format
 msgid "Parents / tuteurs"
 msgstr "Parents / guardians"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:393
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:398
 #, elixir-autogen, elixir-format
 msgid "Profil de la classe"
 msgstr "Class profile"
@@ -11476,13 +11476,13 @@ msgstr "Class profile"
 msgid "Profil de la classe (moyennes ≥ 10, taux de réussite)"
 msgstr "Class profile (averages ≥ 10, pass rate)"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:375
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:380
 #, elixir-autogen, elixir-format
 msgid "Rang annuel"
 msgstr "Annual rank"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html.ex:88
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:257
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:259
 #, elixir-autogen, elixir-format
 msgid "Séq %{n}"
 msgstr "Seq %{n}"
@@ -11497,7 +11497,7 @@ msgstr "The Principal"
 msgid "Tient sur une page"
 msgstr "Fits on one page"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:351
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:356
 #, elixir-autogen, elixir-format
 msgid "Travail de l'élève"
 msgstr "Student's work"
@@ -11507,7 +11507,7 @@ msgstr "Student's work"
 msgid "Trim %{n}"
 msgstr "Term %{n}"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:239
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:241
 #, elixir-autogen, elixir-format
 msgid "Visa"
 msgstr "Signature"
