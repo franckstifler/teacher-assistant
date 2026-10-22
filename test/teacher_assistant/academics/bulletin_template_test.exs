@@ -86,6 +86,11 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
              phone: "+237 233 00 00 00",
              motto: "Travail",
              registration_number: "123/MINESEC",
+             school_code: nil,
+             name_en: nil,
+             official_lines_en: nil,
+             head_title: %{fr: nil, en: "The Principal"},
+             head_name: nil,
              region: :littoral,
              department: "Wouri",
              logo?: false,
@@ -133,5 +138,44 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
     assert t.cote_codes == ~w(CTBA CBA CA CMA CNA)
 
     assert BulletinTemplate.resolve(profile(), "L", %ClassGroup{}).cote_codes == []
+  end
+
+  test "English column falls back to generated lines when only French lines are saved" do
+    t =
+      BulletinTemplate.resolve(
+        profile(%{official_header_lines: ["République du Cameroun", "Lycée X"]}),
+        "L",
+        %ClassGroup{}
+      )
+
+    assert BulletinTemplate.official_lines(t.header, :fr) == ["République du Cameroun", "Lycée X"]
+    assert hd(BulletinTemplate.official_lines(t.header, :en)) == "Republic of Cameroon"
+
+    t =
+      BulletinTemplate.resolve(
+        profile(%{official_header_lines_en: ["Republic of Cameroon", "G.T.H.S"]}),
+        "L",
+        %ClassGroup{}
+      )
+
+    assert BulletinTemplate.official_lines(t.header, :en) == ["Republic of Cameroon", "G.T.H.S"]
+    assert hd(BulletinTemplate.official_lines(t.header, :fr)) == "République du Cameroun"
+  end
+
+  test "header carries code, English name and head title and name" do
+    t =
+      BulletinTemplate.resolve(
+        profile(%{school_code: "5MN1TEF110431106", name_en: "G.T.H.S", school_type: :lycee}),
+        "Lycée Technique",
+        %ClassGroup{},
+        "Mme Ngo Tonye"
+      )
+
+    assert t.header.school_code == "5MN1TEF110431106"
+    assert t.header.name_en == "G.T.H.S"
+    assert t.header.head_title == %{fr: "Le Proviseur", en: "The Principal"}
+    assert t.header.head_name == "Mme Ngo Tonye"
+
+    assert BulletinTemplate.resolve(profile(), "L", %ClassGroup{}).header.head_name == nil
   end
 end

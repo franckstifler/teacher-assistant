@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
   alias TeacherAssistant.Academics.BulletinElement
+  alias TeacherAssistant.Accounts.HeadTitle
 
   @doc "The common in-school scale, lowest band first. Remarks are English (anglophone cards)."
   def default_grade_scale do
@@ -33,8 +34,8 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
   def grade_scale(bands),
     do: Enum.map(bands, &%{from: &1.from, letter: &1.letter, remark: &1.remark})
 
-  @doc "The template for `class_group`'s printed cards under `profile`."
-  def resolve(profile, school_name, class_group) do
+  @doc "The template for `class_group`'s printed cards under `profile`; `head_name` is printed."
+  def resolve(profile, school_name, class_group, head_name \\ nil) do
     anglophone? = class_group.subsystem == :anglophone
 
     %{
@@ -55,6 +56,14 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
         phone: profile.phone,
         motto: profile.motto,
         registration_number: profile.registration_number,
+        school_code: Map.get(profile, :school_code),
+        name_en: Map.get(profile, :name_en),
+        official_lines_en: Map.get(profile, :official_header_lines_en),
+        head_title: %{
+          fr: HeadTitle.title(Map.get(profile, :school_type), :fr),
+          en: HeadTitle.title(Map.get(profile, :school_type), :en)
+        },
+        head_name: head_name,
         region: profile.region,
         department: profile.department,
         logo?: is_binary(profile.logo_path),
@@ -94,6 +103,24 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
     case Map.get(header, :official_lines) do
       [_ | _] = lines -> lines
       _ -> generated_official_lines(header)
+    end
+  end
+
+  @doc """
+  Spec bulletin v2 §5.1: one column of the header, in `lang` — the school's own lines
+  for that language when saved, else the generated ones (never the other language's).
+  """
+  def official_lines(header, lang) when lang in [:fr, :en] do
+    key = if lang == :fr, do: :official_lines, else: :official_lines_en
+
+    case Map.get(header, key) do
+      [_ | _] = lines ->
+        lines
+
+      _ ->
+        Gettext.with_locale(TeacherAssistantWeb.Gettext, Atom.to_string(lang), fn ->
+          generated_official_lines(header)
+        end)
     end
   end
 

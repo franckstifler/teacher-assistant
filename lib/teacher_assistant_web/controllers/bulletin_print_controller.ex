@@ -119,19 +119,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       teachers: Map.get(view, :teachers) || %{},
       highest: results && Map.get(results, :highest),
       lowest: results && Map.get(results, :lowest),
-      head_name: head_name(scope)
+      head_name: ReportCards.head_name(scope)
     )
-  end
-
-  # The school's head (first active member holding the role), by display name.
-  defp head_name(scope) do
-    scope
-    |> Accounts.list_members()
-    |> Enum.find(&(:head in &1.roles))
-    |> case do
-      %{user: %Accounts.User{} = user} -> Accounts.User.display_name(user)
-      _ -> nil
-    end
   end
 
   defp logo_present?(scope) do

@@ -70,7 +70,10 @@ defmodule TeacherAssistant.ReportCards do
   @doc "The class's printed-card template under the school's current settings (spec I5)."
   def template(%Scope{} = scope, %ClassGroup{} = cg) do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    template = BulletinTemplate.resolve(profile, scope.current_workspace.name, cg)
+
+    template =
+      BulletinTemplate.resolve(profile, scope.current_workspace.name, cg, head_name(scope))
+
     # Operator console spec §1: no absences without roll call, no conduct without discipline.
     hidden =
       [absences: :appel, conduct: :discipline]
@@ -78,6 +81,27 @@ defmodule TeacherAssistant.ReportCards do
       |> Enum.map(&elem(&1, 0))
 
     %{template | elements: template.elements -- hidden}
+  end
+
+  @doc """
+  Spec bulletin v2 §7: the head's printed name — the profile's `head_name` when set,
+  else the first active member holding the head role.
+  """
+  def head_name(%Scope{} = scope) do
+    case Accounts.fetch_school_profile(scope) do
+      {:ok, %{head_name: name}} when is_binary(name) and name != "" -> name
+      _ -> head_member_name(scope)
+    end
+  end
+
+  defp head_member_name(scope) do
+    scope
+    |> Accounts.list_members()
+    |> Enum.find(&(:head in &1.roles))
+    |> case do
+      %{user: %Accounts.User{} = user} -> Accounts.User.display_name(user)
+      _ -> nil
+    end
   end
 
   @doc "The template a view renders with: its own (drafts, v3 snapshots), else the current settings."

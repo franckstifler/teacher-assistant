@@ -40,25 +40,39 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
 
     assign(socket,
       profile: profile,
-      lines: profile.official_header_lines || BulletinTemplate.generated_official_lines(header),
-      custom?: profile.official_header_lines != nil,
+      lines:
+        BulletinTemplate.official_lines(
+          Map.put(header, :official_lines, profile.official_header_lines),
+          :fr
+        ),
+      lines_en:
+        BulletinTemplate.official_lines(
+          Map.put(header, :official_lines_en, profile.official_header_lines_en),
+          :en
+        ),
+      custom?: profile.official_header_lines != nil or profile.official_header_lines_en != nil,
       error: nil
     )
   end
 
-  def handle_event("save_lines", %{"lines" => text}, socket) do
-    lines =
-      text |> String.split(["\r\n", "\n"]) |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-
+  def handle_event("save_lines", %{"lines" => text} = params, socket) do
     save(
       socket,
-      %{official_header_lines: if(lines == [], do: nil, else: lines)},
+      %{
+        official_header_lines: parse_lines(text),
+        official_header_lines_en: parse_lines(Map.get(params, "lines_en", ""))
+      },
       gettext("En-tête enregistré.")
     )
   end
 
   def handle_event("reset_lines", _params, socket),
-    do: save(socket, %{official_header_lines: nil}, gettext("En-tête rétabli."))
+    do:
+      save(
+        socket,
+        %{official_header_lines: nil, official_header_lines_en: nil},
+        gettext("En-tête rétabli.")
+      )
 
   def handle_event("validate", _params, socket), do: {:noreply, socket}
 
@@ -75,6 +89,18 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
     case Enum.find(@kinds, fn {k, _} -> Atom.to_string(k) == kind end) do
       {_kind, field} -> save(socket, %{field => nil}, gettext("Image retirée."))
       nil -> {:noreply, socket}
+    end
+  end
+
+  # One header line per text line; none = the generated lines.
+  defp parse_lines(text) do
+    text
+    |> String.split(["\r\n", "\n"])
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> case do
+      [] -> nil
+      lines -> lines
     end
   end
 
@@ -130,7 +156,16 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
           <p class="text-xs text-base-content/70">
             {gettext("Une ligne par ligne d'en-tête, 6 au plus.")}
           </p>
-          <textarea name="lines" rows="6" class="textarea textarea-bordered w-full">{Enum.join(@lines, "\n")}</textarea>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">{gettext("Français (à gauche)")}</span>
+              <textarea name="lines" rows="6" class="textarea textarea-bordered w-full">{Enum.join(@lines, "\n")}</textarea>
+            </label>
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">{gettext("Anglais (à droite)")}</span>
+              <textarea name="lines_en" rows="6" class="textarea textarea-bordered w-full">{Enum.join(@lines_en, "\n")}</textarea>
+            </label>
+          </div>
           <p :if={@error} id="header-error" class="text-sm text-error">{@error}</p>
           <div class="flex gap-2">
             <button type="submit" class="btn btn-primary btn-sm">{gettext("Enregistrer")}</button>

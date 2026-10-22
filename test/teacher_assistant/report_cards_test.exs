@@ -360,4 +360,22 @@ defmodule TeacherAssistant.ReportCardsTest do
                ReportCards.latest_published_result(scope, enrollment)
     end
   end
+
+  describe "head_name/1 (bulletin v2)" do
+    test "prefers the profile's head_name, else the member holding the head role" do
+      %{scope: scope} = TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      assert ReportCards.head_name(scope) ==
+               TeacherAssistant.Accounts.User.display_name(scope.current_user)
+
+      {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+      {:ok, _} =
+        profile
+        |> Ash.Changeset.for_update(:update, %{head_name: "M. Ndenge"}, scope: scope)
+        |> Ash.update()
+
+      assert ReportCards.head_name(scope) == "M. Ndenge"
+    end
+  end
 end

@@ -96,4 +96,29 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       refute has_element?(view, "#school-logo-form")
     end
   end
+
+  describe "bulletin v2 identity fields" do
+    setup %{conn: conn, actor: user} do
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée T"})
+
+      TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
+      conn = get(conn, ~p"/workspaces/select/#{school.id}")
+      %{conn: conn, scope: school_scope(user, school)}
+    end
+
+    test "saves school code and English name", %{conn: conn, scope: scope} do
+      {:ok, view, _} = live(conn, ~p"/school/settings/profile")
+
+      view
+      |> form("#school-profile-form", %{
+        "profile" => %{"school_code" => "5MN1TEF110431106", "name_en" => "G.T.H.S Ngog-Mapubi"}
+      })
+      |> render_submit()
+
+      {:ok, p} = Accounts.fetch_school_profile(scope)
+      assert p.school_code == "5MN1TEF110431106"
+      assert p.name_en == "G.T.H.S Ngog-Mapubi"
+    end
+  end
 end
