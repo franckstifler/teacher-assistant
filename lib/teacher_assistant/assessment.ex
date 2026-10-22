@@ -32,6 +32,7 @@ defmodule TeacherAssistant.Assessment do
     MarkEvent,
     Marks,
     Sequence,
+    SequenceCompetence,
     Term,
     TeachingContext,
     TrimesterAverageRule
@@ -55,6 +56,83 @@ defmodule TeacherAssistant.Assessment do
 
   authorization do
     authorize :by_default
+  end
+
+  # --- Competences (spec bulletin v2 §6) --------------------------------------
+
+  @doc """
+  Saves the competence `ctx` evaluated in `seq`; blank text removes it. A combined
+  course writes it on every member context, so each class's card reads its own.
+  """
+  def put_sequence_competence(%Scope{} = scope, %TeachingContext{} = ctx, %Sequence{} = seq, text) do
+    contexts = competence_contexts(scope, ctx)
+    text = String.trim(text || "")
+
+    TeacherAssistant.Repo.transaction(fn ->
+      result =
+        if text == "",
+          do: remove_competences(scope, contexts, seq),
+          else: upsert_competences(scope, contexts, seq, text)
+
+      with {:error, error} <- result, do: TeacherAssistant.Repo.rollback(error)
+    end)
+    |> case do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
+    end
+  end
+
+  @doc "The saved competences as `%{{context_id, sequence_id} => text}`."
+  def sequence_competences(%Scope{} = scope, context_ids, sequence_ids) do
+    SequenceCompetence
+    |> Ash.Query.for_read(
+      :for_contexts,
+      %{context_ids: context_ids, sequence_ids: sequence_ids},
+      scope: scope
+    )
+    |> Ash.read!()
+    |> Map.new(&{{&1.teaching_context_id, &1.sequence_id}, &1.text})
+  end
+
+  @doc "Whether the class's report cards are APC (the school ticked `:apc`)."
+  def apc?(%Scope{} = scope, %ClassGroup{} = cg),
+    do: :apc in TeacherAssistant.ReportCards.template(scope, cg).elements
+
+  defp competence_contexts(_scope, %TeachingContext{combined_course_id: nil} = ctx), do: [ctx]
+
+  defp competence_contexts(scope, %TeachingContext{combined_course_id: course_id}),
+    do: TeacherAssistant.Curriculum.contexts_of_course!(course_id, scope: scope)
+
+  defp upsert_competences(scope, contexts, seq, text) do
+    Enum.reduce_while(contexts, :ok, fn ctx, :ok ->
+      SequenceCompetence
+      |> Ash.Changeset.for_create(
+        :upsert,
+        %{teaching_context_id: ctx.id, sequence_id: seq.id, text: text},
+        scope: scope
+      )
+      |> Ash.create()
+      |> case do
+        {:ok, _} -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp remove_competences(scope, contexts, seq) do
+    SequenceCompetence
+    |> Ash.Query.for_read(
+      :for_contexts,
+      %{context_ids: Enum.map(contexts, & &1.id), sequence_ids: [seq.id]},
+      scope: scope
+    )
+    |> Ash.read!()
+    |> Enum.reduce_while(:ok, fn row, :ok ->
+      case Ash.destroy(row, scope: scope) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   # --- Assessments -----------------------------------------------------------

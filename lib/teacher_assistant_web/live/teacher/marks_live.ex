@@ -87,8 +87,21 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     |> assign(:student_group, student_group(socket.assigns.groups))
     |> assign(errors: %{}, saved_at: nil, today: Reference.today())
     |> assign(:course_tabs, course_tabs(scope, ctx))
+    |> assign(:apc?, apc?(scope, socket.assigns.groups))
+    |> assign(competence: nil, competence_reminder_dismissed?: false)
     |> assign_assessment_defaults(scope)
   end
+
+  # Spec bulletin v2 §6: the class's report cards are APC (combined course: its first class).
+  defp apc?(scope, [%{class_group: cg} | _]), do: Assessment.apc?(scope, cg)
+  defp apc?(_scope, _groups), do: false
+
+  defp load_competence(%{assigns: %{apc?: true, seq: %{} = seq, ctx: ctx}} = socket) do
+    texts = Assessment.sequence_competences(socket.assigns.current_scope, [ctx.id], [seq.id])
+    assign(socket, :competence, texts[{ctx.id, seq.id}])
+  end
+
+  defp load_competence(socket), do: assign(socket, :competence, nil)
 
   # The teacher's courses, each linking to its own marks page.
   defp course_tabs(scope, ctx) do
@@ -342,6 +355,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      |> assign(columns: columns, column: column)
      |> assign(scores: loaded, loaded: loaded, errors: %{})
      |> assign(:new_assessment_form, new_assessment_form(socket, seq))
+     |> load_competence()
      |> assign_pending()}
   end
 
@@ -373,6 +387,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp new_assessment_form(socket, seq),
     do: solo_assessment_form(socket.assigns.current_scope, socket.assigns.ctx, seq)
+
+  def handle_event("save_competence", %{"competence" => %{"text" => text}}, socket),
+    do: save_competence(socket, text)
+
+  def handle_event("save_competence_blur", %{"value" => text}, socket) do
+    if String.trim(text) == String.trim(socket.assigns.competence || ""),
+      do: {:noreply, socket},
+      else: save_competence(socket, text)
+  end
+
+  def handle_event("dismiss_competence_reminder", _params, socket),
+    do: {:noreply, assign(socket, :competence_reminder_dismissed?, true)}
 
   def handle_event("select_assessment", %{"assessment" => aid}, socket) do
     {:noreply,
@@ -569,6 +595,56 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     """
   end
 
+  attr :seq, :map, required: true
+  attr :text, :string, default: nil
+  attr :locked?, :boolean, default: false
+  attr :reminder?, :boolean, default: false
+
+  # Spec bulletin v2 §6: the competence printed on the APC report card, one per séquence.
+  defp competence_panel(assigns) do
+    ~H"""
+    <div class="ta-panel flex flex-col gap-2">
+      <div
+        :if={@reminder? and not @locked?}
+        id="competence-reminder"
+        role="status"
+        class="flex items-start justify-between gap-3 rounded-[0.5rem] border border-warning/40 bg-warning/10 px-3 py-2 text-sm"
+      >
+        <span>{gettext("Écrivez la compétence évaluée — elle figure sur le bulletin")}</span>
+        <button
+          type="button"
+          phx-click="dismiss_competence_reminder"
+          class="cursor-pointer text-base-content/70 transition-colors hover:text-base-content"
+          aria-label={gettext("Fermer")}
+        >
+          <.icon name="hero-x-mark" class="size-4" />
+        </button>
+      </div>
+      <.form
+        for={to_form(%{"text" => @text}, as: :competence)}
+        id="sequence-competence"
+        phx-submit="save_competence"
+        class="flex flex-wrap items-end gap-2"
+      >
+        <div class="min-w-0 flex-1">
+          <.input
+            name="competence[text]"
+            id="competence-text"
+            value={@text}
+            label={gettext("Compétence évaluée (séquence %{n})", n: @seq.number)}
+            maxlength="140"
+            disabled={@locked?}
+            phx-blur="save_competence_blur"
+          />
+        </div>
+        <button :if={not @locked?} type="submit" class="btn btn-sm btn-primary mb-2">
+          {gettext("Enregistrer")}
+        </button>
+      </.form>
+    </div>
+    """
+  end
+
   def render(assigns) do
     assigns = assign(assigns, :students, all_students(assigns))
 
@@ -585,6 +661,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             <.save_state errors={@errors} saved_at={@saved_at} />
           </:actions>
         </.page_header>
+
+        <.competence_panel
+          :if={@apc? and @seq}
+          seq={@seq}
+          text={@competence}
+          locked?={@locked?}
+          reminder?={is_nil(@competence) and not @competence_reminder_dismissed?}
+        />
 
         <div id="marks-toolbar" class="ta-panel flex flex-col gap-3">
           <div class="flex flex-wrap items-center gap-2">
@@ -923,4 +1007,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     </div>
     """
   end
+
+  defp save_competence(%{assigns: %{seq: %{} = seq, ctx: ctx}} = socket, text) do
+    case Assessment.put_sequence_competence(socket.assigns.current_scope, ctx, seq, text) do
+      :ok ->
+        {:noreply, socket |> load_competence() |> assign(:saved_at, Reference.now())}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Compétence non enregistrée."))}
+    end
+  end
+
+  defp save_competence(socket, _text), do: {:noreply, socket}
 end
