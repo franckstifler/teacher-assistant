@@ -263,6 +263,22 @@ defmodule TeacherAssistant.Enrollment do
     |> Map.new(&{&1.student_id, &1.guardian})
   end
 
+  @doc """
+  Spec bulletin v2 §5.2: per student id, up to two guardians as `%{name, phone}`, main
+  contact first — one query for the class.
+  """
+  def guardians_for_students(%Scope{}, []), do: %{}
+
+  def guardians_for_students(%Scope{} = scope, student_ids) do
+    StudentGuardian
+    |> Ash.Query.filter(student_id in ^student_ids)
+    |> Ash.Query.sort(primary_contact: :desc, inserted_at: :asc)
+    |> Ash.Query.load(:guardian)
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.student_id, &%{name: &1.guardian.full_name, phone: &1.guardian.phone})
+    |> Map.new(fn {id, guardians} -> {id, Enum.take(guardians, 2)} end)
+  end
+
   @doc "Whether the scope may record parents (admin or conduct axis)."
   def can_manage_guardians?(scope), do: Ash.can?({Guardian, :create}, scope)
 
