@@ -68,6 +68,9 @@ defmodule TeacherAssistant.Academics.SequenceCompetence do
       forbid_unless Checks.SchoolVerified
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
+      # A combined course's teacher writes it for every member class, even one since
+      # reassigned to a colleague (the competence is written once for the course).
+      authorize_if expr(teaching_context.combined_course.teacher_user_id == ^actor(:id))
     end
   end
 

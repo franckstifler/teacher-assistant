@@ -52,4 +52,25 @@ defmodule TeacherAssistant.Assessment.SequenceCompetenceTest do
 
     assert Assessment.apc?(head, cg)
   end
+
+  test "the course's teacher writes it even when a member class was reassigned to someone else" do
+    %{head: head, t: t, tc: tc, year: year, seq: seq} = MarksFixtures.marks_world()
+    {:ok, other_cg} = Enrollment.create_class_group(head, year, %{label: "6e C", level: "6ème"})
+    {:ok, tc2} = Curriculum.assign_teacher(head, other_cg, t.current_user, %{subject: tc.subject})
+    {:ok, _course} = Curriculum.combine_course(head, [tc, tc2])
+
+    %{teacher: other} =
+      TeacherAssistant.TeacherFixtures.school_teacher_fixture(head, %{subject: "Anglais"})
+
+    {:ok, tc2} = Curriculum.get_teaching_context(head, tc2.id)
+    {:ok, _} = Curriculum.reassign_teacher(head, tc2, other)
+    {:ok, tc} = Curriculum.get_teaching_context(head, tc.id)
+
+    assert :ok = Assessment.put_sequence_competence(t, tc, seq, "Lire un graphique")
+
+    assert Assessment.sequence_competences(head, [tc.id, tc2.id], [seq.id]) == %{
+             {tc.id, seq.id} => "Lire un graphique",
+             {tc2.id, seq.id} => "Lire un graphique"
+           }
+  end
 end
