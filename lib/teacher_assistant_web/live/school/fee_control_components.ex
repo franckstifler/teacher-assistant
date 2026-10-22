@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
   """
   use TeacherAssistantWeb, :html
 
-  alias TeacherAssistant.Academics.ReturnNoteReason
+  alias TeacherAssistant.Academics.{Reference, ReturnNoteReason}
   alias TeacherAssistantWeb.Money
 
   defp date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
@@ -149,6 +149,12 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
             {n.number}
           </a>
           <span :if={n.status == :cancelled} class="badge badge-error badge-sm">{gettext("Annulée")}</span>
+          <span
+            :if={n.status == :valid and Date.compare(n.valid_until, Reference.today()) == :lt}
+            class="badge badge-ghost badge-sm"
+          >
+            {gettext("Expirée")}
+          </span>
         </div>
         <p class="text-base-content/70">
           {ReturnNoteReason.label(n.reason)} · {gettext("jusqu'au %{date}", date: date(n.valid_until))}

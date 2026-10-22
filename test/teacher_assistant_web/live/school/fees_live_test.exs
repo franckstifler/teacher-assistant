@@ -163,6 +163,30 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       assert has_element?(view, "#note-#{note.id}", note.number)
     end
 
+    test "an expired note is marked Expirée on the card", %{conn: conn} = ctx do
+      note =
+        TeacherAssistant.Academics.ReturnNote
+        |> Ash.Changeset.for_create(
+          :create,
+          %{
+            enrollment_id: ctx.e.id,
+            academic_year_id: ctx.year.id,
+            seq: 1,
+            number: "A2025-000001",
+            reason: :promise,
+            issued_on: ~D[2025-09-01],
+            valid_until: ~D[2025-09-10],
+            student_name: "Awa A",
+            class_label: "6e Q"
+          },
+          scope: ctx.scope
+        )
+        |> Ash.create!()
+
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+      assert has_element?(view, "#note-#{note.id} .badge", "Expirée")
+    end
+
     test "a promise without a date shows an error", %{conn: conn} = ctx do
       {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
       view |> form("#note-form", note: %{reason: "promise", valid_until: ""}) |> render_submit()
