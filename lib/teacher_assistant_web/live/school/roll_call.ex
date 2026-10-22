@@ -48,13 +48,14 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
   @doc "Sets one student's status (`\"present\" | \"absent\" | \"late\"`); unknown ids or statuses are ignored."
   def set(roll, enrollment_id, status) do
-    status = Map.get(@valid_statuses, status)
+    # Fees 2: a student sent home for fees is either back in the room (present) or sent
+    # home again — never absent or late.
+    status =
+      if MapSet.member?(roll.sent_home, enrollment_id),
+        do: Map.get(%{"present" => :present, "sent_home" => :sent_home}, status),
+        else: Map.get(@valid_statuses, status)
 
-    # Fees 2: a student sent home for fees can only be found back in the room (present).
-    sent_home? = roll.marks[enrollment_id] == :sent_home
-
-    if status && (not sent_home? or status == :present) &&
-         Enum.any?(roll.students, &(&1.enrollment_id == enrollment_id)) do
+    if status && Enum.any?(roll.students, &(&1.enrollment_id == enrollment_id)) do
       roll = put_in(roll, [:marks, enrollment_id], status)
       # Minutes belong to a late only (spec KLM2).
       if status == :late, do: roll, else: put_in(roll, [:minutes, enrollment_id], nil)
@@ -163,9 +164,13 @@ defmodule TeacherAssistantWeb.School.RollCall do
       if not taken? and MapSet.member?(sent_home, id), do: :sent_home, else: :present
     end
 
+    marks = Map.new(students, &{&1.enrollment_id, &1.status || default.(&1.enrollment_id)})
+
     Map.merge(roll, %{
       students: Enum.map(students, &Map.take(&1, [:enrollment_id, :student_name])),
-      marks: Map.new(students, &{&1.enrollment_id, &1.status || default.(&1.enrollment_id)}),
+      marks: marks,
+      # Who this roll treats as sent home: pre-filled now or recorded so.
+      sent_home: for({id, :sent_home} <- marks, into: MapSet.new(), do: id),
       minutes: Map.new(students, &{&1.enrollment_id, Map.get(&1, :late_minutes)}),
       taken?: taken?,
       groups: extra[:groups],
@@ -382,31 +387,46 @@ defmodule TeacherAssistantWeb.School.RollCall do
           </span>
         </span>
         <div
-          :if={@roll.marks[student.enrollment_id] == :sent_home}
+          :if={MapSet.member?(@roll.sent_home, student.enrollment_id)}
           class="flex items-center gap-1.5"
         >
           <span
+            :if={@roll.marks[student.enrollment_id] == :sent_home}
             id={"sent-home-#{student.enrollment_id}"}
             class="rounded-full bg-info/15 px-2.5 py-1 text-[0.78rem] font-semibold text-info"
           >
             {AttendanceStatus.label(:sent_home)}
           </span>
           <button
+            :if={@roll.marks[student.enrollment_id] != :sent_home}
+            type="button"
+            id={"att-#{student.enrollment_id}-sent_home"}
+            phx-click="set"
+            phx-value-enrollment_id={student.enrollment_id}
+            phx-value-status="sent_home"
+            class="btn btn-ghost btn-xs h-[38px] text-info"
+          >
+            {AttendanceStatus.label(:sent_home)}
+          </button>
+          <button
             type="button"
             id={"att-#{student.enrollment_id}-present"}
             phx-click="set"
             phx-value-enrollment_id={student.enrollment_id}
             phx-value-status="present"
-            aria-pressed="false"
+            aria-pressed={to_string(@roll.marks[student.enrollment_id] == :present)}
             title={gettext("Il est en classe : présent")}
             aria-label={gettext("Il est en classe : présent")}
-            class="btn btn-ghost btn-xs h-[38px] w-10 border border-base-300"
+            class={[
+              "grid h-[38px] w-10 place-items-center rounded-field border border-base-300 text-[0.85rem] font-semibold",
+              status_class(:present, @roll.marks[student.enrollment_id] == :present)
+            ]}
           >
             {:present |> AttendanceStatus.label() |> String.first()}
           </button>
         </div>
         <div
-          :if={@roll.marks[student.enrollment_id] != :sent_home}
+          :if={not MapSet.member?(@roll.sent_home, student.enrollment_id)}
           class="flex overflow-hidden rounded-field border border-base-300"
           role="group"
           aria-label={student.student_name}

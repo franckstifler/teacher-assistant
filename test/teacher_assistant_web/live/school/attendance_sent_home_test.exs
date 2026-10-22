@@ -62,13 +62,6 @@ defmodule TeacherAssistantWeb.School.AttendanceSentHomeTest do
     }
   end
 
-  defp conn_for(school, user) do
-    Phoenix.ConnTest.build_conn()
-    |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_id, user.id)
-    |> Plug.Conn.put_session(:workspace_id, school.id)
-  end
-
   defp att_path(cg, period, date),
     do: "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
 
@@ -125,5 +118,21 @@ defmodule TeacherAssistantWeb.School.AttendanceSentHomeTest do
 
     view |> element("#record-roll") |> render_click()
     assert status_of(ctx.scope, ctx.cg, ctx.period, ctx.date, ctx.enrollment) == :present
+  end
+
+  test "after P, a sent-home student still cannot be marked absent, and can be put back", ctx do
+    {:ok, _} = FeeControl.record_send_out(ctx.scope, ctx.enrollment, ctx.date)
+    {:ok, view, _html} = live(ctx.conn, att_path(ctx.cg, ctx.period, ctx.date))
+
+    view |> element("#att-#{ctx.enrollment.id}-present") |> render_click()
+    render_click(view, "set", %{"enrollment_id" => ctx.enrollment.id, "status" => "absent"})
+    refute has_element?(view, "#att-#{ctx.enrollment.id}-absent")
+    assert has_element?(view, "#att-#{ctx.enrollment.id}-present[aria-pressed='true']")
+
+    view |> element("#att-#{ctx.enrollment.id}-sent_home") |> render_click()
+    assert has_element?(view, "#sent-home-#{ctx.enrollment.id}")
+
+    view |> element("#record-roll") |> render_click()
+    assert status_of(ctx.scope, ctx.cg, ctx.period, ctx.date, ctx.enrollment) == :sent_home
   end
 end
