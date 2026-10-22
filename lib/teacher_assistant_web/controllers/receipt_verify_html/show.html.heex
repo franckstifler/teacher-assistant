@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{gettext("Vérification d'un reçu")}</title>
+    <title>{gettext("Vérifier un document de l'école")}</title>
     <style>
       body { font-family: system-ui, sans-serif; background: #f6f7f6; color: #111; margin: 0; padding: 24px 16px; }
       main { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 24px; }
@@ -87,18 +87,18 @@
             </tr>
           </table>
         <% :invalid -> %>
-          <h1 class="ko">{gettext("Reçu introuvable")}</h1>
-          <p>{gettext("Vérifiez le numéro et le code imprimés sur le reçu.")}</p>
+          <h1 class="ko">{gettext("Document introuvable")}</h1>
+          <p>{gettext("Vérifiez le numéro et le code imprimés sur le document.")}</p>
         <% nil -> %>
-          <h1>{gettext("Vérifier un reçu")}</h1>
+          <h1>{gettext("Vérifier un reçu, une autorisation ou un avis")}</h1>
       <% end %>
 
       <form :if={@form?} method="get" action={~p"/verify/receipt"}>
-        <label for="number">{gettext("Numéro du reçu")}</label>
+        <label for="number">{gettext("Numéro du document")}</label>
         <input
           id="number"
           name="number"
-          placeholder="R2026-000123"
+          placeholder="R2026-000123 / A2026-000045 / V2026-000067"
           autocomplete="off"
           autocapitalize="characters"
           autocorrect="off"

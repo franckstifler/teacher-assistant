@@ -38,8 +38,8 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
     assert html =~ "Ce paiement ne compte pas."
   end
 
-  test "a forged or truncated token says Reçu introuvable", %{conn: conn} do
-    assert conn |> get(~p"/verify/receipt/abc") |> html_response(200) =~ "Reçu introuvable"
+  test "a forged or truncated token says Document introuvable", %{conn: conn} do
+    assert conn |> get(~p"/verify/receipt/abc") |> html_response(200) =~ "Document introuvable"
   end
 
   test "the typed number + code form finds the receipt; a wrong code does not", %{
@@ -47,7 +47,7 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
     payment: p
   } do
     html = conn |> get(~p"/verify/receipt") |> html_response(200)
-    assert html =~ "Numéro du reçu"
+    assert html =~ "Numéro du document"
     assert html =~ ~s(autocapitalize="characters")
     code = ReceiptVerification.code(ReceiptVerification.token(p))
 
@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
 
     assert conn
            |> get(~p"/verify/receipt?#{[number: p.number, code: "000000"]}")
-           |> html_response(200) =~ "Reçu introuvable"
+           |> html_response(200) =~ "Document introuvable"
   end
 
   describe "Fees 2 papers" do
@@ -129,6 +129,12 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
       assert html =~ "Avis authentique"
       assert html =~ "Frais exigibles" and html =~ "4 000 FCFA" and html =~ "22/09/2025"
       refute html =~ "677"
+    end
+
+    test "the typed form says it checks receipts, notes and warnings", %{conn: conn} do
+      html = conn |> get(~p"/verify/receipt") |> html_response(200)
+      assert html =~ "Vérifier un reçu, une autorisation ou un avis"
+      assert html =~ "R2026-000123 / A2026-000045 / V2026-000067"
     end
 
     test "old receipt links still work", %{conn: conn, payment: p} do
