@@ -104,4 +104,47 @@ defmodule TeacherAssistantWeb.CardPrintControllerTest do
 
     assert redirected_to(get(conn, ~p"/school/classes/#{cg.id}/cards/print")) == ~p"/school"
   end
+
+  describe "v2 card (option A)" do
+    defp set_profile(scope, attrs) do
+      {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+      {:ok, _} = profile |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
+    end
+
+    defp cards(conn, cg),
+      do: conn |> get(~p"/school/classes/#{cg.id}/cards/print") |> html_response(200)
+
+    test "card has the title, both national headers and the school code", %{
+      conn: conn,
+      scope: scope,
+      cg: cg
+    } do
+      set_profile(scope, %{school_code: "5MN1TEF110431106"})
+      html = cards(conn, cg)
+      assert html =~ "CARTE SCOLAIRE · SCHOOL IDENTITY CARD"
+      assert html =~ "République du Cameroun"
+      assert html =~ "Republic of Cameroon"
+      assert html =~ "5MN1TEF110431106"
+      assert html =~ ~s(class="flag")
+    end
+
+    test "card shows the national ID when set", %{conn: conn, scope: scope, cg: cg, awa: awa} do
+      {:ok, _} = Enrollment.update_student(awa, %{national_id: "241592812"}, scope: scope)
+      html = cards(conn, cg)
+      assert html =~ "Identifiant unique"
+      assert html =~ "241592812"
+    end
+
+    test "card shows head title and name", %{conn: conn, scope: scope, cg: cg} do
+      set_profile(scope, %{school_type: :lycee, head_name: "Mme Ngo Tonye"})
+      html = cards(conn, cg)
+      assert html =~ "Le Proviseur · The Principal"
+      assert html =~ "Mme Ngo Tonye"
+
+      set_profile(scope, %{school_type: :ghs})
+      html = cards(conn, cg)
+      assert html =~ "The Principal"
+      refute html =~ "Le Proviseur"
+    end
+  end
 end

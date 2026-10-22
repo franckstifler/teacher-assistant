@@ -13,6 +13,7 @@ defmodule TeacherAssistantWeb.CardPrintController do
          {:ok, rows} <- pick(Enrollment.list_roster(scope, cg), params["student"]) do
       {:ok, profile} = Accounts.fetch_school_profile(scope)
       year = Organization.class_year(scope, cg)
+      template = ReportCards.template(scope, cg)
       students = rows |> Enum.map(& &1.student) |> Enum.sort_by(&String.downcase(&1.full_name))
 
       conn
@@ -24,11 +25,12 @@ defmodule TeacherAssistantWeb.CardPrintController do
         cg: cg,
         pages:
           students
-          |> Enum.map(&%{student: &1, contact: contact(scope, &1)})
+          |> Enum.map(&%{student: &1, contact: contact(scope, &1), qr_svg: nil})
           |> Enum.chunk_every(10),
         missing: Enum.count(students, &is_nil(&1.photo_path)),
         # Same language rule as the bulletin: the class's sub-system, or bilingual.
-        lang: ReportCards.template(scope, cg).language,
+        lang: template.language,
+        header: template.header,
         logo?: is_binary(profile.logo_path),
         signature?: is_binary(profile.signature_path),
         stamp?: is_binary(profile.stamp_path)
