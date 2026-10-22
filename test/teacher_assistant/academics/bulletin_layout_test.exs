@@ -17,7 +17,7 @@ defmodule TeacherAssistant.Academics.BulletinLayoutTest do
   end
 
   test "15 subjects with APC on a trimester card are compact" do
-    assert BulletinLayout.subject_lines(template([:apc]), :trimester, groups(15), 2, false) == 30
+    assert BulletinLayout.subject_lines(template([:apc]), :trimester, groups(15), 2, false) == 31
     assert tier(15, [:apc, :guardians]) == :compact
   end
 
@@ -30,11 +30,12 @@ defmodule TeacherAssistant.Academics.BulletinLayoutTest do
   end
 
   test "an annual card with APC counts one line per subject" do
-    assert BulletinLayout.subject_lines(template([:apc]), :annual, groups(15), 2, false) == 15
+    assert BulletinLayout.subject_lines(template([:apc]), :annual, groups(15), 2, false) == 16
   end
 
-  test "group subtotals add a header and a total per group" do
+  test "every group prints a header row; subtotals add a total per group" do
     two = [%{group: :one, rows: [%{}, %{}]}, %{group: :two, rows: [%{}]}]
+    assert BulletinLayout.subject_lines(template([]), :trimester, two, 2, false) == 5
     assert BulletinLayout.subject_lines(template([]), :trimester, two, 2, true) == 7
   end
 

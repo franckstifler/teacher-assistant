@@ -11,12 +11,12 @@ defmodule TeacherAssistant.Academics.BulletinLayout do
 
   @doc """
   Lines the subject table takes: one per subject row, or one per séquence of the term
-  on an APC trimester card; group subtotals add a header and a total per group.
+  on an APC trimester card, plus each group's header row and, with subtotals, its total.
   """
   def subject_lines(template, period_kind, groups, sequences_per_term, group_subtotals?) do
     per_row = if apc_lines?(template, period_kind), do: sequences_per_term, else: 1
     rows = groups |> Enum.map(&length(&1.rows)) |> Enum.sum()
-    extra = if group_subtotals?, do: 2 * length(groups), else: 0
+    extra = if group_subtotals?, do: 2 * length(groups), else: length(groups)
     rows * per_row + extra
   end
 
