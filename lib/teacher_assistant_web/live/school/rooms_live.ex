@@ -295,7 +295,11 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
             >
               <input type="hidden" name="class_id" value={c.id} />
               <span class="font-semibold">{c.label}</span>
-              <select name="room_id" class="select select-sm w-56">
+              <select
+                name="room_id"
+                aria-label={gettext("Salle de la classe %{class}", class: c.label)}
+                class="select select-sm w-56"
+              >
                 <option value="">—</option>
                 <option
                   :for={{label, id} <- home_room_options(@rooms, @classes, c)}

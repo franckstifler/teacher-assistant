@@ -52,7 +52,11 @@ defmodule TeacherAssistantWeb.Admin.JournalLive do
         <.page_header eyebrow={gettext("Administration")} title={gettext("Journal")} />
 
         <form id="journal-filter" phx-change="filter">
-          <select name="action" class="select select-bordered select-sm">
+          <select
+            name="action"
+            aria-label={gettext("Action")}
+            class="select select-bordered select-sm"
+          >
             <option value="">{gettext("Toutes les actions")}</option>
             <option :for={a <- AuditEvent.Action.values()} value={a} selected={@action == a}>
               {AuditEvent.Action.label(a)}

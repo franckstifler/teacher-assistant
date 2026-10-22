@@ -188,11 +188,22 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
             <input
               name={"grades[#{i}][from]"}
               value={row.from}
+              aria-label={gettext("À partir de (tranche %{n})", n: i + 1)}
               inputmode="decimal"
               class="input input-sm ta-num text-right"
             />
-            <input name={"grades[#{i}][letter]"} value={row.letter} class="input input-sm" />
-            <input name={"grades[#{i}][remark]"} value={row.remark} class="input input-sm w-full" />
+            <input
+              name={"grades[#{i}][letter]"}
+              value={row.letter}
+              aria-label={gettext("Grade (tranche %{n})", n: i + 1)}
+              class="input input-sm"
+            />
+            <input
+              name={"grades[#{i}][remark]"}
+              value={row.remark}
+              aria-label={gettext("Remarque (tranche %{n})", n: i + 1)}
+              class="input input-sm w-full"
+            />
             <button
               :if={length(@rows) > 1}
               id={"remove-grade-#{i}"}
@@ -216,6 +227,7 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
               id="reset-grades"
               type="button"
               phx-click="reset_grades"
+              data-confirm={gettext("Remplacer votre barème par le barème par défaut ?")}
               class="btn btn-ghost btn-sm"
             >
               {gettext("Revenir au barème par défaut")}

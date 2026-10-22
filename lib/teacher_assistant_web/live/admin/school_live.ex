@@ -153,6 +153,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolLive do
               type="text"
               name="reason"
               placeholder={gettext("Motif du rejet")}
+              aria-label={gettext("Motif du rejet")}
               class="input input-bordered input-sm"
             />
             <button type="submit" class="btn btn-ghost btn-sm">{gettext("Rejeter")}</button>
@@ -171,6 +172,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolLive do
               type="text"
               name="reason"
               placeholder={gettext("Motif de la suspension")}
+              aria-label={gettext("Motif de la suspension")}
               class="input input-bordered input-sm"
             />
             <button type="submit" class="btn btn-error btn-sm">{gettext("Suspendre")}</button>

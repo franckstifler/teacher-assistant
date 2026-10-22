@@ -301,17 +301,27 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
             class="space-y-2"
           >
             <div class="grid gap-2 sm:grid-cols-6">
-              <select name="enrollment_id" class="select select-bordered select-sm">
+              <select
+                name="enrollment_id"
+                aria-label={gettext("Élève")}
+                class="select select-bordered select-sm"
+              >
                 <option :for={row <- @roster} value={row.enrollment.id}>
                   {row.student.full_name}
                 </option>
               </select>
-              <select id="discipline-type-select" name="type" class="select select-bordered select-sm">
+              <select
+                id="discipline-type-select"
+                name="type"
+                aria-label={gettext("Type de sanction")}
+                class="select select-bordered select-sm"
+              >
                 <option :for={t <- @sanction_types} value={t}>{SanctionLabels.type_label(t)}</option>
               </select>
               <input
                 type="date"
                 name="date"
+                aria-label={gettext("Date")}
                 value={Date.to_iso8601(Date.utc_today())}
                 class="input input-bordered input-sm"
               />
@@ -321,6 +331,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 name="duration_days"
                 min="1"
                 placeholder={gettext("Durée (jours)")}
+                aria-label={gettext("Durée (jours)")}
                 class="input input-bordered input-sm"
               />
               <input
@@ -330,12 +341,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 min="1"
                 max="40"
                 placeholder={gettext("Durée (heures)")}
+                aria-label={gettext("Durée (heures)")}
                 class="input input-bordered input-sm"
               />
               <input
                 type="text"
                 name="reason"
                 placeholder={gettext("Motif (optionnel)")}
+                aria-label={gettext("Motif (optionnel)")}
                 class="input input-bordered input-sm"
               />
             </div>

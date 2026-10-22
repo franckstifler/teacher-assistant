@@ -33,6 +33,11 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
            )
   end
 
+  test "restoring the default scale asks first", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
+    assert has_element?(view, "#reset-bands[data-confirm]")
+  end
+
   test "test a mark against the scale being edited", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
     view |> form("#band-test-form", %{test: "13,5"}) |> render_change()

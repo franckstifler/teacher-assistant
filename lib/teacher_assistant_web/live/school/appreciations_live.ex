@@ -285,6 +285,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
                 id="reset-bands"
                 type="button"
                 phx-click="reset_bands"
+                data-confirm={gettext("Remplacer votre barème par le barème par défaut ?")}
                 class="h-9 cursor-pointer px-2 text-[0.8rem] text-base-content/70 underline-offset-2 hover:underline"
               >
                 {gettext("Rétablir le barème par défaut")}

@@ -232,6 +232,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             aria-hidden="true"
           ></span>
           {@row.cg.label}
+          <span :if={@row.unassigned > 0} class="sr-only">{gettext("(à compléter)")}</span>
         </span>
         <span class="ta-num rounded bg-base-200 px-1.5 py-0.5 text-[0.7rem] text-base-content/70">
           {@row.cg.serie || @row.cg.level}

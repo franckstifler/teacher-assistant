@@ -534,7 +534,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
               <tr>
                 <th>{gettext("Élève")}</th>
                 <th class="hidden text-right sm:table-cell">{gettext("Dû")}</th>
-                <th class="text-right">{gettext("Payé")}</th>
+                <th class="hidden text-right sm:table-cell">{gettext("Payé")}</th>
                 <th class="text-right">{gettext("Reste")}</th>
                 <th class="hidden sm:table-cell">{gettext("Situation")}</th>
                 <th></th>
@@ -551,13 +551,15 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                 <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
                   {Money.format_fcfa(b.total_due)}
                 </td>
-                <td class="ta-num whitespace-nowrap text-right">{Money.format_fcfa(b.total_paid)}</td>
+                <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
+                  {Money.format_fcfa(b.total_paid)}
+                </td>
                 <td class="ta-num whitespace-nowrap text-right">{ReceiptPrintHTML.left(b.left)}</td>
                 <td class="hidden sm:table-cell">
                   <span class={["badge badge-sm", tone]}>{label}</span>
                 </td>
                 <td class="text-right">
-                  <.link patch={student_path(@cg, row, @late?)} class="btn btn-ghost btn-xs">
+                  <.link patch={student_path(@cg, row, @late?)} class="btn btn-ghost btn-sm">
                     {if @can_edit?, do: gettext("Encaisser"), else: gettext("Voir")}
                   </.link>
                 </td>
@@ -758,7 +760,8 @@ defmodule TeacherAssistantWeb.School.FeesLive do
                     type="button"
                     phx-click="remove_adjustment"
                     phx-value-type={a.fee_type_id}
-                    class="btn btn-ghost btn-xs"
+                    data-confirm={gettext("Retirer cette réduction ?")}
+                    class="btn btn-ghost btn-sm"
                   >
                     {gettext("Retirer")}
                   </button>

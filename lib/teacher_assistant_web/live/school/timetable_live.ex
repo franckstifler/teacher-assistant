@@ -258,6 +258,12 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
                             <input type="hidden" name="period_id" value={period.id} />
                             <select
                               name="teaching_context_id"
+                              aria-label={
+                                gettext("Cours du %{day}, %{period}",
+                                  day: day_label(day),
+                                  period: period.label
+                                )
+                              }
                               class="select select-bordered select-xs w-full"
                             >
                               <option value="">{gettext("—")}</option>

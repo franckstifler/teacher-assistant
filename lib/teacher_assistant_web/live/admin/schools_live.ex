@@ -66,10 +66,15 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
             name="q"
             value={@filters.q}
             placeholder={gettext("Nom ou ville")}
+            aria-label={gettext("Rechercher un établissement")}
             class="input input-bordered input-sm"
             phx-debounce="300"
           />
-          <select name="status" class="select select-bordered select-sm">
+          <select
+            name="status"
+            aria-label={gettext("Statut")}
+            class="select select-bordered select-sm"
+          >
             <option value="">{gettext("Tous les statuts")}</option>
             <option
               :for={s <- SchoolVerificationStatus.values()}
@@ -89,7 +94,11 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
             />
             {gettext("Suspendus")}
           </label>
-          <select name="module" class="select select-bordered select-sm">
+          <select
+            name="module"
+            aria-label={gettext("Module")}
+            class="select select-bordered select-sm"
+          >
             <option value="">{gettext("Tous les modules")}</option>
             <option :for={k <- Modules.keys()} value={k} selected={@filters.module == k}>
               {Modules.label(k)}

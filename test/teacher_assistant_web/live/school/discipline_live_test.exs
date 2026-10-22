@@ -76,6 +76,11 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     assert html =~ "Awa Nkolo"
     assert has_element?(view, "#discipline-add-form")
 
+    # Every control of the compact form has a name for screen readers.
+    for name <- ["enrollment_id", "type", "date", "reason"] do
+      assert has_element?(view, "#discipline-add-form [name='#{name}'][aria-label]")
+    end
+
     view
     |> form("#discipline-add-form", %{
       "enrollment_id" => enrollment.id,

@@ -327,6 +327,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
               type="button"
               class="btn btn-ghost btn-sm px-1"
               phx-click="reset_coefficient"
+              data-confirm={gettext("Revenir au coefficient du modèle ?")}
               phx-value-context-id={@tc.id}
             >
               {gettext("Revenir au modèle")}

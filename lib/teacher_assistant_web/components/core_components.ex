@@ -561,7 +561,9 @@ defmodule TeacherAssistantWeb.CoreComponents do
         <h1 class="mt-1.5 text-2xl font-semibold leading-[1.1] sm:text-[2rem]">{@title}</h1>
         <p :if={@subtitle} class="mt-2 text-[0.95rem] text-base-content/80">{@subtitle}</p>
       </div>
-      <div :if={@actions != []} class="flex items-center gap-2">{render_slot(@actions)}</div>
+      <div :if={@actions != []} class="flex flex-wrap items-center gap-2">
+        {render_slot(@actions)}
+      </div>
     </header>
     """
   end

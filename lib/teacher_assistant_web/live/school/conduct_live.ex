@@ -283,7 +283,10 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                         name={"marks[#{row.enrollment.id}]"}
                         value={@values[row.enrollment.id]}
                         inputmode="decimal"
-                        class="input input-xs w-16 text-right"
+                        aria-label={
+                          gettext("Note de conduite de %{name}", name: row.student.full_name)
+                        }
+                        class="input input-sm w-16 text-right"
                       />
                     </td>
                   </tr>

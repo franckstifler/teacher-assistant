@@ -67,6 +67,7 @@ defmodule TeacherAssistantWeb.Admin.UsersLive do
             value={@q}
             phx-debounce="300"
             placeholder={gettext("Nom, téléphone ou e-mail")}
+            aria-label={gettext("Rechercher un utilisateur")}
             class="input input-bordered w-full"
           />
         </form>

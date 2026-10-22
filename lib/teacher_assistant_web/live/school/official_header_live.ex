@@ -163,6 +163,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
               type="button"
               id="reset-header"
               phx-click="reset_lines"
+              data-confirm={gettext("Remplacer vos lignes d'en-tête par celles par défaut ?")}
               class="btn btn-ghost btn-sm"
             >
               {gettext("Rétablir l'en-tête par défaut")}
@@ -221,6 +222,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
                 id={"remove-#{kind}"}
                 phx-click="remove"
                 phx-value-kind={kind}
+                data-confirm={gettext("Retirer cette image ?")}
                 class="btn btn-ghost btn-sm text-error"
               >
                 {gettext("Retirer")}

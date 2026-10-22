@@ -344,6 +344,7 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
                     id="remove-assignment"
                     type="button"
                     phx-click="remove"
+                    data-confirm={gettext("Retirer cette affectation ?")}
                     class="btn btn-ghost btn-sm text-error"
                   >
                     {gettext("Retirer l'affectation")}

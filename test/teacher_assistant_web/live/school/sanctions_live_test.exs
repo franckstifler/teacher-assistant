@@ -38,6 +38,13 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     %{cg_a: cg_a, awa_e: awa_e, s1: s1}
   end
 
+  test "filters are labelled and each row opens from a button", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+    assert has_element?(view, "#sanction-filters select[name='class'][aria-label='Classe']")
+    assert has_element?(view, "#sanction-filters select[name='type'][aria-label]")
+    assert has_element?(view, "#sanction-rows tr button[type='button']")
+  end
+
   test "lists the year's sanctions and filters them", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sanctions")
     rows = view |> element("#sanction-rows") |> render()

@@ -380,13 +380,17 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
               phx-change="filter"
               class="flex flex-wrap items-center gap-2"
             >
-              <select name="class" class="select select-sm w-auto">
+              <select name="class" aria-label={gettext("Classe")} class="select select-sm w-auto">
                 <option value="">{gettext("Toutes les classes")}</option>
                 <option :for={c <- @classes} value={c.id} selected={c.id == @filters.class}>
                   {c.label}
                 </option>
               </select>
-              <select name="type" class="select select-sm w-auto">
+              <select
+                name="type"
+                aria-label={gettext("Type de sanction")}
+                class="select select-sm w-auto"
+              >
                 <option value="">{gettext("Tous les types")}</option>
                 <option :for={t <- SanctionType.values()} value={t} selected={t == @filters.type}>
                   {SanctionType.label(t)}
@@ -483,12 +487,18 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                     ]}
                   >
                     <td>
-                      <span class="flex flex-col">
+                      <%!-- A real button so the row opens from the keyboard too; its click
+                           bubbles to the row's phx-click. --%>
+                      <button
+                        type="button"
+                        aria-pressed={to_string(@selected != nil and @selected.id == s.id)}
+                        class="flex cursor-pointer flex-col text-left"
+                      >
                         <span class="font-semibold">{s.enrollment.student.full_name}</span>
                         <span class="text-[0.74rem] text-base-content/75">
                           {s.enrollment.class_group.label}
                         </span>
-                      </span>
+                      </button>
                     </td>
                     <td class="font-semibold">{type_cell(s)}</td>
                     <td class="hidden max-w-64 truncate text-[0.8rem] text-base-content/85 sm:table-cell">

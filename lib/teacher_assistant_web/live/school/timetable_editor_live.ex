@@ -422,11 +422,16 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
             class={["btn btn-xs", if(@cg && c.id == @cg.id, do: "btn-primary", else: "btn-ghost")]}
           >
             {c.label}
-            <span :if={class_has_problem?(@problems, c)} class="size-1.5 rounded-full bg-error"></span>
+            <span
+              :if={class_has_problem?(@problems, c)}
+              class="size-1.5 rounded-full bg-error"
+              aria-hidden="true"
+            ></span>
+            <span :if={class_has_problem?(@problems, c)} class="sr-only">{gettext("(à corriger)")}</span>
           </button>
         </div>
 
-        <div :if={@cg} class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div :if={@cg} class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
             <table id="editor-grid" class="table table-sm">
               <thead>
@@ -651,6 +656,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                 id="clear-cell"
                 type="button"
                 phx-click="clear"
+                data-confirm={gettext("Vider ce créneau ?")}
                 class="btn btn-ghost btn-sm text-error"
               >
                 {gettext("Vider le créneau")}
