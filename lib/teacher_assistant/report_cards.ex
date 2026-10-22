@@ -28,6 +28,7 @@ defmodule TeacherAssistant.ReportCards do
   alias TeacherAssistant.Academics.{
     AcademicYear,
     BulletinPublication,
+    BulletinLayout,
     BulletinTemplate,
     ClassGroup,
     EntryProgress,
@@ -154,6 +155,9 @@ defmodule TeacherAssistant.ReportCards do
 
       not council_ready?(scope, cg, period) ->
         {:error, :council_not_held}
+
+      needs_annual_council?(scope, cg, period) and not annual_council_held?(scope, cg) ->
+        {:error, :annual_council_not_held}
 
       true ->
         BulletinPublication
@@ -372,8 +376,89 @@ defmodule TeacherAssistant.ReportCards do
         ok?: status == :held,
         data: %{status: status, date: council.held_on, time: council.starts_at}
       }
-    ]
+    ] ++ v2_checks(scope, cg, period)
   end
+
+  # Spec bulletin v2: the end-of-year council (blocking, enforced by `publish/3`), the
+  # APC competences and the one-page fit (both informative).
+  defp v2_checks(_scope, _cg, {:sequence, _}), do: []
+
+  defp v2_checks(scope, cg, period) do
+    template = template(scope, cg)
+
+    Enum.reject(
+      [
+        annual_council_check(scope, cg, period),
+        competences_check(scope, cg, period, template),
+        page_fit_check(scope, cg, period, template)
+      ],
+      &is_nil/1
+    )
+  end
+
+  defp annual_council_check(scope, cg, period) do
+    if needs_annual_council?(scope, cg, period) do
+      annual = {:annual, Organization.class_year(scope, cg)}
+      council = Councils.council(scope, cg, annual)
+      status = Councils.status(if(council.id, do: council), false)
+
+      %{
+        key: :annual_council,
+        ok?: status == :held,
+        data: %{status: status, date: council.held_on, time: council.starts_at}
+      }
+    end
+  end
+
+  defp competences_check(scope, cg, {:trimester, _} = period, template) do
+    if BulletinTemplate.show?(template, :apc) do
+      subjects =
+        scope |> Curriculum.list_assignments_for_class(cg) |> Map.new(&{&1.id, &1.subject})
+
+      missing =
+        for {ctx_id, lines} <- competences(scope, cg, period),
+            Enum.any?(lines, &is_nil(&1.text)),
+            do: subjects[ctx_id]
+
+      %{key: :competences, ok?: missing == [], data: %{missing: Enum.sort(missing)}}
+    end
+  end
+
+  defp competences_check(_scope, _cg, _period, _template), do: nil
+
+  defp page_fit_check(scope, cg, period, template) do
+    results = Assessment.class_results_for_period(scope, cg, period)
+
+    groups =
+      (results && results.per_student |> Map.values() |> List.first() |> then(&(&1 && &1.groups))) ||
+        []
+
+    lines =
+      BulletinLayout.subject_lines(
+        template,
+        Organization.period_kind(period),
+        groups,
+        sequences_per_term(period),
+        group_subtotals?(scope)
+      )
+
+    density = BulletinLayout.density(lines, BulletinLayout.identity_rows(template))
+    subjects = groups |> Enum.map(&length(&1.rows)) |> Enum.sum()
+    %{key: :page_fit, ok?: density != :overflow, data: %{subjects: subjects}}
+  end
+
+  @doc """
+  Spec bulletin v2 §5.5: the year's last trimester carrying the annual summary is
+  published only once the end-of-year council is held.
+  """
+  def needs_annual_council?(scope, cg, {:trimester, %Term{} = term}),
+    do: BulletinTemplate.show?(template(scope, cg), :annual_summary) and last_term?(scope, term)
+
+  def needs_annual_council?(_scope, _cg, _period), do: false
+
+  @doc "Whether the class's end-of-year council is held."
+  def annual_council_held?(scope, cg),
+    do: Councils.held?(scope, cg, {:annual, Organization.class_year(scope, cg)})
 
   defp entry_rate_or_nil(_scope, _cg, {:sequence, _}), do: nil
   defp entry_rate_or_nil(scope, cg, period), do: entry_rate(scope, cg, period)

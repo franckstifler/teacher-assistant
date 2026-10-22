@@ -207,14 +207,15 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert [
              %{key: :notes, ok?: false, data: %{rate: rate, unassigned: _}},
              %{key: :conduct, ok?: false, data: %{entered: 0, effectif: 1}},
-             %{key: :council, ok?: false, data: %{status: :to_plan}}
+             %{key: :council, ok?: false, data: %{status: :to_plan}},
+             %{key: :page_fit, ok?: true, data: %{subjects: 1}}
            ] = checks
 
     assert rate < 100
 
     {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
 
-    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}] =
+    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}, _] =
              ReportCards.publish_checklist(scope, cg, {:trimester, term})
   end
 
@@ -505,6 +506,92 @@ defmodule TeacherAssistant.ReportCardsTest do
 
       {:published, _pub, snapshot} = ReportCards.class_view(scope, cg, {:trimester, term})
       assert [%{text: "Avant"} | _] = snapshot.competences[tc.id]
+    end
+  end
+
+  describe "term 3 publication (bulletin v2)" do
+    alias TeacherAssistant.Councils
+
+    defp last_term(scope, year), do: scope |> Organization.list_terms(year) |> List.last()
+
+    test "term 3 with annual summary refuses publishing before the annual council", %{
+      scope: scope,
+      year: year,
+      cg: cg
+    } do
+      t3 = last_term(scope, year)
+      {:ok, _} = Councils.hold(scope, cg, {:trimester, t3})
+
+      assert {:error, :annual_council_not_held} = ReportCards.publish(scope, cg, {:trimester, t3})
+
+      {:ok, _} = Councils.hold(scope, cg, {:annual, year})
+      assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, t3})
+      assert %{per_student: _} = pub.snapshot.annual
+    end
+
+    test "term 3 without annual summary publishes as today", %{scope: scope, year: year, cg: cg} do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["rank"]
+        })
+
+      assert {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, last_term(scope, year))
+    end
+
+    test "publishing term 3 with annual summary locks the annual council; withdrawing unlocks it",
+         %{scope: scope, year: year, cg: cg, st: st} do
+      t3 = last_term(scope, year)
+      {:ok, _} = Councils.hold(scope, cg, {:annual, year})
+      {:ok, pub} = TeacherFixtures.publish_trimester(scope, cg, t3)
+
+      assert Councils.locked?(scope, cg, {:annual, year})
+
+      assert {:error, :locked} =
+               Councils.set_decision(scope, cg, {:annual, year}, st.id, %{
+                 "passage_decision" => "redouble"
+               })
+
+      {:ok, _} = ReportCards.withdraw(scope, pub, "Erreur de saisie")
+      refute Councils.locked?(scope, cg, {:annual, year})
+
+      assert {:ok, _} =
+               Councils.set_decision(scope, cg, {:annual, year}, st.id, %{
+                 "passage_decision" => "redouble"
+               })
+    end
+
+    test "checklist lists missing competences and page fit", %{
+      scope: scope,
+      year: year,
+      cg: cg,
+      term: term
+    } do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+
+      checks = ReportCards.publish_checklist(scope, cg, {:trimester, term})
+
+      assert %{ok?: false, data: %{missing: ["Maths"]}} =
+               Enum.find(checks, &(&1.key == :competences))
+
+      assert %{ok?: true} = Enum.find(checks, &(&1.key == :page_fit))
+      refute Enum.find(checks, &(&1.key == :annual_council))
+
+      t3 = last_term(scope, year)
+
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["annual_summary"]
+        })
+
+      checks = ReportCards.publish_checklist(scope, cg, {:trimester, t3})
+      assert %{ok?: false} = Enum.find(checks, &(&1.key == :annual_council))
+      refute Enum.find(checks, &(&1.key == :competences))
     end
   end
 end

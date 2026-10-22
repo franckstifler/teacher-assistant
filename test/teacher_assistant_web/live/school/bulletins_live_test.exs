@@ -229,4 +229,34 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
       refute has_element?(view, "[id^='period-seq-']")
     end
   end
+
+  test "bulletins page words the annual council and competence checks (bulletin v2)", ctx do
+    {:ok, _} =
+      Assessment.update_bulletin_settings(ctx.scope, %{
+        "language" => "by_class",
+        "elements" => ["apc", "annual_summary"]
+      })
+
+    {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+
+    assert has_element?(
+             view,
+             "#publish-checks [data-check='competences']",
+             "1 matière sans compétence"
+           )
+
+    assert has_element?(view, "#publish-checks [data-check='page_fit']", "Tient sur une page")
+
+    t3 = ctx.scope |> Organization.list_terms(ctx.scope.current_academic_year) |> List.last()
+    {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, {:trimester, t3})
+    {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, t3))
+
+    assert has_element?(
+             view,
+             "#publish-checks [data-check='annual_council']",
+             "Conseil de fin d'année : à planifier"
+           )
+
+    assert has_element?(view, "#publish-bulletins[disabled]")
+  end
 end
