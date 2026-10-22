@@ -4,6 +4,7 @@ defmodule TeacherAssistantWeb.CardPrintController do
   plug TeacherAssistantWeb.Plug.SchoolAccess
 
   alias TeacherAssistant.{Accounts, Enrollment, Organization, ReportCards}
+  alias TeacherAssistantWeb.CardVerification
 
   @doc "Spec 2026-10-12 §9: printable school ID cards, 10 per A4 page."
   def show(conn, %{"id" => id} = params) do
@@ -14,7 +15,8 @@ defmodule TeacherAssistantWeb.CardPrintController do
       {:ok, profile} = Accounts.fetch_school_profile(scope)
       year = Organization.class_year(scope, cg)
       template = ReportCards.template(scope, cg)
-      students = rows |> Enum.map(& &1.student) |> Enum.sort_by(&String.downcase(&1.full_name))
+      rows = Enum.sort_by(rows, &String.downcase(&1.student.full_name))
+      students = Enum.map(rows, & &1.student)
 
       conn
       |> put_layout(false)
@@ -24,8 +26,10 @@ defmodule TeacherAssistantWeb.CardPrintController do
         year: year && year.name,
         cg: cg,
         pages:
-          students
-          |> Enum.map(&%{student: &1, contact: contact(scope, &1), qr_svg: nil})
+          rows
+          |> Enum.map(fn %{student: student, enrollment: enrollment} ->
+            %{student: student, contact: contact(scope, student), qr_svg: qr_svg(enrollment)}
+          end)
           |> Enum.chunk_every(10),
         missing: Enum.count(students, &is_nil(&1.photo_path)),
         # Same language rule as the bulletin: the class's sub-system, or bilingual.
@@ -39,6 +43,12 @@ defmodule TeacherAssistantWeb.CardPrintController do
       {:error, :not_in_class} -> redirect(conn, to: ~p"/school/classes/#{id}/photos")
       _ -> redirect(conn, to: ~p"/school")
     end
+  end
+
+  # Spec bulletin v2 §7: the card's QR opens the public check of the enrolment.
+  defp qr_svg(enrollment) do
+    token = CardVerification.token(enrollment.workspace_id, enrollment.id)
+    CardVerification.qr_svg(url(~p"/verify/card/#{token}"))
   end
 
   defp pick(rows, nil), do: {:ok, rows}
