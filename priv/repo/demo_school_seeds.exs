@@ -332,6 +332,7 @@ end
 {:ok, _} =
   Discipline.add_sanction(sgs, pick.("4e B", 6), %{
     type: :consigne,
+    duration_hours: 2,
     date: today,
     reason: "Bavardages répétés"
   })
