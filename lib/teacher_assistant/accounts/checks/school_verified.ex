@@ -16,10 +16,11 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolVerified do
   def match?(_actor, %{subject: subject}, _opts), do: verified?(SchoolRole.workspace_id(subject))
   def match?(_actor, _context, _opts), do: false
 
-  defp verified?(nil), do: false
+  @doc "Whether the school `workspace_id` has a `:verified` profile (fresh read)."
+  def verified?(nil), do: false
 
   # Check-internal read: `authorize?: false`, see `Checks.SchoolRole`.
-  defp verified?(workspace_id) do
+  def verified?(workspace_id) do
     SchoolProfile
     |> Ash.Query.for_read(:for_workspace, %{workspace_id: workspace_id})
     |> Ash.read_one(authorize?: false)

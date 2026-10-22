@@ -76,4 +76,41 @@ defmodule TeacherAssistant.Accounts.PasswordResetPolicyTest do
 
     assert ws_id == head.current_workspace.id
   end
+
+  describe "a school not yet verified" do
+    setup do
+      %{scope: unverified} = TeacherFixtures.school_fixture()
+      %{unverified: unverified}
+    end
+
+    test "cannot take over an existing phone account it linked", %{unverified: head} do
+      {:ok, hash} = AshAuthentication.BcryptProvider.hash("victim-pass-1")
+
+      victim =
+        Ash.Seed.seed!(Accounts.User, %{
+          phone: "+237677123456",
+          name: "Ancien professeur",
+          hashed_password: hash
+        })
+
+      assert {:ok, %{user: %{id: id}, temporary_password: nil}} =
+               Accounts.add_member_by_phone(head, %{phone: "677123456"})
+
+      assert id == victim.id
+      {:ok, m} = Accounts.fetch_school_membership(head, victim)
+      assert_forbidden(Accounts.reset_member_password(head, m))
+
+      TeacherFixtures.verify_school!(head)
+      assert {:ok, _password} = Accounts.reset_member_password(head, m)
+    end
+
+    test "still resets an account it created itself", %{unverified: head} do
+      assert {:ok, %{user: user, temporary_password: first}} =
+               Accounts.add_member_by_phone(head, %{name: "Nouveau prof", phone: "677000222"})
+
+      assert is_binary(first)
+      {:ok, m} = Accounts.fetch_school_membership(head, user)
+      assert {:ok, _password} = Accounts.reset_member_password(head, m)
+    end
+  end
 end
