@@ -92,6 +92,9 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           verify_url: verify_url,
           # Spec bulletin v2: snapshots published before these keys have none.
           guardians: Map.get(entry, :guardians, []),
+          prior: Map.get(Map.get(view, :prior_terms) || %{}, student.id, []),
+          annual: annual_line(view, student.id),
+          decision: decision(ReportCards.outcome(view, student.id), view, student.id),
           density: density(template, kind, results && results.per_student[student.id], view)
         }
       end)
@@ -108,6 +111,9 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       cg: cg,
       period_kind: kind,
       title: BulletinPrintHTML.title(lang, kind, period_number(period)),
+      competences: Map.get(view, :competences) || %{},
+      sequences_per_term: Map.get(view, :sequences_per_term) || 2,
+      class_profile: TeacherAssistant.Academics.Bulletins.class_profile(results),
       effectif: (results && results.effectif) || 0,
       bundles: bundles,
       group_subtotals?: view.group_subtotals?,
@@ -151,6 +157,26 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
 
   defp qr_svg(verify_url, template) do
     if BulletinTemplate.show?(template, :qr_code), do: BulletinVerification.qr_svg(verify_url)
+  end
+
+  # Spec bulletin v2 §5.5: the last trimester's card carries the year.
+  defp annual_line(view, student_id) do
+    case Map.get(view, :annual) do
+      %{per_student: per_student} -> per_student[student_id]
+      _ -> nil
+    end
+  end
+
+  # The year's council decides on the annual card, and on the last trimester carrying it.
+  defp decision(%{passage: passage}, _view, _student_id) when not is_nil(passage), do: passage
+
+  defp decision(_outcome, view, student_id) do
+    with %{council: %{outcomes: outcomes}} <- Map.get(view, :annual),
+         %{passage: passage} <- outcomes[student_id] do
+      passage
+    else
+      _ -> nil
+    end
   end
 
   defp period_number({:sequence, seq}), do: seq.number

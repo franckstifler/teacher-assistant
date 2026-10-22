@@ -1165,4 +1165,176 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       refute html =~ "Mme Ngo"
     end
   end
+
+  describe "v2 subject table, boxes and signatures" do
+    defp elements(scope, list) do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{"language" => "by_class", "elements" => list})
+    end
+
+    defp maths(ctx), do: ctx.scope |> Curriculum.list_assignments_for_class(ctx.cg) |> hd()
+
+    test "APC trimester card: one line per sequence with its competence and mark", ctx do
+      elements(ctx.scope, ["apc"])
+
+      :ok =
+        Assessment.put_sequence_competence(
+          ctx.scope,
+          maths(ctx),
+          ctx.seq,
+          "Résoudre une équation"
+        )
+
+      t1 = hd(v2_terms(ctx))
+      html = v2_print(ctx, "trim:#{t1.id}")
+
+      assert html =~ "Compétences évaluées"
+      assert html =~ "Résoudre une équation"
+      assert html =~ ~s(rowspan="2")
+      assert html =~ "N/20"
+    end
+
+    test "APC off: no Compétences, Cote or cotes box", ctx do
+      elements(ctx.scope, ["rank"])
+      html = v2_print(ctx, "trim:#{hd(v2_terms(ctx)).id}")
+      refute html =~ "Compétences évaluées"
+      refute html =~ ~r/<th class="num">\s*Cote\s*<\/th>/
+      refute html =~ ~s(id="cotes-box")
+    end
+
+    test "letter-graded class with APC: competence lines but no Cote column", ctx do
+      elements(ctx.scope, ["apc"])
+      year = Organization.class_year(ctx.scope, ctx.cg)
+
+      {:ok, en} =
+        Enrollment.create_class_group(ctx.scope, year, %{
+          label: "Form 1 A",
+          level: "Form 1",
+          subsystem: :anglophone
+        })
+
+      {:ok, _} = Enrollment.add_student(ctx.scope, en, %{full_name: "Ngum Che", sex: :f})
+      {:ok, tc} = Curriculum.assign_teacher(ctx.scope, en, ctx.head, %{subject: "Biology"})
+      :ok = Assessment.put_sequence_competence(ctx.scope, tc, ctx.seq, "Describe a cell")
+      t1 = hd(v2_terms(ctx))
+
+      html =
+        ctx.conn
+        |> get(~p"/school/classes/#{en.id}/bulletin/print?period=trim:#{t1.id}")
+        |> html_response(200)
+
+      assert html =~ "Describe a cell"
+      refute html =~ ~r/<th class="num">\s*Cote\s*<\/th>/
+      refute html =~ ~s(id="cotes-box")
+    end
+
+    test "sequence card with APC shows that sequence's competence on the subject's line", ctx do
+      elements(ctx.scope, ["apc"])
+
+      :ok =
+        Assessment.put_sequence_competence(ctx.scope, maths(ctx), ctx.seq, "Calculer une aire")
+
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+      assert html =~ "Calculer une aire"
+      refute html =~ ~s(rowspan="2")
+    end
+
+    test "annual card never shows competences", ctx do
+      elements(ctx.scope, ["apc"])
+
+      :ok =
+        Assessment.put_sequence_competence(ctx.scope, maths(ctx), ctx.seq, "Calculer une aire")
+
+      html = v2_print(ctx, "annee")
+      refute html =~ "Compétences évaluées"
+      refute html =~ "Calculer une aire"
+    end
+
+    test "cotes box counts subjects per code", ctx do
+      elements(ctx.scope, ["apc"])
+
+      rows =
+        Enum.map(
+          TeacherAssistant.Academics.Appreciations.apc_bands(),
+          &%{from: Decimal.to_string(&1.from), label: &1.label, code: &1.code}
+        )
+
+      {:ok, _} = Assessment.update_appreciation_bands(ctx.scope, rows)
+      html = v2_print(ctx, "trim:#{hd(v2_terms(ctx)).id}")
+
+      assert html =~ ~s(id="cotes-box")
+      assert html =~ ~r/CBA<\/td>\s*<td class="v">\s*1\s*</
+      assert html =~ ~r/CTBA<\/td>\s*<td class="v">\s*0\s*</
+      assert html =~ ~r/<th class="num">\s*Cote\s*<\/th>/
+    end
+
+    test "term 2 shows term 1 average; term 3 shows annual average, rank and decision", ctx do
+      [_t1, t2, t3] = v2_terms(ctx)
+      html = v2_print(ctx, "trim:#{t2.id}")
+      assert html =~ "Moyenne trim. 1"
+
+      html = v2_print(ctx, "trim:#{t3.id}")
+      assert html =~ "Moyenne trim. 2"
+      assert html =~ "Moyenne annuelle"
+      assert html =~ "Rang annuel"
+      assert html =~ ~s(class="decision")
+    end
+
+    test "class profile box shows passing count and rate with the element", ctx do
+      elements(ctx.scope, ["class_profile"])
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+      assert html =~ "Moyennes ≥ 10"
+      assert html =~ "Taux de réussite"
+      assert html =~ "100 %"
+
+      elements(ctx.scope, ["rank"])
+      refute v2_print(ctx, "seq:#{ctx.seq.id}") =~ "Taux de réussite"
+    end
+
+    test "teacher visa column only with the element", ctx do
+      elements(ctx.scope, ["teacher_visa"])
+      assert v2_print(ctx, "seq:#{ctx.seq.id}") =~ ~r/<th>\s*Visa\s*<\/th>/
+      elements(ctx.scope, ["rank"])
+      refute v2_print(ctx, "seq:#{ctx.seq.id}") =~ ~r/<th>\s*Visa\s*<\/th>/
+    end
+
+    test "head visa shows title and name with « Fait à <town>, le <date> »", ctx do
+      set_profile(ctx.scope, %{
+        school_type: :lycee,
+        town: "Ngog-Mapubi",
+        head_name: "Mme Ngo Tonye"
+      })
+
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+      assert html =~ "Le Proviseur"
+      assert html =~ "Fait à Ngog-Mapubi"
+      assert html =~ "Mme Ngo Tonye"
+    end
+
+    test "a pre-v2 snapshot still renders", ctx do
+      scope = with_year(ctx.scope)
+      t1 = first_term(scope)
+      {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, ctx.cg, t1)
+
+      old =
+        pub.snapshot
+        |> Map.drop([:competences, :sequences_per_term, :prior_terms, :annual])
+        |> Map.update!(:roster, fn roster ->
+          Enum.map(roster, fn e ->
+            e |> Map.delete(:guardians) |> Map.update!(:student, &Map.delete(&1, :national_id))
+          end)
+        end)
+        |> Map.update!(:template, &Map.delete(&1, :cote_codes))
+
+      {:ok, id} = Ecto.UUID.dump(pub.id)
+
+      TeacherAssistant.Repo.query!(
+        "UPDATE bulletin_publications SET snapshot = $1 WHERE id = $2",
+        [:erlang.term_to_binary(old), id]
+      )
+
+      html = v2_print(ctx, "trim:#{t1.id}")
+      assert html =~ "Awa Ngo"
+    end
+  end
 end
