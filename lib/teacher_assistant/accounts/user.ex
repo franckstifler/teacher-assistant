@@ -72,6 +72,7 @@ defmodule TeacherAssistant.Accounts.User do
       argument :password, :string, allow_nil?: false, sensitive?: true
 
       prepare AshAuthentication.Strategy.Password.SignInPreparation
+      prepare {TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn, identity: :email}
 
       metadata :token, :string, allow_nil?: false
     end
@@ -92,6 +93,7 @@ defmodule TeacherAssistant.Accounts.User do
       argument :password, :string, allow_nil?: false, sensitive?: true
 
       prepare AshAuthentication.Strategy.Password.SignInPreparation
+      prepare {TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn, identity: :phone}
 
       metadata :token, :string, allow_nil?: false
     end

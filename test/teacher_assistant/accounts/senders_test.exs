@@ -29,4 +29,31 @@ defmodule TeacherAssistant.Accounts.SendersTest do
       assert email.text_body =~ "/magic_link/"
     end)
   end
+
+  test "at most three reset or magic-link emails per account per hour" do
+    user = TeacherFixtures.user_fixture(%{email: "flood-me@example.com"})
+
+    request_reset = fn ->
+      User
+      |> Ash.Query.for_read(:request_password_reset_with_password, %{
+        email: to_string(user.email)
+      })
+      |> Ash.read!(authorize?: false)
+    end
+
+    request_magic = fn ->
+      User
+      |> Ash.ActionInput.for_action(:request_magic_link, %{email: to_string(user.email)})
+      |> Ash.run_action!(authorize?: false)
+    end
+
+    request_reset.()
+    request_magic.()
+    request_reset.()
+    for _ <- 1..3, do: assert_email_sent()
+
+    request_magic.()
+    request_reset.()
+    refute_email_sent()
+  end
 end

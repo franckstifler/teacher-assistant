@@ -2,6 +2,7 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
   use TeacherAssistant.DataCase, async: true
 
   alias TeacherAssistant.Accounts.User
+  alias TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn
 
   defp seed_phone_user(phone, password, attrs \\ %{}) do
     {:ok, hash} = AshAuthentication.BcryptProvider.hash(password)
@@ -39,6 +40,34 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
 
       assert {:error, %AshAuthentication.Errors.AuthenticationFailed{}} =
                sign_in_by_phone("699999999", "secret-pass-1")
+    end
+
+    test "ten failures in a row lock the number for a while, even with the right password" do
+      seed_phone_user("+237677555001", "secret-pass-1")
+
+      for _ <- 1..10 do
+        assert {:error, %AshAuthentication.Errors.AuthenticationFailed{} = error} =
+                 sign_in_by_phone("677555001", "wrong-pass")
+
+        refute ThrottleSignIn.throttled?(error)
+      end
+
+      assert {:error, error} = sign_in_by_phone("677555001", "secret-pass-1")
+      assert ThrottleSignIn.throttled?(error)
+
+      # Another account is not affected.
+      seed_phone_user("+237677555002", "secret-pass-2")
+      assert {:ok, _} = sign_in_by_phone("677555002", "secret-pass-2")
+    end
+
+    test "a successful sign-in clears the failures" do
+      seed_phone_user("+237677555003", "secret-pass-1")
+
+      for _ <- 1..9, do: {:error, _} = sign_in_by_phone("677555003", "wrong-pass")
+      assert {:ok, _} = sign_in_by_phone("677555003", "secret-pass-1")
+
+      for _ <- 1..9, do: {:error, _} = sign_in_by_phone("677555003", "wrong-pass")
+      assert {:ok, _} = sign_in_by_phone("677555003", "secret-pass-1")
     end
 
     test "the email strategy is unchanged" do

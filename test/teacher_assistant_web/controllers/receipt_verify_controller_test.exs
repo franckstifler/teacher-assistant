@@ -60,6 +60,16 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
            |> html_response(200) =~ "Document introuvable"
   end
 
+  test "after 20 wrong codes for one number the page says to wait", %{conn: conn} do
+    # A number no other test uses: the counters are shared by async tests.
+    lookup = fn ->
+      conn |> get(~p"/verify/receipt?#{[number: "R2025-990001", code: "000000"]}")
+    end
+
+    for _ <- 1..20, do: assert(lookup.() |> html_response(200) =~ "Document introuvable")
+    assert lookup.() |> html_response(200) =~ "Trop d&#39;essais pour ce numéro"
+  end
+
   describe "Fees 2 papers" do
     setup ctx do
       {:ok, _} =

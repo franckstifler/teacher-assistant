@@ -19,6 +19,12 @@ defmodule TeacherAssistantWeb.ReceiptVerificationTest do
     assert V.verify("short") == :invalid
   end
 
+  test "wrong codes for one number are capped; other numbers are not affected" do
+    for _ <- 1..20, do: assert(V.lookup("R2025-990002", "zzzzzz") == :invalid)
+    assert V.lookup(" r2025-990002 ", "zzzzzz") == :throttled
+    assert V.lookup("R2025-990003", "zzzzzz") == :invalid
+  end
+
   test "lookup needs the right number and code; school A's code never opens school B's receipt" do
     a = fees_school_fixture()
     b = fees_school_fixture()

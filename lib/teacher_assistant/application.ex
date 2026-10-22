@@ -11,6 +11,7 @@ defmodule TeacherAssistant.Application do
       {Oban, Application.fetch_env!(:teacher_assistant, Oban)},
       {DNSCluster, query: Application.get_env(:teacher_assistant, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: TeacherAssistant.PubSub},
+      {TeacherAssistant.RateLimit, clean_period: :timer.minutes(1)},
       TeacherAssistantWeb.Endpoint,
       {AshAuthentication.Supervisor, [otp_app: :teacher_assistant]}
     ]

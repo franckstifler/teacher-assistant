@@ -175,6 +175,25 @@ defmodule TeacherAssistantWeb.SignInPhoneTest do
       refute has_element?(view, "#phone-sign-in .ta-error-list")
     end
 
+    test "after too many wrong passwords the page says to wait", %{conn: conn} do
+      user = TeacherFixtures.user_fixture()
+      {:ok, view, _html} = live(conn, ~p"/sign-in")
+
+      submit = fn password ->
+        view
+        |> form("#user-password-sign-in-with-password", %{
+          "user" => %{"email" => to_string(user.email), "password" => password}
+        })
+        |> render_submit()
+      end
+
+      for _ <- 1..10, do: submit.("not-the-password")
+      assert has_element?(view, "#sign-in-alert", "Identifiant ou mot de passe incorrect")
+
+      submit.("password1234")
+      assert has_element?(view, "#sign-in-alert.ta-auth-alert--warning", "Trop de tentatives")
+    end
+
     test "a wrong email password shows the same alert", %{conn: conn} do
       user = TeacherFixtures.user_fixture()
       {:ok, view, _html} = live(conn, ~p"/sign-in")

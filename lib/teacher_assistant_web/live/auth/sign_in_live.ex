@@ -51,7 +51,19 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
   # submission (wrong password, unknown or malformed identifier): one generic
   # message whatever the cause.
   @impl true
-  def handle_info({:sign_in_failed, _strategy_name}, socket) do
+  def handle_info({:sign_in_failed, _strategy_name, :throttled}, socket) do
+    {:noreply,
+     assign(socket, :alert, %{
+       tone: :warning,
+       title: gettext("Trop de tentatives"),
+       text:
+         gettext(
+           "Trop d'essais de mot de passe pour ce compte. Patientez 15 minutes avant de réessayer."
+         )
+     })}
+  end
+
+  def handle_info({:sign_in_failed, _strategy_name, _reason}, socket) do
     {:noreply, assign(socket, :alert, wrong_credentials_alert())}
   end
 

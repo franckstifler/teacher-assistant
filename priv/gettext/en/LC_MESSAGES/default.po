@@ -2105,7 +2105,7 @@ msgstr "Town"
 msgid "Type d'établissement"
 msgstr "School type"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:80
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:92
 #: lib/teacher_assistant_web/live/school/settings_live.ex:313
 #: lib/teacher_assistant_web/live/school/student_live.ex:657
 #, elixir-autogen, elixir-format
@@ -2122,7 +2122,7 @@ msgstr "City"
 msgid "Votre établissement est configuré mais pas encore vérifié. Vous pouvez préparer classes et personnel ; la saisie des notes, de l'appel et des bulletins sera débloquée après vérification."
 msgstr "Votre établissement est configuré mais pas encore vérifié. Vous pouvez préparer classes et personnel ; la saisie des notes, de l'appel et des bulletins sera débloquée après vérification."
 
-#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:124
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:127
 #: lib/teacher_assistant_web/live/admin/school_live.ex:144
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:226
 #, elixir-autogen, elixir-format
@@ -6029,7 +6029,7 @@ msgstr "At least 8 characters"
 msgid "9 chiffres, commençant par 6 (mobile) ou 2 (fixe). Écrivez-le comme vous voulez."
 msgstr "9 digits, starting with 6 (mobile) or 2 (landline). Write it however you like."
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:90
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:102
 #, elixir-autogen, elixir-format
 msgid "Adresse e-mail"
 msgstr "Email address"
@@ -6045,7 +6045,7 @@ msgstr "Add a member"
 msgid "C'est noté"
 msgstr "Got it"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:214
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:226
 #, elixir-autogen, elixir-format
 msgid "Ce mot de passe temporaire avait 7 jours : demandez-en un nouveau à votre établissement."
 msgstr "This temporary password was valid for 7 days: ask your school for a new one."
@@ -6122,7 +6122,7 @@ msgstr "Create the account"
 msgid "Créé par un autre établissement"
 msgstr "Created by another school"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:139
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:151
 #, elixir-autogen, elixir-format
 msgid "Demandez-en un nouveau au proviseur ou au censeur : il vous donnera un mot de passe temporaire valable 7 jours."
 msgstr "Ask the principal or the censor for a new one: they will give you a temporary password valid for 7 days."
@@ -6156,8 +6156,8 @@ msgid "Identifiant"
 msgstr "Login"
 
 #: lib/teacher_assistant_web/controllers/auth_controller.ex:45
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:205
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:227
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:217
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:239
 #, elixir-autogen, elixir-format
 msgid "Identifiant ou mot de passe incorrect"
 msgstr "Incorrect login or password"
@@ -6186,7 +6186,7 @@ msgstr "Enter the name."
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:60
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:340
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:379
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:177
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:189
 #, elixir-autogen, elixir-format
 msgid "Inscrire mon établissement"
 msgstr "Register my school"
@@ -6226,7 +6226,7 @@ msgstr "Password expired"
 msgid "Mot de passe géré par la personne"
 msgstr "Password managed by the person"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:138
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:150
 #, elixir-autogen, elixir-format
 msgid "Mot de passe oublié ?"
 msgstr "Forgot your password?"
@@ -6250,13 +6250,13 @@ msgstr "Temporary password"
 msgid "Mot de passe temporaire de %{name}"
 msgstr "Temporary password for %{name}"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:212
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:224
 #, elixir-autogen, elixir-format
 msgid "Mot de passe temporaire expiré"
 msgstr "Temporary password expired"
 
 #: lib/teacher_assistant_web/controllers/auth_controller.ex:23
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:209
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:221
 #, elixir-autogen, elixir-format
 msgid "Mot de passe temporaire expiré — demandez-en un nouveau à l'établissement."
 msgstr "Temporary password expired — ask the school for a new one."
@@ -6319,7 +6319,7 @@ msgstr "Reset"
 msgid "Réinitialiser le mot de passe"
 msgstr "Reset the password"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:70
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:82
 #, elixir-autogen, elixir-format
 msgid "Se connecter avec"
 msgstr "Sign in with"
@@ -6359,17 +6359,17 @@ msgstr "Your account · one-time step"
 msgid "Votre établissement vous a donné un mot de passe temporaire. Choisissez-en un que vous seul·e connaissez."
 msgstr "Your school gave you a temporary password. Choose one only you know."
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:175
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:187
 #, elixir-autogen, elixir-format
 msgid "Vous dirigez un établissement ?"
 msgstr "Do you run a school?"
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:166
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:178
 #, elixir-autogen, elixir-format
 msgid "Vous vous connectez avec un <strong>numéro de téléphone</strong> ? Seul votre établissement peut vous donner un nouveau mot de passe."
 msgstr "Signing in with a <strong>phone number</strong>? Only your school can give you a new password."
 
-#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:228
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "Vérifiez le numéro (ou l'adresse) et le mot de passe, puis réessayez."
 msgstr "Check the number (or address) and the password, then try again."
@@ -10807,7 +10807,7 @@ msgstr "Each instalment says what share of the total every student must have pai
 msgid "Choisissez un mode de paiement."
 msgstr "Choose a payment method."
 
-#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:113
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:116
 #, elixir-autogen, elixir-format
 msgid "Code"
 msgstr "Code"
@@ -11863,7 +11863,7 @@ msgstr "Document not found"
 msgid "Expirée"
 msgstr "Expired"
 
-#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:98
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:101
 #, elixir-autogen, elixir-format
 msgid "Numéro du document"
 msgstr "Document number"
@@ -11873,7 +11873,7 @@ msgstr "Document number"
 msgid "Vérifier un document de l'école"
 msgstr "Check a school document"
 
-#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:94
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:97
 #, elixir-autogen, elixir-format
 msgid "Vérifier un reçu, une autorisation ou un avis"
 msgstr "Check a receipt, a permission or a warning"
@@ -11898,7 +11898,7 @@ msgstr "Cancel this permission? The student will no longer be allowed."
 msgid "Autorisation spéciale"
 msgstr "Special permission"
 
-#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:100
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:103
 #, elixir-autogen, elixir-format
 msgid "Commence par R (reçu), A (autorisation) ou V (avis)."
 msgstr "Starts with R (receipt), A (permission) or V (warning)."
@@ -11927,3 +11927,23 @@ msgstr "Issued by: %{name}"
 #, elixir-autogen, elixir-format
 msgid "Ce fichier n'est pas une image PNG ou JPEG."
 msgstr "This file is not a PNG or JPEG image."
+
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:95
+#, elixir-autogen, elixir-format
+msgid "Réessayez dans une heure, avec le code imprimé sur le document."
+msgstr "Try again in an hour, with the code printed on the document."
+
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:60
+#, elixir-autogen, elixir-format
+msgid "Trop d'essais de mot de passe pour ce compte. Patientez 15 minutes avant de réessayer."
+msgstr "Too many password attempts for this account. Wait 15 minutes before trying again."
+
+#: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:94
+#, elixir-autogen, elixir-format
+msgid "Trop d'essais pour ce numéro"
+msgstr "Too many attempts for this number"
+
+#: lib/teacher_assistant_web/live/auth/sign_in_live.ex:58
+#, elixir-autogen, elixir-format
+msgid "Trop de tentatives"
+msgstr "Too many attempts"

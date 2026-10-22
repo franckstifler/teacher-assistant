@@ -14,10 +14,12 @@ defmodule TeacherAssistantWeb.ReceiptVerification do
   """
   import Bitwise
 
-  alias TeacherAssistant.{FeeControl, Fees}
+  alias TeacherAssistant.{FeeControl, Fees, RateLimit}
 
   @salts %{receipt: "receipt-verify", note: "note-verify", warning: "warning-verify"}
   @tag_bytes 16
+  @max_failed_lookups 20
+  @lookup_window :timer.hours(1)
 
   @doc "A receipt's token (Fees 1)."
   def token(record), do: token(:receipt, record)
@@ -74,9 +76,26 @@ defmodule TeacherAssistantWeb.ReceiptVerification do
   @doc """
   The typed check: a paper with this number whose code matches, else `:invalid`. The
   number's letter tells the kind: `A` notes, `V` warnings, anything else receipts.
+  After #{@max_failed_lookups} wrong codes for one number within an hour, `:throttled`
+  until the hour ends: numbers are sequential and shared by every school, so the
+  code is all that stands between a guesser and a student's name and payments.
   """
   def lookup(number, code) when is_binary(number) and is_binary(code) do
-    code = normalize_code(code)
+    key = "receipt_lookup:" <> (number |> String.trim() |> String.upcase())
+
+    if RateLimit.get(key, @lookup_window) >= @max_failed_lookups do
+      :throttled
+    else
+      with :invalid <- match_code(number, normalize_code(code)) do
+        RateLimit.inc(key, @lookup_window)
+        :invalid
+      end
+    end
+  end
+
+  def lookup(_number, _code), do: :invalid
+
+  defp match_code(number, code) do
     kind = kind_of(number)
 
     number
@@ -86,8 +105,6 @@ defmodule TeacherAssistantWeb.ReceiptVerification do
       if Plug.Crypto.secure_compare(code(token), code), do: verify(kind, token)
     end)
   end
-
-  def lookup(_number, _code), do: :invalid
 
   defp kind_of(number) do
     case number |> String.trim() |> String.upcase() do

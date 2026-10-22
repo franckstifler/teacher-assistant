@@ -10,15 +10,19 @@ defmodule TeacherAssistant.Accounts.User.Senders.SendMagicLinkEmail do
   use AshAuthentication.Sender
   use TeacherAssistantWeb, :verified_routes
 
-  alias TeacherAssistant.{Accounts.Emails, Mailer}
+  alias TeacherAssistant.{Accounts.Emails, Mailer, RateLimit}
 
   @impl true
   def send(user, token, _opts) do
     magic_url = TeacherAssistantWeb.Endpoint.url() <> ~p"/magic_link/#{token}"
 
-    user
-    |> Emails.magic_link(magic_url)
-    |> Mailer.deliver()
+    # The request page answers the same either way; past the cap nothing is
+    # sent, so no one can flood an inbox or spend the daily email quota.
+    if RateLimit.allow?("account_email:#{user.id}", 3, :timer.hours(1)) do
+      user
+      |> Emails.magic_link(magic_url)
+      |> Mailer.deliver()
+    end
 
     :ok
   end

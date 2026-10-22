@@ -3,7 +3,8 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
   The library's `AshAuthentication.Phoenix.Components.Password.SignInForm`,
   unchanged (it still builds the form, checks the credentials and hands the
   sign-in token to `AuthController`), plus one thing: when a submission fails it
-  tells the page (`{:sign_in_failed, strategy_name}` to the LiveView process)
+  tells the page (`{:sign_in_failed, strategy_name, reason}` to the LiveView
+  process, `reason` being `:throttled` or `:wrong_credentials`)
   and hides the field-level errors; and the identity field always shows what
   was typed, not its cast value (a phone typed « 677123456 » would otherwise
   come back as « +237677123456 » next to the +237 chip).
@@ -21,6 +22,7 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
 
   alias AshAuthentication.Phoenix.Components.Password.SignInForm
   alias AshPhoenix.Form
+  alias TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn
 
   @impl true
   defdelegate update(assigns, socket), to: SignInForm
@@ -33,7 +35,8 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
     {:noreply, socket} = SignInForm.handle_event("submit", params, socket)
 
     if failed?(socket) do
-      send(self(), {:sign_in_failed, socket.assigns.strategy.name})
+      reason = if throttled?(socket.assigns.form), do: :throttled, else: :wrong_credentials
+      send(self(), {:sign_in_failed, socket.assigns.strategy.name, reason})
       {:noreply, assign(socket, :form, without_errors(socket, params))}
     else
       {:noreply, socket}
@@ -84,6 +87,11 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
   end
 
   defp show_identity_as_typed(form, _strategy, _params), do: form
+
+  defp throttled?(%Form{source: %{errors: errors}}),
+    do: Enum.any?(errors, &ThrottleSignIn.throttled?/1)
+
+  defp throttled?(_form), do: false
 
   # Success either redirects (sign-in token via GET), sets the token params
   # (token via POST) or triggers the form action (no sign-in tokens).

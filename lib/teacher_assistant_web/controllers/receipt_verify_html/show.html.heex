@@ -90,6 +90,9 @@
         <% :invalid -> %>
           <h1 class="ko">{gettext("Document introuvable")}</h1>
           <p>{gettext("Vérifiez le numéro et le code imprimés sur le document.")}</p>
+        <% :throttled -> %>
+          <h1 class="ko">{gettext("Trop d'essais pour ce numéro")}</h1>
+          <p>{gettext("Réessayez dans une heure, avec le code imprimé sur le document.")}</p>
         <% nil -> %>
           <h1>{gettext("Vérifier un reçu, une autorisation ou un avis")}</h1>
       <% end %>
