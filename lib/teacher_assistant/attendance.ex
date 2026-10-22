@@ -256,7 +256,8 @@ defmodule TeacherAssistant.Attendance do
         {cg, tc, group_marks}
       end)
 
-    with :ok <- validate_group_marks(scope, per_group_marks) do
+    with :ok <- validate_group_marks(scope, per_group_marks),
+         :ok <- validate_sent_home(scope, marks, period.id, date) do
       run_record_combined_period(
         per_group_marks,
         period,
@@ -342,7 +343,8 @@ defmodule TeacherAssistant.Attendance do
       |> TeacherAssistant.Enrollment.list_roster(class_group)
       |> MapSet.new(& &1.enrollment.id)
 
-    with :ok <- validate_marks(marks, valid_enrollment_ids) do
+    with :ok <- validate_marks(marks, valid_enrollment_ids),
+         :ok <- validate_sent_home(scope, marks, period_id, date) do
       results =
         Enum.map(marks, fn mark ->
           {enrollment_id, status, minutes} = mark_parts(mark)
@@ -536,6 +538,30 @@ defmodule TeacherAssistant.Attendance do
           {:cont, :ok}
       end
     end)
+  end
+
+  # Fees 2: « Renvoyé pour frais » only for a student the bursar sent home that day, or
+  # whose lesson already says so (the send-out was lifted after the roll call).
+  defp validate_sent_home(scope, marks, period_id, date) do
+    ids = for {id, :sent_home, _} <- Enum.map(marks, &mark_parts/1), do: id
+
+    allowed =
+      scope
+      |> TeacherAssistant.FeeControl.sent_home_ids(ids, date)
+      |> MapSet.union(already_sent_home(scope, ids, period_id, date))
+
+    if Enum.all?(ids, &MapSet.member?(allowed, &1)), do: :ok, else: {:error, :invalid_status}
+  end
+
+  defp already_sent_home(_scope, [], _period_id, _date), do: MapSet.new()
+
+  defp already_sent_home(scope, ids, period_id, date) do
+    AttendanceEntry
+    |> Ash.Query.filter(
+      enrollment_id in ^ids and period_id == ^period_id and date == ^date and status == :sent_home
+    )
+    |> Ash.read!(scope: scope)
+    |> MapSet.new(& &1.enrollment_id)
   end
 
   # A mark is `{enrollment_id, status}` or `{enrollment_id, status, late_minutes}`.

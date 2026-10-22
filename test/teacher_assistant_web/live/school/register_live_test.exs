@@ -178,6 +178,8 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     scope: scope,
     enrollment: enrollment
   } do
+    {:ok, _} = TeacherAssistant.FeeControl.record_send_out(scope, enrollment, date)
+
     {:ok, 1} =
       Attendance.record_period(scope, cg, period, tc, date, [{enrollment.id, :sent_home}])
 

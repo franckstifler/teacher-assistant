@@ -44,6 +44,16 @@ defmodule TeacherAssistant.Academics.SentHomeNotAbsenceTest do
     %{scope: scope, cg: cg, tc: tc, e: e, p1: p1, year: year}
   end
 
+  # A « Renvoyé pour frais » entry needs the day's send-out (Fees 2).
+  defp record(ctx, :sent_home) do
+    {:ok, _} = TeacherAssistant.FeeControl.record_send_out(ctx.scope, ctx.e, @monday)
+
+    {:ok, 1} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [
+        {ctx.e.id, :sent_home}
+      ])
+  end
+
   defp record(ctx, status),
     do:
       {:ok, 1} =
@@ -85,5 +95,23 @@ defmodule TeacherAssistant.Academics.SentHomeNotAbsenceTest do
     record(ctx, :sent_home)
     %{students: [student]} = Attendance.class_register(ctx.scope, ctx.cg, @monday)
     assert student.cells[ctx.p1.id] == :sent_home
+  end
+
+  test "sent_home is refused for a student nobody sent home", ctx do
+    assert {:error, :invalid_status} =
+             Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [
+               {ctx.e.id, :sent_home}
+             ])
+  end
+
+  test "a lesson already recorded as sent home can be recorded again after the send-out is lifted",
+       ctx do
+    record(ctx, :sent_home)
+    :ok = TeacherAssistant.FeeControl.undo_send_out(ctx.scope, ctx.e, @monday)
+
+    assert {:ok, 1} =
+             Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [
+               {ctx.e.id, :sent_home}
+             ])
   end
 end
