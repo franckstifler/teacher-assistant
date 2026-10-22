@@ -17,7 +17,7 @@
       .bulletin-page { page-break-after: always; position: relative; font-size: 8pt; }
       .bulletin-page:last-child { page-break-after: auto; }
       .density-compact { font-size: 7.4pt; }
-      .density-dense, .density-overflow { font-size: 6.6pt; }
+      .density-dense, .density-overflow { font-size: 6.4pt; }
       .watermark {
         position: absolute; inset: 35% 0 auto 0; text-align: center;
         font-size: 96px; font-weight: 700; letter-spacing: 0.2em;
@@ -49,6 +49,7 @@
       table.body th { background: #eee; font-weight: 700; text-align: center; font-size: 0.9em; }
       table.body td.num, table.body th.num { text-align: center; }
       table.body .comp { font-size: 0.9em; max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      table.body th.comp { width: 30%; }
       table.body tfoot th { background: #f6f6f6; }
       tr.group th { text-align: left; text-transform: uppercase; background: #f2f2f2; }
       tr.group-total td { font-weight: 600; }
@@ -57,20 +58,21 @@
       .boxes { display: flex; gap: 1.5mm; margin-top: 1.5mm; align-items: flex-start; }
       .boxes table { flex: 1; }
       .boxes th { background: #eee; text-align: center; }
-      .boxes td.v { text-align: center; font-weight: 600; }
+      .boxes td.v { text-align: center; font-weight: 600; white-space: nowrap; width: 1%; }
+      .boxes td.wide { font-size: 0.92em; }
       .bottom { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.5mm; margin-top: 1.5mm; }
       .bottom th { background: #eee; text-align: left; }
       .bottom td { height: 9mm; vertical-align: top; }
       .council-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
       .decision { font-weight: bold; }
       .visa { display: flex; gap: 1.5mm; margin-top: 1.5mm; }
-      .visa .slot { flex: 1; border: 0.2mm solid #555; min-height: 22mm; padding: 1mm; position: relative; }
+      .visa .slot { flex: 1; border: 0.2mm solid #555; min-height: 18mm; padding: 1mm; position: relative; }
       .visa .slot.head { flex: 1.4; }
       .visa .line { color: #444; }
       .visa .pp-name, .visa .head-name { margin-top: 1mm; }
-      .visa .head .marks { position: relative; height: 13mm; }
-      .visa .head .stamp { position: absolute; left: 6%; height: 13mm; opacity: .85; }
-      .visa .head .signature { position: absolute; right: 6%; height: 11mm; }
+      .visa .head .marks { position: relative; height: 11mm; }
+      .visa .head .stamp { position: absolute; left: 6%; height: 11mm; opacity: .85; }
+      .visa .head .signature { position: absolute; right: 6%; height: 10mm; }
       .qr { border: 0.2mm solid #555; padding: 1mm; text-align: center; }
       .qr svg { width: 20mm; height: 20mm; }
       .verify { font-size: 0.75em; color: #444; max-width: 32mm; word-break: break-all; margin: 0.5mm 0 0; }
@@ -209,7 +211,7 @@
           <thead>
             <tr>
               <th>{tr(@lang, fn -> gettext("Matière") end)}</th>
-              <th :if={apc?(@template, @period_kind)}>
+              <th :if={apc?(@template, @period_kind)} class="comp">
                 {tr(@lang, fn -> gettext("Compétences évaluées") end)}
               </th>
               <th
@@ -340,8 +342,11 @@
               <td class="v">{fmt(b.discipline.note_de_conduite)}/20</td>
             </tr>
             <tr>
-              <td>{tr(@lang, fn -> gettext("Sanctions") end)}</td>
-              <td class="v">{tr(@lang, fn -> sanctions_line(b.discipline.sanctions) end)}</td>
+              <td colspan="2" class="wide">
+                {tr(@lang, fn -> gettext("Sanctions") end)} : {tr(@lang, fn ->
+                  sanctions_line(b.discipline.sanctions)
+                end)}
+              </td>
             </tr>
           <% end %>
         </table>

@@ -1,7 +1,7 @@
 # Report card & ID card v2 — design
 
-Status: decisions taken in chat 2026-10-21, builder check done; awaiting the user's
-review of this document.
+Status: approved 2026-10-21; implemented on `feat/bulletin-v2` (plan
+`docs/superpowers/plans/2026-10-21-bulletin-card-v2.md`).
 
 Mockups (to scale, browser-checked): `.superpowers/brainstorm/10224-1792620719/content/`
 — `bulletin-onepage.html` (APC 3rd-term card, 15 subjects, fits A4) and
@@ -227,6 +227,11 @@ only).
   on one page, measured in the browser like the mockup (`.paper` content bottom inside
   the A4 box), in FR, EN and bilingual. A technical class with its full general +
   technical subject list (`school_templates.ex`) is measured too.
+- **Measured 2026-10-22** (browser, card width 190 mm, limit 277 mm): an APC
+  trimester class with 18 subjects in three groups, every element ticked, prints at
+  271 mm in French and 270 mm bilingual (dense tier, 6.4pt), term 3 included. The
+  capacities in `BulletinLayout` (26 / 38 / 46 lines) were kept; the densest real
+  catalog (technical, 13 subjects) is below that class.
 - **All period kinds share the v2 layout** (one template): header, title, identity,
   boxes, density tiers apply to sequence, trimester and annual cards alike; only the
   subject columns differ by period kind (my call).
