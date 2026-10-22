@@ -1,7 +1,7 @@
 defmodule TeacherAssistant.Academics.Appreciations do
   @moduledoc """
   A school's appreciation scale and distinctions (spec I1), pure. The scale is a list
-  of bands, each `%{from, label}`: a band covers `from` ≤ average < the next band's
+  of bands, each `%{from, label, code}` (`code`: the APC « cote », often nil): a band covers `from` ≤ average < the next band's
   `from`, and the last band includes 20. With no saved bands the default scale applies,
   its labels translated; saved labels are shown as typed.
   """
@@ -33,7 +33,19 @@ defmodule TeacherAssistant.Academics.Appreciations do
       {"16", gettext("Très bien")},
       {"18", gettext("Excellent")}
     ]
-    |> Enum.map(fn {from, label} -> %{from: Decimal.new(from), label: label} end)
+    |> Enum.map(fn {from, label} -> %{from: Decimal.new(from), label: label, code: nil} end)
+  end
+
+  @doc "Spec bulletin v2 §5.3: the APC « cotes » preset (labels in the current locale)."
+  def apc_bands do
+    [
+      {"0", "CNA", gettext("C. non acquise")},
+      {"10", "CMA", gettext("C. moyennement acquise")},
+      {"12", "CA", gettext("C. acquise")},
+      {"14", "CBA", gettext("C. bien acquise")},
+      {"16", "CTBA", gettext("C. très bien acquise")}
+    ]
+    |> Enum.map(fn {from, code, label} -> %{from: Decimal.new(from), code: code, label: label} end)
   end
 
   @doc "The scale in force under `rules`, lowest band first."
@@ -41,9 +53,9 @@ defmodule TeacherAssistant.Academics.Appreciations do
     do: default_bands()
 
   def bands(%GradingRules{appreciation_bands: bands}),
-    do: Enum.map(bands, &%{from: &1.from, label: &1.label})
+    do: Enum.map(bands, &%{from: &1.from, label: &1.label, code: Map.get(&1, :code)})
 
-  @doc "`%{label, position, passed?}` for `average`, or nil when there is no average."
+  @doc "`%{label, code, position, passed?}` for `average`, or nil when there is no average."
   def appreciation(nil, _rules), do: nil
 
   def appreciation(%Decimal{} = average, %GradingRules{} = rules) do
@@ -54,7 +66,7 @@ defmodule TeacherAssistant.Academics.Appreciations do
         if gte(average, band.from), do: entry, else: acc
       end)
 
-    %{label: band.label, position: position, passed?: gte(average, @pass)}
+    %{label: band.label, code: band.code, position: position, passed?: gte(average, @pass)}
   end
 
   @doc """

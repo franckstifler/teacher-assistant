@@ -123,4 +123,15 @@ defmodule TeacherAssistant.Academics.BulletinTemplateTest do
     assert "L" in lines
     refute Enum.any?(lines, &(&1 in [nil, ""]))
   end
+
+  test "template lists the cote codes, highest band first" do
+    bands =
+      TeacherAssistant.Academics.Appreciations.apc_bands()
+      |> Enum.map(&struct(TeacherAssistant.Accounts.AppreciationBand, &1))
+
+    t = BulletinTemplate.resolve(profile(%{appreciation_bands: bands}), "L", %ClassGroup{})
+    assert t.cote_codes == ~w(CTBA CBA CA CMA CNA)
+
+    assert BulletinTemplate.resolve(profile(), "L", %ClassGroup{}).cote_codes == []
+  end
 end

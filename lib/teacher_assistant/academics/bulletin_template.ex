@@ -47,6 +47,7 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
       grading: if(anglophone?, do: :grade, else: :appreciation),
       elements: elements(profile.bulletin_elements),
       grade_scale: grade_scale(profile.grade_scale),
+      cote_codes: cote_codes(profile.appreciation_bands),
       header: %{
         name: school_name,
         address: profile.address,
@@ -65,6 +66,15 @@ defmodule TeacherAssistant.Academics.BulletinTemplate do
   end
 
   def show?(%{elements: elements}, element), do: element in elements
+
+  @doc "Spec bulletin v2 §5.4: the coded bands' « cotes », highest band first."
+  def cote_codes(bands) do
+    %TeacherAssistant.Academics.GradingRules{appreciation_bands: bands}
+    |> TeacherAssistant.Academics.Appreciations.bands()
+    |> Enum.map(& &1.code)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.reverse()
+  end
 
   @doc "`%{letter, remark}` for `mark`, or nil when there is no mark."
   def grade(_scale, nil), do: nil

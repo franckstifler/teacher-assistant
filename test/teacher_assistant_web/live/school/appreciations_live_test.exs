@@ -160,4 +160,31 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/settings"}}} =
              live(teacher_conn, ~p"/school/settings/appreciations")
   end
+
+  test "the APC preset fills five coded bands, saved with the bar", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
+
+    view |> element("#apc-preset") |> render_click()
+    assert has_element?(view, "#band-0-code[value='CNA']")
+    assert has_element?(view, "#band-4-code[value='CTBA']")
+    refute has_element?(view, "#band-5-label")
+    assert has_element?(view, "#band-0-to[value='10']")
+
+    view |> element("#save-settings") |> render_click()
+
+    bands = Assessment.grading_rules(scope).appreciation_bands
+    assert Enum.map(bands, & &1.code) == ~w(CNA CMA CA CBA CTBA)
+    assert List.last(bands).label == "C. très bien acquise"
+  end
+
+  test "a band's code is editable", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
+
+    view
+    |> form("#bands-form", %{bands: %{"0" => %{"code" => "TI"}}})
+    |> render_change()
+
+    view |> element("#save-settings") |> render_click()
+    assert hd(Assessment.grading_rules(scope).appreciation_bands).code == "TI"
+  end
 end

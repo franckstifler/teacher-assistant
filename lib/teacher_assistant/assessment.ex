@@ -875,12 +875,21 @@ defmodule TeacherAssistant.Assessment do
     Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, acc} ->
       case parse_score(row.from) do
         {:ok, %Decimal{} = from} ->
-          {:cont, {:ok, acc ++ [%{from: from, label: String.trim(row.label || "")}]}}
+          band = %{from: from, label: String.trim(row.label || ""), code: band_code(row)}
+          {:cont, {:ok, acc ++ [band]}}
 
         _ ->
           {:halt, {:error, :invalid_number}}
       end
     end)
+  end
+
+  # Spec bulletin v2: a blank « cote » is no code.
+  defp band_code(row) do
+    case String.trim(Map.get(row, :code) || "") do
+      "" -> nil
+      code -> String.upcase(code)
+    end
   end
 
   defp parse_thresholds(params) do
