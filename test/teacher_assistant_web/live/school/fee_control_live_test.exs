@@ -60,6 +60,8 @@ defmodule TeacherAssistantWeb.School.FeeControlLiveTest do
     assert html =~ "Contrôle des frais — 6e Q"
     assert html =~ "Doivent sortir — 1" and html =~ "Awa A"
     assert html =~ "Autorisés malgré un retard — 1" and html =~ "Ben B"
+    # A box per name, to tick on paper who left.
+    assert html =~ ~s(class="tick")
   end
 
   test "Tout cocher records all must-leave students", %{conn: conn} = ctx do

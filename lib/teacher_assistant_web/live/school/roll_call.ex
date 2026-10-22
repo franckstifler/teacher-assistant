@@ -404,9 +404,12 @@ defmodule TeacherAssistantWeb.School.RollCall do
             phx-click="set"
             phx-value-enrollment_id={student.enrollment_id}
             phx-value-status="sent_home"
-            class="btn btn-ghost btn-xs h-[38px] text-info"
+            title={gettext("Remettre « Renvoyé pour frais »")}
+            class="btn btn-ghost btn-xs h-[38px] gap-1 text-info"
           >
-            {AttendanceStatus.label(:sent_home)}
+            <.icon name="hero-arrow-uturn-left" class="size-3.5" /> {AttendanceStatus.label(
+              :sent_home
+            )}
           </button>
           <button
             type="button"

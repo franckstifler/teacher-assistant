@@ -187,6 +187,25 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
       assert has_element?(view, "#note-#{note.id} .badge", "Expirée")
     end
 
+    test "the special permission reason is not called an exemption", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+      assert has_element?(view, "#note-form option[value='exemption']", "Autorisation spéciale")
+    end
+
+    test "the warn form says who already got a warning and cancelling asks first",
+         %{conn: conn} = ctx do
+      {:ok, [w]} =
+        TeacherAssistant.FeeControl.issue_warnings(ctx.scope, [ctx.e], ~D[2025-09-22])
+
+      {:ok, view, _} = live(conn, page(ctx))
+      view |> element("#warn-class") |> render_click()
+      assert has_element?(view, "#warn-form", "avis du 15/09/2025")
+      assert has_element?(view, "#warn-form button[type='submit']", "Émettre les avis")
+
+      {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
+      assert has_element?(view, "#cancel-warning-#{w.id} button[data-confirm]")
+    end
+
     test "a promise without a date shows an error", %{conn: conn} = ctx do
       {:ok, view, _} = live(conn, page(ctx, "?student=#{ctx.e.id}"))
       view |> form("#note-form", note: %{reason: "promise", valid_until: ""}) |> render_submit()

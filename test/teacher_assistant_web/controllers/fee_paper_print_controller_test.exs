@@ -28,6 +28,7 @@ defmodule TeacherAssistantWeb.FeePaperPrintControllerTest do
     assert html =~ "Awa A" and html =~ "6e Q"
     assert html =~ ReceiptVerification.code(ReceiptVerification.token(:note, note))
     assert html =~ "<svg"
+    assert html =~ "Émis par :"
     refute html =~ "FCFA"
   end
 

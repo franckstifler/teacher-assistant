@@ -16,6 +16,7 @@ defmodule TeacherAssistantWeb.FeePaperPrintHTML do
       body { font-family: Georgia, "Times New Roman", serif; color: #111; margin: 0; padding: 16px; font-size: 10.5pt; line-height: 1.4; }
       .sheet { max-width: 560px; margin: 0 auto 24px; position: relative; }
       .sheet + .sheet { page-break-before: always; break-before: page; }
+      @media screen { .sheet + .sheet { margin-top: 28px; padding-top: 24px; border-top: 1px dashed #bbb; } }
       .national { text-align: center; font-size: 8.5pt; }
       .national .fr { font-variant: small-caps; font-weight: bold; }
       .national .en { color: #444; }
@@ -57,7 +58,7 @@ defmodule TeacherAssistantWeb.FeePaperPrintHTML do
     <div class="foot">
       <div>
         <div :if={@paper.issued_by_name}>
-          {gettext("L'intendance : %{name}", name: @paper.issued_by_name)}
+          {gettext("Émis par : %{name}", name: @paper.issued_by_name)}
         </div>
         <div class="check">
           {gettext(

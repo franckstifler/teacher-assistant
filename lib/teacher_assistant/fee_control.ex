@@ -298,6 +298,17 @@ defmodule TeacherAssistant.FeeControl do
   def list_warnings(%Scope{} = scope, %Enrollment{id: id}),
     do: Fees.list_warnings_for_enrollment_ids!([id], scope: scope)
 
+  @doc "`%{enrollment_id => latest valid warning}` among `enrollment_ids`."
+  def latest_warnings(_scope, []), do: %{}
+
+  def latest_warnings(%Scope{} = scope, enrollment_ids) do
+    enrollment_ids
+    |> Fees.list_warnings_for_enrollment_ids!(scope: scope)
+    |> Enum.filter(&(&1.status == :valid))
+    |> Enum.group_by(& &1.enrollment_id)
+    |> Map.new(fn {id, ws} -> {id, Enum.max_by(ws, & &1.seq)} end)
+  end
+
   @doc "What the printed warnings show, in the order of `ids` (unknown ids are left out)."
   def warnings(%Scope{} = scope, ids) do
     rows =

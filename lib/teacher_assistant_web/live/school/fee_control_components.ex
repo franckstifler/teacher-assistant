@@ -17,6 +17,7 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
 
   attr :rows, :list, required: true, doc: "roster rows of the students behind"
   attr :balances, :map, required: true
+  attr :warned, :map, default: %{}, doc: "enrollment_id => latest valid warning"
   attr :pay_by, Date, required: true
   attr :error, :string, default: nil
 
@@ -41,7 +42,12 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
             class="checkbox checkbox-sm"
             id={"warn-#{row.enrollment.id}"}
           />
-          <label for={"warn-#{row.enrollment.id}"} class="flex-1">{row.student.full_name}</label>
+          <label for={"warn-#{row.enrollment.id}"} class="flex-1">
+            {row.student.full_name}
+            <span :if={@warned[row.enrollment.id]} class="text-xs text-warning">
+              · {gettext("avis du %{date}", date: date(@warned[row.enrollment.id].issued_on))}
+            </span>
+          </label>
           <span class="ta-num text-base-content/70">
             {Money.format_fcfa(
               @balances[row.enrollment.id].due_to_date - @balances[row.enrollment.id].total_paid
@@ -61,7 +67,7 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
       <p :if={@error} id="warn-error" class="text-sm text-error">{@error}</p>
       <div class="flex gap-2">
         <button :if={@rows != []} type="submit" class="btn btn-primary btn-sm">
-          {gettext("Émettre et imprimer")}
+          {gettext("Émettre les avis")}
         </button>
         <button type="button" phx-click="warn_class" class="btn btn-ghost btn-sm">
           {gettext("Fermer")}
@@ -115,30 +121,6 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
         </a>
       </div>
 
-      <.form
-        :if={@can_edit?}
-        for={@form}
-        id="note-form"
-        phx-change="change_note"
-        phx-submit="issue_note"
-        class="space-y-1 rounded-box border border-base-300 p-3"
-      >
-        <.input
-          field={@form[:reason]}
-          type="select"
-          options={Enum.map(ReturnNoteReason.values(), &{ReturnNoteReason.label(&1), &1})}
-          label={gettext("Motif")}
-        />
-        <.input
-          field={@form[:valid_until]}
-          type="date"
-          label={gettext("Valable jusqu'au")}
-        />
-        <.input field={@form[:internal_note]} label={gettext("Note interne (non imprimée)")} />
-        <p :if={@error} id="note-error" class="text-sm text-error">{@error}</p>
-        <button type="submit" class="btn btn-ghost btn-sm">{gettext("Délivrer l'autorisation")}</button>
-      </.form>
-
       <div
         :for={n <- @notes}
         id={"note-#{n.id}"}
@@ -172,9 +154,38 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
             aria-label={gettext("Raison de l'annulation")}
             class="input input-xs flex-1"
           />
-          <button type="submit" class="btn btn-ghost btn-xs text-error">{gettext("Annuler")}</button>
+          <button
+            type="submit"
+            class="btn btn-ghost btn-xs text-error"
+            data-confirm={gettext("Annuler cette autorisation ? L'élève ne sera plus autorisé.")}
+          >
+            {gettext("Annuler")}
+          </button>
         </form>
       </div>
+      <.form
+        :if={@can_edit?}
+        for={@form}
+        id="note-form"
+        phx-change="change_note"
+        phx-submit="issue_note"
+        class="space-y-1 rounded-box border border-base-300 p-3"
+      >
+        <.input
+          field={@form[:reason]}
+          type="select"
+          options={Enum.map(ReturnNoteReason.values(), &{ReturnNoteReason.label(&1), &1})}
+          label={gettext("Motif")}
+        />
+        <.input
+          field={@form[:valid_until]}
+          type="date"
+          label={gettext("Valable jusqu'au")}
+        />
+        <.input field={@form[:internal_note]} label={gettext("Note interne (non imprimée)")} />
+        <p :if={@error} id="note-error" class="text-sm text-error">{@error}</p>
+        <button type="submit" class="btn btn-ghost btn-sm">{gettext("Délivrer l'autorisation")}</button>
+      </.form>
     </section>
 
     <section id="student-warnings" class="space-y-2">
@@ -218,7 +229,13 @@ defmodule TeacherAssistantWeb.School.FeeControlComponents do
             aria-label={gettext("Raison de l'annulation")}
             class="input input-xs flex-1"
           />
-          <button type="submit" class="btn btn-ghost btn-xs text-error">{gettext("Annuler")}</button>
+          <button
+            type="submit"
+            class="btn btn-ghost btn-xs text-error"
+            data-confirm={gettext("Annuler cet avis ?")}
+          >
+            {gettext("Annuler")}
+          </button>
         </form>
       </div>
     </section>

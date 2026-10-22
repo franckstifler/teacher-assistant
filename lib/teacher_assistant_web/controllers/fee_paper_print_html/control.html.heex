@@ -10,6 +10,7 @@
       h2 { font-size: 13pt; margin: 16px 0 4px; }
       h2.out { color: #9b2c1f; } h2.ok { color: #11663a; }
       table td { border: 0; border-bottom: 1px solid #ddd; padding: 5px 0; }
+      td.tick { width: 22px; } td.tick span { display: inline-block; width: 13px; height: 13px; border: 1px solid #555; vertical-align: middle; }
     </style>
   </head>
   <body>
@@ -25,6 +26,7 @@
       </h2>
       <table>
         <tr :for={row <- @control.must_leave}>
+          <td class="tick"><span>{if row.sent_out?, do: "✓"}</span></td>
           <td>{row.student.full_name}</td>
           <td class="n">{gettext("reste %{amount}", amount: Money.format_amount(row.owed))}</td>
         </tr>

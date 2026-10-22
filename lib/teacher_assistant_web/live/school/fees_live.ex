@@ -38,7 +38,8 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          note_error: nil,
          last_warnings: nil,
          warn_open?: false,
-         warn_error: nil
+         warn_error: nil,
+         warned: %{}
        )
        |> reset_forms()
        |> load()}
@@ -289,8 +290,16 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     end
   end
 
-  def handle_event("warn_class", _params, socket),
-    do: {:noreply, assign(socket, warn_open?: !socket.assigns.warn_open?, warn_error: nil)}
+  def handle_event("warn_class", _params, socket) do
+    ids = Enum.map(socket.assigns.roster, & &1.enrollment.id)
+
+    {:noreply,
+     assign(socket,
+       warn_open?: !socket.assigns.warn_open?,
+       warn_error: nil,
+       warned: FeeControl.latest_warnings(scope(socket), ids)
+     )}
+  end
 
   def handle_event("send_warnings", %{"warn" => params}, socket) do
     ids = MapSet.new(params["ids"] || [])
@@ -502,6 +511,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
           :if={@warn_open?}
           rows={Enum.filter(@roster, &(@balances[&1.enrollment.id].status == :behind))}
           balances={@balances}
+          warned={@warned}
           pay_by={FeeControl.default_pay_by()}
           error={@warn_error}
         />

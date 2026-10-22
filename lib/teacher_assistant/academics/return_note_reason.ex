@@ -5,5 +5,5 @@ defmodule TeacherAssistant.Academics.ReturnNoteReason do
 
   def label(:promise), do: gettext("Promesse de paiement")
   def label(:payment), do: gettext("Paiement reçu")
-  def label(:exemption), do: gettext("Exonération")
+  def label(:exemption), do: gettext("Autorisation spéciale")
 end

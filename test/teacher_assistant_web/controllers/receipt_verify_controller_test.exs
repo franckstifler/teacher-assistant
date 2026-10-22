@@ -134,7 +134,8 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
     test "the typed form says it checks receipts, notes and warnings", %{conn: conn} do
       html = conn |> get(~p"/verify/receipt") |> html_response(200)
       assert html =~ "Vérifier un reçu, une autorisation ou un avis"
-      assert html =~ "R2026-000123 / A2026-000045 / V2026-000067"
+      assert html =~ ~s(placeholder="R2026-000123")
+      assert html =~ "Commence par R (reçu), A (autorisation) ou V (avis)."
     end
 
     test "old receipt links still work", %{conn: conn, payment: p} do
