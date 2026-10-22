@@ -104,21 +104,22 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
-  # ## Configuring the mailer
+  # ## Mailer: Brevo (invitations, magic links, password resets)
   #
-  # In production you need to configure the mailer to use a different adapter.
-  # Here is an example configuration for Mailgun:
-  #
-  #     config :teacher_assistant, TeacherAssistant.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
-  # and Finch out-of-the-box. This configuration is typically done at
-  # compile-time in your config/prod.exs:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
-  #
-  # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  # The API client (Req) is set in config/prod.exs. Brevo only sends from a sender or
+  # domain verified in the Brevo account; see docs/DEPLOY.md.
+  config :teacher_assistant, TeacherAssistant.Mailer,
+    adapter: Swoosh.Adapters.Brevo,
+    api_key:
+      System.get_env("BREVO_API_KEY") ||
+        raise("""
+        environment variable BREVO_API_KEY is missing.
+        Create one in Brevo: SMTP & API → API keys.
+        """)
+
+  # The sender, as verified in Brevo (default: « Teacher Assistant » <no-reply@teacherassistant.cm>).
+  if from_address = System.get_env("MAIL_FROM_ADDRESS") do
+    config :teacher_assistant, TeacherAssistant.Accounts.Emails,
+      from: {System.get_env("MAIL_FROM_NAME") || "Teacher Assistant", from_address}
+  end
 end
