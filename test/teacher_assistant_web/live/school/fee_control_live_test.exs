@@ -70,6 +70,25 @@ defmodule TeacherAssistantWeb.School.FeeControlLiveTest do
              MapSet.new([ctx.e.id])
   end
 
+  test "the class's form master sees notes, read-only", ctx do
+    fm = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
+    {:ok, _} = Enrollment.set_form_master(ctx.scope, ctx.cg, fm.current_user.id)
+
+    conn =
+      build_conn()
+      |> log_in_user(fm.current_user)
+      |> Plug.Conn.put_session(:workspace_id, ctx.scope.current_workspace.id)
+
+    {:ok, view, _} = live(conn, path(ctx))
+    assert has_element?(view, "#allowed", "Ben B")
+    refute has_element?(view, "#must-leave", "Ben B")
+    refute has_element?(view, "#sorti-#{ctx.e.id}")
+
+    {:ok, fees, _} = live(conn, ~p"/school/classes/#{ctx.cg.id}/fees?student=#{ctx.ben.id}")
+    assert has_element?(fees, "#return-notes [id^='note-']")
+    refute has_element?(fees, "#note-form")
+  end
+
   test "a teacher is redirected", ctx do
     teacher = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
 

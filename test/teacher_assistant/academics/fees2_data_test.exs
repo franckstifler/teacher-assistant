@@ -99,6 +99,16 @@ defmodule TeacherAssistant.Academics.Fees2DataTest do
     assert [%{name: "Frais exigibles", amount: 24_000}] = warning.lines
   end
 
+  test "notes are read by the fees axis and the class's form master only", ctx do
+    {:ok, _} = create(ReturnNote, note_attrs(ctx, 1), ctx.scope)
+    teacher = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
+    fm = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
+    {:ok, _} = Enrollment.set_form_master(ctx.scope, ctx.cg, fm.current_user.id)
+
+    assert [_] = TeacherAssistant.FeeControl.list_notes(fm, ctx.e)
+    assert [] = TeacherAssistant.FeeControl.list_notes(teacher, ctx.e)
+  end
+
   test "a student with a note cannot be withdrawn", ctx do
     {:ok, _} = create(ReturnNote, note_attrs(ctx, 1), ctx.scope)
     assert {:error, _} = Enrollment.withdraw(ctx.scope, ctx.e)
