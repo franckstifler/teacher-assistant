@@ -8,7 +8,8 @@ defmodule TeacherAssistantWeb.Endpoint do
     store: :cookie,
     key: "_teacher_assistant_key",
     signing_salt: "BLqSwa4S",
-    same_site: "Lax"
+    same_site: "Lax",
+    secure: Application.compile_env(:teacher_assistant, :secure_session_cookie, false)
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

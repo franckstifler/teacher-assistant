@@ -6,7 +6,13 @@ import Config
 # which you should run after static files are built and
 # before starting your production server.
 config :teacher_assistant, TeacherAssistantWeb.Endpoint,
-  cache_static_manifest: "priv/static/cache_manifest.json"
+  cache_static_manifest: "priv/static/cache_manifest.json",
+  # HTTPS only: plain HTTP is redirected and browsers are told (HSTS) never to
+  # try it again. TLS ends at the proxy in front, which sets X-Forwarded-Proto.
+  force_ssl: [hsts: true, rewrite_on: [:x_forwarded_proto]]
+
+# The session cookie (which carries the sign-in token) is never sent over HTTP.
+config :teacher_assistant, :secure_session_cookie, true
 
 # Configures Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req

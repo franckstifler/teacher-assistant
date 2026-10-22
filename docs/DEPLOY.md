@@ -20,6 +20,14 @@ The server refuses to start when a required variable is missing.
 Changing `SECRET_KEY_BASE` invalidates the QR and check codes already printed on
 receipts, return notes, warnings and report cards.
 
+## HTTPS
+
+The production build only works over HTTPS: plain HTTP is redirected to HTTPS
+(with HSTS), and the session cookie is marked `Secure`. Put the app behind a proxy
+or load balancer that terminates TLS for `PHX_HOST` and forwards requests with the
+`X-Forwarded-Proto: https` header (Caddy, nginx, Fly.io and most hosts do this by
+default). Requests to `localhost` are not redirected, for health checks.
+
 ## Email with Brevo
 
 The app sends email through Brevo's API (free tier: 300 emails a day).
