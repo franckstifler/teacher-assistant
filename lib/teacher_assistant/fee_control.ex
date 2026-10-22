@@ -233,6 +233,10 @@ defmodule TeacherAssistant.FeeControl do
          :ok <- check_can_warn(scope),
          {:ok, year} <- Ash.get(AcademicYear, first.academic_year_id, scope: scope),
          [_ | _] = owing <- owing(scope, year, enrollments, today) do
+      # Load every student and class once, before taking the lock.
+      loaded = Ash.load!(Enum.map(owing, &elem(&1, 0)), [:student, :class_group], scope: scope)
+      owing = Enum.zip_with(loaded, owing, fn e, {_e, lines} -> {e, lines} end)
+
       Ash.transact([FeeWarning], fn ->
         lock!("V", first.workspace_id, year.id)
 
@@ -411,7 +415,7 @@ defmodule TeacherAssistant.FeeControl do
 
   defp insert_numbered(scope, resource, prefix, e, year, attrs) do
     seq = Fees.next_seq(resource, e.workspace_id, year.id)
-    e = Ash.load!(e, [:student, :class_group], scope: scope)
+    e = Ash.load!(e, [:student, :class_group], scope: scope, lazy?: true)
 
     resource
     |> Ash.Changeset.for_create(
