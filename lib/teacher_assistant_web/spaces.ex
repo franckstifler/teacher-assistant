@@ -49,21 +49,28 @@ defmodule TeacherAssistantWeb.Spaces do
   @doc """
   The school scope with the member's spaces and the current one (`stored`, the
   session value, when still theirs) in its capabilities. Navigation only.
+
+  `counts?: false` leaves out the menu badges (`counts/2`), which can read a whole
+  séquence of marks: for requests that draw no menu (photos, logos, prints) and
+  for a LiveView's first, not-yet-connected render.
   """
-  def put_space(%{current_workspace: %{}} = scope, stored) do
+  def put_space(scope, stored, opts \\ [])
+
+  def put_space(%{current_workspace: %{}} = scope, stored, opts) do
     facts = facts(scope)
     keys = keys_for(facts)
     key = resolve(keys, parse_key(stored))
+    counts = if Keyword.get(opts, :counts?, true), do: counts(key, scope), else: %{}
 
     space =
       key
-      |> space(Map.merge(facts, counts(key, scope)))
+      |> space(Map.merge(facts, counts))
       |> drop_off_modules(scope)
 
     %{scope | capabilities: Map.merge(scope.capabilities || %{}, %{spaces: keys, space: space})}
   end
 
-  def put_space(scope, _stored), do: scope
+  def put_space(scope, _stored, _opts), do: scope
 
   @doc """
   Whether `path` leads to a screen the scope's school has: core, or a module it has

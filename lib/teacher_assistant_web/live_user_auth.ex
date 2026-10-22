@@ -70,7 +70,11 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   # The member's role spaces and the current one (spec E), for the layout and the
   # /school landing. Navigation only — never an authorization input.
   def on_mount(:assign_space, _params, session, socket) do
-    scope = TeacherAssistantWeb.Spaces.put_space(socket.assigns.current_scope, session["space"])
+    # Badges only once connected: the first HTTP render would compute them for nothing.
+    scope =
+      TeacherAssistantWeb.Spaces.put_space(socket.assigns.current_scope, session["space"],
+        counts?: Phoenix.LiveView.connected?(socket)
+      )
 
     {:cont,
      socket

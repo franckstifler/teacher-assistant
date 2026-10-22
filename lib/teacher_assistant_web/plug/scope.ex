@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.Plug.Scope do
   `TeacherAssistantWeb.LiveUserAuth` does for LiveViews: the signed-in user
   (AshAuthentication's `current_user` assign, else the session `user_id`) and
   `Workspaces.session_scope/3` for the session's school and teaching context, with
-  the member's role space (`TeacherAssistantWeb.Spaces.put_space/2`).
+  the member's role space (`TeacherAssistantWeb.Spaces.put_space/3`), without badges.
   Runs after `TeacherAssistantWeb.Plug.Locale`.
   """
   @behaviour Plug
@@ -28,7 +28,8 @@ defmodule TeacherAssistantWeb.Plug.Scope do
         get_session(conn, :context_id)
       )
 
-    scope = TeacherAssistantWeb.Spaces.put_space(scope, get_session(conn, :space))
+    # No menu badges: controller responses (photos, logos, prints) draw no menu.
+    scope = TeacherAssistantWeb.Spaces.put_space(scope, get_session(conn, :space), counts?: false)
 
     conn
     |> assign(:current_user, user)
