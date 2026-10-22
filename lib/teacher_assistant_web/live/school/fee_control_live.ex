@@ -30,30 +30,43 @@ defmodule TeacherAssistantWeb.School.FeeControlLive do
         _ -> Reference.today()
       end
 
-    {:noreply, socket |> assign(date: date) |> load()}
+    # A send-out is set or undone on the day itself; other days are read-only.
+    editable? = socket.assigns.can_edit? and date == Reference.today()
+    {:noreply, socket |> assign(date: date, editable?: editable?) |> load()}
   end
 
   def handle_event("toggle_sent_out", %{"id" => id}, socket) do
-    with true <- socket.assigns.can_edit?,
+    with true <- socket.assigns.editable?,
          %{} = row <- Enum.find(socket.assigns.control.must_leave, &(&1.enrollment.id == id)) do
-      if row.sent_out?,
-        do: FeeControl.undo_send_out(scope(socket), row.enrollment, socket.assigns.date),
-        else: FeeControl.record_send_out(scope(socket), row.enrollment, socket.assigns.date)
+      result =
+        if row.sent_out?,
+          do: FeeControl.undo_send_out(scope(socket), row.enrollment, socket.assigns.date),
+          else: FeeControl.record_send_out(scope(socket), row.enrollment, socket.assigns.date)
 
-      {:noreply, load(socket)}
+      {:noreply, socket |> report([result]) |> load()}
     else
       _ -> {:noreply, socket}
     end
   end
 
   def handle_event("tick_all", _params, socket) do
-    if socket.assigns.can_edit? do
-      for row <- socket.assigns.control.must_leave,
-          not row.sent_out?,
-          do: FeeControl.record_send_out(scope(socket), row.enrollment, socket.assigns.date)
-    end
+    if socket.assigns.editable? do
+      results =
+        for row <- socket.assigns.control.must_leave,
+            not row.sent_out?,
+            do: FeeControl.record_send_out(scope(socket), row.enrollment, socket.assigns.date)
 
-    {:noreply, load(socket)}
+      {:noreply, socket |> report(results) |> load()}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # A refused send-out (closed year, rights) must not look like it worked.
+  defp report(socket, results) do
+    if Enum.any?(results, &match?({:error, _}, &1)),
+      do: put_flash(socket, :error, gettext("Modification non enregistrée.")),
+      else: socket
   end
 
   defp scope(socket), do: socket.assigns.current_scope
@@ -118,7 +131,7 @@ defmodule TeacherAssistantWeb.School.FeeControlLive do
               {gettext("Doivent sortir — %{count}", count: length(@control.must_leave))}
             </h2>
             <button
-              :if={@can_edit? and @control.must_leave != []}
+              :if={@editable? and @control.must_leave != []}
               id="tick-all"
               type="button"
               phx-click="tick_all"
@@ -130,7 +143,7 @@ defmodule TeacherAssistantWeb.School.FeeControlLive do
           <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
             <li :for={row <- @control.must_leave} class="flex items-center gap-3 px-4 py-3">
               <button
-                :if={@can_edit?}
+                :if={@editable?}
                 id={"sorti-#{row.enrollment.id}"}
                 type="button"
                 phx-click="toggle_sent_out"
@@ -145,6 +158,12 @@ defmodule TeacherAssistantWeb.School.FeeControlLive do
               >
                 <.icon :if={row.sent_out?} name="hero-check" class="size-4" /> {gettext("Sorti")}
               </button>
+              <span
+                :if={!@editable? and row.sent_out?}
+                class="badge badge-error badge-sm"
+              >
+                {gettext("Sorti")}
+              </span>
               <span class="flex-1 font-semibold">{row.student.full_name}</span>
               <span class="ta-num whitespace-nowrap text-sm">
                 {gettext("reste %{amount}", amount: Money.format_amount(row.owed))}

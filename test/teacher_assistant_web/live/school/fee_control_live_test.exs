@@ -89,6 +89,24 @@ defmodule TeacherAssistantWeb.School.FeeControlLiveTest do
     refute has_element?(fees, "#note-form")
   end
 
+  test "another day's list is read-only and a crafted tick writes nothing", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, path(ctx) <> "?date=2025-09-16")
+    assert has_element?(view, "#must-leave", "Awa A")
+    refute has_element?(view, "#sorti-#{ctx.e.id}")
+    refute has_element?(view, "#tick-all")
+
+    render_click(view, "toggle_sent_out", %{"id" => ctx.e.id})
+    render_click(view, "tick_all", %{})
+    assert FeeControl.sent_home_ids(ctx.scope, [ctx.e.id], ~D[2025-09-16]) == MapSet.new()
+  end
+
+  test "a refused tick says so", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, path(ctx))
+    TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    view |> element("#sorti-#{ctx.e.id}") |> render_click()
+    assert render(view) =~ "Modification non enregistrée."
+  end
+
   test "a teacher is redirected", ctx do
     teacher = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
 
