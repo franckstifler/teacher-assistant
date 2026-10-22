@@ -284,4 +284,17 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
              )
     end
   end
+
+  test "edits and shows the national ID", %{conn: conn, scope: scope, awa: awa} do
+    {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+    view |> element("#edit-identity") |> render_click()
+
+    view
+    |> form("#identity-form", student: %{national_id: "241592812"})
+    |> render_submit()
+
+    {:ok, awa} = Enrollment.fetch_owned_student(scope, awa.id)
+    assert awa.national_id == "241592812"
+    assert has_element?(view, "#student-national-id", "241592812")
+  end
 end

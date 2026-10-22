@@ -421,4 +421,63 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     html = view |> element("#assessment-select") |> render_change(%{"assessment" => other.id})
     assert html =~ "1 note non enregistrée abandonnée"
   end
+
+  describe "APC competence (bulletin v2)" do
+    defp apc_on(scope) do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+    end
+
+    test "APC on: competence field above the marks and a reminder while empty", %{
+      conn: conn,
+      ctx: ctx,
+      seq: seq,
+      scope: scope
+    } do
+      apc_on(scope)
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+      assert has_element?(view, "#sequence-competence")
+      assert has_element?(view, "#competence-reminder")
+
+      view
+      |> form("#sequence-competence", %{competence: %{text: "Résoudre une équation"}})
+      |> render_submit()
+
+      refute has_element?(view, "#competence-reminder")
+      assert has_element?(view, "#sequence-competence input[value='Résoudre une équation']")
+
+      assert Assessment.sequence_competences(scope, [ctx.id], [seq.id]) ==
+               %{{ctx.id, seq.id} => "Résoudre une équation"}
+    end
+
+    test "reminder can be dismissed and marks still save", %{
+      conn: conn,
+      ctx: ctx,
+      seq: seq,
+      a: a,
+      s1: s1,
+      scope: scope
+    } do
+      apc_on(scope)
+
+      {:ok, view, _} =
+        live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+      view |> element("#competence-reminder button") |> render_click()
+      refute has_element?(view, "#competence-reminder")
+
+      blur(view, s1.id, "12")
+      assert [_] = Assessment.list_marks(scope, a)
+    end
+
+    test "APC off: no competence field", %{conn: conn, ctx: ctx, seq: seq} do
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+      refute has_element?(view, "#sequence-competence")
+      refute has_element?(view, "#competence-reminder")
+    end
+  end
 end

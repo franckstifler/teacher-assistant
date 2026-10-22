@@ -263,6 +263,48 @@ defmodule TeacherAssistant.Enrollment do
     |> Map.new(&{&1.student_id, &1.guardian})
   end
 
+  @doc """
+  Spec bulletin v2 §5.2: per student id, up to two guardians as `%{name, phone}`, main
+  contact first — one query for the class.
+  """
+  def guardians_for_students(%Scope{}, []), do: %{}
+
+  def guardians_for_students(%Scope{} = scope, student_ids) do
+    StudentGuardian
+    |> Ash.Query.filter(student_id in ^student_ids)
+    |> Ash.Query.sort(primary_contact: :desc, inserted_at: :asc)
+    |> Ash.Query.load(:guardian)
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.student_id, &%{name: &1.guardian.full_name, phone: &1.guardian.phone})
+    |> Map.new(fn {id, guardians} -> {id, Enum.take(guardians, 2)} end)
+  end
+
+  @doc """
+  Spec bulletin v2 §7: what the public ID-card check may say about an enrolment. The one
+  read outside authentication: it bypasses policies, scoped to the workspace the signed
+  token names, and returns no birth date, photo or contact.
+  """
+  def card_verification(workspace_id, enrollment_id) do
+    case Ash.get(Enrollment, enrollment_id,
+           tenant: workspace_id,
+           authorize?: false,
+           load: [:student, :class_group, :academic_year, :workspace]
+         ) do
+      {:ok, e} ->
+        {:ok,
+         %{
+           school_name: e.workspace.name,
+           student_name: e.student.full_name,
+           class_label: e.class_group.label,
+           year_name: e.academic_year.name,
+           current?: e.academic_year.active == true
+         }}
+
+      _ ->
+        :invalid
+    end
+  end
+
   @doc "Whether the scope may record parents (admin or conduct axis)."
   def can_manage_guardians?(scope), do: Ash.can?({Guardian, :create}, scope)
 

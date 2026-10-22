@@ -506,6 +506,10 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 />
                 <.input field={@identity_form[:matricule]} label={gettext("Matricule")} />
                 <.input
+                  field={@identity_form[:national_id]}
+                  label={gettext("Identifiant unique")}
+                />
+                <.input
                   field={@identity_form[:birth_date]}
                   type="date"
                   label={gettext("Date de naissance")}
@@ -528,6 +532,12 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 <div>
                   <dt class="ta-eyebrow">{gettext("Matricule")}</dt>
                   <dd class="ta-num mt-0.5">{@student.matricule || "—"}</dd>
+                </div>
+                <div>
+                  <dt class="ta-eyebrow">{gettext("Identifiant unique")}</dt>
+                  <dd id="student-national-id" class="ta-num mt-0.5">
+                    {@student.national_id || "—"}
+                  </dd>
                 </div>
                 <div>
                   <dt class="ta-eyebrow">{gettext("Date de naissance")}</dt>

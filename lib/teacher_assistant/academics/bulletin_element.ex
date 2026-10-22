@@ -21,16 +21,23 @@ defmodule TeacherAssistant.Academics.BulletinElement do
       :repeater,
       :form_master,
       :parent_visa,
-      :verify_link
+      :verify_link,
+      :apc,
+      :previous_terms,
+      :annual_summary,
+      :guardians,
+      :national_id,
+      :class_profile,
+      :teacher_visa
     ]
 
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
   @doc """
-  Shown when the school has not chosen: everything but the QR code. A school that
+  Shown when the school has not chosen: everything but the QR code and APC. A school that
   saved its list keeps exactly that list, so elements added later stay off there.
   """
-  def defaults, do: values() -- [:qr_code]
+  def defaults, do: values() -- [:qr_code, :apc]
 
   def label(:rank), do: gettext("Rang")
   def label(:class_average), do: gettext("Moyenne de la classe")
@@ -52,4 +59,11 @@ defmodule TeacherAssistant.Academics.BulletinElement do
   def label(:form_master), do: gettext("Professeur principal")
   def label(:parent_visa), do: gettext("Visa du parent")
   def label(:verify_link), do: gettext("Lien de vérification en ligne")
+  def label(:apc), do: gettext("Bulletin APC (compétences, cotes)")
+  def label(:previous_terms), do: gettext("Moyennes des trimestres précédents")
+  def label(:annual_summary), do: gettext("Bilan annuel au 3e trimestre")
+  def label(:guardians), do: gettext("Parents / tuteurs")
+  def label(:national_id), do: gettext("Identifiant unique")
+  def label(:class_profile), do: gettext("Profil de la classe (moyennes ≥ 10, taux de réussite)")
+  def label(:teacher_visa), do: gettext("Colonne visa de l'enseignant")
 end

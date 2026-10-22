@@ -54,6 +54,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :head_name,
         :motto,
         :registration_number,
+        :school_code,
+        :name_en,
         :logo_path
       ]
     end
@@ -75,6 +77,8 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :head_name,
         :motto,
         :registration_number,
+        :school_code,
+        :name_en,
         :logo_path,
         :class_coefficients_allowed?,
         :bulletin_group_subtotals?,
@@ -141,7 +145,7 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     end
 
     update :update_official_header do
-      accept [:official_header_lines, :signature_path, :stamp_path]
+      accept [:official_header_lines, :official_header_lines_en, :signature_path, :stamp_path]
     end
 
     update :verify do
@@ -216,6 +220,9 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
     attribute :head_name, :string, public?: true
     attribute :motto, :string, public?: true
     attribute :registration_number, :string, public?: true
+    # Spec bulletin v2 §4.1: the MINESEC establishment code and the English name.
+    attribute :school_code, :string, public?: true, constraints: [max_length: 40]
+    attribute :name_en, :string, public?: true, constraints: [max_length: 120]
     attribute :logo_path, :string, public?: true
 
     attribute :class_coefficients_allowed?, :boolean,
@@ -344,6 +351,11 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
 
     # Spec KLM6: the bulletin's official header (nil = generated) and the head's signature and stamp.
     attribute :official_header_lines, {:array, :string},
+      public?: true,
+      constraints: [max_length: 6, items: [max_length: 120]]
+
+    # Spec bulletin v2 §4.1: the English counterpart (nil = generated English lines).
+    attribute :official_header_lines_en, {:array, :string},
       public?: true,
       constraints: [max_length: 6, items: [max_length: 120]]
 

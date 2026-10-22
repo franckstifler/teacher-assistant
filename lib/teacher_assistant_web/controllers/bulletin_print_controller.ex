@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
-  alias TeacherAssistant.Academics.BulletinTemplate
+  alias TeacherAssistant.Academics.{BulletinLayout, BulletinTemplate}
   alias TeacherAssistantWeb.{BulletinPrintHTML, BulletinVerification}
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
@@ -68,9 +68,10 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     results = view.results
     template = ReportCards.template_of(scope, cg, view)
     lang = template.language
+    kind = Organization.period_kind(period)
 
     bundles =
-      Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
+      Enum.map(entries, fn %{student: student, enrollment: enrollment} = entry ->
         verify_url = verify_url(pub, student.id)
 
         %{
@@ -88,11 +89,16 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           discipline: view.discipline[enrollment.id],
           qr_svg: qr_svg(verify_url, template),
           photo_url: photo_url(pub, student),
-          verify_url: verify_url
+          verify_url: verify_url,
+          # Spec bulletin v2: snapshots published before these keys have none.
+          guardians: Map.get(entry, :guardians, []),
+          prior: Map.get(Map.get(view, :prior_terms) || %{}, student.id, []),
+          annual: annual_line(view, student.id),
+          decision: decision(ReportCards.outcome(view, student.id), view, student.id),
+          density: density(template, kind, results && results.per_student[student.id], view)
         }
       end)
 
-    kind = Organization.period_kind(period)
     year = Organization.class_year(scope, cg)
 
     conn
@@ -104,7 +110,10 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       professeur_principal: view.form_master && Accounts.User.display_name(view.form_master),
       cg: cg,
       period_kind: kind,
-      period_heading: BulletinPrintHTML.tr(lang, fn -> period_heading(period) end),
+      title: BulletinPrintHTML.title(lang, kind, period_number(period)),
+      competences: Map.get(view, :competences) || %{},
+      sequences_per_term: Map.get(view, :sequences_per_term) || 2,
+      class_profile: TeacherAssistant.Academics.Bulletins.class_profile(results),
       effectif: (results && results.effectif) || 0,
       bundles: bundles,
       group_subtotals?: view.group_subtotals?,
@@ -119,19 +128,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       teachers: Map.get(view, :teachers) || %{},
       highest: results && Map.get(results, :highest),
       lowest: results && Map.get(results, :lowest),
-      head_name: head_name(scope)
+      head_name: ReportCards.head_name(scope)
     )
-  end
-
-  # The school's head (first active member holding the role), by display name.
-  defp head_name(scope) do
-    scope
-    |> Accounts.list_members()
-    |> Enum.find(&(:head in &1.roles))
-    |> case do
-      %{user: %Accounts.User{} = user} -> Accounts.User.display_name(user)
-      _ -> nil
-    end
   end
 
   defp logo_present?(scope) do
@@ -161,7 +159,41 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     if BulletinTemplate.show?(template, :qr_code), do: BulletinVerification.qr_svg(verify_url)
   end
 
-  defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"
-  defp period_heading({:trimester, term}), do: "#{gettext("Trimestre")} #{term.position}"
-  defp period_heading({:annual, _}), do: gettext("Année scolaire")
+  # Spec bulletin v2 §5.5: the last trimester's card carries the year.
+  defp annual_line(view, student_id) do
+    case Map.get(view, :annual) do
+      %{per_student: per_student} -> per_student[student_id]
+      _ -> nil
+    end
+  end
+
+  # The year's council decides on the annual card, and on the last trimester carrying it.
+  defp decision(%{passage: passage}, _view, _student_id) when not is_nil(passage), do: passage
+
+  defp decision(_outcome, view, student_id) do
+    with %{council: %{outcomes: outcomes}} <- Map.get(view, :annual),
+         %{passage: passage} <- outcomes[student_id] do
+      passage
+    else
+      _ -> nil
+    end
+  end
+
+  defp period_number({:sequence, seq}), do: seq.number
+  defp period_number({:trimester, term}), do: term.position
+  defp period_number({:annual, _}), do: nil
+
+  # Spec bulletin v2 §5.6: the density tier keeping the card on one page.
+  defp density(_template, _kind, nil, _view), do: :normal
+
+  defp density(template, kind, data, view) do
+    template
+    |> BulletinLayout.subject_lines(
+      kind,
+      data.groups,
+      Map.get(view, :sequences_per_term, 2),
+      view.group_subtotals?
+    )
+    |> BulletinLayout.density(BulletinLayout.identity_rows(template))
+  end
 end

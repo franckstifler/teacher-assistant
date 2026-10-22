@@ -64,7 +64,10 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
   # row's upper bound (0 for the first).
   defp rows_from(bands) do
     uppers = bands |> Enum.drop(1) |> Enum.map(&show_bound(&1.from))
-    Enum.zip_with(bands, uppers ++ [nil], fn band, to -> %{to: to, label: band.label} end)
+
+    Enum.zip_with(bands, uppers ++ [nil], fn band, to ->
+      %{to: to, label: band.label, code: band.code}
+    end)
   end
 
   defp lower_bounds(rows), do: ["0" | rows |> Enum.drop(-1) |> Enum.map(& &1.to)]
@@ -72,7 +75,9 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
   defp band_rows(rows) do
     rows
     |> lower_bounds()
-    |> Enum.zip_with(rows, fn from, row -> %{from: from || "", label: row.label} end)
+    |> Enum.zip_with(rows, fn from, row ->
+      %{from: from || "", label: row.label, code: row.code}
+    end)
   end
 
   defp show_bound(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string(:normal)
@@ -200,7 +205,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
               "ta-text-2 py-1 text-xs font-medium"
             ]}>
               <span>{gettext("De")}</span><span></span><span>{gettext("À (exclu)")}</span>
-              <span>{gettext("Appréciation")}</span><span></span>
+              <span>{gettext("Cote")}</span><span>{gettext("Appréciation")}</span><span></span>
             </div>
             <div
               :for={{{row, from}, i} <- Enum.with_index(Enum.zip(@rows, lower_bounds(@rows)))}
@@ -225,6 +230,15 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
                 disabled
                 aria-label={gettext("À (exclu)")}
                 class="input input-sm ta-num h-[34px] w-[90px] text-right"
+              />
+              <input
+                id={"band-#{i}-code"}
+                name={"bands[#{i}][code]"}
+                value={row.code}
+                maxlength="8"
+                aria-label={gettext("Cote")}
+                placeholder="—"
+                class="input input-sm h-[34px] w-full min-w-0 uppercase"
               />
               <input
                 id={"band-#{i}-label"}
@@ -258,6 +272,14 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
                 class="h-9 cursor-pointer rounded-[0.4rem] border border-primary px-3.5 text-[0.8rem] font-semibold text-primary transition-colors hover:bg-primary/10"
               >
                 {gettext("+ Scinder la dernière tranche")}
+              </button>
+              <button
+                id="apc-preset"
+                type="button"
+                phx-click="apc_preset"
+                class="h-9 cursor-pointer rounded-[0.4rem] border border-base-300 px-3.5 text-[0.8rem] font-semibold transition-colors hover:border-primary hover:text-primary"
+              >
+                {gettext("Barème APC (CTBA → CNA)")}
               </button>
               <button
                 id="reset-bands"
@@ -404,7 +426,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
     """
   end
 
-  defp band_grid, do: "grid grid-cols-[70px_16px_90px_minmax(0,1fr)_34px] gap-2"
+  defp band_grid, do: "grid grid-cols-[52px_16px_80px_64px_minmax(0,1fr)_34px] gap-2"
 
   defp distinction_tone(:avertissement_travail), do: "text-warning"
   defp distinction_tone(:blame_travail), do: "text-error"
@@ -419,7 +441,8 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
 
         %{
           to: if(row.to, do: Map.get(p, "to", row.to), else: nil),
-          label: Map.get(p, "label", row.label)
+          label: Map.get(p, "label", row.label),
+          code: Map.get(p, "code", row.code)
         }
       end)
 
@@ -480,7 +503,11 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
         {last, rest} = List.pop_at(rows, -1)
 
         new_rows =
-          rest ++ [%{last | to: show_bound(mid)}, %{to: nil, label: gettext("Nouvelle tranche")}]
+          rest ++
+            [
+              %{last | to: show_bound(mid)},
+              %{to: nil, label: gettext("Nouvelle tranche"), code: nil}
+            ]
 
         {:noreply, assign(socket, rows: new_rows, bands_error: nil, bands_dirty?: true)}
 
@@ -488,6 +515,16 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
         {:noreply, assign(socket, bands_error: gettext("Corrigez d'abord les bornes."))}
     end
   end
+
+  # Spec bulletin v2 §5.3: fills the APC « cotes »; saved with the bar like any edit.
+  def handle_event("apc_preset", _params, socket),
+    do:
+      {:noreply,
+       assign(socket,
+         rows: rows_from(Appreciations.apc_bands()),
+         bands_error: nil,
+         bands_dirty?: true
+       )}
 
   def handle_event("test_mark", %{"test" => test}, socket),
     do: {:noreply, assign(socket, test: test)}

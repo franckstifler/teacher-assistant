@@ -28,9 +28,11 @@ defmodule TeacherAssistant.ReportCards do
   alias TeacherAssistant.Academics.{
     AcademicYear,
     BulletinPublication,
+    BulletinLayout,
     BulletinTemplate,
     ClassGroup,
     EntryProgress,
+    Sequence,
     Term
   }
 
@@ -40,11 +42,19 @@ defmodule TeacherAssistant.ReportCards do
   def live_view(%Scope{} = scope, %ClassGroup{} = cg, period) do
     fm = Enrollment.form_master(scope, cg)
     results = Assessment.class_results_for_period(scope, cg, period)
+    template = template(scope, cg)
+    roster = Enrollment.list_roster(scope, cg)
+    guardians = Enrollment.guardians_for_students(scope, Enum.map(roster, & &1.student.id))
 
     %{
       results: results,
       council: council_entry(scope, cg, period, results),
-      roster: scope |> Enrollment.list_roster(cg) |> Enum.map(&plain_entry/1),
+      roster: Enum.map(roster, &plain_entry(&1, guardians)),
+      # Spec bulletin v2: snapshots published before these keys read them with `Map.get`.
+      competences: competences(scope, cg, period),
+      sequences_per_term: sequences_per_term(period),
+      prior_terms: prior_terms(scope, cg, period, template),
+      annual: annual_summary(scope, cg, period, template),
       conduct: Attendance.class_conduct(scope, cg, period),
       discipline:
         scope
@@ -53,7 +63,7 @@ defmodule TeacherAssistant.ReportCards do
       form_master:
         fm && %{name: fm.name, email: fm.email && to_string(fm.email), phone: fm.phone},
       group_subtotals?: group_subtotals?(scope),
-      template: template(scope, cg),
+      template: template,
       teachers: teachers(scope, cg)
     }
   end
@@ -70,7 +80,15 @@ defmodule TeacherAssistant.ReportCards do
   @doc "The class's printed-card template under the school's current settings (spec I5)."
   def template(%Scope{} = scope, %ClassGroup{} = cg) do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
-    template = BulletinTemplate.resolve(profile, scope.current_workspace.name, cg)
+
+    template =
+      BulletinTemplate.resolve(
+        profile,
+        scope.current_workspace.name,
+        cg,
+        head_name(scope, profile)
+      )
+
     # Operator console spec §1: no absences without roll call, no conduct without discipline.
     hidden =
       [absences: :appel, conduct: :discipline]
@@ -78,6 +96,30 @@ defmodule TeacherAssistant.ReportCards do
       |> Enum.map(&elem(&1, 0))
 
     %{template | elements: template.elements -- hidden}
+  end
+
+  @doc """
+  Spec bulletin v2 §7: the head's printed name — the profile's `head_name` when set,
+  else the first active member holding the head role.
+  """
+  def head_name(%Scope{} = scope) do
+    case Accounts.fetch_school_profile(scope) do
+      {:ok, profile} -> head_name(scope, profile)
+      _ -> head_member_name(scope)
+    end
+  end
+
+  defp head_name(_scope, %{head_name: name}) when is_binary(name) and name != "", do: name
+  defp head_name(scope, _profile), do: head_member_name(scope)
+
+  defp head_member_name(scope) do
+    scope
+    |> Accounts.list_members()
+    |> Enum.find(&(:head in &1.roles))
+    |> case do
+      %{user: %Accounts.User{} = user} -> Accounts.User.display_name(user)
+      _ -> nil
+    end
   end
 
   @doc "The template a view renders with: its own (drafts, v3 snapshots), else the current settings."
@@ -121,6 +163,9 @@ defmodule TeacherAssistant.ReportCards do
 
       not council_ready?(scope, cg, period) ->
         {:error, :council_not_held}
+
+      needs_annual_council?(scope, cg, period) and not annual_council_held?(scope, cg) ->
+        {:error, :annual_council_not_held}
 
       true ->
         BulletinPublication
@@ -314,7 +359,7 @@ defmodule TeacherAssistant.ReportCards do
   without a teacher), conduct marks entered, and the class council. Each is
   `%{key, ok?, data}`; the page words them.
   """
-  def publish_checklist(%Scope{} = scope, %ClassGroup{} = cg, period) do
+  def publish_checklist(%Scope{} = scope, %ClassGroup{} = cg, period, view \\ nil) do
     rate = entry_rate_or_nil(scope, cg, period)
     unassigned = scope |> Curriculum.unassigned_subjects_by_class([cg]) |> Map.get(cg.id, [])
     discipline = Discipline.class_discipline(scope, cg, period)
@@ -339,8 +384,95 @@ defmodule TeacherAssistant.ReportCards do
         ok?: status == :held,
         data: %{status: status, date: council.held_on, time: council.starts_at}
       }
-    ]
+    ] ++ v2_checks(scope, cg, period, view)
   end
+
+  # Spec bulletin v2: the end-of-year council (blocking, enforced by `publish/3`), the
+  # APC competences and the one-page fit (both informative).
+  # `view`: the live draft when the caller has it, so nothing is computed twice.
+  defp v2_checks(_scope, _cg, {:sequence, _}, _view), do: []
+
+  defp v2_checks(scope, cg, period, view) do
+    template = (view && Map.get(view, :template)) || template(scope, cg)
+
+    results =
+      if view, do: view.results, else: Assessment.class_results_for_period(scope, cg, period)
+
+    Enum.reject(
+      [
+        annual_council_check(scope, cg, period, template),
+        competences_check(scope, cg, period, template),
+        page_fit_check(scope, period, template, results)
+      ],
+      &is_nil/1
+    )
+  end
+
+  defp annual_council_check(scope, cg, period, template) do
+    if needs_annual_council?(scope, cg, period, template) do
+      annual = {:annual, Organization.class_year(scope, cg)}
+      council = Councils.council(scope, cg, annual)
+      status = Councils.status(if(council.id, do: council), false)
+
+      %{
+        key: :annual_council,
+        ok?: status == :held,
+        data: %{status: status, date: council.held_on, time: council.starts_at}
+      }
+    end
+  end
+
+  defp competences_check(scope, cg, {:trimester, _} = period, template) do
+    if BulletinTemplate.show?(template, :apc) do
+      subjects =
+        scope |> Curriculum.list_assignments_for_class(cg) |> Map.new(&{&1.id, &1.subject})
+
+      missing =
+        for {ctx_id, lines} <- competences(scope, cg, period),
+            Enum.any?(lines, &is_nil(&1.text)),
+            do: subjects[ctx_id]
+
+      %{key: :competences, ok?: missing == [], data: %{missing: Enum.sort(missing)}}
+    end
+  end
+
+  defp competences_check(_scope, _cg, _period, _template), do: nil
+
+  defp page_fit_check(scope, period, template, results) do
+    groups =
+      (results && results.per_student |> Map.values() |> List.first() |> then(&(&1 && &1.groups))) ||
+        []
+
+    lines =
+      BulletinLayout.subject_lines(
+        template,
+        Organization.period_kind(period),
+        groups,
+        sequences_per_term(period),
+        group_subtotals?(scope)
+      )
+
+    density = BulletinLayout.density(lines, BulletinLayout.identity_rows(template))
+    subjects = groups |> Enum.map(&length(&1.rows)) |> Enum.sum()
+    %{key: :page_fit, ok?: density != :overflow, data: %{subjects: subjects}}
+  end
+
+  @doc """
+  Spec bulletin v2 §5.5: the year's last trimester carrying the annual summary is
+  published only once the end-of-year council is held.
+  """
+  def needs_annual_council?(scope, cg, period, template \\ nil)
+
+  def needs_annual_council?(scope, cg, {:trimester, %Term{} = term}, template) do
+    BulletinTemplate.show?(template || template(scope, cg), :annual_summary) and
+      last_term?(scope, term)
+  end
+
+  def needs_annual_council?(_scope, _cg, _period, _template), do: false
+
+  @doc "Whether the class's end-of-year council is held."
+  def annual_council_held?(scope, cg),
+    do: Councils.held?(scope, cg, {:annual, Organization.class_year(scope, cg)})
 
   defp entry_rate_or_nil(_scope, _cg, {:sequence, _}), do: nil
   defp entry_rate_or_nil(scope, cg, period), do: entry_rate(scope, cg, period)
@@ -473,12 +605,14 @@ defmodule TeacherAssistant.ReportCards do
   defp term_id({:trimester, %Term{id: id}}), do: id
   defp term_id(_), do: nil
 
-  defp plain_entry(%{student: s, enrollment: e}) do
+  defp plain_entry(%{student: s, enrollment: e}, guardians) do
     %{
+      guardians: Map.get(guardians, s.id, []),
       student: %{
         id: s.id,
         full_name: s.full_name,
         matricule: s.matricule,
+        national_id: s.national_id,
         sex: s.sex,
         birth_date: s.birth_date,
         birth_place: s.birth_place,
@@ -502,4 +636,94 @@ defmodule TeacherAssistant.ReportCards do
       _ -> false
     end
   end
+
+  # --- Bulletin v2 snapshot pieces --------------------------------------------
+
+  @doc "Whether `term` is the year's last trimester (the end-of-year card)."
+  def last_term?(%Scope{} = scope, %Term{} = term) do
+    scope
+    |> Organization.list_terms(%AcademicYear{id: term.academic_year_id})
+    |> Enum.all?(&(&1.position <= term.position))
+  end
+
+  # Per teaching context, the period's séquences in order with their competence (or nil).
+  defp competences(scope, cg, period) do
+    case period_sequences(period) do
+      [] ->
+        %{}
+
+      seqs ->
+        ctx_ids = scope |> Curriculum.list_assignments_for_class(cg) |> Enum.map(& &1.id)
+        texts = Assessment.sequence_competences(scope, ctx_ids, Enum.map(seqs, & &1.id))
+
+        Map.new(ctx_ids, fn id ->
+          {id,
+           Enum.map(
+             seqs,
+             &%{position: &1.position_in_term, number: &1.number, text: texts[{id, &1.id}]}
+           )}
+        end)
+    end
+  end
+
+  defp period_sequences({:trimester, %Term{sequences: seqs}}) when is_list(seqs),
+    do: Enum.sort_by(seqs, & &1.position_in_term)
+
+  defp period_sequences({:sequence, %Sequence{} = seq}), do: [seq]
+  defp period_sequences(_period), do: []
+
+  defp sequences_per_term({:trimester, %Term{sequences: seqs}}) when is_list(seqs),
+    do: length(seqs)
+
+  defp sequences_per_term(_period), do: 1
+
+  # Earlier trimesters' average and rank per student: the published figures when the
+  # term is published (what parents saw), else computed now.
+  defp prior_terms(scope, cg, {:trimester, %Term{} = term}, template) do
+    if BulletinTemplate.show?(template, :previous_terms) do
+      scope
+      |> Organization.list_terms(%AcademicYear{id: term.academic_year_id})
+      |> Enum.filter(&(&1.position < term.position))
+      |> Enum.reduce(%{}, fn earlier, acc ->
+        scope
+        |> term_results(cg, earlier)
+        |> Enum.reduce(acc, fn {student_id, d}, acc ->
+          line = %{position: earlier.position, average: d.moyenne_generale, rank: d.rank}
+          Map.update(acc, student_id, [line], &(&1 ++ [line]))
+        end)
+      end)
+    else
+      %{}
+    end
+  end
+
+  defp prior_terms(_scope, _cg, _period, _template), do: %{}
+
+  defp term_results(scope, cg, term) do
+    results =
+      case current_publication(scope, cg, {:trimester, term}) do
+        nil -> Assessment.class_results_for_period(scope, cg, {:trimester, term})
+        pub -> pub.snapshot.results
+      end
+
+    (results && results.per_student) || %{}
+  end
+
+  # The last trimester's card carries the year (spec bulletin v2 §5.5).
+  defp annual_summary(scope, cg, {:trimester, %Term{} = term}, template) do
+    if BulletinTemplate.show?(template, :annual_summary) and last_term?(scope, term) do
+      year = {:annual, Organization.class_year(scope, cg)}
+      results = Assessment.class_results_for_period(scope, cg, year)
+
+      %{
+        per_student:
+          Map.new((results && results.per_student) || %{}, fn {id, d} ->
+            {id, %{average: d.moyenne_generale, rank: d.rank}}
+          end),
+        council: council_entry(scope, cg, year, results)
+      }
+    end
+  end
+
+  defp annual_summary(_scope, _cg, _period, _template), do: nil
 end

@@ -47,11 +47,29 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     {param, _label, period} =
       Enum.find(periods, &(elem(&1, 0) == params["period"])) || default_period(periods)
 
-    {:noreply,
-     socket
-     |> assign(cg: cg, period: period, period_param: param, confirm?: false, withdrawing?: false)
-     |> load(params["student"])}
+    if same_view?(socket, cg, param) do
+      # Only the student changed: the class's figures are already loaded.
+      rows = socket.assigns.rows
+      selected = Enum.find(rows, &(&1.student.id == params["student"])) || List.first(rows)
+      {:noreply, assign(socket, selected: selected)}
+    else
+      {:noreply,
+       socket
+       |> assign(
+         cg: cg,
+         period: period,
+         period_param: param,
+         confirm?: false,
+         withdrawing?: false
+       )
+       |> load(params["student"])}
+    end
   end
+
+  defp same_view?(%{assigns: %{rows: _, cg: %{id: id}, period_param: param}}, %{id: id}, param),
+    do: true
+
+  defp same_view?(_socket, _cg, _param), do: false
 
   # The trimester whose séquences cover today, else the first one.
   defp default_period(periods) do
@@ -88,7 +106,13 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
       selected: Enum.find(rows, &(&1.student.id == student_id)) || List.first(rows),
       publishable?: publishable?(period),
       checks:
-        checks(can_publish? and status == :draft and publishable?(period), scope, cg, period),
+        checks(
+          can_publish? and status == :draft and publishable?(period),
+          scope,
+          cg,
+          period,
+          view
+        ),
       rate:
         if(can_publish? and publishable?(period), do: ReportCards.entry_rate(scope, cg, period)),
       council_held?: council_held?(can_publish?, scope, cg, period),
@@ -98,12 +122,18 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
 
   defp publishable?({kind, _}), do: kind in [:trimester, :annual]
 
-  defp checks(true, scope, cg, period), do: ReportCards.publish_checklist(scope, cg, period)
-  defp checks(false, _scope, _cg, _period), do: []
+  defp checks(true, scope, cg, period, view),
+    do: ReportCards.publish_checklist(scope, cg, period, view)
 
-  # Spec I3/I4: a trimester or the year is published only once its class council is held.
-  defp council_held?(true, scope, cg, {kind, _} = period) when kind in [:trimester, :annual],
-    do: TeacherAssistant.Councils.held?(scope, cg, period)
+  defp checks(false, _scope, _cg, _period, _view), do: []
+
+  # Spec I3/I4: a trimester or the year is published only once its class council is held;
+  # the last trimester carrying the year also needs the end-of-year council (bulletin v2).
+  defp council_held?(true, scope, cg, {kind, _} = period) when kind in [:trimester, :annual] do
+    TeacherAssistant.Councils.held?(scope, cg, period) and
+      (not ReportCards.needs_annual_council?(scope, cg, period) or
+         ReportCards.annual_council_held?(scope, cg))
+  end
 
   defp council_held?(_can_publish?, _scope, _cg, _period), do: true
 
@@ -175,6 +205,13 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
          |> assign(confirm?: false)
          |> load(selected_id(socket))
          |> put_flash(:error, gettext("Conseil de classe non tenu."))}
+
+      {:error, :annual_council_not_held} ->
+        {:noreply,
+         socket
+         |> assign(confirm?: false)
+         |> load(selected_id(socket))
+         |> put_flash(:error, gettext("Conseil de fin d'année non tenu."))}
 
       {:error, :already_published} ->
         {:noreply,
@@ -276,6 +313,39 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
       )
 
   defp check_text(%{key: :council}), do: gettext("Conseil de classe : à planifier")
+
+  defp check_text(%{key: :annual_council, data: %{status: :held, date: date}}),
+    do: gettext("Conseil de fin d'année : tenu le %{date}", date: short_date(date))
+
+  defp check_text(%{key: :annual_council, data: %{status: :planned, date: date, time: time}}),
+    do:
+      gettext("Conseil de fin d'année : prévu le %{date} à %{time}",
+        date: short_date(date),
+        time: Calendar.strftime(time, "%H:%M")
+      )
+
+  defp check_text(%{key: :annual_council}), do: gettext("Conseil de fin d'année : à planifier")
+
+  defp check_text(%{key: :competences, data: %{missing: []}}),
+    do: gettext("Compétences : toutes renseignées")
+
+  defp check_text(%{key: :competences, data: %{missing: missing}}),
+    do:
+      ngettext(
+        "Compétences : %{count} matière sans compétence",
+        "Compétences : %{count} matières sans compétence",
+        length(missing)
+      )
+
+  defp check_text(%{key: :page_fit, ok?: true}), do: gettext("Tient sur une page")
+
+  defp check_text(%{key: :page_fit, data: %{subjects: n}}),
+    do:
+      ngettext(
+        "Bulletin trop long pour une page (%{count} matière)",
+        "Bulletin trop long pour une page (%{count} matières)",
+        n
+      )
 
   defp rate_text(nil), do: "—"
   defp rate_text(rate), do: "#{rate} %"

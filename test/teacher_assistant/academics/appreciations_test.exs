@@ -106,4 +106,31 @@ defmodule TeacherAssistant.Academics.AppreciationsTest do
       assert Appreciations.distinction(d("1"), [d("1")], nil, all_off) == nil
     end
   end
+
+  describe "codes and the APC preset (bulletin v2)" do
+    test "appreciation returns the band's code" do
+      rules = %GradingRules{appreciation_bands: Appreciations.apc_bands()}
+
+      assert %{code: "CBA", label: "C. bien acquise"} =
+               Appreciations.appreciation(d("14.5"), rules)
+
+      assert %{code: "CNA"} = Appreciations.appreciation(d("9.99"), rules)
+      assert %{code: "CTBA"} = Appreciations.appreciation(d("20"), rules)
+    end
+
+    test "the APC preset has five bands, lowest first" do
+      assert Enum.map(Appreciations.apc_bands(), &{Decimal.to_string(&1.from), &1.code}) == [
+               {"0", "CNA"},
+               {"10", "CMA"},
+               {"12", "CA"},
+               {"14", "CBA"},
+               {"16", "CTBA"}
+             ]
+    end
+
+    test "the default scale has no codes" do
+      assert Enum.all?(Appreciations.default_bands(), &is_nil(&1.code))
+      assert %{code: nil} = Appreciations.appreciation(d("12"), %GradingRules{})
+    end
+  end
 end

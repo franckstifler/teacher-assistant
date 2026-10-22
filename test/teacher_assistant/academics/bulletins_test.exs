@@ -330,4 +330,21 @@ defmodule TeacherAssistant.Academics.BulletinsTest do
     assert r.per_student["a"].distinction == nil
     assert r.per_student["b"].distinction == :felicitations
   end
+
+  test "class_profile counts averages at or above 10 (bulletin v2)" do
+    d = &Decimal.new/1
+
+    results = %{
+      per_student: %{
+        "a" => %{moyenne_generale: d.("9")},
+        "b" => %{moyenne_generale: d.("10")},
+        "c" => %{moyenne_generale: d.("12")},
+        "d" => %{moyenne_generale: nil}
+      }
+    }
+
+    assert Bulletins.class_profile(results) == %{passing: 2, graded: 3, rate: 67}
+    assert Bulletins.class_profile(%{per_student: %{}}) == %{passing: 0, graded: 0, rate: nil}
+    assert Bulletins.class_profile(nil) == nil
+  end
 end

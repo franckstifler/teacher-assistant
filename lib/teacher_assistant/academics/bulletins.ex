@@ -275,4 +275,20 @@ defmodule TeacherAssistant.Academics.Bulletins do
   defp max_of(l), do: Enum.reduce(l, &if(Decimal.compare(&1, &2) == :gt, do: &1, else: &2))
   defp min_of([]), do: nil
   defp min_of(l), do: Enum.reduce(l, &if(Decimal.compare(&1, &2) == :lt, do: &1, else: &2))
+
+  @doc """
+  Spec bulletin v2 §5.4: how many students average at least 10 among those with an
+  average, and that share as a whole percentage (nil when nobody has an average).
+  """
+  def class_profile(nil), do: nil
+
+  def class_profile(%{per_student: per_student}) do
+    averages =
+      per_student |> Map.values() |> Enum.map(& &1.moyenne_generale) |> Enum.reject(&is_nil/1)
+
+    pass = TeacherAssistant.Academics.Appreciations.pass_mark()
+    passing = Enum.count(averages, &(Decimal.compare(&1, pass) != :lt))
+    graded = length(averages)
+    %{passing: passing, graded: graded, rate: if(graded > 0, do: round(100 * passing / graded))}
+  end
 end

@@ -85,4 +85,25 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
     assert has_element?(view, "label.file-picker", "Choisir une image")
     assert has_element?(view, "label.file-picker input[type=file].sr-only")
   end
+
+  test "edits English lines next to French ones; reset clears both", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/header")
+    assert render(view) =~ "Republic of Cameroon"
+
+    view
+    |> form("#header-lines-form", %{
+      "lines" => "République du Cameroun\nLycée X",
+      "lines_en" => "Republic of Cameroon\nG.T.H.S X"
+    })
+    |> render_submit()
+
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    assert profile.official_header_lines == ["République du Cameroun", "Lycée X"]
+    assert profile.official_header_lines_en == ["Republic of Cameroon", "G.T.H.S X"]
+
+    view |> element("#reset-header") |> render_click()
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    assert profile.official_header_lines == nil
+    assert profile.official_header_lines_en == nil
+  end
 end

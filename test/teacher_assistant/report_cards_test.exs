@@ -207,14 +207,15 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert [
              %{key: :notes, ok?: false, data: %{rate: rate, unassigned: _}},
              %{key: :conduct, ok?: false, data: %{entered: 0, effectif: 1}},
-             %{key: :council, ok?: false, data: %{status: :to_plan}}
+             %{key: :council, ok?: false, data: %{status: :to_plan}},
+             %{key: :page_fit, ok?: true, data: %{subjects: 1}}
            ] = checks
 
     assert rate < 100
 
     {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
 
-    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}] =
+    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}, _] =
              ReportCards.publish_checklist(scope, cg, {:trimester, term})
   end
 
@@ -228,7 +229,7 @@ defmodule TeacherAssistant.ReportCardsTest do
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:trimester, term})
       {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
       assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, term})
-      assert pub.snapshot_version == 4
+      assert pub.snapshot_version == 5
       assert {:error, :council_not_held} = ReportCards.publish(scope, cg, {:annual, year})
       {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:annual, year})
       assert {:ok, annual} = ReportCards.publish(scope, cg, {:annual, year})
@@ -310,7 +311,7 @@ defmodule TeacherAssistant.ReportCardsTest do
         scope |> TeacherAssistant.Organization.list_terms(scope.current_academic_year) |> hd()
 
       {:ok, pub} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
-      assert pub.snapshot_version == 4
+      assert pub.snapshot_version == 5
       assert %{language: :fr, elements: elements} = pub.snapshot.template
       assert :rank in elements
 
@@ -358,6 +359,239 @@ defmodule TeacherAssistant.ReportCardsTest do
 
       assert %{period: :annual, rank: 1} =
                ReportCards.latest_published_result(scope, enrollment)
+    end
+  end
+
+  describe "head_name/1 (bulletin v2)" do
+    test "prefers the profile's head_name, else the member holding the head role" do
+      %{scope: scope} = TeacherAssistant.TeacherFixtures.setup_complete_school_fixture()
+
+      assert ReportCards.head_name(scope) ==
+               TeacherAssistant.Accounts.User.display_name(scope.current_user)
+
+      {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+      {:ok, _} =
+        profile
+        |> Ash.Changeset.for_update(:update, %{head_name: "M. Ndenge"}, scope: scope)
+        |> Ash.update()
+
+      assert ReportCards.head_name(scope) == "M. Ndenge"
+    end
+  end
+
+  describe "snapshot data (bulletin v2)" do
+    defp tc_of(scope, a) do
+      {:ok, tc} = Curriculum.get_teaching_context(scope, a.teaching_context_id)
+      tc
+    end
+
+    defp terms(scope, year), do: Organization.list_terms(scope, year)
+
+    defp entry(view), do: hd(view.roster)
+
+    test "snapshot carries guardians, national ID and competences", %{
+      scope: scope,
+      cg: cg,
+      term: term,
+      seq: seq,
+      a: a,
+      st: st
+    } do
+      st
+      |> Ash.Changeset.for_update(:update, %{national_id: "241592812"}, scope: scope)
+      |> Ash.update!()
+
+      for {name, phone} <- [
+            {"Mme Mbarga", "677123456"},
+            {"M. Mbarga", "699001122"},
+            {"Tante", "650000000"}
+          ] do
+        {:ok, _} =
+          Enrollment.add_guardian(scope, st, %{
+            full_name: name,
+            phone: phone,
+            relationship: :tuteur
+          })
+      end
+
+      :ok = Assessment.put_sequence_competence(scope, tc_of(scope, a), seq, "Lire une carte")
+
+      view = ReportCards.live_view(scope, cg, {:trimester, term})
+
+      assert entry(view).student.national_id == "241592812"
+
+      assert [%{name: "Mme Mbarga", phone: "677123456"}, %{name: "M. Mbarga"}] =
+               entry(view).guardians
+
+      assert view.sequences_per_term == 2
+
+      assert [%{position: 1, number: 1, text: "Lire une carte"}, %{position: 2, text: nil}] =
+               view.competences[a.teaching_context_id]
+    end
+
+    test "term 2 view carries term 1 average and rank, from term 1's publication when published",
+         %{
+           scope: scope,
+           year: year,
+           cg: cg,
+           term: term,
+           a: a,
+           st: st
+         } do
+      {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, term)
+      :ok = Assessment.upsert_marks(scope, a, [%{student_id: st.id, score: Decimal.new(5)}])
+
+      [_t1, t2 | _] = terms(scope, year)
+      view = ReportCards.live_view(scope, cg, {:trimester, t2})
+
+      assert [%{position: 1, average: avg, rank: 1}] = view.prior_terms[st.id]
+      assert Decimal.equal?(avg, Decimal.new(15))
+    end
+
+    test "prior_terms falls back to live results when the earlier term is unpublished", %{
+      scope: scope,
+      year: year,
+      cg: cg,
+      a: a,
+      st: st
+    } do
+      :ok = Assessment.upsert_marks(scope, a, [%{student_id: st.id, score: Decimal.new(5)}])
+      [_t1, t2 | _] = terms(scope, year)
+
+      assert [%{position: 1, average: avg}] =
+               ReportCards.live_view(scope, cg, {:trimester, t2}).prior_terms[st.id]
+
+      assert Decimal.equal?(avg, Decimal.new(5))
+
+      assert ReportCards.live_view(scope, cg, {:trimester, hd(terms(scope, year))}).prior_terms ==
+               %{}
+    end
+
+    test "annual summary only on the last term and only with the element", %{
+      scope: scope,
+      year: year,
+      cg: cg,
+      st: st
+    } do
+      [_t1, t2, t3] = terms(scope, year)
+      assert ReportCards.last_term?(scope, t3)
+      refute ReportCards.last_term?(scope, t2)
+
+      view = ReportCards.live_view(scope, cg, {:trimester, t3})
+      assert %{per_student: %{} = per_student, council: %{held?: false}} = view.annual
+      assert %{average: %Decimal{}, rank: 1} = per_student[st.id]
+      assert ReportCards.live_view(scope, cg, {:trimester, t2}).annual == nil
+
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["rank", "previous_terms"]
+        })
+
+      assert ReportCards.live_view(scope, cg, {:trimester, t3}).annual == nil
+    end
+
+    test "published snapshot keeps the competence after it is edited", %{
+      scope: scope,
+      cg: cg,
+      term: term,
+      seq: seq,
+      a: a
+    } do
+      tc = tc_of(scope, a)
+      :ok = Assessment.put_sequence_competence(scope, tc, seq, "Avant")
+      {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, term)
+      :ok = Assessment.put_sequence_competence(scope, tc, seq, "Après")
+
+      {:published, _pub, snapshot} = ReportCards.class_view(scope, cg, {:trimester, term})
+      assert [%{text: "Avant"} | _] = snapshot.competences[tc.id]
+    end
+  end
+
+  describe "term 3 publication (bulletin v2)" do
+    alias TeacherAssistant.Councils
+
+    defp last_term(scope, year), do: scope |> Organization.list_terms(year) |> List.last()
+
+    test "term 3 with annual summary refuses publishing before the annual council", %{
+      scope: scope,
+      year: year,
+      cg: cg
+    } do
+      t3 = last_term(scope, year)
+      {:ok, _} = Councils.hold(scope, cg, {:trimester, t3})
+
+      assert {:error, :annual_council_not_held} = ReportCards.publish(scope, cg, {:trimester, t3})
+
+      {:ok, _} = Councils.hold(scope, cg, {:annual, year})
+      assert {:ok, pub} = ReportCards.publish(scope, cg, {:trimester, t3})
+      assert %{per_student: _} = pub.snapshot.annual
+    end
+
+    test "term 3 without annual summary publishes as today", %{scope: scope, year: year, cg: cg} do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["rank"]
+        })
+
+      assert {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, last_term(scope, year))
+    end
+
+    test "publishing term 3 with annual summary locks the annual council; withdrawing unlocks it",
+         %{scope: scope, year: year, cg: cg, st: st} do
+      t3 = last_term(scope, year)
+      {:ok, _} = Councils.hold(scope, cg, {:annual, year})
+      {:ok, pub} = TeacherFixtures.publish_trimester(scope, cg, t3)
+
+      assert Councils.locked?(scope, cg, {:annual, year})
+
+      assert {:error, :locked} =
+               Councils.set_decision(scope, cg, {:annual, year}, st.id, %{
+                 "passage_decision" => "redouble"
+               })
+
+      {:ok, _} = ReportCards.withdraw(scope, pub, "Erreur de saisie")
+      refute Councils.locked?(scope, cg, {:annual, year})
+
+      assert {:ok, _} =
+               Councils.set_decision(scope, cg, {:annual, year}, st.id, %{
+                 "passage_decision" => "redouble"
+               })
+    end
+
+    test "checklist lists missing competences and page fit", %{
+      scope: scope,
+      year: year,
+      cg: cg,
+      term: term
+    } do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+
+      checks = ReportCards.publish_checklist(scope, cg, {:trimester, term})
+
+      assert %{ok?: false, data: %{missing: ["Maths"]}} =
+               Enum.find(checks, &(&1.key == :competences))
+
+      assert %{ok?: true} = Enum.find(checks, &(&1.key == :page_fit))
+      refute Enum.find(checks, &(&1.key == :annual_council))
+
+      t3 = last_term(scope, year)
+
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["annual_summary"]
+        })
+
+      checks = ReportCards.publish_checklist(scope, cg, {:trimester, t3})
+      assert %{ok?: false} = Enum.find(checks, &(&1.key == :annual_council))
+      refute Enum.find(checks, &(&1.key == :competences))
     end
   end
 end

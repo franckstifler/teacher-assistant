@@ -7,24 +7,36 @@
     <style>
       @page { size: A4 portrait; margin: 10mm 14mm; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; color: #111; }
+      body { margin: 0; font-family: "IBM Plex Sans", Arial, sans-serif; color: #111; }
       .toolbar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; background: #f4f1ea; }
       .sheet { display: grid; grid-template-columns: repeat(2, 85.6mm); grid-auto-rows: 54mm; gap: 0; justify-content: center; padding: 6mm 0; }
-      .card { position: relative; width: 85.6mm; height: 54mm; padding: 2.5mm; outline: 0.2mm dashed #999; overflow: hidden; break-inside: avoid; display: grid; grid-template-rows: 10mm 1fr 6mm; gap: 1mm; }
       .sheet + .sheet { break-before: page; }
-      .band { display: flex; align-items: center; gap: 2mm; background: #1f3a2e; color: #fff; border-radius: 1.5mm; padding: 1mm 2mm; }
-      .band img { height: 7mm; width: 7mm; object-fit: contain; background: #fff; border-radius: 1mm; }
-      .band .school { font-weight: 700; font-size: 7.5pt; line-height: 1.1; }
-      .band .year { margin-left: auto; font-size: 7pt; }
-      .body { display: grid; grid-template-columns: 22mm 1fr; gap: 2.5mm; }
-      .photo { width: 22mm; height: 29mm; object-fit: cover; border: 0.3mm solid #333; }
-      .photo-empty { width: 22mm; height: 29mm; border: 0.3mm dashed #666; display: grid; place-items: center; font-size: 7pt; color: #666; }
-      .name { font-weight: 700; font-size: 9pt; line-height: 1.15; }
-      .fields { font-size: 7pt; line-height: 1.35; margin-top: 1mm; }
-      .fields b { font-weight: 600; }
-      .foot { display: flex; align-items: flex-end; justify-content: space-between; font-size: 6.5pt; }
-      .sign { display: flex; gap: 1mm; align-items: flex-end; }
-      .sign img { height: 6mm; }
+      .card { position: relative; width: 85.6mm; height: 54mm; outline: 0.2mm dashed #999; overflow: hidden; break-inside: avoid;
+              display: flex; flex-direction: column; font-size: 5.4pt; line-height: 1.2; }
+      .flag { height: 1mm; flex: none; background: linear-gradient(90deg, #007a5e 33.3%, #ce1126 33.3% 66.6%, #fcd116 66.6%); }
+      .nat { display: grid; grid-template-columns: 1fr 9mm 1fr; gap: 1mm; text-align: center; font-size: 3.9pt; padding: 0.8mm 1.5mm 0; color: #333; }
+      .nat .col div:first-child { font-weight: 700; font-size: 4.3pt; color: #111; text-transform: uppercase; }
+      .nat .col div:nth-child(2) { font-style: italic; }
+      .nat .col div:nth-child(3) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .nat img { height: 8mm; width: 8mm; object-fit: contain; margin: 0 auto; }
+      .sch { text-align: center; padding: 0.4mm 1.5mm 0; }
+      .sch .n { font-weight: 700; font-size: 6.2pt; color: #1f3a2e; text-transform: uppercase; }
+      .sch .c { font-size: 4.4pt; color: #444; }
+      .ttl { margin: 0.7mm 2mm 0; background: #1f3a2e; color: #fff; text-align: center; font-weight: 700; font-size: 5.2pt;
+             letter-spacing: .05em; padding: 0.5mm; border-radius: 0.8mm; }
+      .body { display: grid; grid-template-columns: 18mm 1fr 14mm; gap: 1.8mm; padding: 1.2mm 2mm 0; }
+      .photo { width: 18mm; height: 22mm; object-fit: cover; border: 0.2mm solid #333; }
+      .photo-empty { width: 18mm; height: 22mm; border: 0.2mm dashed #666; display: grid; place-items: center; font-size: 5pt; color: #666; }
+      .name { font-weight: 700; font-size: 7pt; line-height: 1.1; margin-bottom: 0.6mm; }
+      .fields div { line-height: 1.35; }
+      .fields b { font-weight: 400; color: #555; }
+      .side { display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 1mm; }
+      .year { background: #fcd116; color: #111; font-weight: 700; padding: 0.4mm 1mm; border-radius: 0.8mm; }
+      .qr svg { width: 12mm; height: 12mm; }
+      .foot { position: absolute; left: 2mm; right: 2mm; bottom: 1.2mm; display: flex; justify-content: flex-end; font-size: 4.6pt; }
+      .head { text-align: right; position: relative; }
+      .head .marks { display: flex; gap: 1mm; justify-content: flex-end; align-items: flex-end; }
+      .head .marks img { height: 6mm; }
       @media print { .toolbar { display: none; } .sheet { padding: 0; } }
     </style>
   </head>
@@ -39,11 +51,22 @@
 
     <main :for={cards <- @pages} class="sheet">
       <article :for={c <- cards} class="card">
-        <div class="band">
+        <div class="flag"></div>
+        <div class="nat">
+          <div class="col">
+            <div :for={line <- card_lines(@header, :fr)}>{line}</div>
+          </div>
           <img :if={@logo?} src={~p"/school/logo"} alt="" />
-          <span class="school">{@school}</span>
-          <span class="year">{@year}</span>
+          <div :if={!@logo?}></div>
+          <div class="col">
+            <div :for={line <- card_lines(@header, :en)}>{line}</div>
+          </div>
         </div>
+        <div class="sch">
+          <div class="n">{@school}</div>
+          <div class="c">{contact_line(@header)}</div>
+        </div>
+        <div class="ttl">CARTE SCOLAIRE · SCHOOL IDENTITY CARD</div>
         <div class="body">
           <img :if={c.student.photo_path} class="photo" src={student_photo_url(c.student)} alt="" />
           <div :if={!c.student.photo_path} class="photo-empty">
@@ -52,27 +75,42 @@
           <div>
             <div class="name">{c.student.full_name}</div>
             <div class="fields">
-              <div><b>{tr(@lang, fn -> gettext("Classe") end)} :</b> {@cg.label}</div>
-              <div :if={c.student.matricule}>
-                <b>{tr(@lang, fn -> gettext("Matricule") end)} :</b> {c.student.matricule}
+              <div :if={c.student.birth_date || c.student.birth_place}>
+                <b>{tr(@lang, fn -> gettext("Né(e) le") end)}</b>
+                {date(c.student.birth_date)}
+                <span :if={c.student.birth_place}>
+                  <b>{tr(@lang, fn -> gettext("à") end)}</b> {c.student.birth_place}
+                </span>
               </div>
               <div>
-                <b>{tr(@lang, fn -> gettext("Sexe") end)} :</b> {sex_label(c.student.sex)}
+                <b>{tr(@lang, fn -> gettext("Classe") end)}</b> <strong>{@cg.label}</strong>
+                · <b>{tr(@lang, fn -> gettext("Sexe") end)}</b> {sex_label(c.student.sex)}
               </div>
-              <div :if={c.student.birth_date || c.student.birth_place}>
-                <b>{tr(@lang, fn -> gettext("Né(e) le") end)} :</b>
-                {date(c.student.birth_date)} {c.student.birth_place &&
-                  "— #{c.student.birth_place}"}
+              <div :if={c.student.matricule}>
+                <b>{tr(@lang, fn -> gettext("Matricule") end)}</b> {c.student.matricule}
+              </div>
+              <div :if={c.student.national_id}>
+                <b>{tr(@lang, fn -> gettext("Identifiant unique") end)}</b> {c.student.national_id}
+              </div>
+              <div :if={c.contact}>
+                <b>{tr(@lang, fn -> gettext("Contact") end)}</b> {c.contact.full_name} · {c.contact.phone}
               </div>
             </div>
           </div>
+          <div class="side">
+            <div :if={@year} class="year">{@year}</div>
+            <div :if={c.qr_svg} class="qr">{Phoenix.HTML.raw(c.qr_svg)}</div>
+          </div>
         </div>
         <div class="foot">
-          <span :if={c.contact}>{tr(@lang, fn -> gettext("Contact") end)} : {c.contact.full_name} – {c.contact.phone}</span>
-          <span class="sign">
-            <img :if={@stamp?} src={~p"/school/logo?kind=stamp"} alt="" />
-            <img :if={@signature?} src={~p"/school/logo?kind=signature"} alt="" />
-          </span>
+          <div class="head">
+            <div class="marks">
+              <img :if={@stamp?} src={~p"/school/logo?kind=stamp"} alt="" />
+              <img :if={@signature?} src={~p"/school/logo?kind=signature"} alt="" />
+            </div>
+            <div>{head_title(@header)}</div>
+            <div :if={@header.head_name}>{@header.head_name}</div>
+          </div>
         </div>
       </article>
     </main>

@@ -146,6 +146,18 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     a
   end
 
+  defp row_for(A.SequenceCompetence, school, ctx) do
+    a = row_for(A.Assessment, school, ctx)
+
+    A.SequenceCompetence
+    |> Ash.Changeset.for_create(
+      :upsert,
+      %{teaching_context_id: a.teaching_context_id, sequence_id: a.sequence_id, text: "Iso"},
+      scope: scope_of(school)
+    )
+    |> Ash.create!()
+  end
+
   defp row_for(A.Mark, school, ctx) do
     a = row_for(A.Assessment, school, ctx)
 
@@ -412,6 +424,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     A.LessonStep,
     A.TeachingLogEntry,
     A.Assessment,
+    A.SequenceCompetence,
     A.Mark,
     A.Period,
     A.AttendanceEntry,

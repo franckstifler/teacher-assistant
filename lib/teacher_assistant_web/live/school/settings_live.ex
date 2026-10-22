@@ -331,6 +331,16 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
               >
                 <.input field={@profile_form[:registration_number]} />
               </.settings_row>
+              <.settings_row
+                label={gettext("Code de l'établissement")}
+                for="profile_school_code"
+                help={gettext("Code MINESEC, imprimé sous le logo du bulletin.")}
+              >
+                <.input field={@profile_form[:school_code]} />
+              </.settings_row>
+              <.settings_row label={gettext("Nom en anglais")} for="profile_name_en">
+                <.input field={@profile_form[:name_en]} placeholder="G.T.H.S …" />
+              </.settings_row>
             </.settings_section>
 
             <.settings_section title={gettext("Classes")}>

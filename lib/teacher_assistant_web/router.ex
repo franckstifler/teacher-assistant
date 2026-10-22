@@ -41,6 +41,7 @@ defmodule TeacherAssistantWeb.Router do
 
     get "/locale/:locale", LocaleController, :set
     get "/verify/bulletin/:token", BulletinVerifyController, :show
+    get "/verify/card/:token", CardVerifyController, :show
     get "/verify/receipt", ReceiptVerifyController, :lookup
     get "/verify/receipt/:token", ReceiptVerifyController, :show
     get "/verify/note/:token", ReceiptVerifyController, :show_note

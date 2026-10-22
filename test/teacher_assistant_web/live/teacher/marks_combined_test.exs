@@ -232,4 +232,29 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
 
   defp blur(view, student_id, value),
     do: view |> element("#mark-input-#{student_id}") |> render_blur(%{"value" => value})
+
+  test "APC: the competence written once lands on every class of the course", %{
+    conn: conn,
+    seq: seq,
+    scope: scope,
+    tc_maco: tc_maco,
+    tc_menu: tc_menu
+  } do
+    {:ok, _} =
+      Assessment.update_bulletin_settings(scope, %{
+        "language" => "by_class",
+        "elements" => ["apc"]
+      })
+
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
+
+    view
+    |> form("#sequence-competence", %{competence: %{text: "Dériver une fonction"}})
+    |> render_submit()
+
+    assert Assessment.sequence_competences(scope, [tc_maco.id, tc_menu.id], [seq.id]) == %{
+             {tc_maco.id, seq.id} => "Dériver une fonction",
+             {tc_menu.id, seq.id} => "Dériver une fonction"
+           }
+  end
 end

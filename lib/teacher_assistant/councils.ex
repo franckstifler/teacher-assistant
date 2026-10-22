@@ -53,9 +53,31 @@ defmodule TeacherAssistant.Councils do
   def held?(%Scope{} = scope, %ClassGroup{} = cg, period),
     do: match?(%ClassCouncil{status: :held}, stored(scope, cg, period))
 
-  @doc "Whether the council is locked: the class's report cards for the period are published."
+  @doc """
+  Whether the council is locked: the class's report cards for the period are published.
+  The year's council is also locked by a published last trimester carrying the annual
+  summary (spec bulletin v2 §5.5), whose card prints its decisions.
+  """
+  def locked?(%Scope{} = scope, %ClassGroup{} = cg, {:annual, year} = period) do
+    ReportCards.current_publication(scope, cg, period) != nil or
+      last_term_carries_year?(scope, cg, year)
+  end
+
   def locked?(%Scope{} = scope, %ClassGroup{} = cg, period),
     do: ReportCards.current_publication(scope, cg, period) != nil
+
+  defp last_term_carries_year?(scope, cg, year) do
+    case scope |> Organization.list_terms(year) |> List.last() do
+      nil ->
+        false
+
+      term ->
+        case ReportCards.current_publication(scope, cg, {:trimester, term}) do
+          nil -> false
+          pub -> Map.get(pub.snapshot, :annual) != nil
+        end
+    end
+  end
 
   @doc "Saves the header (`held_on`, `chair`, `attendees`, `observations`), creating the council."
   def save_header(%Scope{} = scope, %ClassGroup{} = cg, period, %{} = params) do
