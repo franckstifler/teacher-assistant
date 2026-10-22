@@ -32,8 +32,8 @@ defmodule TeacherAssistant.Academics.Student do
     defaults [
       :read,
       :destroy,
-      create: [:full_name, :sex, :matricule, :birth_date, :birth_place],
-      update: [:full_name, :sex, :matricule, :birth_date, :birth_place]
+      create: [:full_name, :sex, :matricule, :national_id, :birth_date, :birth_place],
+      update: [:full_name, :sex, :matricule, :national_id, :birth_date, :birth_place]
     ]
 
     # Spec 2026-10-12 §2: photo files are written by `StudentPhotos`, never overwritten.
@@ -106,6 +106,8 @@ defmodule TeacherAssistant.Academics.Student do
     attribute :full_name, :string, allow_nil?: false, public?: true
     attribute :sex, TeacherAssistant.Academics.Sex, allow_nil?: false, public?: true
     attribute :matricule, :string, allow_nil?: true, public?: true
+    # Spec bulletin v2 §4.2: the national « Identifiant unique » (cartescolaire.cm).
+    attribute :national_id, :string, allow_nil?: true, public?: true, constraints: [max_length: 40]
     attribute :birth_date, :date, allow_nil?: true, public?: true
 
     attribute :birth_place, :string,

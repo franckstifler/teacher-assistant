@@ -11,5 +11,7 @@ defmodule TeacherAssistant.Accounts.AppreciationBand do
     # Nullable so a blank label reaches `ValidateAppreciations` and its own message
     # (Ash casts "" to nil before `allow_nil?` would reject it).
     attribute :label, :string, public?: true
+    # Spec bulletin v2 §5.3: the short « cote » (e.g. CBA) printed in its own column.
+    attribute :code, :string, public?: true, constraints: [max_length: 8]
   end
 end

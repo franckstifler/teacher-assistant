@@ -50,6 +50,7 @@ defmodule TeacherAssistant.Assessment do
     resource ClassCouncil
     resource CouncilDecision
     resource EntryReminder
+    resource TeacherAssistant.Academics.SequenceCompetence
   end
 
   authorization do

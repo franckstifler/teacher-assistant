@@ -17,9 +17,11 @@ defmodule TeacherAssistant.Academics.BulletinSettingsTest do
     assert :rank in s.elements and :pp_signature in s.elements
     assert :birth in s.elements
     assert :signature in s.elements and :stamp in s.elements
-    # 12 historical elements + 7 from the pilotage redesign + the photo, minus the QR.
+    # 12 historical elements + 7 from the pilotage redesign + the photo, minus the QR,
+    # + 7 from bulletin v2 minus APC (never on by default).
     assert :photo in s.elements
-    assert length(s.elements) == 19
+    refute :apc in s.elements
+    assert length(s.elements) == 25
     assert Enum.map(s.grade_scale, & &1.letter) == ~w(F E D C B A)
     refute s.custom_scale?
   end
