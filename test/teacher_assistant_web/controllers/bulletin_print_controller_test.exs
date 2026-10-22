@@ -617,16 +617,14 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
 
       {:ok, profile} =
-        TeacherAssistant.Accounts.update_school_profile(profile, %{logo_path: "logo.png"},
-          scope: scope
-        )
+        TeacherAssistant.Accounts.set_school_logo(profile, "logo.png", scope: scope)
 
       {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
       url = ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term.id}"
       assert conn |> get(url) |> html_response(200) =~ ~s(src="/school/logo")
 
       {:ok, _} =
-        TeacherAssistant.Accounts.update_school_profile(profile, %{logo_path: nil}, scope: scope)
+        TeacherAssistant.Accounts.set_school_logo(profile, nil, scope: scope)
 
       refute conn |> get(url) |> html_response(200) =~ ~s(src="/school/logo")
     end

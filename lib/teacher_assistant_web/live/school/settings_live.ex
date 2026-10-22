@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   alias TeacherAssistant.Academics.{BulletinGroup, Subject}
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Accounts
-  alias TeacherAssistant.Organization
+  alias TeacherAssistant.{Organization, Uploads}
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
   alias TeacherAssistantWeb.{Dates, Numbers}
 
@@ -1011,27 +1011,20 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     # The capability gates the file write itself (a side effect outside the
     # data layer); the profile update below is still policy-checked.
     if socket.assigns.can_edit_profile? and socket.assigns.profile do
-      uploads_dir = Application.fetch_env!(:teacher_assistant, :uploads_dir)
       workspace_id = scope.current_workspace.id
 
       uploaded =
-        consume_uploaded_entries(socket, :logo, fn %{path: tmp}, entry ->
-          ext = Path.extname(entry.client_name)
-          filename = Ash.UUIDv7.generate() <> ext
-          relative_path = Path.join(["school_logos", workspace_id, filename])
-          dest = Path.join(uploads_dir, relative_path)
-
-          dest |> Path.dirname() |> File.mkdir_p!()
-          File.cp!(tmp, dest)
-
-          {:ok, relative_path}
+        consume_uploaded_entries(socket, :logo, fn %{path: tmp}, _entry ->
+          {:ok, Uploads.store_image(tmp, "school_logos", workspace_id)}
         end)
 
       case uploaded do
-        [relative_path] ->
-          case Accounts.update_school_profile(socket.assigns.profile, %{logo_path: relative_path},
-                 scope: scope
-               ) do
+        [{:error, :invalid_image}] ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Ce fichier n'est pas une image PNG ou JPEG."))}
+
+        [{:ok, relative_path}] ->
+          case Accounts.set_school_logo(socket.assigns.profile, relative_path, scope: scope) do
             {:ok, _profile} ->
               {:noreply,
                socket

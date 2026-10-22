@@ -55,6 +55,25 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLiveTest do
     assert conn |> get(~p"/school/logo?kind=stamp") |> response(404)
   end
 
+  test "a page sent as a PNG is refused, so it can't be served from our origin", %{
+    conn: conn,
+    scope: scope
+  } do
+    {:ok, view, _} = live(conn, ~p"/school/settings/header")
+
+    upload =
+      file_input(view, "#stamp-form", :stamp, [
+        %{name: "x.html", content: "<script>alert(1)</script>", type: "image/png"}
+      ])
+
+    render_upload(upload, "x.html")
+    view |> form("#stamp-form") |> render_submit()
+
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    assert profile.stamp_path == nil
+    assert render(view) =~ "Aucune image valide"
+  end
+
   test "a Censeur is sent back to settings", %{workspace: ws, scope: scope} do
     censeur = TeacherFixtures.member_scope_fixture(scope, %{roles: [:vice_principal]})
 

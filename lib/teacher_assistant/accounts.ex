@@ -34,6 +34,7 @@ defmodule TeacherAssistant.Accounts do
 
     resource SchoolProfile do
       define :update_school_profile, action: :update
+      define :set_school_logo, action: :set_logo, args: [:logo_path]
       define :verify_school, action: :verify, args: [:verified_by_user_id]
       define :reject_school, action: :reject, args: [:verified_by_user_id, :rejection_reason]
     end

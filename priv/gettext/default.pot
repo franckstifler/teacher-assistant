@@ -545,7 +545,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/fee_settings_live.ex:555
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:205
 #: lib/teacher_assistant_web/live/school/members_live.ex:533
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:171
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:160
 #: lib/teacher_assistant_web/live/school/periods_live.ex:296
 #: lib/teacher_assistant_web/live/school/rooms_live.ex:268
 #: lib/teacher_assistant_web/live/school/settings_live.ex:730
@@ -926,7 +926,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:203
 #: lib/teacher_assistant_web/live/school/fee_settings_live.ex:390
 #: lib/teacher_assistant_web/live/school/fees_live.ex:763
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:237
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:226
 #: lib/teacher_assistant_web/live/school/student_live.ex:636
 #, elixir-autogen, elixir-format
 msgid "Retirer"
@@ -1867,7 +1867,7 @@ msgstr ""
 msgid "Impossible de créer l'établissement — vérifiez les champs."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1046
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1039
 #, elixir-autogen, elixir-format
 msgid "Impossible de mettre à jour le logo."
 msgstr ""
@@ -1887,7 +1887,7 @@ msgstr ""
 msgid "Logo de l'école"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1038
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1031
 #, elixir-autogen, elixir-format
 msgid "Logo mis à jour."
 msgstr ""
@@ -2755,7 +2755,7 @@ msgstr ""
 msgid "Calendrier non enregistré."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1169
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1162
 #, elixir-autogen, elixir-format
 msgid "Commence avant la fin de la séquence précédente."
 msgstr ""
@@ -2765,17 +2765,17 @@ msgstr ""
 msgid "Could not assign the teacher."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1164
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1157
 #, elixir-autogen, elixir-format
 msgid "Date invalide."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1163
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1156
 #, elixir-autogen, elixir-format
 msgid "Date obligatoire."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1166
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1159
 #, elixir-autogen, elixir-format
 msgid "En dehors de l'année scolaire."
 msgstr ""
@@ -2796,17 +2796,17 @@ msgstr ""
 msgid "Impossible d'envoyer l'invitation."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1165
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1158
 #, elixir-autogen, elixir-format
 msgid "La fin est avant le début."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1172
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1165
 #, elixir-autogen, elixir-format
 msgid "La limite de saisie est avant la fin de la séquence."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/settings_live.ex:1175
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1168
 #, elixir-autogen, elixir-format
 msgid "Le conseil est avant la fin du trimestre."
 msgstr ""
@@ -4652,7 +4652,7 @@ msgid "Classes francophones : appréciation par matière. Classes anglophones : 
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:230
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:155
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:144
 #, elixir-autogen, elixir-format
 msgid "En-tête officiel"
 msgstr ""
@@ -5418,7 +5418,7 @@ msgid_plural "%{count} sanctions"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:140
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:129
 #, elixir-autogen, elixir-format
 msgid "Au plus 6 lignes de 120 caractères."
 msgstr ""
@@ -5445,7 +5445,7 @@ msgstr ""
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:53
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:243
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:189
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:178
 #, elixir-autogen, elixir-format
 msgid "Cachet"
 msgstr ""
@@ -5465,7 +5465,7 @@ msgstr ""
 msgid "En-tête enregistré."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:151
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:140
 #, elixir-autogen, elixir-format
 msgid "En-tête et signature"
 msgstr ""
@@ -5550,7 +5550,7 @@ msgstr ""
 msgid "Paramètres de l'école"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:179
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:168
 #, elixir-autogen, elixir-format
 msgid "Rétablir l'en-tête par défaut"
 msgstr ""
@@ -5579,7 +5579,7 @@ msgstr ""
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:52
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:249
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:188
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:177
 #, elixir-autogen, elixir-format
 msgid "Signature du chef d'établissement"
 msgstr ""
@@ -5589,12 +5589,12 @@ msgstr ""
 msgid "Tous les types"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:223
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:212
 #, elixir-autogen, elixir-format
 msgid "Téléverser"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:157
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:146
 #, elixir-autogen, elixir-format
 msgid "Une ligne par ligne d'en-tête, 6 au plus."
 msgstr ""
@@ -5650,22 +5650,22 @@ msgstr ""
 msgid "Enseigner une matière donne la saisie des notes et les demandes de correction de ses cours, quel que soit le rôle."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:126
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "Fichier trop volumineux (1 Mo au plus)."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:127
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Format accepté : PNG ou JPEG."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:129
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:118
 #, elixir-autogen, elixir-format
 msgid "Image refusée."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:128
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:117
 #, elixir-autogen, elixir-format
 msgid "Une seule image à la fois."
 msgstr ""
@@ -9352,7 +9352,7 @@ msgstr ""
 msgid "Profil et en-tête"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:150
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:139
 #: lib/teacher_assistant_web/live/school/settings_live.ex:91
 #: lib/teacher_assistant_web/live/school/settings_live.ex:239
 #, elixir-autogen, elixir-format
@@ -11551,7 +11551,7 @@ msgstr ""
 msgid "À régler avant le"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:165
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:154
 #, elixir-autogen, elixir-format
 msgid "Anglais (à droite)"
 msgstr ""
@@ -11732,7 +11732,7 @@ msgstr ""
 msgid "Fait à %{town}, le %{date}"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/official_header_live.ex:161
+#: lib/teacher_assistant_web/live/school/official_header_live.ex:150
 #, elixir-autogen, elixir-format
 msgid "Français (à gauche)"
 msgstr ""
@@ -11921,4 +11921,9 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html.ex:61
 #, elixir-autogen, elixir-format
 msgid "Émis par : %{name}"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/settings_live.ex:1024
+#, elixir-autogen, elixir-format
+msgid "Ce fichier n'est pas une image PNG ou JPEG."
 msgstr ""

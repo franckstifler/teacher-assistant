@@ -55,8 +55,7 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :motto,
         :registration_number,
         :school_code,
-        :name_en,
-        :logo_path
+        :name_en
       ]
     end
 
@@ -79,7 +78,6 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
         :registration_number,
         :school_code,
         :name_en,
-        :logo_path,
         :class_coefficients_allowed?,
         :bulletin_group_subtotals?,
         :trimester_average_rule,
@@ -144,6 +142,12 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       ]
     end
 
+    # Its own action so the profile form can't post a `logo_path`: the path is
+    # only ever one `Uploads.store_image/3` wrote.
+    update :set_logo do
+      accept [:logo_path]
+    end
+
     update :update_official_header do
       accept [:official_header_lines, :official_header_lines_en, :signature_path, :stamp_path]
     end
@@ -182,7 +186,7 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
                    )
     end
 
-    policy action(:update) do
+    policy action([:update, :set_logo]) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
     end
 

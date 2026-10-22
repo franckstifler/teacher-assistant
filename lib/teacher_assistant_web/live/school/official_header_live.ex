@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.{Accounts, Uploads}
   alias TeacherAssistant.Academics.BulletinTemplate
   alias TeacherAssistantWeb.Authz
 
@@ -78,7 +78,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
 
   def handle_event("upload", %{"kind" => kind}, socket) do
     with {kind, field} <- Enum.find(@kinds, fn {k, _} -> Atom.to_string(k) == kind end),
-         [relative] <- store(socket, kind) do
+         [{:ok, relative}] <- store(socket, kind) do
       save(socket, %{field => relative}, gettext("Image enregistrée."))
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Aucune image valide à téléverser."))}
@@ -105,21 +105,10 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
   end
 
   defp store(socket, kind) do
-    uploads_dir = Application.fetch_env!(:teacher_assistant, :uploads_dir)
     ws = socket.assigns.current_scope.current_workspace.id
 
-    consume_uploaded_entries(socket, kind, fn %{path: tmp}, entry ->
-      relative =
-        Path.join([
-          "school_signatures",
-          ws,
-          Ash.UUIDv7.generate() <> Path.extname(entry.client_name)
-        ])
-
-      dest = Path.join(uploads_dir, relative)
-      dest |> Path.dirname() |> File.mkdir_p!()
-      File.cp!(tmp, dest)
-      {:ok, relative}
+    consume_uploaded_entries(socket, kind, fn %{path: tmp}, _entry ->
+      {:ok, Uploads.store_image(tmp, "school_signatures", ws)}
     end)
   end
 
