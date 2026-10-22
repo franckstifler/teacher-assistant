@@ -45,7 +45,9 @@ defmodule TeacherAssistant.Academics.Appreciations do
       {"14", "CBA", gettext("C. bien acquise")},
       {"16", "CTBA", gettext("C. très bien acquise")}
     ]
-    |> Enum.map(fn {from, code, label} -> %{from: Decimal.new(from), code: code, label: label} end)
+    |> Enum.map(fn {from, code, label} ->
+      %{from: Decimal.new(from), code: code, label: label}
+    end)
   end
 
   @doc "The scale in force under `rules`, lowest band first."

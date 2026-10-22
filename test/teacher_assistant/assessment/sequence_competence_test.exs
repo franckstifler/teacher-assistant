@@ -25,7 +25,10 @@ defmodule TeacherAssistant.Assessment.SequenceCompetenceTest do
     %{head: head, cg: cg, year: year, seq: seq} = MarksFixtures.marks_world()
     {:ok, other} = Enrollment.create_class_group(head, year, %{label: "6e B", level: "6ème"})
     {:ok, tc_a} = Curriculum.assign_teacher(head, cg, head.current_user, %{subject: "Histoire"})
-    {:ok, tc_b} = Curriculum.assign_teacher(head, other, head.current_user, %{subject: "Histoire"})
+
+    {:ok, tc_b} =
+      Curriculum.assign_teacher(head, other, head.current_user, %{subject: "Histoire"})
+
     {:ok, _course} = Curriculum.combine_course(head, [tc_a, tc_b])
     {:ok, tc_a} = Curriculum.get_teaching_context(head, tc_a.id)
 

@@ -107,7 +107,11 @@ defmodule TeacherAssistant.Academics.Student do
     attribute :sex, TeacherAssistant.Academics.Sex, allow_nil?: false, public?: true
     attribute :matricule, :string, allow_nil?: true, public?: true
     # Spec bulletin v2 §4.2: the national « Identifiant unique » (cartescolaire.cm).
-    attribute :national_id, :string, allow_nil?: true, public?: true, constraints: [max_length: 40]
+    attribute :national_id, :string,
+      allow_nil?: true,
+      public?: true,
+      constraints: [max_length: 40]
+
     attribute :birth_date, :date, allow_nil?: true, public?: true
 
     attribute :birth_place, :string,

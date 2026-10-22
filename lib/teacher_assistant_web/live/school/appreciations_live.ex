@@ -64,6 +64,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
   # row's upper bound (0 for the first).
   defp rows_from(bands) do
     uppers = bands |> Enum.drop(1) |> Enum.map(&show_bound(&1.from))
+
     Enum.zip_with(bands, uppers ++ [nil], fn band, to ->
       %{to: to, label: band.label, code: band.code}
     end)
@@ -503,7 +504,10 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
 
         new_rows =
           rest ++
-            [%{last | to: show_bound(mid)}, %{to: nil, label: gettext("Nouvelle tranche"), code: nil}]
+            [
+              %{last | to: show_bound(mid)},
+              %{to: nil, label: gettext("Nouvelle tranche"), code: nil}
+            ]
 
         {:noreply, assign(socket, rows: new_rows, bands_error: nil, bands_dirty?: true)}
 

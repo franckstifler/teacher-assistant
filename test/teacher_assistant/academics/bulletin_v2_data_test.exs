@@ -88,8 +88,9 @@ defmodule TeacherAssistant.Academics.BulletinV2DataTest do
     assert :previous_terms in BulletinElement.defaults()
     assert :annual_summary in BulletinElement.defaults()
 
-    for el <- [:apc, :previous_terms, :annual_summary, :guardians, :national_id] ++
-                [:class_profile, :teacher_visa],
+    for el <-
+          [:apc, :previous_terms, :annual_summary, :guardians, :national_id] ++
+            [:class_profile, :teacher_visa],
         do: assert(is_binary(BulletinElement.label(el)))
   end
 
