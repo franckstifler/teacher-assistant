@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
   alias TeacherAssistant.ReportCards
-  alias TeacherAssistant.Academics.BulletinTemplate
+  alias TeacherAssistant.Academics.{BulletinLayout, BulletinTemplate}
   alias TeacherAssistantWeb.{BulletinPrintHTML, BulletinVerification}
 
   def show(conn, %{"id" => id, "enrollment_id" => eid} = params) do
@@ -68,9 +68,10 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     results = view.results
     template = ReportCards.template_of(scope, cg, view)
     lang = template.language
+    kind = Organization.period_kind(period)
 
     bundles =
-      Enum.map(entries, fn %{student: student, enrollment: enrollment} ->
+      Enum.map(entries, fn %{student: student, enrollment: enrollment} = entry ->
         verify_url = verify_url(pub, student.id)
 
         %{
@@ -88,11 +89,13 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
           discipline: view.discipline[enrollment.id],
           qr_svg: qr_svg(verify_url, template),
           photo_url: photo_url(pub, student),
-          verify_url: verify_url
+          verify_url: verify_url,
+          # Spec bulletin v2: snapshots published before these keys have none.
+          guardians: Map.get(entry, :guardians, []),
+          density: density(template, kind, results && results.per_student[student.id], view)
         }
       end)
 
-    kind = Organization.period_kind(period)
     year = Organization.class_year(scope, cg)
 
     conn
@@ -104,7 +107,7 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       professeur_principal: view.form_master && Accounts.User.display_name(view.form_master),
       cg: cg,
       period_kind: kind,
-      period_heading: BulletinPrintHTML.tr(lang, fn -> period_heading(period) end),
+      title: BulletinPrintHTML.title(lang, kind, period_number(period)),
       effectif: (results && results.effectif) || 0,
       bundles: bundles,
       group_subtotals?: view.group_subtotals?,
@@ -150,7 +153,21 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
     if BulletinTemplate.show?(template, :qr_code), do: BulletinVerification.qr_svg(verify_url)
   end
 
-  defp period_heading({:sequence, seq}), do: "#{gettext("Séquence")} #{seq.number}"
-  defp period_heading({:trimester, term}), do: "#{gettext("Trimestre")} #{term.position}"
-  defp period_heading({:annual, _}), do: gettext("Année scolaire")
+  defp period_number({:sequence, seq}), do: seq.number
+  defp period_number({:trimester, term}), do: term.position
+  defp period_number({:annual, _}), do: nil
+
+  # Spec bulletin v2 §5.6: the density tier keeping the card on one page.
+  defp density(_template, _kind, nil, _view), do: :normal
+
+  defp density(template, kind, data, view) do
+    template
+    |> BulletinLayout.subject_lines(
+      kind,
+      data.groups,
+      Map.get(view, :sequences_per_term, 2),
+      view.group_subtotals?
+    )
+    |> BulletinLayout.density(BulletinLayout.identity_rows(template))
+  end
 end

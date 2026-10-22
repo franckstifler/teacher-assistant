@@ -7,125 +7,169 @@
     <style>
       * { box-sizing: border-box; }
       body {
-        font-family: Georgia, "Times New Roman", serif;
-        color: #111; background: #fff; margin: 0; padding: 24px;
-        font-size: 12pt; line-height: 1.4;
+        font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
+        color: #111; background: #fff; margin: 0; padding: 16px;
+        line-height: 1.22;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
-      .bulletin-page { page-break-after: always; position: relative; }
+      @page { size: A4; margin: 10mm; }
+      @media print { body { padding: 0; } tr { break-inside: avoid; } }
+      .bulletin-page { page-break-after: always; position: relative; font-size: 8pt; }
+      .bulletin-page:last-child { page-break-after: auto; }
+      .density-compact { font-size: 7.4pt; }
+      .density-dense, .density-overflow { font-size: 6.6pt; }
       .watermark {
         position: absolute; inset: 35% 0 auto 0; text-align: center;
         font-size: 96px; font-weight: 700; letter-spacing: 0.2em;
         color: rgba(0, 0, 0, 0.08); transform: rotate(-24deg); pointer-events: none;
       }
-      .published { font-size: 11px; text-align: right; margin: 0 0 4px; }
-      .bulletin-page:last-child { page-break-after: auto; }
-      h1 { font-size: 15pt; margin: 8px 0 4px; text-align: center; }
-      .cartouche { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
-      .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
-      .cartouche .k { font-variant: small-caps; color: #444; width: 18%; }
-      .identity { display: flex; gap: 3mm; align-items: flex-start; }
+      .published { font-size: 0.8em; text-align: right; margin: 0 0 2px; color: #555; }
+      table { border-collapse: collapse; width: 100%; }
+      td, th { border: 0.2mm solid #555; padding: 0.5mm 1mm; vertical-align: middle; }
+      .density-dense td, .density-dense th, .density-overflow td, .density-overflow th { padding: 0.3mm 0.8mm; }
+      .header { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; font-size: 0.86em; }
+      .header .col div:first-child { font-weight: bold; text-transform: uppercase; }
+      .header .col div:nth-child(2) { font-style: italic; }
+      .header .col div:nth-child(n+3) { text-transform: uppercase; }
+      .header .mid img { max-height: 18mm; max-width: 30mm; }
+      .header .code { font-weight: 700; margin-top: 1mm; letter-spacing: .02em; }
+      .school { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; margin-top: 1mm; font-size: 0.9em; }
+      .school .name { font-size: 1.2em; font-weight: bold; text-transform: uppercase; }
+      .flag { height: 0.9mm; margin: 1.2mm 0 0;
+              background: linear-gradient(90deg, #007a5e 33.3%, #ce1126 33.3% 66.6%, #fcd116 66.6%); }
+      .title { text-align: center; margin: 1.5mm 0 1.2mm; }
+      .title h1 { font-size: 1.45em; margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+      .title .year { font-size: 1.05em; }
+      .identity { display: flex; gap: 2mm; align-items: flex-start; }
       .identity .cartouche { flex: 1; }
-      .student-photo { width: 25mm; height: 32mm; object-fit: cover; border: 0.3mm solid #000;
-                       margin-top: 8px; }
-      table.body { width: 100%; border-collapse: collapse; margin-top: 8px; }
-      table.body th, table.body td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
-      table.body th { background: #f0f0f0; font-variant: small-caps; }
-      table.body td.num, table.body th.num { text-align: right; }
-      .totals { margin-top: 8px; font-size: 12pt; }
-      .totals strong { font-size: 13pt; }
-      .visa { margin-top: 24px; display: flex; justify-content: space-between; gap: 16px; }
-      .visa .slot { flex: 1; }
-      .visa .head .marks { position: relative; height: 56px; }
-      .visa .head .stamp { position: absolute; left: 10%; height: 56px; opacity: .85; }
-      .visa .head .signature { position: absolute; right: 10%; height: 48px; }
-      .visa .line { border-top: 1px solid #999; margin-top: 32px; padding-top: 2px;
-                    font-variant: small-caps; font-size: 9pt; color: #444; }
-      .visa .pp-name { font-size: 11px; margin-bottom: 2px; }
-      .visa .decision { font-weight: bold; margin-bottom: 2px; }
-      .appreciation { margin-top: 12px; }
-      .appreciation .k { font-variant: small-caps; font-size: 9pt; color: #444; }
-      .appreciation .rule { border-bottom: 1px solid #bbb; height: 20px; }
-      @page { size: A4; margin: 15mm; }
-      @media print {
-        body { padding: 0; }
-        tr { break-inside: avoid; }
-      }
-      tr.group th { text-align: left; font-size: 9pt; text-transform: uppercase; background: #f2f2f2; }
+      .cartouche td { padding: 0.6mm 1.2mm; }
+      .cartouche .k { color: #444; white-space: nowrap; font-size: 0.92em; }
+      .student-photo { width: 24mm; height: 30mm; object-fit: cover; border: 0.3mm solid #000; }
+      table.body { margin-top: 1.5mm; }
+      table.body th { background: #eee; font-weight: 700; text-align: center; font-size: 0.9em; }
+      table.body td.num, table.body th.num { text-align: center; }
+      table.body .comp { font-size: 0.9em; max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      table.body tfoot th { background: #f6f6f6; }
+      tr.group th { text-align: left; text-transform: uppercase; background: #f2f2f2; }
       tr.group-total td { font-weight: 600; }
-      .header { display: flex; justify-content: space-between; gap: 12px; text-align: center; font-size: 9pt; }
-      .header .col { flex: 1; }
-      .header .col div:first-child { font-variant: small-caps; font-weight: bold; }
-      .school { text-align: center; margin: 6px 0; font-size: 10pt; }
-      .school .name { font-size: 13pt; font-weight: bold; }
-      .school img { max-height: 56px; }
-      .qr svg { width: 88px; height: 88px; }
-      td .teacher { font-size: 9pt; color: #666; }
-      .visa .head-name { font-size: 11px; margin-top: 2px; }
-      .verify { font-size: 8pt; color: #444; max-width: 180px; word-break: break-all; margin: 4px 0 0; }
+      td .teacher { font-size: 0.85em; color: #555; }
+      .legend { margin: 0.5mm 0 0; font-size: 0.85em; }
+      .boxes { display: grid; grid-template-columns: 1.15fr 1fr 0.8fr 1fr; gap: 1.5mm; margin-top: 1.5mm; }
+      .boxes th { background: #eee; text-align: center; }
+      .boxes td.v { text-align: center; font-weight: 600; }
+      .bottom { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.5mm; margin-top: 1.5mm; }
+      .bottom th { background: #eee; text-align: left; }
+      .bottom td { height: 9mm; vertical-align: top; }
+      .council-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+      .decision { font-weight: bold; }
+      .visa { display: grid; grid-template-columns: 1fr 1fr 1.3fr auto; gap: 1.5mm; margin-top: 1.5mm; }
+      .visa .slot { border: 0.2mm solid #555; min-height: 22mm; padding: 1mm; position: relative; }
+      .visa .line { color: #444; }
+      .visa .pp-name, .visa .head-name { margin-top: 1mm; }
+      .visa .head .marks { position: relative; height: 13mm; }
+      .visa .head .stamp { position: absolute; left: 6%; height: 13mm; opacity: .85; }
+      .visa .head .signature { position: absolute; right: 6%; height: 11mm; }
+      .qr { border: 0.2mm solid #555; padding: 1mm; text-align: center; }
+      .qr svg { width: 20mm; height: 20mm; }
+      .verify { font-size: 0.75em; color: #444; max-width: 32mm; word-break: break-all; margin: 0.5mm 0 0; }
     </style>
   </head>
   <body>
-    <section :for={b <- @bundles} class="bulletin-page">
+    <section :for={b <- @bundles} class={["bulletin-page", "density-#{b.density}"]}>
       <div :if={@draft?} class="watermark">{tr(@lang, fn -> gettext("BROUILLON") end)}</div>
       <p :if={@published_on} class="published">
         {tr(@lang, fn -> gettext("Publié le %{date}", date: @published_on) end)}
       </p>
 
       <div class="header">
-        <div :for={l <- header_columns(@lang, @template.header)} class="col">
-          <div :for={line <- official_lines(l, @template.header)}>{line}</div>
+        <div class="col">
+          <div :for={line <- official_lines(@template.header, :fr)}>{line}</div>
+        </div>
+        <div class="mid">
+          <img :if={@logo?} src={~p"/school/logo"} alt="" />
+          <div :if={present?(Map.get(@template.header, :school_code))} class="code">
+            CODE : {@template.header.school_code}
+          </div>
+        </div>
+        <div class="col">
+          <div :for={line <- official_lines(@template.header, :en)}>{line}</div>
         </div>
       </div>
       <div class="school">
-        <img :if={@logo?} src={~p"/school/logo"} alt="" />
-        <div
-          :for={{line, i} <- Enum.with_index(school_lines(@lang, @template.header))}
-          class={if i == 0, do: "name"}
-        >
-          {line}
+        <div>
+          <div
+            :for={{line, i} <- Enum.with_index(school_lines(@template.header, :fr))}
+            class={if i == 0, do: "name"}
+          >
+            {line}
+          </div>
+        </div>
+        <div></div>
+        <div>
+          <div
+            :for={{line, i} <- Enum.with_index(school_lines(@template.header, :en))}
+            class={if i == 0, do: "name"}
+          >
+            {line}
+          </div>
         </div>
       </div>
+      <div class="flag"></div>
 
-      <h1>{tr(@lang, fn -> gettext("Bulletin de notes") end)}</h1>
+      <div class="title">
+        <h1>{@title}</h1>
+        <div class="year">{tr(@lang, fn -> gettext("Année scolaire") end)} {@annee || "—"}</div>
+      </div>
 
       <div class="identity">
+        <img
+          :if={show?(@template, :photo) and b.photo_url}
+          class="student-photo"
+          src={b.photo_url}
+          alt=""
+        />
         <table class="cartouche">
           <tr>
-            <td class="k">{tr(@lang, fn -> gettext("Année scolaire") end)}</td>
-            <td>{@annee || "—"}</td>
-            <td class="k">{tr(@lang, fn -> gettext("Période") end)}</td>
-            <td>{@period_heading}</td>
-          </tr>
-          <tr>
             <td class="k">{tr(@lang, fn -> gettext("Nom et prénoms") end)}</td>
-            <td>{b.student.full_name}</td>
-            <td class="k">{tr(@lang, fn -> gettext("Matricule") end)}</td>
-            <td>{b.student.matricule || "—"}</td>
+            <td colspan="3"><strong>{b.student.full_name}</strong></td>
+            <td class="k">{tr(@lang, fn -> gettext("Classe") end)}</td>
+            <td><strong>{@cg.label}</strong></td>
           </tr>
           <tr>
-            <td class="k">{tr(@lang, fn -> gettext("Classe") end)}</td>
-            <td>{@cg.label} — {@cg.level}</td>
+            <%!-- Snapshots published before KLM1 carry no birth keys. --%>
+            <%= if show?(@template, :birth) and (Map.get(b.student, :birth_date) || Map.get(b.student, :birth_place)) do %>
+              <td class="k">{tr(@lang, fn -> gettext("Né(e) le") end)}</td>
+              <td colspan="3">
+                {Map.get(b.student, :birth_date) &&
+                  Calendar.strftime(b.student.birth_date, "%d/%m/%Y")}
+                <span :if={Map.get(b.student, :birth_place)}>
+                  {tr(@lang, fn -> gettext("à") end)} {b.student.birth_place}
+                </span>
+              </td>
+            <% else %>
+              <td class="k">{tr(@lang, fn -> gettext("Niveau") end)}</td>
+              <td colspan="3">{@cg.level}</td>
+            <% end %>
             <td class="k">{tr(@lang, fn -> gettext("Sexe") end)}</td>
             <td>{tr(@lang, fn -> sex_label(b.student.sex) end)}</td>
           </tr>
-          <%!-- Snapshots published before KLM1 carry no birth keys. --%>
-          <tr :if={
-            show?(@template, :birth) and
-              (Map.get(b.student, :birth_date) || Map.get(b.student, :birth_place))
-          }>
-            <td class="k">{tr(@lang, fn -> gettext("Né(e) le") end)}</td>
-            <td>
-              {Map.get(b.student, :birth_date) &&
-                Calendar.strftime(b.student.birth_date, "%d/%m/%Y")}
-            </td>
-            <td class="k">{tr(@lang, fn -> gettext("à") end)}</td>
-            <td>{Map.get(b.student, :birth_place)}</td>
-          </tr>
-          <tr :if={show?(@template, :effectif)}>
-            <td class="k">{tr(@lang, fn -> gettext("Effectif") end)}</td>
-            <td>{@effectif}</td>
-            <td></td>
-            <td></td>
+          <tr>
+            <%= if show?(@template, :national_id) and Map.get(b.student, :national_id) do %>
+              <td class="k">{tr(@lang, fn -> gettext("Identifiant unique") end)}</td>
+              <td>{b.student.national_id}</td>
+            <% else %>
+              <td></td>
+              <td></td>
+            <% end %>
+            <td class="k">{tr(@lang, fn -> gettext("Matricule") end)}</td>
+            <td>{b.student.matricule || "—"}</td>
+            <%= if show?(@template, :effectif) do %>
+              <td class="k">{tr(@lang, fn -> gettext("Effectif") end)}</td>
+              <td>{@effectif}</td>
+            <% else %>
+              <td></td>
+              <td></td>
+            <% end %>
           </tr>
           <%!-- Snapshots published before the pilotage redesign may lack the repeater flag. --%>
           <tr :if={
@@ -145,19 +189,17 @@
             <% end %>
             <%= if show?(@template, :form_master) and @professeur_principal do %>
               <td class="k">{tr(@lang, fn -> gettext("Professeur principal") end)}</td>
-              <td>{@professeur_principal}</td>
+              <td colspan="3">{@professeur_principal}</td>
             <% else %>
               <td></td>
-              <td></td>
+              <td colspan="3"></td>
             <% end %>
           </tr>
+          <tr :if={show?(@template, :guardians) and b.guardians != []}>
+            <td class="k">{tr(@lang, fn -> gettext("Parents / tuteurs") end)}</td>
+            <td colspan="5">{guardians_line(b.guardians)}</td>
+          </tr>
         </table>
-        <img
-          :if={show?(@template, :photo) and b.photo_url}
-          class="student-photo"
-          src={b.photo_url}
-          alt=""
-        />
       </div>
 
       <%= if b.data do %>

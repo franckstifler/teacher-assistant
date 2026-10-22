@@ -22,28 +22,43 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
     end
   end
 
-  # The header's national block: one column per language.
-  defp header_langs(:bilingual), do: [:fr, :en]
-  defp header_langs(lang), do: [lang]
+  # Spec bulletin v2 §5.1: French on the left, English on the right, on every card.
+  defp official_lines(header, lang), do: BulletinTemplate.official_lines(header, lang)
 
-  # Lines the school typed (spec KLM6) are in one language: one column, even on a bilingual card.
-  defp header_columns(lang, header) do
-    case Map.get(header, :official_lines) do
-      [_ | _] -> Enum.take(header_langs(lang), 1)
-      _ -> header_langs(lang)
-    end
+  # The school's own lines under each column; the English one names the school in English.
+  defp school_lines(header, :fr),
+    do: tr_list(:fr, fn -> BulletinTemplate.school_lines(header) end)
+
+  defp school_lines(header, :en) do
+    name = if present?(Map.get(header, :name_en)), do: header.name_en, else: header.name
+    tr_list(:en, fn -> BulletinTemplate.school_lines(%{header | name: name}) end)
   end
-
-  defp official_lines(lang, header),
-    do: tr_list(lang, fn -> BulletinTemplate.official_lines(header) end)
-
-  # The school block is one column: a bilingual card uses French for its few words.
-  defp school_lines(lang, header),
-    do:
-      tr_list(if(lang == :en, do: :en, else: :fr), fn -> BulletinTemplate.school_lines(header) end)
 
   defp tr_list(lang, fun) when lang in [:fr, :en],
     do: Gettext.with_locale(@backend, Atom.to_string(lang), fun)
+
+  defp present?(text), do: is_binary(text) and String.trim(text) != ""
+
+  defp guardians_line(guardians),
+    do:
+      Enum.map_join(guardians, " · ", fn g ->
+        Enum.join(Enum.filter([g.name, g.phone], & &1), " — ")
+      end)
+
+  @doc """
+  Spec bulletin v2 §5.2: the card's title, naming its period (`n`: the trimester's
+  position or the séquence's number).
+  """
+  def title(lang, :trimester, n), do: tr(lang, fn -> trimester_title(n) end)
+  def title(lang, :annual, _n), do: tr(lang, fn -> gettext("Bulletin annuel") end)
+
+  def title(lang, :sequence, n),
+    do: tr(lang, fn -> gettext("Bulletin de la séquence %{n}", n: n) end)
+
+  defp trimester_title(1), do: gettext("Bulletin scolaire du premier trimestre")
+  defp trimester_title(2), do: gettext("Bulletin scolaire du deuxième trimestre")
+  defp trimester_title(3), do: gettext("Bulletin scolaire du troisième trimestre")
+  defp trimester_title(n), do: gettext("Bulletin scolaire du trimestre %{n}", n: n)
 
   defp html_lang(:en), do: "en"
   defp html_lang(_), do: "fr"

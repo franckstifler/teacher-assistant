@@ -273,7 +273,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
     conn = get(conn, ~p"/school/classes/#{cg.id}/bulletin/print?period=trim:#{term1.id}")
     body = html_response(conn, 200)
-    assert body =~ "Trimestre 1"
+    assert body =~ "Bulletin scolaire du premier trimestre"
     assert body =~ "Séq 1"
     assert body =~ "Awa Ngo"
   end
@@ -1088,6 +1088,81 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
 
       conn = build_conn() |> log_in_user(h) |> Plug.Conn.put_session(:workspace_id, w.id)
       assert get(conn, ~p"/school/bulletins/#{pub.id}/photo/#{st.id}").status == 404
+    end
+  end
+
+  describe "v2 header, title and identity" do
+    defp set_profile(scope, attrs) do
+      {:ok, profile} = Accounts.fetch_school_profile(scope)
+      {:ok, _} = profile |> Ash.Changeset.for_update(:update, attrs, scope: scope) |> Ash.update()
+    end
+
+    defp v2_print(ctx, period) do
+      %{enrollment: enr} = Enum.find(ctx.roster, &(&1.student.full_name == "Awa Ngo"))
+
+      ctx.conn
+      |> get(~p"/school/classes/#{ctx.cg.id}/students/#{enr.id}/bulletin/print?period=#{period}")
+      |> html_response(200)
+    end
+
+    defp v2_terms(ctx),
+      do: Organization.list_terms(ctx.scope, Organization.class_year(ctx.scope, ctx.cg))
+
+    test "French card prints both header columns with logo and code between", ctx do
+      set_profile(ctx.scope, %{school_code: "5MN1TEF110431106"})
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+
+      assert html =~ "République du Cameroun"
+      assert html =~ "Republic of Cameroon"
+      assert html =~ "Ministry of Secondary Education"
+      assert html =~ "CODE : 5MN1TEF110431106"
+      assert html =~ ~s(class="flag")
+    end
+
+    test "English name in the right column; workspace name when blank", ctx do
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+      assert length(String.split(html, "Lycée Print")) >= 3
+
+      set_profile(ctx.scope, %{name_en: "G.T.H.S Print"})
+      assert v2_print(ctx, "seq:#{ctx.seq.id}") =~ "G.T.H.S Print"
+    end
+
+    test "no code line when school_code is nil", ctx do
+      refute v2_print(ctx, "seq:#{ctx.seq.id}") =~ "CODE :"
+    end
+
+    test "title names the period", ctx do
+      t3 = List.last(v2_terms(ctx))
+      assert v2_print(ctx, "trim:#{t3.id}") =~ ~r/bulletin scolaire du troisième trimestre/i
+      assert v2_print(ctx, "seq:#{ctx.seq.id}") =~ ~r/bulletin de la séquence 1/i
+      assert v2_print(ctx, "annee") =~ ~r/bulletin annuel/i
+    end
+
+    test "identity shows national ID and guardians only with their elements", ctx do
+      %{student: awa} = Enum.find(ctx.roster, &(&1.student.full_name == "Awa Ngo"))
+      {:ok, awa} = Enrollment.update_student(awa, %{national_id: "241592812"}, scope: ctx.scope)
+
+      {:ok, _} =
+        Enrollment.add_guardian(ctx.scope, awa, %{
+          full_name: "Mme Ngo",
+          phone: "677123456",
+          relationship: :mere
+        })
+
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+      assert html =~ "Identifiant unique"
+      assert html =~ "241592812"
+      assert html =~ "Mme Ngo"
+
+      {:ok, _} =
+        Assessment.update_bulletin_settings(ctx.scope, %{
+          "language" => "by_class",
+          "elements" => ["rank"]
+        })
+
+      html = v2_print(ctx, "seq:#{ctx.seq.id}")
+      refute html =~ "241592812"
+      refute html =~ "Mme Ngo"
     end
   end
 end
