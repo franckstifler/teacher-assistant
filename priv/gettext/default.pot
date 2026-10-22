@@ -1893,7 +1893,7 @@ msgstr ""
 msgid "Govt Bilingual Secondary School (GBSS)"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:120
+#: lib/teacher_assistant_web/live/school/roll_call.ex:121
 #, elixir-autogen, elixir-format
 msgid "Impossible d'enregistrer l'appel"
 msgstr ""
@@ -2170,7 +2170,7 @@ msgstr ""
 msgid "Vérifié"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:116
+#: lib/teacher_assistant_web/live/school/roll_call.ex:117
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:448
 #, elixir-autogen, elixir-format
 msgid "École en attente de vérification — enregistrement indisponible."
@@ -3971,15 +3971,15 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/day_live.ex:451
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:371
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:477
-#: lib/teacher_assistant_web/live/school/roll_call.ex:291
-#: lib/teacher_assistant_web/live/school/roll_call.ex:470
+#: lib/teacher_assistant_web/live/school/roll_call.ex:296
+#: lib/teacher_assistant_web/live/school/roll_call.ex:490
 #, elixir-autogen, elixir-format
 msgid "%{count} absent"
 msgid_plural "%{count} absents"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:285
+#: lib/teacher_assistant_web/live/school/roll_call.ex:290
 #, elixir-autogen, elixir-format
 msgid "%{count} présent"
 msgid_plural "%{count} présents"
@@ -3988,20 +3988,20 @@ msgstr[1] ""
 
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:143
 #: lib/teacher_assistant_web/live/school/register_live.ex:206
-#: lib/teacher_assistant_web/live/school/roll_call.ex:297
-#: lib/teacher_assistant_web/live/school/roll_call.ex:471
+#: lib/teacher_assistant_web/live/school/roll_call.ex:302
+#: lib/teacher_assistant_web/live/school/roll_call.ex:491
 #, elixir-autogen, elixir-format
 msgid "%{count} retard"
 msgid_plural "%{count} retards"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:478
+#: lib/teacher_assistant_web/live/school/roll_call.ex:498
 #, elixir-autogen, elixir-format
 msgid "Absent en %{periods} — aujourd'hui"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:477
+#: lib/teacher_assistant_web/live/school/roll_call.ex:497
 #, elixir-autogen, elixir-format
 msgid "Absent en %{periods} — ce matin"
 msgstr ""
@@ -5334,7 +5334,7 @@ msgstr ""
 msgid "Gardez au moins un type de sanction."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:443
+#: lib/teacher_assistant_web/live/school/roll_call.ex:463
 #, elixir-autogen, elixir-format
 msgid "Minutes de retard"
 msgstr ""
@@ -5372,8 +5372,8 @@ msgid "jamais"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/periods_live.ex:105
-#: lib/teacher_assistant_web/live/school/roll_call.ex:453
-#: lib/teacher_assistant_web/live/school/roll_call.ex:456
+#: lib/teacher_assistant_web/live/school/roll_call.ex:473
+#: lib/teacher_assistant_web/live/school/roll_call.ex:476
 #: lib/teacher_assistant_web/live/school/school_life_settings_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "min"
@@ -6171,7 +6171,7 @@ msgstr ""
 #: lib/teacher_assistant_web/components/ui_components.ex:39
 #: lib/teacher_assistant_web/live/account/password_live.ex:90
 #: lib/teacher_assistant_web/live/school/members_live.ex:531
-#: lib/teacher_assistant_web/live/school/roll_call.ex:343
+#: lib/teacher_assistant_web/live/school/roll_call.ex:348
 #, elixir-autogen, elixir-format
 msgid "Enregistrement…"
 msgstr ""
@@ -7621,7 +7621,7 @@ msgstr ""
 msgid "Acceptée"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:337
+#: lib/teacher_assistant_web/live/school/roll_call.ex:342
 #, elixir-autogen, elixir-format
 msgid "Appel enregistré."
 msgstr ""
@@ -7701,7 +7701,7 @@ msgid "Maintenant"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:348
-#: lib/teacher_assistant_web/live/school/roll_call.ex:464
+#: lib/teacher_assistant_web/live/school/roll_call.ex:484
 #, elixir-autogen, elixir-format
 msgid "Modifier l'appel"
 msgstr ""
@@ -7786,7 +7786,7 @@ msgstr ""
 msgid "Séquence %{n} verrouillée depuis le %{date}."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:316
+#: lib/teacher_assistant_web/live/school/roll_call.ex:321
 #, elixir-autogen, elixir-format
 msgid "Tous présents"
 msgstr ""
@@ -7801,7 +7801,7 @@ msgstr ""
 msgid "Une note verrouillée ne change qu'après validation du censeur. Tout est tracé."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:468
+#: lib/teacher_assistant_web/live/school/roll_call.ex:488
 #, elixir-autogen, elixir-format
 msgid "Valider l'appel"
 msgstr ""
@@ -11300,7 +11300,7 @@ msgid_plural "%{count} avis émis."
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:303
+#: lib/teacher_assistant_web/live/school/roll_call.ex:308
 #, elixir-autogen, elixir-format
 msgid "%{count} renvoyé pour frais"
 msgid_plural "%{count} renvoyés pour frais"
@@ -11473,8 +11473,8 @@ msgstr ""
 msgid "Exonération"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call.ex:401
-#: lib/teacher_assistant_web/live/school/roll_call.ex:402
+#: lib/teacher_assistant_web/live/school/roll_call.ex:418
+#: lib/teacher_assistant_web/live/school/roll_call.ex:419
 #, elixir-autogen, elixir-format
 msgid "Il est en classe : présent"
 msgstr ""
