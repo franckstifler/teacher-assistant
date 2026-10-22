@@ -47,11 +47,29 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     {param, _label, period} =
       Enum.find(periods, &(elem(&1, 0) == params["period"])) || default_period(periods)
 
-    {:noreply,
-     socket
-     |> assign(cg: cg, period: period, period_param: param, confirm?: false, withdrawing?: false)
-     |> load(params["student"])}
+    if same_view?(socket, cg, param) do
+      # Only the student changed: the class's figures are already loaded.
+      rows = socket.assigns.rows
+      selected = Enum.find(rows, &(&1.student.id == params["student"])) || List.first(rows)
+      {:noreply, assign(socket, selected: selected)}
+    else
+      {:noreply,
+       socket
+       |> assign(
+         cg: cg,
+         period: period,
+         period_param: param,
+         confirm?: false,
+         withdrawing?: false
+       )
+       |> load(params["student"])}
+    end
   end
+
+  defp same_view?(%{assigns: %{rows: _, cg: %{id: id}, period_param: param}}, %{id: id}, param),
+    do: true
+
+  defp same_view?(_socket, _cg, _param), do: false
 
   # The trimester whose séquences cover today, else the first one.
   defp default_period(periods) do
@@ -88,7 +106,13 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
       selected: Enum.find(rows, &(&1.student.id == student_id)) || List.first(rows),
       publishable?: publishable?(period),
       checks:
-        checks(can_publish? and status == :draft and publishable?(period), scope, cg, period),
+        checks(
+          can_publish? and status == :draft and publishable?(period),
+          scope,
+          cg,
+          period,
+          view
+        ),
       rate:
         if(can_publish? and publishable?(period), do: ReportCards.entry_rate(scope, cg, period)),
       council_held?: council_held?(can_publish?, scope, cg, period),
@@ -98,8 +122,10 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
 
   defp publishable?({kind, _}), do: kind in [:trimester, :annual]
 
-  defp checks(true, scope, cg, period), do: ReportCards.publish_checklist(scope, cg, period)
-  defp checks(false, _scope, _cg, _period), do: []
+  defp checks(true, scope, cg, period, view),
+    do: ReportCards.publish_checklist(scope, cg, period, view)
+
+  defp checks(false, _scope, _cg, _period, _view), do: []
 
   # Spec I3/I4: a trimester or the year is published only once its class council is held;
   # the last trimester carrying the year also needs the end-of-year council (bulletin v2).

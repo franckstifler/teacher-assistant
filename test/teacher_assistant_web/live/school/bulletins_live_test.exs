@@ -259,4 +259,25 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
 
     assert has_element?(view, "#publish-bulletins[disabled]")
   end
+
+  test "selecting another student does not recompute the class (bulletin v2)", ctx do
+    t3 = ctx.scope |> Organization.list_terms(ctx.scope.current_academic_year) |> List.last()
+    {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, t3))
+
+    test_pid = self()
+    handler = "count-queries-#{inspect(view.pid)}"
+
+    :telemetry.attach(
+      handler,
+      [:teacher_assistant, :repo, :query],
+      fn _event, _measurements, _meta, pid -> if self() == pid, do: send(test_pid, :query) end,
+      view.pid
+    )
+
+    view |> element("#bulletins-row-#{ctx.tch.student.id} a[data-role=select]") |> render_click()
+    :telemetry.detach(handler)
+
+    assert has_element?(view, "#student-panel", "Tchinda Rodrigue")
+    refute_received :query
+  end
 end

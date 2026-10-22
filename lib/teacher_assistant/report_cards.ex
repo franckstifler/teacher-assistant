@@ -82,7 +82,12 @@ defmodule TeacherAssistant.ReportCards do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
 
     template =
-      BulletinTemplate.resolve(profile, scope.current_workspace.name, cg, head_name(scope))
+      BulletinTemplate.resolve(
+        profile,
+        scope.current_workspace.name,
+        cg,
+        head_name(scope, profile)
+      )
 
     # Operator console spec §1: no absences without roll call, no conduct without discipline.
     hidden =
@@ -99,10 +104,13 @@ defmodule TeacherAssistant.ReportCards do
   """
   def head_name(%Scope{} = scope) do
     case Accounts.fetch_school_profile(scope) do
-      {:ok, %{head_name: name}} when is_binary(name) and name != "" -> name
+      {:ok, profile} -> head_name(scope, profile)
       _ -> head_member_name(scope)
     end
   end
+
+  defp head_name(_scope, %{head_name: name}) when is_binary(name) and name != "", do: name
+  defp head_name(scope, _profile), do: head_member_name(scope)
 
   defp head_member_name(scope) do
     scope
@@ -351,7 +359,7 @@ defmodule TeacherAssistant.ReportCards do
   without a teacher), conduct marks entered, and the class council. Each is
   `%{key, ok?, data}`; the page words them.
   """
-  def publish_checklist(%Scope{} = scope, %ClassGroup{} = cg, period) do
+  def publish_checklist(%Scope{} = scope, %ClassGroup{} = cg, period, view \\ nil) do
     rate = entry_rate_or_nil(scope, cg, period)
     unassigned = scope |> Curriculum.unassigned_subjects_by_class([cg]) |> Map.get(cg.id, [])
     discipline = Discipline.class_discipline(scope, cg, period)
@@ -376,28 +384,32 @@ defmodule TeacherAssistant.ReportCards do
         ok?: status == :held,
         data: %{status: status, date: council.held_on, time: council.starts_at}
       }
-    ] ++ v2_checks(scope, cg, period)
+    ] ++ v2_checks(scope, cg, period, view)
   end
 
   # Spec bulletin v2: the end-of-year council (blocking, enforced by `publish/3`), the
   # APC competences and the one-page fit (both informative).
-  defp v2_checks(_scope, _cg, {:sequence, _}), do: []
+  # `view`: the live draft when the caller has it, so nothing is computed twice.
+  defp v2_checks(_scope, _cg, {:sequence, _}, _view), do: []
 
-  defp v2_checks(scope, cg, period) do
-    template = template(scope, cg)
+  defp v2_checks(scope, cg, period, view) do
+    template = (view && Map.get(view, :template)) || template(scope, cg)
+
+    results =
+      if view, do: view.results, else: Assessment.class_results_for_period(scope, cg, period)
 
     Enum.reject(
       [
-        annual_council_check(scope, cg, period),
+        annual_council_check(scope, cg, period, template),
         competences_check(scope, cg, period, template),
-        page_fit_check(scope, cg, period, template)
+        page_fit_check(scope, period, template, results)
       ],
       &is_nil/1
     )
   end
 
-  defp annual_council_check(scope, cg, period) do
-    if needs_annual_council?(scope, cg, period) do
+  defp annual_council_check(scope, cg, period, template) do
+    if needs_annual_council?(scope, cg, period, template) do
       annual = {:annual, Organization.class_year(scope, cg)}
       council = Councils.council(scope, cg, annual)
       status = Councils.status(if(council.id, do: council), false)
@@ -426,9 +438,7 @@ defmodule TeacherAssistant.ReportCards do
 
   defp competences_check(_scope, _cg, _period, _template), do: nil
 
-  defp page_fit_check(scope, cg, period, template) do
-    results = Assessment.class_results_for_period(scope, cg, period)
-
+  defp page_fit_check(scope, period, template, results) do
     groups =
       (results && results.per_student |> Map.values() |> List.first() |> then(&(&1 && &1.groups))) ||
         []
@@ -451,10 +461,14 @@ defmodule TeacherAssistant.ReportCards do
   Spec bulletin v2 §5.5: the year's last trimester carrying the annual summary is
   published only once the end-of-year council is held.
   """
-  def needs_annual_council?(scope, cg, {:trimester, %Term{} = term}),
-    do: BulletinTemplate.show?(template(scope, cg), :annual_summary) and last_term?(scope, term)
+  def needs_annual_council?(scope, cg, period, template \\ nil)
 
-  def needs_annual_council?(_scope, _cg, _period), do: false
+  def needs_annual_council?(scope, cg, {:trimester, %Term{} = term}, template) do
+    BulletinTemplate.show?(template || template(scope, cg), :annual_summary) and
+      last_term?(scope, term)
+  end
+
+  def needs_annual_council?(_scope, _cg, _period, _template), do: false
 
   @doc "Whether the class's end-of-year council is held."
   def annual_council_held?(scope, cg),
