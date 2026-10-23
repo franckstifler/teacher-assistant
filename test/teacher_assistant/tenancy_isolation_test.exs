@@ -301,7 +301,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     e = row_for(A.Enrollment, school, ctx)
 
     A.ReturnNote
-    |> Ash.Changeset.for_create(
+    |> paper_changeset(
       :create,
       %{
         enrollment_id: e.id,
@@ -323,7 +323,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     e = row_for(A.Enrollment, school, ctx)
 
     A.FeeWarning
-    |> Ash.Changeset.for_create(
+    |> paper_changeset(
       :create,
       %{
         enrollment_id: e.id,
@@ -347,7 +347,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     scope = scope_of(school)
 
     A.Payment
-    |> Ash.Changeset.for_create(
+    |> paper_changeset(
       :create,
       %{
         enrollment_id: e.id,

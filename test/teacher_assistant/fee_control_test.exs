@@ -23,7 +23,7 @@ defmodule TeacherAssistant.FeeControlTest do
 
   defp note!(ctx, valid_until, issued_on \\ @today) do
     ReturnNote
-    |> Ash.Changeset.for_create(
+    |> paper_changeset(
       :create,
       %{
         enrollment_id: ctx.e.id,

@@ -45,15 +45,12 @@ defmodule TeacherAssistant.Academics.ReturnNote do
       create: [
         :enrollment_id,
         :academic_year_id,
-        :seq,
-        :number,
         :reason,
         :issued_on,
         :valid_until,
-        :internal_note,
-        :student_name,
-        :class_label,
-        :issued_by_user_id
+        :internal_note
+        # seq, number, student_name, class_label and issued_by_user_id are set by
+        # `FeeControl` under its numbering lock.
       ]
     ]
 

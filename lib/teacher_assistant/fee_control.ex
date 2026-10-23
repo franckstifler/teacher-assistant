@@ -431,18 +431,18 @@ defmodule TeacherAssistant.FeeControl do
     resource
     |> Ash.Changeset.for_create(
       :create,
-      Map.merge(attrs, %{
-        enrollment_id: e.id,
-        academic_year_id: year.id,
-        seq: seq,
-        number:
-          "#{prefix}#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
-        student_name: e.student.full_name,
-        class_label: e.class_group.label,
-        issued_by_user_id: scope.current_user && scope.current_user.id
-      }),
+      Map.merge(attrs, %{enrollment_id: e.id, academic_year_id: year.id}),
       scope: scope
     )
+    # Computed here, under the numbering lock — never action inputs.
+    |> Ash.Changeset.force_change_attributes(%{
+      seq: seq,
+      number:
+        "#{prefix}#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
+      student_name: e.student.full_name,
+      class_label: e.class_group.label,
+      issued_by_user_id: scope.current_user && scope.current_user.id
+    })
     |> Ash.create()
   end
 

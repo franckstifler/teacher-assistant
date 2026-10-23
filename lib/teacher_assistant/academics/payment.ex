@@ -56,15 +56,10 @@ defmodule TeacherAssistant.Academics.Payment do
         :method,
         :reference,
         :note,
-        :recorded_by_user_id,
         :enrollment_id,
-        :academic_year_id,
-        :seq,
-        :number,
-        :paid_to_date,
-        :left_after,
-        :student_name,
-        :class_label
+        :academic_year_id
+        # seq, number, paid_to_date, left_after, recorded_by_user_id, student_name and
+        # class_label are set by `Fees.record_payment/3` under its numbering lock.
       ]
     ]
 

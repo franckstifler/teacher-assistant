@@ -29,7 +29,7 @@ defmodule TeacherAssistant.Academics.FeesSetupTest do
   defp pay!(scope, e, type, amount) do
     p =
       Payment
-      |> Ash.Changeset.for_create(
+      |> paper_changeset(
         :create,
         %{
           enrollment_id: e.id,
@@ -49,7 +49,7 @@ defmodule TeacherAssistant.Academics.FeesSetupTest do
       |> Ash.create!()
 
     PaymentAllocation
-    |> Ash.Changeset.for_create(
+    |> paper_changeset(
       :create,
       %{
         payment_id: p.id,

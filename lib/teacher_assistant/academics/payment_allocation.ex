@@ -38,7 +38,8 @@ defmodule TeacherAssistant.Academics.PaymentAllocation do
   end
 
   actions do
-    defaults [:read, create: [:payment_id, :fee_type_id, :amount, :paid_to_date, :left_after]]
+    # paid_to_date and left_after are set by `Fees.record_payment/3`.
+    defaults [:read, create: [:payment_id, :fee_type_id, :amount]]
   end
 
   policies do

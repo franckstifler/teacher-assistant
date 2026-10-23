@@ -28,7 +28,9 @@ defmodule TeacherAssistantWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import TeacherAssistantWeb.ConnCase
-      import TeacherAssistant.DataCase, only: [school_scope: 2, assert_forbidden: 1]
+
+      import TeacherAssistant.DataCase,
+        only: [school_scope: 2, assert_forbidden: 1, paper_changeset: 4]
     end
   end
 

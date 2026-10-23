@@ -102,7 +102,7 @@ defmodule TeacherAssistantWeb.ReceiptVerifyControllerTest do
     test "an expired note says expirée", %{conn: conn} = ctx do
       note =
         TeacherAssistant.Academics.ReturnNote
-        |> Ash.Changeset.for_create(
+        |> paper_changeset(
           :create,
           %{
             enrollment_id: ctx.e.id,

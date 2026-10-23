@@ -9,7 +9,7 @@ defmodule TeacherAssistant.Academics.Fees2DataTest do
   end
 
   defp create(resource, attrs, scope),
-    do: resource |> Ash.Changeset.for_create(:create, attrs, scope: scope) |> Ash.create()
+    do: resource |> paper_changeset(:create, attrs, scope: scope) |> Ash.create()
 
   defp send_out(ctx, date),
     do:

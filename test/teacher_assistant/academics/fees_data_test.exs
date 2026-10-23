@@ -22,7 +22,7 @@ defmodule TeacherAssistant.Academics.FeesDataTest do
   end
 
   defp create(resource, action \\ :create, attrs, scope),
-    do: resource |> Ash.Changeset.for_create(action, attrs, scope: scope) |> Ash.create()
+    do: resource |> paper_changeset(action, attrs, scope: scope) |> Ash.create()
 
   defp fee_type!(ctx, name, position \\ 1) do
     {:ok, t} =
@@ -115,6 +115,20 @@ defmodule TeacherAssistant.Academics.FeesDataTest do
     assert c.status == :cancelled and c.cancel_reason == "Erreur de montant"
     assert c.cancelled_by_user_id == ctx.scope.current_user.id and c.cancelled_at
     assert {:error, _} = cancel.(c, "Encore")
+  end
+
+  test "a caller can't supply a receipt's number, sequence or frozen figures", ctx do
+    attrs = payment_attrs(ctx, 1)
+
+    assert {:error, %Ash.Error.Invalid{errors: errors}} =
+             Payment
+             |> Ash.Changeset.for_create(:create, attrs, scope: ctx.scope)
+             |> Ash.create()
+
+    refused = for %Ash.Error.Invalid.NoSuchInput{input: input} <- errors, do: input
+
+    for field <- [:seq, :number, :paid_to_date, :left_after, :student_name, :class_label],
+        do: assert(field in refused)
   end
 
   test "two payments of a year cannot share a seq", ctx do

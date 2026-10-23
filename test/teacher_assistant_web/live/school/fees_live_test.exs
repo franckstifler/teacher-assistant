@@ -166,7 +166,7 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
     test "an expired note is marked Expirée on the card", %{conn: conn} = ctx do
       note =
         TeacherAssistant.Academics.ReturnNote
-        |> Ash.Changeset.for_create(
+        |> paper_changeset(
           :create,
           %{
             enrollment_id: ctx.e.id,

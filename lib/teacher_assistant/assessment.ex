@@ -240,21 +240,47 @@ defmodule TeacherAssistant.Assessment do
            Ash.get(TeachingContext, teaching_context_id,
              scope: scope,
              load: [:class_group, :catalog_subject]
-           ),
-         {:ok, reminder} <- create_reminder(scope, seq, tc) do
-      Notifications.deliver(
-        scope,
-        :entry_reminder,
-        others(scope, [tc.teacher_user_id]),
-        %{
-          subject: (tc.catalog_subject && tc.catalog_subject.name) || tc.subject,
-          class: tc.class_group && tc.class_group.label,
-          sequence: seq.number
-        },
-        "/school/courses"
-      )
+           ) do
+      remind_in_transaction(scope, seq, tc)
+    end
+  end
 
-      {:ok, reminder}
+  # The reminder row and its notification together, as `SchoolLife` does for roll
+  # calls: a failed delivery leaves no « Relancé » that would refuse every retry
+  # that day. A refused create rolls the transaction back with its bare error, so
+  # « already reminded today » (the unique index) is recognised afterwards.
+  defp remind_in_transaction(scope, seq, tc) do
+    TeacherAssistant.Repo.transaction(fn ->
+      case create_reminder(scope, seq, tc) do
+        {:ok, reminder} ->
+          Notifications.deliver(
+            scope,
+            :entry_reminder,
+            others(scope, [tc.teacher_user_id]),
+            %{
+              subject: (tc.catalog_subject && tc.catalog_subject.name) || tc.subject,
+              class: tc.class_group && tc.class_group.label,
+              sequence: seq.number
+            },
+            "/school/courses"
+          )
+
+          reminder
+
+        {:error, reason} ->
+          TeacherAssistant.Repo.rollback(reason)
+      end
+    end)
+    |> case do
+      {:ok, reminder} ->
+        {:ok, reminder}
+
+      {:error, :already_reminded} ->
+        {:error, :already_reminded}
+
+      {:error, error} ->
+        error = Ash.Error.to_error_class(error)
+        if reminded_today?(error), do: {:error, :already_reminded}, else: {:error, error}
     end
   end
 

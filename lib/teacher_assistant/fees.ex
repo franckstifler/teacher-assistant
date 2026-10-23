@@ -383,40 +383,64 @@ defmodule TeacherAssistant.Fees do
     end
   end
 
-  @doc "Carries the arrears of the given (this-year) enrollments; returns how many were carried."
+  @doc """
+  Carries the arrears of the given (this-year) enrollments: `{:ok, count}`, or
+  `{:error, error}` with nothing written. One carry at a time per year: a second one
+  waits, then finds those arrears already carried.
+  """
   def carry_arrears(%Scope{} = scope, %AcademicYear{} = year, enrollment_ids) do
     ids = MapSet.new(enrollment_ids)
 
-    picked =
-      scope
-      |> arrears_candidates(year)
-      |> Enum.filter(&(&1.enrollment && MapSet.member?(ids, &1.enrollment.id)))
+    TeacherAssistant.Repo.transaction(fn ->
+      TeacherAssistant.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        "arrears:" <> year.id
+      ])
 
-    Ash.transact([FeeType, StudentArrear], fn ->
-      if picked != [], do: ensure_arrears_type!(scope, year)
+      picked =
+        scope
+        |> arrears_candidates(year)
+        |> Enum.filter(&(&1.enrollment && MapSet.member?(ids, &1.enrollment.id)))
 
-      for c <- picked do
-        StudentArrear
-        |> Ash.Changeset.for_create(
-          :create,
-          %{
-            enrollment_id: c.enrollment.id,
-            from_academic_year_id: c.from_year.id,
-            amount: c.amount
-          },
-          scope: scope
-        )
-        |> Ash.create!()
+      with {:ok, _type} <- ensure_arrears_type(scope, year, picked),
+           :ok <- create_arrears(scope, picked) do
+        length(picked)
+      else
+        {:error, error} -> TeacherAssistant.Repo.rollback(error)
       end
+    end)
+    |> case do
+      {:ok, count} -> {:ok, count}
+      # A refused create rolls the transaction back with its bare error.
+      {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+    end
+  end
 
-      length(picked)
+  defp create_arrears(scope, picked) do
+    Enum.reduce_while(picked, :ok, fn c, :ok ->
+      StudentArrear
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          enrollment_id: c.enrollment.id,
+          from_academic_year_id: c.from_year.id,
+          amount: c.amount
+        },
+        scope: scope
+      )
+      |> Ash.create()
+      |> case do
+        {:ok, _} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
     end)
   end
 
-  defp ensure_arrears_type!(scope, year) do
+  defp ensure_arrears_type(_scope, _year, []), do: {:ok, nil}
+
+  defp ensure_arrears_type(scope, year, _picked) do
     case Enum.find(list_fee_types(scope, year), &(&1.kind == :arrears)) do
       %FeeType{} = type ->
-        type
+        {:ok, type}
 
       nil ->
         FeeType
@@ -425,7 +449,7 @@ defmodule TeacherAssistant.Fees do
           %{academic_year_id: year.id, name: @arrears_name, position: 0, kind: :arrears},
           scope: scope
         )
-        |> Ash.create!()
+        |> Ash.create()
     end
   end
 
@@ -548,32 +572,33 @@ defmodule TeacherAssistant.Fees do
                    paid_on: attrs[:paid_on] || attrs["paid_on"] || Reference.today(),
                    method: method,
                    reference: reference,
-                   note: blank_to_nil(attrs[:note] || attrs["note"]),
-                   recorded_by_user_id: scope.current_user && scope.current_user.id,
-                   seq: seq,
-                   number:
-                     "R#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
-                   paid_to_date: balance.total_paid + amount,
-                   left_after: balance.left - amount,
-                   student_name: e.student.full_name,
-                   class_label: e.class_group.label
+                   note: blank_to_nil(attrs[:note] || attrs["note"])
                  },
                  scope: scope
                )
+               # Computed here, under the numbering lock — never action inputs.
+               |> Ash.Changeset.force_change_attributes(%{
+                 recorded_by_user_id: scope.current_user && scope.current_user.id,
+                 seq: seq,
+                 number:
+                   "R#{year.start_date.year}-#{String.pad_leading(Integer.to_string(seq), 6, "0")}",
+                 paid_to_date: balance.total_paid + amount,
+                 left_after: balance.left - amount,
+                 student_name: e.student.full_name,
+                 class_label: e.class_group.label
+               })
                |> Ash.create() do
           for {type_id, share} <- FeeBalance.allocate(amount, ids, due, paid) do
             PaymentAllocation
             |> Ash.Changeset.for_create(
               :create,
-              %{
-                payment_id: payment.id,
-                fee_type_id: type_id,
-                amount: share,
-                paid_to_date: paid[type_id] + share,
-                left_after: due[type_id] - paid[type_id] - share
-              },
+              %{payment_id: payment.id, fee_type_id: type_id, amount: share},
               scope: scope
             )
+            |> Ash.Changeset.force_change_attributes(%{
+              paid_to_date: paid[type_id] + share,
+              left_after: due[type_id] - paid[type_id] - share
+            })
             |> Ash.create!()
           end
 

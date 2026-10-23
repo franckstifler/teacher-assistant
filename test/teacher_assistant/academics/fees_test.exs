@@ -134,6 +134,22 @@ defmodule TeacherAssistant.Academics.FeesTest do
     assert p.number == "R2026-000001"
   end
 
+  test "carrying arrears again carries nothing twice; a refused carry is an error", ctx do
+    %{next: next} = TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    scope = %{ctx.scope | current_academic_year: next}
+    [z] = scope |> Enrollment.list_class_groups(next) |> Enum.filter(&(&1.label == "6ème Z"))
+    {:ok, ne} = Enrollment.enroll_existing(scope, z, ctx.student)
+
+    {:ok, 1} = Fees.carry_arrears(scope, next, [ne.id])
+    assert {:ok, 0} = Fees.carry_arrears(scope, next, [ne.id])
+    assert [_] = Enum.filter(Fees.list_fee_types(scope, next), &(&1.kind == :arrears))
+
+    # A member without the fees axis gets an error back, not a crash.
+    teacher = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+    teacher = %{teacher | current_academic_year: next}
+    assert {:error, %Ash.Error.Forbidden{}} = Fees.carry_arrears(teacher, next, [ne.id])
+  end
+
   test "verification shows the receipt without phone numbers; cancelled shows :cancelled; unknown :invalid",
        ctx do
     {:ok, p} = Fees.record_payment(ctx.scope, ctx.e, cash(20_000))

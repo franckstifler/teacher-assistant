@@ -56,4 +56,20 @@ defmodule TeacherAssistant.Accounts.SendersTest do
     request_reset.()
     refute_email_sent()
   end
+
+  test "a refused reset email is logged; the request still answers the same" do
+    user = TeacherFixtures.user_fixture(%{email: "lost@undeliverable.test"})
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        User
+        |> Ash.Query.for_read(:request_password_reset_with_password, %{
+          email: to_string(user.email)
+        })
+        |> Ash.read!(authorize?: false)
+      end)
+
+    assert log =~ "password reset email to user #{user.id} not sent"
+    refute_email_sent()
+  end
 end
