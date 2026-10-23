@@ -54,13 +54,11 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     {:noreply, socket |> assign(period: period, saved: nil, confirm_hold?: false) |> load()}
   end
 
+  # Everything the page shows for the class and period. Writes on this page touch only
+  # the council, so after one `refresh_council/1` is enough.
   defp load(socket) do
     %{current_scope: scope, cg: cg, period: period, year: year} = socket.assigns
-    council = Councils.council(scope, cg, period)
     results = Assessment.class_results_for_period(scope, cg, period)
-    decisions = Map.new(council.decisions, &{&1.student_id, &1})
-    outcomes = passage_outcomes(scope, cg, period, council, results)
-
     discipline = Discipline.class_discipline(scope, cg, period)
 
     rows =
@@ -70,8 +68,8 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         %{
           student: s,
           data: results && results.per_student[s.id],
-          decision: decisions[s.id],
-          outcome: outcomes[s.id],
+          decision: nil,
+          outcome: nil,
           conduct: discipline[e.id] && discipline[e.id].note_de_conduite
         }
       end)
@@ -79,13 +77,33 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         &{(&1.data && &1.data.rank) || 9_999, String.downcase(&1.student.full_name)}
       )
 
-    assign(socket,
-      council: council,
+    socket
+    |> assign(
       results: results,
       rows: rows,
-      rate: scope |> EntryProgress.class_rates(year, sequences(scope, period)) |> Map.get(cg.id),
-      locked?: Councils.locked?(scope, cg, period),
+      rate: EntryProgress.class_rate(scope, year, cg, sequences(scope, period)),
       form_master: Enrollment.form_master(scope, cg)
+    )
+    |> refresh_council()
+  end
+
+  # The council, its decisions and (annual) passage outcomes, on the rows already loaded.
+  defp refresh_council(socket) do
+    %{current_scope: scope, cg: cg, period: period, results: results, rows: rows} =
+      socket.assigns
+
+    council = Councils.council(scope, cg, period)
+    decisions = Map.new(council.decisions, &{&1.student_id, &1})
+    outcomes = passage_outcomes(scope, cg, period, council, results)
+
+    assign(socket,
+      council: council,
+      rows:
+        Enum.map(
+          rows,
+          &%{&1 | decision: decisions[&1.student.id], outcome: outcomes[&1.student.id]}
+        ),
+      locked?: Councils.locked?(scope, cg, period)
     )
   end
 
@@ -116,7 +134,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
     %{current_scope: scope, cg: cg, period: period} = socket.assigns
 
     case Councils.set_decision(scope, cg, period, student_id, Map.get(params, "decision", %{})) do
-      {:ok, _} -> {:noreply, socket |> load() |> assign(saved: student_id)}
+      {:ok, _} -> {:noreply, socket |> refresh_council() |> assign(saved: student_id)}
       other -> after_write(other, socket, nil)
     end
   end
@@ -135,7 +153,7 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
         current = Enum.find(council.decisions, &(&1.student_id == student_id))
 
         case Councils.set_decision(scope, cg, period, student_id, keep_values(current, choice)) do
-          {:ok, _} -> {:noreply, socket |> load() |> assign(saved: student_id)}
+          {:ok, _} -> {:noreply, socket |> refresh_council() |> assign(saved: student_id)}
           other -> after_write(other, socket, nil)
         end
     end
@@ -189,13 +207,15 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
   end
 
   defp after_write({:ok, _}, socket, message) do
-    socket = load(socket)
+    socket = refresh_council(socket)
     {:noreply, if(message, do: put_flash(socket, :info, message), else: socket)}
   end
 
   defp after_write({:error, :locked}, socket, _message) do
     {:noreply,
-     socket |> load() |> put_flash(:error, gettext("Conseil verrouillé : bulletins publiés."))}
+     socket
+     |> refresh_council()
+     |> put_flash(:error, gettext("Conseil verrouillé : bulletins publiés."))}
   end
 
   defp after_write({:error, %Ash.Error.Forbidden{}}, socket, _message),

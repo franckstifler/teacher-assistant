@@ -570,6 +570,19 @@ defmodule TeacherAssistant.Curriculum do
     |> MapSet.new(& &1.student_id)
   end
 
+  @doc "`exempt_student_ids/2` for several courses in one read: `%{tc_id => MapSet}` (every id present)."
+  def exempt_student_ids_by_context(%Scope{}, []), do: %{}
+
+  def exempt_student_ids_by_context(%Scope{} = scope, tc_ids) when is_list(tc_ids) do
+    exempt =
+      SubjectExemption
+      |> Ash.Query.filter(teaching_context_id in ^tc_ids)
+      |> Ash.read!(scope: scope)
+      |> Enum.group_by(& &1.teaching_context_id, & &1.student_id)
+
+    Map.new(tc_ids, &{&1, MapSet.new(Map.get(exempt, &1, []))})
+  end
+
   @doc """
   Sets who takes an optional subject in a class: among `shown_ids` (the students the
   checklist displayed; default: the whole class), those not in `taking_ids` are

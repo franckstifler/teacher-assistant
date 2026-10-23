@@ -1034,34 +1034,77 @@ defmodule TeacherAssistant.Assessment do
   Bulletin input for a class + séquence: one entry per school teaching context of
   the class (subject × class, assigned teacher), shaped for `Bulletins.compile/2`.
   """
-  def class_subjects(%Scope{} = scope, %ClassGroup{} = cg, %Sequence{} = seq) do
-    scope
-    |> TeacherAssistant.Curriculum.list_assignments_for_class(cg)
-    |> Enum.map(fn tc ->
-      assessments = list_assessments(scope, tc, seq)
+  def class_subjects(%Scope{} = scope, %ClassGroup{} = cg, %Sequence{id: seq_id} = seq) do
+    scope |> class_subjects_by_sequence(cg, [seq]) |> Map.fetch!(seq_id)
+  end
 
-      %{
-        context_id: tc.id,
-        label: tc.subject,
-        coefficient: tc.effective_coefficient,
-        group: tc.catalog_subject.bulletin_group,
-        position: tc.catalog_subject.position,
-        assessments_by_id:
-          Map.new(assessments, fn a -> {a.id, %{weight: a.weight, max_score: a.max_score}} end),
-        marks:
-          scope
-          |> list_marks_for_context_sequence(tc, seq)
-          |> Enum.map(fn m ->
-            %{
-              student_id: m.student_id,
-              assessment_id: m.assessment_id,
-              score: m.score,
-              status: m.status
-            }
-          end),
-        exempt: TeacherAssistant.Curriculum.exempt_student_ids(scope, tc)
-      }
+  @doc """
+  `class_subjects/3` for several séquences of the class at once:
+  `%{sequence_id => subjects}`. A fixed number of reads (courses, assessments,
+  marks, exemptions), whatever the number of subjects or séquences.
+  """
+  def class_subjects_by_sequence(%Scope{} = scope, %ClassGroup{} = cg, seqs) do
+    contexts = TeacherAssistant.Curriculum.list_assignments_for_class(scope, cg)
+    ctx_ids = Enum.map(contexts, & &1.id)
+    assessments = class_assessments(scope, ctx_ids, Enum.map(seqs, & &1.id))
+    marks_by_assessment = scope |> class_marks(assessments) |> Enum.group_by(& &1.assessment_id)
+    exempt = TeacherAssistant.Curriculum.exempt_student_ids_by_context(scope, ctx_ids)
+
+    assessments_by =
+      Enum.group_by(assessments, &{&1.teaching_context_id, &1.sequence_id})
+
+    Map.new(seqs, fn seq ->
+      {seq.id,
+       Enum.map(contexts, fn tc ->
+         tc_assessments = Map.get(assessments_by, {tc.id, seq.id}, [])
+
+         %{
+           context_id: tc.id,
+           label: tc.subject,
+           coefficient: tc.effective_coefficient,
+           group: tc.catalog_subject.bulletin_group,
+           position: tc.catalog_subject.position,
+           assessments_by_id:
+             Map.new(tc_assessments, fn a ->
+               {a.id, %{weight: a.weight, max_score: a.max_score}}
+             end),
+           marks:
+             Enum.flat_map(tc_assessments, fn a ->
+               marks_by_assessment
+               |> Map.get(a.id, [])
+               |> Enum.map(fn m ->
+                 %{
+                   student_id: m.student_id,
+                   assessment_id: m.assessment_id,
+                   score: m.score,
+                   status: m.status
+                 }
+               end)
+             end),
+           exempt: Map.fetch!(exempt, tc.id)
+         }
+       end)}
     end)
+  end
+
+  defp class_assessments(_scope, [], _seq_ids), do: []
+  defp class_assessments(_scope, _ctx_ids, []), do: []
+
+  defp class_assessments(scope, ctx_ids, seq_ids) do
+    Assessment
+    |> Ash.Query.filter(teaching_context_id in ^ctx_ids and sequence_id in ^seq_ids)
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.read!(scope: scope)
+  end
+
+  defp class_marks(_scope, []), do: []
+
+  defp class_marks(scope, assessments) do
+    Mark
+    |> Ash.Query.for_read(:for_assessments, %{assessment_ids: Enum.map(assessments, & &1.id)},
+      scope: scope
+    )
+    |> Ash.read!()
   end
 
   @doc """
@@ -1132,12 +1175,14 @@ defmodule TeacherAssistant.Assessment do
     rules = grading_rules(scope)
     students = bulletin_students(scope, cg, period, rules)
 
+    subjects_by_seq = class_subjects_by_sequence(scope, cg, seqs)
+
     # per séquence: %{context_id => %{label, coefficient, per_student_avg}}
     per_seq =
       Enum.map(seqs, fn seq ->
         subjects =
-          scope
-          |> class_subjects(cg, seq)
+          subjects_by_seq
+          |> Map.fetch!(seq.id)
           |> Map.new(fn subj ->
             marks_by_student = Enum.group_by(subj.marks, & &1.student_id)
 

@@ -105,26 +105,57 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   nil when no cell has a %. One grid per séquence, whatever the number of classes.
   """
   def class_rates(%Scope{} = scope, %AcademicYear{} = year, sequences) do
-    sequences
-    |> Enum.flat_map(fn seq ->
-      scope
-      |> grid(year, seq)
-      |> Map.fetch!(:rows)
-      |> Enum.map(fn row ->
-        {row.class_group.id,
-         row.cells |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.map(& &1.pct)}
-      end)
-    end)
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Map.new(fn {cg_id, lists} ->
-      pcts = lists |> List.flatten() |> Enum.reject(&is_nil/1)
-      {cg_id, if(pcts == [], do: nil, else: div(Enum.sum(pcts), length(pcts)))}
-    end)
+    class_ids = scope |> TeacherAssistant.Enrollment.list_class_groups(year) |> Enum.map(& &1.id)
+    rates(scope, year, sequences, class_ids)
   end
 
-  @doc "One class's mark-entry rate over `sequences` (see `class_rates/3`)."
+  @doc "One class's mark-entry rate over `sequences` (see `class_rates/3`); reads that class only."
   def class_rate(%Scope{} = scope, %AcademicYear{} = year, %ClassGroup{id: cg_id}, sequences),
-    do: scope |> class_rates(year, sequences) |> Map.get(cg_id)
+    do: scope |> rates(year, sequences, [cg_id]) |> Map.get(cg_id)
+
+  # The rates of `class_ids`, every séquence's assessments and marks read at once.
+  defp rates(_scope, _year, _sequences, []), do: %{}
+
+  defp rates(scope, year, sequences, class_ids) do
+    contexts =
+      TeachingContext
+      |> Ash.Query.filter(academic_year_id == ^year.id and class_group_id in ^class_ids)
+      |> Ash.read!(scope: scope)
+
+    enrolled = load_enrolled(scope, year, class_ids)
+    exempt = load_exempt(scope, contexts)
+
+    assessments =
+      load_sequences_assessments(
+        scope,
+        Enum.map(sequences, & &1.id),
+        Enum.map(contexts, & &1.id)
+      )
+
+    marks_by_assessment = scope |> load_marks(assessments) |> Enum.group_by(& &1.assessment_id)
+    assessments_by = Enum.group_by(assessments, &{&1.teaching_context_id, &1.sequence_id})
+    # One cell per class × subject column, as in `grid/3`.
+    courses = Map.new(contexts, &{{&1.class_group_id, column_key(&1)}, &1})
+
+    pcts =
+      for seq <- sequences,
+          {{cg_id, _column}, tc} <- courses,
+          tc_assessments <- [Map.get(assessments_by, {tc.id, seq.id}, [])],
+          %{pct: pct} <- [
+            cell(tc, taking(tc, enrolled, exempt), tc_assessments, marks_by_assessment)
+          ],
+          not is_nil(pct),
+          do: {cg_id, pct}
+
+    by_class = Enum.group_by(pcts, &elem(&1, 0), &elem(&1, 1))
+
+    Map.new(class_ids, fn cg_id ->
+      case Map.get(by_class, cg_id, []) do
+        [] -> {cg_id, nil}
+        list -> {cg_id, div(Enum.sum(list), length(list))}
+      end
+    end)
+  end
 
   @doc """
   The séquence to show by default: the one whose dates contain `today`, else
@@ -192,6 +223,16 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     Assessment
     |> Ash.Query.filter(sequence_id == ^seq_id and teaching_context_id in ^context_ids)
     |> sorted_assessments(scope)
+  end
+
+  defp load_sequences_assessments(_scope, [], _context_ids), do: []
+  defp load_sequences_assessments(_scope, _seq_ids, []), do: []
+
+  defp load_sequences_assessments(scope, seq_ids, context_ids) do
+    Assessment
+    |> Ash.Query.filter(sequence_id in ^seq_ids and teaching_context_id in ^context_ids)
+    |> Ash.Query.select([:teaching_context_id, :sequence_id])
+    |> Ash.read!(scope: scope)
   end
 
   defp sorted_assessments(query, scope) do

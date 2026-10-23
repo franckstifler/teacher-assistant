@@ -98,6 +98,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
 
     rows = rows(view)
 
+    checks =
+      checks(can_publish? and status == :draft and publishable?(period), scope, cg, period, view)
+
     assign(socket,
       status: status,
       publication: publication,
@@ -105,16 +108,8 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
       rows: rows,
       selected: Enum.find(rows, &(&1.student.id == student_id)) || List.first(rows),
       publishable?: publishable?(period),
-      checks:
-        checks(
-          can_publish? and status == :draft and publishable?(period),
-          scope,
-          cg,
-          period,
-          view
-        ),
-      rate:
-        if(can_publish? and publishable?(period), do: ReportCards.entry_rate(scope, cg, period)),
+      checks: checks,
+      rate: rate(checks, can_publish? and publishable?(period), scope, cg, period),
       council_held?: council_held?(can_publish?, scope, cg, period),
       history: if(can_publish?, do: ReportCards.history(scope, cg, period), else: [])
     )
@@ -126,6 +121,15 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     do: ReportCards.publish_checklist(scope, cg, period, view)
 
   defp checks(false, _scope, _cg, _period, _view), do: []
+
+  # The checklist already measured the entry rate (it reads every class's marks
+  # over the period); only compute it when there is no checklist.
+  defp rate(checks, measure?, scope, cg, period) do
+    case Enum.find(checks, &(&1.key == :notes)) do
+      %{data: %{rate: rate}} -> rate
+      nil -> if measure?, do: ReportCards.entry_rate(scope, cg, period)
+    end
+  end
 
   # Spec I3/I4: a trimester or the year is published only once its class council is held;
   # the last trimester carrying the year also needs the end-of-year council (bulletin v2).

@@ -48,6 +48,58 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
     %{year: year, cg: cg, sequences: sequences, student: student, grade: grade, scope: scope}
   end
 
+  test "the year's results read assessments and marks once, whatever the subjects and séquences",
+       ctx do
+    %{year: year, cg: cg, sequences: seqs, scope: scope, grade: grade} = ctx
+    teacher = scope.current_user
+
+    for subject <- ["Français", "Anglais"] do
+      {:ok, _} =
+        Curriculum.assign_teacher(scope, cg, teacher, %{
+          subject: subject,
+          coefficient: Decimal.new(2)
+        })
+    end
+
+    Enum.each(seqs, &grade.(&1, 12))
+
+    sources = reads(fn -> Assessment.class_results_for_period(scope, cg, {:annual, year}) end)
+    assert Enum.count(sources, &(&1 == "assessments")) == 1
+    assert Enum.count(sources, &(&1 == "marks")) == 1
+    assert Enum.count(sources, &(&1 == "subject_exemptions")) == 1
+  end
+
+  # The tables this process reads while `fun` runs.
+  defp reads(fun) do
+    test_pid = self()
+    id = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      id,
+      [:teacher_assistant, :repo, :query],
+      fn _, _, %{source: source}, _ ->
+        if self() == test_pid, do: send(test_pid, {:read, source})
+      end,
+      nil
+    )
+
+    try do
+      fun.()
+    after
+      :telemetry.detach(id)
+    end
+
+    collect_reads([])
+  end
+
+  defp collect_reads(acc) do
+    receive do
+      {:read, source} -> collect_reads([source | acc])
+    after
+      0 -> acc
+    end
+  end
+
   test "trimester average is the mean of its two séquences", ctx do
     %{year: year, cg: cg, sequences: seqs, student: student, grade: grade, scope: scope} = ctx
     [s1, s2 | _] = seqs
