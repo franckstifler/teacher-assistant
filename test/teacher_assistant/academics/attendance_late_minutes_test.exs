@@ -42,6 +42,23 @@ defmodule TeacherAssistant.Academics.AttendanceLateMinutesTest do
     %{scope: scope, cg: cg, tc: tc, e: e, p1: p1, year: year}
   end
 
+  test "a roll call is saved whole or not at all", ctx do
+    {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "Bob", sex: :m})
+
+    %{enrollment: bob} =
+      ctx.scope |> Enrollment.list_roster(ctx.cg) |> Enum.find(&(&1.enrollment.id != ctx.e.id))
+
+    # Awa's row is fine; Bob's minutes break the 240 cap only when written.
+    assert {:error, :record_failed} =
+             Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [
+               {ctx.e.id, :absent},
+               {bob.id, :late, 500}
+             ])
+
+    %{students: students} = Attendance.period_roll(ctx.scope, ctx.cg, ctx.p1, @monday)
+    assert Enum.all?(students, &is_nil(&1.status))
+  end
+
   test "a late keeps its minutes; changing the status clears them", ctx do
     {:ok, 1} =
       Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :late, 20}])

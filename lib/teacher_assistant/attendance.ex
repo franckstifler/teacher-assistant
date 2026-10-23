@@ -324,8 +324,9 @@ defmodule TeacherAssistant.Attendance do
   Upserts one `AttendanceEntry` per `{enrollment_id, status}` or
   `{enrollment_id, status, late_minutes}` mark (spec KLM2) for
   `class_group`/`period`/`date`. Rejects the whole batch with `{:error, term}`
-  if any enrollment doesn't belong to `class_group` or any status is invalid.
-  Marks omitted from the list are left untouched. Returns `{:ok, count}`.
+  if any enrollment doesn't belong to `class_group` or any status is invalid,
+  and writes nothing if any row is refused (one transaction). Marks omitted
+  from the list are left untouched. Returns `{:ok, count}`.
   """
   def record_period(
         %Scope{} = scope,
@@ -345,8 +346,9 @@ defmodule TeacherAssistant.Attendance do
 
     with :ok <- validate_marks(marks, valid_enrollment_ids),
          :ok <- validate_sent_home(scope, marks, period_id, date) do
-      results =
-        Enum.map(marks, fn mark ->
+      # All or nothing: a refused row rolls the others back, so "not saved" is true.
+      TeacherAssistant.Repo.transaction(fn ->
+        Enum.reduce(marks, 0, fn mark, n ->
           {enrollment_id, status, minutes} = mark_parts(mark)
 
           AttendanceEntry
@@ -364,12 +366,22 @@ defmodule TeacherAssistant.Attendance do
             scope: scope
           )
           |> Ash.create()
+          |> case do
+            {:ok, _} -> n + 1
+            {:error, error} -> TeacherAssistant.Repo.rollback(error)
+          end
         end)
+      end)
+      |> case do
+        {:ok, count} ->
+          {:ok, count}
 
-      case Enum.find(results, &match?({:error, _}, &1)) do
-        nil -> {:ok, length(results)}
-        {:error, %Ash.Error.Forbidden{} = forbidden} -> {:error, forbidden}
-        {:error, _error} -> {:error, :record_failed}
+        # A refused create rolls the transaction back with its bare error.
+        {:error, error} ->
+          case Ash.Error.to_error_class(error) do
+            %Ash.Error.Forbidden{} = forbidden -> {:error, forbidden}
+            _ -> {:error, :record_failed}
+          end
       end
     end
   end

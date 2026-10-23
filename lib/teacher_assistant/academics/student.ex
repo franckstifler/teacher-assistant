@@ -91,9 +91,11 @@ defmodule TeacherAssistant.Academics.Student do
   end
 
   validations do
-    validate compare(:birth_date, less_than_or_equal_to: &Date.utc_today/0),
-      where: [present(:birth_date)],
-      message: "la date de naissance ne peut pas être dans le futur"
+    validate compare(:birth_date,
+               less_than_or_equal_to: &TeacherAssistant.Academics.Reference.today/0
+             ),
+             where: [present(:birth_date)],
+             message: "la date de naissance ne peut pas être dans le futur"
   end
 
   multitenancy do

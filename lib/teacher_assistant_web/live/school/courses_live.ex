@@ -24,7 +24,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil do
-      today = Date.utc_today()
+      today = TeacherAssistant.Academics.Reference.today()
       units = scope |> Curriculum.list_units_for_scope() |> Enum.map(&with_contexts(&1, scope))
       contexts = Enum.flat_map(units, &elem(&1, 1))
       seq = current_sequence(scope)

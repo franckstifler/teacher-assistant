@@ -121,7 +121,7 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
     assert view |> element("#student-breadcrumb a[href='/school/students']") |> has_element?()
     assert view |> element("#student-class") |> render() =~ "6e A"
 
-    today = Date.utc_today()
+    today = TeacherAssistant.Academics.Reference.today()
     years = today.year - 2013 - if({today.month, today.day} < {4, 2}, do: 1, else: 0)
     assert view |> element("#student-sex-age") |> render() =~ "Féminin · #{years} ans"
 

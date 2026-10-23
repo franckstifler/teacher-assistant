@@ -45,7 +45,7 @@ defmodule TeacherAssistant.Academics.RosterLine do
          {y, ""} <- Integer.parse(y),
          {:ok, date} <- Date.new(y, m, d),
          # A future date is a typo (2030 for 2003): dropped, like an impossible one.
-         false <- Date.after?(date, Date.utc_today()) do
+         false <- Date.after?(date, TeacherAssistant.Academics.Reference.today()) do
       date
     else
       _ -> nil

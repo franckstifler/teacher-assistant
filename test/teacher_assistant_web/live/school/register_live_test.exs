@@ -139,6 +139,20 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     assert Decimal.compare(conduct.justified_hours, Decimal.new(0)) == :eq
   end
 
+  test "without a date the register opens on the school's today, not UTC's", %{
+    conn: conn,
+    cg: cg
+  } do
+    # Tests freeze the school clock at 2025-09-15 12:00 UTC (config/test.exs).
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/register")
+
+    assert has_element?(
+             view,
+             "#register-date",
+             TeacherAssistantWeb.Dates.long(~D[2025-09-15])
+           )
+  end
+
   test "absence hours render rounded with a decimal comma, never a long decimal", %{
     conn: conn,
     cg: cg,

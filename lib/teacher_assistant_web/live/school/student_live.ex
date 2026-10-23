@@ -320,7 +320,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   defp age(nil), do: nil
 
   defp age(%Date{} = birth) do
-    today = Date.utc_today()
+    today = TeacherAssistant.Academics.Reference.today()
     years = today.year - birth.year
     if {today.month, today.day} < {birth.month, birth.day}, do: years - 1, else: years
   end

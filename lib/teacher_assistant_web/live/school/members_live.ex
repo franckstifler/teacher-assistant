@@ -809,6 +809,15 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       {:error, :already_member} ->
         {:noreply, add_error(socket, gettext("Cette personne est déjà membre de l'école."))}
 
+      {:error, :email_not_sent} ->
+        {:noreply,
+         add_error(
+           socket,
+           gettext(
+             "L'e-mail d'invitation n'a pas pu être envoyé. Vérifiez l'adresse et réessayez."
+           )
+         )}
+
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
 
@@ -1158,7 +1167,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   defp expiry_date(%User{temporary_password_expires_at: %DateTime{} = at}),
     do: DateTime.to_date(at)
 
-  defp expiry_date(_user), do: Date.add(Date.utc_today(), 7)
+  defp expiry_date(_user), do: Date.add(TeacherAssistant.Academics.Reference.today(), 7)
 
   defp temporary_password_info(socket, user_id, password, kind) do
     user =

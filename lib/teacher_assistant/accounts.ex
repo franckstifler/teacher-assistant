@@ -155,11 +155,13 @@ defmodule TeacherAssistant.Accounts do
   end
 
   def update_member_roles(%Scope{} = scope, %SchoolMembership{} = m, roles) do
-    if removing_last_head?(scope, m, roles) do
-      {:error, :last_head}
-    else
-      m |> Ash.Changeset.for_update(:update, %{roles: roles}, scope: scope) |> Ash.update()
-    end
+    with_head_lock(scope, fn ->
+      if removing_last_head?(scope, m, roles) do
+        {:error, :last_head}
+      else
+        m |> Ash.Changeset.for_update(:update, %{roles: roles}, scope: scope) |> Ash.update()
+      end
+    end)
   end
 
   def update_member_status(%Scope{} = scope, %SchoolMembership{} = m, status) do
@@ -169,12 +171,39 @@ defmodule TeacherAssistant.Accounts do
   end
 
   def deactivate_member(%Scope{} = scope, %SchoolMembership{} = m) do
-    if :head in m.roles and last_head?(scope, m) do
-      {:error, :last_head}
-    else
-      m |> Ash.Changeset.for_update(:deactivate, %{}, scope: scope) |> Ash.update()
-    end
+    with_head_lock(scope, fn ->
+      if :head in m.roles and last_head?(scope, m) do
+        {:error, :last_head}
+      else
+        m |> Ash.Changeset.for_update(:deactivate, %{}, scope: scope) |> Ash.update()
+      end
+    end)
   end
+
+  # One change that could remove a head at a time per school: two heads removing
+  # each other at once would both see the other still there, leaving no head.
+  # The second waits here, then counts the heads the first left.
+  defp with_head_lock(%Scope{current_workspace: %{id: ws_id}}, fun) do
+    TeacherAssistant.Repo.transaction(fn ->
+      TeacherAssistant.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        "school_heads:" <> ws_id
+      ])
+
+      case fun.() do
+        {:ok, result} -> result
+        {:error, error} -> TeacherAssistant.Repo.rollback(error)
+      end
+    end)
+    |> transaction_error()
+  end
+
+  # A refused Ash write inside `Repo.transaction` rolls it back with its bare error
+  # (e.g. a policy error); give callers the class they match on (`%Forbidden{}`).
+  # Our own reasons (`:last_head`, `:email_not_sent`) are atoms and pass through.
+  defp transaction_error({:error, error}) when not is_atom(error),
+    do: {:error, Ash.Error.to_error_class(error)}
+
+  defp transaction_error(result), do: result
 
   defp removing_last_head?(%Scope{} = scope, %SchoolMembership{} = m, new_roles) do
     :head in m.roles and :head not in new_roles and last_head?(scope, m)
@@ -198,31 +227,46 @@ defmodule TeacherAssistant.Accounts do
 
     with false <- active_member_email?(scope, email),
          {:ok, invitation} <-
-           SchoolInvitation
-           |> Ash.Changeset.for_create(
-             :create,
-             %{
+           TeacherAssistant.Repo.transaction(fn ->
+             scope
+             |> create_and_send_invitation(school, %{
                email: email,
                roles: roles,
-               membership_status: membership_status,
-               invited_by_user_id: scope.current_user && scope.current_user.id,
-               token: gen_token(),
-               expires_at:
-                 DateTime.add(DateTime.utc_now(), 14, :day) |> DateTime.truncate(:second)
-             },
-             scope: scope
-           )
-           |> Ash.create() do
-      SendSchoolInvitationEmail.send(
-        invitation.email,
-        school.name,
-        invitation.token
-      )
-
+               membership_status: membership_status
+             })
+             |> case do
+               {:ok, invitation} -> invitation
+               {:error, error} -> TeacherAssistant.Repo.rollback(error)
+             end
+           end)
+           |> transaction_error() do
       {:ok, invitation}
     else
       true -> {:error, :already_member}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  # The invitation is kept only once its email went out: a refused send rolls it
+  # back (`{:error, :email_not_sent}`), so the head is never told it was sent.
+  defp create_and_send_invitation(scope, school, attrs) do
+    with {:ok, invitation} <-
+           SchoolInvitation
+           |> Ash.Changeset.for_create(
+             :create,
+             Map.merge(attrs, %{
+               invited_by_user_id: scope.current_user && scope.current_user.id,
+               token: gen_token(),
+               expires_at:
+                 DateTime.add(DateTime.utc_now(), 14, :day) |> DateTime.truncate(:second)
+             }),
+             scope: scope
+           )
+           |> Ash.create() do
+      case SendSchoolInvitationEmail.send(invitation.email, school.name, invitation.token) do
+        :ok -> {:ok, invitation}
+        {:error, _reason} -> {:error, :email_not_sent}
+      end
     end
   end
 

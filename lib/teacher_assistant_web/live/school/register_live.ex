@@ -26,7 +26,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
        socket
        |> assign(
          cg: cg,
-         today: Date.utc_today(),
+         today: TeacherAssistant.Academics.Reference.today(),
          viewing_id: nil,
          can_edit?: TeacherAssistant.Discipline.can_manage_conduct?(scope),
          can_manage_register?: Enrollment.can_manage_register?(scope)
@@ -42,12 +42,12 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     end
   end
 
-  defp parse_date(nil), do: Date.utc_today()
+  defp parse_date(nil), do: TeacherAssistant.Academics.Reference.today()
 
   defp parse_date(str) do
     case Date.from_iso8601(str) do
       {:ok, date} -> date
-      {:error, _} -> Date.utc_today()
+      {:error, _} -> TeacherAssistant.Academics.Reference.today()
     end
   end
 

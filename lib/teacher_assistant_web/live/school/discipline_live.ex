@@ -322,7 +322,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
                 type="date"
                 name="date"
                 aria-label={gettext("Date")}
-                value={Date.to_iso8601(Date.utc_today())}
+                value={Date.to_iso8601(TeacherAssistant.Academics.Reference.today())}
                 class="input input-bordered input-sm"
               />
               <input

@@ -345,6 +345,16 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
         {:noreply,
          put_flash(socket, :error, gettext("Cette personne est déjà membre de l'école."))}
 
+      {:error, :email_not_sent} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext(
+             "L'e-mail d'invitation n'a pas pu être envoyé. Vérifiez l'adresse et réessayez."
+           )
+         )}
+
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
 

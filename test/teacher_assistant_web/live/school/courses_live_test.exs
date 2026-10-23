@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     [p1, p2 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
     {:ok, tc_head} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Physique"})
 
-    case Date.day_of_week(Date.utc_today()) do
+    case Date.day_of_week(TeacherAssistant.Academics.Reference.today()) do
       7 ->
         # No lessons on Sunday: the link falls back to the first lesson period.
         {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")

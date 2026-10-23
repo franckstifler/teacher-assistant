@@ -53,6 +53,34 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     assert render(view) =~ "1 invitation en attente"
   end
 
+  test "an invitation whose email is refused says so and is not kept", %{
+    conn: conn,
+    actor: user
+  } do
+    {:ok, school} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{
+        name: "Lycée Courriel"
+      })
+
+    scope = school_scope(user, school)
+    TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
+    conn = enter_school(conn, school)
+    {:ok, view, _html} = live(conn, ~p"/school/members")
+
+    open_add(view, :email)
+
+    html =
+      view
+      |> form("#invite-form", %{
+        "invite" => %{"email" => "prof@undeliverable.test", "roles" => ["teacher"]}
+      })
+      |> render_submit()
+
+    assert has_element?(view, "#add-member-error", "pas pu être envoyé")
+    refute html =~ "Invitation envoyée"
+    assert Accounts.list_pending_invitations(scope) == []
+  end
+
   test "a non-head member does not see the invite form", %{conn: conn, actor: head} do
     {:ok, school} =
       Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
