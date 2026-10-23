@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolVerified do
   use Ash.Policy.SimpleCheck
 
   alias TeacherAssistant.Accounts.Checks.SchoolRole
-  alias TeacherAssistant.Accounts.SchoolProfile
+  alias TeacherAssistant.Accounts.{AccessCache, SchoolProfile}
 
   @impl true
   def describe(_opts), do: "the school is verified"
@@ -19,8 +19,11 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolVerified do
   @doc "Whether the school `workspace_id` has a `:verified` profile (fresh read)."
   def verified?(nil), do: false
 
+  def verified?(workspace_id),
+    do: AccessCache.verified?(workspace_id, fn -> read_verified?(workspace_id) end)
+
   # Check-internal read: `authorize?: false`, see `Checks.SchoolRole`.
-  def verified?(workspace_id) do
+  defp read_verified?(workspace_id) do
     SchoolProfile
     |> Ash.Query.for_read(:for_workspace, %{workspace_id: workspace_id})
     |> Ash.read_one(authorize?: false)

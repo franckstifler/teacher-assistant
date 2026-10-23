@@ -159,6 +159,7 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       change set_attribute(:verified_at, &DateTime.utc_now/0)
       change set_attribute(:rejection_reason, nil)
       change {TeacherAssistant.Accounts.AuditEvent.Record, action: :school_verified}
+      change {TeacherAssistant.Accounts.Changes.ForgetAccess, kind: :school}
     end
 
     update :reject do
@@ -167,6 +168,7 @@ defmodule TeacherAssistant.Accounts.SchoolProfile do
       change set_attribute(:verification_status, :rejected)
       change set_attribute(:verified_at, &DateTime.utc_now/0)
       change {TeacherAssistant.Accounts.AuditEvent.Record, action: :school_rejected}
+      change {TeacherAssistant.Accounts.Changes.ForgetAccess, kind: :school}
     end
   end
 

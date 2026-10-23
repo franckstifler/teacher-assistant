@@ -8,13 +8,14 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolRole do
   The school is the subject's tenant; for the two non-tenant school resources
   it comes from the record (`Workspace.id`, `SchoolProfile.workspace_id`). No
   actor, no resolvable school or no active membership → `false`. The
-  membership is read fresh on every check, so a revoked member is refused on
-  their next call, even inside an open LiveView.
+  membership is read through `Accounts.AccessCache` (5 s, forgotten whenever
+  the membership changes), so a revoked member is refused on their next call,
+  even inside an open LiveView.
   """
   use Ash.Policy.SimpleCheck
 
   alias TeacherAssistant.Academics.Workspace
-  alias TeacherAssistant.Accounts.{SchoolMembership, SchoolProfile}
+  alias TeacherAssistant.Accounts.{AccessCache, SchoolMembership, SchoolProfile}
   alias TeacherAssistant.Accounts.SchoolRole, as: Roles
 
   @impl true
@@ -49,9 +50,13 @@ defmodule TeacherAssistant.Accounts.Checks.SchoolRole do
   def workspace_id(%{tenant: id}) when is_binary(id), do: id
   def workspace_id(_subject), do: nil
 
+  defp active_roles(user_id, workspace_id) do
+    AccessCache.roles(user_id, workspace_id, fn -> read_active_roles(user_id, workspace_id) end)
+  end
+
   # Check-internal read: `authorize?: false` because a policy check must not
   # recurse into the policies it is part of.
-  defp active_roles(user_id, workspace_id) do
+  defp read_active_roles(user_id, workspace_id) do
     SchoolMembership
     |> Ash.Query.for_read(:for_workspace_and_user, %{user_id: user_id})
     |> Ash.Query.set_tenant(workspace_id)

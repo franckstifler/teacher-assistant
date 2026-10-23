@@ -102,6 +102,12 @@ defmodule TeacherAssistant.Accounts.SchoolMembership do
     end
   end
 
+  changes do
+    # Policy checks cache a user's roles per school (`Accounts.AccessCache`).
+    change {TeacherAssistant.Accounts.Changes.ForgetAccess, kind: :member},
+      on: [:create, :update, :destroy]
+  end
+
   multitenancy do
     strategy :attribute
     attribute :workspace_id

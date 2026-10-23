@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Application do
     children = [
       TeacherAssistantWeb.Telemetry,
       TeacherAssistant.Repo,
+      TeacherAssistant.Accounts.AccessCache,
       {Oban, Application.fetch_env!(:teacher_assistant, Oban)},
       {DNSCluster, query: Application.get_env(:teacher_assistant, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: TeacherAssistant.PubSub},
