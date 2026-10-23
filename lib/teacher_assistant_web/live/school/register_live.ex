@@ -61,17 +61,19 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
         year -> Organization.current_sequence(scope, year, socket.assigns.date)
       end
 
-    conduct_by_enrollment =
-      Map.new(register.students, fn student ->
-        totals =
-          if sequence do
-            Attendance.student_conduct(scope, student.enrollment, {:sequence, sequence})
-          else
-            %{justified_hours: Decimal.new(0), unjustified_hours: Decimal.new(0), retards: 0}
-          end
+    # One read for the whole class, not one per student.
+    class_conduct =
+      if sequence,
+        do: Attendance.class_conduct(scope, socket.assigns.cg, {:sequence, sequence}),
+        else: %{}
 
-        {student.enrollment_id, totals}
-      end)
+    zero = %{justified_hours: Decimal.new(0), unjustified_hours: Decimal.new(0), retards: 0}
+
+    conduct_by_enrollment =
+      Map.new(
+        register.students,
+        &{&1.enrollment_id, Map.get(class_conduct, &1.enrollment_id, zero)}
+      )
 
     assign(socket,
       periods: register.periods,

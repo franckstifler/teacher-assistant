@@ -1287,16 +1287,10 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     members = Accounts.list_members(scope)
     workspace_id = scope.current_workspace.id
 
-    # One policy check per row: done here, never in render.
+    # Computed here for the whole list, never in render.
     resettable =
       if socket.assigns.can_manage_staff?,
-        do:
-          for(
-            m <- members,
-            Accounts.can_reset_member_password?(scope, m.user),
-            into: MapSet.new(),
-            do: m.id
-          ),
+        do: Accounts.resettable_member_ids(scope, members),
         else: MapSet.new()
 
     # Colleagues' password state is for staff managers only.

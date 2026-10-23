@@ -113,4 +113,55 @@ defmodule TeacherAssistant.Accounts.PasswordResetPolicyTest do
       assert {:ok, _password} = Accounts.reset_member_password(head, m)
     end
   end
+
+  describe "resettable_member_ids/2 agrees with the policy, member by member" do
+    # Every kind of member the policy distinguishes: invited teacher, another head,
+    # the actor, someone active in another school, an account the school created.
+    defp populate(head) do
+      member(head, [:teacher])
+      member(head, [:head])
+      busy = member(head, [:teacher])
+      %{scope: other} = TeacherFixtures.school_fixture()
+      TeacherFixtures.membership_fixture(other, %{user: busy.user, roles: [:teacher]})
+
+      {:ok, _} =
+        Accounts.add_member_by_phone(head, %{name: "Créé ici", phone: "677000333"})
+
+      Accounts.list_members(head)
+    end
+
+    defp assert_same(scope, members) do
+      expected =
+        for m <- members,
+            Accounts.can_reset_member_password?(scope, m.user),
+            into: MapSet.new(),
+            do: m.id
+
+      assert Accounts.resettable_member_ids(scope, members) == expected
+    end
+
+    test "in a verified school", %{head: head, op: op} do
+      members = populate(head)
+      assert_same(head, members)
+      assert MapSet.size(Accounts.resettable_member_ids(head, members)) == 2
+
+      op_here = %{head | current_user: op.current_user}
+      assert_same(op_here, members)
+    end
+
+    test "in a school not yet verified" do
+      %{scope: head} = TeacherFixtures.school_fixture()
+      members = populate(head)
+      assert_same(head, members)
+      assert MapSet.size(Accounts.resettable_member_ids(head, members)) == 1
+    end
+
+    test "for a member who is not a head", %{head: head} do
+      members = populate(head)
+      [teacher | _] = Enum.filter(members, &(&1.roles == [:teacher]))
+      teacher_scope = school_scope(teacher.user, head.current_workspace)
+      assert_same(teacher_scope, members)
+      assert Accounts.resettable_member_ids(teacher_scope, members) == MapSet.new()
+    end
+  end
 end

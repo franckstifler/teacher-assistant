@@ -3,6 +3,7 @@ defmodule TeacherAssistant.Accounts do
     otp_app: :teacher_assistant
 
   alias TeacherAssistant.Accounts.{
+    Checks,
     Memberships,
     Phone,
     SchoolInvitation,
@@ -481,6 +482,53 @@ defmodule TeacherAssistant.Accounts do
 
   def can_reset_member_password?(%Scope{} = scope, %User{} = user),
     do: Ash.can?({user, :reset_temporary_password}, scope)
+
+  @doc """
+  The ids of the active `members` (from `list_members/1`, users loaded) whose password
+  the scope may reset: `can_reset_member_password?/2` for the whole list in a fixed
+  number of reads, for showing the button. The `:reset_temporary_password` policy stays
+  the authority when a reset runs; a test keeps the two in step.
+  """
+  def resettable_member_ids(%Scope{current_user: %User{role: :admin}}, members),
+    do: for(m <- members, m.user.role != :admin, into: MapSet.new(), do: m.id)
+
+  def resettable_member_ids(
+        %Scope{current_user: %User{} = actor, current_workspace: %{id: ws_id}},
+        members
+      ) do
+    if Checks.SchoolRole.holds?(actor, ws_id, :head) do
+      verified? = Checks.SchoolVerified.verified?(ws_id)
+      elsewhere = active_elsewhere(Enum.map(members, & &1.user_id), ws_id)
+
+      # The policy's order: never an operator, never yourself, never someone active in
+      # another school, never a head, never (unverified school) an account it didn't
+      # create; the head of the acting school resets its other active members.
+      for m <- members,
+          m.user.role != :admin,
+          m.user_id != actor.id,
+          not MapSet.member?(elsewhere, m.user_id),
+          :head not in m.roles,
+          verified? or m.user.created_in_workspace_id == ws_id,
+          into: MapSet.new(),
+          do: m.id
+    else
+      MapSet.new()
+    end
+  end
+
+  def resettable_member_ids(_scope, _members), do: MapSet.new()
+
+  # Users among `user_ids` with an active membership in a school other than `ws_id`.
+  # Check-style read (no tenant, `authorize?: false`), as `Checks.ActiveInAnotherSchool`.
+  defp active_elsewhere([], _ws_id), do: MapSet.new()
+
+  defp active_elsewhere(user_ids, ws_id) do
+    SchoolMembership
+    |> Ash.Query.filter(user_id in ^user_ids and active == true and workspace_id != ^ws_id)
+    |> Ash.Query.select([:user_id])
+    |> Ash.read!(authorize?: false)
+    |> MapSet.new(& &1.user_id)
+  end
 
   @doc "Revokes every stored token of the user (sign out on every device)."
   def revoke_all_sessions(%User{} = user) do

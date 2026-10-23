@@ -33,6 +33,18 @@ defmodule TeacherAssistantWeb.School.NewYearLiveTest do
              live(conn, ~p"/school/settings/new-year")
   end
 
+  test "the plan is built once, on the connected page, not for the first HTTP render", %{
+    conn: conn
+  } do
+    html = conn |> get(~p"/school/settings/new-year") |> html_response(200)
+    assert html =~ ~s(id="new-year-loading")
+    refute html =~ ~s(id="step-checks")
+
+    {:ok, view, _} = live(conn, ~p"/school/settings/new-year")
+    assert has_element?(view, "#step-checks")
+    refute has_element?(view, "#new-year-loading")
+  end
+
   test "settings links to the wizard for the open year", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/settings/year")
     assert has_element?(view, ~s|#new-year-link[href="/school/settings/new-year"]|)

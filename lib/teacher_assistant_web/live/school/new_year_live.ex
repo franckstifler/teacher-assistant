@@ -28,35 +28,45 @@ defmodule TeacherAssistantWeb.School.NewYearLive do
         {:ok, push_navigate(socket, to: ~p"/school/settings")}
 
       true ->
-        plan = NewYear.plan(scope, year)
-
         max =
           case Accounts.fetch_school_profile(scope) do
             {:ok, profile} -> profile.max_class_size
             _ -> nil
           end
 
-        {:ok,
-         socket
-         |> assign(
-           year: year,
-           plan: plan,
-           max: max,
-           step: 1,
-           taken_names: scope |> Organization.list_academic_years() |> MapSet.new(& &1.name),
-           year_params: %{
-             "name" => NewYearPlan.next_name(year.name),
-             "start_date" => year.start_date |> Date.shift(year: 1) |> Date.to_iso8601(),
-             "end_date" => year.end_date |> Date.shift(year: 1) |> Date.to_iso8601()
-           },
-           year_attrs: nil,
-           year_error: nil,
-           labels: Map.new(plan.classes, &{&1.id, &1.label}),
-           targets: plan.default_targets,
-           classes_error: nil
-         )
-         |> derive()}
+        socket =
+          assign(socket,
+            year: year,
+            plan: nil,
+            max: max,
+            step: 1,
+            taken_names: scope |> Organization.list_academic_years() |> MapSet.new(& &1.name),
+            year_params: %{
+              "name" => NewYearPlan.next_name(year.name),
+              "start_date" => year.start_date |> Date.shift(year: 1) |> Date.to_iso8601(),
+              "end_date" => year.end_date |> Date.shift(year: 1) |> Date.to_iso8601()
+            },
+            year_attrs: nil,
+            year_error: nil,
+            classes_error: nil
+          )
+
+        # The plan reads every class's annual results: built once, on the connected
+        # mount, not also for the first HTTP render (which shows « Préparation… »).
+        {:ok, if(connected?(socket), do: assign_plan(socket, scope, year), else: socket)}
     end
+  end
+
+  defp assign_plan(socket, scope, year) do
+    plan = NewYear.plan(scope, year)
+
+    socket
+    |> assign(
+      plan: plan,
+      labels: Map.new(plan.classes, &{&1.id, &1.label}),
+      targets: plan.default_targets
+    )
+    |> derive()
   end
 
   def handle_event("checked", _params, %{assigns: %{step: 1}} = socket),
@@ -236,160 +246,174 @@ defmodule TeacherAssistantWeb.School.NewYearLive do
           </li>
         </ol>
 
-        <div :if={@step == 1} id="step-checks" class="ta-panel flex flex-col gap-3">
-          <h2 class="ta-eyebrow">{gettext("Vérification")}</h2>
-          <p :if={@plan.checks.before_end?} id="check-before-end" class="alert alert-warning text-sm">
-            {gettext("L'année %{name} se termine le %{date} : vous la clôturez en avance.",
-              name: @year.name,
-              date: Dates.short(@year.end_date)
-            )}
-          </p>
-          <p id="check-councils" class="text-sm">
-            <%= if @plan.checks.open_councils == [] do %>
-              {gettext("Tous les conseils de fin d'année sont clos.")}
-            <% else %>
-              {gettext("Conseil de fin d'année non clos : %{classes}",
-                classes: Enum.map_join(@plan.checks.open_councils, ", ", & &1.label)
+        <p :if={!@plan} id="new-year-loading" class="ta-panel text-sm text-base-content/80">
+          {gettext("Préparation de l'année suivante…")}
+        </p>
+
+        <%= if @plan do %>
+          <div :if={@step == 1} id="step-checks" class="ta-panel flex flex-col gap-3">
+            <h2 class="ta-eyebrow">{gettext("Vérification")}</h2>
+            <p
+              :if={@plan.checks.before_end?}
+              id="check-before-end"
+              class="alert alert-warning text-sm"
+            >
+              {gettext("L'année %{name} se termine le %{date} : vous la clôturez en avance.",
+                name: @year.name,
+                date: Dates.short(@year.end_date)
               )}
-            <% end %>
-          </p>
-          <div :if={@plan.checks.proposals != %{}} id="check-proposals" class="text-sm">
-            <p>{gettext("Décisions non confirmées par le conseil (la proposition sera suivie) :")}</p>
-            <ul class="mt-1 list-inside list-disc text-base-content/80">
-              <li :for={cg <- @plan.classes} :if={@plan.checks.proposals[cg.id]}>
-                {cg.label} · <span class="ta-num">{@plan.checks.proposals[cg.id]}</span>
+            </p>
+            <p id="check-councils" class="text-sm">
+              <%= if @plan.checks.open_councils == [] do %>
+                {gettext("Tous les conseils de fin d'année sont clos.")}
+              <% else %>
+                {gettext("Conseil de fin d'année non clos : %{classes}",
+                  classes: Enum.map_join(@plan.checks.open_councils, ", ", & &1.label)
+                )}
+              <% end %>
+            </p>
+            <div :if={@plan.checks.proposals != %{}} id="check-proposals" class="text-sm">
+              <p>
+                {gettext("Décisions non confirmées par le conseil (la proposition sera suivie) :")}
+              </p>
+              <ul class="mt-1 list-inside list-disc text-base-content/80">
+                <li :for={cg <- @plan.classes} :if={@plan.checks.proposals[cg.id]}>
+                  {cg.label} · <span class="ta-num">{@plan.checks.proposals[cg.id]}</span>
+                </li>
+              </ul>
+            </div>
+            <p :if={@plan.checks.departed_courses > 0} id="check-departed" class="text-sm">
+              {ngettext(
+                "%{count} cours est attribué à un enseignant parti : à réattribuer dans Affectations.",
+                "%{count} cours sont attribués à des enseignants partis : à réattribuer dans Affectations.",
+                @plan.checks.departed_courses
+              )}
+            </p>
+            <button
+              id="to-step-2"
+              type="button"
+              phx-click="checked"
+              class="btn btn-primary btn-sm self-end"
+            >
+              {gettext("Continuer")}
+            </button>
+          </div>
+
+          <.form
+            :if={@step == 2}
+            for={@year_form}
+            id="new-year-form"
+            phx-submit="save_year"
+            class="ta-panel flex flex-col gap-3"
+          >
+            <h2 class="ta-eyebrow">{gettext("Nouvelle année")}</h2>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <.input field={@year_form[:name]} label={gettext("Nom")} />
+              <.input field={@year_form[:start_date]} type="date" label={gettext("Début")} />
+              <.input field={@year_form[:end_date]} type="date" label={gettext("Fin")} />
+            </div>
+            <p :if={@year_error} id="year-error" class="text-sm text-error">{@year_error}</p>
+            <div class="flex justify-between gap-2">
+              <button type="button" phx-click="back" phx-value-step="1" class="btn btn-ghost btn-sm">
+                {gettext("Retour")}
+              </button>
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Continuer")}</button>
+            </div>
+          </.form>
+
+          <form
+            :if={@step == 3}
+            id="classes-form"
+            phx-change="change_classes"
+            phx-submit="save_classes"
+            class="ta-panel flex flex-col gap-2"
+          >
+            <h2 class="ta-eyebrow">{gettext("Classes de %{name}", name: @year_attrs.name)}</h2>
+            <div
+              :for={cg <- @plan.classes}
+              id={"class-row-#{cg.id}"}
+              class="grid items-end gap-2 border-t border-base-300 pt-2 sm:grid-cols-[1fr_1fr_5rem]"
+            >
+              <.input name={"labels[#{cg.id}]"} value={@labels[cg.id]} label={cg.label} />
+              <.input
+                type="select"
+                name={"targets[#{cg.id}]"}
+                value={@targets[cg.id] || ""}
+                label={gettext("Admis vers")}
+                options={target_options(@plan.classes, @labels)}
+              />
+              <span
+                id={"class-size-#{cg.id}"}
+                title={gettext("Effectif prévu")}
+                class={[
+                  "ta-num pb-3 text-right text-sm",
+                  over?(@sizes[cg.id] || 0, @max) && "font-semibold text-warning"
+                ]}
+              >
+                {size_text(@sizes[cg.id] || 0, @max)}
+              </span>
+            </div>
+            <p :if={@classes_error} id="classes-error" class="text-sm text-error">{@classes_error}</p>
+            <div class="flex justify-between gap-2 pt-2">
+              <button type="button" phx-click="back" phx-value-step="2" class="btn btn-ghost btn-sm">
+                {gettext("Retour")}
+              </button>
+              <button type="submit" class="btn btn-primary btn-sm">{gettext("Continuer")}</button>
+            </div>
+          </form>
+
+          <div :if={@step == 4} id="step-summary" class="ta-panel flex flex-col gap-4">
+            <h2 class="ta-eyebrow">{gettext("Confirmation")}</h2>
+            <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div>
+                <dt class="ta-eyebrow">{gettext("Classes")}</dt>
+                <dd class="ta-num text-xl font-semibold">{length(@plan.classes)}</dd>
+              </div>
+              <div>
+                <dt class="ta-eyebrow">{gettext("Réinscrits")}</dt>
+                <dd id="summary-reenrolled" class="ta-num text-xl font-semibold">
+                  {@totals.reenrolled}
+                </dd>
+              </div>
+              <div>
+                <dt class="ta-eyebrow">{gettext("dont redoublants")}</dt>
+                <dd id="summary-repeaters" class="ta-num text-xl font-semibold">
+                  {@totals.repeaters}
+                </dd>
+              </div>
+              <div>
+                <dt class="ta-eyebrow">{gettext("Non réinscrits")}</dt>
+                <dd id="summary-not" class="ta-num text-xl font-semibold">
+                  {@totals.not_reenrolled |> Map.values() |> Enum.sum()}
+                </dd>
+              </div>
+            </dl>
+            <ul :if={@totals.not_reenrolled != %{}} class="text-sm text-base-content/80">
+              <li :for={{reason, n} <- @totals.not_reenrolled}>
+                {reason_label(reason)} · <span class="ta-num">{n}</span>
               </li>
             </ul>
-          </div>
-          <p :if={@plan.checks.departed_courses > 0} id="check-departed" class="text-sm">
-            {ngettext(
-              "%{count} cours est attribué à un enseignant parti : à réattribuer dans Affectations.",
-              "%{count} cours sont attribués à des enseignants partis : à réattribuer dans Affectations.",
-              @plan.checks.departed_courses
-            )}
-          </p>
-          <button
-            id="to-step-2"
-            type="button"
-            phx-click="checked"
-            class="btn btn-primary btn-sm self-end"
-          >
-            {gettext("Continuer")}
-          </button>
-        </div>
-
-        <.form
-          :if={@step == 2}
-          for={@year_form}
-          id="new-year-form"
-          phx-submit="save_year"
-          class="ta-panel flex flex-col gap-3"
-        >
-          <h2 class="ta-eyebrow">{gettext("Nouvelle année")}</h2>
-          <div class="grid gap-3 sm:grid-cols-3">
-            <.input field={@year_form[:name]} label={gettext("Nom")} />
-            <.input field={@year_form[:start_date]} type="date" label={gettext("Début")} />
-            <.input field={@year_form[:end_date]} type="date" label={gettext("Fin")} />
-          </div>
-          <p :if={@year_error} id="year-error" class="text-sm text-error">{@year_error}</p>
-          <div class="flex justify-between gap-2">
-            <button type="button" phx-click="back" phx-value-step="1" class="btn btn-ghost btn-sm">
-              {gettext("Retour")}
-            </button>
-            <button type="submit" class="btn btn-primary btn-sm">{gettext("Continuer")}</button>
-          </div>
-        </.form>
-
-        <form
-          :if={@step == 3}
-          id="classes-form"
-          phx-change="change_classes"
-          phx-submit="save_classes"
-          class="ta-panel flex flex-col gap-2"
-        >
-          <h2 class="ta-eyebrow">{gettext("Classes de %{name}", name: @year_attrs.name)}</h2>
-          <div
-            :for={cg <- @plan.classes}
-            id={"class-row-#{cg.id}"}
-            class="grid items-end gap-2 border-t border-base-300 pt-2 sm:grid-cols-[1fr_1fr_5rem]"
-          >
-            <.input name={"labels[#{cg.id}]"} value={@labels[cg.id]} label={cg.label} />
-            <.input
-              type="select"
-              name={"targets[#{cg.id}]"}
-              value={@targets[cg.id] || ""}
-              label={gettext("Admis vers")}
-              options={target_options(@plan.classes, @labels)}
-            />
-            <span
-              id={"class-size-#{cg.id}"}
-              title={gettext("Effectif prévu")}
-              class={[
-                "ta-num pb-3 text-right text-sm",
-                over?(@sizes[cg.id] || 0, @max) && "font-semibold text-warning"
-              ]}
-            >
-              {size_text(@sizes[cg.id] || 0, @max)}
-            </span>
-          </div>
-          <p :if={@classes_error} id="classes-error" class="text-sm text-error">{@classes_error}</p>
-          <div class="flex justify-between gap-2 pt-2">
-            <button type="button" phx-click="back" phx-value-step="2" class="btn btn-ghost btn-sm">
-              {gettext("Retour")}
-            </button>
-            <button type="submit" class="btn btn-primary btn-sm">{gettext("Continuer")}</button>
-          </div>
-        </form>
-
-        <div :if={@step == 4} id="step-summary" class="ta-panel flex flex-col gap-4">
-          <h2 class="ta-eyebrow">{gettext("Confirmation")}</h2>
-          <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            <div>
-              <dt class="ta-eyebrow">{gettext("Classes")}</dt>
-              <dd class="ta-num text-xl font-semibold">{length(@plan.classes)}</dd>
+            <p class="text-sm text-base-content/70">
+              {gettext("L'année %{old} sera clôturée : plus aucune modification n'y sera possible.",
+                old: @year.name
+              )}
+            </p>
+            <div class="flex justify-between gap-2">
+              <button type="button" phx-click="back" phx-value-step="3" class="btn btn-ghost btn-sm">
+                {gettext("Retour")}
+              </button>
+              <button
+                id="start-year"
+                type="button"
+                phx-click="start"
+                phx-disable-with={gettext("Démarrage…")}
+                class="btn btn-primary btn-sm"
+              >
+                {gettext("Démarrer l'année %{name}", name: @year_attrs.name)}
+              </button>
             </div>
-            <div>
-              <dt class="ta-eyebrow">{gettext("Réinscrits")}</dt>
-              <dd id="summary-reenrolled" class="ta-num text-xl font-semibold">
-                {@totals.reenrolled}
-              </dd>
-            </div>
-            <div>
-              <dt class="ta-eyebrow">{gettext("dont redoublants")}</dt>
-              <dd id="summary-repeaters" class="ta-num text-xl font-semibold">{@totals.repeaters}</dd>
-            </div>
-            <div>
-              <dt class="ta-eyebrow">{gettext("Non réinscrits")}</dt>
-              <dd id="summary-not" class="ta-num text-xl font-semibold">
-                {@totals.not_reenrolled |> Map.values() |> Enum.sum()}
-              </dd>
-            </div>
-          </dl>
-          <ul :if={@totals.not_reenrolled != %{}} class="text-sm text-base-content/80">
-            <li :for={{reason, n} <- @totals.not_reenrolled}>
-              {reason_label(reason)} · <span class="ta-num">{n}</span>
-            </li>
-          </ul>
-          <p class="text-sm text-base-content/70">
-            {gettext("L'année %{old} sera clôturée : plus aucune modification n'y sera possible.",
-              old: @year.name
-            )}
-          </p>
-          <div class="flex justify-between gap-2">
-            <button type="button" phx-click="back" phx-value-step="3" class="btn btn-ghost btn-sm">
-              {gettext("Retour")}
-            </button>
-            <button
-              id="start-year"
-              type="button"
-              phx-click="start"
-              phx-disable-with={gettext("Démarrage…")}
-              class="btn btn-primary btn-sm"
-            >
-              {gettext("Démarrer l'année %{name}", name: @year_attrs.name)}
-            </button>
           </div>
-        </div>
+        <% end %>
       </section>
     </Layouts.app>
     """

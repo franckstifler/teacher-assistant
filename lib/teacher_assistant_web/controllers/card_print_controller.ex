@@ -17,6 +17,7 @@ defmodule TeacherAssistantWeb.CardPrintController do
       template = ReportCards.template(scope, cg)
       rows = Enum.sort_by(rows, &String.downcase(&1.student.full_name))
       students = Enum.map(rows, & &1.student)
+      contacts = Enrollment.contact_guardians(scope, Enum.map(students, & &1.id))
 
       conn
       |> put_layout(false)
@@ -28,7 +29,7 @@ defmodule TeacherAssistantWeb.CardPrintController do
         pages:
           rows
           |> Enum.map(fn %{student: student, enrollment: enrollment} ->
-            %{student: student, contact: contact(scope, student), qr_svg: qr_svg(enrollment)}
+            %{student: student, contact: contacts[student.id], qr_svg: qr_svg(enrollment)}
           end)
           |> Enum.chunk_every(10),
         missing: Enum.count(students, &is_nil(&1.photo_path)),
@@ -57,14 +58,6 @@ defmodule TeacherAssistantWeb.CardPrintController do
     case Enum.filter(rows, &(&1.student.id == student_id)) do
       [] -> {:error, :not_in_class}
       one -> {:ok, one}
-    end
-  end
-
-  # Main contact first (list_guardian_links orders it so), else the first linked guardian.
-  defp contact(scope, student) do
-    case Enrollment.list_guardian_links(scope, student) do
-      [%{guardian: g} | _] -> g
-      _ -> nil
     end
   end
 end

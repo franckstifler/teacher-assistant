@@ -264,6 +264,21 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   @doc """
+  Per student id, the guardian to contact: the main contact, else the first linked
+  (the order of `list_guardian_links/2`). Students with no guardian are absent. One query.
+  """
+  def contact_guardians(%Scope{}, []), do: %{}
+
+  def contact_guardians(%Scope{} = scope, student_ids) do
+    StudentGuardian
+    |> Ash.Query.filter(student_id in ^student_ids)
+    |> Ash.Query.sort(primary_contact: :desc, inserted_at: :asc)
+    |> Ash.Query.load(:guardian)
+    |> Ash.read!(scope: scope)
+    |> Enum.reduce(%{}, fn link, acc -> Map.put_new(acc, link.student_id, link.guardian) end)
+  end
+
+  @doc """
   Spec bulletin v2 §5.2: per student id, up to two guardians as `%{name, phone}`, main
   contact first — one query for the class.
   """

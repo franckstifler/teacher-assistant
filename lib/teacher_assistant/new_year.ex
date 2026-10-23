@@ -40,7 +40,8 @@ defmodule TeacherAssistant.NewYear do
 
     members = scope |> Accounts.list_members() |> MapSet.new(& &1.user_id)
     councils = Councils.for_period(scope, {:annual, year})
-    students = Enum.flat_map(classes, &class_students(scope, &1, year))
+    rules = Assessment.passage_rules(scope)
+    students = Enum.flat_map(classes, &class_students(scope, &1, year, rules))
 
     %{
       year: year,
@@ -59,13 +60,16 @@ defmodule TeacherAssistant.NewYear do
     }
   end
 
-  @doc "Each student's decision for the year: the annual council's choice, else the engine's proposal."
-  def decisions(%Scope{} = scope, %ClassGroup{} = cg, %AcademicYear{} = year) do
+  @doc """
+  Each student's decision for the year: the annual council's choice, else the engine's
+  proposal. `rules`: the school's passage rules, when the caller already read them.
+  """
+  def decisions(%Scope{} = scope, %ClassGroup{} = cg, %AcademicYear{} = year, rules \\ nil) do
     period = {:annual, year}
     council = Councils.council(scope, cg, period)
 
     passage = %{
-      rules: Assessment.passage_rules(scope),
+      rules: rules || Assessment.passage_rules(scope),
       students: Councils.passage_inputs(scope, cg, period)
     }
 
@@ -88,8 +92,8 @@ defmodule TeacherAssistant.NewYear do
     Map.merge(proposed, chosen)
   end
 
-  defp class_students(scope, cg, year) do
-    decisions = decisions(scope, cg, year)
+  defp class_students(scope, cg, year, rules) do
+    decisions = decisions(scope, cg, year, rules)
 
     for %{student: student, enrollment: enrollment} <- Enrollment.list_roster(scope, cg) do
       {decision, source} = Map.get(decisions, student.id, {nil, nil})
@@ -155,10 +159,12 @@ defmodule TeacherAssistant.NewYear do
   end
 
   # Read under a row lock: a concurrent start waits, then finds the year closed.
+  # NO KEY UPDATE, not UPDATE: rows that only point at the year (enrolments, classes,
+  # fees…) can still be inserted by others while the start runs.
   defp lock_open(scope, id) do
     AcademicYear
     |> Ash.Query.filter(id == ^id)
-    |> Ash.Query.lock(:for_update)
+    |> Ash.Query.lock("FOR NO KEY UPDATE")
     |> Ash.read_one(scope: scope)
     |> case do
       {:ok, %AcademicYear{status: :open} = year} -> {:ok, year}
