@@ -171,6 +171,11 @@ defmodule TeacherAssistant.Academics.Mark do
       on: [:create, :update],
       before_action?: true
 
+    # Only students of the assessment's class; student and assessment are set on create.
+    validate {TeacherAssistant.Academics.Mark.StudentEnrolled, []},
+      on: [:create],
+      before_action?: true
+
     # The lock (spec D3b), on every write path — `:upsert_all` goes through these.
     validate {TeacherAssistant.Academics.Mark.AssessmentOpen, []},
       on: [:create, :update, :destroy],

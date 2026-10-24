@@ -18,11 +18,27 @@ defmodule TeacherAssistant.Academics.MarkTest do
         teacher: head
       })
 
-    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
+    # the students of the assessment's own class
+    {:ok, cg} = Enrollment.fetch_owned_class_group(scope, ctx.class_group_id)
     {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, s2} = Enrollment.add_student(scope, cg, %{full_name: "Beba", sex: :m})
     {:ok, a} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 1"})
-    %{ctx: ctx, seq: seq, a: a, s1: s1, s2: s2, scope: scope}
+    %{ctx: ctx, seq: seq, a: a, s1: s1, s2: s2, scope: scope, year: year}
+  end
+
+  test "a student of another class gets no mark, and the save writes nothing",
+       %{a: a, s1: s1, scope: scope, year: year} do
+    {:ok, other} = Enrollment.create_class_group(scope, year, %{label: "3e M2", level: "3ème"})
+    {:ok, outsider} = Enrollment.add_student(scope, other, %{full_name: "Chantal", sex: :f})
+
+    assert {:error, error} =
+             Assessment.upsert_marks(scope, a, [
+               %{student_id: s1.id, score: Decimal.new("15")},
+               %{student_id: outsider.id, score: Decimal.new("12")}
+             ])
+
+    assert Exception.message(error) =~ "is not enrolled in this class"
+    assert Assessment.list_marks(scope, a) == []
   end
 
   test "upsert creates marks", %{a: a, s1: s1, s2: s2, scope: scope} do
