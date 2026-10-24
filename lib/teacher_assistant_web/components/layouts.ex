@@ -177,6 +177,7 @@ defmodule TeacherAssistantWeb.Layouts do
                     <li :for={ws <- @workspaces} id={"workspace-switcher-item-#{ws.id}"}>
                       <.link
                         href={~p"/workspaces/select/#{ws.id}"}
+                        method="post"
                         class="flex items-center justify-between gap-2"
                       >
                         <span>{ws.name}</span>
@@ -207,6 +208,7 @@ defmodule TeacherAssistantWeb.Layouts do
                 :for={key <- @space_keys}
                 id={"space-switch-#{key}"}
                 href={~p"/school/space/#{key}"}
+                method="post"
                 aria-current={@space && @space.key == key && "true"}
                 class={[
                   "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-medium transition-colors",
@@ -535,6 +537,7 @@ defmodule TeacherAssistantWeb.Layouts do
             :for={key <- @space_keys}
             id={"sheet-space-#{key}"}
             href={~p"/school/space/#{key}"}
+            method="post"
             aria-current={@space.key == key && "true"}
             class="ta-chip"
           >
@@ -594,6 +597,7 @@ defmodule TeacherAssistantWeb.Layouts do
           :for={ws <- @workspaces}
           :if={length(@workspaces) > 1}
           href={~p"/workspaces/select/#{ws.id}"}
+          method="post"
           aria-current={ws.id == @workspace_id && "true"}
           class="ta-sheet__row"
         >
@@ -739,6 +743,27 @@ defmodule TeacherAssistantWeb.Layouts do
         {gettext("Craie")}
       </button>
     </div>
+    """
+  end
+
+  @doc """
+  Opens `school_id` in the session from a LiveView, which can't write the
+  session itself: a hidden POST form to the (POST-only) school switch that
+  LiveView submits as soon as it is on the connected page.
+  """
+  attr :school_id, :string, required: true
+
+  def open_school_form(assigns) do
+    ~H"""
+    <.form
+      for={%{}}
+      id="open-school-form"
+      action={~p"/workspaces/select/#{@school_id}"}
+      method="post"
+      phx-trigger-action
+      class="hidden"
+    >
+    </.form>
     """
   end
 

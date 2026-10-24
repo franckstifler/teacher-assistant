@@ -70,7 +70,7 @@ defmodule TeacherAssistantWeb.ModuleGuardTest do
     TeacherFixtures.complete_school_setup!(school_scope(head, other))
     {:ok, _} = Organization.suspend_school(op, ws, "Impayé")
 
-    conn = get(conn, ~p"/workspaces/select/#{other.id}")
+    conn = post(conn, ~p"/workspaces/select/#{other.id}")
     assert {:ok, _view, _html} = live(recycle(conn), ~p"/school/classes")
   end
 end

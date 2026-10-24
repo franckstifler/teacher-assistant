@@ -83,9 +83,10 @@ defmodule TeacherAssistantWeb.Router do
   scope "/", TeacherAssistantWeb do
     pipe_through [:browser, :school]
 
-    get "/workspaces/select/:id", WorkspaceController, :select
-    get "/teacher/select-context/:id", TeacherContextController, :select
-    get "/school/space/:key", SpaceController, :select
+    # These switches write the session: POST only, so another site can't fire them.
+    post "/workspaces/select/:id", WorkspaceController, :select
+    post "/teacher/select-context/:id", TeacherContextController, :select
+    post "/school/space/:key", SpaceController, :select
 
     get "/school/classes/:id/students/:enrollment_id/bulletin/print",
         BulletinPrintController,

@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
     scope = school_scope(user, school)
     :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
     _year = TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, scope: scope, school: school}
   end
 

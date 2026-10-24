@@ -13,7 +13,7 @@ defmodule TeacherAssistantWeb.School.SettingsLogoTest do
       })
 
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school, scope: school_scope(user, school)}
   end
 

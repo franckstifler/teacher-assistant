@@ -50,7 +50,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     conn: conn,
     course: course
   } do
-    conn = get(conn, ~p"/school/space/enseignant")
+    conn = post(conn, ~p"/school/space/enseignant")
     {:ok, view, html} = live(conn, ~p"/school/courses")
 
     assert has_element?(view, "#course-combined-#{course.id}", course.label)

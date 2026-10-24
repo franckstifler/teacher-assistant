@@ -16,7 +16,7 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
 
   test "selecting a valid class stores it and honors return_to", %{conn: conn, ctx: ctx} do
     conn =
-      get(
+      post(
         conn,
         "/teacher/select-context/#{ctx.id}?return_to=/teacher/contexts/#{ctx.id}/roster"
       )
@@ -29,24 +29,24 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
     other = Ecto.UUID.generate()
 
     conn =
-      get(conn, "/teacher/select-context/#{ctx.id}?return_to=/teacher/contexts/#{other}/marks")
+      post(conn, "/teacher/select-context/#{ctx.id}?return_to=/teacher/contexts/#{other}/marks")
 
     assert redirected_to(conn) == "/teacher/contexts/#{ctx.id}/marks"
   end
 
   test "rejects a foreign id without writing the session", %{conn: conn} do
-    conn = get(conn, ~p"/teacher/select-context/#{Ecto.UUID.generate()}?return_to=/teacher/log")
+    conn = post(conn, ~p"/teacher/select-context/#{Ecto.UUID.generate()}?return_to=/teacher/log")
     assert redirected_to(conn) == "/school"
     assert get_session(conn, :context_id) == nil
   end
 
   test "ignores a non-local return_to", %{conn: conn, ctx: ctx} do
-    conn = get(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=https://evil.example/x")
+    conn = post(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=https://evil.example/x")
     assert redirected_to(conn) == "/school"
   end
 
   test "a paused personal return_to falls back to /school", %{conn: conn, ctx: ctx} do
-    conn = get(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=/teacher/log")
+    conn = post(conn, ~p"/teacher/select-context/#{ctx.id}?return_to=/teacher/log")
     assert redirected_to(conn) == "/school"
   end
 
@@ -54,7 +54,7 @@ defmodule TeacherAssistantWeb.TeacherContextControllerTest do
     conn =
       build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> get(~p"/teacher/select-context/#{Ecto.UUID.generate()}")
+      |> post(~p"/teacher/select-context/#{Ecto.UUID.generate()}")
 
     assert redirected_to(conn) == ~p"/sign-in"
   end

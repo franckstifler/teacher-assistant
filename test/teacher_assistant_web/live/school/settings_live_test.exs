@@ -17,7 +17,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     # their own additional years on top of this one.
     scope = school_scope(user, school)
     TeacherAssistant.TeacherFixtures.complete_school_setup!(scope)
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, school: school, scope: scope}
   end
 

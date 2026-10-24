@@ -30,18 +30,18 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
   end
 
   test "a member switches to one of their spaces and lands on its home", ctx do
-    conn = censeur_who_teaches(ctx) |> get(~p"/school/space/enseignant")
+    conn = censeur_who_teaches(ctx) |> post(~p"/school/space/enseignant")
     assert redirected_to(conn) == "/school/today"
     assert get_session(conn, :space) == "enseignant"
   end
 
   test "a space the member does not have is ignored", ctx do
     teacher = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
-    conn = conn_for(ctx.school, teacher.current_user) |> get(~p"/school/space/proviseur")
+    conn = conn_for(ctx.school, teacher.current_user) |> post(~p"/school/space/proviseur")
     assert redirected_to(conn) == "/school"
     assert get_session(conn, :space) == nil
 
-    conn = conn_for(ctx.school, teacher.current_user) |> get(~p"/school/space/whatever")
+    conn = conn_for(ctx.school, teacher.current_user) |> post(~p"/school/space/whatever")
     assert redirected_to(conn) == "/school"
   end
 
@@ -65,14 +65,14 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
     conn =
       censeur_who_teaches(ctx)
       |> Plug.Conn.put_session(:space, "enseignant")
-      |> get(~p"/workspaces/select/#{ctx.school.id}")
+      |> post(~p"/workspaces/select/#{ctx.school.id}")
 
     assert get_session(conn, :space) == nil
   end
 
   test "a controller page's menu follows the stored space", ctx do
-    conn = censeur_who_teaches(ctx) |> get(~p"/school/space/enseignant")
-    conn = conn |> recycle() |> get(~p"/school/space/whatever")
+    conn = censeur_who_teaches(ctx) |> post(~p"/school/space/enseignant")
+    conn = conn |> recycle() |> post(~p"/school/space/whatever")
     assert conn.assigns.current_scope.capabilities.space.key == :enseignant
   end
 end

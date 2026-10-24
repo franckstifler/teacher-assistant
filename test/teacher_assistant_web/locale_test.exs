@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.LocaleTest do
       })
 
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn}
   end
 

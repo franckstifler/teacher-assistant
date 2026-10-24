@@ -56,7 +56,7 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#nav-school-settings")
     refute has_element?(view, "#nav-school-coefficients")
 
-    conn = get(conn, ~p"/school/space/enseignant")
+    conn = post(conn, ~p"/school/space/enseignant")
     {:ok, view, _} = live(conn, ~p"/school/courses")
     assert has_element?(view, "#space-switch-enseignant[aria-current]")
     refute has_element?(view, "#nav-school-members")
@@ -73,8 +73,8 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     refute has_element?(view, "#more-sheet #more-nav-school-sequences")
     assert has_element?(view, "#more-sheet #sheet-space-enseignant")
 
-    conn = get(conn, ~p"/school/space/enseignant")
-    conn = get(conn, ~p"/teacher/select-context/#{tc.id}")
+    conn = post(conn, ~p"/school/space/enseignant")
+    conn = post(conn, ~p"/teacher/select-context/#{tc.id}")
     {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks")
     assert has_element?(view, "#tab-nav-school-marks[aria-current=page]")
     refute has_element?(view, "#tab-nav-school-courses[aria-current=page]")
@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
 
   test "inside a course its tabs show, with the space menu", ctx do
     {conn, tc} = member_conn(ctx, [:teacher], teaches?: true)
-    conn = get(conn, ~p"/teacher/select-context/#{tc.id}")
+    conn = post(conn, ~p"/teacher/select-context/#{tc.id}")
     {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks")
     assert has_element?(view, "#teaching-nav")
     assert has_element?(view, "#nav-school-courses")

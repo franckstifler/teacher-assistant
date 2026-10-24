@@ -24,7 +24,7 @@ defmodule TeacherAssistantWeb.WorkspaceSwitcherTest do
         name: "École Étrangère"
       })
 
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#workspace-switcher")
     assert has_element?(view, "#workspace-switcher-item-#{school.id}", "École Deux")

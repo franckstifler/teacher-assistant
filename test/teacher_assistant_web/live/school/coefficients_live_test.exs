@@ -16,7 +16,7 @@ defmodule TeacherAssistantWeb.School.CoefficientsLiveTest do
       Enrollment.create_class_group(scope, year, %{label: "2nde Z", level: "2nde", serie: "C"})
 
     maths = Enum.find(Curriculum.list_subjects(scope), &(&1.name == "Mathématiques"))
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     %{conn: conn, scope: scope, cg: cg, maths: maths, user: user}
   end
 

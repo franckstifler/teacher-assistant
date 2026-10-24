@@ -17,7 +17,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
         })
 
       TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
-      conn = get(conn, ~p"/workspaces/select/#{school.id}")
+      conn = post(conn, ~p"/workspaces/select/#{school.id}")
       %{conn: conn, school: school, scope: school_scope(user, school)}
     end
 
@@ -103,7 +103,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
         Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée T"})
 
       TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
-      conn = get(conn, ~p"/workspaces/select/#{school.id}")
+      conn = post(conn, ~p"/workspaces/select/#{school.id}")
       %{conn: conn, scope: school_scope(user, school)}
     end
 

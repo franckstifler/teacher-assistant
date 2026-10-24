@@ -4,7 +4,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: build_form(socket))}
+    {:ok, assign(socket, form: build_form(socket), open_school_id: nil)}
   end
 
   def handle_event("validate", %{"school" => params}, socket) do
@@ -19,7 +19,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
 
     case AshPhoenix.Form.submit(socket.assigns.form, params: params) do
       {:ok, school} ->
-        {:noreply, redirect(socket, to: ~p"/workspaces/select/#{school.id}")}
+        {:noreply, assign(socket, :open_school_id, school.id)}
 
       {:error, form} ->
         {:noreply,
@@ -99,6 +99,7 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <Layouts.open_school_form :if={@open_school_id} school_id={@open_school_id} />
       <section id="create-school" class="mx-auto max-w-4xl space-y-6">
         <.page_header
           eyebrow={gettext("Get started")}

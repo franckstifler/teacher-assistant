@@ -10,21 +10,18 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLiveTest do
   test "creates an unverified school and switches into it", %{conn: conn, actor: user} do
     {:ok, view, _} = live(conn, ~p"/schools/new")
 
-    assert {:error, {:redirect, %{to: to}}} =
-             view
-             |> form("#create-school-form", %{
-               school: %{
-                 name: "Collège Vogt",
-                 school_type: "ces_ceg",
-                 subsystem: "francophone",
-                 sector: "private_confessional",
-                 region: "centre",
-                 town: "Yaoundé"
-               }
-             })
-             |> render_submit()
-
-    assert to =~ "/workspaces/select/"
+    view
+    |> form("#create-school-form", %{
+      school: %{
+        name: "Collège Vogt",
+        school_type: "ces_ceg",
+        subsystem: "francophone",
+        sector: "private_confessional",
+        region: "centre",
+        town: "Yaoundé"
+      }
+    })
+    |> render_submit()
 
     school =
       Workspace |> Ash.Query.filter(name == "Collège Vogt") |> Ash.read_one!(authorize?: false)
@@ -32,5 +29,9 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLiveTest do
     {:ok, profile} = Accounts.fetch_school_profile(school_scope(user, school))
     assert profile.verification_status == :unverified
     assert profile.owner_user_id == user.id
+
+    # then switches the session into it with a POST
+    conn = view |> form("#open-school-form") |> follow_trigger_action(conn)
+    assert get_session(conn, :workspace_id) == school.id
   end
 end

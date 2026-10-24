@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       })
 
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#dashboard")
     assert render(view) =~ "Lycée Central"
@@ -26,7 +26,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
         name: "École Guard"
       })
 
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/teacher/contexts/#{Ecto.UUID.generate()}/roster")
@@ -44,7 +44,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
         name: "École SansAnnée"
       })
 
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
 
     assert {:error, {:live_redirect, %{to: "/school/setup"}}} = live(conn, ~p"/school")
   end
@@ -160,9 +160,15 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       })
 
     conn = Plug.Conn.put_session(conn, :workspace_id, other_school.id)
-    expected_to = "/workspaces/select/#{home_school.id}"
 
-    assert {:error, {:live_redirect, %{to: ^expected_to}}} = live(conn, ~p"/school")
+    # the page posts to the school switch itself (a LiveView can't write the session)
+    {:ok, view, _html} = live(conn, ~p"/school")
+    form = form(view, "#open-school-form")
+    assert render(form) =~ ~s(action="/workspaces/select/#{home_school.id}")
+
+    conn = follow_trigger_action(form, conn)
+    assert get_session(conn, :workspace_id) == home_school.id
+    assert redirected_to(conn) == ~p"/school"
   end
 
   test "a user with no workspace in session and no school is sent to /schools/new" do
@@ -181,7 +187,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       Organization.create_school(%TeacherAssistant.Scope{current_user: user}, %{name: "Lycée Nav"})
 
     TeacherAssistant.TeacherFixtures.complete_school_setup!(school_scope(user, school))
-    conn = get(conn, ~p"/workspaces/select/#{school.id}")
+    conn = post(conn, ~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school")
     assert has_element?(view, "#school-nav")
     refute has_element?(view, "#main-nav")

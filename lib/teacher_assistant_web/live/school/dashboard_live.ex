@@ -36,7 +36,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         case Organization.list_workspaces_for(%TeacherAssistant.Scope{
                current_user: scope.current_user
              }) do
-          [first | _] -> {:ok, push_navigate(socket, to: ~p"/workspaces/select/#{first.id}")}
+          [first | _] -> {:ok, assign(socket, :open_school_id, first.id)}
           [] -> {:ok, push_navigate(socket, to: ~p"/schools/new")}
         end
     end
@@ -50,6 +50,17 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   defp landing_elsewhere(%{capabilities: %{space: %{home: home}}}), do: home
   defp landing_elsewhere(_scope), do: nil
+
+  def render(%{open_school_id: _} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <p id="opening-school" class="ta-text-2 py-10 text-center">
+        {gettext("Ouverture de votre établissement…")}
+      </p>
+      <Layouts.open_school_form :if={connected?(@socket)} school_id={@open_school_id} />
+    </Layouts.app>
+    """
+  end
 
   def render(assigns) do
     ~H"""

@@ -6,7 +6,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
   setup :register_and_log_in_user
 
   defp enter_school(conn, school) do
-    get(conn, ~p"/workspaces/select/#{school.id}")
+    post(conn, ~p"/workspaces/select/#{school.id}")
   end
 
   defp open_add(view, method \\ :phone) do
@@ -97,7 +97,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     {:ok, _} =
       Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: member}, inv.token)
 
-    conn = conn |> log_in_user(member) |> get(~p"/workspaces/select/#{school.id}")
+    conn = conn |> log_in_user(member) |> post(~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
     assert has_element?(view, "#members-list")
@@ -186,7 +186,7 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
     {:ok, _} =
       Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: member}, inv.token)
 
-    conn = conn |> log_in_user(member) |> get(~p"/workspaces/select/#{school.id}")
+    conn = conn |> log_in_user(member) |> post(~p"/workspaces/select/#{school.id}")
     {:ok, view, _html} = live(conn, ~p"/school/members")
 
     membership =
