@@ -607,6 +607,16 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       assert has_element?(view, "#confirm-reset-dialog", "Nouveau mot de passe pour Own")
       refute has_element?(view, "#temporary-password-dialog")
 
+      # a real modal, named by its title; Escape backs out
+      assert has_element?(
+               view,
+               ~s(#confirm-reset-dialog[role="dialog"][aria-modal="true"][aria-labelledby="confirm-reset-dialog-title"])
+             )
+
+      view |> element("#confirm-reset-dialog-box") |> render_keydown(%{"key" => "Escape"})
+      refute has_element?(view, "#confirm-reset-dialog")
+
+      view |> element("#reset-password-#{own_m.id}") |> render_click()
       view |> element("#cancel-reset") |> render_click()
       refute has_element?(view, "#confirm-reset-dialog")
 
@@ -615,6 +625,8 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
       refute has_element?(view, "#confirm-reset-dialog")
       assert has_element?(view, "#temporary-password-dialog", "Mot de passe réinitialisé")
+      # shown once: no Escape or backdrop, only « C'est noté » closes it
+      refute has_element?(view, "#temporary-password-dialog-box[phx-window-keydown]")
       new_password = view |> element("#temporary-password") |> render()
       assert new_password =~ ~r/[a-z]{4}-[a-z]{4}-\d{4}/
       refute new_password =~ first

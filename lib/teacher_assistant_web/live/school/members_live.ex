@@ -6,6 +6,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   alias TeacherAssistantWeb.Dates
 
   import TeacherAssistantWeb.Drawer
+  import TeacherAssistantWeb.Modal
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -597,46 +598,38 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   defp confirm_reset_dialog(assigns) do
     ~H"""
-    <dialog
+    <.modal
       id="confirm-reset-dialog"
-      class="modal modal-open"
-      aria-labelledby="confirm-reset-title"
-      phx-window-keydown="cancel_reset_password"
-      phx-key="escape"
+      title={gettext("Nouveau mot de passe pour %{name} ?", name: @candidate.name)}
+      on_close="cancel_reset_password"
     >
-      <div class="modal-box space-y-3">
-        <h3 id="confirm-reset-title" class="text-lg font-semibold">
-          {gettext("Nouveau mot de passe pour %{name} ?", name: @candidate.name)}
-        </h3>
-        <p class="text-sm text-base-content/80">
-          {gettext(
-            "L'ancien mot de passe cesse de fonctionner et %{name} est déconnecté·e de tous ses appareils. Vous verrez le nouveau mot de passe temporaire une seule fois.",
-            name: @candidate.name
-          )}
-        </p>
-        <div class="modal-action">
-          <button
-            id="cancel-reset"
-            type="button"
-            class="btn btn-ghost"
-            phx-click="cancel_reset_password"
-          >
-            {gettext("Annuler")}
-          </button>
-          <button
-            id="confirm-reset"
-            type="button"
-            class="btn btn-warning"
-            phx-click="reset_password"
-            phx-value-id={@candidate.id}
-            phx-disable-with={gettext("Réinitialisation…")}
-          >
-            {gettext("Réinitialiser")}
-          </button>
-        </div>
-      </div>
-      <div class="modal-backdrop" phx-click="cancel_reset_password"></div>
-    </dialog>
+      <p class="text-sm text-base-content/80">
+        {gettext(
+          "L'ancien mot de passe cesse de fonctionner et %{name} est déconnecté·e de tous ses appareils. Vous verrez le nouveau mot de passe temporaire une seule fois.",
+          name: @candidate.name
+        )}
+      </p>
+      <:actions>
+        <button
+          id="cancel-reset"
+          type="button"
+          class="btn btn-ghost"
+          phx-click="cancel_reset_password"
+        >
+          {gettext("Annuler")}
+        </button>
+        <button
+          id="confirm-reset"
+          type="button"
+          class="btn btn-warning"
+          phx-click="reset_password"
+          phx-value-id={@candidate.id}
+          phx-disable-with={gettext("Réinitialisation…")}
+        >
+          {gettext("Réinitialiser")}
+        </button>
+      </:actions>
+    </.modal>
     """
   end
 
@@ -644,94 +637,87 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   defp temporary_password_dialog(assigns) do
     ~H"""
-    <dialog
+    <%!-- no Escape or backdrop: the password is shown once, so it is closed on purpose --%>
+    <.modal
       id="temporary-password-dialog"
-      class="modal modal-open"
-      aria-labelledby="temporary-password-title"
+      class="max-w-lg"
+      eyebrow={
+        if @info.kind == :created,
+          do: gettext("Compte créé"),
+          else: gettext("Mot de passe réinitialisé")
+      }
+      title={gettext("Mot de passe temporaire de %{name}", name: @info.name)}
     >
-      <div class="modal-box max-w-lg space-y-4">
+      <div class="space-y-3 rounded-box border border-base-300 bg-base-200/60 p-4">
+        <div :if={@info.login}>
+          <p class="ta-eyebrow text-base-content/70">{gettext("Identifiant")}</p>
+          <p class="ta-num mt-0.5">{@info.login}</p>
+        </div>
         <div>
-          <p class="ta-eyebrow">
-            {if @info.kind == :created,
-              do: gettext("Compte créé"),
-              else: gettext("Mot de passe réinitialisé")}
-          </p>
-          <h3 id="temporary-password-title" class="mt-1 text-lg font-semibold">
-            {gettext("Mot de passe temporaire de %{name}", name: @info.name)}
-          </h3>
-        </div>
-
-        <div class="space-y-3 rounded-box border border-base-300 bg-base-200/60 p-4">
-          <div :if={@info.login}>
-            <p class="ta-eyebrow text-base-content/70">{gettext("Identifiant")}</p>
-            <p class="ta-num mt-0.5">{@info.login}</p>
-          </div>
-          <div>
-            <p class="ta-eyebrow text-base-content/70">{gettext("Mot de passe temporaire")}</p>
-            <p
-              id="temporary-password"
-              class="ta-num mt-1 select-all break-all text-2xl font-semibold tracking-wide"
-            >
-              {@info.value}
-            </p>
-          </div>
-          <p id="temporary-password-message" hidden>{@info.message}</p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="btn btn-sm"
-              phx-click={JS.dispatch("phx:copy", to: "#temporary-password")}
-            >
-              <.icon name="hero-clipboard-document" class="size-4" />
-              {gettext("Copier le mot de passe")}
-            </button>
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm"
-              phx-click={JS.dispatch("phx:copy", to: "#temporary-password-message")}
-            >
-              <.icon name="hero-chat-bubble-left-ellipsis" class="size-4" />
-              {gettext("Copier le message complet")}
-            </button>
-          </div>
-        </div>
-
-        <ol class="list-decimal space-y-1 pl-5 text-sm text-base-content/80">
-          <li>
-            {gettext(
-              "Transmettez le numéro et ce mot de passe à %{name} — de vive voix, par SMS ou WhatsApp.",
-              name: @info.name
-            )}
-          </li>
-          <li>
-            {gettext("Valable 7 jours, jusqu'au %{date}.", date: Dates.long(@info.expires_on))}
-          </li>
-          <li>
-            {gettext("À la première connexion, %{name} choisira son propre mot de passe.",
-              name: @info.name
-            )}
-          </li>
-        </ol>
-
-        <div role="note" class="alert alert-warning alert-soft text-sm">
-          <.icon name="hero-exclamation-triangle" class="size-5" />
-          <span>
-            {gettext("Il ne sera plus affiché. En cas d'oubli : « Réinitialiser le mot de passe ».")}
-          </span>
-        </div>
-
-        <div class="modal-action">
-          <button
-            id="close-temporary-password"
-            type="button"
-            class="btn btn-primary"
-            phx-click="close_temporary_password"
+          <p class="ta-eyebrow text-base-content/70">{gettext("Mot de passe temporaire")}</p>
+          <p
+            id="temporary-password"
+            class="ta-num mt-1 select-all break-all text-2xl font-semibold tracking-wide"
           >
-            {gettext("C'est noté")}
+            {@info.value}
+          </p>
+        </div>
+        <p id="temporary-password-message" hidden>{@info.message}</p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="btn btn-sm"
+            phx-click={JS.dispatch("phx:copy", to: "#temporary-password")}
+          >
+            <.icon name="hero-clipboard-document" class="size-4" />
+            {gettext("Copier le mot de passe")}
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            phx-click={JS.dispatch("phx:copy", to: "#temporary-password-message")}
+          >
+            <.icon name="hero-chat-bubble-left-ellipsis" class="size-4" />
+            {gettext("Copier le message complet")}
           </button>
         </div>
       </div>
-    </dialog>
+
+      <ol class="list-decimal space-y-1 pl-5 text-sm text-base-content/80">
+        <li>
+          {gettext(
+            "Transmettez le numéro et ce mot de passe à %{name} — de vive voix, par SMS ou WhatsApp.",
+            name: @info.name
+          )}
+        </li>
+        <li>
+          {gettext("Valable 7 jours, jusqu'au %{date}.", date: Dates.long(@info.expires_on))}
+        </li>
+        <li>
+          {gettext("À la première connexion, %{name} choisira son propre mot de passe.",
+            name: @info.name
+          )}
+        </li>
+      </ol>
+
+      <div role="note" class="alert alert-warning alert-soft text-sm">
+        <.icon name="hero-exclamation-triangle" class="size-5" />
+        <span>
+          {gettext("Il ne sera plus affiché. En cas d'oubli : « Réinitialiser le mot de passe ».")}
+        </span>
+      </div>
+
+      <:actions>
+        <button
+          id="close-temporary-password"
+          type="button"
+          class="btn btn-primary"
+          phx-click="close_temporary_password"
+        >
+          {gettext("C'est noté")}
+        </button>
+      </:actions>
+    </.modal>
     """
   end
 
