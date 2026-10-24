@@ -1,0 +1,93 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:181
+#, elixir-autogen, elixir-format
+msgid "Adresse e-mail"
+msgstr "Email address"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:184
+#, elixir-autogen, elixir-format
+msgid "Confirmer le mot de passe"
+msgstr "Confirm password"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:153
+#, elixir-autogen, elixir-format
+msgid "Connexion…"
+msgstr "Signing in…"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:160
+#, elixir-autogen, elixir-format
+msgid "Création du compte…"
+msgstr "Creating your account…"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:159
+#, elixir-autogen, elixir-format
+msgid "Créer mon compte"
+msgstr "Create my account"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:140
+#, elixir-autogen, elixir-format
+msgid "Créer un compte"
+msgstr "Create an account"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:167
+#, elixir-autogen, elixir-format
+msgid "Envoi…"
+msgstr "Sending…"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:166
+#, elixir-autogen, elixir-format
+msgid "Envoyer le lien"
+msgstr "Send the link"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:183
+#, elixir-autogen, elixir-format
+msgid "Mot de passe"
+msgstr "Password"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:141
+#, elixir-autogen, elixir-format
+msgid "Mot de passe oublié ?"
+msgstr "Forgot your password?"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:220
+#, elixir-autogen, elixir-format
+msgid "Nom et prénom"
+msgstr "Full name"
+
+#: lib/teacher_assistant_web/phone_auth_overrides.ex:12
+#, elixir-autogen, elixir-format
+msgid "Numéro de téléphone"
+msgstr "Phone number"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:227
+#, elixir-autogen, elixir-format
+msgid "Prénom Nom"
+msgstr "First Last"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:199
+#, elixir-autogen, elixir-format
+msgid "Réinitialisation…"
+msgstr "Resetting…"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:139
+#: lib/teacher_assistant_web/auth_overrides.ex:152
+#, elixir-autogen, elixir-format
+msgid "Se connecter"
+msgstr "Sign in"
+
+#: lib/teacher_assistant_web/auth_overrides.ex:170
+#, elixir-autogen, elixir-format
+msgid "Si cette adresse existe, un lien de réinitialisation vient de lui être envoyé."
+msgstr "If this address exists, a reset link has just been sent to it."

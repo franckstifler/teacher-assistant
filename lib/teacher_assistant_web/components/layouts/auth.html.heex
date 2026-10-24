@@ -86,15 +86,22 @@
     color: #B3452E;
   }
 
-  .ta-auth-paper .ta-remember-row {
-    display: flex;
+  /* FR / EN switch, bottom of the brand panel */
+  .ta-auth-paper .ta-auth-locale { display: flex; gap: 0.25rem; }
+  .ta-auth-paper .ta-auth-locale a {
+    min-height: 2.25rem;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    margin: -0.2rem 0 0.9rem;
-    font-size: 0.82rem;
-    color: #44514F;
-    cursor: pointer;
+    padding: 0 0.6rem;
+    border-radius: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #C9D3CF;
+    transition: background-color 120ms, color 120ms;
   }
+  .ta-auth-paper .ta-auth-locale a:hover { color: #FFFFFF; background: #24332F; }
+  .ta-auth-paper .ta-auth-locale a[aria-current="true"] { color: #172321; background: #E8E5DC; }
+
   .ta-auth-paper .ta-toggler-row {
     display: flex;
     flex-wrap: wrap;
@@ -297,6 +304,11 @@
     background: #FBF3E1;
     color: #6E4E12;
   }
+  .ta-auth-paper .ta-auth-alert--success {
+    border-color: #A9D5C4;
+    background: #E6F4EE;
+    color: #0B5A46;
+  }
   .ta-auth-paper .ta-auth-alert__icon { flex: none; margin-top: 0.1rem; }
   .ta-auth-paper .ta-auth-alert__title { margin: 0; font-size: 0.84rem; font-weight: 700; }
   .ta-auth-paper .ta-auth-alert__text { margin: 0.2rem 0 0; font-size: 0.8rem; line-height: 1.5; }
@@ -377,10 +389,10 @@
         class="ta-mono"
         style="margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8FC9B4"
       >
-        Établissements secondaires · Cameroun
+        {gettext("Établissements secondaires · Cameroun")}
       </p>
       <h2 style="margin: 0.8rem 0 0; font-size: 1.85rem; font-weight: 650; line-height: 1.15; color: #FFFFFF">
-        Tout l'établissement sur un seul tableau.
+        {gettext("Tout l'établissement sur un seul tableau.")}
       </h2>
       <div class="mt-6 flex flex-col gap-3">
         <span
@@ -399,9 +411,21 @@
       </div>
     </div>
 
-    <p class="ta-mono" style="margin: 0; font-size: 0.72rem; color: #778A84">
-      APC / CBA · Francophone &amp; anglophone · FR / EN
-    </p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <p class="ta-mono" style="margin: 0; font-size: 0.72rem; color: #778A84">
+        {gettext("APC / CBA · Francophone & anglophone")}
+      </p>
+      <nav id="auth-locale" class="ta-auth-locale" aria-label={gettext("Langue")}>
+        <.link
+          :for={{code, name} <- [{"fr", "Français"}, {"en", "English"}]}
+          href={~p"/locale/#{code}"}
+          lang={code}
+          aria-current={Gettext.get_locale(TeacherAssistantWeb.Gettext) == code && "true"}
+        >
+          {name}
+        </.link>
+      </nav>
+    </div>
   </aside>
 
   <%!-- form column --%>

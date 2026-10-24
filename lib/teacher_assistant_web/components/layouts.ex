@@ -759,13 +759,13 @@ defmodule TeacherAssistantWeb.Layouts do
   #     (`Account.PasswordLive` → `:own_password`). Such a page renders its own
   #     column heading, so its copy has no title/foot, only the brand `panel`.
 
-  @auth_points [
-    "L'appel en un geste, même sur téléphone",
-    "Notes et bulletins pour toutes les classes",
-    "La couverture du programme, toute l'année"
-  ]
-
-  defp auth_points, do: @auth_points
+  defp auth_points do
+    [
+      gettext("L'appel en un geste, même sur téléphone"),
+      gettext("Notes et bulletins pour toutes les classes"),
+      gettext("La couverture du programme, toute l'année")
+    ]
+  end
 
   defp auth_screen(assigns) do
     cond do
@@ -798,44 +798,51 @@ defmodule TeacherAssistantWeb.Layouts do
 
       :register ->
         %{
-          eyebrow: "Créer un compte",
-          title: "Commencez par votre compte",
+          eyebrow: gettext("Créer un compte"),
+          title: gettext("Commencez par votre compte"),
           sub:
-            "Ce compte sera celui du responsable de l'établissement. Vous inviterez votre équipe juste après.",
+            gettext(
+              "Ce compte sera celui du responsable de l'établissement. Vous inviterez votre équipe juste après."
+            ),
           foot:
-            "Nous n'utilisons votre e-mail que pour l'accès au service et les notifications de votre établissement."
+            gettext(
+              "Nous n'utilisons votre e-mail que pour l'accès au service et les notifications de votre établissement."
+            )
         }
 
       :reset_request ->
         %{
-          eyebrow: "Mot de passe oublié",
-          title: "Recevez un lien de réinitialisation",
-          sub: "Nous envoyons un lien valable une heure à l'adresse de votre compte.",
+          eyebrow: gettext("Mot de passe oublié"),
+          title: gettext("Recevez un lien de réinitialisation"),
+          sub: gettext("Nous envoyons un lien valable une heure à l'adresse de votre compte."),
           foot:
-            "Si l'adresse n'existe pas, aucun message n'est envoyé — pour protéger les comptes de votre établissement."
+            gettext(
+              "Si l'adresse n'existe pas, aucun message n'est envoyé — pour protéger les comptes de votre établissement."
+            )
         }
 
       :reset_confirm ->
         %{
-          eyebrow: "Nouveau mot de passe",
-          title: "Choisissez un nouveau mot de passe",
-          sub: "Votre nouveau mot de passe doit contenir au moins 8 caractères.",
-          foot: "Ce lien de réinitialisation n'est valable qu'une seule fois."
+          eyebrow: gettext("Nouveau mot de passe"),
+          title: gettext("Choisissez un nouveau mot de passe"),
+          sub: gettext("Votre nouveau mot de passe doit contenir au moins 8 caractères."),
+          foot: gettext("Ce lien de réinitialisation n'est valable qu'une seule fois.")
         }
 
       :magic_sign_in ->
         %{
-          eyebrow: "Connexion",
-          title: "Connexion en cours",
+          eyebrow: gettext("Connexion"),
+          title: gettext("Connexion en cours"),
           sub: nil,
-          foot: "Vous allez être redirigé·e automatiquement."
+          foot: gettext("Vous allez être redirigé·e automatiquement.")
         }
 
       :sign_in ->
         %{
-          eyebrow: "Connexion",
-          title: "Se connecter",
-          sub: "Entrez le numéro de téléphone ou l'adresse fournis par votre établissement.",
+          eyebrow: gettext("Connexion"),
+          title: gettext("Se connecter"),
+          sub:
+            gettext("Entrez le numéro de téléphone ou l'adresse fournis par votre établissement."),
           # the page renders its own footer line (« Inscrire mon établissement »)
           foot: nil
         }

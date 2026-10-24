@@ -24,19 +24,22 @@ defmodule TeacherAssistantWeb.AuthOverrides do
   just visually hidden (`hidden`) on the sign-in/register pages, along
   with the divider that used to separate it from the password form.
 
-  Password strategy notes:
+  The copy is French and goes through Gettext: every text below is marked
+  with `dgettext_noop("auth", …)` (so `mix gettext.extract` collects it into
+  the `auth` domain) and the auth routes pass `gettext_backend:
+  {TeacherAssistantWeb.Gettext, "auth"}`, so the library translates it at
+  render time in the visitor's locale. Two exceptions, printed as given by
+  the library: input placeholders, and the sign-out confirmation page
+  (sign-out is a DELETE from the menus, so that page is only reached by
+  typing its URL).
 
-    * "Rester connecté" is a best-effort, presentational-only checkbox —
-      the `password` strategy has no `remember_me` add-on configured on
-      `TeacherAssistant.Accounts.User`, so there's nothing to wire it to.
-      It's rendered via `sign_in_extra_component` and isn't part of the
-      submitted form (no `name`), so it can't corrupt sign-in params.
-    * "Mot de passe oublié ?" is real: the password strategy now has a
-      `resettable` block (see `TeacherAssistant.Accounts.User`), so the
-      request-reset step and the `/password-reset/:token` step both work.
+  "Mot de passe oublié ?" is real: the password strategy has a `resettable`
+  block (see `TeacherAssistant.Accounts.User`), so the request-reset step and
+  the `/password-reset/:token` step both work.
   """
   use AshAuthentication.Phoenix.Overrides
   use Phoenix.Component
+  use Gettext, backend: TeacherAssistantWeb.Gettext
 
   alias AshAuthentication.Phoenix.{
     Components,
@@ -127,18 +130,17 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     set :root_class, "hidden"
   end
 
-  # --- password: French copy, boxed fields, remember-me + forgot-password ---
+  # --- password: French copy, boxed fields, forgot-password ---------------
 
   override Components.Password do
     set :root_class, "w-full"
     set :interstitial_class, "ta-toggler-row"
     set :toggler_class, nil
-    set :sign_in_toggle_text, "Se connecter"
-    set :register_toggle_text, "Créer un compte"
-    set :reset_toggle_text, "Mot de passe oublié ?"
+    set :sign_in_toggle_text, dgettext_noop("auth", "Se connecter")
+    set :register_toggle_text, dgettext_noop("auth", "Créer un compte")
+    set :reset_toggle_text, dgettext_noop("auth", "Mot de passe oublié ?")
     set :show_first, :sign_in
     set :hide_class, "hidden"
-    set :sign_in_extra_component, &__MODULE__.remember_me_extra/1
     set :register_extra_component, &__MODULE__.name_extra/1
     # the library's form + a page-level alert on failure (see the module)
     set :sign_in_form_module, TeacherAssistantWeb.Auth.SignInForm
@@ -147,25 +149,28 @@ defmodule TeacherAssistantWeb.AuthOverrides do
   override Components.Password.SignInForm do
     set :form_class, "flex flex-col"
     set :slot_class, nil
-    set :button_text, "Se connecter"
-    set :disable_button_text, "Connexion…"
+    set :button_text, dgettext_noop("auth", "Se connecter")
+    set :disable_button_text, dgettext_noop("auth", "Connexion…")
   end
 
   override Components.Password.RegisterForm do
     set :form_class, "flex flex-col"
     set :slot_class, nil
-    set :button_text, "Créer mon compte"
-    set :disable_button_text, "Création du compte…"
+    set :button_text, dgettext_noop("auth", "Créer mon compte")
+    set :disable_button_text, dgettext_noop("auth", "Création du compte…")
   end
 
   override Components.Password.ResetForm do
     set :form_class, "flex flex-col"
     set :slot_class, nil
-    set :button_text, "Envoyer le lien"
-    set :disable_button_text, "Envoi…"
+    set :button_text, dgettext_noop("auth", "Envoyer le lien")
+    set :disable_button_text, dgettext_noop("auth", "Envoi…")
 
     set :reset_flash_text,
-        "Si cette adresse existe, un lien de réinitialisation vient de lui être envoyé."
+        dgettext_noop(
+          "auth",
+          "Si cette adresse existe, un lien de réinitialisation vient de lui être envoyé."
+        )
   end
 
   override Components.Password.Input do
@@ -173,10 +178,10 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     set :label_class, "ta-field-label"
     set :input_class, nil
     set :input_class_with_error, "ta-field-input-error"
-    set :identity_input_label, "Adresse e-mail"
+    set :identity_input_label, dgettext_noop("auth", "Adresse e-mail")
     set :identity_input_placeholder, "prenom.nom@etablissement.cm"
-    set :password_input_label, "Mot de passe"
-    set :password_confirmation_input_label, "Confirmer le mot de passe"
+    set :password_input_label, dgettext_noop("auth", "Mot de passe")
+    set :password_confirmation_input_label, dgettext_noop("auth", "Confirmer le mot de passe")
     set :error_ul, "ta-error-list"
     set :error_li, nil
     set :input_debounce, 300
@@ -191,32 +196,15 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     # eyebrow, subtitle, field labels, reassurance footer) is French.
     set :form_class, "flex flex-col"
     set :spacer_class, "mb-1"
-    set :disable_button_text, "Réinitialisation…"
-  end
-
-  # --- best-effort "Rester connecté" checkbox --------------------------------
-  #
-  # Not wired to anything: the password strategy has no `remember_me`
-  # add-on configured, so there's no session field to bind this to. It has
-  # no `name`, so it's never submitted and can't affect the sign-in form.
-
-  attr :form, :any, default: nil
-
-  def remember_me_extra(assigns) do
-    ~H"""
-    <label class="ta-remember-row">
-      <input type="checkbox" />
-      <span>Rester connecté</span>
-    </label>
-    """
+    set :disable_button_text, dgettext_noop("auth", "Réinitialisation…")
   end
 
   # --- "Nom et prénom" field, register-only ----------------------------------
   #
   # `User.name` is a plain nullable attribute (see
   # `TeacherAssistant.Accounts.User`) accepted by `:register_with_password`.
-  # Rendered via `register_extra_component` (the same extension point as
-  # `remember_me_extra` above), so it's real, bound, submitted form input —
+  # Rendered via `register_extra_component`, so it's real, bound, submitted
+  # form input —
   # boxed the same way as the email/password fields (`.ta-field-wrap` /
   # `.ta-field-label`, styled by `.ta-auth-paper input[type="text"]` in
   # `layouts/auth.html.heex`) — and it only ever renders on the register
@@ -229,14 +217,14 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     ~H"""
     <div class="ta-field-wrap">
       <label for={Phoenix.HTML.Form.input_id(@form, :name)} class="ta-field-label">
-        Nom et prénom
+        {dgettext("auth", "Nom et prénom")}
       </label>
       <input
         type="text"
         name={Phoenix.HTML.Form.input_name(@form, :name)}
         id={Phoenix.HTML.Form.input_id(@form, :name)}
         value={Phoenix.HTML.Form.input_value(@form, :name)}
-        placeholder="Prénom Nom"
+        placeholder={dgettext("auth", "Prénom Nom")}
         autocomplete="name"
         phx-debounce="300"
       />

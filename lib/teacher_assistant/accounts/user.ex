@@ -24,6 +24,8 @@ defmodule TeacherAssistant.Accounts.User do
 
         resettable do
           sender TeacherAssistant.Accounts.User.Senders.SendPasswordResetEmail
+          # the reset page promises « un lien valable une heure »
+          token_lifetime {1, :hours}
         end
       end
 

@@ -16,7 +16,8 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
   `AuthController` (wrong credentials, expired temporary password) is shown as
   the alert block above the forms, and so is a submission the library refuses
   in place (`TeacherAssistantWeb.Auth.SignInForm` reports it) — one generic
-  message, never the raw field error.
+  message, never the raw field error. The reset form's « link sent » flash
+  shows the same way, as a success block.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -65,6 +66,11 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
 
   def handle_info({:sign_in_failed, _strategy_name, _reason}, socket) do
     {:noreply, assign(socket, :alert, wrong_credentials_alert())}
+  end
+
+  # The library's reset form reports « link sent » this way (the reset step shows it).
+  def handle_info({:put_flash, kind, message}, socket) do
+    {:noreply, put_flash(socket, kind, message)}
   end
 
   @impl true
@@ -120,6 +126,19 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
         <div>
           <p class="ta-auth-alert__title">{@alert.title}</p>
           <p :if={@alert.text} class="ta-auth-alert__text">{@alert.text}</p>
+        </div>
+      </div>
+
+      <div
+        :if={@live_action == :reset && Phoenix.Flash.get(@flash, :info)}
+        id="reset-sent"
+        class="ta-auth-alert ta-auth-alert--success"
+        role="status"
+      >
+        <.icon name="hero-envelope" class="ta-auth-alert__icon size-4" />
+        <div>
+          <p class="ta-auth-alert__title">{gettext("Demande envoyée")}</p>
+          <p class="ta-auth-alert__text">{Phoenix.Flash.get(@flash, :info)}</p>
         </div>
       </div>
 

@@ -20,7 +20,8 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
              "Entrez le numéro de téléphone ou l&#39;adresse fournis par votre établissement."
 
     assert html =~ "Mot de passe oublié ?"
-    assert html =~ "Rester connecté"
+    # no decorative « Rester connecté »: the session ends with the browser
+    refute html =~ "Rester connecté"
     assert html =~ "Tout l&#39;établissement sur un seul tableau."
     # magic link is no longer rendered on /sign-in (its routes stay); the
     # register/reset forms not matching the live_action are hidden via CSS
@@ -57,6 +58,38 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
 
     assert html =~ "Recevez un lien de réinitialisation"
     assert html =~ "Envoyer le lien"
+  end
+
+  test "requesting a reset link confirms it on the page", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/reset")
+
+    view
+    |> form("#user-password-request-password-reset-with-password",
+      user: %{email: "nobody@example.test"}
+    )
+    |> render_submit()
+
+    assert view |> element("#reset-sent") |> render() =~
+             "Si cette adresse existe, un lien de réinitialisation vient de lui être envoyé."
+  end
+
+  test "the auth pages speak English once the visitor picks it", %{conn: conn} do
+    conn = Phoenix.ConnTest.init_test_session(conn, %{locale: "en"})
+
+    {:ok, view, html} = live(conn, ~p"/sign-in")
+    assert html =~ "Enter the phone number or email address your school gave you."
+    assert html =~ "Phone number"
+    assert html =~ "Password"
+    assert html =~ "Roll call in one tap, even on a phone"
+    assert has_element?(view, ~s(#auth-locale a[href="/locale/fr"]), "Français")
+    assert has_element?(view, ~s(#auth-locale a[aria-current="true"]), "English")
+
+    {:ok, _view, html} = live(conn, ~p"/reset")
+    assert html =~ "Get a reset link"
+    assert html =~ "Send the link"
+
+    {:ok, _view, html} = live(conn, ~p"/password-reset/some-token")
+    assert html =~ "Choose a new password"
   end
 
   test "token-based password reset page renders", %{conn: conn} do
