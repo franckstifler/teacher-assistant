@@ -161,6 +161,25 @@ h1, h2, h3, .ta-display {
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }
 
+/* A pushed button waiting on the server. LiveView already disables it and
+   marks it phx-submit-loading / phx-click-loading; after a short beat it also
+   shows a spinner, so a fast reply never flickers and a slow one (a payment,
+   an import, a batch of bulletins) visibly works. */
+.btn:is(.phx-submit-loading, .phx-click-loading) { cursor: progress; }
+.btn:is(.phx-submit-loading, .phx-click-loading)::after {
+  content: "";
+  flex: none;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: ta-pending-show 0s 300ms forwards, ta-pending-spin 700ms linear infinite;
+}
+@keyframes ta-pending-show { to { opacity: 1; } }
+@keyframes ta-pending-spin { to { transform: rotate(360deg); } }
+
 .card {
   border: 1px solid var(--color-base-300);
   background: var(--color-base-100);
@@ -811,6 +830,9 @@ form[data-dirty] .ta-savebar {
 @media (prefers-reduced-motion: reduce) {
   .btn, .ta-ribbon__fill { transition: none; }
   .btn:hover { transform: none; }
+  .btn:is(.phx-submit-loading, .phx-click-loading)::after {
+    animation: ta-pending-show 0s 300ms forwards;
+  }
   .ta-rail__item { transition: none; }
   .ta-sheet:popover-open { animation: none; }
   .ta-landing { scroll-behavior: auto; }
