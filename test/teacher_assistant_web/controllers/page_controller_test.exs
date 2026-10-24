@@ -25,6 +25,26 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     refute html =~ ~s(id="portes")
   end
 
+  test "GET / spares phones the desktop screenshots they never show", %{conn: conn} do
+    pictures =
+      conn
+      |> get(~p"/")
+      |> html_response(200)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("picture")
+
+    for shot <- ~w(dash-desktop dash-desktop-light bulletins-desktop) do
+      picture =
+        Enum.find(
+          pictures,
+          &(LazyHTML.attribute(&1["img"], "src") == ["/images/landing/#{shot}.webp"])
+        )
+
+      assert [media] = picture |> LazyHTML.query("source") |> LazyHTML.attribute("media")
+      assert media =~ "max-width"
+    end
+  end
+
   test "GET / links to every entry point the front door needs", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 

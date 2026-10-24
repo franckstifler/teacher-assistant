@@ -40,21 +40,37 @@ defmodule TeacherAssistantWeb.PageHTML do
   attr :class, :any, default: nil
   attr :eager, :boolean, default: false
 
+  attr :from, :atom,
+    values: [nil, :sm, :md],
+    default: nil,
+    doc: "the breakpoint the shot is shown from; below it the browser fetches a blank pixel"
+
   @doc "A desktop screen in a plain window frame."
   def window_shot(assigns) do
     ~H"""
     <div class={["ta-window", @class]}>
-      <img
-        src={@src}
-        alt={@alt}
-        width={@width}
-        height={@height}
-        loading={if @eager, do: "eager", else: "lazy"}
-        decoding="async"
-      />
+      <picture>
+        <source :if={@from} media={narrower_than(@from)} srcset={blank_pixel()} />
+        <img
+          src={@src}
+          alt={@alt}
+          width={@width}
+          height={@height}
+          loading={if @eager, do: "eager", else: "lazy"}
+          decoding="async"
+        />
+      </picture>
     </div>
     """
   end
+
+  # Tailwind's sm (40rem) and md (48rem), minus a hair so the two never overlap.
+  defp narrower_than(:sm), do: "(max-width: 39.99rem)"
+  defp narrower_than(:md), do: "(max-width: 47.99rem)"
+
+  # A transparent 1×1 GIF: a hidden <img> is still downloaded, its <source> is not.
+  defp blank_pixel,
+    do: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
 
   attr :items, :list, required: true
 
