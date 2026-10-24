@@ -18,7 +18,7 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
   defp conn_for(school, user) do
     build_conn()
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_id, user.id)
+    |> put_user_in_session(user)
     |> Plug.Conn.put_session(:workspace_id, school.id)
   end
 

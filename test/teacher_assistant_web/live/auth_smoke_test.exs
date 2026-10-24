@@ -116,5 +116,7 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
       |> TeacherAssistantWeb.AuthController.success({:password, :reset}, user, nil)
 
     assert redirected_to(conn) == "/school"
+    # revoking this person's sessions disconnects the live pages of this one
+    assert get_session(conn, :live_socket_id) == "users_socket:#{user.id}"
   end
 end

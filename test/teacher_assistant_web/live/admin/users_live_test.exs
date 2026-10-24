@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.Admin.UsersLiveTest do
     conn =
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, op.id)
+      |> put_user_in_session(op)
 
     %{conn: conn, op: op}
   end

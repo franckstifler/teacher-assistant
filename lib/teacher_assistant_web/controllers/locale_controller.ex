@@ -23,10 +23,7 @@ defmodule TeacherAssistantWeb.LocaleController do
     end
   end
 
-  # Phone accounts sign in through the session's `user_id`, not AshAuthentication's assign.
   defp fallback_path(conn) do
-    if conn.assigns[:current_user] || get_session(conn, :user_id),
-      do: ~p"/school",
-      else: ~p"/"
+    if conn.assigns[:current_user], do: ~p"/school", else: ~p"/"
   end
 end

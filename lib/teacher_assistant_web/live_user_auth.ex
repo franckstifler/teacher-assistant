@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   """
 
   import Phoenix.Component
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.Workspaces
   alias TeacherAssistant.Scope
   use TeacherAssistantWeb, :verified_routes
@@ -13,7 +12,6 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   def session_context(conn) do
     %{
       "workspace_id" => Plug.Conn.get_session(conn, :workspace_id),
-      "user_id" => Plug.Conn.get_session(conn, :user_id),
       "context_id" => Plug.Conn.get_session(conn, :context_id),
       "locale" => Plug.Conn.get_session(conn, :locale),
       "space" => Plug.Conn.get_session(conn, :space)
@@ -158,7 +156,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   end
 
   defp assign_scope(socket, session) do
-    user = socket.assigns[:current_user] || Accounts.session_user(session["user_id"])
+    user = socket.assigns[:current_user]
     locale = session["locale"] || "fr"
     Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
 

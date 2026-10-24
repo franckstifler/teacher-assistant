@@ -66,7 +66,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
 
     build_conn()
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_id, member.current_user.id)
+    |> put_user_in_session(member.current_user)
     |> Plug.Conn.put_session(:workspace_id, school.id)
   end
 

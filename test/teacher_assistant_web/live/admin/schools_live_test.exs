@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLiveTest do
     do:
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, user.id)
+      |> put_user_in_session(user)
 
   test "a non-admin is redirected", %{conn: conn} do
     user = TeacherFixtures.user_fixture()

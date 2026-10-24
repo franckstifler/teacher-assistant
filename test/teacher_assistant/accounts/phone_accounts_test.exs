@@ -361,8 +361,11 @@ defmodule TeacherAssistant.Accounts.PhoneAccountsTest do
 
       {:ok, signed_in} = sign_in_by_phone("677123456", old)
       token = signed_in.__metadata__.token
+      TeacherAssistantWeb.Endpoint.subscribe(Accounts.live_socket_id(user))
 
       assert {:ok, new} = Accounts.reset_member_password(scope, membership_of(scope, user))
+      # their open pages are dropped now, not at their next reconnect
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
       assert new != old
       assert {:error, _} = sign_in_by_phone("677123456", old)
       assert {:ok, _} = sign_in_by_phone("677123456", new)

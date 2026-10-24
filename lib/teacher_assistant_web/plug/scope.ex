@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.Plug.Scope do
   @moduledoc """
   Assigns `current_user` and `current_scope` for controller routes, the way
   `TeacherAssistantWeb.LiveUserAuth` does for LiveViews: the signed-in user
-  (AshAuthentication's `current_user` assign, else the session `user_id`) and
+  (AshAuthentication's `current_user` assign, from the session token) and
   `Workspaces.session_scope/3` for the session's school and teaching context, with
   the member's role space (`TeacherAssistantWeb.Spaces.put_space/3`), without badges.
   Runs after `TeacherAssistantWeb.Plug.Locale`.
@@ -11,7 +11,6 @@ defmodule TeacherAssistantWeb.Plug.Scope do
 
   import Plug.Conn
 
-  alias TeacherAssistant.Accounts
   alias TeacherAssistant.Accounts.Workspaces
 
   @impl true
@@ -19,7 +18,7 @@ defmodule TeacherAssistantWeb.Plug.Scope do
 
   @impl true
   def call(conn, _opts) do
-    user = conn.assigns[:current_user] || Accounts.session_user(get_session(conn, :user_id))
+    user = conn.assigns[:current_user]
 
     scope =
       Workspaces.session_scope(

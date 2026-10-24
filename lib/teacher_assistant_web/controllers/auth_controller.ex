@@ -63,6 +63,7 @@ defmodule TeacherAssistantWeb.AuthController do
     conn
     |> delete_session(:return_to)
     |> store_in_session(user)
+    |> put_session(:live_socket_id, TeacherAssistant.Accounts.live_socket_id(user))
     # If your resource has a different name, update the assign name here (i.e :current_admin)
     |> assign(:current_user, user)
     |> put_flash(:info, message)
@@ -71,6 +72,12 @@ defmodule TeacherAssistantWeb.AuthController do
 
   def sign_out(conn, _params) do
     return_to = get_session(conn, :return_to) || ~p"/"
+
+    # Other tabs of this browser lose their session with the cookie: drop their
+    # live pages now rather than at their next reconnect. (Other devices just
+    # reconnect, still signed in.)
+    if user = conn.assigns[:current_user],
+      do: TeacherAssistant.Accounts.disconnect_live_pages(user)
 
     conn
     |> clear_session(:teacher_assistant)

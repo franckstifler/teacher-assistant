@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.Admin.JournalLiveTest do
     conn =
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, op.id)
+      |> put_user_in_session(op)
 
     {:ok, view, html} = live(conn, ~p"/admin/journal")
     assert html =~ "Impayé-#{ws.id}"
@@ -28,7 +28,7 @@ defmodule TeacherAssistantWeb.Admin.JournalLiveTest do
     conn =
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, op.id)
+      |> put_user_in_session(op)
 
     assert {:ok, _view, _html} = live(conn, ~p"/admin/journal?page=abc")
   end

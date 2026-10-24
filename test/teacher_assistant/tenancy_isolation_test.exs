@@ -25,7 +25,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
       |> Ash.Query.filter(workspace_id == ^school.id)
       |> Ash.read_one!(authorize?: false)
 
-    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
+    head = Ash.get!(TeacherAssistant.Accounts.User, profile.owner_user_id, authorize?: false)
     school_scope(head, school)
   end
 
@@ -453,7 +453,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     end
 
     membership = row_for(SchoolMembership, ctx.a, ctx)
-    user = TeacherAssistant.Accounts.session_user(membership.user_id)
+    user = Ash.get!(TeacherAssistant.Accounts.User, membership.user_id, authorize?: false)
 
     assert SchoolMembership
            |> Ash.Query.for_read(:active_for_user, %{user_id: user.id}, actor: user)
@@ -493,7 +493,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
 
   test "the scope exposes the workspace as tenant", %{a: a} do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope_of(a))
-    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
+    head = Ash.get!(TeacherAssistant.Accounts.User, profile.owner_user_id, authorize?: false)
     {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(head, a.id)
     assert Ash.Scope.ToOpts.get_tenant(scope) == {:ok, a.id}
   end
@@ -590,7 +590,7 @@ defmodule TeacherAssistant.TenancyIsolationTest do
     end
 
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope_of(a))
-    head = TeacherAssistant.Accounts.session_user(profile.owner_user_id)
+    head = Ash.get!(TeacherAssistant.Accounts.User, profile.owner_user_id, authorize?: false)
 
     assert {:ok, [_ | _]} =
              SchoolMembership

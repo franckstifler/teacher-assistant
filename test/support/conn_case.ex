@@ -42,7 +42,22 @@ defmodule TeacherAssistantWeb.ConnCase do
   def log_in_user(conn, user) do
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_id, user.id)
+    |> put_user_in_session(user)
+  end
+
+  @doc """
+  Signs `user` into a conn that already has a test session, the way
+  `AuthController` does: a stored token (so revoking it signs them out) and
+  the live socket id that revocation disconnects.
+  """
+  def put_user_in_session(conn, user) do
+    {:ok, token, _claims} = AshAuthentication.Jwt.token_for_user(user)
+
+    conn
+    |> AshAuthentication.Plug.Helpers.store_in_session(
+      Ash.Resource.put_metadata(user, :token, token)
+    )
+    |> Plug.Conn.put_session(:live_socket_id, TeacherAssistant.Accounts.live_socket_id(user))
   end
 
   @doc """
@@ -60,7 +75,7 @@ defmodule TeacherAssistantWeb.ConnCase do
     conn =
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, head.id)
+      |> put_user_in_session(head)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     {:ok, conn: conn, workspace: school, actor: head, year: year, scope: scope}

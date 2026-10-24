@@ -81,7 +81,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, vp.id)
+      |> put_user_in_session(vp)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     {:ok, view, html} = live(conn, ~p"/school/sequences")
@@ -193,7 +193,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     teacher_conn =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, other.id)
+      |> put_user_in_session(other)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     {:ok, tview, html} = live(teacher_conn, ~p"/school/settings")
@@ -307,7 +307,7 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, teacher.id)
+      |> put_user_in_session(teacher)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     year = Organization.current_academic_year(scope)

@@ -81,7 +81,7 @@ defmodule TeacherAssistantWeb.School.SettingsProfileTest do
       conn =
         conn
         |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:user_id, user.id)
+        |> put_user_in_session(user)
         |> Plug.Conn.put_session(:workspace_id, school.id)
 
       %{conn: conn, school: school, scope: school_scope(user, school)}

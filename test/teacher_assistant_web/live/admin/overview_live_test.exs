@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.Admin.OverviewLiveTest do
     do:
       conn
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, user.id)
+      |> put_user_in_session(user)
 
   test "an operator with no school opens the console", %{conn: conn} do
     op = TeacherFixtures.admin_user_fixture()

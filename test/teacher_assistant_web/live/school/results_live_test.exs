@@ -105,7 +105,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, other.id)
+      |> put_user_in_session(other)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
@@ -139,7 +139,7 @@ defmodule TeacherAssistantWeb.School.ResultsLiveTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, fm.id)
+      |> put_user_in_session(fm)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     {:ok, _view, html} = live(conn, ~p"/school/classes/#{cg.id}/results")

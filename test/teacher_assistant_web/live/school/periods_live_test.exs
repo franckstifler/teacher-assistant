@@ -122,7 +122,7 @@ defmodule TeacherAssistantWeb.School.PeriodsLiveTest do
     conn =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.init_test_session(%{})
-      |> Plug.Conn.put_session(:user_id, other.id)
+      |> put_user_in_session(other)
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/school/periods")

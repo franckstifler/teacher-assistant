@@ -62,7 +62,7 @@ defmodule TeacherAssistantWeb.CardVerifyControllerTest do
 
   test "card print embeds a QR per card", %{conn: conn, scope: scope, cg: cg} do
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Ateba Ben", sex: :m})
-    head = TeacherAssistant.Accounts.session_user(scope.current_user.id)
+    head = Ash.get!(TeacherAssistant.Accounts.User, scope.current_user.id, authorize?: false)
 
     html =
       conn
