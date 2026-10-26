@@ -421,6 +421,39 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
+  def handle_event("delete_assessment", _params, %{assigns: %{locked?: true}} = socket),
+    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
+
+  def handle_event("delete_assessment", _params, %{assigns: %{column: nil}} = socket),
+    do: {:noreply, socket}
+
+  # The selected column only: a combined course's goes from every member class.
+  def handle_event("delete_assessment", _params, socket) do
+    %{current_scope: scope, column: column, ctx: ctx, seq: seq} = socket.assigns
+
+    case Assessment.delete_assessments(scope, column_assessments(column)) do
+      :ok ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Évaluation supprimée."))
+         |> push_patch(to: ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")}
+
+      {:error, :has_marks} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Cette évaluation a déjà des notes : effacez-les avant de la supprimer.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Impossible de supprimer l'évaluation."))}
+    end
+  end
+
   def handle_event("save_mark", _params, %{assigns: %{locked?: true}} = socket),
     do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
@@ -723,6 +756,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               locked?={@locked?}
               columns={@columns}
               column={@column}
+              deletable?={@column != nil and !@locked? and no_marks?(@loaded)}
+              combined?={@course != nil}
               form={@new_assessment_form}
               assessment_types={@assessment_types}
               default_max={@default_max}
@@ -884,6 +919,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   attr :locked?, :boolean, required: true
   attr :columns, :list, required: true
   attr :column, :map, default: nil
+  attr :deletable?, :boolean, default: false
+  attr :combined?, :boolean, default: false
   attr :form, :any, required: true
   attr :assessment_types, :list, required: true
   attr :default_max, :any, required: true
@@ -904,6 +941,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         options={for a <- @columns, do: {a.label, a.id}}
       />
     </form>
+
+    <button
+      :if={@deletable?}
+      id="delete-assessment"
+      type="button"
+      phx-click="delete_assessment"
+      data-confirm={delete_confirm(@column, @combined?)}
+      class="btn btn-ghost mb-2 gap-1.5 text-error transition-colors hover:bg-error/10"
+    >
+      <.icon name="hero-trash" class="size-4" />
+      {gettext("Supprimer")}
+    </button>
 
     <.form
       :if={@seq && !@locked?}
@@ -947,6 +996,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     </.form>
     """
   end
+
+  # Shown students only; a mark of an exempt student still makes the server refuse.
+  defp no_marks?(loaded), do: Enum.all?(loaded, fn {_id, text} -> text in [nil, ""] end)
+
+  defp delete_confirm(column, false),
+    do: gettext("Supprimer l'évaluation « %{label} » ?", label: column.label)
+
+  defp delete_confirm(column, true),
+    do:
+      gettext("Supprimer l'évaluation « %{label} » de toutes les classes du cours ?",
+        label: column.label
+      )
 
   attr :seq, :map, required: true
   attr :assessment, :map, default: nil

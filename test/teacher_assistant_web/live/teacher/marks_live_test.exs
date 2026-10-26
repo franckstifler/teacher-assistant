@@ -42,6 +42,43 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert Decimal.equal?(m.score, Decimal.new("15"))
   end
 
+  test "deletes an assessment created by mistake, while it has no marks", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    scope: scope
+  } do
+    {:ok, keep} = Assessment.create_assessment(scope, ctx, seq, %{label: "Devoir 2"})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert view |> element("#delete-assessment") |> render_click() =~ "Évaluation supprimée."
+    assert Enum.map(Assessment.list_assessments(scope, ctx, seq), & &1.id) == [keep.id]
+    assert has_element?(view, "#marks-table th", "Devoir 2")
+  end
+
+  test "no delete once a mark is entered", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a,
+    s1: s1,
+    scope: scope
+  } do
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
+
+    assert has_element?(view, "#delete-assessment")
+    blur(view, s1.id, "15")
+    refute has_element?(view, "#delete-assessment")
+
+    # A stale page (the button still shown elsewhere) is refused by the server.
+    assert render_hook(view, "delete_assessment", %{}) =~ "a déjà des notes"
+    assert [_] = Assessment.list_assessments(scope, ctx, seq)
+  end
+
   test "rejects an out-of-range mark with an error and saves nothing", %{
     conn: conn,
     ctx: ctx,

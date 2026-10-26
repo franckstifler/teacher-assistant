@@ -208,6 +208,30 @@ defmodule TeacherAssistant.Assessment do
     |> Ash.run_action()
   end
 
+  @doc """
+  Deletes an assessment created by mistake: all the given rows (a combined course's
+  column is one per member class) or none. Refused while any of them has a mark,
+  an absence included (`{:error, :has_marks}`); the destroy itself refuses a locked
+  séquence or another teacher's course.
+  """
+  def delete_assessments(%Scope{} = scope, assessments) when is_list(assessments) do
+    ids = Enum.map(assessments, & &1.id)
+
+    TeacherAssistant.Repo.transaction(fn ->
+      if Mark |> Ash.Query.filter(assessment_id in ^ids) |> Ash.exists?(scope: scope),
+        do: TeacherAssistant.Repo.rollback(:has_marks)
+
+      Enum.each(assessments, fn a ->
+        with {:error, error} <- Ash.destroy(a, scope: scope),
+             do: TeacherAssistant.Repo.rollback(error)
+      end)
+    end)
+    |> case do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
+    end
+  end
+
   def fetch_owned_assessment(%Scope{} = scope, id) do
     case Ash.get(Assessment, id, scope: scope) do
       {:ok, assessment} -> {:ok, assessment}

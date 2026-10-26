@@ -257,4 +257,24 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
              {tc_menu.id, seq.id} => "Dériver une fonction"
            }
   end
+
+  test "deleting an assessment removes it from every class of the course", %{
+    conn: conn,
+    tc_maco: tc_maco,
+    tc_menu: tc_menu,
+    course: course,
+    seq: seq,
+    scope: scope
+  } do
+    {:ok, _} = Assessment.create_combined_assessment(scope, course, seq, %{label: "Devoir 1"})
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
+
+    assert view |> element("#delete-assessment") |> render() =~ "toutes les classes"
+    view |> element("#delete-assessment") |> render_click()
+
+    assert Assessment.list_assessments(scope, tc_maco, seq) == []
+    assert Assessment.list_assessments(scope, tc_menu, seq) == []
+    assert has_element?(view, "#marks-empty")
+  end
 end
