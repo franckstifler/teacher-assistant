@@ -175,7 +175,10 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
                     <:item
                       id={"edit-holiday-#{h.id}"}
                       icon="hero-pencil-square"
-                      click={JS.push("edit", value: %{id: h.id})}
+                      click={
+                        JS.push("edit", value: %{id: h.id})
+                        |> JS.dispatch("phx:reveal", to: "#holiday-form")
+                      }
                     >
                       {gettext("Modifier")}
                     </:item>
@@ -203,7 +206,7 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
           id="holiday-form"
           phx-change="change"
           phx-submit="add"
-          class="grid items-end gap-2 rounded-box border border-base-300 bg-base-100 p-4 sm:grid-cols-4"
+          class="grid scroll-mt-20 items-end gap-2 rounded-box border border-base-300 bg-base-100 p-4 sm:grid-cols-4"
         >
           <.input field={@holiday_form[:label]} label={gettext("Libellé")} />
           <.input field={@holiday_form[:start_date]} type="date" label={gettext("Du")} />

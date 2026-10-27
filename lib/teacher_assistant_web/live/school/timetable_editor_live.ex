@@ -382,8 +382,18 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               do: gettext("Emploi du temps · %{class}", class: @cg.label),
               else: gettext("Emploi du temps")
           }
-          subtitle={gettext("Cliquez sur une case pour placer ou déplacer un cours.")}
         >
+          <:hint>
+            <%!-- the verb follows the pointer --%>
+            <span class="pointer-coarse:hidden">
+              {gettext("Cliquez sur une case pour placer ou déplacer un cours.")}
+            </span>
+            <span class="hidden pointer-coarse:inline">
+              {gettext(
+                "Touchez une case pour placer ou déplacer un cours. Sur ordinateur, toute la semaine tient à l'écran."
+              )}
+            </span>
+          </:hint>
           <:actions>
             <.link
               id="availability-link"

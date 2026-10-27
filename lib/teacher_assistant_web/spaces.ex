@@ -348,7 +348,7 @@ defmodule TeacherAssistantWeb.Spaces do
   defp tab_spec(:censeur),
     do: [
       {"sequences", gettext("Suivi"), %{}},
-      {"timetable-editor", gettext("Emploi du temps"), %{}},
+      {"timetable-editor", gettext("EDT"), %{}},
       {"classes", gettext("Classes"), %{}},
       {"bulletins", gettext("Bulletins"), %{}}
     ]
@@ -374,7 +374,7 @@ defmodule TeacherAssistantWeb.Spaces do
          badge: nil,
          match: ["/teacher/contexts"]
        }},
-      {"timetable-me", gettext("Emploi du temps"), %{}}
+      {"timetable-me", gettext("EDT"), %{}}
     ]
 
   defp tab_spec(_key), do: []

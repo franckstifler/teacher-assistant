@@ -99,6 +99,14 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
   defp fmt(%Decimal{} = d), do: d |> Decimal.round(2) |> Decimal.to_string()
   defp pct(rate), do: "#{round(rate * 100)}%"
 
+  # « 11.97 de moyenne » over « 100% de réussite » — the rate said, not a bare %.
+  defp by_sex(assigns) do
+    ~H"""
+    <p class="ta-num">{gettext("%{average} de moyenne", average: fmt(@group.class_average))}</p>
+    <p class="ta-num">{gettext("%{rate} de réussite", rate: pct(@group.pass_rate))}</p>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
@@ -181,21 +189,17 @@ defmodule TeacherAssistantWeb.School.ResultsLive do
           </p>
 
           <div class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-            <div class="ta-leaf">
+            <div class="ta-leaf col-span-2 sm:col-span-1">
               <p class="ta-eyebrow">{gettext("Effectif")}</p>
               <p class="ta-num">{@results.effectif}</p>
             </div>
             <div class="ta-leaf">
               <p class="ta-eyebrow">{gettext("Filles")}</p>
-              <p class="ta-num">
-                {fmt(@results.by_sex.f.class_average)} · {pct(@results.by_sex.f.pass_rate)}
-              </p>
+              <.by_sex group={@results.by_sex.f} />
             </div>
             <div class="ta-leaf">
               <p class="ta-eyebrow">{gettext("Garçons")}</p>
-              <p class="ta-num">
-                {fmt(@results.by_sex.m.class_average)} · {pct(@results.by_sex.m.pass_rate)}
-              </p>
+              <.by_sex group={@results.by_sex.m} />
             </div>
           </div>
 

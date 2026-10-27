@@ -68,6 +68,16 @@ window.addEventListener("phx:copy", (event) => {
   if (navigator.clipboard) navigator.clipboard.writeText(event.target.textContent.trim())
 })
 
+// Bring an element into view, e.g. a form a row's « Modifier » just filled further
+// down the page: JS.dispatch("phx:reveal", to: "#holiday-form"). Dropping focus
+// closes the « ⋯ » menu the click came from (a daisyUI dropdown stays open while
+// focused).
+window.addEventListener("phx:reveal", (event) => {
+  document.activeElement?.blur()
+  const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  event.target.scrollIntoView({behavior: smooth ? "smooth" : "auto", block: "start"})
+})
+
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session

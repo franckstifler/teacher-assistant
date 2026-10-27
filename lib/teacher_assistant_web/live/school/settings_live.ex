@@ -64,12 +64,14 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
 
         <section id="school-modules" class="ta-leaf space-y-2 p-4">
           <h2 class="font-semibold">{gettext("Modules")}</h2>
-          <ul class="flex flex-wrap gap-2">
+          <%!-- what is switched on, not controls: plain checked labels, nothing to tap --%>
+          <ul class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
             <li
               :for={key <- @current_scope.current_workspace.modules}
               id={"school-module-#{key}"}
-              class="badge badge-outline"
+              class="flex items-center gap-1.5"
             >
+              <.icon name="hero-check" class="size-4 text-primary" />
               {TeacherAssistant.Modules.label(key)}
             </li>
           </ul>

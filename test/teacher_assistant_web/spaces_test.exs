@@ -57,13 +57,13 @@ defmodule TeacherAssistantWeb.SpacesTest do
              ]
 
       assert tab_labels(:censeur, facts([:vice_principal])) ==
-               ["Suivi", "Emploi du temps", "Classes", "Bulletins"]
+               ["Suivi", "EDT", "Classes", "Bulletins"]
 
       assert tab_labels(:surveillant, facts([:discipline_master])) ==
                ["Journée", "Absences", "Élèves", "Sanctions"]
 
       assert tab_labels(:enseignant, facts([:teacher], teaches?: true)) ==
-               ["Aujourd'hui", "Mes cours", "Notes", "Emploi du temps"]
+               ["Aujourd'hui", "Mes cours", "Notes", "EDT"]
     end
 
     test "« Plus » holds the rest of the menu, never a primary tab" do
@@ -88,7 +88,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
     test "missing chosen items are topped up from the menu" do
       # a form master who does not teach: no « Ma journée », no « Mes cours »
       assert tab_labels(:enseignant, facts([:teacher], form_master?: true)) ==
-               ["Emploi du temps", "Classes", "Bulletins"]
+               ["EDT", "Classes", "Bulletins"]
 
       assert tab_labels(:intendant, facts([:bursar])) == [
                "Frais",

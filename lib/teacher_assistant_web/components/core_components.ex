@@ -551,6 +551,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
   attr :eyebrow, :string, required: true
   attr :title, :string, required: true
   attr :subtitle, :string, default: nil
+  slot :hint, doc: "a subtitle with markup, shown where `subtitle` is"
   slot :actions
 
   def page_header(assigns) do
@@ -560,6 +561,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
         <p class="ta-eyebrow">{@eyebrow}</p>
         <h1 class="mt-1.5 text-2xl font-semibold leading-[1.1] sm:text-[2rem]">{@title}</h1>
         <p :if={@subtitle} class="mt-2 text-[0.95rem] text-base-content/80">{@subtitle}</p>
+        <p :if={@hint != []} class="mt-2 text-[0.95rem] text-base-content/80">{render_slot(@hint)}</p>
       </div>
       <div :if={@actions != []} class="flex flex-wrap items-center gap-2">
         {render_slot(@actions)}

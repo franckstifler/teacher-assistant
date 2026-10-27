@@ -181,7 +181,12 @@ defmodule TeacherAssistantWeb.School.DayLive do
                 :for={status <- [:done, :in_progress, :missed, :upcoming]}
                 class="flex items-center gap-1.5"
               >
-                <span class={["size-3 rounded-[0.2rem] border", cell_class(%{status: status})]}></span>
+                <span class={[
+                  "ta-num grid h-4 min-w-4 place-items-center rounded-[0.2rem] border px-0.5 text-[0.65rem] font-semibold leading-none",
+                  cell_class(%{status: status})
+                ]}>
+                  {legend_glyph(status)}
+                </span>
                 {legend_label(status)}
               </span>
             </div>
@@ -343,10 +348,14 @@ defmodule TeacherAssistantWeb.School.DayLive do
   attr :periods, :list, required: true
   attr :today, :any, required: true
 
-  # Phone: one row per class — its lessons' states as a strip, the missed count,
-  # and today's register when a roll call was taken.
+  # Phone: one row per class — its lessons' states as a strip, each under its
+  # lesson number (no hover on a phone to name it), the missed count, and today's
+  # register when a roll call was taken.
   defp class_day_row(assigns) do
-    cells = for p <- assigns.periods, cell = assigns.row.cells[p.id], do: cell
+    cells =
+      for {p, n} <- Enum.with_index(assigns.periods, 1),
+          cell = assigns.row.cells[p.id],
+          do: Map.put(cell, :n, n)
 
     assigns =
       assign(assigns,
@@ -379,12 +388,15 @@ defmodule TeacherAssistantWeb.School.DayLive do
         <span
           :for={cell <- @cells}
           title={"#{cell.period.label} · #{cell_title(cell)}"}
-          class={[
-            "ta-num grid h-[22px] min-w-[26px] place-items-center rounded-[0.3rem] border px-1 text-[0.7rem] font-semibold",
-            cell_class(cell)
-          ]}
+          class="flex flex-col items-center gap-0.5"
         >
-          {cell_text(cell)}
+          <span class="ta-num text-[0.7rem] leading-none text-base-content/70">{cell.n}</span>
+          <span class={[
+            "ta-num grid h-[22px] min-w-[26px] place-items-center rounded-[0.3rem] border px-1 text-[0.75rem] font-semibold",
+            cell_class(cell)
+          ]}>
+            {cell_text(cell)}
+          </span>
         </span>
       </span>
     </span>
@@ -441,6 +453,10 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp cell_text(%{status: :missed}), do: "!"
   defp cell_text(%{status: :in_progress}), do: "…"
   defp cell_text(%{status: :upcoming}), do: ""
+
+  # what a cell of that status shows, so the legend reads like the grid
+  defp legend_glyph(:done), do: "2"
+  defp legend_glyph(status), do: cell_text(%{status: status})
 
   defp legend_label(:done), do: gettext("Fait (nb d'absents)")
   defp legend_label(:in_progress), do: gettext("En cours")
