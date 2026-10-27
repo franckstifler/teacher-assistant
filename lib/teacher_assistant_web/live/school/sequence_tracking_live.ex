@@ -237,7 +237,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
               patch={~p"/school/sequences?seq=#{s.id}"}
               aria-current={s.id == @seq.id && "page"}
               class={[
-                "rounded-full border px-3 py-1 text-sm font-medium transition-colors",
+                "rounded-full border px-3 py-2 text-sm font-medium transition-colors",
                 if(s.id == @seq.id,
                   do: "border-primary bg-primary text-primary-content",
                   else: "border-base-300 text-base-content/70 hover:border-primary"
@@ -293,8 +293,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                     class="flex min-h-11 items-center gap-2 text-sm"
                   >
                     <span class={[
-                      "size-2 shrink-0 rounded-full",
-                      if(cell.pct == 0, do: "bg-error", else: "bg-warning")
+                      "size-2.5 shrink-0 rounded-sm",
+                      if(cell.pct == 0, do: "bg-error/60", else: "bg-warning/60")
                     ]}></span>
                     <span class="min-w-0 flex-1 truncate">
                       <span class="font-medium">{subject.label}</span>

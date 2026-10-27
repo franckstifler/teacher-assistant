@@ -74,7 +74,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           }
           disabled={@locked?}
           class={[
-            "btn btn-xs min-w-[72px] transition",
+            "btn btn-sm h-9 min-w-[72px] transition",
             if(@absent?,
               do: "border-error bg-error/20 text-error",
               else: "btn-outline border-base-300"

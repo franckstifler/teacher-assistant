@@ -77,11 +77,11 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
           phx-submit="save_grid"
           class="space-y-3"
         >
-          <div class="overflow-x-auto rounded-box border border-base-300">
+          <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>{gettext("Matière")}</th>
+                  <th class="sticky left-0 z-10 bg-base-100">{gettext("Matière")}</th>
                   <th>{gettext("Groupe")}</th>
                   <th>{gettext("Facultative")}</th>
                   <th :for={col <- @columns} class="text-center">{col.level}</th>
@@ -89,7 +89,9 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
               </thead>
               <tbody>
                 <tr :for={s <- @subjects} id={"grid-row-#{s.id}"} class="align-top">
-                  <td class="whitespace-nowrap font-medium">{s.name}</td>
+                  <td class="sticky left-0 z-10 bg-base-100 whitespace-nowrap font-medium">
+                    {s.name}
+                  </td>
                   <td>
                     <.input
                       type="select"

@@ -117,7 +117,7 @@ defmodule TeacherAssistantWeb.School.NotificationsLive do
             patch={~p"/school/notifications?page=#{p}"}
             aria-current={p == @page_number && "page"}
             class={[
-              "rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:border-primary",
+              "rounded-full border px-3 py-2 text-sm font-medium transition-colors hover:border-primary",
               if(p == @page_number,
                 do: "border-primary bg-primary/15 text-primary",
                 else: "border-base-300 text-base-content/70"

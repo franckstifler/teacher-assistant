@@ -709,6 +709,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               :if={length(@course_tabs) > 1}
               id="course-tabs"
               aria-label={gettext("Mes cours")}
+              phx-hook="ScrollActiveTab"
               class="flex max-w-full gap-1 overflow-x-auto rounded-box bg-base-200 p-1"
             >
               <.link
@@ -730,6 +731,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             <div
               :if={@sequences != []}
               id="seq-tabs"
+              phx-hook="ScrollActiveTab"
               class="flex max-w-full gap-1 overflow-x-auto rounded-box border border-base-300 p-1"
             >
               <.link

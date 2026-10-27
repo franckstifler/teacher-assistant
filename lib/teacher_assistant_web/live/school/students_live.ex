@@ -230,7 +230,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
             phx-click="toggle_no_contact"
             aria-pressed={to_string(@no_contact)}
             class={[
-              "rounded-full border px-3 py-1 text-sm font-semibold transition-colors",
+              "rounded-full border px-3 py-2 text-sm font-semibold transition-colors",
               if(@no_contact,
                 do: "border-error/50 bg-error/15 text-error",
                 else: "border-base-300 text-base-content/80 hover:text-base-content"

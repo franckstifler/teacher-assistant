@@ -193,14 +193,16 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
             <table id="assignments-grid" class="table table-sm">
               <thead>
                 <tr>
-                  <th>{gettext("Classe")}</th>
+                  <th class="sticky left-0 z-10 bg-base-100">{gettext("Classe")}</th>
                   <th>{gettext("Prof. principal")}</th>
                   <th :for={s <- @grid.subjects} class="whitespace-nowrap">{s.name}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr :for={c <- @grid.classes}>
-                  <td class="font-semibold whitespace-nowrap">{c.label}</td>
+                  <td class="sticky left-0 z-10 bg-base-100 font-semibold whitespace-nowrap">
+                    {c.label}
+                  </td>
                   <td>
                     <button
                       id={"pp-#{c.id}"}

@@ -134,6 +134,7 @@ defmodule TeacherAssistantWeb.School.ClassShell do
       <nav
         id="class-tabs"
         aria-label={gettext("Sections de la classe")}
+        phx-hook="ScrollActiveTab"
         class="-mx-1 overflow-x-auto border-b border-base-300"
       >
         <ul class="flex min-w-max gap-1 px-1">

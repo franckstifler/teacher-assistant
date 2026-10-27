@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.Layouts do
                 {@workspace_name || gettext("Teacher Assistant")}
               </span>
               <span :if={@space} class="ta-text-2 block truncate text-xs">
-                {gettext("Espace %{space}", space: String.downcase(@space.label))}
+                {space_line(@space)}
               </span>
             </span>
             <.link
@@ -295,7 +295,7 @@ defmodule TeacherAssistantWeb.Layouts do
                 <span class="min-w-0 flex-1 leading-tight">
                   <span class="block truncate text-sm font-semibold">{User.display_name(@current_user)}</span>
                   <span class="block truncate text-xs text-[color:var(--ta-rail-faint)]">
-                    {(@space && gettext("Espace %{space}", space: String.downcase(@space.label))) ||
+                    {(@space && space_line(@space)) ||
                       @role_label}
                   </span>
                 </span>
@@ -622,6 +622,15 @@ defmodule TeacherAssistantWeb.Layouts do
   # A page under an entry keeps it lit (a class under Classes, every settings page
   # under Paramètres). "/school" (the dashboard) only matches itself.
   @settings_pages ["/school/settings", "/school/periods", "/school/years"]
+
+  # "Espace censeur" — the label is lowercased mid-sentence, so a translation
+  # that puts it first ("vice-principal (censeur) space") gets its capital back.
+  defp space_line(space) do
+    {first, rest} =
+      gettext("Espace %{space}", space: String.downcase(space.label)) |> String.split_at(1)
+
+    String.upcase(first) <> rest
+  end
 
   defp rail_active?(nil, _href), do: false
   defp rail_active?(path, href) when path == href, do: true

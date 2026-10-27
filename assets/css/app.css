@@ -567,6 +567,17 @@ h1, h2, h3, .ta-display {
   body:has(.ta-tabbar) .ta-savebar { bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
 }
 
+/* touch screens: fields at 16px, or iOS Safari zooms the page in on focus; and
+   the dense sizes (btn-xs/-sm, input-sm, select-sm) grow to a thumb's reach.
+   Unlayered, so it outranks daisyUI's sizes and a field's `text-xs`. */
+@media (pointer: coarse) {
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) {
+    font-size: 1rem;
+  }
+  .btn-xs { --size: 2rem; --fontsize: 0.75rem; }
+  .btn-sm, .input-sm, .select-sm { --size: 2.5rem; }
+}
+
 /* the « Plus » sheet — a native popover pinned to the bottom of the screen.
    Only the open state sets `display`, so the UA keeps a closed one hidden. */
 .ta-sheet {

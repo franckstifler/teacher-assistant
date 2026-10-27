@@ -377,7 +377,12 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
           </.link>
         </div>
 
-        <div role="tablist" class="tabs tabs-box max-w-full flex-nowrap overflow-x-auto">
+        <div
+          id="period-tabs"
+          role="tablist"
+          phx-hook="ScrollActiveTab"
+          class="tabs tabs-box max-w-full flex-nowrap overflow-x-auto"
+        >
           <.link
             :for={{param, label, _} <- @periods}
             id={"period-#{dom_id(param)}"}

@@ -220,7 +220,7 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
               patch={absences_path(assigns, %{"filter" => f})}
               aria-current={@filter == f && "page"}
               class={[
-                "rounded-[0.45rem] px-3 py-1.5 text-[0.8rem] font-semibold transition-colors",
+                "rounded-[0.45rem] px-3 py-2 text-[0.8rem] font-semibold transition-colors",
                 if(@filter == f,
                   do: "bg-primary text-primary-content",
                   else: "text-base-content/85 hover:text-base-content"

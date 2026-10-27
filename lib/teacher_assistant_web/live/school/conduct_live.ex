@@ -188,7 +188,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
               patch={~p"/school/conduct?#{[class: c.id] ++ if(@seq, do: [seq: @seq.id], else: [])}"}
               aria-current={@cg && c.id == @cg.id && "page"}
               class={[
-                "rounded-[0.45rem] px-3 py-1.5 text-[0.8rem] font-semibold transition-colors",
+                "rounded-[0.45rem] px-3 py-2 text-[0.8rem] font-semibold transition-colors",
                 if(@cg && c.id == @cg.id,
                   do: "bg-primary text-primary-content",
                   else: "text-base-content/85 hover:text-base-content"
@@ -235,7 +235,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
           class="flex flex-col gap-3"
         >
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-            <table class="table table-xs sm:table-sm">
+            <table class="table table-sm">
               <thead>
                 <tr>
                   <th>{gettext("Élève")}</th>
@@ -254,7 +254,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                         id={"conduct-name-#{row.enrollment.id}"}
                         phx-click="toggle"
                         phx-value-id={row.enrollment.id}
-                        class="font-semibold hover:text-primary"
+                        class="text-left font-semibold hover:text-primary"
                       >
                         {row.student.full_name}
                       </button>
@@ -286,7 +286,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
                         aria-label={
                           gettext("Note de conduite de %{name}", name: row.student.full_name)
                         }
-                        class="input input-sm w-16 text-right"
+                        class="input input-sm w-20 text-right"
                       />
                     </td>
                   </tr>

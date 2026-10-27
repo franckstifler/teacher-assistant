@@ -147,40 +147,48 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
           subtitle={@year.name}
         />
 
-        <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+        <div class="rounded-box border border-base-300 bg-base-100">
           <table :if={@holidays != []} id="holidays-table" class="table">
             <thead>
               <tr>
-                <th>{gettext("Libellé")}</th><th>{gettext("Du")}</th><th>{gettext("Au")}</th>
-                <th class="text-right">{gettext("Jours")}</th><th></th>
+                <th>{gettext("Libellé")}</th><th>{gettext("Du")}</th>
+                <th class="max-sm:hidden">{gettext("Au")}</th>
+                <th class="text-right max-sm:hidden">{gettext("Jours")}</th><th></th>
               </tr>
             </thead>
             <tbody>
               <tr :for={h <- @holidays} id={"holiday-row-#{h.id}"}>
                 <td>{h.label}</td>
-                <td class="ta-num">{d(h.start_date)}</td>
-                <td class="ta-num">{d(h.end_date)}</td>
-                <td class="ta-num text-right">{days(h)}</td>
-                <td class="text-right">
-                  <button
-                    id={"edit-holiday-#{h.id}"}
-                    type="button"
-                    phx-click="edit"
-                    phx-value-id={h.id}
-                    class="btn btn-ghost btn-xs"
+                <td class="ta-num">
+                  {d(h.start_date)}
+                  <span :if={h.end_date != h.start_date} class="block sm:hidden">
+                    → {d(h.end_date)}
+                  </span>
+                </td>
+                <td class="ta-num max-sm:hidden">{d(h.end_date)}</td>
+                <td class="ta-num text-right max-sm:hidden">{days(h)}</td>
+                <td class="w-px text-right">
+                  <.action_menu
+                    id={"holiday-actions-#{h.id}"}
+                    label={gettext("Actions sur %{label}", label: h.label)}
                   >
-                    {gettext("Modifier")}
-                  </button>
-                  <button
-                    id={"delete-holiday-#{h.id}"}
-                    type="button"
-                    phx-click="delete"
-                    phx-value-id={h.id}
-                    class="btn btn-ghost btn-xs"
-                    data-confirm={gettext("Supprimer ce jour ?")}
-                  >
-                    {gettext("Supprimer")}
-                  </button>
+                    <:item
+                      id={"edit-holiday-#{h.id}"}
+                      icon="hero-pencil-square"
+                      click={JS.push("edit", value: %{id: h.id})}
+                    >
+                      {gettext("Modifier")}
+                    </:item>
+                    <:item
+                      id={"delete-holiday-#{h.id}"}
+                      icon="hero-trash"
+                      danger
+                      click={JS.push("delete", value: %{id: h.id})}
+                      confirm={gettext("Supprimer ce jour ?")}
+                    >
+                      {gettext("Supprimer")}
+                    </:item>
+                  </.action_menu>
                 </td>
               </tr>
             </tbody>

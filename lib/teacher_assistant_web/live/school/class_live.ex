@@ -135,7 +135,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
               phx-value-filter={f}
               aria-pressed={to_string(@filter == f)}
               class={[
-                "rounded-full px-3 py-1 text-sm font-semibold transition-colors",
+                "rounded-full px-3 py-2 text-sm font-semibold transition-colors",
                 if(@filter == f,
                   do: "bg-primary/15 text-primary",
                   else: "text-base-content/70 hover:text-base-content"

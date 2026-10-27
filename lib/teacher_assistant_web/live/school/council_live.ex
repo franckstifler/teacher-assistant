@@ -384,7 +384,12 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
           </:actions>
         </.page_header>
 
-        <div role="tablist" class="tabs tabs-box w-fit max-w-full overflow-x-auto">
+        <div
+          id="period-tabs"
+          role="tablist"
+          phx-hook="ScrollActiveTab"
+          class="tabs tabs-box w-fit max-w-full flex-nowrap overflow-x-auto"
+        >
           <.link
             :for={t <- @terms}
             role="tab"

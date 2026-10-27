@@ -33,13 +33,13 @@ defmodule TeacherAssistantWeb.School.RolesLive do
           <table id="rights-matrix" class="table table-sm">
             <thead>
               <tr>
-                <th></th>
+                <th class="sticky left-0 z-10 bg-base-100"></th>
                 <th :for={role <- @roles} class="text-center text-xs">{SchoolRole.label(role)}</th>
               </tr>
             </thead>
             <tbody>
               <tr :for={right <- @rights} id={"right-#{right.key}"}>
-                <th class="font-normal">{right.label}</th>
+                <th class="sticky left-0 z-10 bg-base-100 font-normal">{right.label}</th>
                 <td :for={role <- @roles} class="text-center text-xs">
                   <%= case SchoolRole.cell(right, role) do %>
                     <% :yes -> %>
