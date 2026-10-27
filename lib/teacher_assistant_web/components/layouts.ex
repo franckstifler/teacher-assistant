@@ -301,6 +301,10 @@ defmodule TeacherAssistantWeb.Layouts do
                 </span>
               </div>
               <.theme_toggle id="theme-toggle-rail" />
+              <.link id="rail-password" navigate={~p"/account/password"} class="ta-rail__item">
+                <.icon name="hero-key" class="size-4 flex-none" />
+                <span class="flex-1">{gettext("Mot de passe")}</span>
+              </.link>
               <div class="flex items-center gap-1">
                 <.link href={~p"/sign-out"} method="delete" class="ta-rail__item flex-1">
                   <.icon name="hero-arrow-right-on-rectangle" class="size-4 flex-none" />
@@ -790,7 +794,7 @@ defmodule TeacherAssistantWeb.Layouts do
   #   * `@live_action` is `:register` / `:reset` / `:sign_in` on `SignInLive`
   #     (`:reset` there is the "request a reset link" step, not the token step).
   #   * `@auth_screen` is set by our own pages that borrow this shell
-  #     (`Account.PasswordLive` → `:own_password`). Such a page renders its own
+  #     (`Account.PasswordLive` → `:own_password` / `:change_password`). Such a page renders its own
   #     column heading, so its copy has no title/foot, only the brand `panel`.
 
   defp auth_points do
@@ -826,6 +830,22 @@ defmodule TeacherAssistantWeb.Layouts do
             text:
               gettext(
                 "Le mot de passe temporaire ne sert qu'une fois. Ensuite, personne à l'établissement ne connaît le vôtre."
+              )
+          }
+        }
+
+      :change_password ->
+        %{
+          eyebrow: nil,
+          title: nil,
+          sub: nil,
+          foot: nil,
+          panel: %{
+            eyebrow: gettext("Votre compte"),
+            title: gettext("Un mot de passe rien qu'à vous."),
+            text:
+              gettext(
+                "Personne à l'établissement ne connaît votre mot de passe. Changez-le dès que vous pensez qu'il a pu être vu."
               )
           }
         }

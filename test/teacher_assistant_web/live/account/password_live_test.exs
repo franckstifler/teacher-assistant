@@ -113,8 +113,83 @@ defmodule TeacherAssistantWeb.Account.PasswordLiveTest do
     assert {:ok, _view, _html} = live(conn, ~p"/school")
   end
 
-  test "a user without the flag cannot open the change screen", %{conn: conn} do
-    assert {:error, {:redirect, %{to: "/school"}}} = live(conn, ~p"/account/password")
+  describe "changing an ordinary password" do
+    defp change(view, current, new, confirmation \\ nil) do
+      view
+      |> form("#own-password-form", %{
+        "form" => %{
+          "current_password" => current,
+          "password" => new,
+          "password_confirmation" => confirmation || new
+        }
+      })
+      |> render_submit()
+    end
+
+    defp password_ok?(user, password) do
+      hash = Ash.get!(Accounts.User, user.id, authorize?: false).hashed_password
+      Bcrypt.verify_pass(password, hash)
+    end
+
+    test "asks for the current password", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/account/password")
+
+      assert html =~ "Changer mon mot de passe"
+      assert has_element?(view, "input[name='form[current_password]']")
+      assert has_element?(view, "#own-password-cancel[href='/school']")
+    end
+
+    test "a wrong current password changes nothing", %{conn: conn, actor: user} do
+      {:ok, view, _html} = live(conn, ~p"/account/password")
+
+      html = change(view, "not-my-password", "brand-new-pass")
+
+      assert html =~ "is not your current password" or html =~ "mot de passe actuel"
+      assert password_ok?(user, "password1234")
+    end
+
+    test "saving signs out every other page and sends this one to sign in", %{
+      conn: conn,
+      actor: user
+    } do
+      TeacherAssistantWeb.Endpoint.subscribe(Accounts.live_socket_id(user))
+      {:ok, view, _html} = live(conn, ~p"/account/password")
+
+      change(view, "password1234", "brand-new-pass")
+
+      assert {"/sign-in", %{"info" => info}} = assert_redirect(view)
+      assert info =~ "Mot de passe changé"
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
+      assert password_ok?(user, "brand-new-pass")
+      assert {:error, {:redirect, %{to: "/sign-in"}}} = live(conn, ~p"/school")
+    end
+
+    test "ten wrong tries lock the change for a while", %{conn: conn, actor: user} do
+      {:ok, view, _html} = live(conn, ~p"/account/password")
+
+      for _ <- 1..10, do: change(view, "not-my-password", "brand-new-pass")
+      html = change(view, "password1234", "brand-new-pass")
+
+      assert html =~ "quart d" or html =~ "quarter of an hour"
+      assert password_ok?(user, "password1234")
+    end
+
+    test "nobody changes someone else's password", %{actor: user} do
+      other = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               other
+               |> Ash.Changeset.for_update(
+                 :change_password,
+                 %{
+                   current_password: "password1234",
+                   password: "brand-new-pass",
+                   password_confirmation: "brand-new-pass"
+                 },
+                 actor: user
+               )
+               |> Ash.update()
+    end
   end
 
   test "expired temporary password is refused", %{scope: scope} do

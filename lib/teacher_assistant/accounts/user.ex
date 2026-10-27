@@ -178,6 +178,26 @@ defmodule TeacherAssistant.Accounts.User do
       change TeacherAssistant.Accounts.User.Changes.SetOwnPassword
     end
 
+    # From the « Mot de passe » row: an ordinary password, replaced only with the
+    # current one. The caller then signs the person out everywhere.
+    update :change_password do
+      accept []
+      require_atomic? false
+
+      argument :current_password, :string, allow_nil?: false, sensitive?: true
+
+      argument :password, :string,
+        allow_nil?: false,
+        sensitive?: true,
+        constraints: [min_length: 8]
+
+      argument :password_confirmation, :string, allow_nil?: false, sensitive?: true
+
+      validate confirm(:password, :password_confirmation)
+      change TeacherAssistant.Accounts.User.Changes.CheckCurrentPassword
+      change TeacherAssistant.Accounts.User.Changes.SetOwnPassword
+    end
+
     update :promote_to_admin do
       accept []
       change set_attribute(:role, :admin)
@@ -231,6 +251,10 @@ defmodule TeacherAssistant.Accounts.User do
     # replace an ordinary password from any open session.
     policy action(:set_own_password) do
       authorize_if expr(id == ^actor(:id) and must_change_password == true)
+    end
+
+    policy action(:change_password) do
+      authorize_if expr(id == ^actor(:id))
     end
 
     policy action(:promote_to_admin) do

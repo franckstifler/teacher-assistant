@@ -115,5 +115,11 @@ msgstr ""
 msgid "is not a valid phone number"
 msgstr ""
 
+msgid "is not your current password"
+msgstr ""
+
+msgid "too many attempts, try again in a quarter of an hour"
+msgstr ""
+
 msgid "length must be greater than or equal to %{min}"
 msgstr ""

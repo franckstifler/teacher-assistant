@@ -16,8 +16,9 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
   `AuthController` (wrong credentials, expired temporary password) is shown as
   the alert block above the forms, and so is a submission the library refuses
   in place (`TeacherAssistantWeb.Auth.SignInForm` reports it) — one generic
-  message, never the raw field error. The reset form's « link sent » flash
-  shows the same way, as a success block.
+  message, never the raw field error. An info flash — the reset form's « link
+  sent », or « Mot de passe changé » after `Account.PasswordLive` signed the
+  person out — shows the same way, as a success block.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -139,6 +140,18 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
         <div>
           <p class="ta-auth-alert__title">{gettext("Demande envoyée")}</p>
           <p class="ta-auth-alert__text">{Phoenix.Flash.get(@flash, :info)}</p>
+        </div>
+      </div>
+
+      <div
+        :if={@live_action == :sign_in && Phoenix.Flash.get(@flash, :info)}
+        id="sign-in-info"
+        class="ta-auth-alert ta-auth-alert--success"
+        role="status"
+      >
+        <.icon name="hero-check-circle" class="ta-auth-alert__icon size-4" />
+        <div>
+          <p class="ta-auth-alert__title">{Phoenix.Flash.get(@flash, :info)}</p>
         </div>
       </div>
 

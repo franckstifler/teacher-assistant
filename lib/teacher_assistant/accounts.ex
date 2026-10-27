@@ -69,10 +69,18 @@ defmodule TeacherAssistant.Accounts do
   """
   def live_socket_id(%User{id: id}), do: "users_socket:#{id}"
 
-  @doc "Disconnects every live page `user` has open (see `live_socket_id/1`)."
-  def disconnect_live_pages(%User{} = user) do
-    TeacherAssistantWeb.Endpoint.broadcast(live_socket_id(user), "disconnect", %{})
-  end
+  @doc """
+  Disconnects every live page `user` has open (see `live_socket_id/1`), but the
+  one served by `except` (a LiveView's `socket.transport_pid`), if given.
+  """
+  def disconnect_live_pages(user, except \\ nil)
+
+  def disconnect_live_pages(%User{} = user, nil),
+    do: TeacherAssistantWeb.Endpoint.broadcast(live_socket_id(user), "disconnect", %{})
+
+  def disconnect_live_pages(%User{} = user, except) when is_pid(except),
+    do:
+      TeacherAssistantWeb.Endpoint.broadcast_from(except, live_socket_id(user), "disconnect", %{})
 
   # --- School profiles -----------------------------------------------------
 
@@ -529,8 +537,12 @@ defmodule TeacherAssistant.Accounts do
     |> MapSet.new(& &1.user_id)
   end
 
-  @doc "Revokes every stored token of the user (sign out on every device)."
-  def revoke_all_sessions(%User{} = user) do
+  @doc """
+  Revokes every stored token of the user (sign out on every device). With
+  `except_page:` (a LiveView's `socket.transport_pid`), that page stays connected
+  so it can send the person to sign in again itself.
+  """
+  def revoke_all_sessions(%User{} = user, opts \\ []) do
     TeacherAssistant.Accounts.Token
     |> Ash.bulk_update(
       :revoke_all_stored_for_subject,
@@ -540,7 +552,7 @@ defmodule TeacherAssistant.Accounts do
       return_errors?: true
     )
     |> case do
-      %{status: :success} -> disconnect_live_pages(user)
+      %{status: :success} -> disconnect_live_pages(user, opts[:except_page])
       %{errors: errors} -> {:error, errors}
     end
   end

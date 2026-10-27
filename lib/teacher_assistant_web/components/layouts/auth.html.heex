@@ -43,6 +43,13 @@
     box-sizing: border-box;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
+  /* 16px on touch screens, or iOS Safari zooms the page in on focus (app.css
+     does the same for the app's own fields) */
+  @media (pointer: coarse) {
+    .ta-auth-paper input[type="email"],
+    .ta-auth-paper input[type="text"],
+    .ta-auth-paper input[type="password"] { font-size: 1rem; }
+  }
   .ta-auth-paper input::placeholder { color: #8A9391; }
   .ta-auth-paper input[type="email"]:focus,
   .ta-auth-paper input[type="text"]:focus,
