@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Feuille d'appel")}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111; background: #fff; margin: 0; padding: 16px;
+        font-size: 9pt; line-height: 1.25;
+      }
+      .sheet + .sheet { break-before: page; }
+      .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+      .head .school { font-variant: small-caps; color: #444; }
+      h1 { font-size: 13pt; margin: 2px 0; }
+      .meta { color: #333; margin-bottom: 6px; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      th, td { border: 1px solid #777; padding: 1px 2px; text-align: center; height: 17px; }
+      th.num, td.num { width: 22px; }
+      th.name, td.name { width: 150px; text-align: left; white-space: nowrap; overflow: hidden; }
+      th.day { background: #eee; font-variant: small-caps; }
+      th.code { height: 46px; vertical-align: bottom; }
+      th.code span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: normal; }
+      td.closed, th.closed { background: #e4e4e4; color: #555; font-style: italic; }
+      td.closed span { writing-mode: vertical-rl; transform: rotate(180deg); }
+      tr.visa td { height: 24px; font-style: italic; color: #555; }
+      @page { size: A4 landscape; margin: 10mm; }
+      @media print {
+        body { padding: 0; }
+        tr { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <section :for={sheet <- @sheets} class="sheet">
+      <div class="head">
+        <h1>{gettext("Feuille d'appel")} · {sheet.class_group.label}</h1>
+        <span class="school">{@etablissement}</span>
+      </div>
+      <p class="meta">
+        {week_label(sheet.week)} · {gettext("A = absent · R = retard")}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th class="num" rowspan="2">{gettext("N°")}</th>
+            <th class="name" rowspan="2">{gettext("Élève")}</th>
+            <th :for={day <- sheet.week.days} class="day" colspan={day_span(day)}>
+              {day.label}
+            </th>
+          </tr>
+          <tr>
+            <%= for day <- sheet.week.days do %>
+              <%= cond do %>
+                <% day.closed -> %>
+                  <th class="closed"></th>
+                <% day.lessons == [] -> %>
+                  <th></th>
+                <% true -> %>
+                  <th :for={lesson <- day.lessons} class="code" title={lesson.subject}>
+                    <span>{lesson.code}</span>
+                  </th>
+              <% end %>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={{student, i} <- Enum.with_index(sheet.week.students)}>
+            <td class="num">{student.number}</td>
+            <td class="name">{student.student_name}</td>
+            <%= for day <- sheet.week.days do %>
+              <%= cond do %>
+                <% day.closed -> %>
+                  <td :if={i == 0} class="closed" rowspan={body_rows(sheet.week)}>
+                    <span>{day.closed}</span>
+                  </td>
+                <% day.lessons == [] -> %>
+                  <td></td>
+                <% true -> %>
+                  <td :for={_lesson <- day.lessons}></td>
+              <% end %>
+            <% end %>
+          </tr>
+          <tr :for={_ <- blank_rows()}>
+            <td class="num"></td>
+            <td class="name"></td>
+            <%= for day <- sheet.week.days, is_nil(day.closed) do %>
+              <td :for={_ <- 1..day_span(day)//1}></td>
+            <% end %>
+          </tr>
+          <tr class="visa">
+            <td class="num"></td>
+            <td class="name">{gettext("Visa")}</td>
+            <%= for day <- sheet.week.days, is_nil(day.closed) do %>
+              <td :for={_ <- 1..day_span(day)//1}></td>
+            <% end %>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </body>
+</html>
