@@ -35,7 +35,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            seq: nil,
            grid: nil,
            selected: nil,
-           reminders: %{}
+           reminders: %{},
+           competences: nil
          )}
     end
   end
@@ -45,7 +46,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
 
     case pick_sequence(sequences, params["seq"]) do
       nil ->
-        {:noreply, assign(socket, seq: nil, grid: nil, selected: nil, reminders: %{})}
+        {:noreply,
+         assign(socket, seq: nil, grid: nil, selected: nil, reminders: %{}, competences: nil)}
 
       seq ->
         grid = Assessment.sequence_entry_grid(scope, year, seq)
@@ -55,9 +57,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            seq: seq,
            grid: grid,
            selected: default_selection(grid),
-           reminders: Assessment.reminder_dates(scope, seq)
+           reminders: Assessment.reminder_dates(scope, seq),
+           competences: Assessment.competences_due(scope, seq, context_ids(grid))
          )}
     end
+  end
+
+  defp context_ids(grid) do
+    for row <- grid.rows, %{teaching_context: tc} <- Map.values(row.cells), do: tc.id
   end
 
   # An id that is not one of this year's séquences (another year, garbage) falls
@@ -265,6 +272,26 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 </div>
               </div>
 
+              <p
+                :if={@competences && @grid.subjects != []}
+                id="competence-count"
+                class={[
+                  "flex items-center gap-1.5 text-xs",
+                  if(competence_gaps(@grid, @competences) > 0,
+                    do: "font-semibold text-warning",
+                    else: "text-base-content/70"
+                  )
+                ]}
+              >
+                <i class="size-1.5 rounded-full bg-base-content/80"></i>
+                <%= case competence_gaps(@grid, @competences) do %>
+                  <% 0 -> %>
+                    {gettext("Toutes les compétences de la séquence sont renseignées")}
+                  <% n -> %>
+                    {ngettext("%{count} cours sans compétence", "%{count} cours sans compétence", n)}
+                <% end %>
+              </p>
+
               <p :if={@grid.subjects == []} class="text-sm text-base-content/70">
                 {gettext("Aucun cours n'est encore attribué pour cette année.")}
               </p>
@@ -276,7 +303,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                   id={"entry-row-#{row.class_group.id}"}
                   class="ta-row-rule flex flex-col gap-1.5 px-1 py-2.5 last:border-b-0"
                 >
-                  <% open = lagging(row, @grid.subjects) %>
+                  <% open = to_complete(row, @grid.subjects, @competences) %>
                   <span class="flex items-center justify-between gap-2">
                     <span class="font-semibold">{row.class_group.label}</span>
                     <span :if={open == []} class="text-sm text-primary">{gettext("Complet")} ✓</span>
@@ -292,13 +319,13 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                     :for={{subject, cell} <- open}
                     class="flex min-h-11 items-center gap-2 text-sm"
                   >
-                    <span class={[
-                      "size-2.5 shrink-0 rounded-sm",
-                      if(cell.pct == 0, do: "bg-error/60", else: "bg-warning/60")
-                    ]}></span>
+                    <span class={["size-2.5 shrink-0 rounded-sm", swatch(cell.pct)]}></span>
                     <span class="min-w-0 flex-1 truncate">
                       <span class="font-medium">{subject.label}</span>
-                      <span class="ta-num text-base-content/70">· {cell.pct} %</span>
+                      <span class="ta-num text-base-content/70">· {pct_text(cell.pct)}</span>
+                      <span :if={no_competence?(@competences, cell)} class="text-warning">
+                        · {gettext("compétence à saisir")}
+                      </span>
                       <span class="block truncate text-xs text-base-content/70">
                         {teacher_name(cell.teacher)}
                         <span :if={@reminders[cell.teaching_context.id]}>
@@ -309,7 +336,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                       </span>
                     </span>
                     <button
-                      :if={cell.teacher && !@reminders[cell.teaching_context.id]}
+                      :if={(cell.pct < 100 and cell.teacher) && !@reminders[cell.teaching_context.id]}
                       type="button"
                       class="btn btn-sm btn-outline"
                       phx-click="remind"
@@ -351,6 +378,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                         row.cells[subject.key] &&
                           @reminders[row.cells[subject.key].teaching_context.id]
                       }
+                      no_competence={no_competence?(@competences, row.cells[subject.key])}
                       title={"#{row.class_group.label} · #{subject.label}"}
                       selected={
                         @selected != nil and @selected.cg_id == row.class_group.id and
@@ -389,6 +417,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 <.detail_line
                   label={gettext("Dernière saisie")}
                   value={last_entry(@selected.cell.last_entry_at)}
+                />
+                <.detail_line
+                  :if={@competences}
+                  id="detail-competence"
+                  label={gettext("Compétence")}
+                  value={@competences[@selected.cell.teaching_context.id] || gettext("à saisir")}
                 />
                 <.detail_line
                   :if={@reminders[@selected.cell.teaching_context.id]}
@@ -482,6 +516,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   attr :title, :string, required: true
   attr :selected, :boolean, default: false
   attr :reminded, :any, default: nil
+  attr :no_competence, :boolean, default: false
 
   defp grid_cell(%{cell: nil} = assigns) do
     ~H"""
@@ -520,11 +555,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           if(@reminded,
             do: " · " <> gettext("relancé le %{date}", date: Dates.short(@reminded)),
             else: ""
-          )
+          ) <>
+          if(@no_competence, do: " · " <> gettext("compétence à saisir"), else: "")
       }
       aria-pressed={to_string(@selected)}
       class={[
-        "ta-num h-9 cursor-pointer rounded-md text-xs font-semibold transition-colors hover:ring-1 hover:ring-base-content/50",
+        "ta-num relative h-9 cursor-pointer rounded-md text-xs font-semibold transition-colors hover:ring-1 hover:ring-base-content/50",
         cell_bg(@cell.pct),
         @selected && "ring-2 ring-base-content hover:ring-2 hover:ring-base-content"
       ]}
@@ -534,6 +570,11 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         name="hero-bell-alert"
         class="ml-0.5 size-3 align-[-1px] text-base-content/70"
       />
+      <span
+        :if={@no_competence}
+        data-role="no-competence"
+        class="absolute right-1 top-1 size-1.5 rounded-full bg-base-content/80"
+      ></span>
     </button>
     """
   end
@@ -555,13 +596,32 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   defp cell_bg(0), do: "bg-error/20 text-error hover:bg-error/30"
   defp cell_bg(_), do: "bg-warning/20 text-warning hover:bg-warning/30"
 
-  # A class's subjects that still lack marks (cells with students, under 100 %).
-  defp lagging(row, subjects) do
+  # A class's subjects still to complete (cells with students): marks under 100 %, or
+  # the APC competence not written.
+  defp to_complete(row, subjects, competences) do
     for subject <- subjects,
         cell = row.cells[subject.key],
-        cell && cell.pct != nil && cell.pct < 100,
+        cell && cell.pct != nil,
+        cell.pct < 100 or no_competence?(competences, cell),
         do: {subject, cell}
   end
+
+  # A course with students whose APC competence is due and not yet written.
+  defp no_competence?(nil, _cell), do: false
+  defp no_competence?(_competences, nil), do: false
+  defp no_competence?(_competences, %{pct: nil}), do: false
+  defp no_competence?(competences, cell), do: is_nil(competences[cell.teaching_context.id])
+
+  defp competence_gaps(grid, competences) do
+    Enum.count(
+      for(row <- grid.rows, cell <- Map.values(row.cells), do: cell),
+      &no_competence?(competences, &1)
+    )
+  end
+
+  defp swatch(0), do: "bg-error/60"
+  defp swatch(100), do: "bg-primary/60"
+  defp swatch(_pct), do: "bg-warning/60"
 
   defp pct_text(100), do: "✓"
   defp pct_text(pct), do: "#{pct} %"

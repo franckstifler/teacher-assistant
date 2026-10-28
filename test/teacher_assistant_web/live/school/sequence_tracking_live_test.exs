@@ -38,6 +38,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
 
     %{
       t1: t1,
+      tc: tc,
       tc4: tc4,
       seq: seq,
       seq2: seq2,
@@ -130,6 +131,62 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
 
     {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
     assert view |> element(col(view, ctx.cg2, "Anglais")) |> render() =~ "✓"
+  end
+
+  describe "APC competences" do
+    setup %{scope: scope} do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+
+      :ok
+    end
+
+    test "cells without a competence carry a marker, counted above the grid",
+         %{conn: conn, scope: scope} = ctx do
+      :ok = Assessment.put_sequence_competence(scope, ctx.tc, ctx.seq, "Lire un graphique")
+      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+
+      refute has_element?(view, "#{col(view, ctx.cg, "Maths")} [data-role='no-competence']")
+      assert has_element?(view, "#{col(view, ctx.cg, "Anglais")} [data-role='no-competence']")
+      assert has_element?(view, "#{col(view, ctx.cg2, "Anglais")} [data-role='no-competence']")
+      assert has_element?(view, "#competence-count", "2 cours sans compétence")
+    end
+
+    test "the course detail shows its competence or « à saisir »",
+         %{conn: conn, scope: scope} = ctx do
+      :ok = Assessment.put_sequence_competence(scope, ctx.tc, ctx.seq, "Lire un graphique")
+      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+
+      view |> element(col(view, ctx.cg, "Maths")) |> render_click()
+      assert has_element?(view, "#cell-detail #detail-competence", "Lire un graphique")
+
+      view |> element(col(view, ctx.cg, "Anglais")) |> render_click()
+      assert has_element?(view, "#cell-detail #detail-competence", "à saisir")
+    end
+
+    test "on the phone list a course with all its marks but no competence is listed, without Relancer",
+         %{conn: conn, scope: scope} = ctx do
+      {:ok, a} = Assessment.create_assessment(scope, ctx.tc4, ctx.seq, %{label: "Contrôle"})
+      :ok = Assessment.upsert_marks(scope, a, [%{student_id: ctx.t1.id, score: Decimal.new(14)}])
+
+      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+      row = "#entry-row-#{ctx.cg2.id}"
+      assert has_element?(view, row, "Anglais")
+      assert has_element?(view, row, "compétence à saisir")
+      refute has_element?(view, "#{row} button", "Relancer")
+      # Marks only decide who is late.
+      refute has_element?(view, "#late-#{ctx.english.id}", "4e B")
+    end
+  end
+
+  test "no competence marker when the school's report cards are not APC", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+    refute has_element?(view, "[data-role='no-competence']")
+    refute has_element?(view, "#competence-count")
+    refute has_element?(view, "#detail-competence")
   end
 
   test "« Relancer » per teacher notifies once and flips to Relancé", %{conn: conn} = ctx do

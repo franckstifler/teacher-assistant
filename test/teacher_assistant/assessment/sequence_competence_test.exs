@@ -73,4 +73,41 @@ defmodule TeacherAssistant.Assessment.SequenceCompetenceTest do
              {tc2.id, seq.id} => "Lire un graphique"
            }
   end
+
+  describe "competences_due/3" do
+    defp tick_apc(head) do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(head, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+    end
+
+    test "nil when the school's report cards are not APC" do
+      %{head: head, tc: tc, seq: seq} = MarksFixtures.marks_world()
+      assert Assessment.competences_due(head, seq, [tc.id]) == nil
+    end
+
+    test "each course's competence, nil when missing, for a started séquence" do
+      %{head: head, t: t, tc: tc, cg: cg, seq: seq} = MarksFixtures.marks_world()
+      tick_apc(head)
+      {:ok, other} = Curriculum.assign_teacher(head, cg, head.current_user, %{subject: "SVT"})
+
+      assert Assessment.competences_due(head, seq, [tc.id, other.id]) ==
+               %{tc.id => nil, other.id => nil}
+
+      :ok = Assessment.put_sequence_competence(t, tc, seq, "Calculer un pourcentage")
+
+      assert Assessment.competences_due(head, seq, [tc.id, other.id]) ==
+               %{tc.id => "Calculer un pourcentage", other.id => nil}
+    end
+
+    test "nil for a séquence not yet started" do
+      %{head: head, tc: tc, year: year} = MarksFixtures.marks_world()
+      tick_apc(head)
+      [_first, second | _] = TeacherAssistant.Organization.list_sequences(head, year)
+      assert Date.after?(second.start_date, TeacherAssistant.Academics.Reference.today())
+      assert Assessment.competences_due(head, second, [tc.id]) == nil
+    end
+  end
 end

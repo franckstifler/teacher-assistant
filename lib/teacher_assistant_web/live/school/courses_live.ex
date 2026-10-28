@@ -41,6 +41,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
         user_id: scope.current_user.id,
         coefficients: Curriculum.coefficient_cells(scope),
         progress: progress(scope, seq, contexts),
+        competences: competences_due(scope, seq, contexts),
         students: student_counts(scope, contexts)
       }
 
@@ -82,6 +83,11 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   defp progress(scope, seq, contexts),
     do: EntryProgress.context_cells(scope, scope.current_academic_year, seq, contexts)
 
+  defp competences_due(_scope, nil, _contexts), do: nil
+
+  defp competences_due(scope, seq, contexts),
+    do: Assessment.competences_due(scope, seq, Enum.map(contexts, & &1.id))
+
   defp student_counts(scope, contexts) do
     contexts
     |> Enum.map(& &1.class_group)
@@ -116,7 +122,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   end
 
   # Card facts over the member contexts: students, coefficient (first member's grid
-  # cell), form master, séquence entry progress.
+  # cell), form master, séquence entry progress, APC competence (nil when none is due).
   defp facts([first | _] = contexts, ctx) do
     classes = Enum.map(contexts, & &1.class_group)
     cells = Enum.map(contexts, &Map.get(ctx.progress, &1.id, %{entered: 0, expected: 0}))
@@ -128,9 +134,15 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
       students: classes |> Enum.map(&Map.get(ctx.students, &1.id, 0)) |> Enum.sum(),
       coefficient: coefficient(ctx.coefficients, first),
       pp?: Enum.any?(classes, &(&1.form_master_user_id == ctx.user_id)),
-      progress: %{entered: entered, expected: expected, pct: EntryProgress.pct(entered, expected)}
+      progress: %{entered: entered, expected: expected, pct: EntryProgress.pct(entered, expected)},
+      competence: competence(contexts, ctx.competences)
     }
   end
+
+  defp competence(_contexts, nil), do: nil
+
+  defp competence(contexts, texts),
+    do: if(Enum.any?(contexts, &is_nil(texts[&1.id])), do: :missing, else: :done)
 
   defp coefficient(_cells, %{subject_id: nil}), do: nil
 
@@ -280,6 +292,21 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 >
                 </div>
               </div>
+            </div>
+
+            <div :if={course.competence} data-role="competence" class="-mt-1 text-xs">
+              <.link
+                :if={course.competence == :missing}
+                navigate={~p"/teacher/contexts/#{course.context_id}/marks?seq=#{@seq.id}"}
+                class="inline-flex items-center gap-1 font-semibold text-warning hover:underline"
+              >
+                <.icon name="hero-exclamation-triangle" class="size-3.5" />
+                {gettext("Compétence Séq. %{n} : à saisir", n: @seq.number)}
+                <.icon name="hero-arrow-right" class="size-3" />
+              </.link>
+              <span :if={course.competence == :done} class="text-base-content/70">
+                {gettext("Compétence Séq. %{n} ✓", n: @seq.number)}
+              </span>
             </div>
 
             <div class="mt-auto space-y-2">

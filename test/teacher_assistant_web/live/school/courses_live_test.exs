@@ -238,7 +238,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
           %{student_id: s1.id, score: Decimal.new(12)}
         ])
 
-      %{card_tc: tc, conn: conn_for(school, teacher)}
+      %{card_tc: tc, card_seq: seq, conn: conn_for(school, teacher)}
     end
 
     test "a card shows students, coefficient, PP and séquence progress", %{
@@ -251,6 +251,43 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       assert has_element?(view, card, "coef. 4")
       assert has_element?(view, "#{card} [data-role='pp']")
       assert has_element?(view, "#{card} [data-role='progress']", "1 / 2")
+    end
+
+    test "no competence line when the school's report cards are not APC", %{
+      conn: conn,
+      card_tc: tc
+    } do
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+      refute has_element?(view, "#course-#{tc.id} [data-role='competence']")
+    end
+
+    test "an APC school flags the séquence competence to enter, then ticks it", %{
+      conn: conn,
+      card_tc: tc,
+      card_seq: seq,
+      scope: scope
+    } do
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(scope, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+      line = "#course-#{tc.id} [data-role='competence']"
+      assert has_element?(view, line, "Compétence Séq. #{seq.number} : à saisir")
+
+      assert has_element?(
+               view,
+               "#{line} a[href='/teacher/contexts/#{tc.id}/marks?seq=#{seq.id}']"
+             )
+
+      :ok =
+        TeacherAssistant.Assessment.put_sequence_competence(scope, tc, seq, "Lire un graphique")
+
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+      assert has_element?(view, line, "Compétence Séq. #{seq.number} ✓")
+      refute has_element?(view, "#{line} a")
     end
   end
 

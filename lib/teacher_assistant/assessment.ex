@@ -18,6 +18,7 @@ defmodule TeacherAssistant.Assessment do
     AssessmentType,
     AverageRounding,
     BulletinPublication,
+    BulletinTemplate,
     Bulletins,
     ClassCouncil,
     ClassGroup,
@@ -26,6 +27,7 @@ defmodule TeacherAssistant.Assessment do
     EntryProgress,
     EntryReminder,
     GradingRules,
+    Lock,
     Mark,
     MarkCorrection,
     MarkEntry,
@@ -97,6 +99,24 @@ defmodule TeacherAssistant.Assessment do
   @doc "Whether the class's report cards are APC (the school ticked `:apc`)."
   def apc?(%Scope{} = scope, %ClassGroup{} = cg),
     do: :apc in TeacherAssistant.ReportCards.template(scope, cg).elements
+
+  @doc """
+  Each course's competence for `seq` as `%{context_id => text}`, nil where none is
+  written yet; `nil` when none is due: the school's report cards are not APC, or `seq`
+  has not started.
+  """
+  def competences_due(%Scope{} = scope, %Sequence{} = seq, context_ids) do
+    if apc_school?(scope) and not Lock.not_started?(seq) do
+      texts = sequence_competences(scope, context_ids, [seq.id])
+      Map.new(context_ids, &{&1, texts[{&1, seq.id}]})
+    end
+  end
+
+  # The APC element is school-wide (the profile's bulletin elements), whatever the class.
+  defp apc_school?(scope) do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    :apc in BulletinTemplate.elements(profile.bulletin_elements)
+  end
 
   defp competence_contexts(_scope, %TeachingContext{combined_course_id: nil} = ctx), do: [ctx]
 
