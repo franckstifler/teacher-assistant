@@ -235,6 +235,25 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
       <.class_shell cg={@cg} shell={@shell} tab={:register}>
         <:actions>
           <.link
+            :if={@can_edit? and @cg.paper_roll_call}
+            id="roll-sheet-link"
+            navigate={~p"/school/classes/#{@cg.id}/roll-sheet"}
+            class="btn btn-ghost"
+          >
+            <.icon name="hero-pencil-square" class="size-4" />
+            {gettext("Saisir la feuille")}
+          </.link>
+          <.link
+            :if={@can_edit? and @cg.paper_roll_call}
+            id="roll-sheet-print"
+            href={~p"/school/classes/#{@cg.id}/roll-sheet/print"}
+            target="_blank"
+            class="btn btn-ghost"
+          >
+            <.icon name="hero-printer" class="size-4" />
+            {gettext("Imprimer la feuille")}
+          </.link>
+          <.link
             :if={@can_manage_register?}
             navigate={~p"/school/classes/#{@cg.id}/photos"}
             id="go-to-photos"

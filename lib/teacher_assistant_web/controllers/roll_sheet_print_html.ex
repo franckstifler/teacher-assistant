@@ -10,8 +10,8 @@ defmodule TeacherAssistantWeb.RollSheetPrintHTML do
 
   defp blank_rows, do: 1..@blank_rows
 
-  # « Semaine du lundi 15 au samedi 20 septembre 2025 »
-  defp week_label(%{monday: monday, saturday: saturday}),
+  @doc "« Semaine du lundi 15 au samedi 20 septembre 2025 » (also the entry screen's title)."
+  def week_label(%{monday: monday, saturday: saturday}),
     do:
       gettext("Semaine du %{from} au %{to}",
         from: Dates.weekday_day(monday),
