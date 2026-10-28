@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.PaperRollCallData do
+defmodule TeacherAssistant.Repo.Migrations.PaperRollCall do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
