@@ -70,7 +70,7 @@ defmodule TeacherAssistantWeb.School.CorrectionsLiveTest do
   end
 
   test "only locked assessments of the teacher's courses are offered", ctx do
-    [_, seq2 | _] = TeacherAssistant.Organization.list_sequences(ctx.head, ctx.year)
+    [_, seq2 | _] = TeacherAssistant.MarksFixtures.start_sequences!(ctx.head, ctx.year)
     {:ok, open_a} = Assessment.create_assessment(ctx.t, ctx.tc, seq2, %{label: "Ouvert"})
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/new")
     assert has_element?(view, "#new-correction-form option[value='#{ctx.a.id}']")

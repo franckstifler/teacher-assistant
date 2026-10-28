@@ -103,4 +103,21 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
     [mark] = Assessment.list_marks(ctx.head, ctx.a)
     assert Decimal.equal?(mark.score, 12)
   end
+
+  test "a séquence not started yet is read-only and says when entry opens", ctx do
+    [_first, next | _] = TeacherAssistant.Organization.list_sequences(ctx.head, ctx.year)
+
+    {:ok, view, _} =
+      live(ctx.conn, ~p"/teacher/contexts/#{ctx.tc.id}/marks?seq=#{next.id}")
+
+    assert has_element?(view, "#upcoming-banner", "La saisie ouvre le")
+    assert has_element?(view, "#seq-tab-#{next.id}", "à venir")
+    refute has_element?(view, "#open-banner")
+    refute has_element?(view, "#locked-banner")
+    refute has_element?(view, "#new-assessment-form")
+
+    html = render_hook(view, "new_assessment", %{"assessment" => %{"label" => "Devoir 1"}})
+    assert html =~ "La saisie de cette séquence n&#39;est pas encore ouverte."
+    assert Assessment.list_assessments(ctx.t, ctx.tc, next) == []
+  end
 end

@@ -252,7 +252,7 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
     scope: scope
   } do
     year = TeacherAssistant.Organization.current_academic_year(scope)
-    [_s1, s2 | _] = TeacherAssistant.Organization.list_sequences(scope, year)
+    [_s1, s2 | _] = TeacherAssistant.MarksFixtures.start_sequences!(scope, year)
     [term1 | _] = TeacherAssistant.Organization.list_terms(scope, year)
     _ = seq
 

@@ -508,7 +508,7 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
             <p class="mt-1 text-sm text-base-content/70">
               {gettext(
                 "Sans date limite, la saisie des notes ferme %{days} jours après la fin de la séquence.",
-                days: TeacherAssistant.Academics.Reference.entry_grace_days()
+                days: grace_days(@profile)
               )}
             </p>
           </div>
@@ -1106,6 +1106,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
       if(active_year, do: Organization.list_sequences(scope, active_year), else: [])
     )
   end
+
+  # The school's « Délai de saisie » (Paramètres › Évaluations), else the default.
+  defp grace_days(%{entry_grace_days: days}) when is_integer(days), do: days
+  defp grace_days(_profile), do: TeacherAssistant.Academics.Reference.entry_grace_days()
 
   defp load_profile(socket) do
     scope = socket.assigns.scope

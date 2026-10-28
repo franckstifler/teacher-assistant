@@ -16,6 +16,7 @@ defmodule TeacherAssistant.ReportCardsAccessTest do
       TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg})
 
     tscope = %{tscope | current_academic_year: year}
+    _ = TeacherAssistant.MarksFixtures.start_sequences!(scope, year)
     [term | _] = Organization.list_terms(scope, year)
 
     %{

@@ -23,7 +23,8 @@ defmodule TeacherAssistant.Academics.PeriodResultsTest do
       })
 
     :ok = Organization.build_default_calendar(scope, year)
-    sequences = Organization.list_sequences(scope, year)
+    # Marks across the whole year, as if it were over.
+    sequences = TeacherAssistant.MarksFixtures.start_sequences!(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
 

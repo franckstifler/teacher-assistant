@@ -351,7 +351,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     {:noreply,
      socket
      |> warn_dropped_errors()
-     |> assign(seq: seq, locked?: seq != nil and Lock.locked?(seq))
+     |> assign(seq: seq, upcoming?: seq != nil and Lock.not_started?(seq))
+     # `locked?`: no entry at all — past the deadline, or not started yet (`upcoming?`).
+     |> assign(locked?: seq != nil and (Lock.locked?(seq) or Lock.not_started?(seq)))
      |> assign(columns: columns, column: column)
      |> assign(scores: loaded, loaded: loaded, errors: %{})
      |> assign(:new_assessment_form, new_assessment_form(socket, seq))
@@ -408,6 +410,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      )}
   end
 
+  def handle_event(event, _params, %{assigns: %{upcoming?: true}} = socket)
+      when event in ["new_assessment", "save_mark"],
+      do: {:noreply, put_flash(socket, :error, not_open_message())}
+
   def handle_event("new_assessment", _params, %{assigns: %{locked?: true}} = socket),
     do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
@@ -421,8 +427,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end
   end
 
-  def handle_event("delete_assessment", _params, %{assigns: %{locked?: true}} = socket),
-    do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
+  # An évaluation made before its séquence started can still go (the domain allows it).
+  def handle_event(
+        "delete_assessment",
+        _params,
+        %{assigns: %{locked?: true, upcoming?: false}} = socket
+      ),
+      do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
   def handle_event("delete_assessment", _params, %{assigns: %{column: nil}} = socket),
     do: {:noreply, socket}
@@ -758,7 +769,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               locked?={@locked?}
               columns={@columns}
               column={@column}
-              deletable?={@column != nil and !@locked? and no_marks?(@loaded)}
+              deletable?={@column != nil and (!@locked? or @upcoming?) and no_marks?(@loaded)}
               combined?={@course != nil}
               form={@new_assessment_form}
               assessment_types={@assessment_types}
@@ -767,7 +778,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           </div>
         </div>
 
-        <.locked_banner :if={@locked?} seq={@seq} assessment={@column} />
+        <.locked_banner :if={@locked? and !@upcoming?} seq={@seq} assessment={@column} />
+        <.upcoming_banner :if={@upcoming?} seq={@seq} />
         <.open_banner :if={@seq && !@locked?} seq={@seq} today={@today} />
 
         <div :if={@seq && @columns == []} id="marks-empty">
@@ -775,12 +787,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             icon="hero-pencil-square"
             title={gettext("Aucune évaluation pour la séquence %{n}", n: @seq.number)}
             message={
-              if @locked?,
-                do: gettext("Cette séquence est verrouillée."),
-                else:
+              cond do
+                @upcoming? ->
+                  not_open_message()
+
+                @locked? ->
+                  gettext("Cette séquence est verrouillée.")
+
+                true ->
                   gettext(
                     "Créez la première ci-dessus : son type, un nom (« Devoir 1 »), la note maximale, puis Ajouter. La liste des élèves s'affiche ensuite pour la saisie."
                   )
+              end
             }
           />
         </div>
@@ -880,16 +898,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     """
   end
 
-  # « Séquence 2 · ouverte » / « · verrouillée »; nothing for one not started yet.
+  # « Séquence 2 · ouverte » / « · verrouillée » / « · à venir ».
   defp seq_tab_label(seq, today) do
     base = gettext("Séquence %{n}", n: seq.number)
 
     cond do
       Lock.locked?(seq, today) -> base <> " · " <> gettext("verrouillée")
-      Date.compare(seq.start_date, today) != :gt -> base <> " · " <> gettext("ouverte")
-      true -> base
+      Lock.not_started?(seq, today) -> base <> " · " <> gettext("à venir")
+      true -> base <> " · " <> gettext("ouverte")
     end
   end
+
+  defp not_open_message, do: gettext("La saisie de cette séquence n'est pas encore ouverte.")
 
   defp missing_line(_missing, nil, _locked?), do: nil
   defp missing_line(_missing, _seq, true), do: nil
@@ -1054,6 +1074,25 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           "Saisie ouverte jusqu'au %{date} (J-%{n}). Chaque note est enregistrée dès que vous quittez la case.",
           date: Dates.day_month(@seq.grade_entry_deadline),
           n: max(Date.diff(@seq.grade_entry_deadline, @today), 0)
+        )}
+      </span>
+    </div>
+    """
+  end
+
+  attr :seq, :map, required: true
+
+  defp upcoming_banner(assigns) do
+    ~H"""
+    <div
+      id="upcoming-banner"
+      class="flex items-start gap-3 rounded-box border border-base-300 bg-base-200/60 px-4 py-3 text-sm"
+    >
+      <.icon name="hero-calendar-days" class="mt-0.5 size-4 text-base-content/70" />
+      <span>
+        {gettext("La saisie ouvre le %{date}, au début de la séquence %{n}.",
+          date: Dates.day_month(@seq.start_date),
+          n: @seq.number
         )}
       </span>
     </div>

@@ -43,4 +43,26 @@ defmodule TeacherAssistant.MarksFixtures do
 
     seq
   end
+
+  @doc """
+  Starts every séquence of `year` that the test clock has not reached yet (its start
+  moves to today, its end stays), so a test can record marks across the whole year.
+  Returns the séquences, in order.
+  """
+  def start_sequences!(scope, year) do
+    today = TeacherAssistant.Academics.Reference.today()
+
+    for seq <- Organization.list_sequences(scope, year) do
+      if Date.after?(seq.start_date, today) do
+        {:ok, seq} =
+          seq
+          |> Ash.Changeset.for_update(:update, %{start_date: today}, scope: scope)
+          |> Ash.update()
+
+        seq
+      else
+        seq
+      end
+    end
+  end
 end

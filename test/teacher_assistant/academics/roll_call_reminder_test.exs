@@ -62,7 +62,10 @@ defmodule TeacherAssistant.Academics.RollCallReminderTest do
 
     assert %{unread: 1, latest: [n]} = Notifications.bell(ctx.teacher)
     assert n.kind == :roll_call_reminder
-    assert n.link == "/school/today"
+
+    assert n.link ==
+             "/school/classes/#{ctx.slot.class_group_id}/attendance/#{ctx.slot.period_id}?date=#{@monday}"
+
     assert n.params == %{"class" => "6e A", "time" => "07:30", "subject" => "Anglais"}
 
     assert {:error, :already_reminded} =

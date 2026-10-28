@@ -1,7 +1,8 @@
 defmodule TeacherAssistant.Academics.Mark.AssessmentOpen do
   @moduledoc """
   A mark of a locked assessment (spec D3b) cannot be created, changed or deleted — by
-  anyone, admins included — except by an approved correction (spec D3c).
+  anyone, admins included — except by an approved correction (spec D3c). Nor before its
+  séquence starts.
   """
   use Ash.Resource.Validation
 
@@ -21,6 +22,9 @@ defmodule TeacherAssistant.Academics.Mark.AssessmentOpen do
         if approved_correction?(changeset),
           do: :ok,
           else: {:error, field: :assessment_id, message: "locked"}
+
+      :not_started ->
+        {:error, field: :assessment_id, message: "not started"}
 
       # A missing assessment is reported by the write itself (and `ScoreWithinMax`).
       state when state in [:open, :missing] ->

@@ -286,7 +286,7 @@ defmodule TeacherAssistant.Assessment do
               class: tc.class_group && tc.class_group.label,
               sequence: seq.number
             },
-            "/school/courses"
+            "/teacher/contexts/#{tc.id}/marks?seq=#{seq.id}"
           )
 
           reminder

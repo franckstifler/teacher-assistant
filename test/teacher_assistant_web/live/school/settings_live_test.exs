@@ -63,6 +63,13 @@ defmodule TeacherAssistantWeb.School.SettingsLiveTest do
     assert has_element?(view, "#year-calendar-#{year.id}", "Séquence 6")
   end
 
+  test "the calendar hint states the school's own grace days", %{conn: conn, scope: scope} do
+    {:ok, _} = TeacherAssistant.Assessment.update_entry_grace_days(scope, "12")
+    year = Organization.current_academic_year(scope)
+    {:ok, view, _} = live(conn, ~p"/school/settings/year")
+    assert has_element?(view, "#year-calendar-#{year.id}", "ferme 12 jours après la fin")
+  end
+
   test "a vice_principal member sees the Settings nav link and the years", %{
     conn: _conn,
     school: school,

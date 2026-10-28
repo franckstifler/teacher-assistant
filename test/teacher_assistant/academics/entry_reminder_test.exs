@@ -44,7 +44,7 @@ defmodule TeacherAssistant.Academics.EntryReminderTest do
 
     assert %{unread: 1, latest: [n]} = Notifications.bell(ctx.english)
     assert n.kind == :entry_reminder
-    assert n.link == "/school/courses"
+    assert n.link == "/teacher/contexts/#{ctx.tc_en.id}/marks?seq=#{ctx.seq.id}"
 
     assert n.params == %{
              "subject" => "Anglais",

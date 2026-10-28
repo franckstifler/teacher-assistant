@@ -111,7 +111,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
               time: Calendar.strftime(slot.period.start_time, "%H:%M"),
               subject: subject_label(tc)
             },
-            "/school/today"
+            "/school/classes/#{slot.class_group_id}/attendance/#{slot.period_id}?date=#{date}"
           )
 
           reminder

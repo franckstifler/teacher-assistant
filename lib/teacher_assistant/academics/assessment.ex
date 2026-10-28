@@ -255,9 +255,13 @@ defmodule TeacherAssistant.Academics.Assessment do
           Map.new(contexts, fn ctx -> {ctx.id, assessments_for(ctx.id, seq.id, scope)} end)
 
         primary_labels = Enum.map(by_context_id[primary.id], & &1.label)
-        # A locked séquence takes no new assessments: a class missing a label stays out.
+        # A locked or not yet started séquence takes no new assessments: a class missing
+        # a label stays out.
         {:ok, seq} = TeacherAssistant.Academics.Lock.fetch_sequence(seq.id, scope)
-        backfill? = not TeacherAssistant.Academics.Lock.locked?(seq)
+
+        backfill? =
+          not TeacherAssistant.Academics.Lock.locked?(seq) and
+            not TeacherAssistant.Academics.Lock.not_started?(seq)
 
         extra_labels =
           rest
