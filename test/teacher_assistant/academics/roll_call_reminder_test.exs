@@ -37,6 +37,8 @@ defmodule TeacherAssistant.Academics.RollCallReminderTest do
     teacher = TeacherFixtures.member_scope_fixture(scope)
     teacher = %{teacher | current_academic_year: year}
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    # The app roll call rule; paper classes are covered in school_life_test.exs.
+    {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, false)
 
     {:ok, tc} =
       Curriculum.assign_teacher(scope, cg, teacher.current_user, %{subject: "Anglais"})

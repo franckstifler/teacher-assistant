@@ -35,6 +35,8 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
     scope = %{scope | current_academic_year: year}
     _ = Organization.build_default_calendar(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    # These tests cover the app roll call; the paper rule has its own describe below.
+    {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, false)
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: e}] = Enrollment.list_roster(scope, cg)
@@ -289,6 +291,72 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
 
       assert Attendance.day_off(ctx.scope, @monday) == :no_lessons
       assert Attendance.day_off(ctx.scope, Date.add(@monday, 1)) == nil
+    end
+  end
+
+  describe "paper roll call (spec 2026-10-28)" do
+    setup %{scope: scope, cg: cg} do
+      {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, true)
+      %{cg: cg}
+    end
+
+    defp status_of(day, cg, period),
+      do: Enum.find(day.rows, &(&1.class_group.id == cg.id)).cells[period.id].status
+
+    test "a paper class's untaken lesson is on paper, not missed", ctx do
+      day = Attendance.school_day(ctx.scope, @monday, at(@monday, ~T[13:00:00]))
+
+      assert status_of(day, ctx.cg, ctx.p1) == :on_paper
+      assert day.missed == []
+
+      assert %{done: 0, on_paper: 2, expected: 2, missed: []} =
+               Attendance.roll_call_counts(day)
+    end
+
+    test "the Monday after, it is missed again", ctx do
+      [lesson | _] =
+        Attendance.class_lessons(
+          ctx.scope,
+          ctx.cg,
+          @monday,
+          @monday,
+          at(~D[2025-09-22], ~T[09:00:00])
+        )
+
+      assert lesson.status == :missed
+    end
+
+    test "a class off paper keeps today's rule", ctx do
+      {:ok, _} = Enrollment.set_paper_roll_call(ctx.scope, ctx.cg, false)
+      day = Attendance.school_day(ctx.scope, @monday, at(@monday, ~T[13:00:00]))
+      assert status_of(day, ctx.cg, ctx.p1) == :missed
+    end
+
+    test "a lesson marked not held is neither missed nor on paper", ctx do
+      {:ok, _} =
+        TeacherAssistant.Academics.LessonNotHeld
+        |> Ash.Changeset.for_create(
+          :mark,
+          %{class_group_id: ctx.cg.id, period_id: ctx.p1.id, date: @monday},
+          scope: ctx.scope
+        )
+        |> Ash.create()
+
+      day = Attendance.school_day(ctx.scope, @monday, at(@monday, ~T[13:00:00]))
+      assert status_of(day, ctx.cg, ctx.p1) == :not_held
+      assert %{on_paper: 1, expected: 1} = Attendance.roll_call_counts(day)
+    end
+
+    test "a teacher's day follows the paper rule", ctx do
+      [cell | _] = Attendance.teacher_day(ctx.scope, ctx.head, @monday, at(@monday, ~T[13:00:00]))
+      assert cell.status == :on_paper
+
+      assert Attendance.teacher_missed_this_week(
+               ctx.scope,
+               ctx.head,
+               Date.add(@monday, 1),
+               at(Date.add(@monday, 1), ~T[13:00:00])
+             ) == []
     end
   end
 end

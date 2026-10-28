@@ -33,6 +33,8 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
 
     :ok = Organization.build_default_calendar(scope, year)
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
+    # The app roll call rule; paper classes are covered in school_life_test.exs.
+    {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, false)
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
     [%{enrollment: e}] = Enrollment.list_roster(scope, cg)
