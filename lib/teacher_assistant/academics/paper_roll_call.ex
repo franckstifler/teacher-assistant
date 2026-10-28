@@ -25,6 +25,9 @@ defmodule TeacherAssistant.Academics.PaperRollCall do
     if Date.day_of_week(today) >= 6, do: Date.add(monday, 7), else: monday
   end
 
+  @doc "The Monday of the week the entry screen opens on: always the current one."
+  def entry_week(%Date{} = today), do: Date.beginning_of_week(today)
+
   @doc """
   A lesson's state from its clock-and-entries status (`:done | :missed | :in_progress |
   :upcoming`), whether its class is on paper, whether it is marked not held, its date

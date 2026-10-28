@@ -86,6 +86,46 @@ defmodule TeacherAssistant.Workers.PaperSheetsOverdueTest do
     assert Notifications.inbox(ctx.sg, 1).results == []
   end
 
+  describe "on Monday 20 October" do
+    setup do
+      Application.put_env(:teacher_assistant, :school_clock_now, ~U[2025-10-20 05:30:00Z])
+      :ok
+    end
+
+    test "only the last four weeks are listed", ctx do
+      assert :ok = perform_job(PaperSheetsOverdue, %{})
+      assert [%{params: params}] = Notifications.inbox(ctx.sg, 1).results
+      assert params["count"] == "4"
+      assert params["list"] =~ ~r/^6e A \(sem. du 22 sept.\)/
+    end
+
+    test "a long list keeps eight sheets and counts the others", ctx do
+      for label <- ["6e B", "6e C"] do
+        {:ok, cg} =
+          Enrollment.create_class_group(ctx.scope, ctx.scope.current_academic_year, %{
+            label: label,
+            level: "6ème"
+          })
+
+        {:ok, tc} =
+          Curriculum.assign_teacher(ctx.scope, cg, ctx.scope.current_user, %{subject: "Maths"})
+
+        {:ok, _} =
+          Timetabling.place_slot(ctx.scope, cg, %{
+            day: :monday,
+            period_id: ctx.p1.id,
+            teaching_context_id: tc.id
+          })
+      end
+
+      assert :ok = perform_job(PaperSheetsOverdue, %{})
+      assert [%{params: params}] = Notifications.inbox(ctx.sg, 1).results
+      assert params["count"] == "12"
+      assert params["list"] =~ ~r/ et 4 autres$/
+      assert length(String.split(params["list"], "), ")) == 8
+    end
+  end
+
   test "the notice reads « N feuilles d'appel non saisies »" do
     notice = %{
       kind: :paper_sheets_overdue,

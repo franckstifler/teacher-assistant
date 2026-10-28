@@ -39,4 +39,10 @@ defmodule TeacherAssistant.Academics.PaperRollCallTest do
     assert PaperRollCall.state(:in_progress, true, false, ~D[2025-09-15], ~D[2025-09-15]) ==
              :in_progress
   end
+
+  test "the entry screen opens on the current week, weekend included" do
+    assert PaperRollCall.entry_week(~D[2025-09-17]) == ~D[2025-09-15]
+    assert PaperRollCall.entry_week(~D[2025-09-20]) == ~D[2025-09-15]
+    assert PaperRollCall.entry_week(~D[2025-09-21]) == ~D[2025-09-15]
+  end
 end

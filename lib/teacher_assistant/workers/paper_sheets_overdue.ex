@@ -3,9 +3,14 @@ defmodule TeacherAssistant.Workers.PaperSheetsOverdue do
   Paper roll call (spec 2026-10-28 §4): every Monday morning, tells each school's
   Proviseur and Surveillant général which paper classes still have a past week of the
   term not typed in — one notice listing them, oldest week first, linking to the first
-  sheet to type in. Nothing when every sheet is in.
+  sheet to type in. Nothing when every sheet is in. It looks back at most
+  four weeks and names at most eight sheets, so a backlog (the weeks before the school
+  moved to paper) does not flood the notice.
   """
   use Oban.Worker, queue: :default, max_attempts: 2, unique: [period: 3600]
+
+  @weeks_back 4
+  @listed 8
 
   alias TeacherAssistant.{Attendance, Enrollment, Notifications, Organization}
   alias TeacherAssistant.Accounts.Workspaces
@@ -23,8 +28,9 @@ defmodule TeacherAssistant.Workers.PaperSheetsOverdue do
 
   defp notify(scope, today, now) do
     year = scope.current_academic_year
-    last = Date.add(Date.beginning_of_week(today), -1)
-    first = term_start(scope, year, today)
+    monday = Date.beginning_of_week(today)
+    last = Date.add(monday, -1)
+    first = Enum.max([term_start(scope, year, today), Date.add(monday, -7 * @weeks_back)], Date)
 
     overdue =
       if Date.compare(first, last) == :gt,
@@ -59,6 +65,10 @@ defmodule TeacherAssistant.Workers.PaperSheetsOverdue do
       {cg, monday}
     end
     |> Enum.sort_by(fn {cg, monday} -> {Date.to_gregorian_days(monday), cg.label} end)
+  end
+
+  defp list(overdue) when length(overdue) > @listed do
+    list(Enum.take(overdue, @listed)) <> " et #{length(overdue) - @listed} autres"
   end
 
   defp list(overdue) do

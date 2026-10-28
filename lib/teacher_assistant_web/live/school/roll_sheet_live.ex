@@ -35,17 +35,21 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
   defp week(%{"week" => week}) when is_binary(week) do
     case Date.from_iso8601(week) do
       {:ok, date} -> Date.beginning_of_week(date)
-      _ -> PaperRollCall.default_week(Reference.today())
+      _ -> PaperRollCall.entry_week(Reference.today())
     end
   end
 
-  defp week(_params), do: PaperRollCall.default_week(Reference.today())
+  # The sheet comes back at the end of its week: open on the current one.
+  defp week(_params), do: PaperRollCall.entry_week(Reference.today())
 
   defp load_week(socket, monday) do
     week = Attendance.paper_week(socket.assigns.current_scope, socket.assigns.cg, monday)
 
     columns =
-      for day <- week.days, lesson <- day.lessons, lesson.state != :app, into: %{} do
+      for day <- week.days,
+          lesson <- day.lessons,
+          lesson.state != :app and not lesson.upcoming?,
+          into: %{} do
         {key(lesson), column(lesson)}
       end
 
@@ -355,6 +359,12 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
   attr :column, :map, default: nil
   attr :cg, :map, required: true
 
+  defp column_controls(%{lesson: %{upcoming?: true}} = assigns) do
+    ~H"""
+    <span class="text-[0.65rem] font-normal text-base-content/50">{gettext("À venir")}</span>
+    """
+  end
+
   defp column_controls(%{column: nil} = assigns) do
     ~H"""
     <.link
@@ -411,6 +421,12 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
   attr :lesson, :map, required: true
   attr :col, :integer, default: 0
   attr :column, :map, default: nil
+
+  defp mark_cell(%{lesson: %{upcoming?: true}} = assigns) do
+    ~H"""
+    <span class="mx-auto grid h-9 min-w-9 place-items-center rounded border border-dashed border-base-300"></span>
+    """
+  end
 
   defp mark_cell(%{column: nil} = assigns) do
     ~H"""

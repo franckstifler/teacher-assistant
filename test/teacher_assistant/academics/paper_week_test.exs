@@ -180,6 +180,33 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
              lesson(Attendance.paper_week(ctx.sg, ctx.cg, @monday), @monday, ctx.p1)
   end
 
+  test "un-marking « non assuré » puts the lesson back", ctx do
+    not_held = %{date: @monday, period_id: ctx.p1.id, mode: :not_held, marks: %{}}
+    {:ok, _} = Attendance.save_paper_week(ctx.sg, ctx.cg, @monday, [not_held])
+
+    {:ok, _} =
+      Attendance.save_paper_week(ctx.sg, ctx.cg, @monday, [%{not_held | mode: :skip}])
+
+    assert Ash.read!(LessonNotHeld, scope: ctx.scope) == []
+
+    assert %{state: :empty} =
+             lesson(Attendance.paper_week(ctx.sg, ctx.cg, @monday), @monday, ctx.p1)
+  end
+
+  test "a lesson that has not taken place yet cannot be closed", ctx do
+    week = Attendance.paper_week(ctx.sg, ctx.cg, @monday)
+    assert %{upcoming?: true} = lesson(week, @tuesday, ctx.p1)
+    assert %{upcoming?: false} = lesson(week, @monday, ctx.p1)
+
+    {:ok, %{saved: 0, not_held: 0}} =
+      Attendance.save_paper_week(ctx.sg, ctx.cg, @monday, [
+        taken(@tuesday, ctx.p1),
+        %{date: @tuesday, period_id: ctx.p1.id, mode: :not_held, marks: %{}}
+      ])
+
+    assert entries(ctx, @tuesday) == %{}
+  end
+
   test "closed days have no columns", ctx do
     {:ok, _} =
       Organization.create_holiday(ctx.scope, ctx.year, %{
@@ -216,6 +243,31 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
       Attendance.for_class_range!(cg2.id, @monday, @monday, scope: ctx.scope)
 
     assert dora_entry.teaching_context_id == tc2.id
+  end
+
+  test "a teacher's app correction of a combined lesson typed in from paper is the app's", ctx do
+    {:ok, cg2} =
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e B", level: "6ème"})
+
+    {:ok, _} = Enrollment.add_student(ctx.scope, cg2, %{full_name: "Dora", sex: :f})
+    [dora] = for r <- Enrollment.list_roster(ctx.scope, cg2), do: r.enrollment
+    {:ok, tc2} = Curriculum.assign_teacher(ctx.scope, cg2, ctx.head, %{subject: "Anglais"})
+    {:ok, tc1} = Curriculum.assign_teacher(ctx.scope, ctx.cg, ctx.head, %{subject: "Anglais"})
+    {:ok, course} = Curriculum.combine_course(ctx.scope, [tc1, tc2])
+    [_, p2 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    {:ok, _} = Timetabling.place_combined_slot(ctx.scope, course, :monday, p2.id)
+
+    {:ok, _} = Attendance.save_paper_week(ctx.sg, cg2, @monday, [taken(@monday, p2)])
+
+    marks =
+      for s <- [ctx.awa, ctx.beti, ctx.chantal], do: {s.id, :present}
+
+    {:ok, _} =
+      Attendance.record_combined_period(ctx.scope, course, p2, @monday, [
+        {dora.id, :absent} | marks
+      ])
+
+    assert %{state: :app} = lesson(Attendance.paper_week(ctx.sg, cg2, @monday), @monday, p2)
   end
 
   test "a teacher may not save a week; an unverified school neither", ctx do

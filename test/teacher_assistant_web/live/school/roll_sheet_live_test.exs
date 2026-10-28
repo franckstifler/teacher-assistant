@@ -115,6 +115,21 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
            )
   end
 
+  test "a lesson that has not taken place yet shows « À venir » and cannot be typed", ctx do
+    {:ok, _} =
+      Timetabling.place_slot(ctx.scope, ctx.cg, %{
+        day: :tuesday,
+        period_id: ctx.p1.id,
+        teaching_context_id: ctx.tc.id
+      })
+
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+
+    refute has_element?(view, "#done-2025-09-16-#{ctx.p1.id}")
+    refute has_element?(view, "#cell-#{ctx.awa.id}-2025-09-16-#{ctx.p1.id}")
+    assert has_element?(view, "#roll-sheet-grid", "À venir")
+  end
+
   test "a column with A but no tick warns before saving", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
     view |> element(cell(ctx.awa, ctx.p1)) |> render_click()

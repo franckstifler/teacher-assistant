@@ -201,7 +201,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       |> slots(dates |> Enum.map(&weekday/1) |> Enum.uniq(), nil, cg.id)
       |> Enum.filter(&SchoolCalendar.open_cell?(cal, &1.day, &1.period))
 
-    marks = lesson_marks(scope, slots, first, last)
+    marks = lesson_marks(scope, slots, first, last, cg.id)
     slots_by_day = Enum.group_by(slots, & &1.day)
 
     for(
@@ -460,9 +460,14 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
   # `done`: {class_group_id, period_id, date} => number of :absent entries, for roll
   # calls done; `not_held`: the keys marked « cours non assuré ».
-  defp lesson_marks(_scope, [], _first, _last), do: %{done: %{}, not_held: MapSet.new()}
+  # With `class_group_id` (one class over a term or a year): a lighter read of the
+  # entries, without their enrollments.
+  defp lesson_marks(scope, slots, first, last, class_group_id \\ nil)
 
-  defp lesson_marks(scope, slots, first, last) do
+  defp lesson_marks(_scope, [], _first, _last, _cg_id),
+    do: %{done: %{}, not_held: MapSet.new()}
+
+  defp lesson_marks(scope, slots, first, last, class_group_id) do
     class_ids = slots |> Enum.map(& &1.class_group_id) |> Enum.uniq()
 
     not_held =
@@ -475,7 +480,23 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       |> Ash.read!()
       |> MapSet.new(&{&1.class_group_id, &1.period_id, &1.date})
 
-    %{done: done_roll_calls(scope, slots, first, last), not_held: not_held}
+    done =
+      if class_group_id,
+        do: class_done_roll_calls(scope, class_group_id, first, last),
+        else: done_roll_calls(scope, slots, first, last)
+
+    %{done: done, not_held: not_held}
+  end
+
+  defp class_done_roll_calls(scope, class_group_id, first, last) do
+    AttendanceEntry
+    |> Ash.Query.filter(
+      date >= ^first and date <= ^last and enrollment.class_group_id == ^class_group_id
+    )
+    |> Ash.Query.select([:period_id, :date, :status])
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(&{class_group_id, &1.period_id, &1.date})
+    |> Map.new(fn {key, entries} -> {key, Enum.count(entries, &(&1.status == :absent))} end)
   end
 
   defp done_roll_calls(scope, slots, first, last) do

@@ -452,7 +452,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
             enrollment_id: enrollment_id,
             period_id: period_id,
             teaching_context_id: tc_id,
-            recorded_by_user_id: recorded_by_user_id
+            recorded_by_user_id: recorded_by_user_id,
+            # Explicit, so it overwrites `:paper` on an upsert (defaults are not upserted).
+            source: :app
           },
           scope: scope
         )

@@ -93,6 +93,8 @@ defmodule TeacherAssistant.Academics.PaperWeek do
       code: cell.code,
       subject: cell.subject,
       state: state(cell, entries),
+      # Not taken place yet: nothing to type in or close.
+      upcoming?: cell.status == :upcoming,
       marks: Map.new(entries, &{&1.enrollment_id, &1.status}),
       sent_home: sent_home
     }
@@ -124,7 +126,7 @@ defmodule TeacherAssistant.Academics.PaperWeek do
         students = Enum.map(week.students, & &1.enrollment_id)
 
         TeacherAssistant.Repo.transaction(fn ->
-          Enum.reduce(columns, %{saved: 0, not_held: 0}, fn column, acc ->
+          Enum.reduce(columns, %{saved: 0, not_held: 0, unmarked: 0}, fn column, acc ->
             lesson = Map.get(index, {column.date, column.period_id})
 
             case apply_column(scope, cg, lesson, column, students) do
@@ -139,6 +141,13 @@ defmodule TeacherAssistant.Academics.PaperWeek do
 
   defp apply_column(_scope, _cg, nil, _column, _students), do: :skipped
   defp apply_column(_scope, _cg, %{state: :app}, _column, _students), do: :skipped
+  defp apply_column(_scope, _cg, %{upcoming?: true}, _column, _students), do: :skipped
+
+  # « Non assuré » un-marked: the lesson is back to be typed in (spec §3).
+  defp apply_column(scope, cg, %{state: :not_held} = lesson, %{mode: :skip}, _students) do
+    with :ok <- unmark_not_held(scope, cg, lesson), do: {:ok, :unmarked}
+  end
+
   defp apply_column(_scope, _cg, _lesson, %{mode: :skip}, _students), do: :skipped
 
   defp apply_column(scope, cg, lesson, %{mode: :taken, marks: typed}, students) do
