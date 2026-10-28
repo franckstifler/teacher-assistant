@@ -60,6 +60,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       ]
     ]
 
+    # Paper roll call (spec 2026-10-28 §1): conduct managers switch it too.
+    update :set_paper_roll_call do
+      accept [:paper_roll_call]
+    end
+
     read :for_workspace_and_year do
       argument :academic_year_id, :uuid, allow_nil?: false
 
@@ -92,8 +97,13 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       authorize_if {Checks.SchoolRole, any_of: :member}
     end
 
-    policy action_type([:create, :update, :destroy]) do
+    policy action([:create, :update, :destroy]) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
+    end
+
+    policy action(:set_paper_roll_call) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+      authorize_if {Checks.SchoolRole, any_of: :conduct}
     end
   end
 
@@ -123,6 +133,10 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       allow_nil?: false,
       default: :francophone,
       public?: true
+
+    # Spec 2026-10-28: the roll call is taken on a weekly printed sheet, typed in by the
+    # surveillant; untaken lessons wait for it instead of counting as missed.
+    attribute :paper_roll_call, :boolean, allow_nil?: false, default: true, public?: true
 
     timestamps()
   end

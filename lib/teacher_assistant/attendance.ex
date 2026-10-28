@@ -3,6 +3,7 @@ defmodule TeacherAssistant.Attendance do
 
   require Ash.Query
 
+  alias TeacherAssistant.Academics.AcademicYear
   alias TeacherAssistant.Academics.AttendanceEntry
   alias TeacherAssistant.Academics.ClassGroup
   alias TeacherAssistant.Academics.CombinedCourse
@@ -47,6 +48,7 @@ defmodule TeacherAssistant.Attendance do
     end
 
     resource TeacherAssistant.Academics.RollCallReminder
+    resource TeacherAssistant.Academics.LessonNotHeld
   end
 
   authorization do
@@ -712,6 +714,23 @@ defmodule TeacherAssistant.Attendance do
     case SchoolCalendar.holiday_on(cal, date) do
       %{label: label} -> {:holiday, label}
       nil -> if SchoolCalendar.lesson_day?(cal, date), do: nil, else: :no_lessons
+    end
+  end
+
+  # --- Paper roll call (spec 2026-10-28) -----------------------------------------
+
+  @doc "Switches paper roll call on or off for every class of the year, all or none."
+  def set_paper_roll_call_all(%Scope{} = scope, %AcademicYear{} = year, paper?)
+      when is_boolean(paper?) do
+    TeacherAssistant.Repo.transaction(fn ->
+      for cg <- TeacherAssistant.Enrollment.list_class_groups(scope, year) do
+        with {:error, error} <- TeacherAssistant.Enrollment.set_paper_roll_call(scope, cg, paper?),
+             do: TeacherAssistant.Repo.rollback(error)
+      end
+    end)
+    |> case do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
     end
   end
 

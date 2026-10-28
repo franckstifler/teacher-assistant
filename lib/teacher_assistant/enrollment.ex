@@ -166,6 +166,13 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.update()
   end
 
+  @doc "Switches the class's paper roll call (spec 2026-10-28 §1)."
+  def set_paper_roll_call(%Scope{} = scope, %ClassGroup{} = cg, paper?) when is_boolean(paper?) do
+    cg
+    |> Ash.Changeset.for_update(:set_paper_roll_call, %{paper_roll_call: paper?}, scope: scope)
+    |> Ash.update()
+  end
+
   def form_master(%Scope{}, %ClassGroup{form_master_user_id: nil}), do: nil
 
   def form_master(%Scope{} = scope, %ClassGroup{form_master_user_id: uid}) do

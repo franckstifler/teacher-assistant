@@ -88,6 +88,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
     create :record do
       accept [
+        :source,
         :status,
         :late_minutes,
         :justified,
@@ -294,6 +295,11 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     attribute :justified_by_user_id, :uuid, allow_nil?: true, public?: true
     attribute :justified_at, :utc_datetime, allow_nil?: true, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    # Spec 2026-10-28: typed in from a paper sheet, or taken in the app.
+    attribute :source, TeacherAssistant.Academics.AttendanceSource,
+      allow_nil?: false,
+      default: :app,
+      public?: true
 
     timestamps()
   end
