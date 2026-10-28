@@ -8,6 +8,7 @@ defmodule TeacherAssistant.Accounts.NotificationKind do
       :roll_call_reminder,
       :bulletins_published,
       :missed_roll_calls,
+      :paper_sheets_overdue,
       :temporary_password_expired,
       :member_joined
     ]

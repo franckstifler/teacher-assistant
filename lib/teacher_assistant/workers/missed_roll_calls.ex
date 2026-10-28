@@ -71,7 +71,9 @@ defmodule TeacherAssistant.Workers.MissedRollCalls do
     end)
   end
 
-  defp recipient_ids(scope) do
+  @doc false
+  # The Proviseur and the Surveillant général; also `PaperSheetsOverdue`'s recipients.
+  def recipient_ids(scope) do
     for m <- Accounts.list_members(scope),
         Enum.any?(m.roles, &(&1 in [:head, :discipline_master])),
         do: m.user_id

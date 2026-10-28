@@ -22,6 +22,8 @@ config :teacher_assistant, Oban,
        {"30 11 * * 1-6", TeacherAssistant.Workers.MissedRollCalls, args: %{"half" => "morning"}},
        {"30 16 * * 1-6", TeacherAssistant.Workers.MissedRollCalls,
         args: %{"half" => "afternoon"}},
+       # Monday 06:30 school time: paper roll-call sheets of past weeks not typed in.
+       {"30 5 * * 1", TeacherAssistant.Workers.PaperSheetsOverdue},
        {"10 6 * * *", TeacherAssistant.Workers.ExpiredTemporaryPasswords}
      ]}
   ]

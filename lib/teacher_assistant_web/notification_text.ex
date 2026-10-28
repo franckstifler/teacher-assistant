@@ -28,6 +28,14 @@ defmodule TeacherAssistantWeb.NotificationText do
     gettext("%{name} a rejoint l'établissement", name: get(p, "name"))
   end
 
+  def title(%{kind: :paper_sheets_overdue, params: p}) do
+    ngettext(
+      "%{count} feuille d'appel non saisie",
+      "%{count} feuilles d'appel non saisies",
+      count(p)
+    )
+  end
+
   def title(%{kind: :missed_roll_calls, params: p}) do
     count = count(p)
 
@@ -78,6 +86,7 @@ defmodule TeacherAssistantWeb.NotificationText do
   end
 
   def detail(%{kind: :missed_roll_calls, params: p}), do: join([present(p, "list")])
+  def detail(%{kind: :paper_sheets_overdue, params: p}), do: join([present(p, "list")])
 
   def detail(%{kind: :temporary_password_expired, params: p}) do
     case present(p, "expired_on") do
