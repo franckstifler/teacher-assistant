@@ -255,6 +255,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       teacher: tc && tc.teacher,
       teaching_context_id: tc && tc.id,
       subject: tc && subject_label(tc),
+      code: tc && EntryProgress.column_code(tc.catalog_subject, subject_label(tc)),
       status: status,
       absent: absent
     }

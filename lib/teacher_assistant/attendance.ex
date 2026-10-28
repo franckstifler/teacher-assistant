@@ -332,7 +332,8 @@ defmodule TeacherAssistant.Attendance do
   `class_group`/`period`/`date`. Rejects the whole batch with `{:error, term}`
   if any enrollment doesn't belong to `class_group` or any status is invalid,
   and writes nothing if any row is refused (one transaction). Marks omitted
-  from the list are left untouched. Returns `{:ok, count}`.
+  from the list are left untouched. Returns `{:ok, count}`. `opts`: `source:`
+  (`:app` by default, `:paper` for a typed-in sheet, spec 2026-10-28).
   """
   def record_period(
         %Scope{} = scope,
@@ -340,7 +341,8 @@ defmodule TeacherAssistant.Attendance do
         %Period{id: period_id},
         teaching_context,
         %Date{} = date,
-        marks
+        marks,
+        opts \\ []
       )
       when is_list(marks) do
     teaching_context_id = teaching_context_id(teaching_context)
@@ -367,7 +369,8 @@ defmodule TeacherAssistant.Attendance do
               enrollment_id: enrollment_id,
               period_id: period_id,
               teaching_context_id: teaching_context_id,
-              recorded_by_user_id: scope.current_user && scope.current_user.id
+              recorded_by_user_id: scope.current_user && scope.current_user.id,
+              source: Keyword.get(opts, :source, :app)
             },
             scope: scope
           )
@@ -539,6 +542,7 @@ defmodule TeacherAssistant.Attendance do
   end
 
   defp teaching_context_id(%TeachingContext{id: id}), do: id
+  defp teaching_context_id(id) when is_binary(id), do: id
   defp teaching_context_id(nil), do: nil
 
   defp validate_marks(marks, valid_enrollment_ids) do
@@ -722,6 +726,12 @@ defmodule TeacherAssistant.Attendance do
   end
 
   # --- Paper roll call (spec 2026-10-28) -----------------------------------------
+
+  defdelegate paper_week(scope, cg, monday), to: TeacherAssistant.Academics.PaperWeek, as: :read
+
+  defdelegate save_paper_week(scope, cg, monday, columns),
+    to: TeacherAssistant.Academics.PaperWeek,
+    as: :save
 
   @doc "Switches paper roll call on or off for every class of the year, all or none."
   def set_paper_roll_call_all(%Scope{} = scope, %AcademicYear{} = year, paper?)

@@ -311,9 +311,9 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> Enum.map(&Map.delete(&1, :sort))
   end
 
-  # The short column heading: the catalog code ("MATH"), else the label's first letters.
-  defp column_code(%{code: code}, _label) when is_binary(code) and code != "", do: code
-  defp column_code(_subject, label), do: label |> String.slice(0, 4) |> String.upcase()
+  @doc "The short column heading: the catalog code (\"MATH\"), else the label's first letters."
+  def column_code(%{code: code}, _label) when is_binary(code) and code != "", do: code
+  def column_code(_subject, label), do: label |> String.slice(0, 4) |> String.upcase()
 
   defp known_pcts(%{cells: cells}),
     do:
