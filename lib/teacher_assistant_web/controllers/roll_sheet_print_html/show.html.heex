@@ -67,9 +67,10 @@
           </tr>
         </thead>
         <tbody>
-          <tr :for={{student, i} <- Enum.with_index(sheet.week.students)}>
-            <td class="num">{student.number}</td>
-            <td class="name">{student.student_name}</td>
+          <%!-- Students, then blank rows; the first row carries the closed days' bands. --%>
+          <tr :for={{row, i} <- Enum.with_index(rows(sheet.week))}>
+            <td class="num">{row.number}</td>
+            <td class="name">{row.student_name}</td>
             <%= for day <- sheet.week.days do %>
               <%= cond do %>
                 <% day.closed -> %>
@@ -81,13 +82,6 @@
                 <% true -> %>
                   <td :for={_lesson <- day.lessons}></td>
               <% end %>
-            <% end %>
-          </tr>
-          <tr :for={_ <- blank_rows()}>
-            <td class="num"></td>
-            <td class="name"></td>
-            <%= for day <- sheet.week.days, is_nil(day.closed) do %>
-              <td :for={_ <- 1..day_span(day)//1}></td>
             <% end %>
           </tr>
           <tr class="visa">

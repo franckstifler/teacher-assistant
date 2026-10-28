@@ -39,9 +39,13 @@ defmodule TeacherAssistant.Academics.PaperWeek do
       |> Attendance.class_lessons(cg, monday, saturday, Reference.now())
       |> Enum.group_by(& &1.date)
 
+    # Read once for the week, not once per day.
+    calendar = Attendance.school_calendar(scope)
+
     days =
       for date <- Date.range(monday, saturday),
-          day = day(scope, date, Map.get(lessons, date, []), entries, enrollment_ids),
+          day =
+            day(scope, calendar, date, Map.get(lessons, date, []), entries, enrollment_ids),
           do: day
 
     %{
@@ -59,8 +63,8 @@ defmodule TeacherAssistant.Academics.PaperWeek do
 
   # A school day: its open lessons, or `closed` with the holiday's name; nil when the
   # school, or this class, has no lessons that day.
-  defp day(scope, date, cells, entries, enrollment_ids) do
-    case Attendance.day_off(scope, date) do
+  defp day(scope, calendar, date, cells, entries, enrollment_ids) do
+    case day_off(calendar, date) do
       :no_lessons ->
         nil
 
@@ -80,6 +84,14 @@ defmodule TeacherAssistant.Academics.PaperWeek do
           lessons:
             Enum.map(cells, &lesson(&1, Map.get(entries, {date, &1.period.id}, []), sent_home))
         }
+    end
+  end
+
+  # As `Attendance.day_off/2`, from an already read calendar.
+  defp day_off(calendar, date) do
+    case SchoolCalendar.holiday_on(calendar, date) do
+      %{label: label} -> {:holiday, label}
+      nil -> if SchoolCalendar.lesson_day?(calendar, date), do: nil, else: :no_lessons
     end
   end
 

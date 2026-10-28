@@ -138,6 +138,19 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
     assert has_element?(view, "#unticked-warning", "MATH")
   end
 
+  test "unticking a saved column says its earlier entry is kept", ctx do
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+    view |> element(cell(ctx.awa, ctx.p1)) |> render_click()
+    view |> element("#done-#{@monday}-#{ctx.p1.id}") |> render_click()
+    view |> element("#save-week") |> render_click()
+
+    view |> element("#done-#{@monday}-#{ctx.p1.id}") |> render_click()
+
+    refute has_element?(view, "#unticked-warning")
+    assert has_element?(view, "#kept-warning", "gardent la saisie déjà enregistrée")
+    assert has_element?(view, "#kept-warning", "Lundi 15 · MATH")
+  end
+
   test "« cours non assuré » saves the lesson as not held", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
     view |> element("#not-held-#{@monday}-#{ctx.p1.id}") |> render_click()
@@ -145,6 +158,17 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
 
     assert [%LessonNotHeld{}] = Ash.read!(LessonNotHeld, scope: ctx.scope)
     assert entries(ctx) == []
+  end
+
+  test "a week outside the school year opens the nearest week of the year", ctx do
+    assert {:error, {:live_redirect, %{to: to}}} =
+             live(ctx.conn, ~p"/school/classes/#{ctx.cg.id}/roll-sheet?week=2024-01-01")
+
+    assert to == "/school/classes/#{ctx.cg.id}/roll-sheet?week=2025-09-08"
+
+    {:ok, view, _} = live(ctx.conn, to)
+    refute has_element?(view, "#roll-sheet-prev")
+    assert has_element?(view, "#roll-sheet-next")
   end
 
   test "a teacher cannot open it", ctx do

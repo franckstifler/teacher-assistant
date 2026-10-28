@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.RollSheetPrintController do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          true <- Discipline.can_manage_conduct?(scope),
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id) do
-      render_sheets(conn, scope, [cg], week(params))
+      render_sheets(conn, scope, [cg], week(params, scope))
     else
       _ -> redirect(conn, to: ~p"/school")
     end
@@ -26,7 +26,7 @@ defmodule TeacherAssistantWeb.RollSheetPrintController do
            conn.assigns.current_scope,
          true <- Discipline.can_manage_conduct?(scope) do
       classes = scope |> Enrollment.list_class_groups(year) |> Enum.filter(& &1.paper_roll_call)
-      render_sheets(conn, scope, classes, week(params))
+      render_sheets(conn, scope, classes, week(params, scope))
     else
       _ -> redirect(conn, to: ~p"/school")
     end
@@ -43,12 +43,16 @@ defmodule TeacherAssistantWeb.RollSheetPrintController do
     )
   end
 
-  defp week(%{"week" => week}) when is_binary(week) do
-    case Date.from_iso8601(week) do
-      {:ok, date} -> Date.beginning_of_week(date)
-      _ -> PaperRollCall.default_week(Reference.today())
-    end
-  end
+  # The asked week (else the default), kept inside the school year.
+  defp week(params, scope) do
+    monday =
+      with week when is_binary(week) <- params["week"],
+           {:ok, date} <- Date.from_iso8601(week) do
+        Date.beginning_of_week(date)
+      else
+        _ -> PaperRollCall.default_week(Reference.today())
+      end
 
-  defp week(_params), do: PaperRollCall.default_week(Reference.today())
+    PaperRollCall.within_year(monday, scope.current_academic_year)
+  end
 end

@@ -30,7 +30,23 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
     end
   end
 
-  def handle_params(params, _uri, socket), do: {:noreply, load_week(socket, week(params))}
+  def handle_params(params, _uri, socket) do
+    asked = week(params)
+    monday = PaperRollCall.within_year(asked, socket.assigns.current_scope.current_academic_year)
+
+    if monday == asked,
+      do: {:noreply, load_week(socket, monday)},
+      else: {:noreply, push_patch(socket, to: week_path(socket.assigns.cg, monday))}
+  end
+
+  # Whether `monday` is the school year's first (`:first`) or last (`:last`) week.
+  defp year_edge?(monday, edge, scope) do
+    year = scope.current_academic_year
+    year != nil and PaperRollCall.within_year(Date.add(monday, step(edge)), year) == monday
+  end
+
+  defp step(:first), do: -7
+  defp step(:last), do: 7
 
   defp week(%{"week" => week}) when is_binary(week) do
     case Date.from_iso8601(week) do
@@ -160,13 +176,18 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
     end)
   end
 
-  # « Lundi 15 · MATH » for each column with A or R typed but not ticked.
+  # « Lundi 15 · MATH » for each column with A or R typed but not ticked, apart
+  # (`:kept`) when it was typed in earlier: its saved entries stay as they are.
   defp unticked(week, columns) do
     for day <- week.days,
         lesson <- day.lessons,
         %{mode: :skip, marks: marks} <- [Map.get(columns, key(lesson))],
-        map_size(marks) > 0,
-        do: "#{day.label} · #{lesson.code}"
+        map_size(marks) > 0 or lesson.state == :paper,
+        reduce: %{new: [], kept: []} do
+      acc ->
+        group = if lesson.state == :paper, do: :kept, else: :new
+        Map.update!(acc, group, &(&1 ++ ["#{day.label} · #{lesson.code}"]))
+    end
   end
 
   defp mark_text(:absent), do: "A"
@@ -212,6 +233,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
           <div class="flex flex-wrap items-center justify-between gap-3">
             <nav aria-label={gettext("Semaine affichée")} class="flex items-center gap-1">
               <.link
+                :if={!year_edge?(@week.monday, :first, @current_scope)}
                 id="roll-sheet-prev"
                 patch={week_path(@cg, Date.add(@week.monday, -7))}
                 class="btn btn-ghost btn-square"
@@ -221,6 +243,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
               </.link>
               <h2 class="text-base font-semibold">{RollSheetPrintHTML.week_label(@week)}</h2>
               <.link
+                :if={!year_edge?(@week.monday, :last, @current_scope)}
                 id="roll-sheet-next"
                 patch={week_path(@cg, Date.add(@week.monday, 7))}
                 class="btn btn-ghost btn-square"
@@ -330,7 +353,20 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
           </div>
 
           <div
-            :if={@unticked != []}
+            :if={@unticked.kept != []}
+            id="kept-warning"
+            role="status"
+            class="alert text-sm"
+          >
+            <.icon name="hero-information-circle" class="size-4" />
+            <span>
+              {gettext("Sans « Appel fait », ces cours gardent la saisie déjà enregistrée :")}
+              {Enum.join(@unticked.kept, ", ")}
+            </span>
+          </div>
+
+          <div
+            :if={@unticked.new != []}
             id="unticked-warning"
             role="status"
             class="alert alert-warning text-sm"
@@ -340,7 +376,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
               {gettext(
                 "Ces cours ont des absences mais pas « Appel fait » ; ils ne seront pas enregistrés :"
               )}
-              {Enum.join(@unticked, ", ")}
+              {Enum.join(@unticked.new, ", ")}
             </span>
           </div>
 

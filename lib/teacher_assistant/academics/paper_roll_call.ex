@@ -25,6 +25,20 @@ defmodule TeacherAssistant.Academics.PaperRollCall do
     if Date.day_of_week(today) >= 6, do: Date.add(monday, 7), else: monday
   end
 
+  @doc "`monday`, or the school year's nearest week when it falls outside the year."
+  def within_year(%Date{} = monday, nil), do: monday
+
+  def within_year(%Date{} = monday, %{start_date: first, end_date: last}) do
+    first = Date.beginning_of_week(first)
+    last = Date.beginning_of_week(last)
+
+    cond do
+      Date.before?(monday, first) -> first
+      Date.after?(monday, last) -> last
+      true -> monday
+    end
+  end
+
   @doc "The Monday of the week the entry screen opens on: always the current one."
   def entry_week(%Date{} = today), do: Date.beginning_of_week(today)
 

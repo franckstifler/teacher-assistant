@@ -105,6 +105,27 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       change TeacherAssistant.Academics.AttendanceEntry.Changes.ClearLateMinutes
     end
 
+    # Paper roll call (spec 2026-10-28): a typed-in sheet updates only rows typed in
+    # from paper. A roll call taken in the app meanwhile makes the upsert a skip,
+    # returned as an error, so the whole save rolls back instead of overwriting it.
+    create :record_paper do
+      accept [
+        :status,
+        :late_minutes,
+        :teaching_context_id,
+        :recorded_by_user_id,
+        :enrollment_id,
+        :date,
+        :period_id
+      ]
+
+      upsert? true
+      upsert_identity :unique_mark
+      upsert_condition expr(source == :paper)
+      change set_attribute(:source, :paper)
+      change TeacherAssistant.Academics.AttendanceEntry.Changes.ClearLateMinutes
+    end
+
     read :for_period_date_class do
       argument :period_id, :uuid, allow_nil?: false
       argument :date, :date, allow_nil?: false

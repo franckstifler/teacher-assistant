@@ -355,23 +355,28 @@ defmodule TeacherAssistant.Attendance do
     with :ok <- validate_marks(marks, valid_enrollment_ids),
          :ok <- validate_sent_home(scope, marks, period_id, date) do
       # All or nothing: a refused row rolls the others back, so "not saved" is true.
+      {action, source_attrs} =
+        case Keyword.get(opts, :source, :app) do
+          :paper -> {:record_paper, %{}}
+          :app -> {:record, %{source: :app}}
+        end
+
       TeacherAssistant.Repo.transaction(fn ->
         Enum.reduce(marks, 0, fn mark, n ->
           {enrollment_id, status, minutes} = mark_parts(mark)
 
           AttendanceEntry
           |> Ash.Changeset.for_create(
-            :record,
-            %{
+            action,
+            Map.merge(source_attrs, %{
               date: date,
               status: status,
               late_minutes: minutes,
               enrollment_id: enrollment_id,
               period_id: period_id,
               teaching_context_id: teaching_context_id,
-              recorded_by_user_id: scope.current_user && scope.current_user.id,
-              source: Keyword.get(opts, :source, :app)
-            },
+              recorded_by_user_id: scope.current_user && scope.current_user.id
+            }),
             scope: scope
           )
           |> Ash.create()
@@ -734,17 +739,19 @@ defmodule TeacherAssistant.Attendance do
     as: :save
 
   @doc "Switches paper roll call on or off for every class of the year, all or none."
-  def set_paper_roll_call_all(%Scope{} = scope, %AcademicYear{} = year, paper?)
+  def set_paper_roll_call_all(%Scope{} = scope, %AcademicYear{id: year_id}, paper?)
       when is_boolean(paper?) do
-    TeacherAssistant.Repo.transaction(fn ->
-      for cg <- TeacherAssistant.Enrollment.list_class_groups(scope, year) do
-        with {:error, error} <- TeacherAssistant.Enrollment.set_paper_roll_call(scope, cg, paper?),
-             do: TeacherAssistant.Repo.rollback(error)
-      end
-    end)
+    ClassGroup
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.bulk_update(:set_paper_roll_call, %{paper_roll_call: paper?},
+      scope: scope,
+      strategy: :stream,
+      transaction: :all,
+      return_errors?: true
+    )
     |> case do
-      {:ok, _} -> :ok
-      {:error, _} = error -> error
+      %Ash.BulkResult{status: :success} -> :ok
+      %Ash.BulkResult{errors: [error | _]} -> {:error, Ash.Error.to_error_class(error)}
     end
   end
 

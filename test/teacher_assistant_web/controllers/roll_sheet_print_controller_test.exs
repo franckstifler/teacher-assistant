@@ -80,6 +80,40 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
     assert body =~ "Fête nationale"
   end
 
+  test "a class without students still prints its holiday band", %{
+    conn: conn,
+    scope: scope,
+    year: year
+  } do
+    {:ok, empty} = Enrollment.create_class_group(scope, year, %{label: "6e Z", level: "6ème"})
+    {:ok, tc} = Curriculum.assign_teacher(scope, empty, scope.current_user, %{subject: "Maths"})
+    [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+    for day <- [:monday, :tuesday] do
+      {:ok, _} =
+        Timetabling.place_slot(scope, empty, %{
+          day: day,
+          period_id: p1.id,
+          teaching_context_id: tc.id
+        })
+    end
+
+    {:ok, _} =
+      Organization.create_holiday(scope, year, %{
+        label: "Fête nationale",
+        start_date: ~D[2025-09-16],
+        end_date: ~D[2025-09-16]
+      })
+
+    body =
+      conn
+      |> get(~p"/school/classes/#{empty.id}/roll-sheet/print?week=2025-09-15")
+      |> html_response(200)
+
+    assert body =~ ~s(class="closed")
+    assert body =~ "Fête nationale"
+  end
+
   test "all paper classes print, one page each", %{conn: conn, scope: scope, year: year} do
     {:ok, _} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
     {:ok, off} = Enrollment.create_class_group(scope, year, %{label: "6e C", level: "6ème"})

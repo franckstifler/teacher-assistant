@@ -129,6 +129,26 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
     assert awa.status == :present and awa.source == :app
   end
 
+  test "a paper write never overwrites an app roll call, even one taken meanwhile", ctx do
+    roster = for s <- [ctx.awa, ctx.beti, ctx.chantal], do: {s.id, :present}
+    {:ok, 3} = Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, roster)
+
+    # What a save would write if the app roll call landed after it read the week.
+    assert {:error, _} =
+             Attendance.record_period(
+               ctx.sg,
+               ctx.cg,
+               ctx.p1,
+               ctx.tc,
+               @monday,
+               [{ctx.awa.id, :absent}],
+               source: :paper
+             )
+
+    awa = entries(ctx, @monday)[ctx.awa.id]
+    assert awa.status == :present and awa.source == :app
+  end
+
   test "sent home wins over A", ctx do
     {:ok, _} = TeacherAssistant.FeeControl.record_send_out(ctx.scope, ctx.beti, @monday)
 

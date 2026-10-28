@@ -50,7 +50,12 @@ defmodule TeacherAssistant.Academics.PaperRollCallDataTest do
   test "the school-wide switch sets every class of the year", %{scope: scope, year: year, cg: cg} do
     {:ok, other} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
 
-    assert :ok = Attendance.set_paper_roll_call_all(scope, year, false)
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert :ok = Attendance.set_paper_roll_call_all(scope, year, false)
+      end)
+
+    refute log =~ "Missed"
 
     for class <- [cg, other] do
       {:ok, reloaded} = Enrollment.fetch_owned_class_group(scope, class.id)

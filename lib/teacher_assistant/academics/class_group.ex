@@ -63,6 +63,8 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     # Paper roll call (spec 2026-10-28 §1): conduct managers switch it too.
     update :set_paper_roll_call do
       accept [:paper_roll_call]
+      # `YearOpen` reads the record's year, so no atomic (single statement) update.
+      require_atomic? false
     end
 
     read :for_workspace_and_year do

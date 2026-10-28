@@ -45,4 +45,12 @@ defmodule TeacherAssistant.Academics.PaperRollCallTest do
     assert PaperRollCall.entry_week(~D[2025-09-20]) == ~D[2025-09-15]
     assert PaperRollCall.entry_week(~D[2025-09-21]) == ~D[2025-09-15]
   end
+
+  test "a week is kept inside the school year" do
+    year = %{start_date: ~D[2025-09-08], end_date: ~D[2026-07-31]}
+    assert PaperRollCall.within_year(~D[2024-01-01], year) == ~D[2025-09-08]
+    assert PaperRollCall.within_year(~D[2025-10-06], year) == ~D[2025-10-06]
+    assert PaperRollCall.within_year(~D[2026-09-07], year) == ~D[2026-07-27]
+    assert PaperRollCall.within_year(~D[2026-09-07], nil) == ~D[2026-09-07]
+  end
 end
