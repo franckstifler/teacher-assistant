@@ -32,6 +32,7 @@ defmodule TeacherAssistant.ReportCards do
     BulletinTemplate,
     ClassGroup,
     EntryProgress,
+    Reference,
     Sequence,
     Term
   }
@@ -356,7 +357,8 @@ defmodule TeacherAssistant.ReportCards do
 
   @doc """
   The pre-publish checks for a class and period: marks entered (`rate`, subjects
-  without a teacher), conduct marks entered, and the class council. Each is
+  without a teacher), conduct marks entered, the class council, and for a class on
+  paper the roll calls still to type in (spec 2026-10-28, a warning). Each is
   `%{key, ok?, data}`; the page words them.
   """
   def publish_checklist(%Scope{} = scope, %ClassGroup{} = cg, period, view \\ nil) do
@@ -384,7 +386,31 @@ defmodule TeacherAssistant.ReportCards do
         ok?: status == :held,
         data: %{status: status, date: council.held_on, time: council.starts_at}
       }
-    ] ++ v2_checks(scope, cg, period, view)
+    ] ++ paper_check(scope, cg, period) ++ v2_checks(scope, cg, period, view)
+  end
+
+  # A published bulletin freezes its absences: warn while the period's paper roll
+  # calls (up to today) are neither typed in nor marked « non assuré ».
+  defp paper_check(_scope, %ClassGroup{paper_roll_call: false}, _period), do: []
+
+  defp paper_check(scope, cg, period) do
+    count =
+      case Organization.period_date_range(scope, period) do
+        {first, last} ->
+          last = Enum.min([last, Reference.today()], Date)
+
+          if Date.compare(first, last) == :gt,
+            do: 0,
+            else:
+              scope
+              |> Attendance.class_lessons(cg, first, last, Reference.now())
+              |> Enum.count(&(&1.status in [:on_paper, :missed]))
+
+        nil ->
+          0
+      end
+
+    [%{key: :paper_roll_calls, ok?: count == 0, data: %{count: count}}]
   end
 
   # Spec bulletin v2: the end-of-year council (blocking, enforced by `publish/3`), the

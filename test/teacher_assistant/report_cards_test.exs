@@ -208,6 +208,7 @@ defmodule TeacherAssistant.ReportCardsTest do
              %{key: :notes, ok?: false, data: %{rate: rate, unassigned: _}},
              %{key: :conduct, ok?: false, data: %{entered: 0, effectif: 1}},
              %{key: :council, ok?: false, data: %{status: :to_plan}},
+             %{key: :paper_roll_calls, ok?: true, data: %{count: 0}},
              %{key: :page_fit, ok?: true, data: %{subjects: 1}}
            ] = checks
 
@@ -215,7 +216,7 @@ defmodule TeacherAssistant.ReportCardsTest do
 
     {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
 
-    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}, _] =
+    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}, _, _] =
              ReportCards.publish_checklist(scope, cg, {:trimester, term})
   end
 

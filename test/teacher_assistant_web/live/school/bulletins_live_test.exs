@@ -60,6 +60,16 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     assert has_element?(view, "#student-panel", "Tchinda Rodrigue")
   end
 
+  test "the checklist reports the paper roll calls of a paper class", ctx do
+    {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+
+    assert has_element?(
+             view,
+             "#publish-checks [data-check='paper_roll_calls']",
+             "Feuilles d'appel : toutes saisies"
+           )
+  end
+
   test "incomplete entry asks for confirmation, then publishes", ctx do
     {:ok, _} = TeacherAssistant.Councils.hold(ctx.scope, ctx.cg, {:trimester, ctx.term})
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))

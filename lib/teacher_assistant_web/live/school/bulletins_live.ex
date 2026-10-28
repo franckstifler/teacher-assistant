@@ -291,6 +291,17 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   def ordinal(_fr, 1), do: "1er"
   def ordinal(_fr, n), do: "#{n}e"
 
+  defp check_text(%{key: :paper_roll_calls, data: %{count: 0}}),
+    do: gettext("Feuilles d'appel : toutes saisies")
+
+  defp check_text(%{key: :paper_roll_calls, data: %{count: n}}),
+    do:
+      ngettext(
+        "%{count} cours sans appel saisi (feuille d'appel)",
+        "%{count} cours sans appel saisi (feuilles d'appel)",
+        n
+      )
+
   defp check_text(%{key: :notes, data: %{rate: rate, unassigned: 0}}),
     do: gettext("Notes : %{rate} saisies", rate: rate_text(rate))
 
