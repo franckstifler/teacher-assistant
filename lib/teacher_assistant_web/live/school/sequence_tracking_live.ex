@@ -323,15 +323,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                     <span class="min-w-0 flex-1 truncate">
                       <span class="font-medium">{subject.label}</span>
                       <span class="ta-num text-base-content/70">· {pct_text(cell.pct)}</span>
-                      <span :if={no_competence?(@competences, cell)} class="text-warning">
-                        · {gettext("compétence à saisir")}
-                      </span>
-                      <span class="block truncate text-xs text-base-content/70">
+                      <span class="block whitespace-normal text-xs text-base-content/70">
                         {teacher_name(cell.teacher)}
                         <span :if={@reminders[cell.teaching_context.id]}>
                           · {gettext("relancé le %{date}",
                             date: Dates.short(@reminders[cell.teaching_context.id])
                           )}
+                        </span>
+                        <span :if={no_competence?(@competences, cell)} class="text-warning">
+                          · {gettext("compétence à saisir")}
                         </span>
                       </span>
                     </span>
@@ -418,12 +418,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                   label={gettext("Dernière saisie")}
                   value={last_entry(@selected.cell.last_entry_at)}
                 />
-                <.detail_line
-                  :if={@competences}
-                  id="detail-competence"
-                  label={gettext("Compétence")}
-                  value={@competences[@selected.cell.teaching_context.id] || gettext("à saisir")}
-                />
+                <div :if={@competences} id="detail-competence" class="flex flex-col gap-0.5 text-sm">
+                  <span class="text-base-content/70">{gettext("Compétence")}</span>
+                  <%= if text = @competences[@selected.cell.teaching_context.id] do %>
+                    <span>{text}</span>
+                  <% else %>
+                    <span class="font-semibold text-warning">{gettext("à saisir")}</span>
+                  <% end %>
+                </div>
                 <.detail_line
                   :if={@reminders[@selected.cell.teaching_context.id]}
                   id="reminded-on"
