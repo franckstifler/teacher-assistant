@@ -364,6 +364,8 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp hero_eyebrow(:upcoming), do: gettext("Prochain cours")
   defp hero_eyebrow(:missed), do: gettext("Appel non fait")
   defp hero_eyebrow(:done), do: gettext("Maintenant")
+  defp hero_eyebrow(:on_paper), do: gettext("Sur feuille")
+  defp hero_eyebrow(:not_held), do: gettext("Cours non assuré")
 
   defp hero_state(%{status: :done, absent: n}),
     do:
@@ -372,6 +374,8 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp hero_state(%{status: :in_progress}), do: gettext("Appel à faire")
   defp hero_state(%{status: :missed}), do: gettext("Créneau terminé, appel non fait")
+  defp hero_state(%{status: :on_paper}), do: gettext("Appel sur la feuille, à saisir")
+  defp hero_state(%{status: :not_held}), do: gettext("Cours non assuré")
 
   defp hero_state(%{status: :upcoming, period: p}),
     do: gettext("L'appel s'ouvrira à %{time}", time: hm(p.start_time))
@@ -379,7 +383,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp hero_border(:in_progress), do: "border-l-warning"
   defp hero_border(:missed), do: "border-l-error"
   defp hero_border(:done), do: "border-l-success"
-  defp hero_border(:upcoming), do: "border-l-base-300"
+
+  defp hero_border(status) when status in [:upcoming, :on_paper, :not_held],
+    do: "border-l-base-300"
 
   defp hero_tone(:in_progress), do: "text-warning"
   defp hero_tone(:missed), do: "text-error"
@@ -388,7 +394,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp state_tone(:done), do: "text-success"
   defp state_tone(:in_progress), do: "text-warning"
   defp state_tone(:missed), do: "text-error"
-  defp state_tone(:upcoming), do: "text-base-content/70"
+
+  defp state_tone(status) when status in [:upcoming, :on_paper, :not_held],
+    do: "text-base-content/70"
 
   defp greeting(%User{} = user) do
     case User.display_name(user) do
@@ -488,6 +496,8 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp dot_class(:in_progress), do: "bg-warning ring-4 ring-warning/25"
   defp dot_class(:missed), do: "bg-error"
   defp dot_class(:upcoming), do: "border border-base-content/35"
+  defp dot_class(:on_paper), do: "bg-base-content/35"
+  defp dot_class(:not_held), do: "border border-dashed border-base-content/35"
 
   attr :status, :atom, required: true
 
@@ -507,6 +517,12 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp status_tag(%{status: :upcoming} = assigns),
     do: ~H|<.tag tone={:muted}>{gettext("À venir")}</.tag>|
+
+  defp status_tag(%{status: :on_paper} = assigns),
+    do: ~H|<.tag tone={:muted}>{gettext("Sur feuille")}</.tag>|
+
+  defp status_tag(%{status: :not_held} = assigns),
+    do: ~H|<.tag tone={:muted}>{gettext("Non assuré")}</.tag>|
 
   attr :tone, :atom, required: true
   slot :inner_block, required: true

@@ -127,7 +127,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
             label={gettext("Appels aujourd'hui")}
             value={"#{@calls.done} / #{@calls.expected}"}
             tone={if @calls.missed == [], do: :ok, else: :warn}
-            sub={ngettext("%{count} non fait", "%{count} non faits", length(@calls.missed))}
+            sub={calls_sub(@calls)}
           />
           <.kpi_link
             :if={Scope.module?(@current_scope, :appel)}
@@ -513,7 +513,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     calls =
       if year,
         do: Attendance.roll_call_counts(scope, today, Reference.now()),
-        else: %{done: 0, expected: 0, missed: []}
+        else: %{done: 0, on_paper: 0, expected: 0, missed: []}
 
     todo = Pilotage.todo(scope)
     setup_complete? = Scope.setup_complete?(scope)
@@ -590,4 +590,23 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
       }
     end)
   end
+
+  # « 2 non faits », or with paper classes (spec 2026-10-28) « 12 appels dans l'app · 30
+  # sur feuille », the missed ones last.
+  defp calls_sub(%{on_paper: paper, done: done, missed: missed}) when paper > 0 do
+    base =
+      ngettext(
+        "%{count} appel dans l'app · %{paper} sur feuille",
+        "%{count} appels dans l'app · %{paper} sur feuille",
+        done,
+        paper: paper
+      )
+
+    if missed == [],
+      do: base,
+      else: base <> " · " <> ngettext("%{count} non fait", "%{count} non faits", length(missed))
+  end
+
+  defp calls_sub(%{missed: missed}),
+    do: ngettext("%{count} non fait", "%{count} non faits", length(missed))
 end

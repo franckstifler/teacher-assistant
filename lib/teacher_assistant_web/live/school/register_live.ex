@@ -108,6 +108,22 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
      )}
   end
 
+  # Spec 2026-10-28: the class's roll call on a weekly paper sheet, or not.
+  def handle_event("toggle_paper", _params, %{assigns: %{can_edit?: true, cg: cg}} = socket) do
+    case Enrollment.set_paper_roll_call(socket.assigns.current_scope, cg, !cg.paper_roll_call) do
+      {:ok, cg} ->
+        {:noreply, assign(socket, cg: cg)}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, TeacherAssistantWeb.Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Réglage non enregistré."))}
+    end
+  end
+
+  def handle_event("toggle_paper", _params, socket), do: {:noreply, socket}
+
   def handle_event("open_student", _params, socket), do: {:noreply, socket}
 
   def handle_event("close_student", _params, socket),
@@ -265,6 +281,24 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
         </:actions>
 
         <div id="register" class="space-y-4">
+          <label
+            :if={@can_edit?}
+            class="flex cursor-pointer items-center justify-between gap-3 rounded-box border border-base-300 px-4 py-3"
+          >
+            <span class="flex flex-col">
+              <span class="text-[0.95rem] font-medium">{gettext("Appel sur feuille")}</span>
+              <span class="text-sm text-base-content/70">
+                {gettext("Feuille imprimée chaque semaine, saisie par le surveillant.")}
+              </span>
+            </span>
+            <input
+              id="paper-roll-call-toggle"
+              type="checkbox"
+              class="toggle toggle-primary"
+              checked={@cg.paper_roll_call}
+              phx-click="toggle_paper"
+            />
+          </label>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <nav
               id="register-day-nav"

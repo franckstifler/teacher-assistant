@@ -53,7 +53,12 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
   def handle_event("remind", %{"slot" => slot_id}, socket) do
     scope = socket.assigns.current_scope
-    missed = Enum.find(socket.assigns.day.missed, &(&1.slot_id == slot_id))
+    # « Relancer » on a missed lesson or one waiting for its paper sheet (spec 2026-10-28).
+    missed =
+      Enum.find(
+        socket.assigns.day.missed ++ on_paper(socket.assigns.day),
+        &(&1.slot_id == slot_id)
+      )
 
     case missed && Attendance.remind_roll_call(scope, slot_id, socket.assigns.today) do
       {:ok, _} ->
@@ -79,11 +84,20 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp no_lessons_title({:holiday, label}), do: gettext("Jour férié : %{label}", label: label)
   defp no_lessons_title(_), do: gettext("Pas de cours aujourd'hui")
 
+  # Lessons waiting for their class's paper sheet, in grid order.
+  defp on_paper(day) do
+    for row <- day.rows,
+        {_id, cell} <- Enum.sort_by(row.cells, fn {_id, c} -> c.period.position end),
+        cell.status == :on_paper,
+        do: cell
+  end
+
   def render(assigns) do
     assigns =
       assign(assigns,
         current: current_period(assigns.day.periods, assigns.now),
-        tally: tally(assigns.day)
+        tally: tally(assigns.day),
+        on_paper: on_paper(assigns.day)
       )
 
     ~H"""
@@ -100,6 +114,15 @@ defmodule TeacherAssistantWeb.School.DayLive do
             title={gettext("Aujourd'hui")}
           >
             <:actions>
+              <.link
+                id="print-all-sheets"
+                href={~p"/school/roll-sheets/print"}
+                target="_blank"
+                class="btn btn-ghost btn-sm min-h-11 sm:min-h-0"
+              >
+                <.icon name="hero-printer" class="size-4" />
+                {gettext("Imprimer toutes les feuilles")}
+              </.link>
               <.link
                 id="to-absences"
                 navigate={~p"/school/absences"}
@@ -127,14 +150,18 @@ defmodule TeacherAssistantWeb.School.DayLive do
           <.kpi
             id="kpi-calls"
             label={gettext("Appels faits")}
-            value={"#{@tally.done} / #{@tally.done + @tally.missed}"}
+            value={"#{@tally.done} / #{@tally.done + @tally.missed + @tally.on_paper}"}
             sub={
               ngettext(
                 "%{count} non fait à %{time}",
                 "%{count} non faits à %{time}",
                 @tally.missed,
                 time: Calendar.strftime(@now, "%H:%M")
-              )
+              ) <>
+                if(@tally.on_paper > 0,
+                  do: " · " <> gettext("%{count} sur feuille", count: @tally.on_paper),
+                  else: ""
+                )
             }
             tone={if @tally.missed == 0, do: "text-success", else: "text-base-content"}
           />
@@ -178,7 +205,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
               class="flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-base-content/75"
             >
               <span
-                :for={status <- [:done, :in_progress, :missed, :upcoming]}
+                :for={status <- [:done, :in_progress, :missed, :on_paper, :not_held, :upcoming]}
                 class="flex items-center gap-1.5"
               >
                 <span class={[
@@ -217,7 +244,17 @@ defmodule TeacherAssistantWeb.School.DayLive do
                   id={"grid-#{row.class_group.id}"}
                   class="flex items-center truncate text-[0.82rem] font-semibold"
                 >
-                  {row.class_group.label}
+                  <.link
+                    :if={row.class_group.paper_roll_call}
+                    navigate={~p"/school/classes/#{row.class_group.id}/roll-sheet"}
+                    title={gettext("Saisir la feuille")}
+                    class="truncate hover:underline"
+                  >
+                    {row.class_group.label}
+                  </.link>
+                  <span :if={!row.class_group.paper_roll_call} class="truncate">
+                    {row.class_group.label}
+                  </span>
                 </span>
                 <.grid_cell :for={p <- @day.periods} cell={row.cells[p.id]} today={@today} />
               <% end %>
@@ -260,6 +297,20 @@ defmodule TeacherAssistantWeb.School.DayLive do
               </li>
             </ul>
           </details>
+        </section>
+
+        <section :if={@on_paper != []} id="paper-roll-calls" class="ta-section">
+          <header class="flex items-baseline justify-between gap-2 px-4 pb-2 pt-4">
+            <h2 class="text-base font-semibold">{gettext("Sur feuille · à saisir")}</h2>
+            <span class="ta-num text-[0.8rem] font-semibold text-base-content/70">
+              {length(@on_paper)}
+            </span>
+          </header>
+          <ul class="border-t border-base-300">
+            <li :for={m <- @on_paper}>
+              <.missed_row m={m} reminded={@reminded} id_prefix="paper" />
+            </li>
+          </ul>
         </section>
 
         <section id="recent-sanctions" class="ta-section max-sm:order-2">
@@ -309,17 +360,20 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
   attr :m, :map, required: true
   attr :reminded, :any, required: true
+  attr :id_prefix, :string, default: "missed"
 
   defp missed_row(assigns) do
     ~H"""
-    <div id={"missed-#{@m.class_group.id}-#{@m.period.id}"} class="ta-list-row">
+    <div id={"#{@id_prefix}-#{@m.class_group.id}-#{@m.period.id}"} class="ta-list-row">
       <div class="flex min-w-0 flex-1 flex-col">
         <span class="text-[0.92rem] font-medium leading-snug">
           {@m.class_group.label} · <span class="ta-num">{hm(@m.period.start_time)}</span>
           · {@m.subject}
         </span>
         <span class="text-[0.78rem] text-base-content/70">
-          {teacher_name(@m.teacher)} · {gettext("créneau terminé")}
+          {teacher_name(@m.teacher)} · {if @m.status == :on_paper,
+            do: gettext("sur feuille · à saisir"),
+            else: gettext("créneau terminé")}
         </span>
       </div>
       <span
@@ -448,11 +502,19 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp cell_class(%{status: :missed}), do: "border-error/45 bg-error/15 text-error"
   defp cell_class(%{status: :in_progress}), do: "border-warning/60 bg-warning/12 text-warning"
   defp cell_class(%{status: :upcoming}), do: "border-dashed border-base-content/25"
+  # Spec 2026-10-28: waiting for the paper sheet (neutral), or not held (muted).
+  defp cell_class(%{status: :on_paper}),
+    do: "border-base-content/20 bg-base-200 text-base-content/70"
+
+  defp cell_class(%{status: :not_held}),
+    do: "border-dashed border-base-content/20 bg-base-200/40 text-base-content/50"
 
   defp cell_text(%{status: :done, absent: n}), do: n
   defp cell_text(%{status: :missed}), do: "!"
   defp cell_text(%{status: :in_progress}), do: "…"
   defp cell_text(%{status: :upcoming}), do: ""
+  defp cell_text(%{status: :on_paper}), do: "✎"
+  defp cell_text(%{status: :not_held}), do: "—"
 
   # what a cell of that status shows, so the legend reads like the grid
   defp legend_glyph(:done), do: "2"
@@ -462,6 +524,8 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp legend_label(:in_progress), do: gettext("En cours")
   defp legend_label(:missed), do: gettext("Appel non fait")
   defp legend_label(:upcoming), do: gettext("À venir")
+  defp legend_label(:on_paper), do: gettext("Sur feuille")
+  defp legend_label(:not_held), do: gettext("Non assuré")
 
   defp cell_title(%{status: :done, absent: n} = cell),
     do: "#{ngettext("%{count} absent", "%{count} absents", n)} · #{cell_detail(cell)}"
@@ -474,6 +538,12 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
   defp cell_title(%{status: :upcoming} = cell), do: "#{gettext("À venir")} · #{cell_detail(cell)}"
 
+  defp cell_title(%{status: :on_paper} = cell),
+    do: "#{gettext("sur feuille · à saisir")} · #{cell_detail(cell)}"
+
+  defp cell_title(%{status: :not_held} = cell),
+    do: "#{gettext("Cours non assuré")} · #{cell_detail(cell)}"
+
   defp cell_detail(cell), do: "#{cell.subject} · #{teacher_name(cell.teacher)}"
 
   # Today's roll calls by state.
@@ -485,7 +555,8 @@ defmodule TeacherAssistantWeb.School.DayLive do
       done: Map.get(freq, :done, 0),
       missed: Map.get(freq, :missed, 0),
       in_progress: Map.get(freq, :in_progress, 0),
-      upcoming: Map.get(freq, :upcoming, 0)
+      upcoming: Map.get(freq, :upcoming, 0),
+      on_paper: Map.get(freq, :on_paper, 0)
     }
   end
 
@@ -494,6 +565,10 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
   defp summary_text(%{missed: 0, in_progress: n}) when n > 0,
     do: ngettext("%{count} appel en cours", "%{count} appels en cours", n)
+
+  defp summary_text(%{missed: 0, on_paper: n}) when n > 0,
+    do:
+      ngettext("%{count} appel sur feuille, à saisir", "%{count} appels sur feuille, à saisir", n)
 
   defp summary_text(%{missed: 0}), do: gettext("Aucun appel manquant pour l'instant")
 

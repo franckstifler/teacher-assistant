@@ -309,4 +309,69 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#row-#{ctx.e.id}-2025-09-11") |> render() =~ "Délai dépassé"
     refute view |> element("#row-#{ctx.e.id}-2025-09-15") |> render() =~ "Délai dépassé"
   end
+
+  describe "paper roll call (spec 2026-10-28)" do
+    setup %{scope: scope, cg: cg} do
+      {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, true)
+      %{cg: cg}
+    end
+
+    test "Aujourd'hui: an untaken paper lesson waits « sur feuille », not missed",
+         %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, ~p"/school/day")
+
+      refute has_element?(view, "#missed-#{ctx.cg.id}-#{ctx.p2.id}")
+      assert has_element?(view, "#paper-#{ctx.cg.id}-#{ctx.p2.id}", "sur feuille · à saisir")
+      assert has_element?(view, "#paper-#{ctx.cg.id}-#{ctx.p2.id} button", "Relancer")
+      assert has_element?(view, "#grid-legend", "Sur feuille")
+      assert has_element?(view, "#grid-legend", "Non assuré")
+      assert has_element?(view, "#kpi-calls", "1 sur feuille")
+      assert has_element?(view, ~s(#print-all-sheets[href="/school/roll-sheets/print"]))
+
+      assert has_element?(
+               view,
+               ~s(#grid-#{ctx.cg.id} a[href="/school/classes/#{ctx.cg.id}/roll-sheet"])
+             )
+
+      view |> element("#paper-#{ctx.cg.id}-#{ctx.p2.id} button", "Relancer") |> render_click()
+      assert render(view) =~ "Relancé ✓"
+    end
+
+    test "the dashboard counts app and paper roll calls apart", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/school")
+      assert has_element?(view, "#kpi-calls", "1 appel dans l'app · 1 sur feuille")
+    end
+
+    test "Ma journée: a paper lesson is not a red « non fait »", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, ~p"/school/today")
+      slot = view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render()
+
+      refute slot =~ "Non fait"
+      assert slot =~ "Sur feuille"
+    end
+
+    test "the register switches paper roll call; a teacher sees no switch", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{ctx.cg.id}/register")
+      view |> element("#paper-roll-call-toggle") |> render_click()
+
+      {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.scope, ctx.cg.id)
+      refute cg.paper_roll_call
+
+      teacher_conn = conn_with_roles(ctx.school, ctx.scope, [:teacher])
+
+      case live(teacher_conn, ~p"/school/classes/#{ctx.cg.id}/register") do
+        {:ok, view, _} -> refute has_element?(view, "#paper-roll-call-toggle")
+        {:error, _redirect} -> :ok
+      end
+    end
+
+    test "the settings switch every class off at once", %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, ~p"/school/settings/school-life")
+
+      assert view |> element("#paper-all-off") |> render_click() =~ "Réglage enregistré."
+
+      {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.scope, ctx.cg.id)
+      refute cg.paper_roll_call
+    end
+  end
 end

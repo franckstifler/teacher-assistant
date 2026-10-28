@@ -28,6 +28,23 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
     {:noreply, assign(socket, example: preview(socket.assigns.rules, params))}
   end
 
+  # Spec 2026-10-28: paper roll call for every class of the year at once.
+  def handle_event("paper_all", %{"paper" => paper}, socket) do
+    scope = socket.assigns.current_scope
+
+    case scope.current_academic_year &&
+           Attendance.set_paper_roll_call_all(scope, scope.current_academic_year, paper == "true") do
+      :ok ->
+        {:noreply, put_flash(socket, :info, gettext("Réglage enregistré."))}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Réglage non enregistré."))}
+    end
+  end
+
   def handle_event("save", %{"school_life" => params}, socket) do
     scope = socket.assigns.current_scope
 
@@ -254,6 +271,42 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
           <p :if={@error} id="school-life-error" class="text-sm text-error">{@error}</p>
           <.save_bar />
         </.form>
+
+        <.settings_section
+          id="paper-roll-call"
+          title={gettext("Appel sur feuille")}
+          subtitle={
+            gettext(
+              "Chaque semaine, une feuille d'appel imprimée par classe, saisie par le surveillant. Chaque classe peut aussi le changer dans son cahier d'appel."
+            )
+          }
+        >
+          <div class="flex flex-wrap gap-2 px-4 pb-4 sm:px-5">
+            <button
+              id="paper-all-on"
+              type="button"
+              class="btn btn-outline btn-sm"
+              phx-click="paper_all"
+              phx-value-paper="true"
+            >
+              {gettext("Toutes les classes")}
+            </button>
+            <button
+              id="paper-all-off"
+              type="button"
+              class="btn btn-outline btn-sm"
+              phx-click="paper_all"
+              phx-value-paper="false"
+              data-confirm={
+                gettext(
+                  "Plus aucune classe sur feuille : les appels non faits dans l'application seront signalés le jour même."
+                )
+              }
+            >
+              {gettext("Aucune classe")}
+            </button>
+          </div>
+        </.settings_section>
       </section>
     </Layouts.app>
     """
