@@ -63,7 +63,8 @@ defmodule TeacherAssistant.Workers.PaperSheetsOverdue do
 
   defp list(overdue) do
     Enum.map_join(overdue, ", ", fn {cg, monday} ->
-      "#{cg.label} (#{Gettext.gettext(TeacherAssistantWeb.Gettext, "sem. du")} #{Dates.day_month(monday)})"
+      # Stored in the notice's params, in the school's language, like `MissedRollCalls`' list.
+      "#{cg.label} (sem. du #{Dates.day_month(monday)})"
     end)
   end
 
