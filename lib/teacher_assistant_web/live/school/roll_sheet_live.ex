@@ -391,6 +391,8 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
         phx-value-date={@lesson.date}
         phx-value-period={@lesson.period.id}
         aria-pressed={to_string(@column.mode == :not_held)}
+        aria-label={gettext("Cours non assuré")}
+        title={gettext("Cours non assuré")}
         class={[
           "rounded px-1 text-[0.65rem] font-normal transition-colors",
           if(@column.mode == :not_held,
@@ -399,7 +401,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
           )
         ]}
       >
-        {gettext("Cours non assuré")}
+        {gettext("Non assuré")}
       </button>
     </div>
     """
@@ -412,7 +414,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
 
   defp mark_cell(%{column: nil} = assigns) do
     ~H"""
-    <span class="grid h-9 min-w-9 place-items-center rounded bg-success/15 text-sm font-semibold text-success">
+    <span class="mx-auto grid h-9 min-w-9 place-items-center rounded bg-success/15 text-sm font-semibold text-success">
       {mark_text(@lesson.marks[@student.enrollment_id])}
     </span>
     """
@@ -440,9 +442,9 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
       phx-value-date={@lesson.date}
       phx-value-period={@lesson.period.id}
       disabled={@sent_home? or @column.mode == :not_held}
-      aria-label={"#{@student.student_name} · #{@lesson.code}"}
+      aria-label={"#{@student.student_name} · #{TeacherAssistantWeb.Dates.short(@lesson.date)} · #{@lesson.code}"}
       class={[
-        "grid h-9 min-w-9 place-items-center rounded border text-sm font-semibold transition-colors",
+        "mx-auto grid h-9 min-w-9 place-items-center rounded border text-sm font-semibold transition-colors",
         "focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed",
         cond do
           @sent_home? -> "border-transparent px-1 text-[0.65rem] font-normal text-base-content/60"

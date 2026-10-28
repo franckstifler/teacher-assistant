@@ -86,6 +86,8 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
              [{1, "Awa"}, {2, "Beti"}, {3, "Chantal"}]
 
     assert {week.monday, week.saturday} == {@monday, ~D[2025-09-20]}
+    # Only the days this class has lessons on (Monday and Tuesday).
+    assert Enum.map(week.days, & &1.date) == [@monday, @tuesday]
     assert %{state: :empty, code: "MATH"} = lesson(week, @monday, ctx.p1)
   end
 

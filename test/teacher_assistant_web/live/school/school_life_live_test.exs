@@ -326,6 +326,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
       assert has_element?(view, "#grid-legend", "Sur feuille")
       assert has_element?(view, "#grid-legend", "Non assuré")
       assert has_element?(view, "#kpi-calls", "1 sur feuille")
+      assert has_element?(view, "#calls-summary", "1 appel sur feuille, à saisir")
       assert has_element?(view, ~s(#print-all-sheets[href="/school/roll-sheets/print"]))
 
       assert has_element?(

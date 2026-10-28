@@ -307,10 +307,24 @@ defmodule TeacherAssistantWeb.School.DayLive do
             </span>
           </header>
           <ul class="border-t border-base-300">
-            <li :for={m <- @on_paper}>
+            <li :for={m <- Enum.take(@on_paper, @missed_shown)}>
               <.missed_row m={m} reminded={@reminded} id_prefix="paper" />
             </li>
           </ul>
+          <details :if={length(@on_paper) > @missed_shown} class="group border-t border-base-300">
+            <summary class="flex min-h-11 cursor-pointer list-none items-center justify-center gap-1 px-4 py-2 text-sm font-semibold text-primary [&::-webkit-details-marker]:hidden">
+              <span class="group-open:hidden">
+                {gettext("Voir les %{count}", count: length(@on_paper))}
+              </span>
+              <span class="hidden group-open:inline">{gettext("Réduire")}</span>
+              <.icon name="hero-chevron-down" class="size-4 group-open:rotate-180" />
+            </summary>
+            <ul class="border-t border-base-300">
+              <li :for={m <- Enum.drop(@on_paper, @missed_shown)}>
+                <.missed_row m={m} reminded={@reminded} id_prefix="paper" />
+              </li>
+            </ul>
+          </details>
         </section>
 
         <section id="recent-sanctions" class="ta-section max-sm:order-2">
@@ -560,15 +574,15 @@ defmodule TeacherAssistantWeb.School.DayLive do
     }
   end
 
+  defp summary_text(%{missed: 0, in_progress: 0, on_paper: n}) when n > 0,
+    do:
+      ngettext("%{count} appel sur feuille, à saisir", "%{count} appels sur feuille, à saisir", n)
+
   defp summary_text(%{missed: 0, in_progress: 0, upcoming: 0}),
     do: gettext("Tous les appels sont faits")
 
   defp summary_text(%{missed: 0, in_progress: n}) when n > 0,
     do: ngettext("%{count} appel en cours", "%{count} appels en cours", n)
-
-  defp summary_text(%{missed: 0, on_paper: n}) when n > 0,
-    do:
-      ngettext("%{count} appel sur feuille, à saisir", "%{count} appels sur feuille, à saisir", n)
 
   defp summary_text(%{missed: 0}), do: gettext("Aucun appel manquant pour l'instant")
 
@@ -578,10 +592,12 @@ defmodule TeacherAssistantWeb.School.DayLive do
 
   defp summary_tone(%{missed: n}) when n > 0, do: "text-error"
   defp summary_tone(%{in_progress: n}) when n > 0, do: "text-warning"
+  defp summary_tone(%{on_paper: n}) when n > 0, do: "text-base-content/75"
   defp summary_tone(_tally), do: "text-success"
 
   defp summary_icon(%{missed: n}) when n > 0, do: "hero-exclamation-circle"
   defp summary_icon(%{in_progress: n}) when n > 0, do: "hero-clock"
+  defp summary_icon(%{on_paper: n}) when n > 0, do: "hero-document-text"
   defp summary_icon(_tally), do: "hero-check-circle"
 
   defp current_period(periods, now) do

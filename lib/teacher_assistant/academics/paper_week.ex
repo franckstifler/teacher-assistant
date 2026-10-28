@@ -58,10 +58,13 @@ defmodule TeacherAssistant.Academics.PaperWeek do
   end
 
   # A school day: its open lessons, or `closed` with the holiday's name; nil when the
-  # school has no lessons that weekday.
+  # school, or this class, has no lessons that day.
   defp day(scope, date, cells, entries, enrollment_ids) do
     case Attendance.day_off(scope, date) do
       :no_lessons ->
+        nil
+
+      nil when cells == [] ->
         nil
 
       {:holiday, label} ->
