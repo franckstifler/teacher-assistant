@@ -2496,9 +2496,9 @@ msgid "Résultats"
 msgstr "Results"
 
 #: lib/teacher_assistant_web/components/layouts.ex:897
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:36
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:385
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:402
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:44
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:396
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:417
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:35
 #, elixir-autogen, elixir-format
 msgid "Se connecter"
@@ -6201,10 +6201,10 @@ msgstr "Could not reset the password."
 msgid "Indiquez le nom."
 msgstr "Enter the name."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:39
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:60
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:343
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:382
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:47
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:68
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:351
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:390
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:221
 #, elixir-autogen, elixir-format
 msgid "Inscrire mon établissement"
@@ -9800,7 +9800,7 @@ msgstr "Missing roll calls, absent and late students, absences to excuse, class 
 msgid "Avancement de la saisie par classe et par matière"
 msgstr "Mark-entry progress by class and subject"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:201
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:209
 #, elixir-autogen, elixir-format
 msgid "Bulletins figés une fois publiés, prévenus par notification"
 msgstr "Report cards frozen once published, with a notification"
@@ -9820,7 +9820,7 @@ msgstr "School calendar"
 msgid "Cameroun"
 msgstr "Cameroon"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:133
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:141
 #, elixir-autogen, elixir-format
 msgid "Chacun fait sa part, et tout le monde la voit."
 msgstr "Everyone does their part, and everyone can see it."
@@ -9840,7 +9840,7 @@ msgstr "Each member gets an account on their phone number, with their own role."
 msgid "Chaque note est enregistrée dès que l'enseignant quitte la case. Absences justifiées ou non, évaluations notées sur 20 ou sur un autre barème : les moyennes et les rangs se calculent seuls."
 msgstr "Each mark is saved as soon as the teacher leaves the box. Excused or unexcused absences, tests out of 20 or any other scale: averages and ranks work themselves out."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:232
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:240
 #, elixir-autogen, elixir-format
 msgid "Chaque rôle a son espace"
 msgstr "Every role has its space"
@@ -9860,7 +9860,7 @@ msgstr "Coefficients and remarks"
 msgid "Coefficients par niveau et par série, barème d'appréciations et distinctions de l'établissement."
 msgstr "Coefficients by level and stream, the school's remark scale and distinctions."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:194
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:202
 #, elixir-autogen, elixir-format
 msgid "Coefficients, moyennes, rangs, appréciations et distinctions se calculent à mesure que les notes arrivent. On voit ce qui manque encore, on tient le conseil de classe, on publie, puis on imprime toute la classe."
 msgstr "Coefficients, averages, ranks, remarks and distinctions are worked out as the marks come in. You see what is still missing, hold the class council, publish, then print the whole class."
@@ -9895,7 +9895,7 @@ msgstr "Mark corrections approved by the administration"
 msgid "D'abord le téléphone"
 msgstr "Phone first"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:191
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:199
 #, elixir-autogen, elixir-format
 msgid "Des bulletins prêts le jour du conseil de classe"
 msgstr "Report cards ready on class council day"
@@ -9920,7 +9920,7 @@ msgstr "Timetables"
 msgid "En-tête officiel, cachet et signature, pensés pour l'impression en noir et blanc."
 msgstr "Official header, stamp and signature, designed for black-and-white printing."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:267
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:275
 #, elixir-autogen, elixir-format
 msgid "Et tout le reste de l'année scolaire"
 msgstr "And the rest of the school year"
@@ -9935,7 +9935,7 @@ msgstr "Do we need a computer?"
 msgid "Fonctionnalités"
 msgstr "Features"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:199
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:207
 #, elixir-autogen, elixir-format
 msgid "Format officiel, lisible imprimé en noir et blanc"
 msgstr "Official format, readable printed in black and white"
@@ -9946,12 +9946,12 @@ msgstr "Official format, readable printed in black and white"
 msgid "Frais de scolarité"
 msgstr "School fees"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:69
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:77
 #, elixir-autogen, elixir-format
 msgid "Francophone et anglophone"
 msgstr "French- and English-speaking"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:400
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:411
 #, elixir-autogen, elixir-format
 msgid "Francophone et anglophone · Cameroun"
 msgstr "French- and English-speaking · Cameroon"
@@ -9961,8 +9961,8 @@ msgstr "French- and English-speaking · Cameroon"
 msgid "Francophone et anglophone, avec leurs niveaux et leurs séries, dans une interface en français ou en anglais."
 msgstr "Francophone and anglophone, with their own levels and streams, in an interface in French or English."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:74
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:336
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:82
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:344
 #, elixir-autogen, elixir-format
 msgid "Gratuit pendant la phase pilote"
 msgstr "Free during the pilot phase"
@@ -9977,7 +9977,7 @@ msgstr "Grid per class and per teacher, weekly hours per subject, clashes flagge
 msgid "Import des listes"
 msgstr "List import"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:404
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:420
 #, elixir-autogen, elixir-format
 msgid "Inscrire un établissement"
 msgstr "Register a school"
@@ -9992,7 +9992,7 @@ msgstr "Register the school"
 msgid "Invitez l'équipe"
 msgstr "Invite the staff"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:108
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:116
 #, elixir-autogen, elixir-format
 msgid "L'accueil du proviseur sur téléphone"
 msgstr "The principal's home screen on a phone"
@@ -10007,12 +10007,12 @@ msgstr "The 5e A roll call on a phone: present, absent and late"
 msgid "L'appel en un geste, depuis le téléphone"
 msgstr "Roll call in one tap, from a phone"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:54
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:62
 #, elixir-autogen, elixir-format
 msgid "L'appel, les notes, les bulletins, les emplois du temps et la vie scolaire au même endroit. Chaque membre de l'équipe a son espace, sur téléphone comme sur ordinateur."
 msgstr "Roll call, marks, report cards, timetables and school life in one place. Every staff member has their own space, on a phone as on a computer."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:280
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:288
 #, elixir-autogen, elixir-format
 msgid "L'éditeur d'emploi du temps de la 6e A, avec les quotas horaires par matière"
 msgstr "The 6e A timetable editor, with weekly hours per subject"
@@ -10067,7 +10067,7 @@ msgstr "The vice-principal chases before the deadline, not after"
 msgid "Le chef d'établissement crée son compte et renseigne l'identité de l'établissement."
 msgstr "The head of school creates their account and fills in the school's details."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:377
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:385
 #, elixir-autogen, elixir-format
 msgid "Le compte du chef d'établissement se crée en quelques minutes."
 msgstr "The head of school's account takes a few minutes to create."
@@ -10082,8 +10082,8 @@ msgstr "The vice-principal's view of sequence 1 mark entry"
 msgid "Le suivi pédagogique : saisie des notes, emplois du temps, conseils de classe et bulletins."
 msgstr "Academic follow-up: mark entry, timetables, class councils and report cards."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:86
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:97
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:94
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:105
 #, elixir-autogen, elixir-format
 msgid "Le tableau de bord du proviseur : saisie des notes, appels du jour, absences à justifier, tâches à traiter"
 msgstr "The principal's dashboard: mark entry, today's roll calls, absences to excuse, tasks to handle"
@@ -10093,7 +10093,7 @@ msgstr "The principal's dashboard: mark entry, today's roll calls, absences to e
 msgid "Les appels en retard signalés à l'enseignant"
 msgstr "Overdue roll calls flagged to the teacher"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:208
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:216
 #, elixir-autogen, elixir-format
 msgid "Les bulletins du trimestre 1 de la 6e A : ce qui manque, le classement et le détail d'une élève"
 msgstr "Term 1 report cards for 6e A: what is missing, the ranking and one student's detail"
@@ -10108,7 +10108,7 @@ msgstr "Both sub-systems"
 msgid "Les enseignants doivent-ils avoir une adresse e-mail ?"
 msgstr "Do teachers need an e-mail address?"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:300
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:308
 #, elixir-autogen, elixir-format
 msgid "Les niveaux, les séquences, les coefficients et les bulletins sont ceux de vos établissements. Chaque établissement règle les siens : rien n'est figé dans le logiciel."
 msgstr "The levels, sequences, coefficients and report cards are your schools' own. Each school sets its own: nothing is hard-wired in the software."
@@ -10118,7 +10118,7 @@ msgstr "The levels, sequences, coefficients and report cards are your schools' o
 msgid "Les établissements anglophones sont-ils pris en charge ?"
 msgstr "Are anglophone schools supported?"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:49
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:57
 #, elixir-autogen, elixir-format
 msgid "Lycées et collèges du Cameroun"
 msgstr "Secondary schools in Cameroon"
@@ -10143,22 +10143,22 @@ msgstr "Marks and roll call in one place"
 msgid "Oui. Le sous-système anglophone a ses propres niveaux, et l'application se lit en français ou en anglais."
 msgstr "Yes. The anglophone sub-system has its own levels, and the app reads in French or English."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:297
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:305
 #, elixir-autogen, elixir-format
 msgid "Pas un logiciel étranger traduit."
 msgstr "Not foreign software in translation."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:295
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:303
 #, elixir-autogen, elixir-format
 msgid "Pensé pour le Cameroun"
 msgstr "Built for Cameroon"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:136
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:144
 #, elixir-autogen, elixir-format
 msgid "Personne ne ressaisit le travail d'un autre : l'appel de l'enseignant nourrit la journée du surveillant général, ses notes nourrissent le suivi du censeur et les bulletins."
 msgstr "Nobody re-types anyone else's work: the teacher's roll call feeds the discipline master's day, their marks feed the vice-principal's follow-up and the report cards."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:200
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:208
 #, elixir-autogen, elixir-format
 msgid "Photo de l'élève et code QR pour vérifier un bulletin"
 msgstr "Student photo and a QR code to verify a report card"
@@ -10173,12 +10173,12 @@ msgstr "Student photos taken in class, ID cards printed 10 to an A4 sheet."
 msgid "Photos et cartes scolaires"
 msgstr "Photos and ID cards"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:317
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:325
 #, elixir-autogen, elixir-format
 msgid "Pour commencer"
 msgstr "Getting started"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:188
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:196
 #, elixir-autogen, elixir-format
 msgid "Proviseur et censeur"
 msgstr "Principal and vice-principal"
@@ -10193,7 +10193,7 @@ msgstr "Preparation, remarks and promotion decisions, printable minutes."
 msgid "Présent, absent, en retard : un geste par élève, et l'appel est enregistré avant la fin du cours. L'enseignant retrouve sa journée de cours, et les appels oubliés lui sont rappelés."
 msgstr "Present, absent, late: one tap per student, and the roll call is saved before the lesson ends. Teachers see their day's lessons and are reminded of forgotten roll calls."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:353
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:361
 #, elixir-autogen, elixir-format
 msgid "Questions fréquentes"
 msgstr "Frequently asked questions"
@@ -10238,7 +10238,7 @@ msgstr "Sections"
 msgid "Ses cours du jour, l'appel, les notes de ses classes et son emploi du temps — rien de plus."
 msgstr "Their lessons of the day, roll call, their classes' marks and their timetable — nothing more."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:251
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:259
 #, elixir-autogen, elixir-format
 msgid "Ses pages principales"
 msgstr "Main pages"
@@ -10248,7 +10248,7 @@ msgstr "Main pages"
 msgid "Six séquences, trois trimestres, dates de clôture de la saisie et moyennes conformes aux usages."
 msgstr "Six sequences, three terms, mark-entry deadlines and averages as schools compute them."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:237
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:245
 #, elixir-autogen, elixir-format
 msgid "Sur téléphone, chacun retrouve en bas de l'écran les quatre pages dont il se sert le plus. Celui qui a deux rôles passe de l'un à l'autre en un geste."
 msgstr "On a phone, everyone finds the four pages they use most at the bottom of the screen. Someone with two roles switches between them in one tap."
@@ -10259,18 +10259,18 @@ msgid "Séquences et trimestres"
 msgstr "Sequences and terms"
 
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:27
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:335
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:343
 #, elixir-autogen, elixir-format
 msgid "Tarif"
 msgstr "Pricing"
 
 #: lib/teacher_assistant_web/components/layouts/auth.html.heex:402
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:51
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:59
 #, elixir-autogen, elixir-format
 msgid "Tout l'établissement sur un seul tableau."
 msgstr "The whole school on one board."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:338
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:346
 #, elixir-autogen, elixir-format
 msgid "Toutes les fonctionnalités et tous les rôles, pour tout l'établissement. Le tarif par élève et par an sera annoncé avant la rentrée."
 msgstr "Every feature and every role, for the whole school. The price per student per year will be announced before the new school year."
@@ -10280,7 +10280,7 @@ msgstr "Every feature and every role, for the whole school. The price per studen
 msgid "Tranches par classe, paiements en espèces, Mobile Money ou virement, soldes par élève."
 msgstr "Instalments per class, payments in cash, Mobile Money or bank transfer, balances per student."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:319
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:327
 #, elixir-autogen, elixir-format
 msgid "Trois étapes, sans installation."
 msgstr "Three steps, nothing to install."
@@ -10290,32 +10290,32 @@ msgstr "Three steps, nothing to install."
 msgid "Un assistant guide l'année scolaire, les classes, les matières et les coefficients."
 msgstr "A wizard walks you through the school year, classes, subjects and coefficients."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:218
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:226
 #, elixir-autogen, elixir-format
 msgid "Un bulletin de notes imprimé, au format officiel"
 msgstr "A printed report card, in the official format"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:234
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:242
 #, elixir-autogen, elixir-format
 msgid "Un compte par personne, l'écran qui va avec son rôle."
 msgstr "One account per person, the screen that fits their role."
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:118
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:126
 #, elixir-autogen, elixir-format
 msgid "Un espace pour chacun :"
 msgstr "A space for everyone:"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:131
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:139
 #, elixir-autogen, elixir-format
 msgid "Une journée au lycée"
 msgstr "A day at school"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:64
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:72
 #, elixir-autogen, elixir-format
 msgid "Voir comment ça marche"
 msgstr "See how it works"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:374
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:382
 #, elixir-autogen, elixir-format
 msgid "Votre établissement, prêt pour la prochaine séquence."
 msgstr "Your school, ready for the next sequence."
@@ -12529,3 +12529,10 @@ msgstr "competence to enter"
 #, elixir-autogen, elixir-format
 msgid "à saisir"
 msgstr "to enter"
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:41
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:393
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:414
+#, elixir-autogen, elixir-format
+msgid "Mon espace"
+msgstr "My space"

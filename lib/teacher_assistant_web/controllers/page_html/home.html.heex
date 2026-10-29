@@ -32,7 +32,15 @@
           <span class="ta-text-2" aria-hidden="true">·</span>
           <.link href={~p"/locale/en"} class="ta-landing__nav !px-2">EN</.link>
         </div>
-        <.link href={~p"/sign-in"} class="btn btn-ghost min-h-11 px-3">
+        <.link
+          :if={@current_user}
+          id="landing-my-space"
+          href={~p"/school"}
+          class="btn btn-ghost min-h-11 px-3"
+        >
+          {gettext("Mon espace")}
+        </.link>
+        <.link :if={!@current_user} href={~p"/sign-in"} class="btn btn-ghost min-h-11 px-3">
           {gettext("Se connecter")}
         </.link>
         <.link href={~p"/schools/start"} class="btn btn-primary hidden min-h-11 sm:inline-flex">
@@ -381,7 +389,10 @@
           <.link href={~p"/schools/start"} class="btn btn-primary btn-lg min-h-12">
             {gettext("Inscrire mon établissement")}
           </.link>
-          <.link href={~p"/sign-in"} class="btn btn-outline btn-lg min-h-12">
+          <.link :if={@current_user} href={~p"/school"} class="btn btn-outline btn-lg min-h-12">
+            {gettext("Mon espace")}
+          </.link>
+          <.link :if={!@current_user} href={~p"/sign-in"} class="btn btn-outline btn-lg min-h-12">
             {gettext("Se connecter")}
           </.link>
         </div>
@@ -399,7 +410,12 @@
       </span>
       <span class="ta-text-2">{gettext("Francophone et anglophone · Cameroun")}</span>
       <span class="flex flex-wrap items-center gap-x-1 sm:ml-auto">
-        <.link href={~p"/sign-in"} class="ta-landing__nav">{gettext("Se connecter")}</.link>
+        <.link :if={@current_user} href={~p"/school"} class="ta-landing__nav">
+          {gettext("Mon espace")}
+        </.link>
+        <.link :if={!@current_user} href={~p"/sign-in"} class="ta-landing__nav">
+          {gettext("Se connecter")}
+        </.link>
         <.link href={~p"/schools/start"} class="ta-landing__nav">
           {gettext("Inscrire un établissement")}
         </.link>

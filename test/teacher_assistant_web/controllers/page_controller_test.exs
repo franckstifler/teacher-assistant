@@ -64,4 +64,31 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert redirected_to(conn) == ~p"/register"
     assert get_session(conn, :return_to) == ~p"/schools/new"
   end
+
+  test "GET /schools/start sends a signed-in user without a school to school setup", %{
+    conn: conn
+  } do
+    conn =
+      conn
+      |> log_in_user(TeacherAssistant.TeacherFixtures.user_fixture())
+      |> get(~p"/schools/start")
+
+    assert redirected_to(conn) == ~p"/schools/new"
+  end
+
+  describe "a school member" do
+    setup :register_and_log_in_user
+
+    test "GET /schools/start sends them to their school, not a new one", %{conn: conn} do
+      assert conn |> get(~p"/schools/start") |> redirected_to() == ~p"/school"
+    end
+
+    test "GET / offers their space instead of « Se connecter »", %{conn: conn} do
+      html = conn |> get(~p"/") |> html_response(200)
+
+      assert html =~ ~s(id="landing-my-space")
+      assert html =~ ~s(href="/school")
+      refute html =~ ~s(href="/sign-in")
+    end
+  end
 end
