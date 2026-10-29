@@ -7,7 +7,8 @@ defmodule TeacherAssistant.RuntimeMailConfigTest do
   @base %{
     "DATABASE_URL" => "ecto://u:p@localhost/db",
     "SECRET_KEY_BASE" => String.duplicate("s", 64),
-    "TOKEN_SIGNING_SECRET" => "t"
+    "TOKEN_SIGNING_SECRET" => "t",
+    "UPLOADS_DIR" => "/data/uploads"
   }
   @mail_vars ~w(BREVO_API_KEY MAIL_FROM_ADDRESS MAIL_FROM_NAME)
 

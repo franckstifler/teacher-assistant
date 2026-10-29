@@ -67,6 +67,36 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  # Logos, signatures, stamps and student photos. Must live on a volume that
+  # outlives the container (docs/DEPLOY.md): anything written inside the
+  # container is lost at the next deploy.
+  uploads_dir =
+    System.get_env("UPLOADS_DIR") ||
+      raise """
+      environment variable UPLOADS_DIR is missing.
+      For example: /data/uploads, a mounted Docker volume.
+      """
+
+  # Only where the server runs: `bin/migrate` doesn't need the volume. Never
+  # created here: a missing directory means the volume isn't mounted, and
+  # creating it would quietly write uploads into the container.
+  if System.get_env("PHX_SERVER") do
+    probe = Path.join(uploads_dir, ".write_check")
+
+    cond do
+      not File.dir?(uploads_dir) ->
+        raise "UPLOADS_DIR #{uploads_dir} does not exist: the uploads volume is not mounted."
+
+      File.write(probe, "") != :ok ->
+        raise "UPLOADS_DIR #{uploads_dir} is not writable by the app's user (nobody, uid 65534)."
+
+      true ->
+        File.rm(probe)
+    end
+  end
+
+  config :teacher_assistant, uploads_dir: uploads_dir
+
   config :teacher_assistant,
     token_signing_secret:
       System.get_env("TOKEN_SIGNING_SECRET") ||
