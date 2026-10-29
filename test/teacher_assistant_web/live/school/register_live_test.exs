@@ -72,6 +72,16 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     |> Plug.Conn.put_session(:workspace_id, school.id)
   end
 
+  test "the student page rounds this year's absence hours", %{
+    conn: conn,
+    enrollment: enrollment
+  } do
+    # One 50-minute lesson: 0.8333… h, shown rounded rather than as the raw decimal.
+    {:ok, view, _html} = live(conn, ~p"/school/students/#{enrollment.student_id}")
+
+    assert view |> element("#this-year-unjustified") |> render() =~ "0,83 h"
+  end
+
   test "a conduct manager (discipline master) sees the grid and can justify a student's day", %{
     school: school,
     cg: cg,

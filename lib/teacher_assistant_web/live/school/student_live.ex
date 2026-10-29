@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
     Sex
   }
 
-  alias TeacherAssistantWeb.Authz
+  alias TeacherAssistantWeb.{Authz, Numbers}
   alias TeacherAssistantWeb.School.ClassShell
 
   def mount(%{"id" => id}, _session, socket) do
@@ -825,10 +825,10 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   defp this_year_tiles(this_year, scope) do
     [
       {"unjustified", gettext("Absences injustifiées"),
-       "#{this_year.attendance.unjustified_hours} h",
+       Numbers.hours(this_year.attendance.unjustified_hours),
        Decimal.gt?(this_year.attendance.unjustified_hours, 0) && "text-warning", :appel},
-      {"justified", gettext("Absences justifiées"), "#{this_year.attendance.justified_hours} h",
-       nil, :appel},
+      {"justified", gettext("Absences justifiées"),
+       Numbers.hours(this_year.attendance.justified_hours), nil, :appel},
       {"retards", gettext("Retards"), "#{this_year.attendance.retards}", nil, :appel},
       {"consignes", gettext("Consignes"), "#{this_year.discipline.consignes_count}", nil,
        :discipline}
