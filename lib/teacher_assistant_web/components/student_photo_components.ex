@@ -58,24 +58,43 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
 
   def photo_sheet(assigns) do
     ~H"""
+    <%!-- Centred on phones too: a bottom sheet sat far from the avatar that opens it,
+         under the browser's bottom toolbar on some phones. --%>
     <div
       id="photo-sheet"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       phx-window-keydown="close_sheet"
       phx-key="Escape"
     >
       <div
-        class="w-full max-w-sm space-y-3 rounded-t-box bg-base-100 p-4 shadow-xl sm:rounded-box"
+        class="w-full max-w-sm space-y-3 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl"
         phx-click-away="close_sheet"
       >
         <p class="font-semibold">{@student.full_name}</p>
+        <%!-- The séance camera (frame, face guide), for this one student. --%>
+        <button
+          id="take-photo"
+          type="button"
+          class="btn btn-primary w-full"
+          phx-click={
+            Phoenix.LiveView.JS.dispatch("photo:shoot",
+              to: "#photo-studio",
+              detail: %{id: @student.id, name: @student.full_name}
+            )
+            |> Phoenix.LiveView.JS.push("close_sheet")
+          }
+        >
+          <.icon name="hero-camera" class="size-4" /> {gettext("Prendre une photo")}
+        </button>
         <button
           id="pick-photo"
           type="button"
-          class="btn btn-primary w-full"
+          class="btn btn-outline btn-primary w-full"
           phx-click={Phoenix.LiveView.JS.dispatch("photo:pick", to: "#photo-studio")}
         >
-          <.icon name="hero-camera" class="size-4" /> {gettext("Prendre / choisir une photo")}
+          <.icon name="hero-photo" class="size-4" /> {gettext("Choisir une photo")}
         </button>
         <button
           :if={@student.photo_path && !@confirm_remove?}

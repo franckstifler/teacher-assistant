@@ -206,6 +206,19 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
   end
 
   describe "photo" do
+    test "the sheet offers the studio camera and the gallery as two choices", %{
+      conn: conn,
+      awa: awa
+    } do
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+      view |> element("#student-photo-button") |> render_click()
+
+      assert view |> element("#take-photo") |> render() =~ "Prendre une photo"
+      assert view |> element("#pick-photo") |> render() =~ "Choisir une photo"
+      # « Prendre une photo » opens the séance camera for this one student.
+      assert view |> element("#take-photo") |> render() =~ "photo:shoot"
+    end
+
     test "the SG uploads the student's photo from the profile", %{
       scope: scope,
       school: school,

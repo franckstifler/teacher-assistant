@@ -169,6 +169,8 @@ export const PhotoStudio = {
   setupSession() {
     const $ = this.$
     this.el.addEventListener("photo:session-start", () => this.startSession())
+    // One student's photo from the sheet: the séance camera, closed without a summary.
+    this.el.addEventListener("photo:shoot", (e) => this.startSession([e.detail]))
     $("quit").addEventListener("click", () => this.endSession())
     $("summary-close").addEventListener("click", () => this.closeSession())
     $("skip").addEventListener("click", () => { this.skipped++; this.next() })
@@ -194,10 +196,12 @@ export const PhotoStudio = {
 
   current() { return this.queue[this.index] },
 
-  async startSession() {
-    this.queue = JSON.parse(this.el.dataset.queue || "[]")
+  async startSession(solo = null) {
+    this.solo = solo !== null
+    this.queue = solo || JSON.parse(this.el.dataset.queue || "[]")
     if (this.queue.length === 0) return
     this.index = 0; this.taken = 0; this.skipped = 0
+    this.$("skip").classList.toggle("hidden", this.solo)
     this.$("session").classList.replace("hidden", "flex")
     this.$("summary").classList.replace("flex", "hidden")
     this.showStudent() // before the camera: its permission prompt can take a while
@@ -228,7 +232,7 @@ export const PhotoStudio = {
   showStudent() {
     const s = this.current()
     this.$("name").textContent = s.name
-    this.$("progress").textContent = `${this.index + 1}/${this.queue.length}`
+    this.$("progress").textContent = this.solo ? "" : `${this.index + 1}/${this.queue.length}`
     this.showLive()
   },
 
@@ -263,6 +267,7 @@ export const PhotoStudio = {
   endSession() {
     this.stopCamera()
     this.wakeLock?.release?.()
+    if (this.solo) return this.closeSession()
     const el = this.$("summary-text")
     el.textContent = el.dataset.template.replace("__T__", this.taken).replace("__S__", this.skipped)
     this.$("summary").classList.replace("hidden", "flex")

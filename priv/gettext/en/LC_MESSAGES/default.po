@@ -1419,8 +1419,8 @@ msgstr "Absent"
 msgid "Access denied."
 msgstr "Access denied."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:98
-#: lib/teacher_assistant_web/components/student_photo_components.ex:143
+#: lib/teacher_assistant_web/components/student_photo_components.ex:117
+#: lib/teacher_assistant_web/components/student_photo_components.ex:162
 #: lib/teacher_assistant_web/components/ui_components.ex:34
 #: lib/teacher_assistant_web/live/account/password_live.ex:119
 #: lib/teacher_assistant_web/live/admin/reset_modal.ex:49
@@ -8450,7 +8450,7 @@ msgstr "Form master: %{pp}"
 msgid "Présidé par %{chair}"
 msgstr "Chaired by %{chair}"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:152
+#: lib/teacher_assistant_web/components/student_photo_components.ex:171
 #, elixir-autogen, elixir-format
 msgid "%{count} photos en cours d'envoi"
 msgstr "%{count} photos uploading"
@@ -8460,7 +8460,7 @@ msgstr "%{count} photos uploading"
 msgid "%{done}/%{total} photos"
 msgstr "%{done}/%{total} photos"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:151
+#: lib/teacher_assistant_web/components/student_photo_components.ex:170
 #, elixir-autogen, elixir-format
 msgid "1 photo en cours d'envoi"
 msgstr "1 photo uploading"
@@ -8472,7 +8472,7 @@ msgid_plural "%{count} élèves sans photo"
 msgstr[0] "1 student without photo"
 msgstr[1] "%{count} students without photo"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:192
+#: lib/teacher_assistant_web/components/student_photo_components.ex:211
 #, elixir-autogen, elixir-format
 msgid "Caméra indisponible. Choisissez une photo à la place."
 msgstr "Camera unavailable. Choose a photo instead."
@@ -8498,7 +8498,7 @@ msgstr "This student is not in this class."
 msgid "Cette photo ne correspond pas à cet élève."
 msgstr "This photo does not belong to this student."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:203
+#: lib/teacher_assistant_web/components/student_photo_components.ex:222
 #, elixir-autogen, elixir-format
 msgid "Changer de caméra"
 msgstr "Switch camera"
@@ -8508,7 +8508,8 @@ msgstr "Switch camera"
 msgid "Changer la photo"
 msgstr "Change photo"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:193
+#: lib/teacher_assistant_web/components/student_photo_components.ex:97
+#: lib/teacher_assistant_web/components/student_photo_components.ex:212
 #, elixir-autogen, elixir-format
 msgid "Choisir une photo"
 msgstr "Choose a photo"
@@ -8518,7 +8519,7 @@ msgstr "Choose a photo"
 msgid "Compléter les photos"
 msgstr "Complete the photos"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:96
+#: lib/teacher_assistant_web/components/student_photo_components.ex:115
 #, elixir-autogen, elixir-format
 msgid "Confirmer la suppression"
 msgstr "Confirm deletion"
@@ -8528,27 +8529,27 @@ msgstr "Confirm deletion"
 msgid "Contact"
 msgstr "Contact"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:293
+#: lib/teacher_assistant_web/components/student_photo_components.ex:312
 #, elixir-autogen, elixir-format
 msgid "Envoi impossible."
 msgstr "Upload failed."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:124
+#: lib/teacher_assistant_web/components/student_photo_components.ex:143
 #, elixir-autogen, elixir-format
 msgid "Faites glisser pour cadrer, zoomez avec le curseur."
 msgstr "Drag to frame, zoom with the slider."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:287
+#: lib/teacher_assistant_web/components/student_photo_components.ex:306
 #, elixir-autogen, elixir-format
 msgid "Fichier trop lourd (1 Mo maximum)."
 msgstr "File too large (1 MB at most)."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:319
+#: lib/teacher_assistant_web/components/student_photo_components.ex:338
 #, elixir-autogen, elixir-format
 msgid "Format d'image non pris en charge par ce navigateur."
 msgstr "This browser cannot read this image format."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:315
+#: lib/teacher_assistant_web/components/student_photo_components.ex:334
 #, elixir-autogen, elixir-format
 msgid "Impossible de supprimer la photo."
 msgstr "Could not delete the photo."
@@ -8558,7 +8559,7 @@ msgstr "Could not delete the photo."
 msgid "Lancer la séance"
 msgstr "Start photo session"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:164
+#: lib/teacher_assistant_web/components/student_photo_components.ex:183
 #, elixir-autogen, elixir-format
 msgid "Passer"
 msgstr "Skip"
@@ -8573,7 +8574,7 @@ msgstr "Photo"
 msgid "Photo de l'élève"
 msgstr "Student photo"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:267
+#: lib/teacher_assistant_web/components/student_photo_components.ex:286
 #, elixir-autogen, elixir-format
 msgid "Photo refusée : fichier JPEG d'1 Mo maximum."
 msgstr "Photo refused: JPEG file of 1 MB at most."
@@ -8586,32 +8587,27 @@ msgstr "Photo refused: JPEG file of 1 MB at most."
 msgid "Photos"
 msgstr "Photos"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:78
-#, elixir-autogen, elixir-format
-msgid "Prendre / choisir une photo"
-msgstr "Take / choose a photo"
-
-#: lib/teacher_assistant_web/components/student_photo_components.ex:211
+#: lib/teacher_assistant_web/components/student_photo_components.ex:230
 #, elixir-autogen, elixir-format
 msgid "Prendre la photo"
 msgstr "Take the photo"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:167
+#: lib/teacher_assistant_web/components/student_photo_components.ex:186
 #, elixir-autogen, elixir-format
 msgid "Quitter"
 msgstr "Quit"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:213
+#: lib/teacher_assistant_web/components/student_photo_components.ex:232
 #, elixir-autogen, elixir-format
 msgid "Reprendre"
 msgstr "Retake"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:233
+#: lib/teacher_assistant_web/components/student_photo_components.ex:252
 #, elixir-autogen, elixir-format
 msgid "Retour à la grille"
 msgstr "Back to the grid"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:153
+#: lib/teacher_assistant_web/components/student_photo_components.ex:172
 #, elixir-autogen, elixir-format
 msgid "Réessayer"
 msgstr "Retry"
@@ -8626,12 +8622,12 @@ msgstr "No photo"
 msgid "Sans photo uniquement"
 msgstr "Without photo only"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:290
+#: lib/teacher_assistant_web/components/student_photo_components.ex:309
 #, elixir-autogen, elixir-format
 msgid "Seules les photos JPEG sont acceptées."
 msgstr "Only JPEG photos are accepted."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:87
+#: lib/teacher_assistant_web/components/student_photo_components.ex:106
 #, elixir-autogen, elixir-format
 msgid "Supprimer la photo"
 msgstr "Delete photo"
@@ -8641,23 +8637,23 @@ msgstr "Delete photo"
 msgid "Séance : refaire toute la classe"
 msgstr "Session: redo the whole class"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:292
+#: lib/teacher_assistant_web/components/student_photo_components.ex:311
 #, elixir-autogen, elixir-format
 msgid "Trop d'envois en même temps."
 msgstr "Too many uploads at once."
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:144
-#: lib/teacher_assistant_web/components/student_photo_components.ex:216
+#: lib/teacher_assistant_web/components/student_photo_components.ex:163
+#: lib/teacher_assistant_web/components/student_photo_components.ex:235
 #, elixir-autogen, elixir-format
 msgid "Valider"
 msgstr "Confirm"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:140
+#: lib/teacher_assistant_web/components/student_photo_components.ex:159
 #, elixir-autogen, elixir-format
 msgid "Zoom"
 msgstr "Zoom"
 
-#: lib/teacher_assistant_web/components/student_photo_components.ex:226
+#: lib/teacher_assistant_web/components/student_photo_components.ex:245
 #, elixir-autogen, elixir-format
 msgid "Photos prises : %{taken} · passées : %{skipped}"
 msgstr "Photos taken: %{taken} · skipped: %{skipped}"
@@ -12536,3 +12532,8 @@ msgstr "to enter"
 #, elixir-autogen, elixir-format
 msgid "Mon espace"
 msgstr "My space"
+
+#: lib/teacher_assistant_web/components/student_photo_components.ex:89
+#, elixir-autogen, elixir-format
+msgid "Prendre une photo"
+msgstr "Take a photo"
