@@ -199,6 +199,14 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <.class_shell cg={@cg} shell={@shell} tab={:discipline}>
         <:actions>
+          <.link
+            id="absence-hours-link"
+            navigate={~p"/school/classes/#{@cg.id}/absence-hours"}
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-clock" class="size-4" />
+            {gettext("Heures d'absence au bulletin")}
+          </.link>
           <form :if={@sequences != []} id="discipline-period-form" phx-change="select_period">
             <.input
               type="select"

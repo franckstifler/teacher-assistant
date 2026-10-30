@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Academics.{SanctionType, SchoolLifeRules}
+  alias TeacherAssistant.Academics.{AbsenceHoursSource, SanctionType, SchoolLifeRules}
   alias TeacherAssistantWeb.Authz
 
   def mount(_params, _session, socket) do
@@ -42,6 +42,20 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
 
       _ ->
         {:noreply, put_flash(socket, :error, gettext("Réglage non enregistré."))}
+    end
+  end
+
+  # Spec 2026-10-30 §1: the bulletin absence-hours source for every class at once.
+  def handle_event("absence_source_all", %{"source" => value}, socket) do
+    scope = socket.assigns.current_scope
+
+    with {:ok, source} <- AbsenceHoursSource.match(value),
+         %{} = year <- scope.current_academic_year,
+         :ok <- Attendance.set_absence_hours_source_all(scope, year, source) do
+      {:noreply, put_flash(socket, :info, gettext("Réglage enregistré."))}
+    else
+      {:error, %Ash.Error.Forbidden{}} -> {:noreply, Authz.put_not_allowed(socket)}
+      _ -> {:noreply, put_flash(socket, :error, gettext("Réglage non enregistré."))}
     end
   end
 
@@ -136,6 +150,13 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
     do: d |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.replace(".", ",")
 
   defp shown(n) when is_integer(n), do: Integer.to_string(n)
+
+  # Without the « Appel » module there is no roll call to compute from (spec 2026-10-30 §1).
+  defp absence_sources(scope) do
+    if TeacherAssistant.Scope.module?(scope, :appel),
+      do: AbsenceHoursSource.values(),
+      else: AbsenceHoursSource.values() -- [:roll_call]
+  end
 
   def render(assigns) do
     assigns = assign(assigns, types: SanctionType.values())
@@ -304,6 +325,29 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
               }
             >
               {gettext("Aucune classe")}
+            </button>
+          </div>
+        </.settings_section>
+
+        <.settings_section
+          id="absence-hours-source"
+          title={gettext("Heures d'absence au bulletin")}
+          subtitle={
+            gettext(
+              "Calculées depuis l'appel, ou saisies à la main à partir des feuilles. Pour toutes les classes ; chaque classe peut aussi le changer dans sa page Discipline."
+            )
+          }
+        >
+          <div class="flex flex-wrap gap-2 px-4 pb-4 sm:px-5">
+            <button
+              :for={source <- absence_sources(@current_scope)}
+              id={"absence-source-all-#{source}"}
+              type="button"
+              class="btn btn-outline btn-sm"
+              phx-click="absence_source_all"
+              phx-value-source={source}
+            >
+              {AbsenceHoursSource.label(source)}
             </button>
           </div>
         </.settings_section>
