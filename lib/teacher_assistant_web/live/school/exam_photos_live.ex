@@ -45,17 +45,27 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
     do: {:noreply, update(socket, :open, &if(&1 == id, do: nil, else: id))}
 
   def handle_event("toggle", %{"student" => id}, socket) do
+    ticked = socket.assigns.ticked
+
     {:noreply,
-     update(socket, :ticked, fn ticked ->
-       if MapSet.member?(ticked, id), do: MapSet.delete(ticked, id), else: MapSet.put(ticked, id)
-     end)}
+     set_ticked(
+       socket,
+       if(MapSet.member?(ticked, id), do: MapSet.delete(ticked, id), else: MapSet.put(ticked, id))
+     )}
   end
 
   def handle_event("tick_all", %{"class" => id}, socket),
-    do: {:noreply, update(socket, :ticked, &MapSet.union(&1, class_ids(socket, id)))}
+    do: {:noreply, set_ticked(socket, MapSet.union(socket.assigns.ticked, class_ids(socket, id)))}
 
-  def handle_event("tick_none", %{"class" => id}, socket),
-    do: {:noreply, update(socket, :ticked, &MapSet.difference(&1, class_ids(socket, id)))}
+  def handle_event("tick_none", %{"class" => id}, socket) do
+    {:noreply,
+     set_ticked(socket, MapSet.difference(socket.assigns.ticked, class_ids(socket, id)))}
+  end
+
+  # The hook keeps the unticked students in the tab's storage and hands them back when the
+  # page mounts again (reconnect after the phone slept, back from taking a photo).
+  def handle_event("restore_unticked", %{"ids" => ids}, socket) when is_list(ids),
+    do: {:noreply, set_ticked(socket, MapSet.difference(socket.assigns.ticked, MapSet.new(ids)))}
 
   def handle_event("save_codes", %{"class_id" => id} = params, socket) do
     codes = %{exam_code: params["exam_code"], exam_center_code: params["exam_center_code"]}
@@ -65,7 +75,17 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
   # The default CR code goes to the classes that have none; the others keep theirs.
   def handle_event("fill_center", %{"center" => center}, socket) do
     ids = for %{cg: cg} <- socket.assigns.classes, is_nil(cg.exam_center_code), do: cg.id
-    {:noreply, set_codes(socket, ids, %{exam_center_code: center})}
+
+    message =
+      case length(ids) do
+        0 ->
+          gettext("Toutes les classes ont déjà un code CR.")
+
+        n ->
+          ngettext("Code CR ajouté à %{count} classe.", "Code CR ajouté à %{count} classes.", n)
+      end
+
+    {:noreply, socket |> put_flash(:info, message) |> set_codes(ids, %{exam_center_code: center})}
   end
 
   def handle_event("export", %{"class" => id}, socket),
@@ -88,6 +108,14 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
      )}
   end
 
+  defp set_ticked(socket, ticked) do
+    all = for %{students: students} <- socket.assigns.classes, s <- students, do: s.id
+
+    socket
+    |> assign(:ticked, ticked)
+    |> push_event("exam-photos:unticked", %{ids: Enum.reject(all, &MapSet.member?(ticked, &1))})
+  end
+
   defp class_ids(socket, id) do
     for %{cg: %{id: ^id}, students: students} <- socket.assigns.classes,
         s <- students,
@@ -99,18 +127,30 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
     scope = socket.assigns.current_scope
 
     Enum.reduce(ids, socket, fn id, socket ->
-      with %{cg: cg} <- Enum.find(socket.assigns.classes, &(&1.cg.id == id)),
-           {:ok, updated} <- Enrollment.set_exam_codes(cg, codes, scope: scope) do
+      case Enum.find(socket.assigns.classes, &(&1.cg.id == id)) do
+        nil -> socket
+        %{cg: cg} -> save_codes(socket, cg, codes, scope)
+      end
+    end)
+  end
+
+  defp save_codes(socket, cg, codes, scope) do
+    case Enrollment.set_exam_codes(cg, codes, scope: scope) do
+      {:ok, updated} ->
         update(socket, :classes, fn classes ->
           Enum.map(classes, fn
-            %{cg: %{id: ^id}} = c -> %{c | cg: updated}
+            %{cg: %{id: id}} = c when id == cg.id -> %{c | cg: updated}
             c -> c
           end)
         end)
-      else
-        _ -> put_flash(socket, :error, gettext("Impossible d'enregistrer les codes."))
-      end
-    end)
+
+      {:error, _} ->
+        put_flash(
+          socket,
+          :error,
+          gettext("Impossible d'enregistrer les codes de %{class}.", class: cg.label)
+        )
+    end
   end
 
   defp export(socket, classes) do
@@ -191,8 +231,10 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
             disabled={exportable(@classes, @ticked) == 0}
           >
             <.icon name="hero-arrow-down-tray" class="size-4" />
-            {gettext("Télécharger la sélection · %{count} photos",
-              count: exportable(@classes, @ticked)
+            {ngettext(
+              "Télécharger la sélection · %{count} photo",
+              "Télécharger la sélection · %{count} photos",
+              exportable(@classes, @ticked)
             )}
           </button>
         </header>
@@ -342,6 +384,7 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
                     id={"exam-card-#{s.id}"}
                     phx-hook="ExamCard"
                     data-card={Jason.encode!(card(cg, s))}
+                    data-unreadable={gettext("Photo illisible")}
                     width="300"
                     height="512"
                     class={[

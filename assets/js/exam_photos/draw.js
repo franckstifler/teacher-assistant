@@ -71,5 +71,19 @@ export async function drawExamCard(canvas, {photo_url, date, names, codes}, scal
   if (codes) centred(ctx, codes, fittingSize(ctx, codes, CODES_PX), TOP + PHOTO_H + 112)
 }
 
+// The preview of a photo that could not be read: a grey card saying so.
+export function drawUnreadable(canvas, text, scale = 1) {
+  canvas.width = W * scale
+  canvas.height = H * scale
+  const ctx = canvas.getContext("2d")
+  ctx.scale(scale, scale)
+  ctx.fillStyle = "#e5e7eb"
+  ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = "#b91c1c"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  centred(ctx, text, NAME_PX, H / 2)
+}
+
 export const examCardJpeg = (canvas) =>
   new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", QUALITY))

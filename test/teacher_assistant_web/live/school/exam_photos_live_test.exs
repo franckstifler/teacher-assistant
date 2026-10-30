@@ -165,4 +165,62 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLiveTest do
     {:ok, _view, html} = live(conn_for(sg, ws), ~p"/school/exam-photos")
     assert html =~ ~s(href="/school/exam-photos")
   end
+
+  test "one photo reads « 1 photo »", %{sg: sg, ws: ws, cg_tle: tle} do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    view |> element("#exam-open-#{tle.id}") |> render_click()
+    view |> element("#exam-none-#{tle.id}") |> render_click()
+    label = view |> element("#exam-zip-selection") |> render()
+    assert label =~ "1 photo"
+    refute label =~ "1 photos"
+  end
+
+  test "the default CR code says how many classes it filled", %{sg: sg, ws: ws} do
+    {:ok, view, html} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+
+    classes =
+      html |> LazyHTML.from_document() |> LazyHTML.query("[id^=exam-class-]") |> Enum.count()
+
+    assert view |> form("#exam-default-center", %{center: "CR 8127"}) |> render_submit() =~
+             "Code CR ajouté à #{classes} classes."
+
+    assert view |> form("#exam-default-center", %{center: "CR 9"}) |> render_submit() =~
+             "Toutes les classes ont déjà un code CR."
+  end
+
+  test "a failed save names the class", %{scope: scope, sg: sg, ws: ws, f3: f3} do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    TeacherFixtures.close_year!(scope, scope.current_academic_year)
+
+    html =
+      view
+      |> form("#exam-class-#{f3.id} form", %{class_id: f3.id, exam_center_code: "CR 1"})
+      |> render_change()
+
+    assert html =~ "Impossible d&#39;enregistrer les codes de 1ère F3"
+  end
+
+  test "unticked students are remembered by the browser and restored", %{
+    sg: sg,
+    ws: ws,
+    f3: f3,
+    awa: awa
+  } do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    view |> element("#exam-open-#{f3.id}") |> render_click()
+    view |> element("#exam-tick-#{awa.id}") |> render_click()
+    assert_push_event(view, "exam-photos:unticked", %{ids: [awa_id]})
+    assert awa_id == awa.id
+
+    # A fresh page (reconnect after the phone slept) gets them back from the browser.
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    render_hook(view, "restore_unticked", %{"ids" => [awa.id, "not-a-student"]})
+    assert view |> element("#exam-zip-selection") |> render() =~ "1 photo"
+  end
+
+  test "previews carry the text shown when a photo cannot be read", %{sg: sg, ws: ws, f3: f3} do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    view |> element("#exam-open-#{f3.id}") |> render_click()
+    assert has_element?(view, ~s|canvas[data-unreadable="Photo illisible"]|)
+  end
 end
