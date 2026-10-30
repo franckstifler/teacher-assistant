@@ -380,7 +380,7 @@ defmodule TeacherAssistant.Discipline do
     period = {:sequence, sequence}
     rules = TeacherAssistant.Attendance.school_life_rules(scope)
     roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
-    totals = TeacherAssistant.Attendance.class_conduct(scope, class_group, period)
+    totals = TeacherAssistant.Attendance.bulletin_conduct(scope, class_group, period)
     sanctions = scope |> list_sanctions(class_group, period) |> Enum.group_by(& &1.enrollment_id)
 
     current =

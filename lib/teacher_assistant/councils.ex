@@ -212,7 +212,7 @@ defmodule TeacherAssistant.Councils do
   """
   def passage_inputs(%Scope{} = scope, %ClassGroup{} = cg, {:annual, %AcademicYear{}} = period) do
     discipline = Discipline.class_discipline(scope, cg, period)
-    attendance = Attendance.class_conduct(scope, cg, period)
+    attendance = Attendance.bulletin_conduct(scope, cg, period)
 
     scope
     |> Enrollment.list_roster(cg)

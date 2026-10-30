@@ -20,6 +20,8 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.SchoolLifeRules
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.TypedAbsence
+  alias TeacherAssistant.Academics.TypedAbsences
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Scope
@@ -49,7 +51,7 @@ defmodule TeacherAssistant.Attendance do
 
     resource TeacherAssistant.Academics.RollCallReminder
     resource TeacherAssistant.Academics.LessonNotHeld
-    resource TeacherAssistant.Academics.TypedAbsence
+    resource TypedAbsence
   end
 
   authorization do
@@ -546,6 +548,86 @@ defmodule TeacherAssistant.Attendance do
         Map.merge(zero_map, totals_by_enrollment)
     end
   end
+
+  @doc """
+  Spec 2026-10-30 §3: the absence hours the bulletin path (report card, passage, conduct
+  sheet) reads — `class_conduct/3`'s shape plus `:source` (`:roll_call` / `:typed`) and
+  `:recorded?`. A typed class reads only its typed figures (no justified hours, no
+  lates), so roll-call hours are never added to them.
+  """
+  def bulletin_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+    case effective_absence_source(scope, class_group) do
+      :roll_call ->
+        scope
+        |> class_conduct(class_group, period)
+        |> Map.new(fn {id, totals} ->
+          {id, Map.merge(totals, %{source: :roll_call, recorded?: true})}
+        end)
+
+      rhythm ->
+        span = typed_span(scope, period)
+
+        scope
+        |> typed_records_by_enrollment(class_group)
+        |> Map.new(fn {id, records} ->
+          {hours, recorded?} =
+            case TypedAbsences.hours(records, span, rhythm) do
+              {:ok, hours} -> {hours, true}
+              :none -> {Decimal.new(0), false}
+            end
+
+          {id,
+           %{@zero_totals | unjustified_hours: hours}
+           |> Map.merge(%{source: :typed, recorded?: recorded?})}
+        end)
+    end
+  end
+
+  @doc "Spec 2026-10-30 §6: roster students of a typed class still missing a figure for `period`."
+  def typed_absences_missing(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+    case effective_absence_source(scope, class_group) do
+      :roll_call ->
+        0
+
+      rhythm ->
+        span = typed_span(scope, period)
+
+        scope
+        |> typed_records_by_enrollment(class_group)
+        |> Enum.count(fn {_id, records} -> not TypedAbsences.complete?(records, span, rhythm) end)
+    end
+  end
+
+  # Every roster enrollment, with its typed records (maybe none), in one read.
+  defp typed_records_by_enrollment(scope, class_group) do
+    ids =
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> Enum.map(& &1.enrollment.id)
+
+    records =
+      if ids == [],
+        do: [],
+        else:
+          TypedAbsence
+          |> Ash.Query.for_read(:for_enrollments, %{enrollment_ids: ids}, scope: scope)
+          |> Ash.read!()
+          |> Enum.group_by(& &1.enrollment_id)
+
+    Map.new(ids, &{&1, Map.get(records, &1, [])})
+  end
+
+  defp typed_span(_scope, {:sequence, %{id: id}}), do: {:sequence, id}
+
+  defp typed_span(_scope, {:trimester, %{id: id, sequences: sequences}}),
+    do: {:term, id, Enum.map(sequences, & &1.id)}
+
+  defp typed_span(scope, {:annual, %AcademicYear{} = year}),
+    do:
+      {:year,
+       scope
+       |> Organization.list_terms(year)
+       |> Enum.map(&{&1.id, Enum.map(&1.sequences, fn s -> s.id end)})}
 
   defp teaching_context_id(%TeachingContext{id: id}), do: id
   defp teaching_context_id(id) when is_binary(id), do: id

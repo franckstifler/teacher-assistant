@@ -56,7 +56,7 @@ defmodule TeacherAssistant.ReportCards do
       sequences_per_term: sequences_per_term(period),
       prior_terms: prior_terms(scope, cg, period, template),
       annual: annual_summary(scope, cg, period, template),
-      conduct: Attendance.class_conduct(scope, cg, period),
+      conduct: Attendance.bulletin_conduct(scope, cg, period),
       discipline:
         scope
         |> Discipline.class_discipline(cg, period)
