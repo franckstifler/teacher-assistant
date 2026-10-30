@@ -74,6 +74,20 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
   def handle_event("export", _params, socket),
     do: {:noreply, export(socket, socket.assigns.classes)}
 
+  # The hook skips a picture whose photo could not be read, and says how many.
+  def handle_event("export_failed", %{"count" => count}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       ngettext(
+         "%{count} photo n'a pas pu être préparée ; elle manque dans le zip.",
+         "%{count} photos n'ont pas pu être préparées ; elles manquent dans le zip.",
+         count
+       )
+     )}
+  end
+
   defp class_ids(socket, id) do
     for %{cg: %{id: ^id}, students: students} <- socket.assigns.classes,
         s <- students,
@@ -181,7 +195,14 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
           </button>
         </header>
 
-        <p data-role="progress" class="hidden text-sm font-semibold text-primary" aria-live="polite">
+        <p
+          id="exam-progress"
+          data-role="progress"
+          phx-update="ignore"
+          data-label={gettext("Préparation des photos… %{n}/%{total}", n: "__N__", total: "__T__")}
+          class="hidden text-sm font-semibold text-primary"
+          aria-live="polite"
+        >
         </p>
 
         <form

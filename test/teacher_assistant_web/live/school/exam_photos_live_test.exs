@@ -129,6 +129,11 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLiveTest do
     })
   end
 
+  test "a failed export tells the user how many photos were skipped", %{sg: sg, ws: ws} do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    assert render_hook(view, "export_failed", %{"count" => 2}) =~ "2 photos n&#39;ont pas pu"
+  end
+
   test "the SG's menu links to the page", %{sg: sg, ws: ws} do
     {:ok, _view, html} = live(conn_for(sg, ws), ~p"/school/exam-photos")
     assert html =~ ~s(href="/school/exam-photos")
