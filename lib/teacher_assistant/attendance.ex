@@ -49,6 +49,7 @@ defmodule TeacherAssistant.Attendance do
 
     resource TeacherAssistant.Academics.RollCallReminder
     resource TeacherAssistant.Academics.LessonNotHeld
+    resource TeacherAssistant.Academics.TypedAbsence
   end
 
   authorization do
