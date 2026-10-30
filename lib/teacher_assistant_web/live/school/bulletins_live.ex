@@ -291,6 +291,17 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   def ordinal(_fr, 1), do: "1er"
   def ordinal(_fr, n), do: "#{n}e"
 
+  defp check_text(%{key: :typed_absences, data: %{missing: 0}}),
+    do: gettext("Heures d'absence : toutes saisies")
+
+  defp check_text(%{key: :typed_absences, data: %{missing: n}}),
+    do:
+      ngettext(
+        "%{count} élève sans heures d'absence saisies",
+        "%{count} élèves sans heures d'absence saisies",
+        n
+      )
+
   defp check_text(%{key: :paper_roll_calls, data: %{count: 0}}),
     do: gettext("Feuilles d'appel : toutes saisies")
 

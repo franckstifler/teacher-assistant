@@ -42,6 +42,11 @@ defmodule TeacherAssistantWeb.School.ModulesUiTest do
     [cg | _] = Enrollment.list_class_groups(scope, scope.current_academic_year)
     assert :absences in TeacherAssistant.ReportCards.template(scope, cg).elements
 
+    # Spec 2026-10-30 §5: hours can still be typed by hand on the Discipline screens.
+    {:ok, ws} = Organization.set_modules(op, ws, [:notes, :discipline])
+    scope = %{scope | current_workspace: ws}
+    assert :absences in TeacherAssistant.ReportCards.template(scope, cg).elements
+
     {:ok, ws} = Organization.set_modules(op, ws, [:notes])
     scope = %{scope | current_workspace: ws}
     elements = TeacherAssistant.ReportCards.template(scope, cg).elements
