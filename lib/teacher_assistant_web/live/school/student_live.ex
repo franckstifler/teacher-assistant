@@ -39,7 +39,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          match_children: %{},
          guardian_edit: nil,
          sheet: false,
-         confirm_remove?: false
+         confirm_remove?: false,
+         viewing_photo?: false
        )
        |> assign_guardian_form(%{})
        |> allow_photo_upload_for(access)
@@ -280,6 +281,13 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   def handle_event("open_sheet", _params, socket) when socket.assigns.access == :manage,
     do: {:noreply, assign(socket, sheet: true, confirm_remove?: false)}
 
+  # Staff who only read the profile open the photo full size.
+  def handle_event("view_photo", _params, socket),
+    do: {:noreply, assign(socket, viewing_photo?: true)}
+
+  def handle_event("close_viewer", _params, socket),
+    do: {:noreply, assign(socket, viewing_photo?: false)}
+
   def handle_event("close_sheet", _params, socket),
     do: {:noreply, assign(socket, sheet: false, confirm_remove?: false)}
 
@@ -410,8 +418,18 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 <.icon name="hero-camera-mini" class="size-3" />
               </span>
             </button>
+            <button
+              :if={@access != :manage and @student.photo_path}
+              id="student-photo-view"
+              type="button"
+              phx-click="view_photo"
+              aria-label={gettext("Voir la photo")}
+              class="shrink-0 rounded-full transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <.student_avatar student={@student} class="size-14 text-lg" />
+            </button>
             <.student_avatar
-              :if={@access != :manage}
+              :if={@access != :manage and !@student.photo_path}
               student={@student}
               class="size-14 text-lg"
             />
@@ -811,6 +829,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
             </article>
           </div>
         </div>
+        <.photo_viewer :if={@viewing_photo?} student={@student} />
         <%= if @access == :manage do %>
           <.photo_sheet :if={@sheet} student={@student} confirm_remove?={@confirm_remove?} />
           <.photo_upload_form upload={@uploads.photo} />

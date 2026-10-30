@@ -288,6 +288,43 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
       refute has_element?(view, "#photo-upload-form")
     end
 
+    test "the photo menu shows the photo large", %{conn: conn, scope: scope, awa: awa} do
+      {:ok, _} =
+        TeacherAssistant.StudentPhotos.store(scope, awa, "test/support/fixtures/files/1x1.jpg")
+
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+
+      view |> element("#student-photo-button") |> render_click()
+
+      assert has_element?(
+               view,
+               ~s|#photo-sheet img#photo-sheet-preview[src^="/school/students/#{awa.id}/photo"]|
+             )
+    end
+
+    test "the student's teacher opens the photo full size", %{
+      scope: scope,
+      school: school,
+      cg: cg,
+      awa: awa
+    } do
+      %{teacher: teacher} = school_teacher_fixture(scope, %{class_group: cg})
+      {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/students/#{awa.id}")
+      # No photo yet: nothing to open.
+      refute has_element?(view, "#student-photo-view")
+
+      {:ok, _} =
+        TeacherAssistant.StudentPhotos.store(scope, awa, "test/support/fixtures/files/1x1.jpg")
+
+      {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/students/#{awa.id}")
+
+      view |> element("#student-photo-view") |> render_click()
+      assert has_element?(view, ~s|#photo-viewer img[src^="/school/students/#{awa.id}/photo"]|)
+
+      view |> element("#photo-viewer-close") |> render_click()
+      refute has_element?(view, "#photo-viewer")
+    end
+
     test "the ID card link targets the current class", %{conn: conn, cg: cg, awa: awa} do
       {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
 

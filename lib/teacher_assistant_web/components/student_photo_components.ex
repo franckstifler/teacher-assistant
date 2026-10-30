@@ -69,10 +69,17 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
       phx-key="Escape"
     >
       <div
-        class="w-full max-w-sm space-y-3 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl"
+        class="max-h-full w-full max-w-sm space-y-3 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-4 shadow-xl"
         phx-click-away="close_sheet"
       >
         <p class="font-semibold">{@student.full_name}</p>
+        <img
+          :if={@student.photo_path}
+          id="photo-sheet-preview"
+          src={student_photo_url(@student)}
+          alt={gettext("Photo de %{name}", name: @student.full_name)}
+          class="mx-auto aspect-[3/4] max-h-[45dvh] rounded-box bg-base-300 object-cover"
+        />
         <%!-- The séance camera (frame, face guide), for this one student. --%>
         <button
           id="take-photo"
@@ -116,6 +123,39 @@ defmodule TeacherAssistantWeb.StudentPhotoComponents do
         </button>
         <button type="button" class="btn btn-ghost w-full" phx-click="close_sheet">{gettext("Annuler")}</button>
       </div>
+    </div>
+    """
+  end
+
+  attr :student, :map, required: true
+
+  @doc "The student's photo full size, for staff who read the profile without changing it."
+  def photo_viewer(assigns) do
+    ~H"""
+    <div
+      id="photo-viewer"
+      role="dialog"
+      aria-modal="true"
+      aria-label={@student.full_name}
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/85 p-4"
+      phx-window-keydown="close_viewer"
+      phx-key="Escape"
+    >
+      <img
+        src={student_photo_url(@student)}
+        alt={gettext("Photo de %{name}", name: @student.full_name)}
+        class="aspect-[3/4] max-h-[80dvh] max-w-full rounded-box bg-base-300 object-cover shadow-xl"
+        phx-click-away="close_viewer"
+      />
+      <p class="font-semibold text-white">{@student.full_name}</p>
+      <button
+        id="photo-viewer-close"
+        type="button"
+        class="btn btn-sm"
+        phx-click="close_viewer"
+      >
+        <.icon name="hero-x-mark" class="size-4" /> {gettext("Fermer")}
+      </button>
     </div>
     """
   end
