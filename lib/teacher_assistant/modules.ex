@@ -57,7 +57,7 @@ defmodule TeacherAssistant.Modules do
       W.School.FeesOverviewLive,
       W.School.FeeControlLive
     ],
-    photos: [W.School.ClassPhotosLive]
+    photos: [W.School.ClassPhotosLive, W.School.ExamPhotosLive]
   }
 
   @controllers %{

@@ -201,6 +201,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Établissement"), [
           classes(),
           students(),
+          exam_photos(),
           fees(),
           timetable_editor(),
           members(),
@@ -227,6 +228,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Établissement"), [
           classes(),
           students(),
+          exam_photos(),
           fees(),
           timetable_editor(),
           availability(),
@@ -251,6 +253,7 @@ defmodule TeacherAssistantWeb.Spaces do
           sanctions(facts[:parents_to_notify]),
           classes(),
           students(),
+          exam_photos(),
           school_life_settings()
         ])
       ]
@@ -462,6 +465,9 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp students,
     do: item("students", gettext("Élèves"), "hero-identification", ~p"/school/students")
+
+  defp exam_photos,
+    do: item("exam-photos", gettext("Photos examen"), "hero-camera", ~p"/school/exam-photos")
 
   defp timetable,
     do:

@@ -123,11 +123,14 @@ defmodule TeacherAssistantWeb.SpacesTest do
                "nav-school-sanctions",
                "nav-school-classes",
                "nav-school-students",
+               "nav-school-exam-photos",
                "nav-school-school-life"
              ]
 
     assert "nav-school-students" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-students" in item_ids(:censeur, facts([:vice_principal]))
+    assert "nav-school-exam-photos" in item_ids(:proviseur, facts([:head]))
+    assert "nav-school-exam-photos" in item_ids(:censeur, facts([:vice_principal]))
     # every settings page is reached from the one Paramètres entry (its hub)
     assert "nav-school-settings" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-settings" in item_ids(:censeur, facts([:vice_principal]))
