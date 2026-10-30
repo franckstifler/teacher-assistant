@@ -67,6 +67,12 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       require_atomic? false
     end
 
+    # Spec 2026-10-29: the « Photos examen » page saves them; conduct managers too.
+    update :set_exam_codes do
+      accept [:exam_code, :exam_center_code]
+      require_atomic? false
+    end
+
     read :for_workspace_and_year do
       argument :academic_year_id, :uuid, allow_nil?: false
 
@@ -103,7 +109,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       authorize_if {Checks.SchoolRole, any_of: :admin}
     end
 
-    policy action(:set_paper_roll_call) do
+    policy action([:set_paper_roll_call, :set_exam_codes]) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if {Checks.SchoolRole, any_of: :conduct}
     end
@@ -139,6 +145,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     # Spec 2026-10-28: the roll call is taken on a weekly printed sheet, typed in by the
     # surveillant; untaken lessons wait for it instead of counting as missed.
     attribute :paper_roll_call, :boolean, allow_nil?: false, default: true, public?: true
+
+    # Spec 2026-10-29: the codes printed on the candidates' exam pictures (one exam code
+    # for the whole class, the « CR » code typed by the school).
+    attribute :exam_code, :string, allow_nil?: true, public?: true
+    attribute :exam_center_code, :string, allow_nil?: true, public?: true
 
     timestamps()
   end

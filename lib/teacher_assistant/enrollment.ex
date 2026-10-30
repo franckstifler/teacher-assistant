@@ -19,6 +19,7 @@ defmodule TeacherAssistant.Enrollment do
   resources do
     resource ClassGroup do
       define :update_class_group, action: :update
+      define :set_exam_codes, action: :set_exam_codes
     end
 
     resource Student do
