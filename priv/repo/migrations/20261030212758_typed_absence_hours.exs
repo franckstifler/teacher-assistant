@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
+defmodule TeacherAssistant.Repo.Migrations.TypedAbsenceHours do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -8,6 +8,10 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
   use Ecto.Migration
 
   def up do
+    alter table(:class_groups) do
+      add :absence_hours_source, :text, null: false, default: "roll_call"
+    end
+
     create table(:typed_absences, primary_key: false) do
       add :id, :uuid, null: false, default: fragment("uuid_generate_v7()"), primary_key: true
       add :hours, :decimal, null: false
@@ -111,5 +115,9 @@ defmodule TeacherAssistant.Repo.Migrations.MigrateResources2 do
     end
 
     drop table(:typed_absences)
+
+    alter table(:class_groups) do
+      remove :absence_hours_source
+    end
   end
 end

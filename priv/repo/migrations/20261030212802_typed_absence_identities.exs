@@ -1,4 +1,4 @@
-defmodule TeacherAssistant.Repo.Migrations.MigrateResources3 do
+defmodule TeacherAssistant.Repo.Migrations.TypedAbsenceIdentities do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
