@@ -568,7 +568,7 @@ defmodule TeacherAssistant.Attendance do
         span = typed_span(scope, period)
 
         scope
-        |> typed_records_by_enrollment(class_group)
+        |> roster_records(class_group)
         |> Map.new(fn {id, records} ->
           {hours, recorded?} =
             case TypedAbsences.hours(records, span, rhythm) do
@@ -593,28 +593,196 @@ defmodule TeacherAssistant.Attendance do
         span = typed_span(scope, period)
 
         scope
-        |> typed_records_by_enrollment(class_group)
+        |> roster_records(class_group)
         |> Enum.count(fn {_id, records} -> not TypedAbsences.complete?(records, span, rhythm) end)
     end
   end
 
-  # Every roster enrollment, with its typed records (maybe none), in one read.
-  defp typed_records_by_enrollment(scope, class_group) do
+  @doc """
+  Spec 2026-10-30 §4: the typing screen's rows for `period` (a séquence or a trimester),
+  in roll order. `hours` is the saved figure (`prefilled?: false`), else a suggestion:
+  for a trimester the sum of its séquences' records, else — with the « Appel » module —
+  the roll call's unjustified hours (`app_hours`, also shown as a hint), else nil.
+  """
+  def typed_absence_sheet(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
+    records = typed_records_by_enrollment(scope, Enum.map(roster, & &1.enrollment.id))
+
+    app =
+      if Scope.module?(scope, :appel), do: class_conduct(scope, class_group, period), else: %{}
+
+    Enum.map(roster, fn %{student: student, enrollment: enrollment} ->
+      own = Map.fetch!(records, enrollment.id)
+      app_hours = app |> Map.get(enrollment.id, %{}) |> Map.get(:unjustified_hours)
+      {hours, prefilled?} = sheet_value(own, scope, period, app_hours)
+
+      %{
+        enrollment: enrollment,
+        student: student,
+        hours: hours,
+        prefilled?: prefilled?,
+        app_hours: app_hours
+      }
+    end)
+  end
+
+  defp sheet_value(records, scope, period, app_hours) do
+    span = typed_span(scope, period)
+
+    case {own_record(records, period), period} do
+      {%TypedAbsence{hours: hours}, _} ->
+        {hours, false}
+
+      {nil, {:trimester, _}} ->
+        case TypedAbsences.hours(records, span, :typed_per_sequence) do
+          {:ok, hours} -> {hours, true}
+          :none -> {app_hours, app_hours != nil}
+        end
+
+      {nil, _} ->
+        {app_hours, app_hours != nil}
+    end
+  end
+
+  defp own_record(records, {:sequence, %{id: id}}),
+    do: Enum.find(records, &(&1.sequence_id == id))
+
+  defp own_record(records, {:trimester, %{id: id}}), do: Enum.find(records, &(&1.term_id == id))
+
+  @doc """
+  Spec 2026-10-30 §4: saves the class's typed hours for `period` in one transaction.
+  `rows` maps enrollment ids to the typed text: blank clears the figure, « 2,5 » and
+  « 2.5 » both read as 2.5; a negative or unreadable row refuses the whole save.
+  Without the « Appel » module, a class still stored as `:roll_call` is stored as typed
+  per séquence, so turning the module on later keeps it typed (§1).
+  """
+  def save_typed_absences(%Scope{} = scope, %ClassGroup{} = class_group, period, %{} = rows) do
+    ids =
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> MapSet.new(& &1.enrollment.id)
+
+    with :ok <- check_in_class(rows, ids),
+         {:ok, parsed} <- parse_hours_rows(rows) do
+      records = typed_records_by_enrollment(scope, Map.keys(parsed))
+
+      TeacherAssistant.Repo.transaction(fn ->
+        Enum.each(parsed, fn {id, hours} ->
+          case write_typed(scope, own_record(records[id], period), id, period, hours) do
+            :ok -> :ok
+            {:error, error} -> TeacherAssistant.Repo.rollback(error)
+          end
+        end)
+
+        keep_typed(scope, class_group)
+      end)
+      |> case do
+        {:ok, _} -> :ok
+        {:error, error} -> {:error, error}
+      end
+    end
+  end
+
+  defp check_in_class(rows, ids) do
+    if Enum.all?(Map.keys(rows), &MapSet.member?(ids, &1)), do: :ok, else: {:error, :not_in_class}
+  end
+
+  defp parse_hours_rows(rows) do
+    {parsed, errors} =
+      Enum.reduce(rows, {%{}, %{}}, fn {id, text}, {parsed, errors} ->
+        case parse_hours(text) do
+          {:ok, hours} -> {Map.put(parsed, id, hours), errors}
+          :error -> {parsed, Map.put(errors, id, :invalid)}
+        end
+      end)
+
+    if errors == %{}, do: {:ok, parsed}, else: {:error, errors}
+  end
+
+  defp parse_hours(text) when is_binary(text) do
+    case text |> String.trim() |> String.replace(",", ".") do
+      "" ->
+        {:ok, nil}
+
+      value ->
+        # Plain digits only: no sign, exponent, NaN or infinity.
+        if Regex.match?(~r/\A\d+(\.\d+)?\z/, value), do: {:ok, Decimal.new(value)}, else: :error
+    end
+  end
+
+  defp parse_hours(_), do: :error
+
+  defp write_typed(_scope, nil, _id, _period, nil), do: :ok
+
+  defp write_typed(scope, %TypedAbsence{} = record, _id, _period, nil) do
+    case Ash.destroy(record, scope: scope) do
+      :ok -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp write_typed(scope, _record, id, {:sequence, %{id: seq_id}}, hours),
+    do:
+      create_typed(scope, :set_for_sequence, %{
+        enrollment_id: id,
+        sequence_id: seq_id,
+        hours: hours
+      })
+
+  defp write_typed(scope, _record, id, {:trimester, %{id: term_id}}, hours),
+    do: create_typed(scope, :set_for_term, %{enrollment_id: id, term_id: term_id, hours: hours})
+
+  defp create_typed(scope, action, params) do
+    TypedAbsence
+    |> Ash.Changeset.for_create(action, params, scope: scope)
+    |> Ash.create()
+    |> case do
+      {:ok, _} -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # The save itself is authorized (conduct or form master); recording the rhythm the
+  # school already uses is its consequence, so no setting permission is asked for it.
+  defp keep_typed(scope, %ClassGroup{absence_hours_source: :roll_call} = class_group) do
+    if Scope.module?(scope, :appel) do
+      :ok
+    else
+      class_group
+      |> Ash.Changeset.for_update(
+        :set_absence_hours_source,
+        %{absence_hours_source: :typed_per_sequence},
+        scope: scope,
+        authorize?: false
+      )
+      |> Ash.update!()
+
+      :ok
+    end
+  end
+
+  defp keep_typed(_scope, _class_group), do: :ok
+
+  # The given enrollments, each with its typed records (maybe none), in one read.
+  defp typed_records_by_enrollment(_scope, []), do: %{}
+
+  defp typed_records_by_enrollment(scope, ids) do
+    records =
+      TypedAbsence
+      |> Ash.Query.for_read(:for_enrollments, %{enrollment_ids: ids}, scope: scope)
+      |> Ash.read!()
+      |> Enum.group_by(& &1.enrollment_id)
+
+    Map.new(ids, &{&1, Map.get(records, &1, [])})
+  end
+
+  defp roster_records(scope, class_group) do
     ids =
       scope
       |> TeacherAssistant.Enrollment.list_roster(class_group)
       |> Enum.map(& &1.enrollment.id)
 
-    records =
-      if ids == [],
-        do: [],
-        else:
-          TypedAbsence
-          |> Ash.Query.for_read(:for_enrollments, %{enrollment_ids: ids}, scope: scope)
-          |> Ash.read!()
-          |> Enum.group_by(& &1.enrollment_id)
-
-    Map.new(ids, &{&1, Map.get(records, &1, [])})
+    typed_records_by_enrollment(scope, ids)
   end
 
   defp typed_span(_scope, {:sequence, %{id: id}}), do: {:sequence, id}
