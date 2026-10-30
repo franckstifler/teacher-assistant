@@ -174,6 +174,15 @@ defmodule TeacherAssistant.Enrollment do
     |> Ash.update()
   end
 
+  @doc "Spec 2026-10-30 §1: where the class's bulletin absence hours come from."
+  def set_absence_hours_source(%Scope{} = scope, %ClassGroup{} = cg, source) do
+    cg
+    |> Ash.Changeset.for_update(:set_absence_hours_source, %{absence_hours_source: source},
+      scope: scope
+    )
+    |> Ash.update()
+  end
+
   def form_master(%Scope{}, %ClassGroup{form_master_user_id: nil}), do: nil
 
   def form_master(%Scope{} = scope, %ClassGroup{form_master_user_id: uid}) do

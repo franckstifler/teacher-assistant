@@ -67,6 +67,12 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       require_atomic? false
     end
 
+    # Spec 2026-10-30 §1: where the bulletin's absence hours come from.
+    update :set_absence_hours_source do
+      accept [:absence_hours_source]
+      require_atomic? false
+    end
+
     # Spec 2026-10-29: the « Photos examen » page saves them; conduct managers too.
     update :set_exam_codes do
       accept [:exam_code, :exam_center_code]
@@ -109,7 +115,7 @@ defmodule TeacherAssistant.Academics.ClassGroup do
       authorize_if {Checks.SchoolRole, any_of: :admin}
     end
 
-    policy action([:set_paper_roll_call, :set_exam_codes]) do
+    policy action([:set_paper_roll_call, :set_absence_hours_source, :set_exam_codes]) do
       authorize_if {Checks.SchoolRole, any_of: :admin}
       authorize_if {Checks.SchoolRole, any_of: :conduct}
     end
@@ -149,6 +155,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     # Spec 2026-10-28: the roll call is taken on a weekly printed sheet, typed in by the
     # surveillant; untaken lessons wait for it instead of counting as missed.
     attribute :paper_roll_call, :boolean, allow_nil?: false, default: true, public?: true
+
+    attribute :absence_hours_source, TeacherAssistant.Academics.AbsenceHoursSource,
+      allow_nil?: false,
+      default: :roll_call,
+      public?: true
 
     # Spec 2026-10-29: the codes printed on the candidates' exam pictures (one exam code
     # for the whole class, the « CR » code typed by the school).

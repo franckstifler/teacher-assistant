@@ -755,6 +755,33 @@ defmodule TeacherAssistant.Attendance do
     end
   end
 
+  @doc "Spec 2026-10-30 §1: the bulletin absence-hours source for every class of the year."
+  def set_absence_hours_source_all(%Scope{} = scope, %AcademicYear{id: year_id}, source) do
+    ClassGroup
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.bulk_update(:set_absence_hours_source, %{absence_hours_source: source},
+      scope: scope,
+      strategy: :stream,
+      transaction: :all,
+      return_errors?: true
+    )
+    |> case do
+      %Ash.BulkResult{status: :success} -> :ok
+      %Ash.BulkResult{errors: [error | _]} -> {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
+  The source the class's bulletin hours really come from: without the « Appel » module
+  there is no roll call to compute from, so a stored `:roll_call` reads as typed per
+  séquence (spec 2026-10-30 §1).
+  """
+  def effective_absence_source(%Scope{} = scope, %ClassGroup{absence_hours_source: source}) do
+    if source == :roll_call and not Scope.module?(scope, :appel),
+      do: :typed_per_sequence,
+      else: source
+  end
+
   # --- School-life settings (spec KLM2) ------------------------------------------
 
   @doc "The school's attendance and discipline settings."
