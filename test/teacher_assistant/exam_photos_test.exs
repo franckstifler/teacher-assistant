@@ -53,6 +53,23 @@ defmodule TeacherAssistant.ExamPhotosTest do
            }
   end
 
+  test "file_names/2 never gives two students the same file, even against a real « 2 »" do
+    students = [
+      %{id: "a", full_name: "Ngono Jean"},
+      %{id: "b", full_name: "Ngono Jean"},
+      %{id: "c", full_name: "Ngono Jean 2"}
+    ]
+
+    names = ExamPhotos.file_names("PBF3", students)
+    assert names |> Map.values() |> Enum.uniq() |> length() == 3
+    assert names["a"] == "PBF3_NGONO_JEAN.jpg"
+  end
+
+  test "folder_names/1 keeps classes apart when their labels look alike" do
+    assert ExamPhotos.folder_names([%{id: "x", label: "1ère F3"}, %{id: "y", label: "1ere F3"}]) ==
+             %{"x" => "1ERE_F3", "y" => "1ERE_F3_2"}
+  end
+
   test "file_names/2 without an exam code" do
     assert ExamPhotos.file_names(nil, [%{id: "a", full_name: "Ngono Jean"}]) ==
              %{"a" => "SANS-CODE_NGONO_JEAN.jpg"}

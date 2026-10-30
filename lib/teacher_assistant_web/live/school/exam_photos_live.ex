@@ -114,7 +114,9 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
   end
 
   defp export(socket, classes) do
-    case export_items(classes, socket.assigns.ticked) do
+    folders = ExamPhotos.folder_names(Enum.map(socket.assigns.classes, & &1.cg))
+
+    case export_items(classes, socket.assigns.ticked, folders) do
       [] ->
         put_flash(socket, :error, gettext("Aucune photo à exporter."))
 
@@ -126,12 +128,12 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
   defp zip_name([%{cg: cg}]), do: "photos-examen-#{ExamPhotos.safe_segment(cg.label)}.zip"
   defp zip_name(_classes), do: "photos-examen-#{Date.to_iso8601(Reference.today())}.zip"
 
-  defp export_items(classes, ticked) do
+  defp export_items(classes, ticked, folders) do
     for %{cg: cg, students: students} <- classes,
         files = ExamPhotos.file_names(exam_code(cg), students),
         s <- students,
         MapSet.member?(ticked, s.id) and has_photo?(s) do
-      Map.merge(card(cg, s), %{folder: ExamPhotos.safe_segment(cg.label), file: files[s.id]})
+      Map.merge(card(cg, s), %{folder: folders[cg.id], file: files[s.id]})
     end
   end
 
@@ -200,7 +202,7 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
           data-role="progress"
           phx-update="ignore"
           data-label={gettext("Préparation des photos… %{n}/%{total}", n: "__N__", total: "__T__")}
-          class="hidden text-sm font-semibold text-primary"
+          class="fixed inset-x-4 bottom-24 z-50 mx-auto hidden max-w-sm rounded-full bg-base-content px-4 py-2 text-center text-sm font-semibold text-base-100 shadow-lg"
           aria-live="polite"
         >
         </p>
@@ -242,7 +244,7 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
 
         <ul class="space-y-3">
           <li
-            :for={%{cg: cg, students: students} <- @classes}
+            :for={%{cg: cg, students: students} = class <- @classes}
             id={"exam-class-#{cg.id}"}
             class="ta-panel space-y-3"
           >
@@ -260,7 +262,7 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
                 />
                 {cg.label}
               </button>
-              <form phx-change="save_codes" class="flex gap-2">
+              <form id={"exam-codes-#{cg.id}"} phx-change="save_codes" class="flex gap-2">
                 <input type="hidden" name="class_id" value={cg.id} />
                 <div class="w-28">
                   <.input
@@ -296,7 +298,8 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
                 phx-click="export"
                 phx-value-class={cg.id}
               >
-                <.icon name="hero-arrow-down-tray" class="size-4" /> {gettext("Zip")}
+                <.icon name="hero-arrow-down-tray" class="size-4" />
+                {gettext("Zip · %{count}", count: exportable([class], @ticked))}
               </button>
             </div>
 
@@ -339,8 +342,8 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
                     id={"exam-card-#{s.id}"}
                     phx-hook="ExamCard"
                     data-card={Jason.encode!(card(cg, s))}
-                    width="600"
-                    height="1024"
+                    width="300"
+                    height="512"
                     class={[
                       "h-auto w-full rounded border border-base-300 bg-white transition",
                       !MapSet.member?(@ticked, s.id) && "opacity-40"

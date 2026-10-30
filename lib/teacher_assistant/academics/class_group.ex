@@ -117,7 +117,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
 
   validations do
     validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
-    validate TeacherAssistant.Academics.ClassGroup.FormMasterIsMember, on: [:create, :update]
+    # Only when the form master is set: a class whose form master has since left the
+    # school must still take its other changes (exam codes, paper roll call…).
+    validate TeacherAssistant.Academics.ClassGroup.FormMasterIsMember,
+      on: [:create, :update],
+      where: [changing(:form_master_user_id)]
   end
 
   multitenancy do

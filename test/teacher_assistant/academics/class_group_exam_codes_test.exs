@@ -33,6 +33,19 @@ defmodule TeacherAssistant.Academics.ClassGroupExamCodesTest do
     assert {cg.exam_code, cg.exam_center_code} == {nil, "CR 9"}
   end
 
+  test "a class whose form master left the school still gets its codes", %{
+    scope: head,
+    cg: cg
+  } do
+    fm = TeacherFixtures.member_scope_fixture(head, %{roles: [:teacher]})
+    {:ok, cg} = Enrollment.set_form_master(head, cg, fm.current_user.id)
+    {:ok, m} = TeacherAssistant.Accounts.fetch_school_membership(head, fm.current_user)
+    {:ok, _} = TeacherAssistant.Accounts.deactivate_member(head, m)
+
+    assert {:ok, %{exam_center_code: "CR 8127"}} =
+             Enrollment.set_exam_codes(cg, %{exam_center_code: "CR 8127"}, scope: head)
+  end
+
   test "a teacher cannot set them", %{scope: head, cg: cg} do
     teacher = TeacherFixtures.member_scope_fixture(head, %{roles: [:teacher]})
 

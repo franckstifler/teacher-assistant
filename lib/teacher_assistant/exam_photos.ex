@@ -65,15 +65,30 @@ defmodule TeacherAssistant.ExamPhotos do
   def file_names(exam_code, students) do
     prefix = safe_segment(exam_code || "SANS-CODE")
 
-    {names, _seen} =
-      Enum.map_reduce(students, %{}, fn %{id: id, full_name: full_name}, seen ->
-        base = prefix <> "_" <> safe_segment(full_name)
-        count = Map.get(seen, base, 0) + 1
-        name = if count == 1, do: base <> ".jpg", else: "#{base}_#{count}.jpg"
-        {{id, name}, Map.put(seen, base, count)}
+    students
+    |> Enum.map(&{&1.id, prefix <> "_" <> safe_segment(&1.full_name)})
+    |> unique()
+    |> Map.new(fn {id, name} -> {id, name <> ".jpg"} end)
+  end
+
+  @doc "Class id → its folder in the zip, unique even when two labels look alike."
+  def folder_names(class_groups),
+    do: class_groups |> Enum.map(&{&1.id, safe_segment(&1.label)}) |> unique() |> Map.new()
+
+  # In order, each id takes its base name, or the first free `<base>_2`, `<base>_3`…:
+  # one zip entry per student, never two with the same path.
+  defp unique(pairs) do
+    {named, _used} =
+      Enum.map_reduce(pairs, MapSet.new(), fn {id, base}, used ->
+        name =
+          Stream.iterate(1, &(&1 + 1))
+          |> Stream.map(&if(&1 == 1, do: base, else: "#{base}_#{&1}"))
+          |> Enum.find(&(not MapSet.member?(used, &1)))
+
+        {{id, name}, MapSet.put(used, name)}
       end)
 
-    Map.new(names)
+    named
   end
 
   @doc "ASCII capitals, digits, `_` and `-` only: for file and folder names in the zip."

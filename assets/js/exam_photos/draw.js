@@ -7,19 +7,18 @@ const W = 600, TOP = 64, PHOTO_H = 800, BOTTOM = 160, H = TOP + PHOTO_H + BOTTOM
 const BLUE = "#1414C8", FONT = "Arial, Helvetica, sans-serif", QUALITY = 0.9
 const MARGIN = 24, DATE_PX = 26, NAME_PX = 30, CODES_PX = 46, MIN_PX = 12
 
-// One fetch per photo for the page's life (previews and the export share it).
+// One fetch per photo (previews and the export share it). The small JPEG is kept, not
+// its decoded bitmap: 100 decoded photos would hold ~190 MB, too much for a phone.
 const photos = new Map()
 
 function loadPhoto(url) {
   if (!photos.has(url)) {
-    const bitmap = fetch(url, {credentials: "same-origin"})
-      .then((r) => {
-        if (!r.ok) throw new Error(`photo ${r.status}`)
-        return r.blob()
-      })
-      .then((blob) => createImageBitmap(blob))
-    bitmap.catch(() => photos.delete(url)) // a failure is retried next time
-    photos.set(url, bitmap)
+    const blob = fetch(url, {credentials: "same-origin"}).then((r) => {
+      if (!r.ok) throw new Error(`photo ${r.status}`)
+      return r.blob()
+    })
+    blob.catch(() => photos.delete(url)) // a failure is retried next time
+    photos.set(url, blob)
   }
   return photos.get(url)
 }
@@ -47,11 +46,13 @@ function centred(ctx, text, px, y) {
   ctx.fillText(text, W / 2, y)
 }
 
-export async function drawExamCard(canvas, {photo_url, date, names, codes}) {
-  const bitmap = await loadPhoto(photo_url)
-  canvas.width = W
-  canvas.height = H
+// `scale` < 1 draws a smaller copy (previews), so a class of previews stays light.
+export async function drawExamCard(canvas, {photo_url, date, names, codes}, scale = 1) {
+  const bitmap = await createImageBitmap(await loadPhoto(photo_url))
+  canvas.width = W * scale
+  canvas.height = H * scale
   const ctx = canvas.getContext("2d")
+  ctx.scale(scale, scale)
   ctx.fillStyle = "#fff"
   ctx.fillRect(0, 0, W, H)
 
@@ -59,6 +60,7 @@ export async function drawExamCard(canvas, {photo_url, date, names, codes}) {
   ctx.translate(0, TOP)
   drawCover(ctx, bitmap, bitmap.width, bitmap.height)
   ctx.restore()
+  bitmap.close()
 
   ctx.fillStyle = BLUE
   ctx.textAlign = "center"

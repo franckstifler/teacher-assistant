@@ -1185,7 +1185,7 @@ msgstr ""
 
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:387
 #: lib/teacher_assistant_web/live/school/council_live.ex:317
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:321
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:324
 #: lib/teacher_assistant_web/live/school/teachings_live.ex:99
 #, elixir-autogen, elixir-format
 msgid "Aucun"
@@ -6802,7 +6802,7 @@ msgid "Supprimer la classe %{label} ?"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:418
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:312
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:315
 #, elixir-autogen, elixir-format
 msgid "Tous"
 msgstr ""
@@ -8590,7 +8590,7 @@ msgid "Photos"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/student_photo_components.ex:230
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:356
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:359
 #, elixir-autogen, elixir-format
 msgid "Prendre la photo"
 msgstr ""
@@ -8616,7 +8616,7 @@ msgid "Réessayer"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/class_photos_live.ex:209
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:355
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:358
 #, elixir-autogen, elixir-format
 msgid "Sans photo"
 msgstr ""
@@ -12549,46 +12549,46 @@ msgid_plural "%{count} photos n'ont pas pu être préparées ; elles manquent da
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:285
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:287
 #, elixir-autogen, elixir-format
 msgid "%{count} sans photo"
 msgid_plural "%{count} sans photo"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:232
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "%{count} élève coché sans photo ne sera pas exporté."
 msgid_plural "%{count} élèves cochés sans photo ne seront pas exportés."
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:222
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:224
 #, elixir-autogen, elixir-format
 msgid "Appliquer aux classes sans code CR"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:240
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:242
 #, elixir-autogen, elixir-format
 msgid "Aucune classe de 1ère ou de Terminale cette année."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:119
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:121
 #, elixir-autogen, elixir-format
 msgid "Aucune photo à exporter."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:277
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:279
 #, elixir-autogen, elixir-format
 msgid "Code CR"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:217
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:219
 #, elixir-autogen, elixir-format
 msgid "Code CR par défaut"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:269
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:271
 #, elixir-autogen, elixir-format
 msgid "Code examen"
 msgstr ""
@@ -12598,29 +12598,29 @@ msgstr ""
 msgid "Impossible d'enregistrer les codes."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:181
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:183
 #, elixir-autogen, elixir-format
 msgid "Les photos des candidats de 1ère et de Terminale, au format de l'examen."
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/exam_photos_live.ex:23
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:178
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:180
 #: lib/teacher_assistant_web/spaces.ex:470
 #, elixir-autogen, elixir-format
 msgid "Photos examen"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:202
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:204
 #, elixir-autogen, elixir-format
 msgid "Préparation des photos… %{n}/%{total}"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:192
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:194
 #, elixir-autogen, elixir-format
 msgid "Télécharger la sélection · %{count} photos"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:299
+#: lib/teacher_assistant_web/live/school/exam_photos_live.ex:302
 #, elixir-autogen, elixir-format
-msgid "Zip"
+msgid "Zip · %{count}"
 msgstr ""

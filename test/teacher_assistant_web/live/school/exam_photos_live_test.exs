@@ -116,6 +116,33 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLiveTest do
     assert items |> Enum.map(& &1.photo_url) |> length() == 2
   end
 
+  test "each class's Zip button says how many photos it exports", %{sg: sg, ws: ws, f3: f3} do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    assert view |> element("#exam-zip-#{f3.id}") |> render() =~ "Zip · 1"
+  end
+
+  test "classes with look-alike labels get their own folder", %{scope: scope, sg: sg, ws: ws} do
+    {:ok, twin} =
+      Enrollment.create_class_group(scope, scope.current_academic_year, %{
+        label: "1ere F3",
+        level: "1ère",
+        serie: "F3"
+      })
+
+    {:ok, eve} = Enrollment.add_student(scope, twin, %{full_name: "Eve Mballa", sex: :f})
+    {:ok, _} = StudentPhotos.store(scope, eve, @jpeg)
+
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    view |> element("#exam-zip-selection") |> render_click()
+    assert_push_event(view, "exam-photos:build", %{items: items})
+
+    assert items |> Enum.map(& &1.folder) |> Enum.uniq() |> Enum.sort() == [
+             "1ERE_F3",
+             "1ERE_F3_2",
+             "TLE_CG"
+           ]
+  end
+
   test "a class without a suggestion exports with an empty code", %{
     sg: sg,
     ws: ws,
