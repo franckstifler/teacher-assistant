@@ -321,6 +321,36 @@ defmodule TeacherAssistant.Timetabling do
     |> Enum.sort_by(&String.downcase(User.display_name(&1.teacher)))
   end
 
+  @doc """
+  Spec 2026-10-31 §3: the current year's slots as `class_group_id => cell => [slot_view]`,
+  each view carrying `subject_code` (the catalogue subject's code, else its name);
+  `%{}` without a current year. One read.
+  """
+  def school_timetable(%Scope{current_academic_year: nil}), do: %{}
+
+  def school_timetable(%Scope{current_academic_year: year} = scope) do
+    TimetableSlot
+    |> Ash.Query.filter(teaching_context.academic_year_id == ^year.id)
+    |> Ash.Query.load([
+      :room,
+      class_group: :home_room,
+      teaching_context: [:teacher, :catalog_subject]
+    ])
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.class_group_id)
+    |> Map.new(fn {cg_id, slots} ->
+      {cg_id,
+       Enum.group_by(slots, &{&1.day, &1.period_id}, fn slot ->
+         Map.put(slot_view(slot), :subject_code, subject_code(slot.teaching_context))
+       end)}
+    end)
+  end
+
+  defp subject_code(%{catalog_subject: %{code: code}}) when is_binary(code) and code != "",
+    do: code
+
+  defp subject_code(tc), do: tc.subject
+
   defp teacher_grid(slots) do
     slots
     |> Enum.group_by(&{&1.day, &1.period_id}, &slot_view(&1, &1.class_group.label))

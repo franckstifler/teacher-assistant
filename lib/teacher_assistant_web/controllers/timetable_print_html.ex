@@ -16,4 +16,8 @@ defmodule TeacherAssistantWeb.TimetablePrintHTML do
 
   defp cell_slots(grid, _mode, day, period_id),
     do: grid |> Map.get({day, period_id}) |> List.wrap()
+
+  # Spec 2026-10-31 §3: a class's lessons in one cell of the school-wide grid.
+  defp general_cell(grid, class_group_id, day, period_id),
+    do: grid |> Map.get(class_group_id, %{}) |> Map.get({day, period_id}, [])
 end

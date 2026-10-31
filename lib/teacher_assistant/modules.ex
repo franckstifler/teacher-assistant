@@ -69,6 +69,7 @@ defmodule TeacherAssistant.Modules do
     {W.TimetablePrintController, :class} => :emploi_du_temps,
     {W.TimetablePrintController, :me} => :emploi_du_temps,
     {W.TimetablePrintController, :teachers} => :emploi_du_temps,
+    {W.TimetablePrintController, :general} => :emploi_du_temps,
     {W.RollSheetPrintController, :class} => :appel,
     {W.RollSheetPrintController, :all} => :appel,
     {W.ReceiptPrintController, :show} => :frais,

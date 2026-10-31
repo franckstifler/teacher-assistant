@@ -289,4 +289,56 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       assert Timetabling.all_teacher_timetables(%{ctx.scope | current_academic_year: nil}) == []
     end
   end
+
+  describe "school_timetable/1" do
+    test "groups the year's slots by class, with the subject's code", ctx do
+      %{
+        scope: scope,
+        year: year,
+        cg: cg,
+        tc_maths: tc_maths,
+        tc_eps: tc_eps,
+        periods: [p1, p2 | _]
+      } =
+        ctx
+
+      scope = %{scope | current_academic_year: year}
+
+      {:ok, maths} =
+        Ash.get(TeacherAssistant.Academics.Subject, tc_maths.subject_id, scope: scope)
+
+      {:ok, _} = Curriculum.update_subject(scope, maths, %{code: "MATH"})
+
+      for {p, tc} <- [{p1, tc_maths}, {p2, tc_eps}] do
+        {:ok, _} =
+          Timetabling.place_slot(scope, cg, %{
+            day: :monday,
+            period_id: p.id,
+            teaching_context_id: tc.id
+          })
+      end
+
+      grid = Timetabling.school_timetable(scope)[cg.id]
+      assert [%{subject_code: "MATH", teacher_name: "Jean Abena"}] = grid[{:monday, p1.id}]
+      assert [%{subject_code: "EPS"}] = grid[{:monday, p2.id}]
+    end
+
+    test "a combined course sits in each of its classes", ctx do
+      %{scope: scope, year: year, cg: cg, head: head, tc_maths: tc_maths, periods: [p1 | _]} = ctx
+      scope = %{scope | current_academic_year: year}
+
+      {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
+      {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Maths"})
+      {:ok, course} = Curriculum.combine_course(scope, [tc_maths, tc_b])
+      {:ok, _} = Timetabling.place_combined_slot(scope, course, :monday, p1.id)
+
+      result = Timetabling.school_timetable(scope)
+      assert [_] = result[cg.id][{:monday, p1.id}]
+      assert [_] = result[cg_b.id][{:monday, p1.id}]
+    end
+
+    test "is empty without a current year", ctx do
+      assert Timetabling.school_timetable(%{ctx.scope | current_academic_year: nil}) == %{}
+    end
+  end
 end

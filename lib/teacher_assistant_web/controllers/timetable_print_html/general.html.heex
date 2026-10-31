@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Emploi du temps général")}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
+        color: #111; background: #fff; margin: 0; padding: 16px;
+        font-size: 7pt; line-height: 1.15;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      @page { size: A3 landscape; margin: 8mm; }
+      @media print { body { padding: 0; } .no-print { display: none; } tr { break-inside: avoid; } }
+      h1 { text-align: center; font-size: 14pt; letter-spacing: .05em; margin: 0 0 1mm; }
+      .meta { text-align: center; font-size: 9pt; margin: 0 0 3mm; }
+      table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+      thead { display: table-header-group; }
+      th, td { border: 0.2mm solid #555; padding: 0.4mm 0.6mm; text-align: center; vertical-align: middle; }
+      th { background: #eee; font-weight: 600; }
+      th.cls, td.cls { width: 20mm; text-align: left; background: #f6f6f6; font-weight: 600; }
+      .day-start { border-left: 0.6mm solid #000; }
+      td.closed { background: #e6e6e6; }
+      .code { display: block; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .teacher { display: block; color: #444; font-size: 0.9em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .actions { margin-bottom: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="actions no-print">
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+    </div>
+
+    <h1>{gettext("EMPLOI DU TEMPS GÉNÉRAL")}</h1>
+    <p class="meta">
+      {@etablissement}<span :if={@annee}> — {gettext("Année scolaire")} {@annee}</span>
+    </p>
+
+    <table id="general-timetable">
+      <thead>
+        <tr>
+          <th class="cls" rowspan="2">{gettext("Classe")}</th>
+          <th :for={day <- @days} colspan={length(@lessons)} class="day-start">
+            {day_label(day)}
+          </th>
+        </tr>
+        <tr>
+          <%= for day <- @days do %>
+            <th
+              :for={{period, i} <- Enum.with_index(@lessons)}
+              class={if i == 0, do: "day-start"}
+            >
+              {period.label}
+            </th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={cg <- @classes} id={"row-#{cg.id}"}>
+          <td class="cls">{cg.label}</td>
+          <%= for day <- @days do %>
+            <%= for {period, i} <- Enum.with_index(@lessons) do %>
+              <td class={[
+                i == 0 && "day-start",
+                !SchoolCalendar.open_cell?(@calendar, day, period) && "closed"
+              ]}>
+                <%= for slot <- general_cell(@grid, cg.id, day, period.id) do %>
+                  <span class="code">{slot.subject_code}</span>
+                  <span class="teacher">{slot.teacher_name}</span>
+                <% end %>
+              </td>
+            <% end %>
+          <% end %>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

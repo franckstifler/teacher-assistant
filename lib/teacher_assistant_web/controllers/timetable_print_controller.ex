@@ -58,6 +58,36 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
     end
   end
 
+  @doc "Spec 2026-10-31 §3: the « emploi du temps général », one row per class, A3."
+  def general(conn, _params) do
+    with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
+         true <- Timetabling.can_edit_timetable?(scope) do
+      calendar = Attendance.school_calendar(scope)
+      lessons = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+      classes =
+        case scope.current_academic_year do
+          nil -> []
+          year -> Enrollment.list_class_groups(scope, year)
+        end
+
+      conn
+      |> put_layout(false)
+      |> put_root_layout(false)
+      |> render(:general,
+        etablissement: scope.current_workspace.name,
+        annee: scope.current_academic_year && scope.current_academic_year.name,
+        classes: classes,
+        grid: Timetabling.school_timetable(scope),
+        calendar: calendar,
+        days: calendar.lesson_days,
+        lessons: lessons
+      )
+    else
+      _ -> redirect(conn, to: ~p"/school")
+    end
+  end
+
   defp frame(scope, mode, title, sheets) do
     calendar = Attendance.school_calendar(scope)
 
