@@ -43,7 +43,8 @@ defmodule TeacherAssistant.ReportCards do
   def live_view(%Scope{} = scope, %ClassGroup{} = cg, period) do
     fm = Enrollment.form_master(scope, cg)
     results = Assessment.class_results_for_period(scope, cg, period)
-    template = template(scope, cg)
+    conduct = Attendance.bulletin_conduct(scope, cg, period)
+    template = scope |> template(cg) |> absences_shown(scope, cg, period, conduct)
     roster = Enrollment.list_roster(scope, cg)
     guardians = Enrollment.guardians_for_students(scope, Enum.map(roster, & &1.student.id))
 
@@ -56,7 +57,7 @@ defmodule TeacherAssistant.ReportCards do
       sequences_per_term: sequences_per_term(period),
       prior_terms: prior_terms(scope, cg, period, template),
       annual: annual_summary(scope, cg, period, template),
-      conduct: Attendance.class_conduct(scope, cg, period),
+      conduct: conduct,
       discipline:
         scope
         |> Discipline.class_discipline(cg, period)
@@ -90,13 +91,33 @@ defmodule TeacherAssistant.ReportCards do
         head_name(scope, profile)
       )
 
-    # Operator console spec §1: no absences without roll call, no conduct without discipline.
+    # Operator console spec §1: no conduct without discipline; no absences without roll
+    # call, unless typed by hand on the Discipline screens (spec 2026-10-30 §5).
     hidden =
-      [absences: :appel, conduct: :discipline]
-      |> Enum.reject(fn {_element, module} -> Scope.module?(scope, module) end)
+      [absences: [:appel, :discipline], conduct: [:discipline]]
+      |> Enum.reject(fn {_element, modules} -> Enum.any?(modules, &Scope.module?(scope, &1)) end)
       |> Enum.map(&elem(&1, 0))
 
     %{template | elements: template.elements -- hidden}
+  end
+
+  # Spec 2026-10-30 §5: no absence row where there is no figure to print — a séquence of
+  # a class typed per trimester, or a school without roll call that typed nothing.
+  defp absences_shown(template, scope, cg, period, conduct) do
+    hide? =
+      case {Attendance.effective_absence_source(scope, cg), period} do
+        {:typed_per_term, {:sequence, _}} ->
+          true
+
+        {:roll_call, _} ->
+          false
+
+        _typed ->
+          not Scope.module?(scope, :appel) and
+            not Enum.any?(conduct, fn {_, c} -> c.recorded? end)
+      end
+
+    if hide?, do: %{template | elements: template.elements -- [:absences]}, else: template
   end
 
   @doc """
@@ -386,7 +407,26 @@ defmodule TeacherAssistant.ReportCards do
         ok?: status == :held,
         data: %{status: status, date: council.held_on, time: council.starts_at}
       }
-    ] ++ paper_check(scope, cg, period) ++ v2_checks(scope, cg, period, view)
+    ] ++ absence_check(scope, cg, period) ++ v2_checks(scope, cg, period, view)
+  end
+
+  # A typed class prints the typed figures (spec 2026-10-30 §6): warn while some are
+  # missing; paper lessons no longer reach its card. A roll-call class checks paper.
+  defp absence_check(scope, cg, period) do
+    # Neither roll call nor the Discipline screens: no absences to print or type.
+    absences? = Scope.module?(scope, :appel) or Scope.module?(scope, :discipline)
+
+    case absences? && Attendance.effective_absence_source(scope, cg) do
+      false ->
+        []
+
+      :roll_call ->
+        paper_check(scope, cg, period)
+
+      _typed ->
+        missing = Attendance.typed_absences_missing(scope, cg, period)
+        [%{key: :typed_absences, ok?: missing == 0, data: %{missing: missing}}]
+    end
   end
 
   # A published bulletin freezes its absences: warn while the period's paper roll

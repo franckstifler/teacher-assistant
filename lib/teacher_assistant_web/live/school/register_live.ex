@@ -270,6 +270,21 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
             {gettext("Imprimer la feuille")}
           </.link>
           <.link
+            :if={
+              @can_edit? and
+                TeacherAssistantWeb.Spaces.path_allowed?(
+                  @current_scope,
+                  ~p"/school/classes/#{@cg.id}/absence-hours"
+                )
+            }
+            id="absence-hours-link"
+            navigate={~p"/school/classes/#{@cg.id}/absence-hours"}
+            class="btn btn-ghost"
+          >
+            <.icon name="hero-clock" class="size-4" />
+            {gettext("Heures d'absence au bulletin")}
+          </.link>
+          <.link
             :if={@can_manage_register?}
             navigate={~p"/school/classes/#{@cg.id}/photos"}
             id="go-to-photos"

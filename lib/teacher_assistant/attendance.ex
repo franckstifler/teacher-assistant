@@ -20,6 +20,8 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.SchoolCalendar
   alias TeacherAssistant.Academics.SchoolLifeRules
   alias TeacherAssistant.Academics.TeachingContext
+  alias TeacherAssistant.Academics.TypedAbsence
+  alias TeacherAssistant.Academics.TypedAbsences
   alias TeacherAssistant.Academics.TimetableSlot
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Scope
@@ -49,6 +51,7 @@ defmodule TeacherAssistant.Attendance do
 
     resource TeacherAssistant.Academics.RollCallReminder
     resource TeacherAssistant.Academics.LessonNotHeld
+    resource TypedAbsence
   end
 
   authorization do
@@ -546,6 +549,260 @@ defmodule TeacherAssistant.Attendance do
     end
   end
 
+  @doc """
+  Spec 2026-10-30 §3: the absence hours the bulletin path (report card, passage, conduct
+  sheet) reads — `class_conduct/3`'s shape plus `:source` (`:roll_call` / `:typed`) and
+  `:recorded?`. A typed class reads only its typed figures (no justified hours, no
+  lates), so roll-call hours are never added to them.
+  """
+  def bulletin_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+    case effective_absence_source(scope, class_group) do
+      :roll_call ->
+        scope
+        |> class_conduct(class_group, period)
+        |> Map.new(fn {id, totals} ->
+          {id, Map.merge(totals, %{source: :roll_call, recorded?: true})}
+        end)
+
+      rhythm ->
+        span = typed_span(scope, period)
+
+        scope
+        |> roster_records(class_group)
+        |> Map.new(fn {id, records} ->
+          {hours, recorded?} =
+            case TypedAbsences.hours(records, span, rhythm) do
+              {:ok, hours} -> {hours, true}
+              :none -> {Decimal.new(0), false}
+            end
+
+          {id,
+           %{@zero_totals | unjustified_hours: hours}
+           |> Map.merge(%{source: :typed, recorded?: recorded?})}
+        end)
+    end
+  end
+
+  @doc "Spec 2026-10-30 §6: roster students of a typed class still missing a figure for `period`."
+  def typed_absences_missing(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+    case effective_absence_source(scope, class_group) do
+      :roll_call ->
+        0
+
+      rhythm ->
+        span = typed_span(scope, period)
+
+        scope
+        |> roster_records(class_group)
+        |> Enum.count(fn {_id, records} -> not TypedAbsences.complete?(records, span, rhythm) end)
+    end
+  end
+
+  @doc """
+  Spec 2026-10-30 §4: the typing screen's rows for `period` (a séquence or a trimester),
+  in roll order. `hours` is the saved figure (`prefilled?: false`), else a suggestion:
+  for a trimester the sum of its séquences' records, else — with the « Appel » module —
+  the roll call's unjustified hours (`app_hours`, also shown as a hint), else nil.
+  """
+  def typed_absence_sheet(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
+    records = typed_records_by_enrollment(scope, Enum.map(roster, & &1.enrollment.id))
+
+    app =
+      if Scope.module?(scope, :appel), do: class_conduct(scope, class_group, period), else: %{}
+
+    Enum.map(roster, fn %{student: student, enrollment: enrollment} ->
+      own = Map.fetch!(records, enrollment.id)
+      app_hours = app |> Map.get(enrollment.id, %{}) |> Map.get(:unjustified_hours)
+      {hours, prefilled?} = sheet_value(own, scope, period, app_hours)
+
+      %{
+        enrollment: enrollment,
+        student: student,
+        hours: hours,
+        prefilled?: prefilled?,
+        app_hours: app_hours
+      }
+    end)
+  end
+
+  defp sheet_value(records, scope, period, app_hours) do
+    span = typed_span(scope, period)
+
+    case {own_record(records, period), period} do
+      {%TypedAbsence{hours: hours}, _} ->
+        {hours, false}
+
+      {nil, {:trimester, _}} ->
+        case TypedAbsences.hours(records, span, :typed_per_sequence) do
+          {:ok, hours} -> {hours, true}
+          :none -> {app_hours, app_hours != nil}
+        end
+
+      {nil, _} ->
+        {app_hours, app_hours != nil}
+    end
+  end
+
+  defp own_record(records, {:sequence, %{id: id}}),
+    do: Enum.find(records, &(&1.sequence_id == id))
+
+  defp own_record(records, {:trimester, %{id: id}}), do: Enum.find(records, &(&1.term_id == id))
+
+  @doc """
+  Spec 2026-10-30 §4: saves the class's typed hours for `period` in one transaction.
+  `rows` maps enrollment ids to the typed text: blank clears the figure, « 2,5 » and
+  « 2.5 » both read as 2.5; a negative or unreadable row refuses the whole save.
+  Without the « Appel » module, a class still stored as `:roll_call` is stored as typed
+  per séquence, so turning the module on later keeps it typed (§1).
+  """
+  def save_typed_absences(%Scope{} = scope, %ClassGroup{} = class_group, period, %{} = rows) do
+    ids =
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> MapSet.new(& &1.enrollment.id)
+
+    with :ok <- check_in_class(rows, ids),
+         {:ok, parsed} <- parse_hours_rows(rows) do
+      records = typed_records_by_enrollment(scope, Map.keys(parsed))
+
+      TeacherAssistant.Repo.transaction(fn ->
+        Enum.each(parsed, fn {id, hours} ->
+          case write_typed(scope, own_record(records[id], period), id, period, hours) do
+            :ok -> :ok
+            {:error, error} -> TeacherAssistant.Repo.rollback(error)
+          end
+        end)
+
+        case keep_typed(scope, class_group) do
+          :ok -> :ok
+          {:error, error} -> TeacherAssistant.Repo.rollback(error)
+        end
+      end)
+      |> case do
+        {:ok, _} -> :ok
+        {:error, error} -> {:error, error}
+      end
+    end
+  end
+
+  defp check_in_class(rows, ids) do
+    if Enum.all?(Map.keys(rows), &MapSet.member?(ids, &1)), do: :ok, else: {:error, :not_in_class}
+  end
+
+  defp parse_hours_rows(rows) do
+    {parsed, errors} =
+      Enum.reduce(rows, {%{}, %{}}, fn {id, text}, {parsed, errors} ->
+        case parse_hours(text) do
+          {:ok, hours} -> {Map.put(parsed, id, hours), errors}
+          :error -> {parsed, Map.put(errors, id, :invalid)}
+        end
+      end)
+
+    if errors == %{}, do: {:ok, parsed}, else: {:error, errors}
+  end
+
+  defp parse_hours(text) when is_binary(text) do
+    case text |> String.trim() |> String.replace(",", ".") do
+      "" ->
+        {:ok, nil}
+
+      value ->
+        # Plain digits only: no sign, exponent, NaN or infinity.
+        if Regex.match?(~r/\A\d+(\.\d+)?\z/, value), do: {:ok, Decimal.new(value)}, else: :error
+    end
+  end
+
+  defp parse_hours(_), do: :error
+
+  defp write_typed(_scope, nil, _id, _period, nil), do: :ok
+
+  defp write_typed(scope, %TypedAbsence{} = record, _id, _period, nil) do
+    case Ash.destroy(record, scope: scope) do
+      :ok -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp write_typed(scope, _record, id, {:sequence, %{id: seq_id}}, hours),
+    do:
+      create_typed(scope, :set_for_sequence, %{
+        enrollment_id: id,
+        sequence_id: seq_id,
+        hours: hours
+      })
+
+  defp write_typed(scope, _record, id, {:trimester, %{id: term_id}}, hours),
+    do: create_typed(scope, :set_for_term, %{enrollment_id: id, term_id: term_id, hours: hours})
+
+  defp create_typed(scope, action, params) do
+    TypedAbsence
+    |> Ash.Changeset.for_create(action, params, scope: scope)
+    |> Ash.create()
+    |> case do
+      {:ok, _} -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # The save itself is authorized (conduct or form master); recording the rhythm the
+  # school already uses is its consequence, so no setting permission is asked for it.
+  defp keep_typed(scope, %ClassGroup{absence_hours_source: :roll_call} = class_group) do
+    if Scope.module?(scope, :appel) do
+      :ok
+    else
+      class_group
+      |> Ash.Changeset.for_update(
+        :set_absence_hours_source,
+        %{absence_hours_source: :typed_per_sequence},
+        scope: scope,
+        authorize?: false
+      )
+      |> Ash.update()
+      |> case do
+        {:ok, _} -> :ok
+        # A closed year refuses it, like every write of that year.
+        {:error, error} -> {:error, error}
+      end
+    end
+  end
+
+  defp keep_typed(_scope, _class_group), do: :ok
+
+  # The given enrollments, each with its typed records (maybe none), in one read.
+  defp typed_records_by_enrollment(_scope, []), do: %{}
+
+  defp typed_records_by_enrollment(scope, ids) do
+    records =
+      TypedAbsence
+      |> Ash.Query.for_read(:for_enrollments, %{enrollment_ids: ids}, scope: scope)
+      |> Ash.read!()
+      |> Enum.group_by(& &1.enrollment_id)
+
+    Map.new(ids, &{&1, Map.get(records, &1, [])})
+  end
+
+  defp roster_records(scope, class_group) do
+    ids =
+      scope
+      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> Enum.map(& &1.enrollment.id)
+
+    typed_records_by_enrollment(scope, ids)
+  end
+
+  defp typed_span(_scope, {:sequence, %{id: id}}), do: {:sequence, id}
+
+  defp typed_span(_scope, {:trimester, %{id: id, sequences: sequences}}),
+    do: {:term, id, Enum.map(sequences, & &1.id)}
+
+  defp typed_span(scope, {:annual, %AcademicYear{} = year}),
+    do:
+      {:year,
+       scope
+       |> Organization.list_terms(year)
+       |> Enum.map(&{&1.id, Enum.map(&1.sequences, fn s -> s.id end)})}
+
   defp teaching_context_id(%TeachingContext{id: id}), do: id
   defp teaching_context_id(id) when is_binary(id), do: id
   defp teaching_context_id(nil), do: nil
@@ -753,6 +1010,33 @@ defmodule TeacherAssistant.Attendance do
       %Ash.BulkResult{status: :success} -> :ok
       %Ash.BulkResult{errors: [error | _]} -> {:error, Ash.Error.to_error_class(error)}
     end
+  end
+
+  @doc "Spec 2026-10-30 §1: the bulletin absence-hours source for every class of the year."
+  def set_absence_hours_source_all(%Scope{} = scope, %AcademicYear{id: year_id}, source) do
+    ClassGroup
+    |> Ash.Query.filter(academic_year_id == ^year_id)
+    |> Ash.bulk_update(:set_absence_hours_source, %{absence_hours_source: source},
+      scope: scope,
+      strategy: :stream,
+      transaction: :all,
+      return_errors?: true
+    )
+    |> case do
+      %Ash.BulkResult{status: :success} -> :ok
+      %Ash.BulkResult{errors: [error | _]} -> {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
+  The source the class's bulletin hours really come from: without the « Appel » module
+  there is no roll call to compute from, so a stored `:roll_call` reads as typed per
+  séquence (spec 2026-10-30 §1).
+  """
+  def effective_absence_source(%Scope{} = scope, %ClassGroup{absence_hours_source: source}) do
+    if source == :roll_call and not Scope.module?(scope, :appel),
+      do: :typed_per_sequence,
+      else: source
   end
 
   # --- School-life settings (spec KLM2) ------------------------------------------

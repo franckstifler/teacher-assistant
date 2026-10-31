@@ -323,14 +323,17 @@
               <td>{tr(@lang, fn -> gettext("Absences non justifiées") end)}</td>
               <td class="v">{fmt(b.conduct.unjustified_hours)} h</td>
             </tr>
-            <tr>
-              <td>{tr(@lang, fn -> gettext("Absences justifiées") end)}</td>
-              <td class="v">{fmt(b.conduct.justified_hours)} h</td>
-            </tr>
-            <tr>
-              <td>{tr(@lang, fn -> gettext("Retards") end)}</td>
-              <td class="v">{b.conduct.retards}</td>
-            </tr>
+            <%!-- Spec 2026-10-30 §5: a class typed by hand prints its one figure. --%>
+            <%= if Map.get(b.conduct, :source, :roll_call) == :roll_call do %>
+              <tr>
+                <td>{tr(@lang, fn -> gettext("Absences justifiées") end)}</td>
+                <td class="v">{fmt(b.conduct.justified_hours)} h</td>
+              </tr>
+              <tr>
+                <td>{tr(@lang, fn -> gettext("Retards") end)}</td>
+                <td class="v">{b.conduct.retards}</td>
+              </tr>
+            <% end %>
           <% end %>
           <%= if b.discipline && show?(@template, :conduct) do %>
             <tr>
