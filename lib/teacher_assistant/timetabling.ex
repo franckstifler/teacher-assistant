@@ -26,7 +26,7 @@ defmodule TeacherAssistant.Timetabling do
 
       define :list_for_teacher,
         action: :for_workspace_teacher,
-        args: [:teacher_user_id]
+        args: [:teacher_user_id, :academic_year_id]
 
       define :list_for_cell, action: :for_cell, args: [:class_group_id, :day, :period_id]
       define :list_for_period, action: :for_period, args: [:period_id]
@@ -285,17 +285,20 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   @doc """
-  All slots in the scope's school taught by `user`, as `{day, period_id} => [slot_view]`:
+  The current year's slots in the scope's school taught by `user` (`%{}` without
+  a current year), as `{day, period_id} => [slot_view]`:
   a list, because a teacher may have several classes at once (a combined course, or a
   clash the editor saved — spec J4).
 
   `slot_view` additionally carries `class_label` so a teacher can see which
   class each cell belongs to.
   """
-  def teacher_timetable(%Scope{} = scope, %User{id: user_id}) do
+  def teacher_timetable(%Scope{current_academic_year: nil}, _user), do: %{}
+
+  def teacher_timetable(%Scope{current_academic_year: year} = scope, %User{id: user_id}) do
     user_id
     # `TimetableSlot` is multitenant — pass the scope.
-    |> list_for_teacher!(scope: scope)
+    |> list_for_teacher!(year.id, scope: scope)
     |> Enum.group_by(&{&1.day, &1.period_id}, &slot_view(&1, &1.class_group.label))
     |> Map.new(fn {cell, views} -> {cell, Enum.sort_by(views, & &1.class_label)} end)
   end

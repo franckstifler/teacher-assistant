@@ -77,8 +77,13 @@ defmodule TeacherAssistant.Academics.TimetableSlot do
 
     read :for_workspace_teacher do
       argument :teacher_user_id, :uuid, allow_nil?: false
+      argument :academic_year_id, :uuid, allow_nil?: false
 
-      filter expr(teaching_context.teacher_user_id == ^arg(:teacher_user_id))
+      # Periods are school-wide: without the year, last year's lessons share the cells.
+      filter expr(
+               teaching_context.teacher_user_id == ^arg(:teacher_user_id) and
+                 teaching_context.academic_year_id == ^arg(:academic_year_id)
+             )
 
       prepare build(load: [:room, class_group: :home_room, teaching_context: :teacher])
     end

@@ -176,7 +176,7 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
           teaching_context_id: tc_b.id
         })
 
-      result = Timetabling.teacher_timetable(scope, head)
+      result = Timetabling.teacher_timetable(%{scope | current_academic_year: year}, head)
 
       assert map_size(result) == 2
 
@@ -189,6 +189,43 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       assert cell_b.teaching_context_id == tc_b.id
       assert cell_b.class_label == "6e B"
       assert cell_b.subject == "Histoire"
+    end
+
+    test "only the scope's current year", ctx do
+      %{head: head, cg: cg, tc_maths: tc_maths, periods: [p1, p2 | _], scope: scope, year: year} =
+        ctx
+
+      {:ok, old_year} =
+        Organization.create_academic_year(scope, %{
+          name: "2024-2025",
+          start_date: ~D[2024-09-09],
+          end_date: ~D[2025-07-31],
+          active: false
+        })
+
+      {:ok, old_cg} =
+        Enrollment.create_class_group(scope, old_year, %{label: "6e A", level: "6ème"})
+
+      {:ok, old_tc} = Curriculum.assign_teacher(scope, old_cg, head, %{subject: "Physique"})
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, old_cg, %{
+          day: :monday,
+          period_id: p1.id,
+          teaching_context_id: old_tc.id
+        })
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :tuesday,
+          period_id: p2.id,
+          teaching_context_id: tc_maths.id
+        })
+
+      current = %{scope | current_academic_year: year}
+      assert Map.keys(Timetabling.teacher_timetable(current, head)) == [{:tuesday, p2.id}]
+
+      assert Timetabling.teacher_timetable(%{scope | current_academic_year: nil}, head) == %{}
     end
 
     test "returns an empty map for a teacher with no slots", ctx do
