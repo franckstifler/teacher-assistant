@@ -193,6 +193,11 @@ h1, h2, h3, .ta-display {
   border-color: var(--color-base-300);
 }
 
+/* The border reset above would otherwise hide daisyUI's error state. */
+.input-error, .select-error, .textarea-error {
+  border-color: var(--color-error);
+}
+
 /* <.input> fields: stacked in normal flow they keep a little air below; inside a
    flex/grid row the parent's gap spaces them, so a margin would only push the
    field above the buttons and badges beside it. */
@@ -565,6 +570,8 @@ h1, h2, h3, .ta-display {
 /* the save bar rides above the tab bar on phones */
 @media (max-width: 1023.98px) {
   body:has(.ta-tabbar) .ta-savebar { bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+  /* a flush sticky footer (`sticky bottom-0`) sits right on top of the tab bar */
+  body:has(.ta-tabbar) .ta-stickyfoot { bottom: calc(4rem + 1px + env(safe-area-inset-bottom)); }
 }
 
 /* touch screens: fields at 16px, or iOS Safari zooms the page in on focus; and

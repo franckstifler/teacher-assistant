@@ -99,6 +99,23 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLiveTest do
     refute Attendance.bulletin_conduct(ctx.scope, cg, {:sequence, ctx.s1})[ctx.awa.id].recorded?
   end
 
+  test "a save after a refused one clears the error", %{conn: conn} = ctx do
+    typed(ctx, :typed_per_sequence)
+    {:ok, view, _} = live(conn, page_path(ctx, "seq:#{ctx.s1.id}"))
+
+    view
+    |> form("#typed-absences-form", %{"hours" => %{ctx.awa.id => "abc"}})
+    |> render_submit()
+
+    assert render(view) =~ "Rien n&#39;a été enregistré"
+
+    view
+    |> form("#typed-absences-form", %{"hours" => %{ctx.awa.id => "3"}})
+    |> render_submit()
+
+    refute render(view) =~ "Rien n&#39;a été enregistré"
+  end
+
   test "published trimester shows the warning", %{conn: conn} = ctx do
     cg = typed(ctx, :typed_per_term)
     TeacherFixtures.publish_trimester(ctx.scope, cg, ctx.t1)

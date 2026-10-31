@@ -60,6 +60,7 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLive do
       {:noreply,
        socket
        |> assign(cg: cg, errors: %{})
+       |> clear_flash(:error)
        |> put_flash(:info, gettext("Réglage enregistré."))
        |> load(nil)}
     else
@@ -81,6 +82,7 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLive do
         {:noreply,
          socket
          |> assign(cg: cg, errors: %{})
+         |> clear_flash(:error)
          |> put_flash(:info, gettext("Heures d'absence enregistrées."))
          |> load(Organization.period_param(period))}
 
@@ -257,7 +259,7 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLive do
             :if={@period}
             id="typed-absences-form"
             phx-submit="save"
-            class="overflow-hidden rounded-[0.6rem] border border-base-300 bg-base-100"
+            class="rounded-[0.6rem] border border-base-300 bg-base-100"
           >
             <p class="border-b border-base-300 px-4 py-2 text-xs text-base-content/60">
               {gettext("Heures d'absence non justifiées, comptées sur les feuilles d'appel.")}
@@ -307,7 +309,7 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLive do
                 <span class="text-xs text-base-content/50">h</span>
               </li>
             </ul>
-            <div class="sticky bottom-0 flex justify-end border-t border-base-300 bg-base-100/95 px-4 py-3 backdrop-blur">
+            <div class="ta-stickyfoot sticky bottom-0 z-10 flex justify-end rounded-b-[0.6rem] border-t border-base-300 bg-base-100/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
               <button
                 type="submit"
                 id="typed-absences-save"
