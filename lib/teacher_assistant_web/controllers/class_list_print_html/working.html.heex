@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{gettext("Liste de classe")} — {@cg.label}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
+        color: #111; background: #fff; margin: 0; padding: 16px;
+        font-size: 9pt; line-height: 1.2;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      @page { size: A4; margin: 8mm 10mm; }
+      @media print { body { padding: 0; } .no-print { display: none; } }
+      .top { display: flex; justify-content: space-between; font-size: 0.9em; text-transform: uppercase; }
+      h1 { text-align: center; font-size: 1.3em; letter-spacing: .06em; margin: 2mm 0 1mm; }
+      .fill { display: flex; gap: 8mm; margin: 1mm 0 2mm; }
+      .fill span { flex: 1; border-bottom: 0.2mm dotted #555; }
+      table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+      th, td { border: 0.2mm solid #555; padding: 0 1.2mm; height: 6mm; }
+      th { background: #eee; font-size: 0.9em; text-align: left; }
+      .c { text-align: center; }
+      .num { width: 8mm; }
+      .name { width: 62mm; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .sex { width: 7mm; }
+      .compact { font-size: 8pt; }
+      .compact th, .compact td { height: 4.4mm; }
+      .dense { font-size: 7pt; }
+      .dense th, .dense td { height: 3.4mm; padding: 0 1mm; }
+      .foot { margin-top: 2mm; }
+      .actions { margin-bottom: 12px; }
+    </style>
+  </head>
+  <body class={@density}>
+    <div class="actions no-print">
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+    </div>
+
+    <div class="top">
+      <span>{@school}</span>
+      <span>{@cg.label}<span :if={@year}> — {@year}</span></span>
+    </div>
+    <h1>{gettext("LISTE DE CLASSE")}</h1>
+    <div class="fill">
+      <span>{gettext("Matière")} : {@subject}</span>
+      <span>{gettext("Enseignant")} : {@teacher}</span>
+    </div>
+
+    <% totals = totals(@rows) %>
+    <table id="working-list">
+      <thead>
+        <tr>
+          <th class="c num">{gettext("N°")}</th>
+          <th class="name">{gettext("Noms et prénoms")}</th>
+          <th class="c sex">{gettext("S")}</th>
+          <th :for={_ <- 1..6} class="blank-h"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={{row, n} <- @rows}>
+          <td class="c">{n}</td>
+          <td class="name">{row.student.full_name}</td>
+          <td class="c">{sex_letter(row.student.sex)}</td>
+          <td :for={_ <- 1..6} class="blank"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="foot">
+      {gettext("Effectif")} : {totals.total} ({gettext("G")} {totals.boys} / {gettext("F")} {totals.girls})
+    </p>
+  </body>
+</html>

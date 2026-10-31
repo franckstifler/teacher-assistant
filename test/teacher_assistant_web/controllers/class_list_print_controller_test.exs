@@ -118,4 +118,91 @@ defmodule TeacherAssistantWeb.ClassListPrintControllerTest do
                :core
     end
   end
+
+  describe "working list" do
+    test "has six empty columns per student and a blank subject line", %{conn: conn, cg: cg} do
+      body =
+        conn |> get(~p"/school/classes/#{cg.id}/class-list/working/print") |> html_response(200)
+
+      assert length(Regex.scan(~r/<td class="blank">/, body)) == 12
+      assert body =~ "Matière"
+      assert body =~ "Effectif : 2 (G 1 / F 1)"
+      refute body =~ "Date et lieu de naissance"
+    end
+
+    test "a teacher prints it for their own course, pre-filled", %{
+      scope: scope,
+      workspace: workspace,
+      cg: cg
+    } do
+      %{teacher: teacher, teaching_context: tc} =
+        TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg, subject: "Maths"})
+
+      body =
+        build_conn()
+        |> log_in_user(teacher)
+        |> Plug.Conn.put_session(:workspace_id, workspace.id)
+        |> get(~p"/teacher/contexts/#{tc.id}/class-list/print")
+        |> html_response(200)
+
+      assert body =~ "Maths"
+      assert body =~ TeacherAssistant.Accounts.User.display_name(teacher)
+      assert body =~ "Awa Ngono"
+    end
+
+    test "a teacher can't print another teacher's course", %{
+      scope: scope,
+      workspace: workspace,
+      cg: cg
+    } do
+      %{teaching_context: tc} =
+        TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg, subject: "Maths"})
+
+      %{teacher: other} =
+        TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg, subject: "SVT"})
+
+      conn =
+        build_conn()
+        |> log_in_user(other)
+        |> Plug.Conn.put_session(:workspace_id, workspace.id)
+        |> get(~p"/teacher/contexts/#{tc.id}/class-list/print")
+
+      assert redirected_to(conn) == ~p"/school"
+    end
+
+    test "a teacher can't open the school-side working list", %{
+      conn: conn,
+      scope: scope,
+      workspace: workspace,
+      cg: cg
+    } do
+      conn =
+        conn
+        |> as_member(scope, workspace, [:teacher])
+        |> get(~p"/school/classes/#{cg.id}/class-list/working/print")
+
+      assert redirected_to(conn) == ~p"/school"
+    end
+
+    test "seventy students get the dense layout", %{conn: conn, scope: scope, year: year} do
+      {:ok, big} = Enrollment.create_class_group(scope, year, %{label: "6e G", level: "6ème"})
+
+      for i <- 1..70 do
+        {:ok, _} = Enrollment.add_student(scope, big, %{full_name: "Élève #{i}", sex: :m})
+      end
+
+      body =
+        conn |> get(~p"/school/classes/#{big.id}/class-list/working/print") |> html_response(200)
+
+      assert body =~ ~s(<body class="dense">)
+    end
+
+    test "the working lists belong to core and notes" do
+      assert Modules.module_for_controller(TeacherAssistantWeb.ClassListPrintController, :working) ==
+               :core
+
+      assert Modules.module_for_controller(TeacherAssistantWeb.ClassListPrintController, :teacher) ==
+               :notes
+    end
+  end
 end
