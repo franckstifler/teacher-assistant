@@ -284,7 +284,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
             <.icon name="hero-clock" class="size-4" />
             {gettext("Heures d'absence au bulletin")}
           </.link>
-          <.class_list_menu cg={@cg} />
+          <.class_list_menu cg={@cg} button_class="btn btn-ghost" />
           <.link
             :if={@can_manage_register?}
             navigate={~p"/school/classes/#{@cg.id}/photos"}

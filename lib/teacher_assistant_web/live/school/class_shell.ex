@@ -183,11 +183,12 @@ defmodule TeacherAssistantWeb.School.ClassShell do
 
   @doc "Spec 2026-10-31 §1: the class list to print, official roster or working list."
   attr :cg, ClassGroup, required: true
+  attr :button_class, :string, default: "btn btn-ghost btn-sm", doc: "matches the page's buttons"
 
   def class_list_menu(assigns) do
     ~H"""
     <details id="class-list-menu" class="dropdown dropdown-end">
-      <summary class="btn btn-ghost btn-sm">
+      <summary class={@button_class}>
         <.icon name="hero-printer" class="size-4" /> {gettext("Liste de classe")} ▾
       </summary>
       <ul class="menu dropdown-content z-30 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg">

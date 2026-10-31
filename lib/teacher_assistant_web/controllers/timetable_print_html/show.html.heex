@@ -30,13 +30,18 @@
       .sheet { break-after: page; }
       .sheet:last-of-type { break-after: auto; }
       @page { size: A4; margin: 15mm; }
+      .actions { margin-bottom: 12px; }
       @media print {
         body { padding: 0; }
+        .no-print { display: none; }
         tr { break-inside: avoid; }
       }
     </style>
   </head>
   <body>
+    <div class="actions no-print">
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+    </div>
     <p :if={@sheets == []} id="no-lesson">{gettext("Aucun cours placé")}</p>
     <section :for={sheet <- @sheets} class="sheet">
       <div class="national">

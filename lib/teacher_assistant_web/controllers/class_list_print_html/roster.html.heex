@@ -32,6 +32,10 @@
       th { background: #eee; font-size: 0.9em; }
       .c { text-align: center; }
       .num { width: 9mm; }
+      .mat { width: 28mm; }
+      .sex { width: 12mm; }
+      .birth { width: 58mm; }
+      .rep { width: 11mm; }
       .foot { display: flex; justify-content: space-between; gap: 6mm; margin-top: 4mm; }
       .head { text-align: center; min-width: 50mm; }
       .head .space { height: 18mm; }
@@ -59,11 +63,11 @@
       <thead>
         <tr>
           <th class="c num">{tr(@lang, fn -> gettext("N°") end)}</th>
-          <th>{tr(@lang, fn -> gettext("Matricule") end)}</th>
+          <th class="mat">{tr(@lang, fn -> gettext("Matricule") end)}</th>
           <th>{tr(@lang, fn -> gettext("Noms et prénoms") end)}</th>
-          <th class="c">{tr(@lang, fn -> gettext("Sexe") end)}</th>
-          <th>{tr(@lang, fn -> gettext("Date et lieu de naissance") end)}</th>
-          <th class="c">{tr(@lang, fn -> gettext("Red.") end)}</th>
+          <th class="c sex">{tr(@lang, fn -> gettext("Sexe") end)}</th>
+          <th class="birth">{tr(@lang, fn -> gettext("Date et lieu de naissance") end)}</th>
+          <th class="c rep">{tr(@lang, fn -> gettext("Red.") end)}</th>
         </tr>
       </thead>
       <tbody>

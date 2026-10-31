@@ -9,7 +9,7 @@
       body {
         font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
         color: #111; background: #fff; margin: 0; padding: 16px;
-        font-size: 7pt; line-height: 1.15;
+        font-size: 7.5pt; line-height: 1.15;
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       @page { size: A3 landscape; margin: 8mm; }
@@ -25,6 +25,7 @@
       td.closed { background: #e6e6e6; }
       .code { display: block; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
       .teacher { display: block; color: #444; font-size: 0.9em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .half + .half { margin-top: 5mm; }
       .actions { margin-bottom: 12px; }
     </style>
   </head>
@@ -38,21 +39,26 @@
       {@etablissement}<span :if={@annee}> — {gettext("Année scolaire")} {@annee}</span>
     </p>
 
-    <table id="general-timetable">
+    <table
+      :for={{days, half} <- Enum.with_index(Enum.chunk_every(@days, 3))}
+      id={"general-timetable-#{half}"}
+      class="half"
+    >
       <thead>
         <tr>
           <th class="cls" rowspan="2">{gettext("Classe")}</th>
-          <th :for={day <- @days} colspan={length(@lessons)} class="day-start">
+          <th :for={day <- days} colspan={length(@lessons)} class="day-start">
             {day_label(day)}
           </th>
         </tr>
         <tr>
-          <%= for day <- @days do %>
+          <%= for day <- days do %>
             <th
               :for={{period, i} <- Enum.with_index(@lessons)}
               class={if i == 0, do: "day-start"}
+              title={period.label}
             >
-              {period.label}
+              {i + 1}
             </th>
           <% end %>
         </tr>
@@ -60,7 +66,7 @@
       <tbody>
         <tr :for={cg <- @classes} id={"row-#{cg.id}"}>
           <td class="cls">{cg.label}</td>
-          <%= for day <- @days do %>
+          <%= for day <- days do %>
             <%= for {period, i} <- Enum.with_index(@lessons) do %>
               <td class={[
                 i == 0 && "day-start",
