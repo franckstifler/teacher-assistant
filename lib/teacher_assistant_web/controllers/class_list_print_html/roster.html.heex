@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang={html_lang(@lang)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{tr(@lang, fn -> gettext("Liste de classe") end)} — {@cg.label}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
+        color: #111; background: #fff; margin: 0; padding: 16px;
+        font-size: 9pt; line-height: 1.25;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      @page { size: A4; margin: 10mm; }
+      @media print { body { padding: 0; } .no-print { display: none; } tr { break-inside: avoid; } }
+      .header { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; font-size: 0.86em; }
+      .header .col div:first-child { font-weight: bold; text-transform: uppercase; }
+      .header .col div:nth-child(2) { font-style: italic; }
+      .header .col div:nth-child(n+3) { text-transform: uppercase; }
+      .header .mid img { max-height: 18mm; max-width: 30mm; }
+      .header .code { font-weight: 700; margin-top: 1mm; letter-spacing: .02em; }
+      .school { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; margin-top: 1mm; font-size: 0.9em; }
+      .school .name { font-size: 1.2em; font-weight: bold; text-transform: uppercase; }
+      .flag { height: 0.9mm; margin: 1.2mm 0 0;
+              background: linear-gradient(90deg, #007a5e 33.3%, #ce1126 33.3% 66.6%, #fcd116 66.6%); }
+      h1 { text-align: center; font-size: 1.45em; letter-spacing: .06em; margin: 3mm 0 1mm; }
+      .meta { text-align: center; margin-bottom: 3mm; }
+      table { border-collapse: collapse; width: 100%; }
+      thead { display: table-header-group; }
+      th, td { border: 0.2mm solid #555; padding: 0.8mm 1.4mm; text-align: left; }
+      th { background: #eee; font-size: 0.9em; }
+      .c { text-align: center; }
+      .num { width: 9mm; }
+      .foot { display: flex; justify-content: space-between; gap: 6mm; margin-top: 4mm; }
+      .head { text-align: center; min-width: 50mm; }
+      .head .space { height: 18mm; }
+      .actions { margin-bottom: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="actions no-print">
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+    </div>
+
+    <.official_header header={@template.header} logo?={@logo?} />
+
+    <h1>{tr(@lang, fn -> gettext("LISTE DE CLASSE") end)}</h1>
+    <p class="meta">
+      {@cg.label}
+      <span :if={@year}>— {tr(@lang, fn -> gettext("Année scolaire") end)} {@year}</span>
+      <span :if={@form_master}>
+        — {tr(@lang, fn -> gettext("Professeur principal") end)} : {@form_master}
+      </span>
+    </p>
+
+    <% totals = totals(@rows) %>
+    <table id="roster">
+      <thead>
+        <tr>
+          <th class="c num">{tr(@lang, fn -> gettext("N°") end)}</th>
+          <th>{tr(@lang, fn -> gettext("Matricule") end)}</th>
+          <th>{tr(@lang, fn -> gettext("Noms et prénoms") end)}</th>
+          <th class="c">{tr(@lang, fn -> gettext("Sexe") end)}</th>
+          <th>{tr(@lang, fn -> gettext("Date et lieu de naissance") end)}</th>
+          <th class="c">{tr(@lang, fn -> gettext("Red.") end)}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={{row, n} <- @rows}>
+          <td class="c">{n}</td>
+          <td>{row.student.matricule}</td>
+          <td>{row.student.full_name}</td>
+          <td class="c">{sex_letter(row.student.sex)}</td>
+          <td>{birth(@lang, row.student)}</td>
+          <td class="c">{if row.enrollment.repeater, do: "R"}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="foot">
+      <div id="totals">
+        {tr(@lang, fn -> gettext("Effectif") end)} : {totals.total} — {tr(@lang, fn ->
+          gettext("Garçons")
+        end)} : {totals.boys} — {tr(@lang, fn -> gettext("Filles") end)} : {totals.girls} — {tr(
+          @lang,
+          fn -> gettext("Redoublants") end
+        )} : {totals.repeaters}
+      </div>
+      <div class="head">
+        <div>{head_title(@lang, @template.header)}</div>
+        <div class="space"></div>
+        <div :if={@head_name}>{@head_name}</div>
+      </div>
+    </div>
+  </body>
+</html>
