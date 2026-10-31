@@ -341,4 +341,18 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       assert Timetabling.school_timetable(%{ctx.scope | current_academic_year: nil}) == %{}
     end
   end
+
+  describe "User.short_name/1" do
+    test "family name in capitals, then the first names' initials" do
+      assert TeacherAssistant.Accounts.User.short_name("Jean Abena") == "ABENA J."
+      assert TeacherAssistant.Accounts.User.short_name("Jean-Pierre Ateba") == "ATEBA J.-P."
+      assert TeacherAssistant.Accounts.User.short_name("Marie Ngo Bassa") == "BASSA M. N."
+    end
+
+    test "a single word or an address stays as it is" do
+      assert TeacherAssistant.Accounts.User.short_name("Abena") == "Abena"
+      assert TeacherAssistant.Accounts.User.short_name("prof@demo.test") == "prof@demo.test"
+      assert TeacherAssistant.Accounts.User.short_name("") == ""
+    end
+  end
 end

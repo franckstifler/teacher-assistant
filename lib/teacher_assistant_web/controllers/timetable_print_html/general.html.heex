@@ -74,7 +74,7 @@
               ]}>
                 <%= for slot <- general_cell(@grid, cg.id, day, period.id) do %>
                   <span class="code">{slot.subject_code}</span>
-                  <span class="teacher">{slot.teacher_name}</span>
+                  <span class="teacher">{User.short_name(slot.teacher_name)}</span>
                 <% end %>
               </td>
             <% end %>

@@ -186,7 +186,12 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
       {five, _} = :binary.match(body, ">5e A<")
       assert six < five
       assert body =~ "Maths"
-      assert body =~ TeacherAssistant.Accounts.User.display_name(head)
+
+      assert body =~
+               TeacherAssistant.Accounts.User.short_name(
+                 TeacherAssistant.Accounts.User.display_name(head)
+               )
+
       refute body =~ "Samedi"
     end
 

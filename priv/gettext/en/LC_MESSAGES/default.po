@@ -5303,6 +5303,7 @@ msgstr "Student not found."
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:117
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:82
+#: lib/teacher_assistant_web/controllers/class_list_print_html.ex:22
 #, elixir-autogen, elixir-format
 msgid "à"
 msgstr "in"
@@ -12782,11 +12783,6 @@ msgstr "in the app: %{hours}"
 #, elixir-autogen, elixir-format
 msgid "pré-rempli"
 msgstr "pre-filled"
-
-#: lib/teacher_assistant_web/controllers/class_list_print_html.ex:21
-#, elixir-autogen, elixir-format
-msgid "%{date} à %{place}"
-msgstr "%{date} in %{place}"
 
 #: lib/teacher_assistant_web/controllers/class_list_print_html/roster.html.heex:52
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:45

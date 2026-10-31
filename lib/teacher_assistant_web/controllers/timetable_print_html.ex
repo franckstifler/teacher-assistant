@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.TimetablePrintHTML do
   use TeacherAssistantWeb, :html
 
+  alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.Academics.DayOfWeek
   alias TeacherAssistant.Academics.SchoolCalendar
 

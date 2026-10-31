@@ -316,6 +316,29 @@ defmodule TeacherAssistant.Accounts.User do
   def display_name(%{phone: phone}) when is_binary(phone), do: Phone.format(phone)
   def display_name(_user), do: ""
 
+  @doc """
+  A name short enough for a timetable cell: the last word (the family name) in
+  capitals, then the other words' initials — « Jean-Pierre Ateba » → « ATEBA J.-P. ».
+  A single word or an address is returned as it is.
+  """
+  def short_name(name) when is_binary(name) do
+    case String.split(name) do
+      [_, _ | _] = words ->
+        if String.contains?(name, "@") do
+          name
+        else
+          {firsts, [family]} = Enum.split(words, -1)
+          Enum.join([String.upcase(family) | Enum.map(firsts, &initials/1)], " ")
+        end
+
+      _ ->
+        name
+    end
+  end
+
+  defp initials(word),
+    do: word |> String.split("-") |> Enum.map_join("-", &(String.first(&1) <> "."))
+
   @doc "How to reach a person: email, else formatted phone, else nil."
   def contact(%{email: email}) when not is_nil(email), do: to_string(email)
   def contact(%{phone: phone}) when is_binary(phone), do: Phone.format(phone)

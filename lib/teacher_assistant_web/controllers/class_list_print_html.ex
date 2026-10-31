@@ -12,13 +12,14 @@ defmodule TeacherAssistantWeb.ClassListPrintHTML do
   defp sex_letter(:f), do: "F"
   defp sex_letter(_), do: "M"
 
-  # « 12/03/2010 à Yaoundé », either half alone when the other is missing.
+  # « 12/03/2010 à Yaoundé » (« à / in » when bilingual), either half alone when the other is missing.
   defp birth(lang, %{birth_date: date, birth_place: place}) do
     case {format_date(date), present(place)} do
       {nil, nil} -> nil
       {d, nil} -> d
       {nil, p} -> p
-      {d, p} -> tr(lang, fn -> gettext("%{date} à %{place}", date: d, place: p) end)
+      # Only the word is translated: a bilingual sheet prints the data once.
+      {d, p} -> "#{d} #{tr(lang, fn -> gettext("à") end)} #{p}"
     end
   end
 

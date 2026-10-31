@@ -90,6 +90,20 @@ defmodule TeacherAssistantWeb.ClassListPrintControllerTest do
       assert body =~ "Class size : 0"
     end
 
+    test "a bilingual school prints the birth details once", %{conn: conn, scope: scope, cg: cg} do
+      {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+
+      {:ok, _} =
+        TeacherAssistant.Accounts.update_school_profile(profile, %{bulletin_language: :bilingual},
+          scope: scope
+        )
+
+      body = conn |> get(~p"/school/classes/#{cg.id}/class-list/print") |> html_response(200)
+
+      assert body =~ "12/03/2010 à / in Yaoundé"
+      assert length(String.split(body, "12/03/2010")) == 2
+    end
+
     test "a discipline master may print it", %{
       conn: conn,
       scope: scope,
