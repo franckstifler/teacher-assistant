@@ -377,7 +377,7 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
       <div
         :if={@bands_dirty? or @dist_dirty?}
         id="unsaved-bar"
-        class="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-base-300 bg-[color-mix(in_oklch,var(--color-base-200)_85%,black)] px-7 py-3 sm:-mx-6"
+        class="ta-stickyfoot sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-base-300 bg-[color-mix(in_oklch,var(--color-base-200)_85%,black)] px-7 py-3 sm:-mx-6"
       >
         <span class="text-[0.88rem] text-warning">{gettext("Modifications non enregistrées")}</span>
         <div class="flex gap-2">

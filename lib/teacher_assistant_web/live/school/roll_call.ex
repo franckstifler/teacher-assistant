@@ -336,7 +336,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
       <div
         id="roll-footer"
-        class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 rounded-b-box border-t border-base-300 bg-base-200/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-[18px]"
+        class="ta-stickyfoot sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 rounded-b-box border-t border-base-300 bg-base-200/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-[18px]"
       >
         <span :if={@roll.taken?} class="mr-auto flex items-center gap-1.5 text-[0.85rem] text-success">
           <.icon name="hero-check-circle" class="size-4" /> {gettext("Appel enregistré.")}

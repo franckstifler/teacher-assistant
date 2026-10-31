@@ -33,6 +33,12 @@ defmodule TeacherAssistantWeb.School.AppreciationsLiveTest do
            )
   end
 
+  test "the unsaved bar rides above the phone tab bar", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
+    view |> form("#bands-form", %{"bands" => %{"0" => %{"to" => "9"}}}) |> render_change()
+    assert has_element?(view, "#unsaved-bar.ta-stickyfoot")
+  end
+
   test "restoring the default scale asks first", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/settings/appreciations")
     assert has_element?(view, "#reset-bands[data-confirm]")

@@ -164,6 +164,16 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     assert has_element?(view, "#roll-footer", "Appel enregistré")
   end
 
+  test "the record footer rides above the phone tab bar", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date
+  } do
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+    assert has_element?(view, "#roll-footer.ta-stickyfoot")
+  end
+
   test "an invalid status from a forged set event is ignored", %{
     conn: conn,
     cg: cg,
