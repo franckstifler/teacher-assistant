@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Sex
   alias TeacherAssistantWeb.School.{ClassShell, EnrollDrawer}
-  import ClassShell, only: [class_shell: 1]
+  import ClassShell, only: [class_shell: 1, class_list_menu: 1]
 
   @roster_filters [:all, :f, :m, :repeaters]
 
@@ -62,6 +62,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           >
             {gettext("Photos")}
           </.link>
+          <.class_list_menu cg={@cg} />
           <.link
             :if={TeacherAssistant.Scope.module?(@current_scope, :notes)}
             navigate={~p"/school/bulletins?class=#{@cg.id}"}

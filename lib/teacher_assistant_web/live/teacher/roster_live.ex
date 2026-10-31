@@ -44,6 +44,17 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           title={"#{@ctx.subject} · #{@class_group.label}"}
         />
 
+        <div class="flex justify-end">
+          <a
+            id="class-list-print"
+            href={~p"/teacher/contexts/#{@ctx.id}/class-list/print"}
+            target="_blank"
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer la liste")}
+          </a>
+        </div>
+
         <div id="roster-count" class="flex items-center gap-3 text-sm text-base-content/70">
           <span class="font-semibold text-base-content">
             {length(@students)} {gettext("students")}

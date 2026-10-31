@@ -25,6 +25,17 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
       %{ctx: tc, cg: cg, s1: s1, s2: s2}
     end
 
+    test "offers the working list only", %{conn: conn, ctx: ctx} do
+      {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/roster")
+
+      assert has_element?(
+               view,
+               "#class-list-print[href='/teacher/contexts/#{ctx.id}/class-list/print']"
+             )
+
+      refute has_element?(view, "#class-list-roster")
+    end
+
     test "shows girls/boys count and student table", %{conn: conn, ctx: ctx} do
       {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/roster")
 

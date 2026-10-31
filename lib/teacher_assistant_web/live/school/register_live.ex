@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistantWeb.School.ClassShell
-  import ClassShell, only: [class_shell: 1]
+  import ClassShell, only: [class_shell: 1, class_list_menu: 1]
   import TeacherAssistantWeb.Drawer
 
   alias TeacherAssistant.Enrollment
@@ -284,6 +284,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
             <.icon name="hero-clock" class="size-4" />
             {gettext("Heures d'absence au bulletin")}
           </.link>
+          <.class_list_menu cg={@cg} />
           <.link
             :if={@can_manage_register?}
             navigate={~p"/school/classes/#{@cg.id}/photos"}

@@ -328,4 +328,31 @@ defmodule TeacherAssistantWeb.School.RegisterLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
              live(conn, ~p"/school/classes/#{ocg.id}/register?date=#{Date.to_iso8601(date)}")
   end
+
+  test "a discipline master finds both class lists on the register", %{
+    school: school,
+    cg: cg,
+    scope: scope,
+    date: date
+  } do
+    dm = TeacherAssistant.TeacherFixtures.user_fixture()
+
+    {:ok, inv} =
+      Accounts.invite_member(scope, %{email: to_string(dm.email), roles: [:discipline_master]})
+
+    {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: dm}, inv.token)
+
+    {:ok, view, _html} =
+      live(
+        conn_for(school, dm),
+        ~p"/school/classes/#{cg.id}/register?date=#{Date.to_iso8601(date)}"
+      )
+
+    assert has_element?(
+             view,
+             "#class-list-roster[href='/school/classes/#{cg.id}/class-list/print']"
+           )
+
+    assert has_element?(view, "#class-list-working")
+  end
 end

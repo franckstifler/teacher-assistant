@@ -427,4 +427,18 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
                live(conn, ~p"/school/classes/#{cg2.id}")
     end
   end
+
+  test "offers both class lists to print", %{conn: conn, cg: cg} do
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}")
+
+    assert has_element?(
+             view,
+             "#class-list-roster[href='/school/classes/#{cg.id}/class-list/print']"
+           )
+
+    assert has_element?(
+             view,
+             "#class-list-working[href='/school/classes/#{cg.id}/class-list/working/print']"
+           )
+  end
 end
