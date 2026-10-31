@@ -234,4 +234,59 @@ defmodule TeacherAssistant.Academics.TimetablesReadsTest do
       assert Timetabling.teacher_timetable(ctx.scope, other_teacher) == %{}
     end
   end
+
+  describe "all_teacher_timetables/1" do
+    test "lists teachers with lessons, by name", ctx do
+      %{scope: scope, year: year, cg: cg, tc_maths: tc_maths, periods: [p1, p2 | _]} = ctx
+      scope = %{scope | current_academic_year: year}
+
+      alain = TeacherFixtures.user_fixture(%{name: "Alain Mbarga"})
+
+      %{teaching_context: tc_alain} =
+        TeacherFixtures.school_teacher_fixture(scope, %{
+          teacher: alain,
+          class_group: cg,
+          subject: "Anglais"
+        })
+
+      _idle = TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg, subject: "ESF"})
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :monday,
+          period_id: p1.id,
+          teaching_context_id: tc_maths.id
+        })
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :monday,
+          period_id: p2.id,
+          teaching_context_id: tc_alain.id
+        })
+
+      result = Timetabling.all_teacher_timetables(scope)
+
+      assert Enum.map(result, & &1.teacher.name) == ["Alain Mbarga", "Jean Abena"]
+      [alain_sheet, _jean] = result
+      assert [%{class_label: "6e A", subject: "Anglais"}] = alain_sheet.grid[{:monday, p2.id}]
+    end
+
+    test "a combined course shows both classes in the teacher's cell", ctx do
+      %{scope: scope, year: year, head: head, tc_maths: tc_maths, periods: [p1 | _]} = ctx
+      scope = %{scope | current_academic_year: year}
+
+      {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
+      {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Maths"})
+      {:ok, course} = Curriculum.combine_course(scope, [tc_maths, tc_b])
+      {:ok, _} = Timetabling.place_combined_slot(scope, course, :monday, p1.id)
+
+      [%{grid: grid}] = Timetabling.all_teacher_timetables(scope)
+      assert Enum.map(grid[{:monday, p1.id}], & &1.class_label) == ["6e A", "6e B"]
+    end
+
+    test "is empty without a current year", ctx do
+      assert Timetabling.all_teacher_timetables(%{ctx.scope | current_academic_year: nil}) == []
+    end
+  end
 end

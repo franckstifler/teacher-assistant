@@ -299,6 +299,30 @@ defmodule TeacherAssistant.Timetabling do
     user_id
     # `TimetableSlot` is multitenant — pass the scope.
     |> list_for_teacher!(year.id, scope: scope)
+    |> teacher_grid()
+  end
+
+  @doc """
+  Spec 2026-10-31 §2: every teacher with a lesson this year, each with their
+  `teacher_timetable/2` grid, by name; `[]` without a current year. One read.
+  """
+  def all_teacher_timetables(%Scope{current_academic_year: nil}), do: []
+
+  def all_teacher_timetables(%Scope{current_academic_year: year} = scope) do
+    TimetableSlot
+    |> Ash.Query.filter(teaching_context.academic_year_id == ^year.id)
+    |> Ash.Query.load([:room, class_group: :home_room, teaching_context: :teacher])
+    |> Ash.read!(scope: scope)
+    |> Enum.reject(&is_nil(&1.teaching_context.teacher))
+    |> Enum.group_by(& &1.teaching_context.teacher_user_id)
+    |> Enum.map(fn {_id, [slot | _] = slots} ->
+      %{teacher: slot.teaching_context.teacher, grid: teacher_grid(slots)}
+    end)
+    |> Enum.sort_by(&String.downcase(User.display_name(&1.teacher)))
+  end
+
+  defp teacher_grid(slots) do
+    slots
     |> Enum.group_by(&{&1.day, &1.period_id}, &slot_view(&1, &1.class_group.label))
     |> Map.new(fn {cell, views} -> {cell, Enum.sort_by(views, & &1.class_label)} end)
   end

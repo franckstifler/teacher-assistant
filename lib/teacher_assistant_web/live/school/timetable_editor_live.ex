@@ -411,6 +411,16 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
             >
               <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer la classe")}
             </a>
+            <a
+              id="print-teachers"
+              href={~p"/school/timetable/teachers/print"}
+              target="_blank"
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="hero-printer" class="size-4" /> {gettext(
+                "Emplois du temps des enseignants"
+              )}
+            </a>
             <span
               id="conflict-count"
               class={["text-sm font-semibold", if(@count > 0, do: "text-error", else: "text-success")]}

@@ -328,4 +328,9 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
     view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
     assert has_element?(view, "#room-select option[selected]", "Labo")
   end
+
+  test "offers every teacher's timetable to print", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, "#print-teachers[href='/school/timetable/teachers/print']")
+  end
 end

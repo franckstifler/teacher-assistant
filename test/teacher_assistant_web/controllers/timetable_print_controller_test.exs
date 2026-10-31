@@ -95,4 +95,70 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
     html = conn |> get(~p"/school/classes/#{cg.id}/timetable/print") |> html_response(200)
     assert html =~ "Salle B12"
   end
+
+  describe "every teacher's timetable" do
+    test "prints one sheet per teacher", %{conn: conn, school: school, cg: cg, head: head} do
+      scope = school_scope(head, school)
+      [_, p2 | _] = Attendance.list_periods(scope) |> Enum.filter(&(&1.kind == :lesson))
+      zoe = TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Zoé Ndzana"})
+
+      %{teaching_context: tc} =
+        TeacherAssistant.TeacherFixtures.school_teacher_fixture(scope, %{
+          teacher: zoe,
+          class_group: cg,
+          subject: "SVT"
+        })
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :tuesday,
+          period_id: p2.id,
+          teaching_context_id: tc.id
+        })
+
+      body = conn |> get(~p"/school/timetable/teachers/print") |> html_response(200)
+
+      assert length(Regex.scan(~r/<section class="sheet"/, body)) == 2
+      assert body =~ "Zoé Ndzana"
+      assert body =~ "SVT"
+      assert body =~ "Maths"
+    end
+
+    test "no timetable yet prints an empty page", %{
+      conn: conn,
+      school: school,
+      cg: cg,
+      head: head,
+      period: period
+    } do
+      :ok = Timetabling.clear_slot(school_scope(head, school), cg, :monday, period.id)
+      body = conn |> get(~p"/school/timetable/teachers/print") |> html_response(200)
+
+      refute body =~ ~s(<section class="sheet")
+      assert body =~ "Aucun cours placé"
+    end
+
+    test "a teacher is sent away", %{school: school, head: head} do
+      teacher =
+        TeacherAssistant.TeacherFixtures.member_scope_fixture(school_scope(head, school), %{
+          roles: [:teacher]
+        })
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> put_user_in_session(teacher.current_user)
+        |> Plug.Conn.put_session(:workspace_id, school.id)
+        |> get(~p"/school/timetable/teachers/print")
+
+      assert redirected_to(conn) == "/school"
+    end
+
+    test "belongs to the timetable module" do
+      assert TeacherAssistant.Modules.module_for_controller(
+               TeacherAssistantWeb.TimetablePrintController,
+               :teachers
+             ) == :emploi_du_temps
+    end
+  end
 end

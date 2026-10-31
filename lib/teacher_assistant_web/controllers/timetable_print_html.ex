@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.TimetablePrintHTML do
   defp day_label(d), do: DayOfWeek.label(d)
 
   # The class grid holds one slot per cell; a teacher's grid a list (spec J4).
-  defp cell_slots(grid, :me, day, period_id), do: Map.get(grid, {day, period_id}, [])
+  defp cell_slots(grid, :teacher, day, period_id), do: Map.get(grid, {day, period_id}, [])
 
   defp cell_slots(grid, _mode, day, period_id),
     do: grid |> Map.get({day, period_id}) |> List.wrap()
