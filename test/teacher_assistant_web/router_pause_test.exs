@@ -10,7 +10,9 @@ defmodule TeacherAssistantWeb.RouterPauseTest do
       |> Enum.filter(&String.starts_with?(&1, "/teacher"))
       |> Enum.sort()
 
+    # The working class list a teacher prints from their course (spec 2026-10-31 §1).
     assert routes == [
+             "/teacher/contexts/:id/class-list/print",
              "/teacher/contexts/:id/marks",
              "/teacher/contexts/:id/marks/summary",
              "/teacher/contexts/:id/roster",
