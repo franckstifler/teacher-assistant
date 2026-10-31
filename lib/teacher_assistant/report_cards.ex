@@ -413,7 +413,13 @@ defmodule TeacherAssistant.ReportCards do
   # A typed class prints the typed figures (spec 2026-10-30 §6): warn while some are
   # missing; paper lessons no longer reach its card. A roll-call class checks paper.
   defp absence_check(scope, cg, period) do
-    case Attendance.effective_absence_source(scope, cg) do
+    # Neither roll call nor the Discipline screens: no absences to print or type.
+    absences? = Scope.module?(scope, :appel) or Scope.module?(scope, :discipline)
+
+    case absences? && Attendance.effective_absence_source(scope, cg) do
+      false ->
+        []
+
       :roll_call ->
         paper_check(scope, cg, period)
 

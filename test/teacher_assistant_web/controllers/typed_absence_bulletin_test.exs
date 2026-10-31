@@ -89,6 +89,12 @@ defmodule TeacherAssistantWeb.TypedAbsenceBulletinTest do
     assert %{ok?: true, data: %{missing: 0}} = item(ctx, cg, :typed_absences)
   end
 
+  test "no checklist item for a school with neither appel nor discipline", ctx do
+    {:ok, ws} = Organization.set_modules(ctx.op, ctx.ws, [:notes])
+    ctx = %{ctx | scope: %{ctx.scope | current_workspace: ws}}
+    assert item(ctx, ctx.cg, :typed_absences) == nil
+  end
+
   test "a published snapshot keeps its hours after a new save", ctx do
     cg = typed(ctx, :typed_per_term)
     period = {:trimester, ctx.t1}

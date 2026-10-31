@@ -135,6 +135,17 @@ defmodule TeacherAssistant.Academics.TypedAbsenceSheetTest do
              })
   end
 
+  test "a closed year refuses the save instead of crashing", ctx do
+    op = %Scope{current_user: TeacherFixtures.admin_user_fixture()}
+    {:ok, ws} = Organization.set_modules(op, ctx.ws, [:notes, :discipline])
+    {:ok, cg} = Enrollment.set_absence_hours_source(ctx.scope, ctx.cg, :roll_call)
+    TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    scope = %{ctx.scope | current_workspace: ws}
+
+    assert {:error, _} =
+             Attendance.save_typed_absences(scope, cg, {:sequence, ctx.s1}, %{ctx.awa.id => ""})
+  end
+
   test "stores typed_per_sequence when the school lacks appel", ctx do
     op = %Scope{current_user: TeacherFixtures.admin_user_fixture()}
     {:ok, ws} = Organization.set_modules(op, ctx.ws, [:notes, :discipline])

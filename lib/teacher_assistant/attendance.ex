@@ -674,7 +674,10 @@ defmodule TeacherAssistant.Attendance do
           end
         end)
 
-        keep_typed(scope, class_group)
+        case keep_typed(scope, class_group) do
+          :ok -> :ok
+          {:error, error} -> TeacherAssistant.Repo.rollback(error)
+        end
       end)
       |> case do
         {:ok, _} -> :ok
@@ -755,9 +758,12 @@ defmodule TeacherAssistant.Attendance do
         scope: scope,
         authorize?: false
       )
-      |> Ash.update!()
-
-      :ok
+      |> Ash.update()
+      |> case do
+        {:ok, _} -> :ok
+        # A closed year refuses it, like every write of that year.
+        {:error, error} -> {:error, error}
+      end
     end
   end
 
