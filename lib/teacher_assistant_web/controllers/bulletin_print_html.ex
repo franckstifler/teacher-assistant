@@ -4,6 +4,8 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
   alias TeacherAssistant.Academics.{BulletinGroup, BulletinTemplate, Sex}
   alias TeacherAssistantWeb.SanctionLabels
 
+  import TeacherAssistantWeb.OfficialHeaderComponents, only: [official_header: 1]
+
   embed_templates "bulletin_print_html/*"
 
   @backend TeacherAssistantWeb.Gettext
@@ -21,23 +23,6 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
       {fr, en} -> fr <> " / " <> en
     end
   end
-
-  # Spec bulletin v2 §5.1: French on the left, English on the right, on every card.
-  defp official_lines(header, lang), do: BulletinTemplate.official_lines(header, lang)
-
-  # The school's own lines under each column; the English one names the school in English.
-  defp school_lines(header, :fr),
-    do: tr_list(:fr, fn -> BulletinTemplate.school_lines(header) end)
-
-  defp school_lines(header, :en) do
-    name = if present?(Map.get(header, :name_en)), do: header.name_en, else: header.name
-    tr_list(:en, fn -> BulletinTemplate.school_lines(%{header | name: name}) end)
-  end
-
-  defp tr_list(lang, fun) when lang in [:fr, :en],
-    do: Gettext.with_locale(@backend, Atom.to_string(lang), fun)
-
-  defp present?(text), do: is_binary(text) and String.trim(text) != ""
 
   defp guardians_line(guardians),
     do:

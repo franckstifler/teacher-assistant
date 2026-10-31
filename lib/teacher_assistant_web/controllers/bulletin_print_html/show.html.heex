@@ -85,40 +85,7 @@
         {tr(@lang, fn -> gettext("Publié le %{date}", date: @published_on) end)}
       </p>
 
-      <div class="header">
-        <div class="col">
-          <div :for={line <- official_lines(@template.header, :fr)}>{line}</div>
-        </div>
-        <div class="mid">
-          <img :if={@logo?} src={~p"/school/logo"} alt="" />
-          <div :if={present?(Map.get(@template.header, :school_code))} class="code">
-            CODE : {@template.header.school_code}
-          </div>
-        </div>
-        <div class="col">
-          <div :for={line <- official_lines(@template.header, :en)}>{line}</div>
-        </div>
-      </div>
-      <div class="school">
-        <div>
-          <div
-            :for={{line, i} <- Enum.with_index(school_lines(@template.header, :fr))}
-            class={if i == 0, do: "name"}
-          >
-            {line}
-          </div>
-        </div>
-        <div></div>
-        <div>
-          <div
-            :for={{line, i} <- Enum.with_index(school_lines(@template.header, :en))}
-            class={if i == 0, do: "name"}
-          >
-            {line}
-          </div>
-        </div>
-      </div>
-      <div class="flag"></div>
+      <.official_header header={@template.header} logo?={@logo?} />
 
       <div class="title">
         <h1>{@title}</h1>
