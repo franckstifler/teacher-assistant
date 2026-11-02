@@ -9764,7 +9764,7 @@ msgid "Journée"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/layouts.ex:614
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:425
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:427
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "Langue"
@@ -10298,7 +10298,7 @@ msgstr ""
 msgid "Tarif"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:402
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:404
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:59
 #, elixir-autogen, elixir-format
 msgid "Tout l'établissement sur un seul tableau."
@@ -12116,7 +12116,7 @@ msgstr ""
 msgid "Préparation de l'année suivante…"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:423
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:425
 #, elixir-autogen, elixir-format
 msgid "APC / CBA · Francophone & anglophone"
 msgstr ""
@@ -12219,7 +12219,7 @@ msgstr ""
 msgid "Vous allez être redirigé·e automatiquement."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:399
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:401
 #, elixir-autogen, elixir-format
 msgid "Établissements secondaires · Cameroun"
 msgstr ""

@@ -9764,7 +9764,7 @@ msgid "Journée"
 msgstr "Day"
 
 #: lib/teacher_assistant_web/components/layouts.ex:614
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:425
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:427
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "Langue"
@@ -10298,7 +10298,7 @@ msgstr "Sequences and terms"
 msgid "Tarif"
 msgstr "Pricing"
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:402
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:404
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:59
 #, elixir-autogen, elixir-format
 msgid "Tout l'établissement sur un seul tableau."
@@ -12116,7 +12116,7 @@ msgstr "The invitation email could not be sent. Check the address and try again.
 msgid "Préparation de l'année suivante…"
 msgstr "Preparing the next year…"
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:423
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:425
 #, elixir-autogen, elixir-format
 msgid "APC / CBA · Francophone & anglophone"
 msgstr "CBA · French- and English-speaking"
@@ -12219,7 +12219,7 @@ msgstr "Your new password must be at least 8 characters long."
 msgid "Vous allez être redirigé·e automatiquement."
 msgstr "You'll be redirected automatically."
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:399
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:401
 #, elixir-autogen, elixir-format
 msgid "Établissements secondaires · Cameroun"
 msgstr "Secondary schools · Cameroon"
