@@ -1,6 +1,6 @@
 defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   @moduledoc """
-  Censorat → Corrections de notes (spec D3c/D3a, Pilotage §2.7): requests awaiting a
+  Censorat → Validation des corrections (spec D3c/D3a, Pilotage §2.7): requests awaiting a
   decision as cards (a refusal needs a reason), those decided, and the marks journal
   under the cards. Admin axis only (Proviseur, Censeur).
   """
@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
       {:ok,
        socket
        |> assign(
-         page_title: gettext("Corrections de notes"),
+         page_title: gettext("Validation des corrections"),
          refusing: nil,
          refuse_form: nil,
          corrections: []
@@ -260,7 +260,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
       <section id="correction-review" class="space-y-6">
         <.page_header
           eyebrow={gettext("Censorat · intégrité des notes")}
-          title={gettext("Corrections de notes")}
+          title={gettext("Validation des corrections")}
           subtitle={if @tab == "pending", do: pending_count_label(length(@corrections))}
         />
 

@@ -63,7 +63,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
                ["Journée", "Absences", "Élèves", "Sanctions"]
 
       assert tab_labels(:enseignant, facts([:teacher], teaches?: true)) ==
-               ["Aujourd'hui", "Mes cours", "Bulletins", "EDT"]
+               ["Ma journée", "Mes cours", "Bulletins", "EDT"]
     end
 
     test "« Plus » holds the rest of the menu, never a primary tab" do

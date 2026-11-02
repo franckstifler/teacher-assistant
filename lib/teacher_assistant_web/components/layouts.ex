@@ -67,7 +67,6 @@ defmodule TeacherAssistantWeb.Layouts do
         current_scope && current_scope.current_workspace && current_scope.current_workspace.id
       )
       |> assign(:role_label, role_label(current_scope))
-      |> assign(:workspace_type_label, workspace_type_label(current_scope))
       |> assign(:workspaces, workspaces)
       |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
       |> assign(:space, current_scope && current_scope.capabilities[:space])
@@ -168,8 +167,9 @@ defmodule TeacherAssistantWeb.Layouts do
                     <span class="block truncate text-sm font-semibold ta-display">
                       {@workspace_name}
                     </span>
+                    <%!-- The menu below is the space's: say which, as the phone header does. --%>
                     <span class="block truncate text-xs text-[color:var(--ta-rail-faint)]">
-                      {@workspace_type_label}{if @role_label, do: " · #{@role_label}"}
+                      {(@space && space_line(@space)) || @role_label}
                     </span>
                   </span>
                   <.icon
@@ -186,12 +186,15 @@ defmodule TeacherAssistantWeb.Layouts do
                       <.link
                         href={~p"/workspaces/select/#{ws.id}"}
                         method="post"
+                        aria-current={ws.id == @workspace_id && "true"}
                         class="flex items-center justify-between gap-2"
                       >
                         <span>{ws.name}</span>
-                        <span class="badge badge-sm badge-primary">
-                          {gettext("École")}
-                        </span>
+                        <.icon
+                          :if={ws.id == @workspace_id}
+                          name="hero-check"
+                          class="size-4 text-primary"
+                        />
                       </.link>
                     </li>
                   </ul>
@@ -304,8 +307,7 @@ defmodule TeacherAssistantWeb.Layouts do
                 <span class="min-w-0 flex-1 leading-tight">
                   <span class="block truncate text-sm font-semibold">{User.display_name(@current_user)}</span>
                   <span class="block truncate text-xs text-[color:var(--ta-rail-faint)]">
-                    {(@space && space_line(@space)) ||
-                      @role_label}
+                    {@role_label}
                   </span>
                 </span>
               </div>
@@ -560,31 +562,36 @@ defmodule TeacherAssistantWeb.Layouts do
         </div>
       </div>
 
+      <%!-- The rail's sections, under the same headings. --%>
       <nav
         :if={@more != []}
         id="more-nav"
-        class="grid grid-cols-3 gap-2"
+        class="flex flex-col gap-3"
         aria-label={gettext("Autres pages")}
       >
-        <%= for section <- @more, item <- section.items do %>
-          <.link
-            id={"more-#{item.id}"}
-            navigate={item.path}
-            aria-current={item_active?(item, @lit, @current_path) && "page"}
-            class="ta-tile"
-          >
-            <span class="flex items-start justify-between gap-1">
-              <.icon name={item.icon} class="size-5 text-primary" />
-              <span
-                :if={(item[:badge] || 0) > 0}
-                class={["ta-tab__badge !static", tab_badge_class(item)]}
-              >
-                {item.badge}
+        <section :for={section <- @more} class="flex flex-col gap-2">
+          <span class="ta-eyebrow">{section.label}</span>
+          <div class="grid grid-cols-3 gap-2">
+            <.link
+              :for={item <- section.items}
+              id={"more-#{item.id}"}
+              navigate={item.path}
+              aria-current={item_active?(item, @lit, @current_path) && "page"}
+              class="ta-tile"
+            >
+              <span class="flex items-start justify-between gap-1">
+                <.icon name={item.icon} class="size-5 text-primary" />
+                <span
+                  :if={(item[:badge] || 0) > 0}
+                  class={["ta-tab__badge !static", tab_badge_class(item)]}
+                >
+                  {item.badge}
+                </span>
               </span>
-            </span>
-            <span>{item.label}</span>
-          </.link>
-        <% end %>
+              <span>{item.label}</span>
+            </.link>
+          </div>
+        </section>
       </nav>
 
       <div class="flex flex-col">
@@ -687,8 +694,6 @@ defmodule TeacherAssistantWeb.Layouts do
     do: TeacherAssistant.Accounts.SchoolRole.label(role)
 
   defp role_label(_), do: nil
-
-  defp workspace_type_label(_), do: gettext("School")
 
   @doc """
   Shows the flash group with standard titles and content.

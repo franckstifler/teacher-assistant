@@ -108,6 +108,22 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#nav-school-corrections")
   end
 
+  test "the rail names the space, the « Plus » sheet keeps the rail's sections", ctx do
+    {conn, _} = member_conn(ctx, [:vice_principal, :teacher], teaches?: true)
+    {:ok, view, _} = live(conn, ~p"/school/sequences")
+
+    assert has_element?(view, "#workspace-switcher", "Espace censeur")
+    assert has_element?(view, "#workspace-switcher-item-#{ctx.school.id} a[aria-current]")
+    assert has_element?(view, "#nav-school-correction-review", "Validation des corrections")
+    assert has_element?(view, "#more-nav section", "Suivi pédagogique")
+    assert has_element?(view, "#more-nav section", "Établissement")
+
+    conn = post(conn, ~p"/school/space/enseignant")
+    {:ok, view, _} = live(conn, ~p"/school/courses")
+    assert has_element?(view, "#workspace-switcher", "Espace enseignant")
+    assert has_element?(view, "#nav-school-corrections", "Corrections de notes")
+  end
+
   test "a class's fees belong to Frais, not to Classes", ctx do
     {conn, _} = member_conn(ctx, [:head], [])
     {:ok, view, _} = live(conn, ~p"/school/classes/#{ctx.cg.id}/fees")

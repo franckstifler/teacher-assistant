@@ -399,7 +399,7 @@ defmodule TeacherAssistantWeb.Spaces do
   # name it as their menu entry); Bulletins gets the fourth tab.
   defp tab_spec(:enseignant),
     do: [
-      {"today", gettext("Aujourd'hui")},
+      {"today", gettext("Ma journée")},
       {"courses", gettext("Mes cours")},
       {"bulletins", gettext("Bulletins")},
       {"timetable-me", gettext("EDT")}
@@ -433,7 +433,7 @@ defmodule TeacherAssistantWeb.Spaces do
     do:
       item(
         "correction-review",
-        gettext("Corrections de notes"),
+        gettext("Validation des corrections"),
         "hero-shield-check",
         ~p"/school/corrections/review",
         pending
@@ -503,7 +503,7 @@ defmodule TeacherAssistantWeb.Spaces do
         ~p"/school/timetable/me"
       )
 
-  defp members, do: item("members", gettext("Members"), "hero-user-group", ~p"/school/members")
+  defp members, do: item("members", gettext("Members"), "hero-users", ~p"/school/members")
 
   defp settings,
     do: item("settings", gettext("Settings"), "hero-cog-6-tooth", ~p"/school/settings")
