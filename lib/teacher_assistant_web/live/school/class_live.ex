@@ -34,7 +34,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          can_manage_register?: Enrollment.can_manage_register?(scope),
          filter: :all,
          rq: "",
-         drawer: nil
+         drawer: nil,
+         transferring: nil
        )
        |> load_roster()}
     else
@@ -203,14 +204,10 @@ defmodule TeacherAssistantWeb.School.ClassLive do
             </.link>
             <.action_menu id={"roster-actions-#{row.enrollment.id}"} label={gettext("Gérer l'élève")}>
               <:item
-                :for={target <- @transfer_targets}
-                click={
-                  JS.push("transfer",
-                    value: %{"enrollment-id" => row.enrollment.id, "class-id" => target.id}
-                  )
-                }
+                :if={@transfer_targets != []}
+                click={JS.push("open_transfer", value: %{"enrollment-id" => row.enrollment.id})}
               >
-                {gettext("Transférer vers %{class}", class: target.label)}
+                {gettext("Transférer…")}
               </:item>
               <:item
                 danger
@@ -286,18 +283,14 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                           {gettext("Ouvrir la fiche")}
                         </.link>
                       </li>
-                      <li :if={@transfer_targets != []} class="menu-title text-xs">
-                        {gettext("Transférer vers")}
-                      </li>
-                      <li :for={target <- @transfer_targets}>
+                      <li :if={@transfer_targets != []}>
                         <button
-                          id={"transfer-#{row.enrollment.id}-#{target.id}"}
+                          id={"transfer-#{row.enrollment.id}"}
                           type="button"
-                          phx-click="transfer"
+                          phx-click="open_transfer"
                           phx-value-enrollment-id={row.enrollment.id}
-                          phx-value-class-id={target.id}
                         >
-                          {target.label}
+                          {gettext("Transférer…")}
                         </button>
                       </li>
                       <li>
@@ -336,6 +329,41 @@ defmodule TeacherAssistantWeb.School.ClassLive do
         capacity={@shell.capacity}
         can_manage_guardians?={@can_manage_guardians?}
       />
+
+      <%!-- One « Transférer… » per student, then the class picked here: the menus
+           stay short whatever the number of classes. --%>
+      <.drawer
+        :if={@drawer == :transfer and @transferring != nil}
+        id="transfer-drawer"
+        eyebrow={@transferring.student.full_name}
+        title={gettext("Transférer vers une autre classe")}
+        on_close={JS.push("close_drawer")}
+      >
+        <form id="transfer-form" phx-submit="transfer" class="space-y-2">
+          <input type="hidden" name="enrollment-id" value={@transferring.enrollment.id} />
+          <.input
+            id="transfer-class"
+            type="select"
+            name="class-id"
+            label={gettext("Nouvelle classe")}
+            value={nil}
+            prompt={gettext("Choisir une classe")}
+            required
+            options={for t <- @transfer_targets, do: {t.label, t.id}}
+          />
+          <p class="text-xs text-base-content/70">
+            {gettext("Les classes du même niveau viennent en premier.")}
+          </p>
+        </form>
+        <:footer>
+          <button type="button" class="btn btn-ghost btn-sm" phx-click="close_drawer">
+            {gettext("Annuler")}
+          </button>
+          <button type="submit" form="transfer-form" class="btn btn-primary btn-sm">
+            {gettext("Transférer")}
+          </button>
+        </:footer>
+      </.drawer>
 
       <.drawer
         :if={@drawer == :settings}
@@ -467,6 +495,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Élève transféré en %{label}.", label: target.label))
+       |> assign(drawer: nil, transferring: nil)
        |> load_roster()}
     else
       {:error, :different_year} ->
@@ -502,7 +531,15 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   def handle_event("open_enroll", _params, socket),
     do: {:noreply, assign(socket, :drawer, :enroll)}
 
-  def handle_event("close_drawer", _params, socket), do: {:noreply, assign(socket, :drawer, nil)}
+  def handle_event("close_drawer", _params, socket),
+    do: {:noreply, assign(socket, drawer: nil, transferring: nil)}
+
+  def handle_event("open_transfer", %{"enrollment-id" => eid}, socket) do
+    case Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)) do
+      nil -> {:noreply, socket}
+      row -> {:noreply, assign(socket, drawer: :transfer, transferring: row)}
+    end
+  end
 
   # --- Events: the class ----------------------------------------------------------
 

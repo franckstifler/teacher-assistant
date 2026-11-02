@@ -120,4 +120,27 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
     assert html =~ "La saisie de cette séquence n&#39;est pas encore ouverte."
     assert Assessment.list_assessments(ctx.t, ctx.tc, next) == []
   end
+
+  test "on a phone the séquence picker patches the page; another course opens its own", ctx do
+    [_first, next | _] = TeacherAssistant.Organization.list_sequences(ctx.head, ctx.year)
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+
+    assert has_element?(view, "#pick-seq option[selected]", "Séquence #{ctx.seq.number}")
+    # one course: no course picker
+    refute has_element?(view, "#pick-course")
+
+    view
+    |> element("#marks-pickers")
+    |> render_change(%{"_target" => ["seq"], "seq" => next.id})
+
+    assert_patch(view, ~p"/teacher/contexts/#{ctx.tc.id}/marks?seq=#{next.id}")
+    assert has_element?(view, "#upcoming-banner")
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             view
+             |> element("#marks-pickers")
+             |> render_change(%{"_target" => ["context"], "context" => "other", "seq" => next.id})
+
+    assert to == "/teacher/contexts/other/marks?seq=#{next.id}"
+  end
 end

@@ -548,7 +548,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
 
-  attr :eyebrow, :string, required: true
+  attr :eyebrow, :string, default: nil
   attr :title, :string, required: true
   attr :subtitle, :string, default: nil
   slot :hint, doc: "a subtitle with markup, shown where `subtitle` is"
@@ -558,8 +558,10 @@ defmodule TeacherAssistantWeb.CoreComponents do
     ~H"""
     <header class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p class="ta-eyebrow">{@eyebrow}</p>
-        <h1 class="mt-1.5 text-2xl font-semibold leading-[1.1] sm:text-[2rem]">{@title}</h1>
+        <p :if={@eyebrow} class="ta-eyebrow">{@eyebrow}</p>
+        <h1 class={["text-2xl font-semibold leading-[1.1] sm:text-[2rem]", @eyebrow && "mt-1.5"]}>
+          {@title}
+        </h1>
         <p :if={@subtitle} class="mt-2 text-[0.95rem] text-base-content/80">{@subtitle}</p>
         <p :if={@hint != []} class="mt-2 text-[0.95rem] text-base-content/80">{render_slot(@hint)}</p>
       </div>

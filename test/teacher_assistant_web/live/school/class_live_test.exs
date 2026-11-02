@@ -253,7 +253,13 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
 
-    view |> element("#transfer-#{e.id}-#{cg2.id}") |> render_click()
+    view |> element("#transfer-#{e.id}") |> render_click()
+    assert has_element?(view, "#transfer-drawer", "Awa")
+    assert has_element?(view, ~s(#transfer-class option[value="#{cg2.id}"]))
+    refute has_element?(view, ~s(#transfer-class option[value="#{cg.id}"]))
+
+    view |> form("#transfer-form", %{"class-id" => cg2.id}) |> render_submit()
+    refute has_element?(view, "#transfer-drawer")
 
     assert [] = Enrollment.list_roster(scope, cg)
     assert [_] = Enrollment.list_roster(scope, cg2)

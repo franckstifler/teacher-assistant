@@ -391,6 +391,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp new_assessment_form(socket, seq),
     do: solo_assessment_form(socket.assigns.current_scope, socket.assigns.ctx, seq)
 
+  # The phone pickers: another course opens its marks page (same séquence), a séquence
+  # patches this one.
+  def handle_event("pick", %{"_target" => ["context"], "context" => context} = params, socket) do
+    {:noreply,
+     push_navigate(socket, to: ~p"/teacher/contexts/#{context}/marks?#{seq_query(params)}")}
+  end
+
+  def handle_event("pick", params, socket),
+    do:
+      {:noreply,
+       push_patch(socket,
+         to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?#{seq_query(params)}"
+       )}
+
   def handle_event("save_competence", %{"competence" => %{"text" => text}}, socket),
     do: save_competence(socket, text)
 
@@ -702,10 +716,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     >
       <section id="teacher-marks" class="space-y-4">
         <.teaching_nav context_id={@ctx.id} label={@title} current={:marks} />
-        <.page_header
-          eyebrow={gettext("Notes · %{subject}", subject: @ctx.subject)}
-          title={gettext("Saisie des notes")}
-        >
+        <%!-- The breadcrumb above names the course; no eyebrow repeats it. --%>
+        <.page_header title={gettext("Saisie des notes")}>
           <:actions>
             <.save_state errors={@errors} saved_at={@saved_at} />
           </:actions>
@@ -720,7 +732,42 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         />
 
         <div id="marks-toolbar" class="ta-panel flex flex-col gap-3">
-          <div class="flex flex-wrap items-center gap-2">
+          <%!-- Phones: the course and the séquence as two compact selects. --%>
+          <form
+            :if={length(@course_tabs) > 1 or @sequences != []}
+            id="marks-pickers"
+            phx-change="pick"
+            class="grid gap-2 sm:hidden"
+          >
+            <select
+              :if={length(@course_tabs) > 1}
+              id="pick-course"
+              name="context"
+              aria-label={gettext("Mes cours")}
+              class="select select-bordered select-sm w-full"
+            >
+              <option
+                :for={tab <- @course_tabs}
+                value={tab.context_id}
+                selected={tab.current?}
+              >
+                {tab.label}
+              </option>
+            </select>
+            <select
+              :if={@sequences != []}
+              id="pick-seq"
+              name="seq"
+              aria-label={gettext("Séquence")}
+              class="select select-bordered select-sm w-full"
+            >
+              <option :for={s <- @sequences} value={s.id} selected={@seq && @seq.id == s.id}>
+                {seq_tab_label(s, @today)}
+              </option>
+            </select>
+          </form>
+
+          <div class="hidden flex-wrap items-center gap-2 sm:flex">
             <nav
               :if={length(@course_tabs) > 1}
               id="course-tabs"
@@ -904,6 +951,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   # « Séquence 2 · ouverte » / « · verrouillée » / « · à venir ».
+  defp seq_query(%{"seq" => seq}) when seq != "", do: [seq: seq]
+  defp seq_query(_params), do: []
+
   defp seq_tab_label(seq, today) do
     base = gettext("Séquence %{n}", n: seq.number)
 
