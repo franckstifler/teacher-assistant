@@ -31,7 +31,7 @@ defmodule TeacherAssistant.StudentPhotosTest do
     assert {:ok, updated} = StudentPhotos.store(sg, st, tmp_copy(@jpeg))
     assert updated.photo_path =~ ~r{^student_photos/#{sg.current_workspace.id}/.+\.jpg$}
     assert %DateTime{} = updated.photo_taken_at
-    assert {:ok, abs} = Uploads.resolve(updated.photo_path)
+    assert {:ok, abs} = Uploads.resolve(updated.photo_path, sg.current_workspace.id)
     assert File.read!(abs) == File.read!(@jpeg)
   end
 
@@ -39,7 +39,7 @@ defmodule TeacherAssistant.StudentPhotosTest do
     {:ok, first} = StudentPhotos.store(sg, st, tmp_copy(@jpeg))
     {:ok, second} = StudentPhotos.store(sg, first, tmp_copy(@jpeg))
     refute first.photo_path == second.photo_path
-    assert {:ok, _} = Uploads.resolve(first.photo_path)
+    assert {:ok, _} = Uploads.resolve(first.photo_path, sg.current_workspace.id)
   end
 
   test "a non-JPEG is refused and nothing is stored", %{sg: sg, st: st} do
@@ -72,11 +72,26 @@ defmodule TeacherAssistant.StudentPhotosTest do
     {:ok, with_photo} = StudentPhotos.store(sg, st, tmp_copy(@jpeg))
     assert {:ok, removed} = StudentPhotos.remove(sg, with_photo)
     assert removed.photo_path == nil and removed.photo_taken_at == nil
-    assert {:ok, _} = Uploads.resolve(with_photo.photo_path)
+    assert {:ok, _} = Uploads.resolve(with_photo.photo_path, sg.current_workspace.id)
   end
 
   test "resolve refuses paths escaping the uploads dir" do
-    assert :error = Uploads.resolve("../../etc/passwd")
-    assert :error = Uploads.resolve(nil)
+    assert :error = Uploads.resolve("../../etc/passwd", "ws")
+    assert :error = Uploads.resolve(nil, "ws")
+  end
+
+  test "resolve serves a school's file to that school only", %{sg: sg, st: st} do
+    {:ok, %{photo_path: relative}} = StudentPhotos.store(sg, st, tmp_copy(@jpeg))
+    ws = sg.current_workspace.id
+
+    assert {:ok, _} = Uploads.resolve(relative, ws)
+    assert :error = Uploads.resolve(relative, Ash.UUIDv7.generate())
+    assert :error = Uploads.resolve(relative, nil)
+    # the right school's name, reached by climbing out of another folder
+    assert :error =
+             Uploads.resolve("student_photos/x/../#{ws}/../../#{relative}", Ash.UUIDv7.generate())
+
+    # not deeper, not shallower than folder/school/file
+    assert :error = Uploads.resolve(Path.dirname(relative), ws)
   end
 end

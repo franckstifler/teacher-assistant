@@ -5,17 +5,26 @@ defmodule TeacherAssistant.Uploads do
 
   def dir, do: :teacher_assistant |> Application.fetch_env!(:uploads_dir) |> Path.expand()
 
-  @doc "The absolute path of a stored relative path, or `:error` when it escapes `dir/0` or is not a regular file."
-  def resolve(relative) when is_binary(relative) do
+  @doc """
+  The absolute path of a stored relative path, or `:error` unless it is a regular
+  file inside `workspace_id`'s own folder (`folder/workspace_id/file`, as every
+  store writes it): a path that leaves `dir/0`, or names another school's folder,
+  is never served.
+  """
+  def resolve(relative, workspace_id) when is_binary(relative) and is_binary(workspace_id) do
     root = dir()
     path = Path.expand(Path.join(root, relative))
 
-    if String.starts_with?(path, root <> "/") and File.regular?(path),
-      do: {:ok, path},
-      else: :error
+    with true <- String.starts_with?(path, root <> "/"),
+         [_folder, ^workspace_id, _file] <- path |> Path.relative_to(root) |> Path.split(),
+         true <- File.regular?(path) do
+      {:ok, path}
+    else
+      _ -> :error
+    end
   end
 
-  def resolve(_), do: :error
+  def resolve(_relative, _workspace_id), do: :error
 
   @doc """
   Copies an uploaded PNG or JPEG to `folder/workspace_id/` under a name and

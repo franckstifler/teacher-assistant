@@ -1005,8 +1005,13 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       assert html =~ ~s(src="/school/bulletins/#{pub.id}/photo/#{st.id}")
 
       frozen = get(conn, ~p"/school/bulletins/#{pub.id}/photo/#{st.id}")
-      {:ok, first_abs} = TeacherAssistant.Uploads.resolve(first.photo_path)
-      {:ok, second_abs} = TeacherAssistant.Uploads.resolve(second.photo_path)
+
+      {:ok, first_abs} =
+        TeacherAssistant.Uploads.resolve(first.photo_path, scope.current_workspace.id)
+
+      {:ok, second_abs} =
+        TeacherAssistant.Uploads.resolve(second.photo_path, scope.current_workspace.id)
+
       assert frozen.status == 200
       assert frozen.resp_body == File.read!(first_abs)
       refute frozen.resp_body == File.read!(second_abs)

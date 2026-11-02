@@ -16,7 +16,7 @@ defmodule TeacherAssistantWeb.SchoolLogoController do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, profile} <- Accounts.fetch_school_profile(scope),
          stored when is_binary(stored) <- Map.fetch!(profile, field),
-         {:ok, path} <- TeacherAssistant.Uploads.resolve(stored),
+         {:ok, path} <- TeacherAssistant.Uploads.resolve(stored, scope.current_workspace.id),
          # Never a type guessed from the name: an HTML or SVG file served from
          # this origin would run as a page here.
          {:ok, content_type} <- TeacherAssistant.Uploads.image_content_type(path) do
