@@ -400,41 +400,9 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               )}
             </span>
           </:hint>
+          <%!-- The conflict count and « Disponibilités » (its only way in) stay in view;
+               the three prints go behind « ⋯ ». --%>
           <:actions>
-            <.link
-              id="availability-link"
-              navigate={~p"/school/timetable/availability"}
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="hero-clock" class="size-4" /> {gettext("Disponibilités des enseignants")}
-            </.link>
-            <a
-              :if={@cg}
-              id="print-timetable"
-              href={~p"/school/classes/#{@cg.id}/timetable/print"}
-              target="_blank"
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer la classe")}
-            </a>
-            <a
-              id="print-teachers"
-              href={~p"/school/timetable/teachers/print"}
-              target="_blank"
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="hero-printer" class="size-4" /> {gettext(
-                "Emplois du temps des enseignants"
-              )}
-            </a>
-            <a
-              id="print-general"
-              href={~p"/school/timetable/general/print"}
-              target="_blank"
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="hero-printer" class="size-4" /> {gettext("Emploi du temps général")}
-            </a>
             <span
               id="conflict-count"
               class={["text-sm font-semibold", if(@count > 0, do: "text-error", else: "text-success")]}
@@ -443,6 +411,42 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                 do: ngettext("%{count} conflit à résoudre", "%{count} conflits à résoudre", @count),
                 else: gettext("Aucun conflit")}
             </span>
+            <.link
+              id="availability-link"
+              navigate={~p"/school/timetable/availability"}
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="hero-clock" class="size-4" />
+              <span class="sm:hidden">{gettext("Disponibilités")}</span>
+              <span class="hidden sm:inline">{gettext("Disponibilités des enseignants")}</span>
+            </.link>
+            <.action_menu id="timetable-menu" label={gettext("Imprimer")} class="ml-auto">
+              <:item
+                :if={@cg}
+                id="print-timetable"
+                icon="hero-printer"
+                href={~p"/school/classes/#{@cg.id}/timetable/print"}
+                target="_blank"
+              >
+                {gettext("Imprimer la classe")}
+              </:item>
+              <:item
+                id="print-teachers"
+                icon="hero-printer"
+                href={~p"/school/timetable/teachers/print"}
+                target="_blank"
+              >
+                {gettext("Emplois du temps des enseignants")}
+              </:item>
+              <:item
+                id="print-general"
+                icon="hero-printer"
+                href={~p"/school/timetable/general/print"}
+                target="_blank"
+              >
+                {gettext("Emploi du temps général")}
+              </:item>
+            </.action_menu>
           </:actions>
         </.page_header>
 

@@ -565,7 +565,8 @@ defmodule TeacherAssistantWeb.CoreComponents do
         <p :if={@subtitle} class="mt-2 text-[0.95rem] text-base-content/80">{@subtitle}</p>
         <p :if={@hint != []} class="mt-2 text-[0.95rem] text-base-content/80">{render_slot(@hint)}</p>
       </div>
-      <div :if={@actions != []} class="flex flex-wrap items-center gap-2">
+      <%!-- Full width on phones, so a trailing « ⋯ » (ml-auto) sits at the right edge and its menu fits. --%>
+      <div :if={@actions != []} class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         {render_slot(@actions)}
       </div>
     </header>
