@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Operator do
   from a school screen.
   """
   require Ash.Query
-  import Ecto.Query, only: [from: 2]
+  import Ecto.Query, only: [from: 2, subquery: 1, union_all: 2]
 
   alias TeacherAssistant.Academics.{ClassGroup, Enrollment, Workspace}
   alias TeacherAssistant.Accounts.{Phone, SchoolMembership, SchoolProfile, User}
@@ -15,30 +15,57 @@ defmodule TeacherAssistant.Operator do
 
   @read [authorize?: false]
 
-  @doc "Schools by status, active members, enrolled students and the last 7 days' activity."
+  # What counts as a school « acting »: a row someone typed in, with who typed it and the
+  # module it belongs to. Screens with no such trail (timetable, photos) have no usage figure.
+  @activity [
+    {"mark_events", :actor_user_id, :notes},
+    {"attendance_entries", :recorded_by_user_id, :appel},
+    {"typed_absences", :recorded_by_user_id, :appel},
+    {"sanction_entries", :issued_by_user_id, :discipline},
+    {"payments", :recorded_by_user_id, :frais}
+  ]
+  @weeks 12
+  @quiet_days 14
+
+  @doc """
+  The platform at a glance: schools by status, what needs the operator (verification queue,
+  schools gone quiet or never started), growth, the activation funnel, the last 7 days' use,
+  12 weeks of activity, module adoption, the most active schools and system health.
+  """
   def overview(%Scope{} = scope) do
     ensure_operator!(scope)
-    week_ago = DateTime.add(DateTime.utc_now(), -7, :day)
-    profiles = Ash.read!(SchoolProfile, @read)
+    now = DateTime.utc_now()
+    week_ago = DateTime.add(now, -7, :day)
+    profiles = SchoolProfile |> Ash.Query.load(:workspace) |> Ash.read!(@read)
+
+    live =
+      Enum.filter(
+        profiles,
+        &(&1.verification_status == :verified and is_nil(&1.workspace.suspended_at))
+      )
+
+    per_school = activity_per_school(now)
+    with_students = schools_with_students()
 
     %{
       schools: %{
         unverified: Enum.count(profiles, &(&1.verification_status == :unverified)),
         verified: Enum.count(profiles, &(&1.verification_status == :verified)),
         rejected: Enum.count(profiles, &(&1.verification_status == :rejected)),
-        suspended: Workspace |> Ash.Query.filter(not is_nil(suspended_at)) |> Ash.count!(@read)
+        suspended: Enum.count(profiles, &(&1.workspace.suspended_at != nil))
       },
       members: count(from(m in "school_memberships", where: m.active == true)),
-      students:
-        count(
-          from(e in "enrollments",
-            join: y in "academic_years",
-            on: y.id == e.academic_year_id,
-            where: y.active == true
-          )
-        ),
+      students: Enum.sum(Map.values(with_students)),
       roll_calls_7d: count(from(a in "attendance_entries", where: a.inserted_at >= ^week_ago)),
-      marks_7d: count(from(m in "mark_events", where: m.inserted_at >= ^week_ago))
+      marks_7d: count(from(m in "mark_events", where: m.inserted_at >= ^week_ago)),
+      attention: attention(profiles, live, per_school, now),
+      growth: growth(now),
+      funnel: funnel(profiles, with_students, per_school),
+      usage: usage(live, per_school, week_ago),
+      weekly: weekly(now),
+      modules: modules(live, now),
+      top_schools: top_schools(profiles, per_school, with_students),
+      system: system()
     }
   end
 
@@ -137,9 +164,226 @@ defmodule TeacherAssistant.Operator do
     |> Ash.read!(@read)
   end
 
+  # Every activity row since `since`, as {workspace_id, user_id, at, module}.
+  defp activity_since(%DateTime{} = since) do
+    @activity
+    |> Enum.map(fn {table, actor, module} ->
+      from(r in table,
+        where: r.inserted_at >= ^since,
+        select: %{
+          workspace_id: r.workspace_id,
+          user_id: field(r, ^actor),
+          at: r.inserted_at,
+          module: type(^Atom.to_string(module), :string)
+        }
+      )
+    end)
+    |> Enum.reduce(fn query, acc -> union_all(acc, ^query) end)
+  end
+
+  # Per school over the last 12 weeks: its last action and its actions in the last 7 days.
+  defp activity_per_school(now) do
+    week_ago = DateTime.add(now, -7, :day)
+
+    from(a in subquery(activity_since(DateTime.add(now, -@weeks * 7, :day))),
+      group_by: a.workspace_id,
+      select:
+        {type(a.workspace_id, Ecto.UUID),
+         %{
+           last_at: max(a.at),
+           actions_7d: fragment("count(*) FILTER (WHERE ? >= ?)", a.at, ^week_ago)
+         }}
+    )
+    |> Repo.all()
+    |> Map.new(fn {id, row} -> {id, %{row | last_at: to_datetime(row.last_at)}} end)
+  end
+
+  # Students enrolled in an active year, per school.
+  defp schools_with_students do
+    from(e in "enrollments",
+      join: y in "academic_years",
+      on: y.id == e.academic_year_id,
+      where: y.active == true,
+      group_by: e.workspace_id,
+      select: {type(e.workspace_id, Ecto.UUID), count()}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp attention(profiles, live, per_school, now) do
+    quiet_before = DateTime.add(now, -@quiet_days, :day)
+    week_ago = DateTime.add(now, -7, :day)
+
+    %{
+      pending:
+        profiles
+        |> Enum.filter(&(&1.verification_status == :unverified))
+        |> Enum.sort_by(& &1.inserted_at, DateTime)
+        |> Enum.map(&%{id: &1.workspace.id, name: &1.workspace.name, since: &1.inserted_at}),
+      quiet:
+        live
+        |> Enum.filter(
+          &(per_school[&1.workspace.id] &&
+              before?(per_school[&1.workspace.id].last_at, quiet_before))
+        )
+        |> Enum.map(
+          &%{
+            id: &1.workspace.id,
+            name: &1.workspace.name,
+            last_at: per_school[&1.workspace.id].last_at
+          }
+        )
+        |> Enum.sort_by(& &1.last_at, DateTime),
+      silent:
+        live
+        |> Enum.filter(
+          &(is_nil(per_school[&1.workspace.id]) and before?(&1.workspace.inserted_at, week_ago))
+        )
+        |> Enum.sort_by(& &1.workspace.inserted_at, DateTime)
+        |> Enum.map(
+          &%{id: &1.workspace.id, name: &1.workspace.name, since: &1.workspace.inserted_at}
+        )
+    }
+  end
+
+  defp before?(at, limit), do: DateTime.compare(at, limit) == :lt
+
+  # New schools and users in the last 30 days, and in the 30 days before.
+  defp growth(now) do
+    month_ago = DateTime.add(now, -30, :day)
+    two_months_ago = DateTime.add(now, -60, :day)
+
+    new_in = fn table, from_at, to_at ->
+      count(from(r in table, where: r.inserted_at >= ^from_at and r.inserted_at < ^to_at))
+    end
+
+    %{
+      new_schools: new_in.("workspaces", month_ago, now),
+      new_schools_before: new_in.("workspaces", two_months_ago, month_ago),
+      new_users: new_in.("users", month_ago, now),
+      new_users_before: new_in.("users", two_months_ago, month_ago)
+    }
+  end
+
+  # Each step keeps only the schools of the step before.
+  defp funnel(profiles, with_students, per_school) do
+    signed_up = Enum.reject(profiles, &(&1.verification_status == :rejected))
+    verified = Enum.filter(signed_up, &(&1.verification_status == :verified))
+    set_up = Enum.filter(verified, &Map.has_key?(with_students, &1.workspace.id))
+    active = Enum.filter(set_up, &((get_in(per_school, [&1.workspace.id, :actions_7d]) || 0) > 0))
+
+    %{
+      signed_up: length(signed_up),
+      verified: length(verified),
+      set_up: length(set_up),
+      active: length(active)
+    }
+  end
+
+  defp usage(live, per_school, week_ago) do
+    %{
+      live_schools: length(live),
+      active_schools: Enum.count(per_school, fn {_id, row} -> row.actions_7d > 0 end),
+      active_users:
+        Repo.one(
+          from(a in subquery(activity_since(week_ago)), select: count(a.user_id, :distinct))
+        ),
+      actions: per_school |> Enum.map(fn {_id, row} -> row.actions_7d end) |> Enum.sum()
+    }
+  end
+
+  # Actions and acting schools per week (Monday first), oldest first, this week last.
+  defp weekly(now) do
+    this_monday = now |> DateTime.to_date() |> Date.beginning_of_week()
+    first = Date.add(this_monday, -(@weeks - 1) * 7)
+
+    rows =
+      from(a in subquery(activity_since(DateTime.new!(first, ~T[00:00:00]))),
+        group_by: fragment("date_trunc('week', ?)::date", a.at),
+        select:
+          {fragment("date_trunc('week', ?)::date", a.at),
+           %{actions: count(), schools: count(a.workspace_id, :distinct)}}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    for i <- 0..(@weeks - 1) do
+      week = Date.add(first, i * 7)
+      Map.merge(%{week: week, actions: 0, schools: 0}, Map.get(rows, week, %{}))
+    end
+  end
+
+  # Per module: live schools that have it, and schools that used it in the last 30 days
+  # (nil for a module with no activity trail).
+  defp modules(live, now) do
+    used =
+      from(a in subquery(activity_since(DateTime.add(now, -30, :day))),
+        group_by: a.module,
+        select: {a.module, count(a.workspace_id, :distinct)}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    tracked = @activity |> Enum.map(&elem(&1, 2)) |> MapSet.new()
+
+    Map.new(TeacherAssistant.Modules.keys(), fn key ->
+      {key,
+       %{
+         enabled: Enum.count(live, &(key in &1.workspace.modules)),
+         used: if(key in tracked, do: Map.get(used, Atom.to_string(key), 0))
+       }}
+    end)
+  end
+
+  defp top_schools(profiles, per_school, with_students) do
+    profiles
+    |> Enum.filter(&((get_in(per_school, [&1.workspace.id, :actions_7d]) || 0) > 0))
+    |> Enum.map(fn p ->
+      row = per_school[p.workspace.id]
+
+      %{
+        id: p.workspace.id,
+        name: p.workspace.name,
+        town: p.town,
+        actions_7d: row.actions_7d,
+        last_at: row.last_at,
+        students: Map.get(with_students, p.workspace.id, 0)
+      }
+    end)
+    |> Enum.sort_by(& &1.actions_7d, :desc)
+    |> Enum.take(8)
+  end
+
+  defp system do
+    jobs =
+      from(j in "oban_jobs", group_by: j.state, select: {j.state, count()})
+      |> Repo.all()
+      |> Map.new()
+
+    %{rows: [[db_bytes]]} = Repo.query!("SELECT pg_database_size(current_database())")
+    {uptime_ms, _} = :erlang.statistics(:wall_clock)
+
+    %{
+      jobs: %{
+        waiting: Map.get(jobs, "available", 0) + Map.get(jobs, "scheduled", 0),
+        retrying: Map.get(jobs, "retryable", 0),
+        failed: Map.get(jobs, "discarded", 0)
+      },
+      last_job_at:
+        from(j in "oban_jobs", where: j.state == "completed", select: max(j.completed_at))
+        |> Repo.one()
+        |> then(&(&1 && to_datetime(&1))),
+      db_bytes: db_bytes,
+      memory_bytes: :erlang.memory(:total),
+      uptime_ms: uptime_ms,
+      version: to_string(Application.spec(:teacher_assistant, :vsn))
+    }
+  end
+
   defp last_activity(workspace_id) do
-    ["attendance_entries", "mark_events"]
-    |> Enum.map(fn table ->
+    @activity
+    |> Enum.map(fn {table, _actor, _module} ->
       Repo.one(
         from(r in table,
           where: r.workspace_id == type(^workspace_id, :binary_id),

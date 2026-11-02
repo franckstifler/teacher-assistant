@@ -751,6 +751,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:49
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:75
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:56
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:192
 #: lib/teacher_assistant_web/live/admin/school_live.ex:121
 #: lib/teacher_assistant_web/live/school/classes_live.ex:49
 #, elixir-autogen, elixir-format
@@ -2152,6 +2153,7 @@ msgid "Votre établissement est configuré mais pas encore vérifié. Vous pouve
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:127
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:62
 #: lib/teacher_assistant_web/live/admin/school_live.ex:145
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:233
 #, elixir-autogen, elixir-format
@@ -2676,6 +2678,7 @@ msgstr ""
 #: lib/teacher_assistant_web/components/teaching_nav.ex:28
 #: lib/teacher_assistant_web/controllers/page_html.ex:183
 #: lib/teacher_assistant_web/controllers/page_html.ex:206
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:193
 #: lib/teacher_assistant_web/live/admin/school_live.ex:216
 #: lib/teacher_assistant_web/live/school/class_shell.ex:190
 #: lib/teacher_assistant_web/live/school/courses_live.ex:346
@@ -3413,6 +3416,7 @@ msgstr ""
 msgid "Saisie"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:298
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:163
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:216
 #, elixir-autogen, elixir-format
@@ -8349,6 +8353,7 @@ msgstr ""
 msgid "Relancer tous"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:53
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:164
 #, elixir-autogen, elixir-format
 msgid "Rien à traiter"
@@ -8410,6 +8415,8 @@ msgstr ""
 msgid "Visa du parent"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:71
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:80
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:262
 #: lib/teacher_assistant_web/live/school/fees_live.ex:575
 #, elixir-autogen, elixir-format
@@ -8481,6 +8488,7 @@ msgstr ""
 msgid "À relancer · %{n}"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:47
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:162
 #, elixir-autogen, elixir-format
 msgid "À traiter · %{n}"
@@ -10363,7 +10371,7 @@ msgstr ""
 #: lib/teacher_assistant_web/components/layouts.ex:274
 #: lib/teacher_assistant_web/components/layouts.ex:276
 #: lib/teacher_assistant_web/live/admin/journal_live.ex:53
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:24
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:38
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:57
 #: lib/teacher_assistant_web/live/admin/users_live.ex:69
 #, elixir-autogen, elixir-format
@@ -10373,11 +10381,6 @@ msgstr ""
 #: lib/teacher_assistant/modules.ex:115
 #, elixir-autogen, elixir-format
 msgid "Appel et absences"
-msgstr ""
-
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:58
-#, elixir-autogen, elixir-format
-msgid "Appels (7 jours)"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:113
@@ -10406,7 +10409,7 @@ msgstr ""
 msgid "Dernière activité"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:71
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:280
 #, elixir-autogen, elixir-format
 msgid "Dernières actions"
 msgstr ""
@@ -10424,11 +10427,12 @@ msgstr ""
 msgid "Journal"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:56
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:269
 #, elixir-autogen, elixir-format
 msgid "Membres actifs"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:218
 #: lib/teacher_assistant_web/live/admin/school_live.ex:193
 #: lib/teacher_assistant_web/live/school/settings_live.ex:66
 #, elixir-autogen, elixir-format
@@ -10461,17 +10465,12 @@ msgstr ""
 msgid "Nom, téléphone ou e-mail"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:59
-#, elixir-autogen, elixir-format
-msgid "Notes saisies (7 jours)"
-msgstr ""
-
 #: lib/teacher_assistant/modules.ex:119
 #, elixir-autogen, elixir-format
 msgid "Photos et cartes"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:32
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:249
 #, elixir-autogen, elixir-format
 msgid "Rejetés"
 msgstr ""
@@ -10502,7 +10501,7 @@ msgstr ""
 msgid "Suspendu : %{reason}"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:48
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:265
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:96
 #, elixir-autogen, elixir-format
 msgid "Suspendus"
@@ -10518,7 +10517,7 @@ msgstr ""
 msgid "Tous les statuts"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:81
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:293
 #, elixir-autogen, elixir-format
 msgid "Tout le journal"
 msgstr ""
@@ -10546,23 +10545,25 @@ msgid "Votre mot de passe temporaire Teacher Assistant : %{password}. Il est val
 msgstr ""
 
 #: lib/teacher_assistant_web/components/layouts.ex:283
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:14
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:24
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:20
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:38
 #, elixir-autogen, elixir-format
 msgid "Vue d'ensemble"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:31
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:165
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:248
 #, elixir-autogen, elixir-format
 msgid "Vérifiés"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:30
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:247
 #, elixir-autogen, elixir-format
 msgid "À vérifier"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/admin/overview_live.ex:57
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:166
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:273
 #, elixir-autogen, elixir-format
 msgid "Élèves inscrits"
 msgstr ""
@@ -12035,6 +12036,7 @@ msgstr ""
 msgid "Grade (tranche %{n})"
 msgstr ""
 
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:222
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:100
 #, elixir-autogen, elixir-format
 msgid "Module"
@@ -12910,4 +12912,265 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/timetable_editor_live.ex:420
 #, elixir-autogen, elixir-format
 msgid "Disponibilités"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:90
+#, elixir-autogen, elixir-format
+msgid "%{count} tâche de fond abandonnée après échecs"
+msgid_plural "%{count} tâches de fond abandonnées après échecs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:487
+#, elixir-autogen, elixir-format
+msgid "%{d} j %{h} h"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:486
+#, elixir-autogen, elixir-format
+msgid "%{h} h %{m} min"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:485
+#, elixir-autogen, elixir-format
+msgid "%{m} min"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:60
+#, elixir-autogen, elixir-format
+msgid "%{name} attend sa vérification"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:78
+#, elixir-autogen, elixir-format
+msgid "%{name} n'a encore rien saisi"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:69
+#, elixir-autogen, elixir-format
+msgid "%{name} ne saisit plus rien"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:476
+#, elixir-autogen, elixir-format
+msgid "%{n} Go"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:479
+#, elixir-autogen, elixir-format
+msgid "%{n} Ko"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:478
+#, elixir-autogen, elixir-format
+msgid "%{n} Mo"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:468
+#, elixir-autogen, elixir-format
+msgid "+%{n} par rapport aux 30 jours précédents"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:167
+#, elixir-autogen, elixir-format
+msgid "Actifs cette semaine"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:143
+#, elixir-autogen, elixir-format
+msgid "Activité sur 12 semaines"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:223
+#, elixir-autogen, elixir-format
+msgid "Activé"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:282
+#, elixir-autogen, elixir-format
+msgid "Aucune action enregistrée."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:186
+#, elixir-autogen, elixir-format
+msgid "Aucune saisie cette semaine."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:304
+#, elixir-autogen, elixir-format
+msgid "Base de données"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:157
+#, elixir-autogen, elixir-format
+msgid "Chaque étape ne garde que les établissements de l'étape précédente."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:195
+#, elixir-autogen, elixir-format
+msgid "Dernière"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:70
+#, elixir-autogen, elixir-format
+msgid "Dernière saisie le %{date}"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:326
+#, elixir-autogen, elixir-format
+msgid "Dernière tâche réussie"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:145
+#, elixir-autogen, elixir-format
+msgid "Données saisies par semaine : notes, appels, absences, sanctions, paiements."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:464
+#, elixir-autogen, elixir-format
+msgid "En attente depuis %{count} jour"
+msgid_plural "En attente depuis %{count} jours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:302
+#, elixir-autogen, elixir-format
+msgid "En ligne depuis"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:79
+#, elixir-autogen, elixir-format
+msgid "Inscrit le %{date}"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:164
+#, elixir-autogen, elixir-format
+msgid "Inscrits"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:41
+#, elixir-autogen, elixir-format
+msgid "Mis à jour %{at}"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:306
+#, elixir-autogen, elixir-format
+msgid "Mémoire"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:134
+#, elixir-autogen, elixir-format
+msgid "Nouveaux utilisateurs · 30 j"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:128
+#, elixir-autogen, elixir-format
+msgid "Nouveaux établissements · 30 j"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:242
+#, elixir-autogen, elixir-format
+msgid "Parc"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:155
+#, elixir-autogen, elixir-format
+msgid "Parcours d'activation"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:194
+#, elixir-autogen, elixir-format
+msgid "Saisies"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:410
+#, elixir-autogen, elixir-format
+msgid "Saisies par semaine"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:387
+#, elixir-autogen, elixir-format
+msgid "Saisies par semaine sur 12 semaines"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:426
+#, elixir-autogen, elixir-format
+msgid "Semaine du %{date} : %{actions} saisies, %{schools} établissements"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:103
+#, elixir-autogen, elixir-format
+msgid "Toute la file de vérification"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:319
+#, elixir-autogen, elixir-format
+msgid "Tâches abandonnées"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:308
+#, elixir-autogen, elixir-format
+msgid "Tâches en attente"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:312
+#, elixir-autogen, elixir-format
+msgid "Tâches à réessayer"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:116
+#, elixir-autogen, elixir-format
+msgid "Utilisateurs actifs · 7 j"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:224
+#, elixir-autogen, elixir-format
+msgid "Utilisé · 30 j"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:300
+#, elixir-autogen, elixir-format
+msgid "Version"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:473
+#, elixir-autogen, elixir-format
+msgid "autant que les 30 jours précédents"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:407
+#, elixir-autogen, elixir-format
+msgid "cette semaine"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:112
+#, elixir-autogen, elixir-format
+msgid "ont saisi au moins une donnée"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:119
+#, elixir-autogen, elixir-format
+msgid "sur %{count} membre actif"
+msgid_plural "sur %{count} membres actifs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:236
+#, elixir-autogen, elixir-format
+msgid "« — » : ce module ne laisse pas de trace de saisie à compter."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:110
+#, elixir-autogen, elixir-format
+msgid "Établissements actifs · 7 j"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:184
+#, elixir-autogen, elixir-format
+msgid "Établissements les plus actifs · 7 j"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/overview_live.ex:471
+#, elixir-autogen, elixir-format
+msgid "−%{n} par rapport aux 30 jours précédents"
 msgstr ""

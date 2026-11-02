@@ -22,6 +22,66 @@ defmodule TeacherAssistant.OperatorTest do
     assert before.members >= 1
   end
 
+  describe "overview activity" do
+    setup %{head: head} do
+      year = head.current_academic_year
+      [cg | _] = TeacherAssistant.Enrollment.list_class_groups(head, year)
+      {:ok, _} = TeacherAssistant.Enrollment.add_student(head, cg, %{full_name: "Awa", sex: :f})
+      [%{enrollment: awa} | _] = TeacherAssistant.Enrollment.list_roster(head, cg)
+
+      {:ok, _} =
+        TeacherAssistant.Discipline.add_sanction(head, awa, %{
+          type: :avertissement,
+          date: Date.utc_today()
+        })
+
+      :ok
+    end
+
+    test "a school that acted this week is active and set up", %{op: op, ws: ws} do
+      o = Operator.overview(op)
+
+      assert o.usage.active_schools == 1
+      assert o.usage.active_users == 1
+      assert o.funnel == %{signed_up: 1, verified: 1, set_up: 1, active: 1}
+      assert [%{id: id, actions_7d: 1}] = o.top_schools
+      assert id == ws.id
+      assert o.modules[:discipline].used == 1
+      assert o.modules[:emploi_du_temps].used == nil
+      assert o.attention.quiet == [] and o.attention.silent == []
+      assert length(o.weekly) == 12
+      assert List.last(o.weekly).actions == 1
+      assert o.growth.new_schools == 1
+      assert o.growth.new_users >= 1
+      assert is_integer(o.system.db_bytes)
+    end
+
+    test "a school whose last action is three weeks old is quiet", %{op: op, ws: ws} do
+      three_weeks_ago = DateTime.add(DateTime.utc_now(), -21, :day)
+      TeacherAssistant.Repo.update_all("sanction_entries", set: [inserted_at: three_weeks_ago])
+
+      o = Operator.overview(op)
+      assert [%{id: id}] = o.attention.quiet
+      assert id == ws.id
+      assert o.usage.active_schools == 0
+      assert o.funnel.active == 0
+    end
+  end
+
+  test "a verified school with no activity for a week is listed as silent", %{op: op, ws: ws} do
+    week_ago = DateTime.add(DateTime.utc_now(), -8, :day)
+    TeacherAssistant.Repo.update_all("workspaces", set: [inserted_at: week_ago])
+
+    assert [%{id: id}] = Operator.overview(op).attention.silent
+    assert id == ws.id
+  end
+
+  test "an unverified school waits in the queue", %{op: op} do
+    %{workspace: pending} = TeacherFixtures.setup_complete_school_fixture(%{verified: false})
+    assert [%{id: id, name: _}] = Operator.overview(op).attention.pending
+    assert id == pending.id
+  end
+
   test "list_schools filters by name, status, suspension and module", %{op: op, ws: ws} do
     {:ok, ws} = Organization.set_modules(op, ws, [:notes])
     ids = fn rows -> Enum.map(rows, & &1.workspace.id) end
