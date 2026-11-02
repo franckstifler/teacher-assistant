@@ -496,8 +496,16 @@ defmodule TeacherAssistantWeb.School.FeesLive do
           >
             <.icon name="hero-envelope" class="size-4" /> {gettext("Avis de retard")}
           </button>
-          <.link :if={@can_edit?} navigate={~p"/school/settings/fees"} class="btn btn-ghost btn-sm">
-            <.icon name="hero-cog-6-tooth" class="size-4" /> {gettext("Paramètres des frais")}
+          <%!-- An icon at the row's end, so the two actions keep one row on a phone. --%>
+          <.link
+            :if={@can_edit?}
+            id="fee-settings-link"
+            navigate={~p"/school/settings/fees"}
+            class="btn btn-ghost btn-sm btn-square ml-auto"
+            aria-label={gettext("Paramètres des frais")}
+            title={gettext("Paramètres des frais")}
+          >
+            <.icon name="hero-cog-6-tooth" class="size-5" />
           </.link>
         </:actions>
 

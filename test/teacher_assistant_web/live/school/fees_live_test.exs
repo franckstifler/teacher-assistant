@@ -249,6 +249,12 @@ defmodule TeacherAssistantWeb.School.FeesLiveTest do
          %{conn: conn} = ctx do
       {:ok, view, _} = live(conn, page(ctx))
       assert has_element?(view, "#control-link[href='/school/classes/#{ctx.cg.id}/fees/control']")
+
+      assert has_element?(
+               view,
+               ~s(#fee-settings-link[href="/school/settings/fees"][aria-label="Paramètres des frais"])
+             )
+
       view |> element("#warn-class") |> render_click()
       assert has_element?(view, "#warn-form input[value='#{ctx.e2.id}'][checked]")
 
