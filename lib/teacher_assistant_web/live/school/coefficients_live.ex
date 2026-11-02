@@ -19,6 +19,7 @@ defmodule TeacherAssistantWeb.School.CoefficientsLive do
       {:ok,
        socket
        |> assign(
+         page_title: gettext("Matières & coefficients"),
          grid_views: layout,
          subsystem: first.subsystem,
          serie: nil,

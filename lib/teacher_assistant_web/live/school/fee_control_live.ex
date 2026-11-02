@@ -20,7 +20,12 @@ defmodule TeacherAssistantWeb.School.FeeControlLive do
          true <- Fees.can_manage_fees?(scope) or Enrollment.class_manager?(scope, cg) do
       {:ok,
        socket
-       |> assign(cg: cg, can_edit?: Fees.can_manage_fees?(scope))
+       |> assign(
+         page_title:
+           TeacherAssistantWeb.School.ClassShell.page_title(cg, gettext("Contrôle des frais")),
+         cg: cg,
+         can_edit?: Fees.can_manage_fees?(scope)
+       )
        |> TeacherAssistantWeb.School.ClassShell.assign_shell()}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}

@@ -18,7 +18,12 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
       rules = Attendance.school_life_rules(scope)
 
       {:ok,
-       assign(socket, rules: rules, example: SchoolLifeRules.example_mark(rules), error: nil)}
+       assign(socket,
+         page_title: gettext("Assiduité & discipline"),
+         rules: rules,
+         example: SchoolLifeRules.example_mark(rules),
+         error: nil
+       )}
     else
       {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end

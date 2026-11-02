@@ -76,4 +76,35 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
       assert has_element?(view, "#class-cycle", "1er cycle")
     end
   end
+
+  describe "browser tab titles" do
+    setup %{scope: scope, ws: ws} do
+      conn =
+        build_conn()
+        |> log_in_user(scope.current_user)
+        |> Plug.Conn.put_session(:workspace_id, ws.id)
+
+      %{conn: conn}
+    end
+
+    test "a class page names the class, then the tab", %{conn: conn, cg: cg} do
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert page_title(view) =~ "#{cg.label} · Élèves"
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/fees")
+      assert page_title(view) =~ "#{cg.label} · Frais"
+    end
+
+    test "a student's page names the student", %{conn: conn, scope: scope, cg: cg} do
+      {:ok, student} = Enrollment.add_student(scope, cg, %{full_name: "Awa Mbarga", sex: :f})
+
+      {:ok, view, _} = live(conn, ~p"/school/students/#{student.id}")
+      assert page_title(view) =~ "Awa Mbarga"
+    end
+
+    test "a school page uses its heading", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/school/sequences")
+      assert page_title(view) =~ "Suivi de la saisie des notes"
+    end
+  end
 end

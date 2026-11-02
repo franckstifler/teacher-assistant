@@ -11,7 +11,12 @@ defmodule TeacherAssistantWeb.School.RolesLive do
     with %{} <- scope.current_workspace,
          {:ok, profile} <- Accounts.fetch_school_profile(scope),
          true <- Accounts.can_edit_profile?(scope, profile) do
-      {:ok, assign(socket, rights: SchoolRole.rights(), roles: SchoolRole.values())}
+      {:ok,
+       assign(socket,
+         page_title: gettext("Rôles et droits"),
+         rights: SchoolRole.rights(),
+         roles: SchoolRole.values()
+       )}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end

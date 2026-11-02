@@ -24,6 +24,7 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLive do
       {:ok,
        socket
        |> assign(
+         page_title: ClassShell.page_title(cg, :discipline),
          cg: cg,
          year: year,
          sequences: if(year, do: Organization.list_sequences(scope, year), else: []),

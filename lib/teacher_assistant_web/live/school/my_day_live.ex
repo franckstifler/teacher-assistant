@@ -29,6 +29,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
       {:ok,
        socket
        |> assign(
+         page_title: gettext("Ma journée"),
          today: today,
          roll: nil,
          selected: nil,

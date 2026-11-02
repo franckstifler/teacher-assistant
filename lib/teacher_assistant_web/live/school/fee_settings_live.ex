@@ -18,7 +18,13 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLive do
          %{} = year <- Organization.current_academic_year(scope) do
       {:ok,
        socket
-       |> assign(year: year, unmatched: nil, type_error: nil, tranche_error: nil)
+       |> assign(
+         page_title: gettext("Paramètres des frais"),
+         year: year,
+         unmatched: nil,
+         type_error: nil,
+         tranche_error: nil
+       )
        |> reset_forms()
        |> load()}
     else

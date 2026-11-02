@@ -30,7 +30,13 @@ defmodule TeacherAssistantWeb.School.AppreciationsLive do
          true <- Accounts.can_edit_profile?(scope, profile) do
       {:ok,
        socket
-       |> assign(thresholds: @thresholds, test: "13,5", bands_error: nil, distinctions_error: nil)
+       |> assign(
+         page_title: gettext("Appréciations & distinctions"),
+         thresholds: @thresholds,
+         test: "13,5",
+         bands_error: nil,
+         distinctions_error: nil
+       )
        |> load_rules(Assessment.grading_rules(scope))}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}

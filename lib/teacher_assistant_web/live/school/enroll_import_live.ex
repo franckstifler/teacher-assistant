@@ -16,7 +16,14 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
          true <- Enrollment.can_manage_classes?(scope) do
       {:ok,
        socket
-       |> assign(cg: cg, stage: :paste, raw: "", preview: [], result: nil)
+       |> assign(
+         page_title: "#{cg.label} · #{gettext("Importer une liste d'élèves")}",
+         cg: cg,
+         stage: :paste,
+         raw: "",
+         preview: [],
+         result: nil
+       )
        |> assign(:capacity, Enrollment.capacity(scope, cg))}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/classes/#{id}")}

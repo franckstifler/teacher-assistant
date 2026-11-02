@@ -81,6 +81,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     year = Organization.current_academic_year(scope)
 
     socket
+    |> assign(:page_title, "#{socket.assigns.title} · #{gettext("Notes")}")
     |> assign(:ctx, ctx)
     |> assign(:grading_rules, Assessment.grading_rules(scope))
     |> assign(:sequences, if(year, do: Organization.list_sequences(scope, year), else: []))

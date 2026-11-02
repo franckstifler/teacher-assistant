@@ -17,6 +17,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
     if scope.current_academic_year && Discipline.can_manage_conduct?(scope) do
       {:ok,
        assign(socket,
+         page_title: gettext("Sanctions"),
          classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
          types: Attendance.school_life_rules(scope).sanction_types_in_use,
          issuers: Accounts.member_names(scope),

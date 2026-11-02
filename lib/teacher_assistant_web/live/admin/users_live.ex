@@ -8,7 +8,15 @@ defmodule TeacherAssistantWeb.Admin.UsersLive do
   alias TeacherAssistant.Accounts.SchoolRole
 
   def mount(_params, _session, socket),
-    do: {:ok, assign(socket, q: "", results: [], reset_user: nil, reset_password: nil)}
+    do:
+      {:ok,
+       assign(socket,
+         page_title: gettext("Utilisateurs"),
+         q: "",
+         results: [],
+         reset_user: nil,
+         reset_password: nil
+       )}
 
   def handle_event("search", %{"q" => q}, socket),
     do:

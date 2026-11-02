@@ -19,6 +19,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
          [_ | _] = classes <- ReportCards.visible_classes(scope, year) do
       {:ok,
        assign(socket,
+         page_title: gettext("Bulletins"),
          year: year,
          classes: classes,
          periods: periods_for(scope, year),

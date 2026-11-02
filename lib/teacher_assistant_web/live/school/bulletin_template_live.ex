@@ -26,7 +26,12 @@ defmodule TeacherAssistantWeb.School.BulletinTemplateLive do
 
       {:ok,
        socket
-       |> assign(header: header, settings_error: nil, scale_error: nil)
+       |> assign(
+         page_title: gettext("Modèle de bulletin"),
+         header: header,
+         settings_error: nil,
+         scale_error: nil
+       )
        |> load(scope)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}

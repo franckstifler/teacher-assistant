@@ -13,7 +13,16 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace && Curriculum.can_manage_assignments?(scope) do
-      {:ok, socket |> assign(selected: nil, pp_for: nil, hours: "4", panel_error: nil) |> load()}
+      {:ok,
+       socket
+       |> assign(
+         page_title: gettext("Affectations"),
+         selected: nil,
+         pp_for: nil,
+         hours: "4",
+         panel_error: nil
+       )
+       |> load()}
     else
       {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end

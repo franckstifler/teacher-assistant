@@ -17,7 +17,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil and Discipline.can_manage_conduct?(scope) do
-      {:ok, load(socket)}
+      {:ok, socket |> assign(:page_title, gettext("Aujourd'hui")) |> load()}
     else
       {:ok,
        socket

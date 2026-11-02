@@ -104,6 +104,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolLive do
 
   defp assign_school(socket, school) do
     assign(socket,
+      page_title: school.workspace.name,
       school: school,
       events:
         Accounts.list_audit_events(socket.assigns.current_scope,

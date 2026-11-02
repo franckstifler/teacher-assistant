@@ -27,6 +27,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
       {:ok,
        socket
        |> assign(
+         page_title: "#{student.full_name} · #{gettext("Bulletin")}",
          cg: cg,
          student: student,
          enrollment: enrollment,

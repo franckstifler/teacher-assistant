@@ -28,6 +28,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
       {:ok,
        socket
        |> assign(
+         page_title: TeacherAssistantWeb.School.ClassShell.page_title(cg, :fees),
          cg: cg,
          year: year,
          can_edit?: Fees.can_manage_fees?(scope),

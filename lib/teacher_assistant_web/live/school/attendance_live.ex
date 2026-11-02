@@ -16,6 +16,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
       {:ok, roll} ->
         {:ok,
          assign(socket,
+           page_title: "#{unit_label(roll)} · #{gettext("Appel")}",
            roll: roll,
            nav: @nav,
            parent: Spaces.owner_item_for(socket.assigns.current_scope, @nav)

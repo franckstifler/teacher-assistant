@@ -12,7 +12,12 @@ defmodule TeacherAssistantWeb.School.YearLive do
 
     with true <- Organization.can_manage_calendar?(scope),
          {:ok, year} <- Organization.get_academic_year(scope, id) do
-      {:ok, assign(socket, year: year, classes: Enrollment.list_class_groups(scope, year))}
+      {:ok,
+       assign(socket,
+         page_title: year.name,
+         year: year,
+         classes: Enrollment.list_class_groups(scope, year)
+       )}
     else
       false -> {:ok, push_navigate(socket, to: ~p"/school")}
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}

@@ -4,7 +4,12 @@ defmodule TeacherAssistantWeb.Onboarding.CreateSchoolLive do
   alias TeacherAssistant.Accounts.{SchoolType, SchoolSubsystem, SchoolSector, CameroonRegion}
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: build_form(socket), open_school_id: nil)}
+    {:ok,
+     assign(socket,
+       page_title: gettext("Your school's identity"),
+       form: build_form(socket),
+       open_school_id: nil
+     )}
   end
 
   def handle_event("validate", %{"school" => params}, socket) do

@@ -15,7 +15,11 @@ defmodule TeacherAssistantWeb.School.RoomsLive do
     with %{} <- scope.current_workspace,
          true <- Timetabling.can_edit_timetable?(scope),
          %{} = year <- Organization.current_academic_year(scope) do
-      {:ok, socket |> assign(year: year, error: nil) |> edit_room(nil) |> load()}
+      {:ok,
+       socket
+       |> assign(page_title: gettext("Salles"), year: year, error: nil)
+       |> edit_room(nil)
+       |> load()}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end

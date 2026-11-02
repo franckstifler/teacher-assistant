@@ -19,6 +19,7 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
       {:ok,
        socket
        |> assign(
+         page_title: gettext("Frais"),
          year: year,
          recovery: Fees.recovery(scope, year, Reference.today()),
          recent: Fees.recent_payments(scope, year),

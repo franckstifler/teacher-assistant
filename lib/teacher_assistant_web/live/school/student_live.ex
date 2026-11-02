@@ -31,6 +31,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
       {:ok,
        socket
        |> assign(
+         page_title: student.full_name,
          student: student,
          access: access,
          editing: false,

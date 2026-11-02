@@ -24,6 +24,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
       {:ok,
        socket
        |> assign(
+         page_title: ClassShell.page_title(cg, :discipline),
          cg: cg,
          year: year,
          sequences: sequences,

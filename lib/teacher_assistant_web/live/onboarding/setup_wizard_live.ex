@@ -24,6 +24,7 @@ defmodule TeacherAssistantWeb.Onboarding.SetupWizardLive do
     {:ok,
      socket
      |> assign(
+       page_title: gettext("Set up your school"),
        step: initial_step(scope, year),
        ws: ws,
        year: year,

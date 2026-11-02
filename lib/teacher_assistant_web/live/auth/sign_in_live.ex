@@ -47,7 +47,8 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
   end
 
   @impl true
-  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+  def handle_params(_params, _uri, socket),
+    do: {:noreply, assign(socket, :page_title, page_title(socket.assigns.live_action))}
 
   # Sent by `TeacherAssistantWeb.Auth.SignInForm` when the library refuses a
   # submission (wrong password, unknown or malformed identifier): one generic
@@ -242,6 +243,11 @@ defmodule TeacherAssistantWeb.Auth.SignInLive do
   end
 
   # The flash comes from `AuthController` (failure / expired temporary password).
+  # The browser tab says what the auth card's heading says (`Layouts.auth_copy/1`).
+  defp page_title(:register), do: gettext("Créer un compte")
+  defp page_title(:reset), do: gettext("Mot de passe oublié")
+  defp page_title(_sign_in), do: gettext("Se connecter")
+
   defp alert(nil), do: nil
 
   defp alert(message) do

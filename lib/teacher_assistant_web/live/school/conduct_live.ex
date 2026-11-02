@@ -23,6 +23,7 @@ defmodule TeacherAssistantWeb.School.ConductLive do
 
       {:ok,
        assign(socket,
+         page_title: gettext("Conduite"),
          classes: Enrollment.list_class_groups(scope, year),
          sequences: Organization.list_sequences(scope, year),
          rules: Attendance.school_life_rules(scope),

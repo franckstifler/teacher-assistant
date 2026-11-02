@@ -13,7 +13,8 @@ defmodule TeacherAssistantWeb.Admin.SchoolsLive do
 
   @params ~w(q status suspended module)
 
-  def mount(_params, _session, socket), do: {:ok, socket}
+  def mount(_params, _session, socket),
+    do: {:ok, assign(socket, :page_title, gettext("Établissements"))}
 
   def handle_params(params, _uri, socket) do
     filters = %{

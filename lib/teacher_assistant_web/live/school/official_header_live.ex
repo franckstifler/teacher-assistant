@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.School.OfficialHeaderLive do
     if scope.current_workspace && Accounts.can_edit_official_header?(scope) do
       {:ok,
        socket
+       |> assign(:page_title, gettext("En-tête et signature"))
        |> allow_upload(:signature,
          accept: ~w(.png .jpg .jpeg),
          max_entries: 1,

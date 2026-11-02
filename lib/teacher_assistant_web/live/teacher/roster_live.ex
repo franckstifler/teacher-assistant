@@ -24,6 +24,7 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
     students = Enrollment.list_students(scope, class_group)
 
     socket
+    |> assign(:page_title, "#{ctx.subject} · #{class_group.label} · #{gettext("Élèves")}")
     |> assign(:ws, ws)
     |> assign(:ctx, ctx)
     |> assign(:class_group, class_group)

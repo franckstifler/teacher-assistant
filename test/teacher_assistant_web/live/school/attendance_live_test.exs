@@ -140,6 +140,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
 
     {:ok, view, _html} = live(conn_for(school, dm), att_path(cg, period, date))
 
+    # the surveillant's way back is their own « Aujourd'hui », lit in the menu
+    assert has_element?(view, ~s(#attendance-back[href="/school/day"]))
+    assert has_element?(view, "#nav-school-day[aria-current=page]")
+
     view |> element("#att-#{enrollment.id}-absent") |> render_click()
     view |> element("#record-roll") |> render_click()
 

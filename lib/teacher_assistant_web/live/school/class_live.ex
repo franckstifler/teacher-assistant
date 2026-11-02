@@ -27,6 +27,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:ok,
        socket
        |> assign(
+         page_title: ClassShell.page_title(cg, :students),
          cg: cg,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
          can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
@@ -63,7 +64,11 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           >
             <.icon name="hero-plus" class="size-4" /> {gettext("Inscrire un élève")}
           </button>
-          <.action_menu id="class-menu" label={gettext("Actions de la classe")}>
+          <.action_menu
+            id="class-menu"
+            label={gettext("Actions de la classe")}
+            class="ml-auto"
+          >
             <:item
               :if={@can_manage_register? and TeacherAssistant.Scope.module?(@current_scope, :photos)}
               id="go-to-photos"

@@ -30,6 +30,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
 
         {:ok,
          assign(socket,
+           page_title: gettext("Suivi de la saisie des notes"),
            year: year,
            sequences: sequences,
            seq: nil,

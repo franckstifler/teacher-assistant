@@ -17,7 +17,15 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
 
   def mount(_params, _session, socket) do
     if Assessment.can_decide_corrections?(socket.assigns.current_scope) do
-      {:ok, socket |> assign(refusing: nil, refuse_form: nil, corrections: []) |> assign_empty()}
+      {:ok,
+       socket
+       |> assign(
+         page_title: gettext("Corrections de notes"),
+         refusing: nil,
+         refuse_form: nil,
+         corrections: []
+       )
+       |> assign_empty()}
     else
       {:ok,
        socket

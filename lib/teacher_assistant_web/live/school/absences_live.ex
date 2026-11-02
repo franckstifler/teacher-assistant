@@ -21,7 +21,10 @@ defmodule TeacherAssistantWeb.School.AbsencesLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil and Discipline.can_manage_conduct?(scope) do
-      {:ok, socket |> assign(open: nil, note: "") |> load()}
+      {:ok,
+       socket
+       |> assign(page_title: gettext("Absences"), open: nil, note: "")
+       |> load()}
     else
       {:ok,
        socket

@@ -14,7 +14,11 @@ defmodule TeacherAssistantWeb.School.HolidaysLive do
          %{} = year <- scope.current_academic_year,
          {:ok, profile} <- Accounts.fetch_school_profile(scope),
          true <- Accounts.can_edit_profile?(scope, profile) do
-      {:ok, socket |> assign(year: year, error: nil) |> edit_holiday(nil) |> load()}
+      {:ok,
+       socket
+       |> assign(page_title: gettext("Congés & jours fériés"), year: year, error: nil)
+       |> edit_holiday(nil)
+       |> load()}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end

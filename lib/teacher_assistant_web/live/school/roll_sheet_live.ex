@@ -19,7 +19,10 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- Discipline.can_manage_conduct?(scope) do
-      {:ok, socket |> assign(cg: cg) |> ClassShell.assign_shell()}
+      {:ok,
+       socket
+       |> assign(page_title: ClassShell.page_title(cg, :register), cg: cg)
+       |> ClassShell.assign_shell()}
     else
       false ->
         {:ok,

@@ -23,6 +23,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
       {:ok,
        socket
+       |> assign(:page_title, "#{ctx.subject} · #{cg.label} · #{gettext("Résultats")}")
        |> assign(:ctx, ctx)
        |> assign(:cg, cg)
        |> assign(:sequences, sequences)

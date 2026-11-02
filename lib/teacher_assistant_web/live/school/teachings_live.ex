@@ -23,6 +23,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
       {:ok,
        socket
        |> assign(
+         page_title: ClassShell.page_title(cg, :teachings),
          cg: cg,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
          can_manage_assignments?: Curriculum.can_manage_assignments?(scope),

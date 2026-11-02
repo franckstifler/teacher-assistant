@@ -31,7 +31,15 @@ defmodule TeacherAssistantWeb.School.CouncilLive do
          %{} = year <- scope.current_academic_year,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          [_ | _] = terms <- Organization.list_terms(scope, year) do
-      {:ok, assign(socket, year: year, cg: cg, terms: terms, saved: nil, confirm_hold?: false)}
+      {:ok,
+       assign(socket,
+         page_title: "#{cg.label} · #{gettext("Conseil de classe")}",
+         year: year,
+         cg: cg,
+         terms: terms,
+         saved: nil,
+         confirm_hold?: false
+       )}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end

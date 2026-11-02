@@ -108,6 +108,14 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#nav-school-corrections")
   end
 
+  test "a class's fees belong to Frais, not to Classes", ctx do
+    {conn, _} = member_conn(ctx, [:head], [])
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{ctx.cg.id}/fees")
+    assert has_element?(view, "#nav-school-fees[aria-current=page]")
+    refute has_element?(view, "#nav-school-classes[aria-current=page]")
+    assert has_element?(view, "#class-tab-fees[aria-current=page]")
+  end
+
   test "on the availability page only « Disponibilités » is the current menu item", ctx do
     {conn, _} = member_conn(ctx, [:vice_principal], [])
     {:ok, view, _} = live(conn, ~p"/school/timetable/availability")

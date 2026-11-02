@@ -24,6 +24,7 @@ defmodule TeacherAssistantWeb.School.TimetableLive do
       {:ok,
        socket
        |> assign(
+         page_title: ClassShell.page_title(cg, :timetable),
          cg: cg,
          can_edit_timetable?: Timetabling.can_edit_timetable?(scope),
          periods: Attendance.list_periods(scope),

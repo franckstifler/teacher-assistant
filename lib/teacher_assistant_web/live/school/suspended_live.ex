@@ -8,7 +8,12 @@ defmodule TeacherAssistantWeb.School.SuspendedLive do
     scope = socket.assigns.current_scope
 
     if Scope.suspended?(scope),
-      do: {:ok, assign(socket, :reason, scope.current_workspace.suspension_reason)},
+      do:
+        {:ok,
+         assign(socket,
+           page_title: gettext("Établissement suspendu"),
+           reason: scope.current_workspace.suspension_reason
+         )},
       else: {:ok, push_navigate(socket, to: ~p"/school")}
   end
 

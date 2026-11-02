@@ -11,6 +11,7 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
 
     {:ok,
      assign(socket,
+       page_title: gettext("Vue d'ensemble"),
        overview: Operator.overview(scope),
        events: Accounts.list_audit_events(scope, limit: 10)
      )}

@@ -15,7 +15,12 @@ defmodule TeacherAssistantWeb.School.PassageLive do
     with %{} <- scope.current_workspace,
          {:ok, profile} <- Accounts.fetch_school_profile(scope),
          true <- Accounts.can_edit_profile?(scope, profile) do
-      {:ok, assign(socket, rules: Assessment.passage_rules(scope), error: nil)}
+      {:ok,
+       assign(socket,
+         page_title: gettext("Passage & redoublement"),
+         rules: Assessment.passage_rules(scope),
+         error: nil
+       )}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school/settings")}
     end

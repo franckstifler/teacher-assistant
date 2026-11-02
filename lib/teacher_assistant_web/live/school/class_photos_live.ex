@@ -15,6 +15,7 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
       {:ok,
        socket
        |> assign(
+         page_title: "#{cg.label} · #{gettext("Photos")}",
          cg: cg,
          only_missing?: false,
          sheet: nil,

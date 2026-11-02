@@ -28,6 +28,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
         {:ok,
          socket
          |> assign(
+           page_title: gettext("Élèves"),
            classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
            can_manage_classes?: Enrollment.can_manage_classes?(scope),
            can_manage_guardians?: Enrollment.can_manage_guardians?(scope),

@@ -15,6 +15,7 @@ defmodule TeacherAssistantWeb.School.CorrectionsLive do
 
     {:ok,
      socket
+     |> assign(:page_title, gettext("Corrections de notes"))
      |> assign(:assessments, Assessment.list_correctable_assessments(scope))
      |> load_requests()}
   end

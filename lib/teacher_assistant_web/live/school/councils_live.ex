@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
          [_ | _] = terms <- Organization.list_terms(scope, year) do
       {:ok,
        assign(socket,
+         page_title: gettext("Conseils de classe"),
          year: year,
          terms: terms,
          classes: Enrollment.list_class_groups(scope, year),

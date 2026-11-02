@@ -30,6 +30,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
       {:ok,
        socket
        |> assign(
+         page_title: gettext("Classes"),
          profile: profile,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
          cycle: :all,

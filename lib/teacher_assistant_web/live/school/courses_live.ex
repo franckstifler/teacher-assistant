@@ -49,6 +49,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
 
       {:ok,
        socket
+       |> assign(:page_title, gettext("Mes cours"))
        |> assign(:courses, courses)
        |> assign(:seq, seq)
        # Each class once, even when the teacher has it in two subjects.

@@ -26,6 +26,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
       scope.current_workspace != nil ->
         {:ok,
          socket
+         |> assign(:page_title, gettext("Dashboard"))
          |> assign(:scope, scope)
          |> load_dashboard()}
 

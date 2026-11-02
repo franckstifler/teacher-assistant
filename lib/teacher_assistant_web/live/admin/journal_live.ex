@@ -8,7 +8,8 @@ defmodule TeacherAssistantWeb.Admin.JournalLive do
 
   @per_page 50
 
-  def mount(_params, _session, socket), do: {:ok, socket}
+  def mount(_params, _session, socket),
+    do: {:ok, assign(socket, :page_title, gettext("Journal"))}
 
   def handle_params(params, _uri, socket) do
     action =

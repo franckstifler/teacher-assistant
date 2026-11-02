@@ -129,7 +129,8 @@ defmodule TeacherAssistantWeb.School.ClassShell do
             </span>
           </div>
         </div>
-        <div :if={@actions != []} class="flex flex-wrap items-center gap-2">
+        <%!-- Full width on phones, so a trailing « ⋯ » sits at the right edge and its menu fits. --%>
+        <div :if={@actions != []} class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {render_slot(@actions)}
         </div>
       </header>
@@ -177,13 +178,22 @@ defmodule TeacherAssistantWeb.School.ClassShell do
     """
   end
 
-  defp tab_label(:students), do: gettext("Élèves")
-  defp tab_label(:teachings), do: gettext("Enseignements")
-  defp tab_label(:timetable), do: gettext("Emploi du temps")
-  defp tab_label(:register), do: gettext("Cahier d'appel")
-  defp tab_label(:discipline), do: gettext("Discipline")
-  defp tab_label(:results), do: gettext("Résultats")
-  defp tab_label(:fees), do: gettext("Frais")
+  @doc """
+  The browser tab title of a class page: the class first, then the tab's
+  label (« 4e B · Élèves ») or a sub-page's own label.
+  """
+  def page_title(%ClassGroup{} = cg, tab) when tab in @tabs, do: page_title(cg, tab_label(tab))
+
+  def page_title(%ClassGroup{label: label}, name) when is_binary(name), do: "#{label} · #{name}"
+
+  @doc "A tab's label in the tab bar."
+  def tab_label(:students), do: gettext("Élèves")
+  def tab_label(:teachings), do: gettext("Enseignements")
+  def tab_label(:timetable), do: gettext("Emploi du temps")
+  def tab_label(:register), do: gettext("Cahier d'appel")
+  def tab_label(:discipline), do: gettext("Discipline")
+  def tab_label(:results), do: gettext("Résultats")
+  def tab_label(:fees), do: gettext("Frais")
 
   @doc "Spec 2026-10-31 §1: the class list to print, official roster or working list."
   attr :cg, ClassGroup, required: true

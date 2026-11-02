@@ -24,6 +24,7 @@ defmodule TeacherAssistantWeb.School.AvailabilityLive do
 
       {:ok,
        assign(socket,
+         page_title: gettext("Disponibilités des enseignants"),
          scope: scope,
          calendar: Attendance.school_calendar(scope),
          periods: scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)),

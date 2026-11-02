@@ -57,8 +57,14 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
       Enum.find(socket.assigns.classes, &(&1.id == params["class"])) ||
         List.first(socket.assigns.classes)
 
-    {:noreply, socket |> assign(cg: cg, selected: nil) |> load()}
+    {:noreply,
+     socket
+     |> assign(page_title: page_title(cg), cg: cg, selected: nil)
+     |> load()}
   end
+
+  defp page_title(nil), do: gettext("Emploi du temps")
+  defp page_title(cg), do: gettext("Emploi du temps · %{class}", class: cg.label)
 
   defp load(%{assigns: %{cg: nil}} = socket),
     do:

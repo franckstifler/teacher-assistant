@@ -11,7 +11,7 @@ defmodule TeacherAssistantWeb.School.NotificationsLive do
 
   def mount(_params, _session, socket) do
     if socket.assigns.current_scope.current_workspace,
-      do: {:ok, assign(socket, page: nil, page_number: 1)},
+      do: {:ok, assign(socket, page_title: gettext("Notifications"), page: nil, page_number: 1)},
       else: {:ok, push_navigate(socket, to: ~p"/school")}
   end
 

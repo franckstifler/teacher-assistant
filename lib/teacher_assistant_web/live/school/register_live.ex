@@ -25,6 +25,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
       {:ok,
        socket
        |> assign(
+         page_title: ClassShell.page_title(cg, :register),
          cg: cg,
          today: TeacherAssistant.Academics.Reference.today(),
          viewing_id: nil,

@@ -36,6 +36,7 @@ defmodule TeacherAssistantWeb.School.NewYearLive do
 
         socket =
           assign(socket,
+            page_title: gettext("Préparer l'année suivante"),
             year: year,
             plan: nil,
             max: max,

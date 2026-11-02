@@ -17,6 +17,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
 
       {:ok,
        assign(socket,
+         page_title: gettext("Mon emploi du temps"),
          periods: Attendance.list_periods(scope),
          grid: Timetabling.teacher_timetable(scope, scope.current_user),
          service: Timetabling.teacher_service(scope, scope.current_user),
