@@ -114,9 +114,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["courses"]}
+    >
       <section id="teacher-marks-summary" class="mx-auto max-w-2xl space-y-4">
-        <.teaching_nav context_id={@ctx.id} current={:summary} />
+        <.teaching_nav
+          context_id={@ctx.id}
+          label={"#{@ctx.subject} · #{@cg.label}"}
+          current={:summary}
+        />
         <.page_header
           eyebrow={
             if @seq,

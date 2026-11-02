@@ -411,7 +411,8 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       view |> element("#enroll-button") |> render_click()
       # a teacher who is form master records no parent (guardians are admin / conduct)
       refute has_element?(view, "#enroll-parent")
-      refute has_element?(view, "#class-menu")
+      refute has_element?(view, "#delete-class")
+      refute has_element?(view, "#open-class-settings")
 
       view
       |> form("#enroll-form", %{"enroll" => %{"full_name" => "Zoe", "sex" => "f"}})

@@ -95,17 +95,20 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["bulletins", "students", "classes"]}
+    >
       <section id="bulletin" class="mx-auto max-w-4xl min-w-0 space-y-5">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <.link
-            id="bulletin-back"
-            navigate={bulletins_path(assigns)}
-            class="inline-flex items-center gap-1 text-sm text-base-content/70 transition-colors hover:text-base-content"
-          >
-            <.icon name="hero-arrow-left" class="size-4" />
-            {gettext("Bulletins de la %{class}", class: @cg.label)}
-          </.link>
+          <.breadcrumb>
+            <:crumb id="bulletin-back" navigate={bulletins_path(assigns)}>
+              {gettext("Bulletins de la %{class}", class: @cg.label)}
+            </:crumb>
+            <:crumb>{@student.full_name}</:crumb>
+          </.breadcrumb>
           <div class="flex flex-wrap items-center gap-2">
             <.link
               id="bulletin-student"

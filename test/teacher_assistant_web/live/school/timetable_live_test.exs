@@ -4,7 +4,6 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Attendance
-  alias TeacherAssistant.Timetabling
   alias TeacherAssistant.Accounts
   alias TeacherAssistant.Organization
 
@@ -47,8 +46,6 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
   test "a form master sees the grid read-only with no cell selects", %{
     conn: _conn,
     cg: cg,
-    tc: tc,
-    period: period,
     school: school,
     head: head,
     scope: scope
@@ -74,16 +71,8 @@ defmodule TeacherAssistantWeb.School.TimetableLiveTest do
 
     refute html =~ "<select"
 
-    # Forged place event should be rejected server-side.
-    view
-    |> render_hook("place", %{
-      "day" => "monday",
-      "period_id" => period.id,
-      "teaching_context_id" => tc.id
-    })
-
-    timetable = Timetabling.class_timetable(scope, cg)
-    refute Map.has_key?(timetable.slots, {:monday, period.id})
+    # lessons are placed in the school-wide editor, which a form master cannot open
+    refute has_element?(view, "#edit-class-timetable")
   end
 
   test "a non-member is redirected to /school", %{school: school, cg: cg, head: head} do

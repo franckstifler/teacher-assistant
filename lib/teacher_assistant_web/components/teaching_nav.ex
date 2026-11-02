@@ -1,8 +1,9 @@
 defmodule TeacherAssistantWeb.TeachingNav do
   @moduledoc """
   The one way around a teacher's class pages (UI review 2026-10-14, habit 12):
-  « ‹ Mes cours » back to the course list, then Notes · Résultats · Élèves for
-  the course on screen. Replaces the rail's class switcher and per-class menu.
+  the breadcrumb « Mes cours / course » back to the course list, then
+  Notes · Résultats · Élèves for the course on screen. Replaces the rail's class
+  switcher and per-class menu.
   """
   use Phoenix.Component
   use Gettext, backend: TeacherAssistantWeb.Gettext
@@ -12,9 +13,10 @@ defmodule TeacherAssistantWeb.TeachingNav do
     router: TeacherAssistantWeb.Router,
     statics: TeacherAssistantWeb.static_paths()
 
-  import TeacherAssistantWeb.CoreComponents, only: [icon: 1]
+  import TeacherAssistantWeb.CoreComponents, only: [breadcrumb: 1]
 
   attr :context_id, :string, required: true
+  attr :label, :string, required: true, doc: "the course on screen, « Mathématiques · 2nde A »"
   attr :current, :atom, required: true, values: [:marks, :summary, :roster]
 
   def teaching_nav(assigns) do
@@ -27,14 +29,11 @@ defmodule TeacherAssistantWeb.TeachingNav do
       ])
 
     ~H"""
+    <.breadcrumb>
+      <:crumb id="teaching-nav-back" navigate={~p"/school/courses"}>{gettext("Mes cours")}</:crumb>
+      <:crumb>{@label}</:crumb>
+    </.breadcrumb>
     <nav id="teaching-nav" aria-label={gettext("Ce cours")} class="flex flex-wrap items-center gap-3">
-      <.link
-        id="teaching-nav-back"
-        navigate={~p"/school/courses"}
-        class="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-info hover:underline"
-      >
-        <.icon name="hero-chevron-left" class="size-4" />{gettext("Mes cours")}
-      </.link>
       <div class="flex gap-1 rounded-box bg-base-200 p-1">
         <.link
           :for={{key, label, path} <- @tabs}

@@ -63,7 +63,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
                ["Journée", "Absences", "Élèves", "Sanctions"]
 
       assert tab_labels(:enseignant, facts([:teacher], teaches?: true)) ==
-               ["Aujourd'hui", "Mes cours", "Notes", "EDT"]
+               ["Aujourd'hui", "Mes cours", "Bulletins", "EDT"]
     end
 
     test "« Plus » holds the rest of the menu, never a primary tab" do
@@ -75,26 +75,41 @@ defmodule TeacherAssistantWeb.SpacesTest do
       refute Enum.any?(primary, &(&1.path in more_paths))
     end
 
-    test "Notes opens the course list and is lit by a course's marks pages" do
-      %{primary: primary, more: more} =
-        Spaces.tab_bar(Spaces.space(:enseignant, facts([:teacher], teaches?: true)))
+    test "no two tabs open the same page" do
+      for {key, roles, opts} <- [
+            {:proviseur, [:head], []},
+            {:censeur, [:vice_principal], []},
+            {:surveillant, [:discipline_master], []},
+            {:enseignant, [:teacher], [teaches?: true]}
+          ] do
+        paths =
+          for tab <- Spaces.tab_bar(Spaces.space(key, facts(roles, opts))).primary, do: tab.path
 
-      notes = Enum.find(primary, &(&1.label == "Notes"))
-      assert notes.path == "/school/courses"
-      assert notes.match == ["/teacher/contexts"]
-      refute "/school/courses" in for(s <- more, item <- s.items, do: item.path)
+        assert paths == Enum.uniq(paths), "#{key}: #{inspect(paths)}"
+      end
     end
 
     test "missing chosen items are topped up from the menu" do
       # a form master who does not teach: no « Ma journée », no « Mes cours »
       assert tab_labels(:enseignant, facts([:teacher], form_master?: true)) ==
-               ["EDT", "Classes", "Bulletins"]
+               ["Bulletins", "EDT", "Classes"]
 
       assert tab_labels(:intendant, facts([:bursar])) == [
                "Frais",
                "Classes",
                "Paramètres des frais"
              ]
+    end
+  end
+
+  describe "owner_item/2" do
+    test "is the first named item the space's menu has" do
+      intendant = Spaces.space(:intendant, facts([:bursar]))
+      assert Spaces.owner_item(intendant, ["fees", "classes"]).path == "/school/fees"
+
+      teacher = Spaces.space(:enseignant, facts([:teacher], form_master?: true))
+      assert Spaces.owner_item(teacher, ["fees", "classes"]).path == "/school/classes"
+      assert Spaces.owner_item(teacher, ["fees"]) == nil
     end
   end
 

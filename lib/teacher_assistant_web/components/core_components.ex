@@ -578,6 +578,7 @@ defmodule TeacherAssistantWeb.CoreComponents do
 
   slot :crumb, required: true do
     attr :navigate, :string
+    attr :id, :string
   end
 
   def breadcrumb(assigns) do
@@ -589,7 +590,9 @@ defmodule TeacherAssistantWeb.CoreComponents do
           <% i == length(@crumb) - 1 -> %>
             <span aria-current="page">{render_slot(crumb)}</span>
           <% crumb[:navigate] -> %>
-            <.link navigate={crumb.navigate} class="link link-hover">{render_slot(crumb)}</.link>
+            <.link id={crumb[:id]} navigate={crumb.navigate} class="link link-hover">
+              {render_slot(crumb)}
+            </.link>
           <% true -> %>
             <span>{render_slot(crumb)}</span>
         <% end %>

@@ -693,13 +693,17 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     assigns = assign(assigns, :students, all_students(assigns))
 
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["courses"]}
+    >
       <section id="teacher-marks" class="space-y-4">
-        <.teaching_nav context_id={@ctx.id} current={:marks} />
+        <.teaching_nav context_id={@ctx.id} label={@title} current={:marks} />
         <.page_header
           eyebrow={gettext("Notes · %{subject}", subject: @ctx.subject)}
           title={gettext("Saisie des notes")}
-          subtitle={@title}
         >
           <:actions>
             <.save_state errors={@errors} saved_at={@saved_at} />

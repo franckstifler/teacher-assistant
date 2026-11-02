@@ -164,8 +164,13 @@ defmodule TeacherAssistantWeb.School.SchoolLifeSettingsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-life-settings" class="mx-auto max-w-3xl space-y-6">
+        <%!-- Under Paramètres only for whom the menu has it; the intendant and the
+             surveillant open this page from their own menu entry. --%>
         <.back_header
-          back={~p"/school/settings"}
+          back={
+            TeacherAssistantWeb.Spaces.owner_item_for(@current_scope, ["settings"]) &&
+              ~p"/school/settings"
+          }
           back_label={gettext("Paramètres")}
           title={gettext("Assiduité & discipline")}
         />

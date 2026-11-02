@@ -308,76 +308,101 @@ defmodule TeacherAssistantWeb.Spaces do
   each an item of the space's menu under a short label, and the menu `more`
   sections minus those items (the « Plus » sheet). A space whose chosen items
   are missing (a member who does not teach…) is topped up from its menu in
-  order. A tab's `match`, when set, lists the path prefixes that light it
-  instead of its own path.
+  order.
   """
   def tab_bar(%{key: key, sections: sections}) do
     items = Enum.flat_map(sections, & &1.items)
     by_id = Map.new(items, &{&1.id, &1})
 
     chosen =
-      for {id, label, overrides} <- tab_spec(key),
+      for {id, label} <- tab_spec(key),
           item = by_id["nav-school-" <> id],
-          item != nil do
-        Map.merge(%{item | label: label}, Map.put_new(overrides, :match, nil))
-      end
+          item != nil,
+          do: %{item | label: label}
 
-    taken = MapSet.new(chosen, & &1.path)
-
-    top_up =
-      items
-      |> Enum.reject(&MapSet.member?(taken, &1.path))
-      |> Enum.map(&Map.put(&1, :match, nil))
-
-    primary = Enum.take(chosen ++ top_up, 4)
-    shown = MapSet.new(primary, & &1.path)
+    taken = MapSet.new(chosen, & &1.id)
+    primary = Enum.take(chosen ++ Enum.reject(items, &MapSet.member?(taken, &1.id)), 4)
+    shown = MapSet.new(primary, & &1.id)
 
     more =
       sections
-      |> Enum.map(fn s -> %{s | items: Enum.reject(s.items, &MapSet.member?(shown, &1.path))} end)
+      |> Enum.map(fn s -> %{s | items: Enum.reject(s.items, &MapSet.member?(shown, &1.id))} end)
       |> Enum.reject(&(&1.items == []))
 
     %{primary: primary, more: more}
   end
 
+  @doc """
+  The first of `ids` (« fees », « classes »…) that the space's menu has, as its
+  item: the entry a page belongs to, whatever its path. Nil when none is there.
+  """
+  def owner_item(%{sections: sections}, ids) do
+    items = Enum.flat_map(sections, & &1.items)
+
+    Enum.find_value(ids, fn id ->
+      Enum.find(items, &(&1.id == "nav-school-" <> id))
+    end)
+  end
+
+  # A page under an entry keeps it lit (a class under Classes, every settings page
+  # under Paramètres). "/school" (the dashboard) only matches itself.
+  @settings_pages ["/school/settings", "/school/periods", "/school/years"]
+
+  @doc "Whether `path` is the menu entry `href`'s page or one under it."
+  def path_under_item?(nil, _href), do: false
+  def path_under_item?(path, href) when path == href, do: true
+  def path_under_item?(_path, "/school"), do: false
+
+  def path_under_item?(path, "/school/settings"),
+    do: Enum.any?(@settings_pages, &(path == &1 or String.starts_with?(path, &1 <> "/")))
+
+  # The editor's sub-pages (« Disponibilités », « Mon emploi du temps ») have their own item.
+  def path_under_item?(_path, "/school/timetable"), do: false
+
+  def path_under_item?(path, href), do: String.starts_with?(path, href <> "/")
+
+  @doc "Whether the space's menu has an entry for `path` (it or a page under it)."
+  def in_menu?(%{sections: sections}, path) when is_binary(path),
+    do: Enum.any?(sections, fn s -> Enum.any?(s.items, &path_under_item?(path, &1.path)) end)
+
+  def in_menu?(_space, _path), do: false
+
+  @doc "`owner_item/2` for the scope's current space (nil outside a school)."
+  def owner_item_for(%{capabilities: %{space: %{} = space}}, ids), do: owner_item(space, ids)
+  def owner_item_for(_scope, _ids), do: nil
+
   defp tab_spec(:proviseur),
     do: [
-      {"dashboard", gettext("Accueil"), %{}},
-      {"classes", gettext("Classes"), %{}},
-      {"students", gettext("Élèves"), %{}},
-      {"bulletins", gettext("Bulletins"), %{}}
+      {"dashboard", gettext("Accueil")},
+      {"classes", gettext("Classes")},
+      {"students", gettext("Élèves")},
+      {"bulletins", gettext("Bulletins")}
     ]
 
   defp tab_spec(:censeur),
     do: [
-      {"sequences", gettext("Suivi"), %{}},
-      {"timetable-editor", gettext("EDT"), %{}},
-      {"classes", gettext("Classes"), %{}},
-      {"bulletins", gettext("Bulletins"), %{}}
+      {"sequences", gettext("Suivi")},
+      {"timetable-editor", gettext("EDT")},
+      {"classes", gettext("Classes")},
+      {"bulletins", gettext("Bulletins")}
     ]
 
   defp tab_spec(:surveillant),
     do: [
-      {"day", gettext("Journée"), %{}},
-      {"absences", gettext("Absences"), %{}},
-      {"students", gettext("Élèves"), %{}},
-      {"sanctions", gettext("Sanctions"), %{}}
+      {"day", gettext("Journée")},
+      {"absences", gettext("Absences")},
+      {"students", gettext("Élèves")},
+      {"sanctions", gettext("Sanctions")}
     ]
 
-  # « Notes » opens the course list (marks are entered per course) and stays lit
-  # on a course's marks pages; « Mes cours » is the list itself.
+  # Marks are entered per course, so « Mes cours » covers them (a course's pages
+  # name it as their menu entry); Bulletins gets the fourth tab.
   defp tab_spec(:enseignant),
     do: [
-      {"today", gettext("Aujourd'hui"), %{}},
-      {"courses", gettext("Mes cours"), %{}},
-      {"courses", gettext("Notes"),
-       %{
-         id: "nav-school-marks",
-         icon: "hero-pencil-square",
-         badge: nil,
-         match: ["/teacher/contexts"]
-       }},
-      {"timetable-me", gettext("EDT"), %{}}
+      {"today", gettext("Aujourd'hui")},
+      {"courses", gettext("Mes cours")},
+      {"bulletins", gettext("Bulletins")},
+      {"timetable-me", gettext("EDT")}
     ]
 
   defp tab_spec(_key), do: []

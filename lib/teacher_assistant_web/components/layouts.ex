@@ -40,6 +40,11 @@ defmodule TeacherAssistantWeb.Layouts do
     doc:
       "the request path (set by `LiveUserAuth`'s handle_params hook); drives the active rail link and the class-switcher return_to"
 
+  attr :nav, :list,
+    default: [],
+    doc:
+      "the menu items this page belongs to, by id (`\"fees\"`), most fitting first: the first one in the member's menu is lit instead of the one the path suggests (a class's fees under Frais, not Classes)"
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -72,7 +77,9 @@ defmodule TeacherAssistantWeb.Layouts do
       |> assign(:operator?, current_user != nil and current_user.role == :admin)
 
     assigns =
-      assign(assigns, :tabs, assigns.in_school? && assigns.space && Spaces.tab_bar(assigns.space))
+      assigns
+      |> assign(:tabs, assigns.in_school? && assigns.space && Spaces.tab_bar(assigns.space))
+      |> assign(:lit, assigns.space && Spaces.owner_item(assigns.space, assigns.nav))
 
     ~H"""
     <%= if @current_user do %>
@@ -126,7 +133,7 @@ defmodule TeacherAssistantWeb.Layouts do
           </main>
         </div>
 
-        <.tab_bar :if={@tabs} tabs={@tabs} current_path={@current_path} />
+        <.tab_bar :if={@tabs} tabs={@tabs} current_path={@current_path} lit={@lit} />
         <.more_sheet
           :if={@tabs}
           more={@tabs.more}
@@ -137,6 +144,7 @@ defmodule TeacherAssistantWeb.Layouts do
           workspaces={@workspaces}
           workspace_id={@workspace_id}
           current_path={@current_path}
+          lit={@lit}
         />
 
         <div class="drawer-side z-40">
@@ -207,7 +215,7 @@ defmodule TeacherAssistantWeb.Layouts do
               <.link
                 :for={key <- @space_keys}
                 id={"space-switch-#{key}"}
-                href={~p"/school/space/#{key}"}
+                href={space_switch_path(key, @current_path)}
                 method="post"
                 aria-current={@space && @space.key == key && "true"}
                 class={[
@@ -240,6 +248,7 @@ defmodule TeacherAssistantWeb.Layouts do
                   badge={item[:badge]}
                   badge_tone={item[:badge_tone] || :warning}
                   current_path={@current_path}
+                  lit={@lit}
                 >
                   {item.label}
                 </.rail_link>
@@ -438,6 +447,7 @@ defmodule TeacherAssistantWeb.Layouts do
 
   attr :tabs, :map, required: true
   attr :current_path, :string, default: nil
+  attr :lit, :map, default: nil
 
   # The phone tab bar (<lg): four tabs of the role space, then « Plus », which
   # opens the sheet holding the rest of the menu and the account.
@@ -447,7 +457,7 @@ defmodule TeacherAssistantWeb.Layouts do
         assigns,
         :more_active?,
         Enum.any?(assigns.tabs.more, fn s ->
-          Enum.any?(s.items, &rail_active?(assigns.current_path, &1.path))
+          Enum.any?(s.items, &item_active?(&1, assigns.lit, assigns.current_path))
         end)
       )
       |> assign(
@@ -461,7 +471,7 @@ defmodule TeacherAssistantWeb.Layouts do
         :for={tab <- @tabs.primary}
         id={"tab-#{tab.id}"}
         navigate={tab.path}
-        aria-current={tab_active?(@current_path, tab) && "page"}
+        aria-current={item_active?(tab, @lit, @current_path) && "page"}
         class="ta-tab"
       >
         <span class="ta-tab__icon">
@@ -489,10 +499,9 @@ defmodule TeacherAssistantWeb.Layouts do
     """
   end
 
-  defp tab_active?(path, %{match: [_ | _] = prefixes}),
-    do: path != nil and Enum.any?(prefixes, &String.starts_with?(path, &1))
-
-  defp tab_active?(path, tab), do: rail_active?(path, tab.path)
+  # The item the page named (`nav`) when the menu has it, else what the path suggests.
+  defp item_active?(item, %{id: id}, _path), do: item.id == id
+  defp item_active?(item, nil, path), do: Spaces.path_under_item?(path, item.path)
 
   defp tab_badge_class(%{badge_tone: :error}), do: "bg-error text-error-content"
   defp tab_badge_class(_tab), do: "bg-warning text-warning-content"
@@ -505,6 +514,7 @@ defmodule TeacherAssistantWeb.Layouts do
   attr :workspaces, :list, default: []
   attr :workspace_id, :string, default: nil
   attr :current_path, :string, default: nil
+  attr :lit, :map, default: nil
 
   # The « Plus » sheet: a native popover (light-dismiss and Escape for free, and
   # it works on pages without a live connection). app.js closes it on navigation.
@@ -540,7 +550,7 @@ defmodule TeacherAssistantWeb.Layouts do
           <.link
             :for={key <- @space_keys}
             id={"sheet-space-#{key}"}
-            href={~p"/school/space/#{key}"}
+            href={space_switch_path(key, @current_path)}
             method="post"
             aria-current={@space.key == key && "true"}
             class="ta-chip"
@@ -560,7 +570,7 @@ defmodule TeacherAssistantWeb.Layouts do
           <.link
             id={"more-#{item.id}"}
             navigate={item.path}
-            aria-current={rail_active?(@current_path, item.path) && "page"}
+            aria-current={item_active?(item, @lit, @current_path) && "page"}
             class="ta-tile"
           >
             <span class="flex items-start justify-between gap-1">
@@ -623,9 +633,9 @@ defmodule TeacherAssistantWeb.Layouts do
     """
   end
 
-  # A page under an entry keeps it lit (a class under Classes, every settings page
-  # under Paramètres). "/school" (the dashboard) only matches itself.
-  @settings_pages ["/school/settings", "/school/periods", "/school/years"]
+  # The switch keeps the member on this page when the new space's menu has it.
+  defp space_switch_path(key, nil), do: ~p"/school/space/#{key}"
+  defp space_switch_path(key, path), do: ~p"/school/space/#{key}?#{[return_to: path]}"
 
   # "Espace censeur" — the label is lowercased mid-sentence, so a translation
   # that puts it first ("vice-principal (censeur) space") gets its capital back.
@@ -636,28 +646,22 @@ defmodule TeacherAssistantWeb.Layouts do
     String.upcase(first) <> rest
   end
 
-  defp rail_active?(nil, _href), do: false
-  defp rail_active?(path, href) when path == href, do: true
-  defp rail_active?(_path, "/school"), do: false
-
-  defp rail_active?(path, "/school/settings"),
-    do: Enum.any?(@settings_pages, &(path == &1 or String.starts_with?(path, &1 <> "/")))
-
-  # The editor's sub-pages (« Disponibilités », « Mon emploi du temps ») have their own item.
-  defp rail_active?(_path, "/school/timetable"), do: false
-
-  defp rail_active?(path, href), do: String.starts_with?(path, href <> "/")
-
   attr :id, :string, default: nil
   attr :href, :string, required: true
   attr :icon, :string, required: true
   attr :current_path, :string, default: nil
+  attr :lit, :map, default: nil
   attr :badge, :integer, default: nil
   attr :badge_tone, :atom, default: :warning
   slot :inner_block, required: true
 
   defp rail_link(assigns) do
-    assigns = assign(assigns, :active, rail_active?(assigns.current_path, assigns.href))
+    assigns =
+      assign(
+        assigns,
+        :active,
+        item_active?(%{id: assigns.id, path: assigns.href}, assigns.lit, assigns.current_path)
+      )
 
     ~H"""
     <.link id={@id} navigate={@href} aria-current={@active && "page"} class="ta-rail__item">

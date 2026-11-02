@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
 
   import TeacherAssistantWeb.Drawer
   import TeacherAssistantWeb.School.FeeControlComponents
+  import TeacherAssistantWeb.School.ClassShell, only: [class_shell: 1]
 
   alias TeacherAssistant.{Enrollment, FeeControl, Fees}
   alias TeacherAssistant.Academics.{PaymentMethod, Reference, ReturnNoteReason}
@@ -41,6 +42,7 @@ defmodule TeacherAssistantWeb.School.FeesLive do
          warn_error: nil,
          warned: %{}
        )
+       |> TeacherAssistantWeb.School.ClassShell.assign_shell()
        |> reset_forms()
        |> load()}
     else
@@ -467,325 +469,327 @@ defmodule TeacherAssistantWeb.School.FeesLive do
     assigns = assign(assigns, :methods, @methods)
 
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="class-fees" class="space-y-6">
-        <.page_header
-          eyebrow={gettext("Frais")}
-          title={"#{@cg.label} — #{gettext("Frais scolaires")}"}
-        >
-          <:actions>
-            <.link
-              id="control-link"
-              navigate={~p"/school/classes/#{@cg.id}/fees/control"}
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="hero-clipboard-document-check" class="size-4" /> {gettext(
-                "Contrôle des frais"
-              )}
-            </.link>
-            <button
-              :if={@can_edit?}
-              id="warn-class"
-              type="button"
-              phx-click="warn_class"
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="hero-envelope" class="size-4" /> {gettext("Avis de retard")}
-            </button>
-            <.link :if={@can_edit?} navigate={~p"/school/settings/fees"} class="btn btn-ghost btn-sm">
-              <.icon name="hero-cog-6-tooth" class="size-4" /> {gettext("Paramètres des frais")}
-            </.link>
-          </:actions>
-        </.page_header>
-
-        <div id="fees-summary" class="flex flex-wrap gap-2">
-          <span :for={{name, amount} <- @class_amounts} class="badge badge-outline py-3">
-            {name} · {Money.format_fcfa(amount)}
-          </span>
-          <span :if={@class_amounts == []} class="text-sm text-base-content/70">
-            {gettext("Aucun montant pour cette classe.")}
-          </span>
-        </div>
-
-        <.warn_class_form
-          :if={@warn_open?}
-          rows={Enum.filter(@roster, &(@balances[&1.enrollment.id].status == :behind))}
-          balances={@balances}
-          warned={@warned}
-          pay_by={FeeControl.default_pay_by()}
-          error={@warn_error}
-        />
-        <.last_warnings :if={@last_warnings && !@student} warnings={@last_warnings} />
-
-        <div class="flex items-center gap-2">
-          <button
-            id="late-filter"
-            type="button"
-            phx-click="toggle_late"
-            class={["btn btn-sm", if(@late?, do: "btn-warning", else: "btn-ghost")]}
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["fees", "classes"]}
+    >
+      <.class_shell cg={@cg} shell={@shell} tab={:fees}>
+        <:actions>
+          <.link
+            id="control-link"
+            navigate={~p"/school/classes/#{@cg.id}/fees/control"}
+            class="btn btn-ghost btn-sm"
           >
-            <.icon name="hero-funnel" class="size-4" /> {gettext("En retard seulement")}
+            <.icon name="hero-clipboard-document-check" class="size-4" /> {gettext(
+              "Contrôle des frais"
+            )}
+          </.link>
+          <button
+            :if={@can_edit?}
+            id="warn-class"
+            type="button"
+            phx-click="warn_class"
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-envelope" class="size-4" /> {gettext("Avis de retard")}
           </button>
-        </div>
+          <.link :if={@can_edit?} navigate={~p"/school/settings/fees"} class="btn btn-ghost btn-sm">
+            <.icon name="hero-cog-6-tooth" class="size-4" /> {gettext("Paramètres des frais")}
+          </.link>
+        </:actions>
 
-        <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-          <table id="fees-roster" class="table table-sm">
-            <thead>
-              <tr>
-                <th>{gettext("Élève")}</th>
-                <th class="hidden text-right sm:table-cell">{gettext("Dû")}</th>
-                <th class="hidden text-right sm:table-cell">{gettext("Payé")}</th>
-                <th class="text-right">{gettext("Reste")}</th>
-                <th class="hidden sm:table-cell">{gettext("Situation")}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                :for={row <- visible_roster(@roster, @balances, @late?)}
-                id={"fee-row-#{row.enrollment.id}"}
-              >
-                <% b = @balances[row.enrollment.id] %>
-                <% {label, tone} = status_badge(b.status) %>
-                <td class="font-semibold">{row.student.full_name}</td>
-                <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
-                  {Money.format_fcfa(b.total_due)}
-                </td>
-                <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
-                  {Money.format_fcfa(b.total_paid)}
-                </td>
-                <td class="ta-num whitespace-nowrap text-right">{ReceiptPrintHTML.left(b.left)}</td>
-                <td class="hidden sm:table-cell">
-                  <span class={["badge badge-sm", tone]}>{label}</span>
-                </td>
-                <td class="text-right">
-                  <.link patch={student_path(@cg, row, @late?)} class="btn btn-ghost btn-sm">
-                    {if @can_edit?, do: gettext("Encaisser"), else: gettext("Voir")}
-                  </.link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <section id="class-fees" class="space-y-6">
+          <div id="fees-summary" class="flex flex-wrap gap-2">
+            <span :for={{name, amount} <- @class_amounts} class="badge badge-outline py-3">
+              {name} · {Money.format_fcfa(amount)}
+            </span>
+            <span :if={@class_amounts == []} class="text-sm text-base-content/70">
+              {gettext("Aucun montant pour cette classe.")}
+            </span>
+          </div>
 
-        <.drawer
-          :if={@student}
-          id="student-fees"
-          eyebrow={@cg.label}
-          title={@student.student.full_name}
-          on_close={JS.patch(close_path(@cg, @late?))}
-        >
-          <div class="space-y-5">
-            <div
-              :if={@last_receipt}
-              id="last-receipt"
-              class="space-y-2 rounded-box bg-success/12 p-3 text-sm"
+          <.warn_class_form
+            :if={@warn_open?}
+            rows={Enum.filter(@roster, &(@balances[&1.enrollment.id].status == :behind))}
+            balances={@balances}
+            warned={@warned}
+            pay_by={FeeControl.default_pay_by()}
+            error={@warn_error}
+          />
+          <.last_warnings :if={@last_warnings && !@student} warnings={@last_warnings} />
+
+          <div class="flex items-center gap-2">
+            <button
+              id="late-filter"
+              type="button"
+              phx-click="toggle_late"
+              class={["btn btn-sm", if(@late?, do: "btn-warning", else: "btn-ghost")]}
             >
-              <p class="font-semibold">
-                {gettext("Reçu n° %{number} enregistré.", number: @last_receipt.payment.number)}
-              </p>
-              <div class="flex flex-wrap gap-2">
-                <a
-                  id="print-receipt"
-                  href={~p"/school/fees/receipts/#{@last_receipt.payment.id}/print"}
-                  target="_blank"
-                  class="btn btn-primary btn-xs"
-                >
-                  <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer le reçu")}
-                </a>
-                <a
-                  :for={w <- @last_receipt.whatsapp}
-                  href={w.url}
-                  target="_blank"
-                  rel="noopener"
-                  class="btn btn-outline btn-xs"
-                >
-                  {gettext("Envoyer par WhatsApp à %{name}", name: w.name)}
-                </a>
-                <button
-                  :if={@student_fees.status == :behind}
-                  id="note-after-payment"
-                  type="button"
-                  phx-click="note_after_payment"
-                  class="btn btn-outline btn-xs"
-                >
-                  {gettext("Imprimer une autorisation (paiement reçu)")}
-                </button>
-              </div>
-            </div>
+              <.icon name="hero-funnel" class="size-4" /> {gettext("En retard seulement")}
+            </button>
+          </div>
 
-            <table class="table table-sm">
+          <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+            <table id="fees-roster" class="table table-sm">
               <thead>
                 <tr>
-                  <th>{gettext("Frais")}</th>
-                  <th class="text-right">{gettext("Dû")}</th>
-                  <th class="text-right">{gettext("Payé")}</th>
+                  <th>{gettext("Élève")}</th>
+                  <th class="hidden text-right sm:table-cell">{gettext("Dû")}</th>
+                  <th class="hidden text-right sm:table-cell">{gettext("Payé")}</th>
                   <th class="text-right">{gettext("Reste")}</th>
+                  <th class="hidden sm:table-cell">{gettext("Situation")}</th>
+                  <th></th>
                 </tr>
               </thead>
-              <caption class="caption-bottom pt-1 text-left text-xs text-base-content/60">
-                {gettext("Montants en FCFA")}
-              </caption>
               <tbody>
-                <tr :for={t <- @student_fees.by_type}>
-                  <td>{t.name}</td>
-                  <td class="ta-num whitespace-nowrap text-right">{Money.format_amount(t.due)}</td>
-                  <td class="ta-num whitespace-nowrap text-right">{Money.format_amount(t.paid)}</td>
-                  <td class="ta-num whitespace-nowrap text-right">{left_amount(t.left)}</td>
-                </tr>
-                <tr class="font-semibold">
-                  <td>{gettext("Total")}</td>
-                  <td class="ta-num whitespace-nowrap text-right">
-                    {Money.format_amount(@student_fees.total_due)}
+                <tr
+                  :for={row <- visible_roster(@roster, @balances, @late?)}
+                  id={"fee-row-#{row.enrollment.id}"}
+                >
+                  <% b = @balances[row.enrollment.id] %>
+                  <% {label, tone} = status_badge(b.status) %>
+                  <td class="font-semibold">{row.student.full_name}</td>
+                  <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
+                    {Money.format_fcfa(b.total_due)}
                   </td>
-                  <td class="ta-num whitespace-nowrap text-right">
-                    {Money.format_amount(@student_fees.total_paid)}
+                  <td class="ta-num hidden whitespace-nowrap text-right sm:table-cell">
+                    {Money.format_fcfa(b.total_paid)}
                   </td>
-                  <td class="ta-num whitespace-nowrap text-right">
-                    {left_amount(@student_fees.left)}
+                  <td class="ta-num whitespace-nowrap text-right">{ReceiptPrintHTML.left(b.left)}</td>
+                  <td class="hidden sm:table-cell">
+                    <span class={["badge badge-sm", tone]}>{label}</span>
+                  </td>
+                  <td class="text-right">
+                    <.link patch={student_path(@cg, row, @late?)} class="btn btn-ghost btn-sm">
+                      {if @can_edit?, do: gettext("Encaisser"), else: gettext("Voir")}
+                    </.link>
                   </td>
                 </tr>
               </tbody>
             </table>
-
-            <.form
-              :if={@can_edit?}
-              for={@payment_form}
-              id="payment-form"
-              phx-change="change_payment"
-              phx-submit="record_payment"
-              class="space-y-1 rounded-box border border-base-300 p-3"
-            >
-              <h3 class="font-semibold">{gettext("Encaisser")}</h3>
-              <.input
-                field={@payment_form[:amount]}
-                label={gettext("Montant (FCFA)")}
-                inputmode="numeric"
-              />
-              <.input field={@payment_form[:paid_on]} type="date" label={gettext("Date")} />
-              <.input
-                field={@payment_form[:method]}
-                type="select"
-                options={Enum.map(@methods, &{PaymentMethod.label(&1), &1})}
-                label={gettext("Mode")}
-              />
-              <.input
-                :if={@payment_form[:method].value in ["mobile_money", "bank_transfer"]}
-                field={@payment_form[:reference]}
-                label={gettext("Référence de la transaction")}
-              />
-              <p :if={@payment_error} id="payment-error" class="text-sm text-error">
-                {@payment_error}
-              </p>
-              <button type="submit" class="btn btn-primary btn-sm w-full">{gettext(
-                "Enregistrer et émettre le reçu"
-              )}</button>
-            </.form>
-
-            <section class="space-y-2">
-              <h3 class="font-semibold">{gettext("Reçus")}</h3>
-              <p :if={@payments == []} class="text-sm text-base-content/70">
-                {gettext("Aucun paiement.")}
-              </p>
-              <div
-                :for={p <- @payments}
-                id={"payment-#{p.id}"}
-                class="space-y-1 rounded-box border border-base-300 p-2 text-sm"
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <a
-                    href={~p"/school/fees/receipts/#{p.id}/print"}
-                    target="_blank"
-                    class="link font-semibold"
-                  >{p.number}</a>
-                  <span class="ta-num">{Money.format_fcfa(p.amount)}</span>
-                </div>
-                <div class="flex items-center justify-between gap-2 text-base-content/70">
-                  <span>{ReceiptPrintHTML.date(p.paid_on)} · {PaymentMethod.label(p.method)}</span>
-                  <span :if={p.status == :cancelled} class="badge badge-error badge-sm">{gettext(
-                    "Annulé"
-                  )}</span>
-                </div>
-                <p :if={p.status == :cancelled and p.cancel_reason} class="text-base-content/70">
-                  {gettext("Raison : %{reason}", reason: p.cancel_reason)}
-                </p>
-                <form
-                  :if={@can_edit? and p.status == :valid}
-                  id={"cancel-form-#{p.id}"}
-                  phx-submit="cancel_payment"
-                  class="flex gap-1"
-                >
-                  <input type="hidden" name="payment_id" value={p.id} />
-                  <input
-                    name="reason"
-                    placeholder={gettext("Raison de l'annulation")}
-                    class="input input-xs flex-1"
-                    aria-label={gettext("Raison de l'annulation")}
-                  />
-                  <button
-                    type="submit"
-                    class="btn btn-ghost btn-xs text-error"
-                    data-confirm={gettext("Annuler ce reçu ? Le paiement ne comptera plus.")}
-                  >
-                    {gettext("Annuler le reçu")}
-                  </button>
-                </form>
-              </div>
-            </section>
-
-            <.student_papers
-              form={@note_form}
-              error={@note_error}
-              notes={@notes}
-              last_note={@last_note}
-              warnings={@warnings}
-              last_warnings={@last_warnings}
-              can_edit?={@can_edit?}
-            />
-
-            <.form
-              :if={@can_edit?}
-              for={@adjustment_form}
-              id="adjustment-form"
-              phx-change="change_adjustment"
-              phx-submit="set_adjustment"
-              class="space-y-1 rounded-box border border-base-300 p-3"
-            >
-              <h3 class="font-semibold">{gettext("Réduction ou exonération")}</h3>
-              <ul :if={@adjustments != []} class="space-y-1 text-sm">
-                <li :for={a <- @adjustments} class="flex items-center justify-between gap-2">
-                  <span>{type_name(@types, a.fee_type_id)} · −{Money.format_fcfa(a.amount)} · {a.reason}</span>
-                  <button
-                    id={"remove-adjustment-#{a.fee_type_id}"}
-                    type="button"
-                    phx-click="remove_adjustment"
-                    phx-value-type={a.fee_type_id}
-                    data-confirm={gettext("Retirer cette réduction ?")}
-                    class="btn btn-ghost btn-sm"
-                  >
-                    {gettext("Retirer")}
-                  </button>
-                </li>
-              </ul>
-              <.input
-                field={@adjustment_form[:fee_type_id]}
-                type="select"
-                prompt={gettext("Choisir un frais")}
-                options={Enum.map(adjustment_types(@types, @student_fees), &{&1.name, &1.id})}
-                label={gettext("Frais")}
-              />
-              <.input
-                field={@adjustment_form[:amount]}
-                label={gettext("Montant de la réduction")}
-                inputmode="numeric"
-              />
-              <.input field={@adjustment_form[:reason]} label={gettext("Raison")} />
-              <p :if={@adjustment_error} class="text-sm text-error">{@adjustment_error}</p>
-              <button type="submit" class="btn btn-ghost btn-sm">{gettext("Appliquer")}</button>
-            </.form>
           </div>
-        </.drawer>
-      </section>
+
+          <.drawer
+            :if={@student}
+            id="student-fees"
+            eyebrow={@cg.label}
+            title={@student.student.full_name}
+            on_close={JS.patch(close_path(@cg, @late?))}
+          >
+            <div class="space-y-5">
+              <div
+                :if={@last_receipt}
+                id="last-receipt"
+                class="space-y-2 rounded-box bg-success/12 p-3 text-sm"
+              >
+                <p class="font-semibold">
+                  {gettext("Reçu n° %{number} enregistré.", number: @last_receipt.payment.number)}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <a
+                    id="print-receipt"
+                    href={~p"/school/fees/receipts/#{@last_receipt.payment.id}/print"}
+                    target="_blank"
+                    class="btn btn-primary btn-xs"
+                  >
+                    <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer le reçu")}
+                  </a>
+                  <a
+                    :for={w <- @last_receipt.whatsapp}
+                    href={w.url}
+                    target="_blank"
+                    rel="noopener"
+                    class="btn btn-outline btn-xs"
+                  >
+                    {gettext("Envoyer par WhatsApp à %{name}", name: w.name)}
+                  </a>
+                  <button
+                    :if={@student_fees.status == :behind}
+                    id="note-after-payment"
+                    type="button"
+                    phx-click="note_after_payment"
+                    class="btn btn-outline btn-xs"
+                  >
+                    {gettext("Imprimer une autorisation (paiement reçu)")}
+                  </button>
+                </div>
+              </div>
+
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>{gettext("Frais")}</th>
+                    <th class="text-right">{gettext("Dû")}</th>
+                    <th class="text-right">{gettext("Payé")}</th>
+                    <th class="text-right">{gettext("Reste")}</th>
+                  </tr>
+                </thead>
+                <caption class="caption-bottom pt-1 text-left text-xs text-base-content/60">
+                  {gettext("Montants en FCFA")}
+                </caption>
+                <tbody>
+                  <tr :for={t <- @student_fees.by_type}>
+                    <td>{t.name}</td>
+                    <td class="ta-num whitespace-nowrap text-right">{Money.format_amount(t.due)}</td>
+                    <td class="ta-num whitespace-nowrap text-right">{Money.format_amount(t.paid)}</td>
+                    <td class="ta-num whitespace-nowrap text-right">{left_amount(t.left)}</td>
+                  </tr>
+                  <tr class="font-semibold">
+                    <td>{gettext("Total")}</td>
+                    <td class="ta-num whitespace-nowrap text-right">
+                      {Money.format_amount(@student_fees.total_due)}
+                    </td>
+                    <td class="ta-num whitespace-nowrap text-right">
+                      {Money.format_amount(@student_fees.total_paid)}
+                    </td>
+                    <td class="ta-num whitespace-nowrap text-right">
+                      {left_amount(@student_fees.left)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <.form
+                :if={@can_edit?}
+                for={@payment_form}
+                id="payment-form"
+                phx-change="change_payment"
+                phx-submit="record_payment"
+                class="space-y-1 rounded-box border border-base-300 p-3"
+              >
+                <h3 class="font-semibold">{gettext("Encaisser")}</h3>
+                <.input
+                  field={@payment_form[:amount]}
+                  label={gettext("Montant (FCFA)")}
+                  inputmode="numeric"
+                />
+                <.input field={@payment_form[:paid_on]} type="date" label={gettext("Date")} />
+                <.input
+                  field={@payment_form[:method]}
+                  type="select"
+                  options={Enum.map(@methods, &{PaymentMethod.label(&1), &1})}
+                  label={gettext("Mode")}
+                />
+                <.input
+                  :if={@payment_form[:method].value in ["mobile_money", "bank_transfer"]}
+                  field={@payment_form[:reference]}
+                  label={gettext("Référence de la transaction")}
+                />
+                <p :if={@payment_error} id="payment-error" class="text-sm text-error">
+                  {@payment_error}
+                </p>
+                <button type="submit" class="btn btn-primary btn-sm w-full">{gettext(
+                  "Enregistrer et émettre le reçu"
+                )}</button>
+              </.form>
+
+              <section class="space-y-2">
+                <h3 class="font-semibold">{gettext("Reçus")}</h3>
+                <p :if={@payments == []} class="text-sm text-base-content/70">
+                  {gettext("Aucun paiement.")}
+                </p>
+                <div
+                  :for={p <- @payments}
+                  id={"payment-#{p.id}"}
+                  class="space-y-1 rounded-box border border-base-300 p-2 text-sm"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <a
+                      href={~p"/school/fees/receipts/#{p.id}/print"}
+                      target="_blank"
+                      class="link font-semibold"
+                    >{p.number}</a>
+                    <span class="ta-num">{Money.format_fcfa(p.amount)}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 text-base-content/70">
+                    <span>{ReceiptPrintHTML.date(p.paid_on)} · {PaymentMethod.label(p.method)}</span>
+                    <span :if={p.status == :cancelled} class="badge badge-error badge-sm">{gettext(
+                      "Annulé"
+                    )}</span>
+                  </div>
+                  <p :if={p.status == :cancelled and p.cancel_reason} class="text-base-content/70">
+                    {gettext("Raison : %{reason}", reason: p.cancel_reason)}
+                  </p>
+                  <form
+                    :if={@can_edit? and p.status == :valid}
+                    id={"cancel-form-#{p.id}"}
+                    phx-submit="cancel_payment"
+                    class="flex gap-1"
+                  >
+                    <input type="hidden" name="payment_id" value={p.id} />
+                    <input
+                      name="reason"
+                      placeholder={gettext("Raison de l'annulation")}
+                      class="input input-xs flex-1"
+                      aria-label={gettext("Raison de l'annulation")}
+                    />
+                    <button
+                      type="submit"
+                      class="btn btn-ghost btn-xs text-error"
+                      data-confirm={gettext("Annuler ce reçu ? Le paiement ne comptera plus.")}
+                    >
+                      {gettext("Annuler le reçu")}
+                    </button>
+                  </form>
+                </div>
+              </section>
+
+              <.student_papers
+                form={@note_form}
+                error={@note_error}
+                notes={@notes}
+                last_note={@last_note}
+                warnings={@warnings}
+                last_warnings={@last_warnings}
+                can_edit?={@can_edit?}
+              />
+
+              <.form
+                :if={@can_edit?}
+                for={@adjustment_form}
+                id="adjustment-form"
+                phx-change="change_adjustment"
+                phx-submit="set_adjustment"
+                class="space-y-1 rounded-box border border-base-300 p-3"
+              >
+                <h3 class="font-semibold">{gettext("Réduction ou exonération")}</h3>
+                <ul :if={@adjustments != []} class="space-y-1 text-sm">
+                  <li :for={a <- @adjustments} class="flex items-center justify-between gap-2">
+                    <span>{type_name(@types, a.fee_type_id)} · −{Money.format_fcfa(a.amount)} · {a.reason}</span>
+                    <button
+                      id={"remove-adjustment-#{a.fee_type_id}"}
+                      type="button"
+                      phx-click="remove_adjustment"
+                      phx-value-type={a.fee_type_id}
+                      data-confirm={gettext("Retirer cette réduction ?")}
+                      class="btn btn-ghost btn-sm"
+                    >
+                      {gettext("Retirer")}
+                    </button>
+                  </li>
+                </ul>
+                <.input
+                  field={@adjustment_form[:fee_type_id]}
+                  type="select"
+                  prompt={gettext("Choisir un frais")}
+                  options={Enum.map(adjustment_types(@types, @student_fees), &{&1.name, &1.id})}
+                  label={gettext("Frais")}
+                />
+                <.input
+                  field={@adjustment_form[:amount]}
+                  label={gettext("Montant de la réduction")}
+                  inputmode="numeric"
+                />
+                <.input field={@adjustment_form[:reason]} label={gettext("Raison")} />
+                <p :if={@adjustment_error} class="text-sm text-error">{@adjustment_error}</p>
+                <button type="submit" class="btn btn-ghost btn-sm">{gettext("Appliquer")}</button>
+              </.form>
+            </div>
+          </.drawer>
+        </section>
+      </.class_shell>
     </Layouts.app>
     """
   end

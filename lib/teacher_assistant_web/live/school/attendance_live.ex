@@ -5,11 +5,21 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   alias TeacherAssistant.Academics.{CombinedCourse, Reference}
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.RollCall
+  alias TeacherAssistantWeb.Spaces
+
+  # Reached from Ma journée, Mes cours, the school's day or a class: the member's
+  # own entry is lit and leads back.
+  @nav ["today", "day", "courses", "classes"]
 
   def mount(%{"id" => id, "period_id" => period_id} = params, _session, socket) do
     case RollCall.open(socket.assigns.current_scope, id, period_id, parse_date(params["date"])) do
       {:ok, roll} ->
-        {:ok, assign(socket, :roll, roll)}
+        {:ok,
+         assign(socket,
+           roll: roll,
+           nav: @nav,
+           parent: Spaces.owner_item_for(socket.assigns.current_scope, @nav)
+         )}
 
       {:error, :forbidden} ->
         {:ok,
@@ -50,8 +60,17 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={@nav}
+    >
       <section id="class-attendance" class="mx-auto flex max-w-2xl flex-col gap-5">
+        <.breadcrumb :if={@parent}>
+          <:crumb id="attendance-back" navigate={@parent.path}>{@parent.label}</:crumb>
+          <:crumb>{gettext("Appel")}</:crumb>
+        </.breadcrumb>
         <.page_header
           eyebrow={gettext("Appel · %{date}", date: Dates.long(@roll.date))}
           title={unit_label(@roll)}

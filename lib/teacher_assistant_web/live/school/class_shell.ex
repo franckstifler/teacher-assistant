@@ -6,11 +6,11 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   """
   use TeacherAssistantWeb, :html
 
-  alias TeacherAssistant.{Curriculum, Discipline, Enrollment, ReportCards, Timetabling}
+  alias TeacherAssistant.{Curriculum, Discipline, Enrollment, Fees, ReportCards}
   alias TeacherAssistant.Academics.{ClassGroup, SchoolTemplates}
   alias TeacherAssistant.Accounts.User
 
-  @tabs [:students, :teachings, :timetable, :register, :discipline, :results]
+  @tabs [:students, :teachings, :timetable, :register, :discipline, :results, :fees]
 
   @doc "Whether the scope may open the class's `tab`."
   def allowed?(scope, %ClassGroup{} = cg, tab) when tab in [:students, :teachings, :timetable],
@@ -21,6 +21,9 @@ defmodule TeacherAssistantWeb.School.ClassShell do
 
   def allowed?(scope, %ClassGroup{} = cg, :results), do: ReportCards.access(scope, cg) != :none
 
+  def allowed?(scope, %ClassGroup{} = cg, :fees),
+    do: Fees.can_manage_fees?(scope) or Enrollment.class_manager?(scope, cg)
+
   @doc "The class's tabs the scope may open, in display order."
   def visible_tabs(scope, %ClassGroup{} = cg) do
     Enum.filter(@tabs, fn tab ->
@@ -29,21 +32,14 @@ defmodule TeacherAssistantWeb.School.ClassShell do
     end)
   end
 
-  @doc "Where a tab lives. Timetable editors are sent to the school-wide editor."
+  @doc "Where a tab lives."
   def tab_url(%ClassGroup{id: id}, :students), do: ~p"/school/classes/#{id}"
   def tab_url(%ClassGroup{id: id}, :teachings), do: ~p"/school/classes/#{id}/teachings"
   def tab_url(%ClassGroup{id: id}, :timetable), do: ~p"/school/classes/#{id}/timetable"
   def tab_url(%ClassGroup{id: id}, :register), do: ~p"/school/classes/#{id}/register"
   def tab_url(%ClassGroup{id: id}, :discipline), do: ~p"/school/classes/#{id}/discipline"
   def tab_url(%ClassGroup{id: id}, :results), do: ~p"/school/classes/#{id}/results"
-
-  defp tab_path(scope, cg, :timetable) do
-    if Timetabling.can_edit_timetable?(scope),
-      do: ~p"/school/timetable?class=#{cg.id}",
-      else: tab_url(cg, :timetable)
-  end
-
-  defp tab_path(_scope, cg, tab), do: tab_url(cg, tab)
+  def tab_url(%ClassGroup{id: id}, :fees), do: ~p"/school/classes/#{id}/fees"
 
   @doc """
   Everything the header and tab bar show, loaded once per page mount (and
@@ -65,7 +61,7 @@ defmodule TeacherAssistantWeb.School.ClassShell do
       end
 
     %{
-      tabs: Enum.map(tabs, &{&1, tab_path(scope, cg, &1)}),
+      tabs: Enum.map(tabs, &{&1, tab_url(cg, &1)}),
       capacity: Enrollment.capacity(scope, cg, count),
       form_master: Enrollment.form_master(scope, cg),
       unassigned: unassigned
@@ -84,6 +80,12 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   attr :cg, ClassGroup, required: true
   attr :shell, :map, required: true
   attr :tab, :atom, required: true, values: @tabs
+
+  attr :trail, :list,
+    default: [],
+    doc:
+      "a sub-page's own crumbs after the class's (« Contrôle des frais »); the class's crumb then leads back to the tab"
+
   slot :actions
   slot :inner_block, required: true
 
@@ -99,7 +101,8 @@ defmodule TeacherAssistantWeb.School.ClassShell do
     <section id="class-shell" class="space-y-5">
       <.breadcrumb>
         <:crumb navigate={~p"/school/classes"}>{gettext("Classes")}</:crumb>
-        <:crumb>{@cg.label}</:crumb>
+        <:crumb navigate={@trail != [] && tab_url(@cg, @tab)}>{@cg.label}</:crumb>
+        <:crumb :for={label <- @trail}>{label}</:crumb>
       </.breadcrumb>
 
       <header class="flex flex-wrap items-end justify-between gap-4">
@@ -180,6 +183,7 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   defp tab_label(:register), do: gettext("Cahier d'appel")
   defp tab_label(:discipline), do: gettext("Discipline")
   defp tab_label(:results), do: gettext("Résultats")
+  defp tab_label(:fees), do: gettext("Frais")
 
   @doc "Spec 2026-10-31 §1: the class list to print, official roster or working list."
   attr :cg, ClassGroup, required: true

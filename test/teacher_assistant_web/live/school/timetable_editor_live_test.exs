@@ -144,11 +144,17 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
     assert {:error, {:live_redirect, %{to: "/school"}}} = live(conn, ~p"/school/timetable")
   end
 
-  test "the old class page sends an editor to the editor", %{conn: conn} = ctx do
-    assert {:error, {:live_redirect, %{to: to}}} =
-             live(conn, ~p"/school/classes/#{ctx.a.id}/timetable")
+  test "an editor reads the class's week in the class and opens the editor from it",
+       %{conn: conn} = ctx do
+    {:ok, view, html} = live(conn, ~p"/school/classes/#{ctx.a.id}/timetable")
 
-    assert to == "/school/timetable?class=#{ctx.a.id}"
+    assert has_element?(view, "#class-tab-timetable[aria-current=page]")
+    refute html =~ "<select"
+
+    assert has_element?(
+             view,
+             ~s(#edit-class-timetable[href="/school/timetable?class=#{ctx.a.id}"])
+           )
   end
 
   test "the grid shows lesson days only and greys Wednesday afternoon (spec J1)",

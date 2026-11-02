@@ -76,8 +76,10 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     conn = post(conn, ~p"/school/space/enseignant")
     conn = post(conn, ~p"/teacher/select-context/#{tc.id}")
     {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks")
-    assert has_element?(view, "#tab-nav-school-marks[aria-current=page]")
-    refute has_element?(view, "#tab-nav-school-courses[aria-current=page]")
+    # a course's pages belong to « Mes cours », on the phone and on the rail
+    assert has_element?(view, "#tab-nav-school-courses[aria-current=page]")
+    assert has_element?(view, "#nav-school-courses[aria-current=page]")
+    assert has_element?(view, "#tab-nav-school-bulletins")
   end
 
   test "a hidden screen stays read-only when typed directly", ctx do

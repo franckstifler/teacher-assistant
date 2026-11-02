@@ -35,6 +35,36 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
     assert get_session(conn, :space) == "enseignant"
   end
 
+  test "the member stays on their page when the new space's menu has it", ctx do
+    member = censeur_who_teaches(ctx)
+    conn = post(member, ~p"/school/space/enseignant?#{[return_to: "/school/bulletins"]}")
+    assert redirected_to(conn) == "/school/bulletins"
+
+    # the teacher's menu has no class list (they are not a form master): home
+    conn = post(member, ~p"/school/space/enseignant?#{[return_to: "/school/classes/x"]}")
+
+    assert redirected_to(conn) == "/school/today"
+  end
+
+  test "return_to never leaves the menu's pages", ctx do
+    member = censeur_who_teaches(ctx)
+
+    for target <- ["//evil.example/school/bulletins", "https://evil.example", "/admin", ""] do
+      conn = post(member, ~p"/school/space/enseignant?#{[return_to: target]}")
+
+      assert redirected_to(conn) == "/school/today"
+    end
+  end
+
+  test "the space links carry the page the member is on", ctx do
+    {:ok, view, _} = live(censeur_who_teaches(ctx), ~p"/school/bulletins")
+
+    assert has_element?(
+             view,
+             ~s(#space-switch-enseignant[href="/school/space/enseignant?return_to=%2Fschool%2Fbulletins"])
+           )
+  end
+
   test "a space the member does not have is ignored", ctx do
     teacher = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
     conn = conn_for(ctx.school, teacher.current_user) |> post(~p"/school/space/proviseur")

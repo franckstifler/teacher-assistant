@@ -37,7 +37,17 @@ defmodule TeacherAssistantWeb.School.FeeControlLiveTest do
   test "control list groups students and ticking records a send-out", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
 
-    assert has_element?(view, "#control-title", "Contrôle des frais — 6e Q")
+    assert has_element?(view, "#control-title", "Contrôle des frais")
+    # inside the class's frame, under its Frais tab, with a crumb back to it
+    assert has_element?(view, "#class-shell h1", "6e Q")
+    assert has_element?(view, "#class-tab-fees[aria-current=page]")
+
+    assert has_element?(
+             view,
+             ~s(#class-shell nav a[href="/school/classes/#{ctx.cg.id}/fees"]),
+             "6e Q"
+           )
+
     assert has_element?(view, "#must-leave", "Doivent sortir — 1")
     assert has_element?(view, "#must-leave", "Awa A")
     assert has_element?(view, "#must-leave", "24 000")

@@ -36,9 +36,18 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["courses"]}
+    >
       <section id="teacher-roster" class="mx-auto max-w-2xl space-y-5">
-        <.teaching_nav context_id={@ctx.id} current={:roster} />
+        <.teaching_nav
+          context_id={@ctx.id}
+          label={"#{@ctx.subject} · #{@class_group.label}"}
+          current={:roster}
+        />
         <.page_header
           eyebrow={gettext("Roster")}
           title={"#{@ctx.subject} · #{@class_group.label}"}

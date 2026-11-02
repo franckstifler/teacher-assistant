@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.UIComponents do
   use Phoenix.Component
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
-  import TeacherAssistantWeb.CoreComponents, only: [icon: 1]
+  import TeacherAssistantWeb.CoreComponents, only: [breadcrumb: 1, icon: 1]
 
   @doc """
   The bar at the bottom of a `DirtyForm` form: « Modifications non enregistrées ·
@@ -45,11 +45,12 @@ defmodule TeacherAssistantWeb.UIComponents do
   end
 
   @doc """
-  A sub-page header: a back link to the parent page (« ‹ Paramètres »), the title,
-  an optional subtitle and actions on the right.
+  A sub-page header: the breadcrumb « Paramètres / title » back to the parent page,
+  the title, an optional subtitle and actions on the right. A page that is itself
+  in the member's menu (the intendant's fee settings) passes `back={nil}`: no crumb.
   """
-  attr :back, :string, required: true, doc: "the parent page's path"
-  attr :back_label, :string, required: true
+  attr :back, :string, default: nil, doc: "the parent page's path"
+  attr :back_label, :string, default: nil
   attr :title, :string, required: true
   attr :subtitle, :string, default: nil
   slot :actions
@@ -58,12 +59,10 @@ defmodule TeacherAssistantWeb.UIComponents do
     ~H"""
     <header class="flex flex-wrap items-end justify-between gap-3">
       <div class="min-w-0 space-y-1">
-        <.link
-          navigate={@back}
-          class="inline-flex min-h-8 items-center gap-1 text-sm font-semibold text-info hover:underline"
-        >
-          <.icon name="hero-chevron-left" class="size-4" />{@back_label}
-        </.link>
+        <.breadcrumb :if={@back}>
+          <:crumb id="back-header-parent" navigate={@back}>{@back_label}</:crumb>
+          <:crumb>{@title}</:crumb>
+        </.breadcrumb>
         <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{@title}</h1>
         <p :if={@subtitle} class="text-[0.95rem] text-base-content/75">{@subtitle}</p>
       </div>
@@ -289,6 +288,7 @@ defmodule TeacherAssistantWeb.UIComponents do
         <li :for={item <- @item} role="none">
           <.link
             :if={item[:navigate] || item[:href]}
+            id={item[:id]}
             role="menuitem"
             navigate={item[:navigate]}
             href={item[:href]}

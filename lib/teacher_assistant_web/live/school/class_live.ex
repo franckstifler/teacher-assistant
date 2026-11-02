@@ -14,7 +14,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.Sex
   alias TeacherAssistantWeb.School.{ClassShell, EnrollDrawer}
-  import ClassShell, only: [class_shell: 1, class_list_menu: 1]
+  import ClassShell, only: [class_shell: 1]
 
   @roster_filters [:all, :f, :m, :repeaters]
 
@@ -53,32 +53,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <.class_shell cg={@cg} shell={@shell} tab={:students}>
+        <%!-- One action in view; the rest behind « ⋯ » so the tabs stay near the top on a phone. --%>
         <:actions>
-          <.link
-            :if={@can_manage_register? and TeacherAssistant.Scope.module?(@current_scope, :photos)}
-            navigate={~p"/school/classes/#{@cg.id}/photos"}
-            id="go-to-photos"
-            class="btn btn-ghost btn-sm"
-          >
-            {gettext("Photos")}
-          </.link>
-          <.class_list_menu cg={@cg} />
-          <.link
-            :if={TeacherAssistant.Scope.module?(@current_scope, :notes)}
-            navigate={~p"/school/bulletins?class=#{@cg.id}"}
-            id="go-to-bulletins"
-            class="btn btn-ghost btn-sm"
-          >
-            {gettext("Bulletins")}
-          </.link>
-          <.link
-            :if={@can_manage_classes?}
-            navigate={~p"/school/classes/#{@cg.id}/import"}
-            id="go-to-import"
-            class="btn btn-ghost btn-sm"
-          >
-            {gettext("Importer une liste")}
-          </.link>
           <button
             id="enroll-button"
             type="button"
@@ -87,27 +63,66 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           >
             <.icon name="hero-plus" class="size-4" /> {gettext("Inscrire un élève")}
           </button>
-          <details :if={@can_manage_classes?} id="class-menu" class="dropdown dropdown-end">
-            <summary class="btn btn-ghost btn-sm">{gettext("Gérer")} ▾</summary>
-            <ul class="menu dropdown-content z-30 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg">
-              <li>
-                <button id="open-class-settings" type="button" phx-click="open_settings">
-                  {gettext("Effectif maximum…")}
-                </button>
-              </li>
-              <li>
-                <button
-                  id="delete-class"
-                  type="button"
-                  class="text-error"
-                  phx-click="delete_class"
-                  data-confirm={gettext("Supprimer la classe %{label} ?", label: @cg.label)}
-                >
-                  {gettext("Supprimer la classe")}
-                </button>
-              </li>
-            </ul>
-          </details>
+          <.action_menu id="class-menu" label={gettext("Actions de la classe")}>
+            <:item
+              :if={@can_manage_register? and TeacherAssistant.Scope.module?(@current_scope, :photos)}
+              id="go-to-photos"
+              icon="hero-camera"
+              navigate={~p"/school/classes/#{@cg.id}/photos"}
+            >
+              {gettext("Photos")}
+            </:item>
+            <:item
+              id="class-list-roster"
+              icon="hero-printer"
+              href={~p"/school/classes/#{@cg.id}/class-list/print"}
+              target="_blank"
+            >
+              {gettext("Liste officielle")}
+            </:item>
+            <:item
+              id="class-list-working"
+              icon="hero-printer"
+              href={~p"/school/classes/#{@cg.id}/class-list/working/print"}
+              target="_blank"
+            >
+              {gettext("Liste de travail")}
+            </:item>
+            <:item
+              :if={TeacherAssistant.Scope.module?(@current_scope, :notes)}
+              id="go-to-bulletins"
+              icon="hero-document-text"
+              navigate={~p"/school/bulletins?class=#{@cg.id}"}
+            >
+              {gettext("Bulletins")}
+            </:item>
+            <:item
+              :if={@can_manage_classes?}
+              id="go-to-import"
+              icon="hero-arrow-up-tray"
+              navigate={~p"/school/classes/#{@cg.id}/import"}
+            >
+              {gettext("Importer une liste")}
+            </:item>
+            <:item
+              :if={@can_manage_classes?}
+              id="open-class-settings"
+              icon="hero-adjustments-horizontal"
+              click="open_settings"
+            >
+              {gettext("Effectif maximum…")}
+            </:item>
+            <:item
+              :if={@can_manage_classes?}
+              id="delete-class"
+              icon="hero-trash"
+              click="delete_class"
+              confirm={gettext("Supprimer la classe %{label} ?", label: @cg.label)}
+              danger
+            >
+              {gettext("Supprimer la classe")}
+            </:item>
+          </.action_menu>
         </:actions>
 
         <div
