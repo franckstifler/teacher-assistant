@@ -195,40 +195,6 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   def tab_label(:results), do: gettext("Résultats")
   def tab_label(:fees), do: gettext("Frais")
 
-  @doc "Spec 2026-10-31 §1: the class list to print, official roster or working list."
-  attr :cg, ClassGroup, required: true
-  attr :button_class, :string, default: "btn btn-ghost btn-sm", doc: "matches the page's buttons"
-
-  def class_list_menu(assigns) do
-    ~H"""
-    <details id="class-list-menu" class="dropdown dropdown-end">
-      <summary class={@button_class}>
-        <.icon name="hero-printer" class="size-4" /> {gettext("Liste de classe")} ▾
-      </summary>
-      <ul class="menu dropdown-content z-30 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg">
-        <li>
-          <a
-            id="class-list-roster"
-            href={~p"/school/classes/#{@cg.id}/class-list/print"}
-            target="_blank"
-          >
-            {gettext("Liste officielle")}
-          </a>
-        </li>
-        <li>
-          <a
-            id="class-list-working"
-            href={~p"/school/classes/#{@cg.id}/class-list/working/print"}
-            target="_blank"
-          >
-            {gettext("Liste de travail")}
-          </a>
-        </li>
-      </ul>
-    </details>
-    """
-  end
-
   @doc "« Francophone · 1er cycle »."
   def subsystem_cycle(%ClassGroup{subsystem: subsystem, level: level}) do
     sub = if subsystem == :anglophone, do: gettext("Anglophone"), else: gettext("Francophone")

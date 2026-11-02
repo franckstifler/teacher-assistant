@@ -7,7 +7,7 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistantWeb.School.ClassShell
-  import ClassShell, only: [class_shell: 1, class_list_menu: 1]
+  import ClassShell, only: [class_shell: 1]
   import TeacherAssistantWeb.Drawer
 
   alias TeacherAssistant.Enrollment
@@ -250,51 +250,70 @@ defmodule TeacherAssistantWeb.School.RegisterLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <.class_shell cg={@cg} shell={@shell} tab={:register}>
+        <%!-- As on the Élèves tab: the day's action in view, the rest behind « ⋯ ». --%>
         <:actions>
           <.link
             :if={@can_edit? and @cg.paper_roll_call}
             id="roll-sheet-link"
             navigate={~p"/school/classes/#{@cg.id}/roll-sheet"}
-            class="btn btn-ghost"
+            class="btn btn-primary btn-sm gap-1.5"
           >
             <.icon name="hero-pencil-square" class="size-4" />
             {gettext("Saisir la feuille")}
           </.link>
-          <.link
-            :if={@can_edit? and @cg.paper_roll_call}
-            id="roll-sheet-print"
-            href={~p"/school/classes/#{@cg.id}/roll-sheet/print"}
-            target="_blank"
-            class="btn btn-ghost"
+          <.action_menu
+            id="register-menu"
+            label={gettext("Actions du cahier d'appel")}
+            class="ml-auto"
           >
-            <.icon name="hero-printer" class="size-4" />
-            {gettext("Imprimer la feuille")}
-          </.link>
-          <.link
-            :if={
-              @can_edit? and
-                TeacherAssistantWeb.Spaces.path_allowed?(
-                  @current_scope,
-                  ~p"/school/classes/#{@cg.id}/absence-hours"
-                )
-            }
-            id="absence-hours-link"
-            navigate={~p"/school/classes/#{@cg.id}/absence-hours"}
-            class="btn btn-ghost"
-          >
-            <.icon name="hero-clock" class="size-4" />
-            {gettext("Heures d'absence au bulletin")}
-          </.link>
-          <.class_list_menu cg={@cg} button_class="btn btn-ghost" />
-          <.link
-            :if={@can_manage_register?}
-            navigate={~p"/school/classes/#{@cg.id}/photos"}
-            id="go-to-photos"
-            class="btn btn-ghost"
-          >
-            <.icon name="hero-camera" class="size-4" />
-            {gettext("Photos")}
-          </.link>
+            <:item
+              :if={@can_edit? and @cg.paper_roll_call}
+              id="roll-sheet-print"
+              icon="hero-printer"
+              href={~p"/school/classes/#{@cg.id}/roll-sheet/print"}
+              target="_blank"
+            >
+              {gettext("Imprimer la feuille")}
+            </:item>
+            <:item
+              :if={
+                @can_edit? and
+                  TeacherAssistantWeb.Spaces.path_allowed?(
+                    @current_scope,
+                    ~p"/school/classes/#{@cg.id}/absence-hours"
+                  )
+              }
+              id="absence-hours-link"
+              icon="hero-clock"
+              navigate={~p"/school/classes/#{@cg.id}/absence-hours"}
+            >
+              {gettext("Heures d'absence au bulletin")}
+            </:item>
+            <:item
+              id="class-list-roster"
+              icon="hero-printer"
+              href={~p"/school/classes/#{@cg.id}/class-list/print"}
+              target="_blank"
+            >
+              {gettext("Liste officielle")}
+            </:item>
+            <:item
+              id="class-list-working"
+              icon="hero-printer"
+              href={~p"/school/classes/#{@cg.id}/class-list/working/print"}
+              target="_blank"
+            >
+              {gettext("Liste de travail")}
+            </:item>
+            <:item
+              :if={@can_manage_register?}
+              id="go-to-photos"
+              icon="hero-camera"
+              navigate={~p"/school/classes/#{@cg.id}/photos"}
+            >
+              {gettext("Photos")}
+            </:item>
+          </.action_menu>
         </:actions>
 
         <div id="register" class="space-y-4">
