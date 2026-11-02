@@ -161,9 +161,12 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLiveTest do
     assert render_hook(view, "export_failed", %{"count" => 2}) =~ "2 photos n&#39;ont pas pu"
   end
 
-  test "the SG's menu links to the page", %{sg: sg, ws: ws} do
-    {:ok, _view, html} = live(conn_for(sg, ws), ~p"/school/exam-photos")
-    assert html =~ ~s(href="/school/exam-photos")
+  test "the SG reaches the page from Élèves and goes back there", %{sg: sg, ws: ws} do
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/students")
+    assert has_element?(view, ~s(#go-to-exam-photos[href="/school/exam-photos"]))
+
+    {:ok, view, _} = live(conn_for(sg, ws), ~p"/school/exam-photos")
+    assert has_element?(view, ~s(#exam-photos-back[href="/school/students"]))
   end
 
   test "one photo reads « 1 photo »", %{sg: sg, ws: ws, cg_tle: tle} do

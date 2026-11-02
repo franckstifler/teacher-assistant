@@ -170,7 +170,12 @@ defmodule TeacherAssistantWeb.School.AvailabilityLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["timetable-editor"]}
+    >
       <section id="availability" class="space-y-5">
         <.back_header
           back={~p"/school/timetable"}

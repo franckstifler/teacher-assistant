@@ -138,14 +138,34 @@ defmodule TeacherAssistantWeb.SpacesTest do
                "nav-school-sanctions",
                "nav-school-classes",
                "nav-school-students",
-               "nav-school-exam-photos",
                "nav-school-school-life"
              ]
 
     assert "nav-school-students" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-students" in item_ids(:censeur, facts([:vice_principal]))
-    assert "nav-school-exam-photos" in item_ids(:proviseur, facts([:head]))
-    assert "nav-school-exam-photos" in item_ids(:censeur, facts([:vice_principal]))
+    # « Photos examen » opens from Élèves, « Disponibilités » from the timetable editor
+    refute "nav-school-exam-photos" in item_ids(:proviseur, facts([:head]))
+    refute "nav-school-availability" in item_ids(:censeur, facts([:vice_principal]))
+
+    for key <- [:proviseur, :censeur] do
+      [_steering, school_life, organisation] =
+        Spaces.space(key, facts([:head, :vice_principal])).sections
+
+      assert school_life.label == "Scolarité"
+
+      assert Enum.map(school_life.items, & &1.id) ==
+               ["nav-school-classes", "nav-school-students", "nav-school-conduct"]
+
+      assert organisation.label == "Organisation"
+
+      assert Enum.map(organisation.items, & &1.id) == [
+               "nav-school-timetable-editor",
+               "nav-school-fees",
+               "nav-school-members",
+               "nav-school-settings"
+             ]
+    end
+
     # every settings page is reached from the one Paramètres entry (its hub)
     assert "nav-school-settings" in item_ids(:proviseur, facts([:head]))
     assert "nav-school-settings" in item_ids(:censeur, facts([:vice_principal]))

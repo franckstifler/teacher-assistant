@@ -68,6 +68,11 @@ defmodule TeacherAssistantWeb.Layouts do
       )
       |> assign(:role_label, role_label(current_scope))
       |> assign(:workspaces, workspaces)
+      # A head may open another school; a member who has none starts one.
+      |> assign(
+        :can_create_school?,
+        workspaces == [] or :head in ((current_scope && current_scope.current_roles) || [])
+      )
       |> assign(:in_school?, current_scope && current_scope.current_workspace != nil)
       |> assign(:space, current_scope && current_scope.capabilities[:space])
       |> assign(:space_keys, (current_scope && current_scope.capabilities[:spaces]) || [])
@@ -198,8 +203,12 @@ defmodule TeacherAssistantWeb.Layouts do
                       </.link>
                     </li>
                   </ul>
-                  <div class="mt-1 border-t border-base-300 p-2">
-                    <.link navigate={~p"/schools/new"} class="btn btn-primary btn-xs w-full">
+                  <div :if={@can_create_school?} class="mt-1 border-t border-base-300 p-2">
+                    <.link
+                      id="workspace-switcher-new"
+                      navigate={~p"/schools/new"}
+                      class="btn btn-primary btn-xs w-full"
+                    >
                       {gettext("Créer un établissement")}
                     </.link>
                   </div>

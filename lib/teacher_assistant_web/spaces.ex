@@ -198,17 +198,9 @@ defmodule TeacherAssistantWeb.Spaces do
           councils(),
           correction_review(facts.pending_corrections)
         ]),
-        section(gettext("Établissement"), [
-          classes(),
-          students(),
-          exam_photos(),
-          fees(),
-          timetable_editor(),
-          members(),
-          conduct(),
-          # one entry: the settings hub links to every settings page
-          settings()
-        ])
+        section(gettext("Scolarité"), [classes(), students(), conduct()]),
+        # one settings entry: the hub links to every settings page
+        section(gettext("Organisation"), [timetable_editor(), fees(), members(), settings()])
       ]
     }
   end
@@ -225,17 +217,9 @@ defmodule TeacherAssistantWeb.Spaces do
           councils(),
           correction_review(facts.pending_corrections)
         ]),
-        section(gettext("Établissement"), [
-          classes(),
-          students(),
-          exam_photos(),
-          fees(),
-          timetable_editor(),
-          availability(),
-          members(),
-          conduct(),
-          settings()
-        ])
+        section(gettext("Scolarité"), [classes(), students(), conduct()]),
+        # « Disponibilités » opens from the timetable editor
+        section(gettext("Organisation"), [timetable_editor(), fees(), members(), settings()])
       ]
     }
   end
@@ -253,7 +237,6 @@ defmodule TeacherAssistantWeb.Spaces do
           sanctions(facts[:parents_to_notify]),
           classes(),
           students(),
-          exam_photos(),
           school_life_settings()
         ])
       ]
@@ -356,7 +339,8 @@ defmodule TeacherAssistantWeb.Spaces do
   def path_under_item?(path, "/school/settings"),
     do: Enum.any?(@settings_pages, &(path == &1 or String.starts_with?(path, &1 <> "/")))
 
-  # The editor's sub-pages (« Disponibilités », « Mon emploi du temps ») have their own item.
+  # « Mon emploi du temps » is the teacher's own item, not the editor's; « Disponibilités »
+  # names the editor as its entry (`nav`).
   def path_under_item?(_path, "/school/timetable"), do: false
 
   def path_under_item?(path, href), do: String.starts_with?(path, href <> "/")
@@ -491,9 +475,6 @@ defmodule TeacherAssistantWeb.Spaces do
   defp students,
     do: item("students", gettext("Élèves"), "hero-identification", ~p"/school/students")
 
-  defp exam_photos,
-    do: item("exam-photos", gettext("Photos examen"), "hero-camera", ~p"/school/exam-photos")
-
   defp timetable,
     do:
       item(
@@ -535,15 +516,6 @@ defmodule TeacherAssistantWeb.Spaces do
         gettext("Paramètres des frais"),
         "hero-adjustments-horizontal",
         ~p"/school/settings/fees"
-      )
-
-  defp availability,
-    do:
-      item(
-        "availability",
-        gettext("Disponibilités"),
-        "hero-clock",
-        ~p"/school/timetable/availability"
       )
 
   defp councils,

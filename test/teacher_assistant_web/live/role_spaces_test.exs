@@ -116,12 +116,36 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#workspace-switcher-item-#{ctx.school.id} a[aria-current]")
     assert has_element?(view, "#nav-school-correction-review", "Validation des corrections")
     assert has_element?(view, "#more-nav section", "Suivi pédagogique")
-    assert has_element?(view, "#more-nav section", "Établissement")
+    assert has_element?(view, "#more-nav section", "Scolarité")
+    assert has_element?(view, "#more-nav section", "Organisation")
 
     conn = post(conn, ~p"/school/space/enseignant")
     {:ok, view, _} = live(conn, ~p"/school/courses")
     assert has_element?(view, "#workspace-switcher", "Espace enseignant")
     assert has_element?(view, "#nav-school-corrections", "Corrections de notes")
+  end
+
+  test "« Photos examen » opens from Élèves, which stays lit", ctx do
+    {conn, _} = member_conn(ctx, [:head], [])
+    {:ok, view, _} = live(conn, ~p"/school/students")
+    refute has_element?(view, "#nav-school-exam-photos")
+    assert has_element?(view, ~s(#go-to-exam-photos[href="/school/exam-photos"]))
+
+    {:ok, view, _} = live(conn, ~p"/school/exam-photos")
+    assert has_element?(view, "#nav-school-students[aria-current=page]")
+    assert has_element?(view, ~s(#exam-photos-back[href="/school/students"]))
+  end
+
+  test "only a head is offered to create a school in the switcher", ctx do
+    {conn, _} = member_conn(ctx, [:head], [])
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    assert has_element?(view, "#workspace-switcher-new")
+
+    for roles <- [[:vice_principal], [:discipline_master], [:bursar]] do
+      {conn, _} = member_conn(ctx, roles, [])
+      {:ok, view, _} = live(conn, ~p"/school/classes")
+      refute has_element?(view, "#workspace-switcher-new")
+    end
   end
 
   test "a class's fees belong to Frais, not to Classes", ctx do
@@ -132,12 +156,12 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     assert has_element?(view, "#class-tab-fees[aria-current=page]")
   end
 
-  test "on the availability page only « Disponibilités » is the current menu item", ctx do
+  test "« Disponibilités » is a page of the timetable editor's entry", ctx do
     {conn, _} = member_conn(ctx, [:vice_principal], [])
     {:ok, view, _} = live(conn, ~p"/school/timetable/availability")
-    assert has_element?(view, "#nav-school-availability[aria-current=page]")
-    refute has_element?(view, "#nav-school-timetable-editor[aria-current=page]")
-    refute has_element?(view, "#tab-nav-school-timetable-editor[aria-current=page]")
+    refute has_element?(view, "#nav-school-availability")
+    assert has_element?(view, "#nav-school-timetable-editor[aria-current=page]")
+    assert has_element?(view, "#tab-nav-school-timetable-editor[aria-current=page]")
 
     {:ok, view, _} = live(conn, ~p"/school/timetable")
     assert has_element?(view, "#nav-school-timetable-editor[aria-current=page]")

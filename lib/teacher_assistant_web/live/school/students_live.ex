@@ -32,6 +32,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
            classes: Enrollment.list_class_groups(scope, scope.current_academic_year),
            can_manage_classes?: Enrollment.can_manage_classes?(scope),
            can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
+           exam_photos?: TeacherAssistant.Scope.module?(scope, :photos),
            drawer: nil
          )
          |> assign_counts()}
@@ -175,7 +176,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
       <section id="students" class="flex flex-col gap-5">
         <header class="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p class="ta-eyebrow">{gettext("Établissement")}</p>
+            <p class="ta-eyebrow">{gettext("Scolarité")}</p>
             <h1 class="mt-1.5 font-display text-2xl font-semibold leading-[1.1] sm:text-[2rem]">
               {gettext("Élèves")}
             </h1>
@@ -188,15 +189,26 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               )} · {gettext("%{count} sans contact parent", count: @counts.no_contact)}
             </p>
           </div>
-          <button
-            :if={@can_manage_classes?}
-            id="enroll-button"
-            type="button"
-            class="btn btn-primary btn-sm gap-1.5"
-            phx-click="open_enroll"
-          >
-            <.icon name="hero-plus" class="size-4" /> {gettext("Inscrire un élève")}
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <%!-- Once a year (national exams): a page of Élèves, not a menu entry. --%>
+            <.link
+              :if={@exam_photos?}
+              id="go-to-exam-photos"
+              navigate={~p"/school/exam-photos"}
+              class="btn btn-ghost btn-sm gap-1.5"
+            >
+              <.icon name="hero-camera" class="size-4" /> {gettext("Photos examen")}
+            </.link>
+            <button
+              :if={@can_manage_classes?}
+              id="enroll-button"
+              type="button"
+              class="btn btn-primary btn-sm gap-1.5"
+              phx-click="open_enroll"
+            >
+              <.icon name="hero-plus" class="size-4" /> {gettext("Inscrire un élève")}
+            </button>
+          </div>
         </header>
 
         <div class="flex flex-wrap items-center gap-2">

@@ -212,11 +212,22 @@ defmodule TeacherAssistantWeb.School.ExamPhotosLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["students"]}
+    >
       <section id="exam-photos" phx-hook="ExamPhotos" class="space-y-5">
         <header class="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 class="font-display text-3xl font-semibold leading-none">
+            <.breadcrumb>
+              <:crumb id="exam-photos-back" navigate={~p"/school/students"}>
+                {gettext("Élèves")}
+              </:crumb>
+              <:crumb>{gettext("Photos examen")}</:crumb>
+            </.breadcrumb>
+            <h1 class="mt-1 font-display text-3xl font-semibold leading-none">
               {gettext("Photos examen")}
             </h1>
             <p class="mt-2 text-sm text-base-content/70">
