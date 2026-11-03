@@ -295,9 +295,9 @@ defmodule TeacherAssistantWeb.UIComponents do
 
   @doc """
   « ⋯ » menu for a row's or a page's secondary actions. Each `item` is a link
-  (`navigate`/`href`) or a button running `click` (an event name or a `JS`
-  command, e.g. `JS.push("transfer", value: %{id: id})`), with an optional
-  `confirm` question; `danger` items come last, in coral.
+  (`navigate`/`href`, with `method` for a POST link) or a button running `click`
+  (an event name or a `JS` command, e.g. `JS.push("transfer", value: %{id: id})`),
+  with an optional `confirm` question; `danger` items come last, in coral.
   """
   attr :id, :string, required: true
   attr :label, :string, default: nil, doc: "accessible name of the « ⋯ » button"
@@ -311,6 +311,7 @@ defmodule TeacherAssistantWeb.UIComponents do
   slot :item, required: true do
     attr :navigate, :string
     attr :href, :string
+    attr :method, :string
     attr :target, :string
     attr :click, :any
     attr :confirm, :string
@@ -352,6 +353,7 @@ defmodule TeacherAssistantWeb.UIComponents do
             role="menuitem"
             navigate={item[:navigate]}
             href={item[:href]}
+            method={item[:method] || "get"}
             target={item[:target]}
             class={["min-h-11", item[:danger] && "text-error"]}
           >
