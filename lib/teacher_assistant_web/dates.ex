@@ -34,6 +34,19 @@ defmodule TeacherAssistantWeb.Dates do
     end
   end
 
+  @doc """
+  « J-3 »: the days left until `deadline` (« J-0 » on the day itself); nil once it
+  has passed, or without a deadline.
+  """
+  def countdown(%Date{} = deadline, %Date{} = today) do
+    case Date.diff(deadline, today) do
+      days when days >= 0 -> gettext("J-%{d}", d: days)
+      _past -> nil
+    end
+  end
+
+  def countdown(_deadline, _today), do: nil
+
   defp weekday_short(1), do: gettext("lun.")
   defp weekday_short(2), do: gettext("mar.")
   defp weekday_short(3), do: gettext("mer.")

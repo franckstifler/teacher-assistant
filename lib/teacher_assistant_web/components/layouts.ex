@@ -45,6 +45,11 @@ defmodule TeacherAssistantWeb.Layouts do
     doc:
       "the menu items this page belongs to, by id (`\"fees\"`), most fitting first: the first one in the member's menu is lit instead of the one the path suggests (a class's fees under Frais, not Classes)"
 
+  attr :immersive, :boolean,
+    default: false,
+    doc:
+      "a full-screen phone task (marks keypad, roll call): no phone top bar and no tab bar, the page's own task header (`back_header task`) leads; desktop unchanged"
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -82,7 +87,10 @@ defmodule TeacherAssistantWeb.Layouts do
 
     assigns =
       assigns
-      |> assign(:tabs, assigns.in_school? && assigns.space && Spaces.tab_bar(assigns.space))
+      |> assign(
+        :tabs,
+        !assigns.immersive && assigns.in_school? && assigns.space && Spaces.tab_bar(assigns.space)
+      )
       |> assign(:lit, assigns.space && Spaces.owner_item(assigns.space, assigns.nav))
 
     ~H"""
@@ -95,7 +103,10 @@ defmodule TeacherAssistantWeb.Layouts do
             :if={@current_scope && @current_scope.impersonation}
             scope={@current_scope}
           />
-          <header class="sticky top-0 z-30 flex min-h-14 items-center gap-2.5 border-b border-base-300 bg-base-200/95 py-1.5 pl-4 pr-1.5 backdrop-blur lg:hidden">
+          <header
+            :if={!@immersive}
+            class="sticky top-0 z-30 flex min-h-14 items-center gap-2.5 border-b border-base-300 bg-base-200/95 py-1.5 pl-4 pr-1.5 backdrop-blur lg:hidden"
+          >
             <%!-- Without a role space (no school yet) there is no tab bar: the drawer is the menu. --%>
             <label
               :if={!@tabs}
@@ -135,7 +146,8 @@ defmodule TeacherAssistantWeb.Layouts do
 
           <main class={[
             "mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6",
-            @tabs && "pb-28 lg:pb-6"
+            @tabs && "pb-28 lg:pb-6",
+            @immersive && "pt-3 lg:pt-6"
           ]}>
             {render_slot(@inner_block)}
           </main>

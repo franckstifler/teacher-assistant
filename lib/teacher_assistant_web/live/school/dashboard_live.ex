@@ -106,7 +106,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
         </div>
 
         <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-          <.kpi_link
+          <.stat_tile
             :if={Scope.module?(@current_scope, :notes)}
             id="kpi-entry"
             navigate={~p"/school/sequences"}
@@ -121,7 +121,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
               )
             }
           />
-          <.kpi_link
+          <.stat_tile
             :if={Scope.module?(@current_scope, :appel)}
             id="kpi-calls"
             navigate={~p"/school/day"}
@@ -130,7 +130,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
             tone={if @calls.missed == [], do: :ok, else: :warn}
             sub={calls_sub(@calls)}
           />
-          <.kpi_link
+          <.stat_tile
             :if={Scope.module?(@current_scope, :appel)}
             id="kpi-absences"
             navigate={~p"/school/absences"}
@@ -146,7 +146,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
               )
             }
           />
-          <.kpi_link
+          <.stat_tile
             :if={Scope.module?(@current_scope, :notes)}
             id="kpi-corrections"
             navigate={~p"/school/corrections/review"}
@@ -164,7 +164,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
               {gettext("Rien à traiter")}
             </p>
             <ul class="flex flex-col">
-              <.todo_row
+              <.attention_row
                 :if={@todo.pending_corrections > 0}
                 id="todo-corrections"
                 tone={:warning}
@@ -175,15 +175,15 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                     @todo.pending_corrections
                   )
                 }
-                sub={
+                reason={
                   gettext("La plus ancienne date du %{date}",
                     date: Dates.day_month(@todo.oldest_correction)
                   )
                 }
-                cta={gettext("Décider")}
+                action={gettext("Décider")}
                 navigate={~p"/school/corrections/review"}
               />
-              <.todo_row
+              <.attention_row
                 :if={late_count(@grid) > 0}
                 id="todo-late"
                 tone={:error}
@@ -194,25 +194,25 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                     late_count(@grid)
                   )
                 }
-                sub={late_sub(@sequence)}
-                cta={gettext("Relancer")}
+                reason={late_sub(@sequence)}
+                action={gettext("Relancer")}
                 navigate={~p"/school/sequences"}
               />
               <li :if={@todo.classes_without_pp != []} id="todo-no-pp">
                 <ul class="flex flex-col">
-                  <.todo_row
+                  <.attention_row
                     :for={cg <- Enum.take(@todo.classes_without_pp, 3)}
                     id={"todo-no-pp-#{cg.id}"}
                     tone={:error}
                     title={gettext("%{class} sans professeur principal", class: cg.label)}
-                    sub={
+                    reason={
                       ngettext(
                         "%{count} élève · bulletins bloqués sans PP",
                         "%{count} élèves · bulletins bloqués sans PP",
                         cg.enrollment_count
                       )
                     }
-                    cta={gettext("Désigner")}
+                    action={gettext("Désigner")}
                     navigate={~p"/school/classes/#{cg.id}"}
                   />
                 </ul>
@@ -225,7 +225,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                   {gettext("+ %{n} autres", n: length(@todo.classes_without_pp) - 3)}
                 </.link>
               </li>
-              <.todo_row
+              <.attention_row
                 :if={@todo.unassigned != []}
                 id="todo-unassigned"
                 tone={:warning}
@@ -236,11 +236,11 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                     length(@todo.unassigned)
                   )
                 }
-                sub={unassigned_sub(@todo.unassigned)}
-                cta={gettext("Affecter")}
+                reason={unassigned_sub(@todo.unassigned)}
+                action={gettext("Affecter")}
                 navigate={~p"/school/settings/assignments"}
               />
-              <.todo_row
+              <.attention_row
                 :if={@todo.pending_accounts.count > 0}
                 id="todo-accounts"
                 tone={:info}
@@ -251,7 +251,7 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                     @todo.pending_accounts.count
                   )
                 }
-                sub={
+                reason={
                   @todo.pending_accounts.expired > 0 &&
                     ngettext(
                       "Dont %{count} mot de passe temporaire expiré",
@@ -259,10 +259,10 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                       @todo.pending_accounts.expired
                     )
                 }
-                cta={gettext("Voir")}
+                action={gettext("Voir")}
                 navigate={~p"/school/members"}
               />
-              <.todo_row
+              <.attention_row
                 :if={@todo.councils_to_plan > 0}
                 id="todo-councils"
                 tone={:info}
@@ -273,8 +273,8 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
                     @todo.councils_to_plan
                   )
                 }
-                sub={gettext("Trimestre %{n}", n: @todo.councils_term.position)}
-                cta={gettext("Planifier")}
+                reason={gettext("Trimestre %{n}", n: @todo.councils_term.position)}
+                action={gettext("Planifier")}
                 navigate={~p"/school/councils"}
               />
             </ul>
@@ -373,71 +373,6 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
     """
   end
 
-  attr :id, :string, required: true
-  attr :navigate, :string, required: true
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :tone, :atom, required: true
-  attr :sub, :string, required: true
-
-  defp kpi_link(assigns) do
-    ~H"""
-    <.link
-      id={@id}
-      navigate={@navigate}
-      class="ta-section group flex flex-col gap-0.5 p-3 transition-colors hover:border-base-content/30 hover:no-underline sm:p-4"
-    >
-      <span class="flex items-center justify-between gap-2 text-[0.8rem] font-medium text-base-content/75">
-        {@label}
-        <.icon
-          name="hero-chevron-right"
-          class="size-3.5 opacity-50 transition-transform group-hover:translate-x-0.5"
-        />
-      </span>
-      <span class={["ta-num text-2xl font-semibold leading-tight sm:text-3xl", kpi_tone(@tone)]}>
-        {@value}
-      </span>
-      <span class="text-xs text-base-content/70">{@sub}</span>
-    </.link>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :tone, :atom, required: true
-  attr :title, :string, required: true
-  attr :sub, :any, default: nil
-  attr :cta, :string, required: true
-  attr :navigate, :string, required: true
-
-  defp todo_row(assigns) do
-    ~H"""
-    <li id={@id} class="ta-row-rule last:border-b-0">
-      <.link
-        navigate={@navigate}
-        class="flex min-h-14 items-center gap-3 rounded-lg py-2.5 hover:no-underline sm:min-h-0"
-      >
-        <span class={["size-2 shrink-0 rounded-full", mark_tone(@tone)]} aria-hidden="true"></span>
-        <span class="flex min-w-0 flex-1 flex-col">
-          <span class="text-[0.95rem] font-semibold leading-snug">{@title}</span>
-          <span :if={@sub} class="text-[0.8rem] text-base-content/70">{@sub}</span>
-        </span>
-        <span class="btn btn-outline btn-xs hidden shrink-0 sm:inline-flex">{@cta}</span>
-        <span class="sr-only sm:hidden">{@cta}</span>
-        <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70 sm:hidden" />
-      </.link>
-    </li>
-    """
-  end
-
-  defp kpi_tone(:ok), do: "text-primary"
-  defp kpi_tone(:warn), do: "text-warning"
-  defp kpi_tone(:error), do: "text-error"
-  defp kpi_tone(:none), do: "text-base-content/70"
-
-  defp mark_tone(:warning), do: "bg-warning"
-  defp mark_tone(:error), do: "bg-error"
-  defp mark_tone(:info), do: "bg-info"
-
   defp entry_tone(nil), do: :none
   defp entry_tone(100), do: :ok
   defp entry_tone(pct) when pct < 60, do: :error
@@ -466,14 +401,10 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
   defp sequence_parts(nil, _today), do: []
 
   defp sequence_parts(seq, today) do
-    days =
-      case seq.grade_entry_deadline do
-        %Date{} = deadline -> Date.diff(deadline, today)
-        _ -> nil
-      end
-
-    [gettext("Séquence %{n}", n: seq.number)] ++
-      if(is_integer(days) and days >= 0, do: [gettext("J-%{d}", d: days)], else: [])
+    [
+      gettext("Séquence %{n}", n: seq.number)
+      | List.wrap(Dates.countdown(seq.grade_entry_deadline, today))
+    ]
   end
 
   defp late_sub(%{grade_entry_deadline: %Date{} = deadline} = seq),
