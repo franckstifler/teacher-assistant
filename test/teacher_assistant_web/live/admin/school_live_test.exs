@@ -22,6 +22,11 @@ defmodule TeacherAssistantWeb.Admin.SchoolLiveTest do
     assert p.verification_status == :verified
   end
 
+  test "each member can be opened as", %{conn: conn, ws: ws, head: head} do
+    {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}")
+    assert has_element?(view, "#impersonate-#{head.id}[data-method=post]")
+  end
+
   test "saves modules", %{conn: conn, ws: ws, op: op} do
     {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}")
     view |> form("#modules-form", %{"modules" => ["notes", "photos"]}) |> render_submit()

@@ -91,6 +91,10 @@ defmodule TeacherAssistantWeb.Layouts do
         <input id="app-drawer" type="checkbox" class="drawer-toggle" />
 
         <div class="drawer-content flex min-h-screen flex-col bg-base-200 text-base-content">
+          <.impersonation_bar
+            :if={@current_scope && @current_scope.impersonation}
+            scope={@current_scope}
+          />
           <header class="sticky top-0 z-30 flex min-h-14 items-center gap-2.5 border-b border-base-300 bg-base-200/95 py-1.5 pl-4 pr-1.5 backdrop-blur lg:hidden">
             <%!-- Without a role space (no school yet) there is no tab bar: the drawer is the menu. --%>
             <label
@@ -703,6 +707,41 @@ defmodule TeacherAssistantWeb.Layouts do
     do: TeacherAssistant.Accounts.SchoolRole.label(role)
 
   defp role_label(_), do: nil
+
+  @doc "The strip on every page while the operator acts as a member, with the way back."
+  attr :scope, :map, required: true
+
+  def impersonation_bar(assigns) do
+    ~H"""
+    <div
+      id="impersonation-bar"
+      role="status"
+      class="z-40 flex items-center gap-x-3 bg-warning px-4 py-2 text-xs text-warning-content sm:text-sm lg:sticky lg:top-0"
+    >
+      <.icon name="hero-eye" class="size-4 flex-none" />
+      <span class="min-w-0 flex-1">
+        {gettext("Vous agissez en tant que %{name}", name: User.display_name(@scope.current_user))}
+        <span :if={@scope.current_workspace} class="hidden sm:inline">
+          · {@scope.current_workspace.name}
+        </span>
+        <span class="opacity-80">
+          · {gettext("jusqu'à %{time}",
+            time: Calendar.strftime(DateTime.add(@scope.impersonation.ends_at, 3600), "%H:%M")
+          )}
+        </span>
+      </span>
+      <.link
+        id="impersonation-stop"
+        href={~p"/impersonation"}
+        method="delete"
+        class="btn btn-xs flex-none border-warning-content/30 bg-warning-content/10 text-warning-content hover:bg-warning-content/20"
+      >
+        <span class="sm:hidden">{gettext("Revenir")}</span>
+        <span class="hidden sm:inline">{gettext("Revenir à l'administration")}</span>
+      </.link>
+    </div>
+    """
+  end
 
   @doc """
   Shows the flash group with standard titles and content.

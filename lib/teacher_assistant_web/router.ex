@@ -12,6 +12,7 @@ defmodule TeacherAssistantWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :load_from_session
+    plug TeacherAssistantWeb.Plug.EndImpersonation
     plug TeacherAssistantWeb.Plug.Locale
   end
 
@@ -40,6 +41,9 @@ defmodule TeacherAssistantWeb.Router do
       ]
 
     get "/locale/:locale", LocaleController, :set
+    # The operator acting as a member: these write the session, so POST/DELETE only.
+    post "/impersonation", ImpersonationController, :create
+    delete "/impersonation", ImpersonationController, :delete
     get "/verify/bulletin/:token", BulletinVerifyController, :show
     get "/verify/card/:token", CardVerifyController, :show
     get "/verify/receipt", ReceiptVerifyController, :lookup

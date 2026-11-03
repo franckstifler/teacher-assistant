@@ -94,6 +94,18 @@ defmodule TeacherAssistantWeb.Admin.UsersLive do
                 {gettext("Mot de passe temporaire")}
               </span>
               <span class="block text-sm text-base-content/70">{schools_line(ms)}</span>
+              <span :if={u.role != :admin} class="mt-1 flex flex-wrap gap-1">
+                <.link
+                  :for={m <- ms}
+                  id={"impersonate-#{u.id}-#{m.workspace_id}"}
+                  href={~p"/impersonation?#{%{user_id: u.id, workspace_id: m.workspace_id}}"}
+                  method="post"
+                  class="btn btn-ghost btn-xs"
+                >
+                  <.icon name="hero-eye" class="size-3.5" />
+                  {gettext("Ouvrir en tant que · %{school}", school: m.workspace.name)}
+                </.link>
+              </span>
             </span>
             <button
               :if={u.role != :admin}

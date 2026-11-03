@@ -247,16 +247,28 @@ defmodule TeacherAssistantWeb.Admin.SchoolLive do
                   {gettext("Mot de passe temporaire")}
                 </span>
               </span>
-              <button
-                :if={m.user.role != :admin}
-                id={"reset-user-#{m.user_id}"}
-                type="button"
-                class="btn btn-ghost btn-xs"
-                phx-click="reset_ask"
-                phx-value-id={m.user_id}
-              >
-                {gettext("Réinitialiser le mot de passe")}
-              </button>
+              <span :if={m.user.role != :admin} class="flex flex-wrap gap-1">
+                <.link
+                  id={"impersonate-#{m.user_id}"}
+                  href={
+                    ~p"/impersonation?#{%{user_id: m.user_id, workspace_id: @school.workspace.id}}"
+                  }
+                  method="post"
+                  class="btn btn-ghost btn-xs"
+                >
+                  <.icon name="hero-eye" class="size-3.5" />
+                  {gettext("Ouvrir en tant que")}
+                </.link>
+                <button
+                  id={"reset-user-#{m.user_id}"}
+                  type="button"
+                  class="btn btn-ghost btn-xs"
+                  phx-click="reset_ask"
+                  phx-value-id={m.user_id}
+                >
+                  {gettext("Réinitialiser le mot de passe")}
+                </button>
+              </span>
             </li>
           </ul>
         </section>

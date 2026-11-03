@@ -158,6 +158,65 @@ defmodule TeacherAssistant.Operator do
     end
   end
 
+  @doc """
+  Starts acting as `user_id` in `workspace_id`: the user must be an active member of that
+  school and not an operator. Journaled (`impersonation_started`).
+  """
+  def start_impersonation(%Scope{} = scope, user_id, workspace_id) do
+    ensure_operator!(scope)
+
+    with {:ok, %User{} = user} when user.role != :admin <-
+           Ash.get(User, user_id, [not_found_error?: false] ++ @read),
+         {:ok, %Workspace{} = ws} <-
+           Ash.get(Workspace, workspace_id, [not_found_error?: false] ++ @read),
+         true <- active_member?(user, ws) do
+      journal(scope, :impersonation_started, ws.id, user.id, %{})
+      {:ok, %{user: user, workspace: ws}}
+    else
+      _ -> {:error, :not_allowed}
+    end
+  end
+
+  @doc "Ends acting as `user_id` in `workspace_id`; `reason` is kept in the journal."
+  def end_impersonation(%Scope{} = scope, user_id, workspace_id, reason) do
+    ensure_operator!(scope)
+    journal(scope, :impersonation_ended, workspace_id, user_id, %{reason: reason})
+  end
+
+  @doc """
+  The user the operator is acting as, while that is still allowed: nil once they are an
+  operator themselves or gone. Membership is checked by the scope built for them.
+  """
+  def impersonated_user(%Scope{} = scope, user_id) do
+    ensure_operator!(scope)
+
+    case Ash.get(User, user_id, [not_found_error?: false] ++ @read) do
+      {:ok, %User{role: role} = user} when role != :admin -> user
+      _ -> nil
+    end
+  end
+
+  defp active_member?(user, ws) do
+    SchoolMembership
+    |> Ash.Query.filter(user_id == ^user.id and active == true)
+    |> Ash.Query.set_tenant(ws.id)
+    |> Ash.exists?(@read)
+  end
+
+  defp journal(scope, action, workspace_id, target_user_id, details) do
+    TeacherAssistant.Accounts.AuditEvent
+    |> Ash.Changeset.for_create(:record, %{
+      actor_user_id: scope.current_user.id,
+      action: action,
+      workspace_id: workspace_id,
+      target_user_id: target_user_id,
+      details: details
+    })
+    |> Ash.create!(@read)
+
+    :ok
+  end
+
   defp memberships_of(user) do
     SchoolMembership
     |> Ash.Query.for_read(:active_for_user, %{user_id: user.id})

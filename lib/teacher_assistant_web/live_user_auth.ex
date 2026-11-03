@@ -6,6 +6,7 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
   import Phoenix.Component
   alias TeacherAssistant.Accounts.Workspaces
   alias TeacherAssistant.Scope
+  alias TeacherAssistantWeb.Impersonation
   use TeacherAssistantWeb, :verified_routes
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
@@ -14,24 +15,43 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
       "workspace_id" => Plug.Conn.get_session(conn, :workspace_id),
       "context_id" => Plug.Conn.get_session(conn, :context_id),
       "locale" => Plug.Conn.get_session(conn, :locale),
-      "space" => Plug.Conn.get_session(conn, :space)
+      "space" => Plug.Conn.get_session(conn, :space),
+      "impersonation" => Plug.Conn.get_session(conn, :impersonation)
     }
   end
 
   def on_mount(:live_user_required, _params, session, socket) do
     socket = assign_scope(socket, session)
     user = socket.assigns.current_user
+    impersonation = socket.assigns.current_scope.impersonation
 
     cond do
       is_nil(user) ->
         {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/sign-in")}
 
+      # Over or no longer allowed: a full request, where `Plug.EndImpersonation` ends it.
+      socket.assigns[:impersonation_ended?] ->
+        {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/admin")}
+
+      # The operator acting as a member never changes that member's password.
+      impersonation && socket.view == TeacherAssistantWeb.Account.PasswordLive ->
+        {:halt,
+         socket
+         |> Phoenix.LiveView.put_flash(
+           :error,
+           gettext("Pas pendant que vous agissez en tant que ce membre.")
+         )
+         |> Phoenix.LiveView.redirect(to: ~p"/school")}
+
       # A temporary password must be replaced before anything else (spec
       # 2026-10-07); the change screen itself is the only exception.
-      user.must_change_password and socket.view != TeacherAssistantWeb.Account.PasswordLive ->
+      user.must_change_password and is_nil(impersonation) and
+          socket.view != TeacherAssistantWeb.Account.PasswordLive ->
         {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/account/password")}
 
       true ->
+        socket = end_impersonation_on_time(socket, impersonation)
+
         socket =
           Phoenix.LiveView.attach_hook(socket, :current_path, :handle_params, fn _params,
                                                                                  uri,
@@ -155,17 +175,38 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
     {:cont, assign_scope(socket, session)}
   end
 
+  # A page left open past the hour leaves for a full request, which ends the impersonation.
+  defp end_impersonation_on_time(socket, nil), do: socket
+
+  defp end_impersonation_on_time(socket, impersonation) do
+    if Phoenix.LiveView.connected?(socket),
+      do:
+        Process.send_after(self(), :impersonation_over, Impersonation.remaining_ms(impersonation))
+
+    Phoenix.LiveView.attach_hook(socket, :impersonation_over, :handle_info, fn
+      :impersonation_over, socket -> {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/admin")}
+      _message, socket -> {:cont, socket}
+    end)
+  end
+
   defp assign_scope(socket, session) do
-    user = socket.assigns[:current_user]
+    {user, impersonation} =
+      case Impersonation.resolve(socket.assigns[:current_user], session["impersonation"]) do
+        {:acting, member, impersonation} -> {member, impersonation}
+        _ -> {socket.assigns[:current_user], nil}
+      end
+
     locale = session["locale"] || "fr"
     Gettext.put_locale(TeacherAssistantWeb.Gettext, locale)
 
     scope = %{
       Workspaces.session_scope(user, session["workspace_id"], session["context_id"])
-      | locale: locale
+      | locale: locale,
+        impersonation: impersonation
     }
 
     socket
+    |> assign(:impersonation_ended?, session["impersonation"] != nil and is_nil(impersonation))
     |> assign(:current_user, user)
     |> assign(:current_scope, scope)
     |> assign(:scope, scope)

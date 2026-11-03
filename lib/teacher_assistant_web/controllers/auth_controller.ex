@@ -80,6 +80,7 @@ defmodule TeacherAssistantWeb.AuthController do
       do: TeacherAssistant.Accounts.disconnect_live_pages(user)
 
     conn
+    |> TeacherAssistantWeb.Impersonation.stop("signed_out")
     |> clear_session(:teacher_assistant)
     |> put_flash(:info, gettext("You are now signed out"))
     |> redirect(to: return_to)

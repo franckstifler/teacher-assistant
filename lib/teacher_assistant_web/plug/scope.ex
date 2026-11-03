@@ -5,20 +5,26 @@ defmodule TeacherAssistantWeb.Plug.Scope do
   (AshAuthentication's `current_user` assign, from the session token) and
   `Workspaces.session_scope/3` for the session's school and teaching context, with
   the member's role space (`TeacherAssistantWeb.Spaces.put_space/3`), without badges.
-  Runs after `TeacherAssistantWeb.Plug.Locale`.
+  While the operator acts as a member (`TeacherAssistantWeb.Impersonation`), the scope is
+  that member's. Runs after `TeacherAssistantWeb.Plug.Locale`.
   """
   @behaviour Plug
 
   import Plug.Conn
 
   alias TeacherAssistant.Accounts.Workspaces
+  alias TeacherAssistantWeb.Impersonation
 
   @impl true
   def init(opts), do: opts
 
   @impl true
   def call(conn, _opts) do
-    user = conn.assigns[:current_user]
+    {user, impersonation} =
+      case Impersonation.resolve(conn.assigns[:current_user], get_session(conn, :impersonation)) do
+        {:acting, member, impersonation} -> {member, impersonation}
+        _ -> {conn.assigns[:current_user], nil}
+      end
 
     scope =
       Workspaces.session_scope(
@@ -32,6 +38,10 @@ defmodule TeacherAssistantWeb.Plug.Scope do
 
     conn
     |> assign(:current_user, user)
-    |> assign(:current_scope, %{scope | locale: conn.assigns[:locale] || "fr"})
+    |> assign(:current_scope, %{
+      scope
+      | locale: conn.assigns[:locale] || "fr",
+        impersonation: impersonation
+    })
   end
 end

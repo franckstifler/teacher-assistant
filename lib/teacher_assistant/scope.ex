@@ -13,6 +13,8 @@ defmodule TeacherAssistant.Scope do
     :current_context,
     :locale,
     :school_verification_status,
+    # While the operator acts as `current_user`: %{operator: User, ends_at: DateTime}.
+    :impersonation,
     capabilities: %{}
   ]
 

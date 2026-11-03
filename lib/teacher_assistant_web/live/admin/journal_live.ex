@@ -70,7 +70,7 @@ defmodule TeacherAssistantWeb.Admin.JournalLive do
             <span class="font-medium">{AuditEvent.Action.label(e.action)}</span>
             <span :if={e.workspace}> · {e.workspace.name}</span>
             <span :if={e.target_user}> · {Accounts.User.display_name(e.target_user)}</span>
-            <span :if={e.details["reason"]}> · {e.details["reason"]}</span>
+            <span :if={e.details["reason"]}> · {reason(e)}</span>
             <span :if={e.details["after"]}> · {Enum.join(e.details["after"], ", ")}</span>
             <span class="block text-base-content/70">
               {e.actor && Accounts.User.display_name(e.actor)} · {Dates.short_datetime(e.inserted_at)}
@@ -90,4 +90,17 @@ defmodule TeacherAssistantWeb.Admin.JournalLive do
     </Layouts.app>
     """
   end
+
+  # Impersonation ends carry a code; suspensions and rejections the operator's own words.
+  defp reason(%{action: :impersonation_ended, details: %{"reason" => code}}) do
+    case code do
+      "stopped" -> gettext("retour à l'administration")
+      "expired" -> gettext("durée écoulée")
+      "signed_out" -> gettext("déconnexion")
+      "replaced" -> gettext("autre compte ouvert")
+      other -> other
+    end
+  end
+
+  defp reason(%{details: %{"reason" => reason}}), do: reason
 end
