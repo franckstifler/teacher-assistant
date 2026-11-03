@@ -133,6 +133,33 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   @doc """
+  « Mode désignation » (UX refonte, Classes): sets several classes' form masters
+  at once, each through `set_form_master/3`, all or nothing. `pairs` is a list of
+  `{class_group, user_id | nil}`; returns the updated classes in the same order.
+  """
+  def set_form_masters(%Scope{} = scope, pairs) when is_list(pairs) do
+    TeacherAssistant.Repo.transaction(fn ->
+      Enum.map_reduce(pairs, [], fn {cg, user_id}, notifications ->
+        cg
+        |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id}, scope: scope)
+        |> Ash.update(return_notifications?: true)
+        |> case do
+          {:ok, updated, more} -> {updated, notifications ++ more}
+          {:error, error} -> TeacherAssistant.Repo.rollback(error)
+        end
+      end)
+    end)
+    |> case do
+      {:ok, {updated, notifications}} ->
+        Ash.Notifier.notify(notifications)
+        {:ok, updated}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
   Sets (or clears, with nil) the class's home room (spec J3); `{:error, :invalid}` for a
   room that is not an active room of the school.
   """

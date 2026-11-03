@@ -57,7 +57,7 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     assert has_element?(view, "#nc-preview", "6ème B")
   end
 
-  test "a class's own maximum overrides the school's on its card", %{
+  test "a class's own maximum overrides the school's on its row", %{
     conn: conn,
     scope: scope,
     cg: cg
@@ -68,20 +68,21 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
     assert has_element?(view, "#class-size-#{cg.id}.text-warning", "2 / 2")
   end
 
-  test "a class with grid subjects still unassigned is marked « À compléter »", %{
+  test "a class with grid subjects still unassigned is listed under « Matières à affecter »", %{
     conn: conn,
     scope: scope,
     cg: cg
   } do
     n = length(TeacherAssistant.Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
     assert n > 0
-    {:ok, view, _} = live(conn, ~p"/school/classes")
-    assert has_element?(view, "#class-card-#{cg.id} [title='À compléter']")
+    {:ok, view, _} = live(conn, ~p"/school/classes?f=to_assign")
+    assert has_element?(view, "#filter-to_assign[aria-current]")
+    assert has_element?(view, "#class-row-#{cg.id}")
 
     assert has_element?(
              view,
-             "#class-unassigned-#{cg.id}.text-error",
-             "#{n} matières sans enseignant"
+             "#class-unassigned-#{cg.id}.text-warning",
+             "#{n} sans enseignant"
            )
   end
 
