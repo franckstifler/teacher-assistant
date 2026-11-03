@@ -207,6 +207,7 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert [
              %{key: :notes, ok?: false, data: %{rate: rate, unassigned: _}},
              %{key: :conduct, ok?: false, data: %{entered: 0, effectif: 1}},
+             %{key: :form_master, ok?: false},
              %{key: :council, ok?: false, data: %{status: :to_plan}},
              %{key: :paper_roll_calls, ok?: true, data: %{count: 0}},
              %{key: :page_fit, ok?: true, data: %{subjects: 1}}
@@ -215,9 +216,87 @@ defmodule TeacherAssistant.ReportCardsTest do
     assert rate < 100
 
     {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, scope.current_user.id)
 
-    assert [_, _, %{key: :council, ok?: true, data: %{status: :held}}, _, _] =
+    assert [
+             _,
+             _,
+             %{key: :form_master, ok?: true},
+             %{key: :council, ok?: true, data: %{status: :held}},
+             _,
+             _
+           ] =
              ReportCards.publish_checklist(scope, cg, {:trimester, term})
+  end
+
+  describe "readiness (bulletins overview)" do
+    test "every class's steps for a trimester, from batched reads", ctx do
+      %{scope: scope, cg: cg, term: term, year: year} = ctx
+      {:ok, empty} = Enrollment.create_class_group(scope, year, %{label: "6e Q", level: "6ème"})
+      period = {:trimester, term}
+
+      rows = ReportCards.readiness(scope, period)
+      row = Enum.find(rows, &(&1.class_group.id == cg.id))
+
+      assert row.students == 1
+      assert row.rate < 100
+      assert row.conduct == %{entered: 0, effectif: 1}
+      refute row.form_master?
+      assert row.council == :to_plan
+      refute row.published?
+      assert :notes in row.steps
+      assert :conduct in row.steps
+      assert :form_master in row.steps
+      assert :council in row.steps
+      refute row.ready?
+      assert Enum.any?(rows, &(&1.class_group.id == empty.id))
+    end
+
+    test "a class with its marks, conduct, PP and council done; publish_many keeps the guards",
+         ctx do
+      %{scope: scope, cg: cg, a: a, st: st, year: year} = ctx
+      TeacherAssistant.MarksFixtures.start_sequences!(scope, year)
+      [term | _] = Organization.list_terms(scope, year)
+      period = {:trimester, term}
+
+      # every séquence of the term entered, conduct written, PP and council done
+      for seq <- tl(term.sequences) do
+        [tc] = Curriculum.list_assignments_for_class(scope, cg)
+
+        {:ok, a2} =
+          Assessment.create_assessment(scope, tc, seq, %{label: "D", max_score: Decimal.new(20)})
+
+        :ok = Assessment.upsert_marks(scope, a2, [%{student_id: st.id, score: Decimal.new(12)}])
+      end
+
+      _ = a
+      [%{enrollment: e}] = Enrollment.list_roster(scope, cg)
+
+      for seq <- term.sequences,
+          do:
+            {:ok, _} =
+              TeacherAssistant.Discipline.set_conduct_mark(scope, e, seq, Decimal.new(15))
+
+      {:ok, cg} = Enrollment.set_form_master(scope, cg, scope.current_user.id)
+      {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, period)
+
+      row = scope |> ReportCards.readiness(period) |> Enum.find(&(&1.class_group.id == cg.id))
+      assert row.rate == 100
+      assert row.conduct == %{entered: 1, effectif: 1}
+      assert row.form_master?
+      assert row.council == :held
+      # the coefficient grid still expects subjects without a teacher in 6ème
+      assert row.unassigned > 0
+      assert row.steps == [:notes]
+      refute row.ready?
+
+      assert %{published: 1, failed: []} = ReportCards.publish_many(scope, [cg], period)
+      row = scope |> ReportCards.readiness(period) |> Enum.find(&(&1.class_group.id == cg.id))
+      assert row.published?
+      # publishing again keeps the guard
+      assert %{published: 0, failed: [{_, :already_published}]} =
+               ReportCards.publish_many(scope, [cg], period)
+    end
   end
 
   test "a séquence is never publishable", %{scope: scope, cg: cg, seq: seq} do
