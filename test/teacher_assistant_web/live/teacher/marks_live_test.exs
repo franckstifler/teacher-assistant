@@ -178,15 +178,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     view |> element("#absent-#{s1.id}") |> render_click()
     assert [%{status: :absent, score: nil}] = Assessment.list_marks(scope, a)
-    assert has_element?(view, "#mark-input-#{s1.id}[disabled]")
+    assert has_element?(view, "#mark-input-#{s1.id}[value='abs']")
+    refute has_element?(view, "#mark-input-#{s1.id}[disabled]")
     assert has_element?(view, "#mark-appreciation-#{s1.id}", "Absent")
 
     view |> element("#absent-#{s1.id}") |> render_click()
     refute Enum.any?(Assessment.list_marks(scope, a), &(&1.status == :absent))
-    refute has_element?(view, "#mark-input-#{s1.id}[disabled]")
   end
 
-  test "the blur a disabled absent cell may fire never clears the absence", %{
+  test "an absent box stays editable: clearing it removes the absence", %{
     conn: conn,
     ctx: ctx,
     seq: seq,
@@ -198,8 +198,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
     view |> element("#absent-#{s1.id}") |> render_click()
-    render_hook(view, "save_mark", %{"student" => s1.id, "value" => ""})
     assert [%{status: :absent}] = Assessment.list_marks(scope, a)
+    blur(view, s1.id, "")
+    assert Assessment.list_marks(scope, a) == []
   end
 
   test "a saved mark shows its appreciation and « Enregistré »", %{
@@ -238,7 +239,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     # The test clock (2025-09-15) is inside the first séquence, where « Devoir 1 » is.
     assert html =~ "Devoir 1"
-    assert has_element?(view, "#new-assessment-form")
+    assert has_element?(view, "#new-eval-card")
+    assert has_element?(view, "#new-eval-chip")
   end
 
   test "unknown teaching context redirects to /school", %{conn: conn} do
@@ -283,12 +285,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert view |> element("#marks-average-preview") |> render() =~ "12"
   end
 
-  test "toolbar wraps séquence and assessment controls", %{conn: conn, ctx: ctx, seq: seq, a: a} do
+  test "the header carries the séquence tabs; evaluations are chips and cards", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a
+  } do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    assert has_element?(view, "#marks-toolbar #seq-tabs")
-    assert has_element?(view, "#marks-toolbar #assessment-select")
+    assert has_element?(view, "#marks-header #seq-tabs")
+    assert has_element?(view, "#eval-cards #eval-card-#{a.id}[aria-current='page']", "Devoir 1")
+    assert has_element?(view, "#eval-chips #eval-chip-#{a.id}", "/20")
+    assert has_element?(view, "#marks-toolbar #eval-menu", "Devoir 1")
+    refute has_element?(view, "#marks-table th", "Absent")
   end
 
   test "creating an assessment in solo mode creates it and selects it", %{
@@ -298,6 +308,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     scope: scope
   } do
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+    open_new_eval(view)
 
     view
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Composition"}})
@@ -318,6 +330,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
 
+    open_new_eval(view)
+
     view
     |> form("#new-assessment-form", %{"assessment" => %{"label" => ""}})
     |> render_submit()
@@ -327,17 +341,26 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert has_element?(view, "#new-assessment-form")
   end
 
-  test "open banner names the deadline", %{conn: conn, ctx: ctx, seq: seq, a: a} do
+  test "the deadline chip names the closing date and the days left", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    a: a
+  } do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
-    assert has_element?(view, "#open-banner", "Saisie ouverte jusqu'au")
-    assert has_element?(view, "#open-banner", "dès que vous quittez la case")
+    days = Date.diff(seq.grade_entry_deadline, TeacherAssistant.Academics.Reference.today())
+    assert has_element?(view, "#deadline-chip", "Clôture")
+    assert has_element?(view, "#deadline-chip", "J-#{days}")
+    assert has_element?(view, "#seq-picker-open", "J-#{days}")
+    assert has_element?(view, "#marks-shortcuts", "dès que vous quittez la case")
   end
 
-  test "course tabs link to the teacher's other courses", %{
+  test "the course picker lists the teacher's courses, searchable, keeping the séquence", %{
     conn: conn,
     ctx: ctx,
+    seq: seq,
     scope: scope,
     year: year,
     actor: head
@@ -349,9 +372,26 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
         teacher: head
       })
 
-    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks")
-    assert has_element?(view, "#course-tabs a[href^='/teacher/contexts/#{other.id}/marks']")
-    assert has_element?(view, "#course-tabs [aria-current='page']")
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+    refute has_element?(view, "#course-sheet")
+
+    view |> element("#course-picker-open") |> render_click()
+
+    assert has_element?(
+             view,
+             "#course-option-#{other.id}[href='/teacher/contexts/#{other.id}/marks?seq=#{seq.id}']",
+             "0 éval."
+           )
+
+    # the current course is highlighted, with its séquence progress (0 of 1 mark)
+    assert has_element?(view, "#course-option-#{ctx.id}[aria-current='true']", "0/1")
+
+    view |> element("#course-search") |> render_change(%{"q" => "physique"})
+    assert has_element?(view, "#course-option-#{other.id}")
+    refute has_element?(view, "#course-option-#{ctx.id}")
+
+    view |> element("#course-sheet button[aria-label='Fermer']") |> render_click()
+    refute has_element?(view, "#course-sheet")
   end
 
   test "séquence tabs name their state and switch the séquence", %{
@@ -392,6 +432,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
   defp blur(view, student_id, value),
     do: view |> element("#mark-input-#{student_id}") |> render_blur(%{"value" => value})
 
+  defp open_new_eval(view), do: view |> element("#new-eval-card") |> render_click()
+
   test "on an unverified school a blur that changes nothing flashes nothing", %{
     conn: conn,
     ctx: ctx,
@@ -430,7 +472,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
 
     view |> element("#absent-#{s1.id}") |> render_click()
     assert [%{status: :absent}] = Assessment.list_marks(scope, a)
-    assert has_element?(view, "#absent-#{s1.id}[aria-pressed='true']", "Absent")
+    assert has_element?(view, "#absent-#{s1.id}", "Retirer l'absence")
 
     view |> element("#absent-#{s1.id}") |> render_click()
     blur(view, s1.id, "25")
@@ -455,7 +497,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}&assessment=#{a.id}")
 
     blur(view, s1.id, "25")
-    html = view |> element("#assessment-select") |> render_change(%{"assessment" => other.id})
+    html = view |> element("#eval-card-#{other.id}") |> render_click()
     assert html =~ "1 note non enregistrée abandonnée"
   end
 

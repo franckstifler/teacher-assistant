@@ -252,6 +252,58 @@ defmodule TeacherAssistant.Assessment do
     end
   end
 
+  @doc """
+  Renames an assessment or changes its maximum: all the given rows (a combined
+  course's column is one per member class) or none. A maximum under a mark
+  already entered is refused (`{:error, :marks_above_max}`); the update itself
+  refuses a locked séquence or another teacher's course.
+  """
+  def update_assessments(%Scope{} = scope, assessments, attrs)
+      when is_list(assessments) and is_map(attrs) do
+    ids = Enum.map(assessments, & &1.id)
+
+    TeacherAssistant.Repo.transaction(fn ->
+      with %{max_score: max} when not is_nil(max) <- attrs,
+           {:ok, max} <- Ash.Type.cast_input(:decimal, max),
+           true <- marks_above?(scope, ids, max),
+           do: TeacherAssistant.Repo.rollback(:marks_above_max)
+
+      Enum.each(assessments, fn a ->
+        with {:error, error} <- Ash.update(a, attrs, scope: scope),
+             do: TeacherAssistant.Repo.rollback(error)
+      end)
+    end)
+    |> case do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
+    end
+  end
+
+  defp marks_above?(scope, ids, max) do
+    Mark
+    |> Ash.Query.filter(assessment_id in ^ids and score > ^max)
+    |> Ash.exists?(scope: scope)
+  end
+
+  @doc """
+  `%{assessment_id => MapSet of student ids}`: who has a mark (an absence
+  included) on each given assessment — one read, whatever their number.
+  """
+  def marked_students(%Scope{}, []), do: %{}
+
+  def marked_students(%Scope{} = scope, assessments) when is_list(assessments) do
+    ids = Enum.map(assessments, & &1.id)
+    empty = Map.new(ids, &{&1, MapSet.new()})
+
+    Mark
+    |> Ash.Query.filter(assessment_id in ^ids)
+    |> Ash.Query.select([:assessment_id, :student_id])
+    |> Ash.read!(scope: scope)
+    |> Enum.reduce(empty, fn m, acc ->
+      Map.update!(acc, m.assessment_id, &MapSet.put(&1, m.student_id))
+    end)
+  end
+
   def fetch_owned_assessment(%Scope{} = scope, id) do
     case Ash.get(Assessment, id, scope: scope) do
       {:ok, assessment} -> {:ok, assessment}

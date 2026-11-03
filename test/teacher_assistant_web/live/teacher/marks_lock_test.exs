@@ -26,7 +26,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
   test "an open séquence is editable", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
     refute has_element?(view, "#locked-banner")
-    assert has_element?(view, "#new-assessment-form")
+    assert has_element?(view, "#new-eval-card")
     refute has_element?(view, "#mark-input-#{ctx.s1.id}[disabled]")
   end
 
@@ -42,10 +42,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
            )
 
     assert has_element?(view, "#seq-tab-#{ctx.seq.id}", "verrouillée")
-    refute has_element?(view, "#open-banner")
+    refute has_element?(view, "#deadline-chip")
     assert has_element?(view, "#mark-input-#{ctx.s1.id}[disabled]")
-    assert has_element?(view, "#absent-#{ctx.s1.id}[disabled]")
-    refute has_element?(view, "#new-assessment-form")
+    refute has_element?(view, "#absent-#{ctx.s1.id}")
+    refute has_element?(view, "#new-eval-card")
+    refute has_element?(view, "#new-eval-chip")
+    refute has_element?(view, "#keypad-open")
+    refute has_element?(view, "#eval-menu")
 
     html = render_hook(view, "save_mark", %{"student" => ctx.s1.id, "value" => "3"})
     assert html =~ "Séquence verrouillée."
@@ -112,35 +115,34 @@ defmodule TeacherAssistantWeb.Teacher.MarksLockTest do
 
     assert has_element?(view, "#upcoming-banner", "La saisie ouvre le")
     assert has_element?(view, "#seq-tab-#{next.id}", "à venir")
-    refute has_element?(view, "#open-banner")
+    refute has_element?(view, "#deadline-chip")
     refute has_element?(view, "#locked-banner")
-    refute has_element?(view, "#new-assessment-form")
+    refute has_element?(view, "#new-eval-card")
 
     html = render_hook(view, "new_assessment", %{"assessment" => %{"label" => "Devoir 1"}})
     assert html =~ "La saisie de cette séquence n&#39;est pas encore ouverte."
     assert Assessment.list_assessments(ctx.t, ctx.tc, next) == []
   end
 
-  test "on a phone the séquence picker patches the page; another course opens its own", ctx do
+  test "on a phone the séquence sheet patches the page; the course picker keeps it", ctx do
     [_first, next | _] = TeacherAssistant.Organization.list_sequences(ctx.head, ctx.year)
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
-    assert has_element?(view, "#pick-seq option[selected]", "Séquence #{ctx.seq.number}")
-    # one course: no course picker
-    refute has_element?(view, "#pick-course")
+    assert has_element?(view, "#seq-picker-open", "Séq. #{ctx.seq.number}")
+    view |> element("#seq-picker-open") |> render_click()
+    assert has_element?(view, "#seq-option-#{ctx.seq.id}[aria-current='true']", "Ouverte")
+    assert has_element?(view, "#seq-option-#{next.id}", "À venir")
 
-    view
-    |> element("#marks-pickers")
-    |> render_change(%{"_target" => ["seq"], "seq" => next.id})
-
+    view |> element("#seq-option-#{next.id}") |> render_click()
     assert_patch(view, ~p"/teacher/contexts/#{ctx.tc.id}/marks?seq=#{next.id}")
     assert has_element?(view, "#upcoming-banner")
+    refute has_element?(view, "#seq-sheet")
 
-    assert {:error, {:live_redirect, %{to: to}}} =
-             view
-             |> element("#marks-pickers")
-             |> render_change(%{"_target" => ["context"], "context" => "other", "seq" => next.id})
+    view |> element("#course-picker-open") |> render_click()
 
-    assert to == "/teacher/contexts/other/marks?seq=#{next.id}"
+    assert has_element?(
+             view,
+             "#course-option-#{ctx.tc.id}[href='/teacher/contexts/#{ctx.tc.id}/marks?seq=#{next.id}']"
+           )
   end
 end

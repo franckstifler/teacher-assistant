@@ -301,6 +301,11 @@ defmodule TeacherAssistantWeb.UIComponents do
   """
   attr :id, :string, required: true
   attr :label, :string, default: nil, doc: "accessible name of the « ⋯ » button"
+
+  attr :trigger_label, :string,
+    default: nil,
+    doc: "text shown before the « ⋯ » (« Évaluation 2 ⋯ »): a labelled button, not a square"
+
   attr :class, :any, default: nil
 
   slot :item, required: true do
@@ -322,10 +327,17 @@ defmodule TeacherAssistantWeb.UIComponents do
       <div
         tabindex="0"
         role="button"
-        class="btn btn-ghost btn-square"
+        class={[
+          "btn",
+          if(@trigger_label,
+            do: "btn-outline btn-sm gap-1.5 border-base-300 font-medium text-base-content/80",
+            else: "btn-ghost btn-square"
+          )
+        ]}
         aria-label={@label || gettext("Plus d'actions")}
         aria-haspopup="menu"
       >
+        <span :if={@trigger_label} class="max-w-40 truncate">{@trigger_label}</span>
         <.icon name="hero-ellipsis-horizontal" class="size-5" />
       </div>
       <ul

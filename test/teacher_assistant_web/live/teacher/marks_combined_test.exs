@@ -86,6 +86,34 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert has_element?(view, "#marks-class-#{menu.id}", menu.label)
   end
 
+  test "numbers restart at 1 in each class; class chips jump to each class", %{
+    conn: conn,
+    tc_maco: tc_maco,
+    course: course,
+    seq: seq,
+    scope: scope,
+    maco: maco,
+    menu: menu,
+    s_maco: s_maco,
+    s_menu: s_menu
+  } do
+    {:ok, _} = Assessment.create_combined_assessment(scope, course, seq, %{label: "Devoir 1"})
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
+
+    for s <- [s_maco, s_menu] do
+      row = view |> element("#mark-row-#{s.id}") |> render()
+      assert row =~ ~r/<td[^>]*>\s*1\s*<\/td>/
+    end
+
+    assert has_element?(view, "#course-picker-open", "Cours groupé · 2 classes · 2 élèves")
+    assert has_element?(view, "#class-chip-#{menu.id}[href='#marks-class-#{menu.id}']", "0/1")
+    assert has_element?(view, "#marks-class-#{maco.id}", "1 élève")
+    assert has_element?(view, "#marks-header", "1ère MACO, 1ère MENU")
+
+    blur(view, s_menu.id, "11")
+    assert has_element?(view, "#class-chip-#{menu.id}", "1/1")
+  end
+
   test "creating an assessment creates one per member context", %{
     conn: conn,
     tc_maco: tc_maco,
@@ -94,6 +122,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     scope: scope
   } do
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
+
+    view |> element("#new-eval-card") |> render_click()
 
     view
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
@@ -117,6 +147,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
          s_menu: s_menu
        } do
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
+
+    view |> element("#new-eval-card") |> render_click()
 
     view
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
@@ -164,6 +196,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
   } do
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks?seq=#{seq.id}")
 
+    view |> element("#new-eval-card") |> render_click()
+
     view
     |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
     |> render_submit()
@@ -201,7 +235,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     assert [%{student_id: sid_menu, status: :excused}] = Assessment.list_marks(scope, a_menu)
     assert sid_menu == s_menu.id
 
-    # An absent cell is disabled: the toggle brings it back to blank.
+    # The row's « ⋯ » toggle brings an absence back to blank.
     view |> element("#absent-#{s_maco.id}") |> render_click()
     blur(view, s_menu.id, "abj")
 
@@ -227,7 +261,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     {:ok, view, html} = live(conn, ~p"/teacher/contexts/#{tc_maco.id}/marks")
 
     assert html =~ "Devoir 1"
-    assert has_element?(view, "#new-assessment-form")
+    assert has_element?(view, "#new-eval-card")
   end
 
   defp blur(view, student_id, value),
