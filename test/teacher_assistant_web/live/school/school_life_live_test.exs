@@ -341,6 +341,12 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     test "the dashboard counts app and paper roll calls apart", %{conn: conn} do
       {:ok, view, _} = live(conn, ~p"/school")
       assert has_element?(view, "#kpi-calls", "1 appel dans l'app · 1 sur feuille")
+
+      assert has_element?(
+               view,
+               "#todo-paper a[href='/school/day']",
+               "1 appel sur feuille à reporter"
+             )
     end
 
     test "Ma journée: a paper lesson is not a red « non fait »", %{conn: conn} = ctx do

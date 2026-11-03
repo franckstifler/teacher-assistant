@@ -21,11 +21,12 @@ defmodule TeacherAssistant.Pilotage do
   The to-do facts of the scope's current year:
 
     * `classes_without_pp` — classes without a form master (`:enrollment_count` loaded),
-      in class order;
+      in class order; `class_count` — how many classes the year has;
     * `unassigned` — `%{class: label, subject: name}` for every subject the coefficient
       grid expects in a class that has no teacher yet;
-    * `pending_accounts` — `%{count, expired}`: members who have not yet signed in with
-      their temporary password, and how many of those passwords have expired;
+    * `pending_accounts` — `%{count, expired, total}`: members who have not yet signed in
+      with their temporary password, how many of those passwords have expired, and how
+      many members the school has;
     * `councils_to_plan` — classes whose council of the current term (`councils_term`,
       nil without terms) is still to plan;
     * `pending_corrections` / `oldest_correction` — mark corrections awaiting a decision
@@ -38,6 +39,7 @@ defmodule TeacherAssistant.Pilotage do
 
     %{
       classes_without_pp: Enum.filter(classes, &is_nil(&1.form_master_user_id)),
+      class_count: length(classes),
       unassigned: unassigned(scope, classes),
       pending_accounts: pending_accounts(scope),
       councils_to_plan: councils_to_plan(scope, term, classes),
@@ -71,15 +73,17 @@ defmodule TeacherAssistant.Pilotage do
   end
 
   defp pending_accounts(scope) do
+    members = Accounts.list_members(scope)
+
     waiting =
-      scope
-      |> Accounts.list_members()
+      members
       |> Enum.map(& &1.user)
       |> Enum.filter(&match?(%{must_change_password: true}, &1))
 
     %{
       count: length(waiting),
-      expired: Enum.count(waiting, &Accounts.temporary_password_expired?/1)
+      expired: Enum.count(waiting, &Accounts.temporary_password_expired?/1),
+      total: length(members)
     }
   end
 
@@ -100,4 +104,35 @@ defmodule TeacherAssistant.Pilotage do
       Councils.status(Map.get(councils, cg.id), MapSet.member?(published, cg.id)) == :to_plan
     end)
   end
+
+  @doc """
+  Each course's APC competence for `seq` (`Assessment.competences_due/3` over the
+  courses of a `Assessment.sequence_entry_grid/3`): `%{context_id => text | nil}`, or
+  nil when none is due (not an APC school, or `seq` not started).
+  """
+  def competences(%Scope{} = scope, seq, %{rows: rows}) do
+    ids = for row <- rows, %{teaching_context: tc} <- Map.values(row.cells), do: tc.id
+    Assessment.competences_due(scope, seq, ids)
+  end
+
+  @doc """
+  How many courses with students still lack their competence (« N cours sans
+  compétence »); 0 when none is due (`competences` nil).
+  """
+  def competence_gaps(_grid, nil), do: 0
+
+  def competence_gaps(%{rows: rows}, competences) do
+    Enum.count(
+      for(row <- rows, cell <- Map.values(row.cells), do: cell),
+      &competence_missing?(competences, &1)
+    )
+  end
+
+  @doc "Whether a grid cell (a course with students) still lacks its due competence."
+  def competence_missing?(nil, _cell), do: false
+  def competence_missing?(_competences, nil), do: false
+  def competence_missing?(_competences, %{pct: nil}), do: false
+
+  def competence_missing?(competences, cell),
+    do: is_nil(competences[cell.teaching_context.id])
 end

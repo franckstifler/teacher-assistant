@@ -258,7 +258,7 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
     test "KPI cards link to their screens", ctx do
       {:ok, view, _} = live(ctx.conn, ~p"/school")
-      assert has_element?(view, "#dashboard h1", "Bonjour")
+      assert has_element?(view, "#dashboard h1", "Tableau de bord")
 
       for {id, href} <- [
             {"kpi-entry", "/school/sequences"},
@@ -271,12 +271,50 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
 
     test "to-do rows appear only when their condition holds", ctx do
       {:ok, view, _} = live(ctx.conn, ~p"/school")
-      # the fixture's classes have no form master
-      assert has_element?(view, "#todo-no-pp")
-      assert has_element?(view, "#todo-no-pp a", "Désigner")
-      # no pending correction, no account awaiting its first sign-in
+      # no pending correction, nothing on paper, not an APC school
       refute has_element?(view, "#todo-corrections")
-      refute has_element?(view, "#todo-accounts")
+      refute has_element?(view, "#todo-paper")
+      refute has_element?(view, "#todo-competences")
+    end
+
+    test "setup gaps are one « Mise en place » block of cards, one action each", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+      # the fixture's classes have no form master and subjects without a teacher
+      assert has_element?(view, "#setup-steps h2", "Mise en place de l'année")
+      assert has_element?(view, "#setup-step-pp[href='/school/classes']", "Désigner les PP")
+      assert has_element?(view, "#setup-step-pp", "Classes sans professeur principal")
+
+      assert has_element?(
+               view,
+               "#setup-step-unassigned[href='/school/settings/assignments']",
+               "Affecter"
+             )
+
+      # no account awaiting its first sign-in: no card
+      refute has_element?(view, "#setup-step-accounts")
+      refute has_element?(view, "#todo-no-pp")
+      refute has_element?(view, "#todo-unassigned")
+    end
+
+    test "courses without a competence are a to-do row in an APC school", ctx do
+      {:ok, _} =
+        TeacherAssistant.Assessment.update_bulletin_settings(ctx.scope, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+
+      %{class_group: cg} = TeacherAssistant.TeacherFixtures.school_teacher_fixture(ctx.scope)
+
+      {:ok, _} =
+        TeacherAssistant.Enrollment.add_student(ctx.scope, cg, %{full_name: "Awa", sex: :f})
+
+      {:ok, view, _} = live(ctx.conn, ~p"/school")
+
+      assert has_element?(
+               view,
+               "#todo-competences a[href='/school/sequences']",
+               "sans compétence"
+             )
     end
 
     test "the setup checklist is hidden once setup is complete", ctx do
@@ -285,9 +323,11 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       refute has_element?(view, "#pending-verification")
     end
 
-    test "entry bars per class", ctx do
+    test "entry bars per level", ctx do
       {:ok, view, _} = live(ctx.conn, ~p"/school")
-      assert has_element?(view, "#entry-bars [data-class]")
+      assert has_element?(view, "#entry-bars h2", "par niveau")
+      refute has_element?(view, "#entry-bars [data-class]")
+      assert has_element?(view, "#entry-bars [data-level]")
       assert has_element?(view, "#entry-bars a[href='/school/sequences']")
     end
 
