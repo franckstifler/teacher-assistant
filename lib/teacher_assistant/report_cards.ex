@@ -33,7 +33,9 @@ defmodule TeacherAssistant.ReportCards do
     ClassGroup,
     EntryProgress,
     Reference,
+    SchoolTemplates,
     Sequence,
+    TeachingContext,
     Term
   }
 
@@ -82,14 +84,12 @@ defmodule TeacherAssistant.ReportCards do
   @doc "The class's printed-card template under the school's current settings (spec I5)."
   def template(%Scope{} = scope, %ClassGroup{} = cg) do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
+    template_with(scope, profile, head_name(scope, profile), cg)
+  end
 
-    template =
-      BulletinTemplate.resolve(
-        profile,
-        scope.current_workspace.name,
-        cg,
-        head_name(scope, profile)
-      )
+  # `template/2` from an already read profile and head name (one read for many classes).
+  defp template_with(scope, profile, head, cg) do
+    template = BulletinTemplate.resolve(profile, scope.current_workspace.name, cg, head)
 
     # Operator console spec §1: no conduct without discipline; no absences without roll
     # call, unless typed by hand on the Discipline screens (spec 2026-10-30 §5).
@@ -378,7 +378,7 @@ defmodule TeacherAssistant.ReportCards do
 
   @doc """
   The pre-publish checks for a class and period: marks entered (`rate`, subjects
-  without a teacher), conduct marks entered, the class council, and for a class on
+  without a teacher), conduct marks entered, the form master, the class council, and for a class on
   paper the roll calls still to type in (spec 2026-10-28, a warning). Each is
   `%{key, ok?, data}`; the page words them.
   """
@@ -402,12 +402,163 @@ defmodule TeacherAssistant.ReportCards do
         ok?: entered == map_size(discipline),
         data: %{entered: entered, effectif: map_size(discipline)}
       },
+      %{key: :form_master, ok?: not is_nil(cg.form_master_user_id), data: %{}},
       %{
         key: :council,
         ok?: status == :held,
         data: %{status: status, date: council.held_on, time: council.starts_at}
       }
     ] ++ absence_check(scope, cg, period) ++ v2_checks(scope, cg, period, view)
+  end
+
+  @doc """
+  The bulletins overview (UX refonte 2026-11-03): every class of the year with what is
+  left before publishing `period`, in a fixed number of reads whatever the number of
+  classes (instead of `publish_checklist/4` per class). Per class, in class order:
+
+    * `class_group`, `students`;
+    * `rate` (marks entered over the period, nil when nothing to measure) and
+      `unassigned` (subjects without a teacher);
+    * `conduct` — `%{entered:, effectif:}`; `form_master?`;
+    * `council` / `annual_council` — a `Councils.status/2` (nil when the period has
+      none; the year's council only for a last trimester carrying the year), and
+      `council_on`, the council's date when one is set;
+    * `competences_missing` — courses whose competence is not written (APC trimesters
+      only, else nil);
+    * `published?`, `steps` (the failing keys among `:notes`, `:conduct`,
+      `:form_master`, `:council`, `:annual_council`, `:competences`) and `ready?`
+      (publishable, not published, no step left).
+
+  Absence and page-fit checks stay on the class's own page.
+  """
+  def readiness(%Scope{current_academic_year: %AcademicYear{} = year} = scope, period) do
+    classes =
+      scope
+      |> Enrollment.list_class_groups(year, load: [:enrollment_count])
+      |> Enum.sort_by(&SchoolTemplates.class_sort_key/1)
+
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    head = head_name(scope, profile)
+    templates = Map.new(classes, &{&1.id, template_with(scope, profile, head, &1)})
+    sequences = readiness_sequences(scope, year, period)
+    rates = EntryProgress.class_rates(scope, year, sequences)
+    unassigned = Curriculum.unassigned_subjects_by_class(scope, classes)
+    conduct = Discipline.conduct_entered_by_class(scope, year, period)
+    {councils, annual, published} = readiness_councils(scope, year, period, classes, templates)
+    competences = competences_missing_by_class(scope, classes, period, templates)
+
+    Enum.map(classes, fn cg ->
+      row = %{
+        class_group: cg,
+        students: cg.enrollment_count,
+        rate: rates[cg.id],
+        unassigned: length(Map.get(unassigned, cg.id, [])),
+        conduct: Map.get(conduct, cg.id, %{entered: 0, effectif: 0}),
+        form_master?: not is_nil(cg.form_master_user_id),
+        council: councils && Councils.status(councils[cg.id], MapSet.member?(published, cg.id)),
+        council_on: councils && councils[cg.id] && councils[cg.id].held_on,
+        annual_council: annual[cg.id],
+        competences_missing: competences[cg.id],
+        published?: MapSet.member?(published, cg.id)
+      }
+
+      steps = readiness_steps(row)
+      publishable? = elem(period, 0) in [:trimester, :annual]
+
+      Map.merge(row, %{steps: steps, ready?: publishable? and steps == [] and not row.published?})
+    end)
+  end
+
+  defp readiness_sequences(_scope, _year, {:sequence, seq}), do: [seq]
+
+  defp readiness_sequences(_scope, _year, {:trimester, %Term{} = term}),
+    do: period_sequences({:trimester, term})
+
+  defp readiness_sequences(scope, year, {:annual, _}),
+    do: Organization.list_sequences(scope, year)
+
+  # The period's councils by class (nil for a séquence), the year's council status of the
+  # classes that need it before this period, and the classes already published.
+  defp readiness_councils(_scope, _year, {:sequence, _}, _classes, _templates),
+    do: {nil, %{}, MapSet.new()}
+
+  defp readiness_councils(scope, year, period, classes, templates) do
+    councils = Councils.for_period(scope, period)
+    published = published_class_ids(scope, period)
+
+    annual =
+      case Enum.filter(classes, &needs_annual_council?(scope, &1, period, templates[&1.id])) do
+        [] ->
+          %{}
+
+        needing ->
+          year_councils = Councils.for_period(scope, {:annual, year})
+          Map.new(needing, &{&1.id, Councils.status(year_councils[&1.id], false)})
+      end
+
+    {councils, annual, published}
+  end
+
+  # Per class, how many of its courses lack a competence for one of the trimester's
+  # séquences (APC report cards only); one read of the courses, one of the texts.
+  defp competences_missing_by_class(scope, classes, {:trimester, _} = period, templates) do
+    apc = for cg <- classes, BulletinTemplate.show?(templates[cg.id], :apc), do: cg.id
+
+    case {apc, period_sequences(period)} do
+      {[], _} ->
+        %{}
+
+      {_, []} ->
+        %{}
+
+      {class_ids, seqs} ->
+        contexts =
+          TeachingContext
+          |> Ash.Query.filter(class_group_id in ^class_ids)
+          |> Ash.Query.select([:id, :class_group_id])
+          |> Ash.read!(scope: scope)
+
+        seq_ids = Enum.map(seqs, & &1.id)
+        texts = Assessment.sequence_competences(scope, Enum.map(contexts, & &1.id), seq_ids)
+
+        missing =
+          contexts
+          |> Enum.filter(fn tc -> Enum.any?(seq_ids, &is_nil(texts[{tc.id, &1}])) end)
+          |> Enum.frequencies_by(& &1.class_group_id)
+
+        Map.new(class_ids, &{&1, Map.get(missing, &1, 0)})
+    end
+  end
+
+  defp competences_missing_by_class(_scope, _classes, _period, _templates), do: %{}
+
+  defp readiness_steps(row) do
+    [
+      {:notes, row.rate != 100 or row.unassigned > 0},
+      {:conduct, row.conduct.entered < row.conduct.effectif},
+      {:form_master, not row.form_master?},
+      {:council, row.council != nil and row.council not in [:held, :closed]},
+      {:annual_council, row.annual_council != nil and row.annual_council != :held},
+      {:competences, (row.competences_missing || 0) > 0}
+    ]
+    |> Enum.filter(&elem(&1, 1))
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  @doc """
+  « Publier les classes prêtes »: publishes each class with `publish/3`, every guard
+  kept. `%{published: count, failed: [{class_group, reason}]}`.
+  """
+  def publish_many(%Scope{} = scope, classes, period) do
+    results = Enum.map(classes, &{&1, publish(scope, &1, period)})
+
+    %{
+      published: Enum.count(results, &match?({_, {:ok, _}}, &1)),
+      failed:
+        for {cg, {:error, reason}} <- results do
+          {cg, if(is_atom(reason), do: reason, else: :error)}
+        end
+    }
   end
 
   # A typed class prints the typed figures (spec 2026-10-30 §6): warn while some are

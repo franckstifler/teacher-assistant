@@ -77,23 +77,49 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
              live(conn, ~p"/school/sequences")
   end
 
-  test "the censorat sees the classes × subjects grid, without KPI tiles", %{conn: conn} = ctx do
+  test "the censorat lands on the teacher table, under four figures", %{conn: conn} = ctx do
     {:ok, view, html} = live(conn, ~p"/school/sequences")
 
-    assert html =~ "Suivi de la saisie des notes"
-    refute has_element?(view, "#tracking-kpis")
-    refute has_element?(view, "#kpi-overall")
+    assert html =~ "Suivi de la saisie"
+    assert has_element?(view, "#kpi-assessments", "2")
+    assert has_element?(view, "#kpi-assessments", "3 notes saisies")
+    assert has_element?(view, "#kpi-started", "1 / 2")
+    assert has_element?(view, "#kpi-started", "2 à relancer")
+    assert has_element?(view, "#kpi-reminders", "0")
+    assert has_element?(view, "#view-teachers[aria-current]")
+
+    # Maths 3e A at 50 % (started), Anglais 3e A and 4e B at 0 %
+    assert has_element?(view, "#teacher-#{ctx.head.id}", "Maths")
+    assert has_element?(view, "#teacher-#{ctx.head.id}", "1/1")
+    assert has_element?(view, "#teacher-#{ctx.english.id}", "Anglais")
+    assert has_element?(view, "#teacher-#{ctx.english.id}", "2 cours")
+    assert has_element?(view, "#teacher-#{ctx.english.id}", "0/2")
+    refute has_element?(view, "#entry-grid")
+  end
+
+  test "the teachers who started nothing are ticked on arrival", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+
+    assert has_element?(view, "#pick-#{ctx.english.id}[checked]")
+    refute has_element?(view, "#pick-#{ctx.head.id}[checked]")
+    assert has_element?(view, "#remind-picked", "Relancer la sélection · 1")
+  end
+
+  test "« Par classe » shows the classes × subjects grid and a course's detail",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences?view=classes")
 
     assert view |> element(col(view, ctx.cg, "Maths")) |> render() =~ "50 %"
     assert view |> element(col(view, ctx.cg, "Anglais")) |> render() =~ "0 %"
     # 4e B does not take Maths: a dashed, non-clickable cell.
     assert has_element?(view, "#{col(view, ctx.cg2, "Maths")}.border-dashed")
-    # as in the mockup, the first incomplete course is selected on arrival
+    # the first incomplete course is selected on arrival
     assert has_element?(view, "#cell-detail")
+    refute has_element?(view, "#teacher-table")
   end
 
   test "clicking a cell shows its detail", %{conn: conn} = ctx do
-    {:ok, view, _html} = live(conn, ~p"/school/sequences")
+    {:ok, view, _html} = live(conn, ~p"/school/sequences?view=classes")
 
     view |> element(col(view, ctx.cg, "Maths")) |> render_click()
 
@@ -106,30 +132,38 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     assert detail =~ "Dernière saisie"
   end
 
-  test "séquence tabs name their state", %{conn: conn} = ctx do
-    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
-    assert has_element?(view, "#seq-tab-#{ctx.seq.id}", "en cours")
-    assert has_element?(view, "#seq-tabs")
+  test "« Par matière » groups the courses by subject", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/sequences")
+
+    view |> element("#view-subjects") |> render_click()
+    assert has_element?(view, "#view-subjects[aria-current]")
+    assert has_element?(view, "#subject-table tr", "Anglais")
+    assert has_element?(view, "#subject-table tr", "Maths")
+    assert view |> element("#subject-table") |> render() =~ "0/2"
   end
 
-  test "late courses are listed per teacher with a per-teacher and a global button",
-       %{conn: conn} = ctx do
-    {:ok, view, _html} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+  test "the search narrows the table", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences")
 
-    assert has_element?(view, "#late-#{ctx.english.id}", "Anglais")
-    assert has_element?(view, "#late-#{ctx.english.id}", "3e A (0 %)")
-    assert has_element?(view, "#late-#{ctx.english.id}", "4e B (0 %)")
-    assert has_element?(view, "#late-#{ctx.head.id}", "Maths")
-    assert has_element?(view, "#late-#{ctx.head.id}", "(50 %)")
-    assert has_element?(view, "#late-teachers #remind-late")
-    refute render(view) =~ "chaque cours a au moins une note"
+    view |> form("#tracking-search", %{"q" => "angl"}) |> render_change()
+    assert has_element?(view, "#teacher-#{ctx.english.id}")
+    refute has_element?(view, "#teacher-#{ctx.head.id}")
+
+    view |> form("#tracking-search", %{"q" => "zzz"}) |> render_change()
+    assert has_element?(view, "#teacher-table", "Aucun enseignant ne correspond")
+  end
+
+  test "the séquence select names each state", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+    assert has_element?(view, "#seq-option-#{ctx.seq.id}", "en cours")
+    assert has_element?(view, "#seq-option-#{ctx.seq.id}[selected]")
   end
 
   test "a complete cell shows ✓", %{conn: conn, scope: scope} = ctx do
     {:ok, a} = Assessment.create_assessment(scope, ctx.tc4, ctx.seq, %{label: "Contrôle"})
     :ok = Assessment.upsert_marks(scope, a, [%{student_id: ctx.t1.id, score: Decimal.new(14)}])
 
-    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}&view=classes")
     assert view |> element(col(view, ctx.cg2, "Anglais")) |> render() =~ "✓"
   end
 
@@ -147,18 +181,22 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     test "cells without a competence carry a marker, counted above the grid",
          %{conn: conn, scope: scope} = ctx do
       :ok = Assessment.put_sequence_competence(scope, ctx.tc, ctx.seq, "Lire un graphique")
-      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}&view=classes")
 
       refute has_element?(view, "#{col(view, ctx.cg, "Maths")} [data-role='no-competence']")
       assert has_element?(view, "#{col(view, ctx.cg, "Anglais")} [data-role='no-competence']")
       assert has_element?(view, "#{col(view, ctx.cg2, "Anglais")} [data-role='no-competence']")
-      assert has_element?(view, "#competence-count", "2 cours sans compétence")
+      assert has_element?(view, "#kpi-competences", "2")
+      # per teacher: the competences still to write
+      view |> element("#view-teachers") |> render_click()
+      assert has_element?(view, "#teacher-#{ctx.english.id}", "2 à saisir")
+      assert has_element?(view, "#teacher-#{ctx.head.id}", "Toutes ✓")
     end
 
     test "the course detail shows its competence or « à saisir »",
          %{conn: conn, scope: scope} = ctx do
       :ok = Assessment.put_sequence_competence(scope, ctx.tc, ctx.seq, "Lire un graphique")
-      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}&view=classes")
 
       view |> element(col(view, ctx.cg, "Maths")) |> render_click()
       assert has_element?(view, "#cell-detail #detail-competence", "Lire un graphique")
@@ -172,59 +210,61 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
       {:ok, a} = Assessment.create_assessment(scope, ctx.tc4, ctx.seq, %{label: "Contrôle"})
       :ok = Assessment.upsert_marks(scope, a, [%{student_id: ctx.t1.id, score: Decimal.new(14)}])
 
-      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+      {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}&view=classes")
       row = "#entry-row-#{ctx.cg2.id}"
       assert has_element?(view, row, "Anglais")
       assert has_element?(view, row, "compétence à saisir")
       refute has_element?(view, "#{row} button", "Relancer")
-      # Marks only decide who is late.
-      refute has_element?(view, "#late-#{ctx.english.id}", "4e B")
     end
   end
 
   test "no competence marker when the school's report cards are not APC", %{conn: conn} = ctx do
-    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}&view=classes")
     refute has_element?(view, "[data-role='no-competence']")
-    refute has_element?(view, "#competence-count")
+    assert has_element?(view, "#kpi-competences", "bulletins sans APC")
     refute has_element?(view, "#detail-competence")
   end
 
-  test "« Relancer » per teacher notifies once and flips to Relancé", %{conn: conn} = ctx do
+  test "« Relancer la sélection » notifies the picked teachers once and flips them to Relancé",
+       %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
 
-    html = view |> element("#remind-teacher-#{ctx.english.id}") |> render_click()
+    html = view |> element("#remind-picked") |> render_click()
     assert html =~ "2 rappels envoyés"
-    assert has_element?(view, "#remind-teacher-#{ctx.english.id}", "Relancé")
+    assert has_element?(view, "#reminded-#{ctx.english.id}")
+    refute has_element?(view, "#pick-#{ctx.english.id}")
     assert %{unread: 2} = Notifications.bell(english_scope(ctx))
-    # the other teacher is untouched
-    refute has_element?(view, "#remind-teacher-#{ctx.head.id}", "Relancé")
+    # the other teacher is untouched, and the selection is cleared
+    refute has_element?(view, "#reminded-#{ctx.head.id}")
+    refute has_element?(view, "#remind-bar")
   end
 
-  test "remind-teacher ignores a teacher who is not late", %{conn: conn} = ctx do
+  test "pick ignores a teacher who is not late", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
-    render_click(view, "remind-teacher", %{"teacher" => Ecto.UUID.generate()})
-    assert %{unread: 0} = Notifications.bell(english_scope(ctx))
-    refute render(view) =~ "rappel"
+    view |> element("#remind-bar button", "Désélectionner") |> render_click()
+
+    render_click(view, "pick", %{"id" => Ecto.UUID.generate()})
+    refute has_element?(view, "#remind-bar")
   end
 
   test "?seq= selects a séquence; an unknown one falls back", %{conn: conn} = ctx do
     {:ok, view, _html} = live(conn, ~p"/school/sequences?seq=#{ctx.seq2.id}")
-    assert has_element?(view, "#seq-tab-#{ctx.seq2.id}[aria-current]")
-    refute has_element?(view, "#seq-tab-#{ctx.seq.id}[aria-current]")
+    assert has_element?(view, "#seq-option-#{ctx.seq2.id}[selected]")
+    refute has_element?(view, "#seq-option-#{ctx.seq.id}[selected]")
 
     {:ok, view, _html} = live(conn, ~p"/school/sequences?seq=garbage")
-    assert has_element?(view, "#seq-tab-#{ctx.seq.id}[aria-current]")
+    assert has_element?(view, "#seq-option-#{ctx.seq.id}[selected]")
 
     {:ok, view, _html} = live(conn, ~p"/school/sequences?seq=#{Ecto.UUID.generate()}")
-    assert has_element?(view, "#seq-tab-#{ctx.seq.id}[aria-current]")
+    assert has_element?(view, "#seq-option-#{ctx.seq.id}[selected]")
   end
 
-  test "switching tabs patches the URL", %{conn: conn} = ctx do
+  test "picking another séquence patches the URL", %{conn: conn} = ctx do
     {:ok, view, _html} = live(conn, ~p"/school/sequences")
 
-    view |> element("#seq-tab-#{ctx.seq2.id}") |> render_click()
-    assert_patch(view, ~p"/school/sequences?seq=#{ctx.seq2.id}")
-    assert has_element?(view, "#seq-tab-#{ctx.seq2.id}[aria-current]")
+    view |> form("#seq-form", %{"seq" => ctx.seq2.id}) |> render_change()
+    assert_patch(view, ~p"/school/sequences?seq=#{ctx.seq2.id}&view=teachers")
+    assert has_element?(view, "#seq-option-#{ctx.seq2.id}[selected]")
   end
 
   test "a school without séquences shows an empty state" do
@@ -257,7 +297,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
 
   test "« Relancer » notifies the course's teacher once a day and marks the cell",
        %{conn: conn} = ctx do
-    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}&view=classes")
     cell = col(view, ctx.cg, "Anglais")
     view |> element(cell) |> render_click()
 
@@ -277,17 +317,18 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     refute render(view) =~ "n'a pas pu"
   end
 
-  test "« Relancer tous les retards » reminds each lagging course, once",
-       %{conn: conn} = ctx do
+  test "ticking every late teacher reminds each lagging course, once", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
 
-    html = view |> element("#remind-late") |> render_click()
+    view |> element("#pick-all") |> render_click()
+    assert has_element?(view, "#remind-picked", "· 2")
+
+    html = view |> element("#remind-picked") |> render_click()
     # Anglais 3e A, Anglais 4e B and Maths 3e A (50 %).
     assert html =~ "3 rappels envoyés"
     assert %{unread: 2} = Notifications.bell(english_scope(ctx))
 
-    html = view |> element("#remind-late") |> render_click()
-    assert html =~ "Aucune nouvelle relance"
-    assert %{unread: 2} = Notifications.bell(english_scope(ctx))
+    # everyone was reminded today: nothing left to tick
+    assert has_element?(view, "#pick-all[disabled]")
   end
 end

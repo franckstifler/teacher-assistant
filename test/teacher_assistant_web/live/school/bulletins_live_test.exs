@@ -290,4 +290,115 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     assert has_element?(view, "#student-panel", "Tchinda Rodrigue")
     refute_received :query
   end
+
+  describe "readiness overview (UX refonte)" do
+    test "without a class the head sees every class with what is left", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/bulletins?period=trim:#{ctx.term.id}")
+
+      assert has_element?(view, "#bulletins-overview h1", "Bulletins")
+      refute has_element?(view, "#bulletins-classes")
+      assert has_element?(view, "#readiness-banner", "0 classe prête sur")
+      assert has_element?(view, "#blocker-form_master", "sans professeur principal")
+      assert has_element?(view, "#blocker-council", "à tenir")
+      assert has_element?(view, "#blocker-conduct")
+      row = "#readiness-#{ctx.cg.id}"
+      assert has_element?(view, row, "4e B")
+      assert has_element?(view, row, "0 / 2")
+      assert has_element?(view, row, "À planifier")
+      assert has_element?(view, "#{row} a[href='/school/classes/#{ctx.cg.id}']", "Désigner")
+      assert has_element?(view, row, "étapes")
+      assert has_element?(view, "tbody[id^='level-'] th", "4ème")
+      assert has_element?(view, "#publish-ready[disabled]")
+    end
+
+    test "a class opens the per-class view, with a way back", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/bulletins?period=trim:#{ctx.term.id}")
+
+      view |> element("#open-#{ctx.cg.id}") |> render_click()
+
+      assert_patch(
+        view,
+        ~p"/school/bulletins?#{[class: ctx.cg.id, period: "trim:#{ctx.term.id}"]}"
+      )
+
+      assert has_element?(view, "#draft-banner")
+      assert has_element?(view, "#publish-checks [data-check='form_master']", "à désigner")
+
+      view |> element("#back-to-overview") |> render_click()
+      assert has_element?(view, "#bulletins-overview")
+    end
+
+    test "filters and search narrow the table", ctx do
+      {:ok, view, _} = live(ctx.conn, ~p"/school/bulletins?period=trim:#{ctx.term.id}")
+
+      view |> element("#filter-ready") |> render_click()
+      assert has_element?(view, "#filter-ready[aria-current]")
+      assert has_element?(view, "#readiness-table", "Aucune classe ne correspond.")
+
+      view |> element("#filter-all") |> render_click()
+      view |> form("#class-search", %{"q" => "zz"}) |> render_change()
+      refute has_element?(view, "#readiness-#{ctx.cg.id}")
+      view |> form("#class-search", %{"q" => "4e"}) |> render_change()
+      assert has_element?(view, "#readiness-#{ctx.cg.id}")
+    end
+
+    test "a séquence is shown read-only, without publishing", ctx do
+      [seq | _] = ctx.term.sequences
+      {:ok, view, _} = live(ctx.conn, ~p"/school/bulletins?period=trim:#{ctx.term.id}")
+
+      view |> form("#period-form", %{"period" => "seq:#{seq.id}"}) |> render_change()
+      assert_patch(view, ~p"/school/bulletins?#{[period: "seq:#{seq.id}"]}")
+      assert has_element?(view, "#readiness-banner", "jamais publiés")
+      refute has_element?(view, "#publish-ready")
+      refute has_element?(view, "#filter-ready")
+    end
+
+    test "« Publier les classes prêtes » publishes the ready classes only", ctx do
+      %{scope: scope, year: year} = ctx
+      ready = ready_class!(scope, year)
+
+      {:ok, view, _} = live(ctx.conn, ~p"/school/bulletins?period=trim:#{ready.term.id}")
+      assert has_element?(view, "#readiness-#{ready.cg.id}", "Prête")
+      assert has_element?(view, "#publish-ready", "· 1")
+
+      html = view |> element("#publish-ready") |> render_click()
+      assert html =~ "1 classe publiée."
+      assert has_element?(view, "#readiness-#{ready.cg.id}", "Publiée")
+      refute has_element?(view, "#readiness-#{ctx.cg.id}", "Publiée")
+      assert ReportCards.current_publication(scope, ready.cg, {:trimester, ready.term})
+    end
+
+    test "a teacher without a class keeps the per-class view", ctx do
+      %{teacher: teacher} =
+        TeacherFixtures.school_teacher_fixture(ctx.scope, %{class_group: ctx.cg, subject: "SVT"})
+
+      {:ok, view, _} = live(conn_for(ctx.scope, teacher), ~p"/school/bulletins")
+      refute has_element?(view, "#bulletins-overview")
+      assert has_element?(view, "#bulletins")
+      refute has_element?(view, "#back-to-overview")
+    end
+  end
+
+  # A class off the coefficient grid (no subject expected) with every step of its first
+  # trimester done: marks in each séquence, conduct, form master and a held council.
+  defp ready_class!(scope, year) do
+    TeacherAssistant.MarksFixtures.start_sequences!(scope, year)
+    [term | _] = Organization.list_terms(scope, year)
+    {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "Atelier", level: "Libre"})
+    {:ok, st} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, tc} = Curriculum.assign_teacher(scope, cg, scope.current_user, %{subject: "Dessin"})
+    [%{enrollment: e}] = Enrollment.list_roster(scope, cg)
+
+    for seq <- term.sequences do
+      {:ok, a} =
+        Assessment.create_assessment(scope, tc, seq, %{label: "D", max_score: Decimal.new(20)})
+
+      :ok = Assessment.upsert_marks(scope, a, [%{student_id: st.id, score: Decimal.new(12)}])
+      {:ok, _} = TeacherAssistant.Discipline.set_conduct_mark(scope, e, seq, Decimal.new(16))
+    end
+
+    {:ok, cg} = Enrollment.set_form_master(scope, cg, scope.current_user.id)
+    {:ok, _} = TeacherAssistant.Councils.hold(scope, cg, {:trimester, term})
+    %{cg: cg, term: term}
+  end
 end

@@ -53,6 +53,19 @@ defmodule TeacherAssistantWeb.School.CouncilsLiveTest do
     assert_redirect(view, council_path(ctx.cg, ctx.term))
   end
 
+  test "classes are grouped by level, each with its state, and filtered by status", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")
+    assert has_element?(view, "#councils-table section h2", "4ème")
+    assert has_element?(view, "#council-row-#{ctx.cg.id}", "à planifier")
+
+    view |> element("#filter-held") |> render_click()
+    assert has_element?(view, "#filter-held[aria-current]")
+    refute has_element?(view, "#council-row-#{ctx.cg.id}")
+
+    view |> element("#filter-to_plan") |> render_click()
+    assert has_element?(view, "#council-row-#{ctx.cg.id}")
+  end
+
   describe "list and inline planning (Task 9)" do
     test "summary, statuses and CTAs", ctx do
       {:ok, view, _} = live(ctx.conn, ~p"/school/councils?term=#{ctx.term.id}")

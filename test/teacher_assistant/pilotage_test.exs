@@ -63,7 +63,7 @@ defmodule TeacherAssistant.PilotageTest do
       )
     end)
 
-    assert Pilotage.todo(head).pending_accounts == %{count: 2, expired: 1}
+    assert %{count: 2, expired: 1} = Pilotage.todo(head).pending_accounts
   end
 
   test "councils to plan in the current term" do
@@ -102,5 +102,44 @@ defmodule TeacherAssistant.PilotageTest do
     todo = Pilotage.todo(world.head)
     assert todo.pending_corrections == 1
     assert todo.oldest_correction == DateTime.to_date(c.inserted_at)
+  end
+
+  test "class and member totals for the setup block" do
+    %{scope: head, year: year} = TeacherFixtures.setup_complete_school_fixture()
+    head = %{head | current_academic_year: year}
+    todo = Pilotage.todo(head)
+
+    assert todo.class_count == length(Enrollment.list_class_groups(head, year))
+    assert todo.pending_accounts.total == length(TeacherAssistant.Accounts.list_members(head))
+  end
+
+  describe "courses without a competence (APC)" do
+    setup do
+      world = TeacherAssistant.MarksFixtures.marks_world()
+      seq = world.seq
+      %{world: world, seq: seq, grid: Assessment.sequence_entry_grid(world.head, world.year, seq)}
+    end
+
+    test "nil when the school's report cards are not APC", %{world: world, seq: seq, grid: grid} do
+      assert Pilotage.competences(world.head, seq, grid) == nil
+      assert Pilotage.competence_gaps(grid, nil) == 0
+    end
+
+    test "counts the courses with students whose competence is not written",
+         %{world: world, seq: seq, grid: grid} do
+      {:ok, _} =
+        Assessment.update_bulletin_settings(world.head, %{
+          "language" => "by_class",
+          "elements" => ["apc", "rank"]
+        })
+
+      competences = Pilotage.competences(world.head, seq, grid)
+      gaps = Pilotage.competence_gaps(grid, competences)
+      assert gaps > 0
+
+      :ok = Assessment.put_sequence_competence(world.head, world.tc, seq, "Lire un graphique")
+      competences = Pilotage.competences(world.head, seq, grid)
+      assert Pilotage.competence_gaps(grid, competences) == gaps - 1
+    end
   end
 end

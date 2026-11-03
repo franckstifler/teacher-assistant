@@ -389,11 +389,23 @@ defmodule TeacherAssistant.Assessment do
   end
 
   @doc "Reminds each lagging course of one teacher; the count sent (once per course and day)."
-  def remind_teacher(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, teacher_id) do
+  def remind_teacher(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, teacher_id),
+    do: remind_teachers(scope, year, seq, [teacher_id])
+
+  @doc """
+  « Relancer la sélection »: reminds each lagging course of the given teachers (ids
+  that are not late are ignored), reading the grid once; the count sent (once per
+  course and day).
+  """
+  def remind_teachers(%Scope{}, %AcademicYear{}, %Sequence{}, []), do: {:ok, 0}
+
+  def remind_teachers(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, teacher_ids) do
+    ids = MapSet.new(teacher_ids)
+
     scope
     |> sequence_entry_grid(year, seq)
     |> Map.fetch!(:late)
-    |> Enum.filter(&(&1.teacher_id == teacher_id))
+    |> Enum.filter(&MapSet.member?(ids, &1.teacher_id))
     |> remind_courses(scope, seq)
   end
 

@@ -369,6 +369,34 @@ defmodule TeacherAssistant.Discipline do
     end)
   end
 
+  @doc """
+  Per class of `year`, how many students have a conduct mark over `period_tuple`:
+  `%{class_group_id => %{entered:, effectif:}}` (the bulletins overview), in two reads
+  whatever the number of classes. A class without students is absent.
+  """
+  def conduct_entered_by_class(%Scope{} = scope, %AcademicYear{id: year_id}, period_tuple) do
+    enrollments =
+      Enrollment
+      |> Ash.Query.filter(academic_year_id == ^year_id)
+      |> Ash.Query.select([:id, :class_group_id])
+      |> Ash.read!(scope: scope)
+
+    marked =
+      scope
+      |> period_sequence_ids(period_tuple)
+      |> batch_conduct_values(Enum.map(enrollments, & &1.id), scope)
+
+    enrollments
+    |> Enum.group_by(& &1.class_group_id)
+    |> Map.new(fn {cg_id, list} ->
+      {cg_id,
+       %{
+         entered: Enum.count(list, &(Map.get(marked, &1.id, []) != [])),
+         effectif: length(list)
+       }}
+    end)
+  end
+
   # --- Suggested conduct marks (spec KLM3) ---------------------------------------
 
   @doc """

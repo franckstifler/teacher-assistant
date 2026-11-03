@@ -32,6 +32,18 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLiveTest do
              live(conn_for(ctx.scope, teacher.current_user), ~p"/school/fees")
   end
 
+  test "before any setup the page shows the three steps instead of 0 % figures", ctx do
+    %{next: next} = TeacherAssistant.TeacherFixtures.close_year!(ctx.scope, ctx.year)
+    assert next
+
+    {:ok, view, _} = live(ctx.conn, ~p"/school/fees")
+    assert has_element?(view, "#fee-setup-cta")
+    assert has_element?(view, "#cta-step-1[data-state='current']")
+    assert has_element?(view, "#start-fee-setup[href='/school/settings/fees']")
+    refute has_element?(view, "#recovery-classes")
+    refute has_element?(view, "#recovery-collected")
+  end
+
   test "recovery figures and the class table", %{conn: conn} = ctx do
     {:ok, _} = Fees.record_payment(ctx.scope, ctx.e, cash(30_000))
     {:ok, view, _} = live(conn, ~p"/school/fees")
