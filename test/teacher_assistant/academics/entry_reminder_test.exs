@@ -89,4 +89,14 @@ defmodule TeacherAssistant.Academics.EntryReminderTest do
     assert %{unread: 0} = Notifications.bell(ctx.maths)
     assert {:ok, 0} = Assessment.remind_teacher(ctx.head, ctx.year, ctx.seq, teacher_id)
   end
+
+  test "remind_teachers reminds the lagging courses of the given teachers, from one grid", ctx do
+    ids = [ctx.english.current_user.id, ctx.maths.current_user.id, Ecto.UUID.generate()]
+    assert {:ok, 2} = Assessment.remind_teachers(ctx.head, ctx.year, ctx.seq, ids)
+    assert %{unread: 1} = Notifications.bell(ctx.english)
+    assert %{unread: 1} = Notifications.bell(ctx.maths)
+    # the daily guard holds
+    assert {:ok, 0} = Assessment.remind_teachers(ctx.head, ctx.year, ctx.seq, ids)
+    assert {:ok, 0} = Assessment.remind_teachers(ctx.head, ctx.year, ctx.seq, [])
+  end
 end
