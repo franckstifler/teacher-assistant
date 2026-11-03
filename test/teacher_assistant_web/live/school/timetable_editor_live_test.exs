@@ -25,15 +25,72 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
     %{scope: scope, a: a, b: b, ma: ma, mb: mb, p1: p1, p2: p2}
   end
 
-  test "tabs, a chip places a lesson, the hours update", %{conn: conn} = ctx do
+  test "the class picker, a chip places a lesson, the hours left update", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
-    assert has_element?(view, "#class-tab-#{ctx.b.id}")
+
+    assert has_element?(
+             view,
+             "#timetable-class-select optgroup[label='6ème'] option[value='#{ctx.b.id}']",
+             "6e R · 4 h à placer"
+           )
+
     assert has_element?(view, "#conflict-count", "Aucun conflit")
+    assert has_element?(view, "#hours", "Reste à placer · 4 h")
+    assert has_element?(view, "#todo-#{ctx.ma.id}[draggable]", "4 h")
 
     view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
     view |> element("#chip-#{ctx.ma.id}") |> render_click()
     assert Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p1.id}]
-    assert has_element?(view, "#hours-#{ctx.ma.id}", "1/")
+    assert has_element?(view, "#todo-#{ctx.ma.id}", "3 h")
+    assert has_element?(view, "#hours", "Reste à placer · 3 h")
+  end
+
+  test "a subject dropped on a free cell is placed there; a taken cell refuses it",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    assert has_element?(view, "#cell-monday-#{ctx.p1.id}[data-drop-day='monday']")
+
+    view
+    |> element("#timetable-workspace")
+    |> render_hook("drop_place", %{
+      "tc" => ctx.ma.id,
+      "day" => "monday",
+      "period" => ctx.p1.id
+    })
+
+    assert Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p1.id}]
+    refute has_element?(view, "#cell-monday-#{ctx.p1.id}[data-drop-day]")
+    assert has_element?(view, "#cell-monday-#{ctx.p1.id}", "Maths")
+
+    # a subject of another class is not placed
+    view
+    |> element("#timetable-workspace")
+    |> render_hook("drop_place", %{
+      "tc" => ctx.mb.id,
+      "day" => "monday",
+      "period" => ctx.p2.id
+    })
+
+    refute Timetabling.class_timetable(ctx.scope, ctx.a).slots[{:monday, ctx.p2.id}]
+  end
+
+  test "the teacher and room views are read-only grids", %{conn: conn, actor: head} = ctx do
+    room = room!(ctx.scope, %{name: "Labo", capacity: 40})
+    place!(ctx, ctx.a, ctx.ma)
+    :ok = Timetabling.set_slot_room(ctx.scope, ctx.a, {:monday, ctx.p1.id}, room.id)
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#view-teacher") |> render_click()
+    assert_patch(view, ~p"/school/timetable?view=teacher")
+    assert has_element?(view, "#timetable-teacher-select option[selected][value='#{head.id}']")
+    assert has_element?(view, "#ro-cell-monday-#{ctx.p1.id}", "Maths")
+    assert has_element?(view, "#ro-cell-monday-#{ctx.p1.id}", "6e Q")
+    refute has_element?(view, "#editor-grid")
+
+    {:ok, view, _} = live(conn, ~p"/school/timetable?view=room&room=#{room.id}")
+    assert has_element?(view, "#view-room[aria-current=true]")
+    assert has_element?(view, "#ro-cell-monday-#{ctx.p1.id}", "6e Q")
+    refute has_element?(view, "#ro-cell-monday-#{ctx.p2.id}", "Maths")
   end
 
   test "a clash is saved, shown in red, counted, and fixed by a move", %{conn: conn} = ctx do
@@ -130,7 +187,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
       })
 
     {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{foreign.id}")
-    refute has_element?(view, "#class-tab-#{foreign.id}")
+    refute has_element?(view, "#timetable-class-select option[value='#{foreign.id}']")
   end
 
   test "a plain teacher is redirected", %{scope: scope} do

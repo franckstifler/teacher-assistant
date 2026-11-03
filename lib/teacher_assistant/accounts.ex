@@ -45,6 +45,13 @@ defmodule TeacherAssistant.Accounts do
     authorize :by_default
   end
 
+  @doc "Stamps `user`'s `last_sign_in_at` (a successful sign-in, as the user)."
+  def record_sign_in(%User{} = user) do
+    user
+    |> Ash.Changeset.for_update(:record_sign_in, %{}, actor: user)
+    |> Ash.update()
+  end
+
   @doc "Whether an Ash error is the `:unique_phone` identity violation."
   def phone_taken?(%Ash.Error.Invalid{errors: errors}),
     do: Enum.any?(errors, &match?(%{field: :phone}, &1))

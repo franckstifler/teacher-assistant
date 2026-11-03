@@ -60,6 +60,7 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
       awa: awa,
       bob: bob,
       seq: seq,
+      year: year,
       tc: tc,
       p1: p1
     }
@@ -74,8 +75,41 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
     awa_row = view |> element("#conduct-row-#{ctx.awa.id}") |> render()
     assert awa_row =~ "Avertissement"
     assert awa_row =~ "18"
+    assert awa_row =~ "Avertissement le 15 sept."
     assert has_element?(view, "#conduct-input-#{ctx.awa.id}[value='18']")
+    # Bob has no incident: folded, still posted.
+    refute has_element?(view, "#conduct-row-#{ctx.bob.id}")
+    assert has_element?(view, "#conduct-folded-#{ctx.bob.id}[value='20']")
+    assert view |> element("#conduct-folded") |> render() =~ "1 autre élève sans incident : 20/20"
+  end
+
+  test "« Seulement les incidents » off shows every student", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, path(ctx))
+    view |> element("#show-folded") |> render_click()
     assert has_element?(view, "#conduct-input-#{ctx.bob.id}[value='20']")
+    refute has_element?(view, "#conduct-folded")
+
+    view |> element("#only-incidents") |> render_click()
+    refute has_element?(view, "#conduct-row-#{ctx.bob.id}")
+  end
+
+  test "« Valider X et passer à Y » saves the class and opens the next one",
+       %{conn: conn} = ctx do
+    {:ok, next} =
+      Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e B", level: "6ème"})
+
+    {:ok, _} = Enrollment.add_student(ctx.scope, next, %{full_name: "Cyr", sex: :m})
+
+    {:ok, view, _} = live(conn, path(ctx))
+    assert view |> element("#conduct-subtitle") |> render() =~ "0 classe validée sur 2"
+    assert has_element?(view, "#validate-class", "Valider 6e A et passer à 6e B")
+
+    view |> form("#conduct-form") |> render_submit()
+    assert_patch(view, ~p"/school/conduct?class=#{next.id}&seq=#{ctx.seq.id}")
+    assert render(view) =~ "2 notes de conduite enregistrées"
+    assert view |> element("#conduct-subtitle") |> render() =~ "1 classe validée sur 2"
+    assert has_element?(view, "#validate-class", "Valider 6e B")
+    refute has_element?(view, "#validate-class", "passer à")
   end
 
   test "an edited row is marked « ajustée »; applying the suggestions resets it",
@@ -106,6 +140,7 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
 
   test "a bad value names the student and saves nothing", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
+    view |> element("#show-folded") |> render_click()
 
     view
     |> form("#conduct-form", %{"marks" => %{ctx.awa.id => "16", ctx.bob.id => "25"}})
@@ -150,6 +185,7 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
 
   test "the same value written differently is not « ajustée »", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
+    view |> element("#show-folded") |> render_click()
 
     view
     |> form("#conduct-form", %{"marks" => %{ctx.awa.id => "18.0", ctx.bob.id => "20,00"}})
@@ -159,11 +195,16 @@ defmodule TeacherAssistantWeb.School.ConductLiveTest do
     refute view |> element("#conduct-row-#{ctx.bob.id}") |> render() =~ "ajustée"
   end
 
-  test "classes are tabs; the rule line follows the settings and links to them",
+  test "the class picker counts students; the rule line follows the settings and links to them",
        %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, path(ctx))
 
-    assert has_element?(view, "#conduct-tab-#{ctx.cg.id}[aria-current='page']")
+    assert has_element?(
+             view,
+             "#conduct-class-select optgroup[label='6ème'] option[selected]",
+             "6e A · 2 élèves"
+           )
+
     rule = view |> element("#conduct-rule") |> render()
     assert rule =~ "0,5 pt / h injustifiée"
     assert rule =~ "/school/settings/school-life"

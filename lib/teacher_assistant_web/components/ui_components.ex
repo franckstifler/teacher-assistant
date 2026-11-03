@@ -418,12 +418,14 @@ defmodule TeacherAssistantWeb.UIComponents do
   attr :id, :string, required: true
   attr :classes, :list, required: true, doc: "the classes (`id`, `label`, `level`), any order"
   attr :current, :string, default: nil, doc: "the selected class's id"
-  attr :to, :any, required: true, doc: "`fn class -> path end`: where ‹ › patch to"
+  attr :to, :any, default: nil, doc: "`fn class -> path end`: where ‹ › patch to (with `stepper`)"
   attr :suffix, :any, default: nil, doc: "`fn class -> text | nil end`, after « · »"
   attr :name, :string, default: "class"
   attr :change, :string, default: nil, doc: "the `phx-change` event of its own form"
   attr :prompt, :string, default: nil, doc: "a first, empty option (« Toutes les classes »)"
   attr :label, :string, default: nil, doc: "the select's accessible name (default « Classe »)"
+  attr :stepper, :boolean, default: true, doc: "false: the select alone, without ‹ ›"
+  attr :select_class, :any, default: "select-sm", doc: "the select's size/extra classes"
   attr :class, :any, default: nil
 
   def class_picker(assigns) do
@@ -440,6 +442,7 @@ defmodule TeacherAssistantWeb.UIComponents do
     ~H"""
     <div id={@id} class={["flex items-center gap-1", @class]}>
       <.class_step
+        :if={@stepper}
         id={"#{@id}-prev"}
         target={@prev}
         to={@to}
@@ -456,7 +459,7 @@ defmodule TeacherAssistantWeb.UIComponents do
           id={"#{@id}-select"}
           name={@name}
           aria-label={@label || gettext("Classe")}
-          class="select select-sm w-full"
+          class={["select w-full", @select_class]}
         >
           <option :if={@prompt} value="">{@prompt}</option>
           <optgroup :for={[first | _] = group <- @groups} label={first.level || gettext("Autres")}>
@@ -467,6 +470,7 @@ defmodule TeacherAssistantWeb.UIComponents do
         </select>
       </.dynamic_tag>
       <.class_step
+        :if={@stepper}
         id={"#{@id}-next"}
         target={@next}
         to={@to}

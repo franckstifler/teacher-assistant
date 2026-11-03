@@ -340,12 +340,71 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       assert render(view) =~ "Aucun membre ne correspond"
     end
 
-    test "filter by role", %{conn: conn} do
+    test "filter by role with the pills", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/school/members")
+      assert has_element?(view, "#filter-all", "3")
+      assert has_element?(view, "#filter-bursar", "1")
 
-      view |> form("#members-filter", %{"role" => "bursar"}) |> render_change()
+      view |> element("#filter-bursar") |> render_click()
+      assert_patch(view, ~p"/school/members?role=bursar")
       assert has_element?(view, "#members-list", "Éloïse Awa")
       refute has_element?(view, "#members-list", "Ngo Bilong")
+      assert has_element?(view, "#filter-bursar[aria-current]")
+    end
+
+    test "« Jamais connectés » keeps the members who never signed in",
+         %{conn: conn, actor: head} do
+      {:ok, _} = Accounts.record_sign_in(head)
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      assert has_element?(view, "#filter-never", "2")
+      assert render(view) =~ "1 connecté au moins une fois"
+
+      view |> element("#filter-never") |> render_click()
+      assert_patch(view, ~p"/school/members?f=never")
+      assert has_element?(view, "#members-table", "Éloïse Awa")
+      assert has_element?(view, "#members-table", "Ngo Bilong")
+      refute has_element?(view, "#members-table", head.email |> to_string())
+    end
+
+    test "the table shows contact, roles, service and access", %{
+      conn: conn,
+      scope: scope,
+      ngo: ngo
+    } do
+      m = Enum.find(Accounts.list_members(scope), &(&1.user_id == ngo.id))
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      row = view |> element("#member-tr-#{m.id}") |> render()
+      assert String.replace(row, ~r/[^0-9]/, "") =~ "699112233"
+      assert row =~ "Enseignant"
+      assert has_element?(view, "#member-service-#{m.id}", " h")
+      assert has_element?(view, "#member-access-#{m.id}", "Jamais connecté")
+    end
+
+    test "selecting members shows the bar that copies their numbers",
+         %{conn: conn, scope: scope, awa: awa, ngo: ngo} do
+      members = Accounts.list_members(scope)
+      a = Enum.find(members, &(&1.user_id == awa.id))
+      n = Enum.find(members, &(&1.user_id == ngo.id))
+
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      refute has_element?(view, "#members-bulk")
+
+      view |> element("#select-#{a.id}") |> render_click()
+      view |> element("#select-#{n.id}") |> render_click()
+      assert has_element?(view, "#members-bulk", "2 sélectionnés")
+      phones = view |> element("#selected-phones") |> render()
+      assert phones =~ "677445566"
+      assert phones =~ "699112233"
+
+      view |> element("#copy-phones") |> render_click()
+      assert render(view) =~ "2 numéros copiés."
+
+      view |> element("#select-all") |> render_click()
+      assert has_element?(view, "#members-bulk", "3 sélectionnés")
+      view |> element("#select-all") |> render_click()
+      refute has_element?(view, "#members-bulk")
     end
 
     test "the header counts members and accounts not yet used", %{conn: conn} do

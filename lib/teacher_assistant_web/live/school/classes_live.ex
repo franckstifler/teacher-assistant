@@ -1,8 +1,10 @@
 defmodule TeacherAssistantWeb.School.ClassesLive do
   @moduledoc """
-  The school's classes (spec 2026-10-08 §2): cards grouped by cycle, a cycle and
-  text filter, and the « Nouvelle classe » drawer that builds the label from
-  level, série and suffix.
+  The school's classes (spec 2026-10-08 §2, UX refonte 2026-11-03 « Classes »): a
+  table grouped by level (a list on phones), filter pills (Toutes, Sans PP,
+  Matières à affecter) and a text filter, the « Mode désignation » that sets
+  every class's form master in one save, and the « Nouvelle classe » drawer that
+  builds the label from level, série and suffix.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -12,7 +14,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   alias TeacherAssistant.Academics.{ClassGroup, SchoolTemplates}
   alias TeacherAssistant.Accounts.User
 
-  @cycles [:first, :second, :anglophone, :other]
+  @filters [:all, :no_pp, :to_assign]
   @other_level "__other__"
 
   def mount(_params, _session, socket) do
@@ -33,12 +35,52 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
          page_title: gettext("Classes"),
          profile: profile,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
-         cycle: :all,
+         filters: @filters,
+         filter: :all,
+         mode: nil,
          q: "",
+         members: [],
+         pp_draft: %{},
+         pp_changes: 0,
          drawer?: false
        )
        |> load_classes()}
     end
+  end
+
+  def handle_params(params, _uri, socket) do
+    filter = Enum.find(@filters, :all, &(to_string(&1) == params["f"]))
+
+    mode =
+      if params["mode"] == "designate" and socket.assigns.can_manage_classes? and
+           socket.assigns.classes != [],
+         do: :designate
+
+    {:noreply,
+     socket
+     |> assign(filter: filter, mode: mode)
+     |> assign_draft()}
+  end
+
+  # « Mode désignation »: the members to choose from and a draft PP per class.
+  defp assign_draft(%{assigns: %{mode: :designate}} = socket) do
+    members =
+      case socket.assigns.members do
+        [] -> Accounts.list_members(socket.assigns.current_scope)
+        members -> members
+      end
+
+    draft = Map.new(socket.assigns.classes, &{&1.cg.id, &1.cg.form_master_user_id || ""})
+    assign(socket, members: members, pp_draft: draft, pp_changes: 0)
+  end
+
+  defp assign_draft(socket), do: assign(socket, pp_draft: %{}, pp_changes: 0)
+
+  defp pp_changes(classes, draft) do
+    for %{cg: cg} <- classes,
+        Map.has_key?(draft, cg.id),
+        draft[cg.id] != (cg.form_master_user_id || ""),
+        do: {cg, if(draft[cg.id] == "", do: nil, else: draft[cg.id])}
   end
 
   def render(assigns) do
@@ -48,21 +90,22 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
         <.page_header
           eyebrow={gettext("Établissement")}
           title={gettext("Classes")}
-          subtitle={
-            @year &&
-              gettext("%{classes} · %{students}",
-                classes: ngettext("%{count} classe", "%{count} classes", length(@classes)),
-                students:
-                  ngettext("%{count} élève", "%{count} élèves", Enum.sum_by(@classes, & &1.count))
-              )
-          }
+          subtitle={@year && header_subtitle(@classes)}
         >
           <:actions>
+            <.link
+              :if={@year && @can_manage_classes? && @classes != [] && @mode != :designate}
+              id="designate-button"
+              patch={classes_path(@filter, :designate)}
+              class="btn btn-outline btn-sm gap-1.5"
+            >
+              <.icon name="hero-user-plus" class="size-4" /> {gettext("Désigner les PP")}
+            </.link>
             <button
               :if={@year && @can_manage_classes?}
               id="new-class-button"
               type="button"
-              class="btn btn-primary btn-sm gap-1.5"
+              class="btn btn-outline btn-sm gap-1.5"
               phx-click="open_drawer"
             >
               <.icon name="hero-plus" class="size-4" /> {gettext("Nouvelle classe")}
@@ -92,79 +135,124 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             </:action>
           </.setup_gate>
         <% else %>
-          <div
-            :if={@classes != []}
-            class="flex flex-wrap items-center gap-3 rounded-[0.6rem] border border-base-300 bg-base-100 px-3 py-2.5"
-          >
-            <div
-              id="cycle-filter"
-              role="group"
-              aria-label={gettext("Cycle")}
-              class="flex flex-wrap gap-1"
-            >
-              <button
-                :for={cycle <- [:all | present_cycles(@classes)]}
-                id={"cycle-#{cycle}"}
-                type="button"
-                phx-click="filter_cycle"
-                phx-value-cycle={cycle}
-                aria-pressed={to_string(@cycle == cycle)}
-                class={[
-                  "rounded-full px-3 py-2 text-sm font-semibold transition-colors",
-                  if(@cycle == cycle,
-                    do: "bg-primary/15 text-primary",
-                    else: "text-base-content/70 hover:text-base-content"
-                  )
-                ]}
+          <div :if={@classes != []} class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <.filter_pills id="class-filters" class="sm:flex-none">
+              <:pill
+                :for={f <- @filters}
+                id={"filter-#{f}"}
+                patch={classes_path(f, @mode)}
+                count={@counts[f]}
+                current={f == @filter}
               >
-                {cycle_label(cycle)}
-              </button>
-            </div>
+                {filter_label(f)}
+              </:pill>
+            </.filter_pills>
             <form id="class-filter" phx-change="filter_text" class="min-w-48 flex-1">
-              <label class="input input-sm w-full">
+              <label class="input w-full">
                 <.icon name="hero-magnifying-glass" class="size-4 opacity-60" />
                 <input
                   type="search"
                   name="q"
                   value={@q}
                   phx-debounce="150"
-                  placeholder={gettext("Filtrer : 6ème, Tle D, Form…")}
-                  aria-label={gettext("Filtrer les classes")}
+                  placeholder={gettext("Classe ou filière (ESF, 2nde…)")}
+                  aria-label={gettext("Rechercher une classe")}
                 />
               </label>
             </form>
-            <span class="flex gap-3 text-xs text-base-content/70">
-              <span class="inline-flex items-center gap-1.5">
-                <span class="size-2 rounded-sm bg-error"></span>{gettext("À compléter")}
-              </span>
-              <span class="inline-flex items-center gap-1.5">
-                <span class="size-2 rounded-sm bg-warning"></span>{gettext("Presque pleine")}
-              </span>
-            </span>
           </div>
 
-          <section
-            :for={{cycle, rows} <- visible_groups(@classes, @cycle, @q)}
-            id={"cycle-group-#{cycle}"}
-            class="space-y-3"
+          <form
+            :if={@classes != []}
+            id="designate-form"
+            phx-change="draft_pp"
+            phx-submit="save_pps"
+            class="space-y-5"
           >
-            <div class="flex items-baseline gap-3">
-              <h2 class="font-display text-xl font-semibold">{cycle_label(cycle)}</h2>
-              <span class="ta-num text-xs text-base-content/70">
-                {ngettext("%{count} classe", "%{count} classes", length(rows))} · {ngettext(
-                  "%{count} élève",
-                  "%{count} élèves",
-                  Enum.sum_by(rows, & &1.count)
+            <div
+              :if={@mode == :designate}
+              id="designate-banner"
+              class="flex flex-wrap items-center gap-3 rounded-box border border-warning/40 bg-warning/10 px-4 py-3 text-sm"
+            >
+              <span class="min-w-56 flex-1">
+                {gettext(
+                  "Mode désignation : choisissez un professeur principal par classe, puis enregistrez tout d'un coup."
                 )}
               </span>
+              <.link patch={classes_path(@filter, nil)} class="btn btn-ghost btn-sm">
+                {gettext("Annuler")}
+              </.link>
+              <button
+                id="save-pps"
+                type="submit"
+                class="btn btn-primary btn-sm"
+                disabled={@pp_changes == 0}
+                phx-disable-with={gettext("Enregistrement…")}
+              >
+                {ngettext("Enregistrer · %{count} PP", "Enregistrer · %{count} PP", @pp_changes)}
+              </button>
             </div>
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              <.class_card :for={row <- rows} row={row} />
-            </div>
-          </section>
+
+            <.level_group
+              :for={{level, rows} <- visible_groups(@classes, @filter, @q)}
+              id={"level-group-#{slug(level)}"}
+              level={level}
+              classes={length(rows)}
+              students={Enum.sum_by(rows, & &1.count)}
+            >
+              <div class={[
+                "ta-section overflow-x-auto",
+                @mode != :designate && "hidden sm:block"
+              ]}>
+                <table class="table table-fixed">
+                  <colgroup>
+                    <col class="w-[26%]" />
+                    <col class={["w-[11%]", @mode == :designate && "max-sm:hidden"]} />
+                    <col class="w-[30%]" />
+                    <col class={["w-[20%]", @mode == :designate && "max-sm:hidden"]} />
+                    <col class={["w-[13%]", @mode == :designate && "max-sm:hidden"]} />
+                  </colgroup>
+                  <thead>
+                    <tr class="text-xs text-base-content/70">
+                      <th>{gettext("Classe")}</th>
+                      <th class={@mode == :designate && "max-sm:hidden"}>{gettext("Élèves")}</th>
+                      <th>{gettext("Professeur principal")}</th>
+                      <th class={@mode == :designate && "max-sm:hidden"}>{gettext("Matières")}</th>
+                      <th class={@mode == :designate && "max-sm:hidden"}>
+                        <span class="sr-only">{gettext("Ouvrir")}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <.class_row
+                      :for={row <- rows}
+                      row={row}
+                      mode={@mode}
+                      members={@members}
+                      draft={@pp_draft[row.cg.id]}
+                    />
+                  </tbody>
+                </table>
+              </div>
+              <div :if={@mode != :designate} class="ta-section overflow-hidden sm:hidden">
+                <.list_row
+                  :for={row <- rows}
+                  id={"class-item-#{row.cg.id}"}
+                  navigate={~p"/school/classes/#{row.cg.id}"}
+                  title={row.cg.label}
+                  meta={row_meta(row)}
+                  meta_class={row.unassigned > 0 && "text-warning"}
+                >
+                  <:trailing>
+                    <span class="ta-num text-sm text-base-content/75">{row.count}</span>
+                  </:trailing>
+                </.list_row>
+              </div>
+            </.level_group>
+          </form>
 
           <p
-            :if={@classes != [] and visible_groups(@classes, @cycle, @q) == []}
+            :if={@classes != [] and visible_groups(@classes, @filter, @q) == []}
             id="no-class-match"
             class="text-sm text-base-content/70"
           >
@@ -213,83 +301,107 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   end
 
   attr :row, :map, required: true
+  attr :mode, :atom, required: true
+  attr :members, :list, required: true
+  attr :draft, :string, default: nil
 
-  defp class_card(assigns) do
+  defp class_row(assigns) do
     ~H"""
-    <.link
-      navigate={~p"/school/classes/#{@row.cg.id}"}
-      id={"class-card-#{@row.cg.id}"}
-      class={[
-        "ta-section group flex flex-col gap-2 p-3 transition-colors sm:gap-3 sm:p-4",
-        "hover:border-base-content/30"
-      ]}
-    >
-      <span class="flex items-start justify-between gap-2">
-        <span class="flex items-center gap-2 font-display text-lg font-semibold leading-tight">
-          <span
-            :if={@row.unassigned > 0}
-            class="size-2 rounded-full bg-error"
-            title={gettext("À compléter")}
-            aria-hidden="true"
-          ></span>
+    <tr id={"class-row-#{@row.cg.id}"} class="hover:bg-base-200/40">
+      <td class="font-semibold">
+        <.link navigate={~p"/school/classes/#{@row.cg.id}"} class="hover:underline">
           {@row.cg.label}
-          <span :if={@row.unassigned > 0} class="sr-only">{gettext("(à compléter)")}</span>
+        </.link>
+      </td>
+      <td class={@mode == :designate && "max-sm:hidden"}>
+        <span
+          id={"class-size-#{@row.cg.id}"}
+          class={[
+            "ta-num text-sm",
+            @row.capacity.over? && "font-semibold text-error",
+            @row.capacity.near? && "font-semibold text-warning"
+          ]}
+          title={
+            @row.capacity.max &&
+              gettext("Effectif maximum : %{max}", max: @row.capacity.max)
+          }
+        >
+          {if @row.capacity.max && (@row.capacity.over? || @row.capacity.near?),
+            do: "#{@row.count} / #{@row.capacity.max}",
+            else: @row.count}
         </span>
-        <span class="ta-num rounded bg-base-200 px-1.5 py-0.5 text-[0.7rem] text-base-content/70">
-          {@row.cg.serie || @row.cg.level}
-        </span>
-      </span>
-      <span class="space-y-1.5">
-        <span class="flex justify-between text-xs text-base-content/70">
-          <span>{gettext("Effectif")}</span>
-          <span
-            id={"class-size-#{@row.cg.id}"}
-            class={[
-              "ta-num",
-              @row.capacity.over? && "font-semibold text-error",
-              @row.capacity.near? && "font-semibold text-warning"
-            ]}
+      </td>
+      <td>
+        <select
+          :if={@mode == :designate}
+          id={"pp-#{@row.cg.id}"}
+          name={"pp[#{@row.cg.id}]"}
+          aria-label={gettext("Professeur principal de %{label}", label: @row.cg.label)}
+          class={[
+            "select select-sm w-full",
+            if(@draft in [nil, ""],
+              do: "border-dashed text-base-content/70",
+              else: "border-primary bg-primary/10"
+            )
+          ]}
+        >
+          <option value="">{gettext("Choisir un enseignant…")}</option>
+          <option
+            :for={m <- @members}
+            value={m.user_id}
+            selected={m.user_id == @draft}
           >
-            {if @row.capacity.max,
-              do: "#{@row.count} / #{@row.capacity.max}",
-              else: @row.count}
-          </span>
+            {User.display_name(m.user)}
+          </option>
+        </select>
+        <span
+          :if={@mode != :designate}
+          id={"class-pp-#{@row.cg.id}"}
+          class={["text-sm", !@row.pp && "text-warning"]}
+        >
+          {@row.pp || gettext("à désigner")}
         </span>
-        <span :if={@row.capacity.max} class="block h-1.5 overflow-hidden rounded-full bg-base-300">
-          <span
-            class={[
-              "block h-full rounded-full",
-              cond do
-                @row.capacity.over? -> "bg-error"
-                @row.capacity.near? -> "bg-warning"
-                true -> "bg-primary"
-              end
-            ]}
-            style={"width: #{min(100, round(@row.count * 100 / @row.capacity.max))}%"}
-          ></span>
-        </span>
-      </span>
-      <span class="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs">
-        <span class="text-base-content/70">
-          {gettext("PP :")}
-          <span class="font-semibold text-base-content">{@row.pp || gettext("à désigner")}</span>
-        </span>
+      </td>
+      <td class={@mode == :designate && "max-sm:hidden"}>
         <span
           id={"class-unassigned-#{@row.cg.id}"}
-          class={if @row.unassigned > 0, do: "font-semibold text-error", else: "text-base-content/70"}
+          class={[
+            "text-sm",
+            if(@row.unassigned > 0, do: "font-medium text-warning", else: "text-base-content/70")
+          ]}
         >
-          {if @row.unassigned > 0,
-            do:
-              ngettext(
-                "%{count} matière sans enseignant",
-                "%{count} matières sans enseignant",
-                @row.unassigned
-              ),
-            else: ngettext("%{count} matière affectée", "%{count} matières affectées", @row.assigned)}
+          {subjects_text(@row)}
         </span>
-      </span>
-    </.link>
+      </td>
+      <td class={["text-right", @mode == :designate && "max-sm:hidden"]}>
+        <.link
+          navigate={~p"/school/classes/#{@row.cg.id}"}
+          class="whitespace-nowrap text-sm font-semibold text-primary"
+          aria-label={gettext("Ouvrir %{label}", label: @row.cg.label)}
+        >
+          {gettext("Ouvrir →")}
+        </.link>
+      </td>
+    </tr>
     """
+  end
+
+  defp subjects_text(%{unassigned: 0, assigned: 0}), do: gettext("Aucune matière")
+
+  defp subjects_text(%{unassigned: 0, assigned: n}),
+    do: gettext("%{assigned} / %{total} affectées", assigned: n, total: n)
+
+  defp subjects_text(%{unassigned: missing}),
+    do: ngettext("%{count} sans enseignant", "%{count} sans enseignant", missing)
+
+  defp row_meta(row) do
+    [
+      ngettext("%{count} élève", "%{count} élèves", row.count),
+      gettext("PP : %{name}", name: row.pp || gettext("à désigner")),
+      row.unassigned > 0 && subjects_text(row)
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
   end
 
   attr :nc, :map, required: true
@@ -441,12 +553,59 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
 
   # --- Events ---------------------------------------------------------------------
 
-  def handle_event("filter_cycle", %{"cycle" => cycle}, socket) do
-    cycle = Enum.find([:all | @cycles], :all, &(to_string(&1) == cycle))
-    {:noreply, assign(socket, :cycle, cycle)}
+  def handle_event("filter_text", %{"q" => q}, socket), do: {:noreply, assign(socket, :q, q)}
+
+  def handle_event("draft_pp", %{"pp" => pp}, socket) when socket.assigns.mode == :designate do
+    known = MapSet.new(socket.assigns.members, & &1.user_id)
+
+    draft =
+      Enum.reduce(pp, socket.assigns.pp_draft, fn {cg_id, user_id}, draft ->
+        if Map.has_key?(draft, cg_id) and (user_id == "" or MapSet.member?(known, user_id)),
+          do: Map.put(draft, cg_id, user_id),
+          else: draft
+      end)
+
+    {:noreply,
+     assign(socket,
+       pp_draft: draft,
+       pp_changes: length(pp_changes(socket.assigns.classes, draft))
+     )}
   end
 
-  def handle_event("filter_text", %{"q" => q}, socket), do: {:noreply, assign(socket, :q, q)}
+  def handle_event("save_pps", params, socket) when socket.assigns.mode == :designate do
+    {:noreply, socket} = handle_event("draft_pp", Map.put_new(params, "pp", %{}), socket)
+    changes = pp_changes(socket.assigns.classes, socket.assigns.pp_draft)
+
+    case Enrollment.set_form_masters(socket.assigns.current_scope, changes) do
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :info,
+           ngettext(
+             "%{count} professeur principal enregistré.",
+             "%{count} professeurs principaux enregistrés.",
+             length(updated)
+           )
+         )
+         |> load_classes()
+         |> push_patch(to: classes_path(socket.assigns.filter, nil))}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Les professeurs principaux n'ont pas été enregistrés.")
+         )}
+    end
+  end
+
+  def handle_event(event, _params, socket) when event in ["draft_pp", "save_pps"],
+    do: {:noreply, socket}
 
   def handle_event("open_drawer", _params, socket) when socket.assigns.can_manage_classes? do
     scope = socket.assigns.current_scope
@@ -528,7 +687,6 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             pp: cg.form_master && User.display_name(cg.form_master),
             unassigned: length(status[cg.id].unassigned),
             assigned: status[cg.id].assigned,
-            cycle: SchoolTemplates.cycle(cg.level, cg.subsystem),
             search: fold("#{cg.label} #{cg.level} #{cg.serie}")
           }
         end)
@@ -536,21 +694,48 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
         []
       end
 
-    assign(socket, classes: classes, year: year)
+    assign(socket, classes: classes, year: year, counts: filter_counts(classes))
   end
 
-  defp present_cycles(classes) do
-    present = MapSet.new(classes, & &1.cycle)
-    Enum.filter(@cycles, &MapSet.member?(present, &1))
-  end
-
-  defp visible_groups(classes, cycle, q) do
+  defp visible_groups(classes, filter, q) do
     needle = fold(q)
 
     classes
-    |> Enum.filter(&(cycle in [:all, &1.cycle] and String.contains?(&1.search, needle)))
-    |> Enum.group_by(& &1.cycle)
-    |> then(fn groups -> for c <- @cycles, rows = groups[c], do: {c, rows} end)
+    |> Enum.filter(&(matches_filter?(&1, filter) and String.contains?(&1.search, needle)))
+    |> Enum.chunk_by(& &1.cg.level)
+    |> Enum.map(fn [first | _] = rows -> {first.cg.level || gettext("Autres"), rows} end)
+  end
+
+  defp matches_filter?(_row, :all), do: true
+  defp matches_filter?(row, :no_pp), do: row.cg.form_master_user_id == nil
+  defp matches_filter?(row, :to_assign), do: row.unassigned > 0
+
+  defp filter_counts(classes),
+    do: Map.new(@filters, fn f -> {f, Enum.count(classes, &matches_filter?(&1, f))} end)
+
+  defp filter_label(:all), do: gettext("Toutes")
+  defp filter_label(:no_pp), do: gettext("Sans PP")
+  defp filter_label(:to_assign), do: gettext("Matières à affecter")
+
+  defp classes_path(filter, mode) do
+    query =
+      [f: filter != :all && filter, mode: mode]
+      |> Enum.filter(fn {_k, v} -> v end)
+
+    if query == [], do: ~p"/school/classes", else: ~p"/school/classes?#{query}"
+  end
+
+  defp header_subtitle(classes) do
+    levels = classes |> Enum.map(& &1.cg.level) |> Enum.uniq() |> length()
+
+    Enum.join(
+      [
+        ngettext("%{count} classe", "%{count} classes", length(classes)),
+        ngettext("%{count} élève", "%{count} élèves", Enum.sum_by(classes, & &1.count)),
+        ngettext("%{count} niveau", "%{count} niveaux", levels)
+      ],
+      " · "
+    )
   end
 
   # Case- and accent-insensitive: « Élève » matches « eleve ».
@@ -563,12 +748,6 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     |> String.downcase()
     |> String.trim()
   end
-
-  defp cycle_label(:all), do: gettext("Toutes")
-  defp cycle_label(:first), do: gettext("1er cycle")
-  defp cycle_label(:second), do: gettext("2nd cycle")
-  defp cycle_label(:anglophone), do: gettext("Anglophone")
-  defp cycle_label(:other), do: gettext("Autres")
 
   # --- « Nouvelle classe » --------------------------------------------------------
 

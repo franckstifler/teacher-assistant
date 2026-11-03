@@ -112,7 +112,7 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     assert has_element?(view, "#nc-duplicate")
   end
 
-  test "cards are grouped by cycle and filtered by cycle and text", ctx do
+  test "rows are grouped by level and filtered by pill and text", ctx do
     %{conn: conn, scope: scope, year: year} = ctx
     {:ok, a} = Enrollment.create_class_group(scope, year, %{label: "Tle D", level: "Terminale"})
 
@@ -123,22 +123,71 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
         subsystem: :anglophone
       })
 
+    {:ok, _} = Enrollment.set_form_master(scope, a, scope.current_user.id)
+
     {:ok, view, _} = live(conn, ~p"/school/classes")
-    assert has_element?(view, "#cycle-group-first")
-    assert has_element?(view, "#cycle-group-second #class-card-#{a.id}")
-    assert has_element?(view, "#cycle-group-anglophone #class-card-#{f.id}")
+    assert has_element?(view, "#level-group-6eme")
+    assert has_element?(view, "#level-group-terminale #class-row-#{a.id}")
+    assert has_element?(view, "#level-group-form-1 #class-item-#{f.id}")
+    assert has_element?(view, "#filter-no_pp", "2")
 
-    view |> element("#cycle-second") |> render_click()
-    refute has_element?(view, "#cycle-group-first")
-    assert has_element?(view, "#class-card-#{a.id}")
+    view |> element("#filter-no_pp") |> render_click()
+    assert_patch(view, ~p"/school/classes?f=no_pp")
+    refute has_element?(view, "#class-row-#{a.id}")
+    assert has_element?(view, "#class-row-#{f.id}")
 
-    view |> element("#cycle-all") |> render_click()
+    view |> element("#filter-all") |> render_click()
     view |> form("#class-filter", %{"q" => "form"}) |> render_change()
-    assert has_element?(view, "#class-card-#{f.id}")
-    refute has_element?(view, "#class-card-#{a.id}")
+    assert has_element?(view, "#class-row-#{f.id}")
+    refute has_element?(view, "#class-row-#{a.id}")
 
     view |> form("#class-filter", %{"q" => "zzz"}) |> render_change()
     assert has_element?(view, "#no-class-match")
+  end
+
+  test "designation mode sets several form masters in one save", ctx do
+    %{conn: conn, scope: scope, year: year} = ctx
+    {:ok, a} = Enrollment.create_class_group(scope, year, %{label: "5e A", level: "5ème"})
+    {:ok, b} = Enrollment.create_class_group(scope, year, %{label: "5e B", level: "5ème"})
+    teacher = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope).current_user
+    head_id = scope.current_user.id
+
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    view |> element("#designate-button") |> render_click()
+    assert_patch(view, ~p"/school/classes?mode=designate")
+    assert has_element?(view, "#designate-banner")
+    assert has_element?(view, "#save-pps[disabled]")
+
+    view
+    |> form("#designate-form", %{"pp" => %{a.id => teacher.id, b.id => head_id}})
+    |> render_change()
+
+    assert has_element?(view, "#save-pps", "Enregistrer · 2 PP")
+
+    view |> form("#designate-form") |> render_submit()
+    assert_patch(view, ~p"/school/classes")
+    refute has_element?(view, "#designate-banner")
+
+    pps = Map.new(Enrollment.list_class_groups(scope, year), &{&1.id, &1.form_master_user_id})
+    assert pps[a.id] == teacher.id
+    assert pps[b.id] == head_id
+  end
+
+  test "a plain teacher cannot enter designation mode", ctx do
+    %{school: school, scope: scope, year: year} = ctx
+    teacher_scope = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope)
+    [cg | _] = Enrollment.list_class_groups(scope, year)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> put_user_in_session(teacher_scope.current_user)
+      |> Plug.Conn.put_session(:workspace_id, school.id)
+
+    {:ok, view, _} = live(conn, ~p"/school/classes?mode=designate")
+    refute has_element?(view, "#designate-banner")
+    render_hook(view, "save_pps", %{"pp" => %{cg.id => teacher_scope.current_user.id}})
+    assert hd(Enrollment.list_class_groups(scope, year)).form_master_user_id == nil
   end
 
   test "a plain teacher member sees no admin controls and forged events are rejected", ctx do

@@ -10,11 +10,17 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   Spec J3: a room clash and a lesson at a time its teacher is unavailable are shown and
   counted like a teacher clash; a shared room too small for the class is an amber
   warning, not counted. The cell panel picks the lesson's room.
+
+  UX refonte 2026-11-03 « Emploi du temps »: a Classe / Enseignant / Salle switcher —
+  the last two are read-only grids built from `school_slots` (editing stays in the
+  class view); the class picker groups classes by level with the hours still to
+  place; « Reste à placer » lists them per subject, each draggable onto a free cell
+  (`TimetableDrop` hook) next to the tap-to-place panel.
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.{Attendance, Curriculum, Enrollment, Organization, Timetabling}
+  alias TeacherAssistant.{Accounts, Attendance, Curriculum, Enrollment, Organization, Timetabling}
 
   alias TeacherAssistant.Academics.{
     CombinedCourse,
@@ -44,6 +50,10 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
          calendar: calendar,
          periods: Attendance.list_periods(scope),
          cg: nil,
+         view: :class,
+         teachers: nil,
+         teacher_id: nil,
+         room_id: nil,
          selected: nil,
          fixes: []
        )}
@@ -55,12 +65,52 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   def handle_params(params, _uri, socket) do
     cg =
       Enum.find(socket.assigns.classes, &(&1.id == params["class"])) ||
-        List.first(socket.assigns.classes)
+        socket.assigns.cg || List.first(socket.assigns.classes)
+
+    view =
+      case params["view"] do
+        "teacher" -> :teacher
+        "room" -> :room
+        _ -> :class
+      end
 
     {:noreply,
      socket
-     |> assign(page_title: page_title(cg), cg: cg, selected: nil)
-     |> load()}
+     |> assign(page_title: page_title(cg), cg: cg, view: view, selected: nil)
+     |> load()
+     |> assign_view(params)}
+  end
+
+  # The read-only views: whose week (a teacher with lessons or the teacher role) or
+  # which room (an active one).
+  defp assign_view(%{assigns: %{view: :teacher}} = socket, params) do
+    teachers = socket.assigns.teachers || list_teachers(socket)
+
+    teacher_id =
+      Enum.find_value(teachers, &(&1.id == params["teacher"] && &1.id)) ||
+        socket.assigns.teacher_id || (List.first(teachers) && List.first(teachers).id)
+
+    assign(socket, teachers: teachers, teacher_id: teacher_id)
+  end
+
+  defp assign_view(%{assigns: %{view: :room, rooms: rooms}} = socket, params) do
+    room_id =
+      Enum.find_value(rooms, &(&1.id == params["room"] && &1.id)) ||
+        socket.assigns.room_id || (List.first(rooms) && List.first(rooms).id)
+
+    assign(socket, room_id: room_id)
+  end
+
+  defp assign_view(socket, _params), do: socket
+
+  defp list_teachers(socket) do
+    busy = MapSet.new(socket.assigns.slots, & &1.teacher_id)
+
+    socket.assigns.current_scope
+    |> Accounts.list_members()
+    |> Enum.filter(&(:teacher in &1.roles or MapSet.member?(busy, &1.user_id)))
+    |> Enum.map(&%{id: &1.user_id, name: User.display_name(&1.user)})
+    |> Enum.sort_by(&String.downcase(&1.name))
   end
 
   defp page_title(nil), do: gettext("Emploi du temps")
@@ -82,6 +132,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
         count: 0,
         grid: %{},
         tally: [],
+        to_place: %{},
         assignments: [],
         fixes: []
       )
@@ -115,6 +166,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
       count: TimetableConflicts.count(slots, unavailable),
       grid: timetable.slots,
       tally: timetable.tally,
+      to_place: Timetabling.hours_to_place(scope, slots),
       assignments: Curriculum.list_assignments_for_class(scope, cg)
     )
     |> assign_fixes()
@@ -150,6 +202,22 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   def handle_event("tab", %{"class" => id}, socket),
     do: {:noreply, push_patch(socket, to: ~p"/school/timetable?class=#{id}")}
 
+  def handle_event("pick_teacher", %{"teacher" => id}, socket),
+    do: {:noreply, push_patch(socket, to: ~p"/school/timetable?view=teacher&teacher=#{id}")}
+
+  def handle_event("pick_room", %{"room" => id}, socket),
+    do: {:noreply, push_patch(socket, to: ~p"/school/timetable?view=room&room=#{id}")}
+
+  # « Reste à placer »: a subject dropped on a free cell (`TimetableDrop` hook).
+  def handle_event("drop_place", %{"tc" => tc_id, "day" => day, "period" => period}, socket) do
+    {:noreply, socket} = handle_event("select", %{"day" => day, "period" => period}, socket)
+
+    case socket.assigns.selected do
+      nil -> {:noreply, socket}
+      cell -> if socket.assigns.grid[cell], do: {:noreply, socket}, else: place(socket, tc_id)
+    end
+  end
+
   def handle_event("select", %{"day" => day, "period" => period_id}, socket) do
     with d when not is_nil(d) <- day_atom(day, socket),
          %{} = period <-
@@ -161,29 +229,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
     end
   end
 
-  def handle_event("place", %{"tc" => tc_id}, socket) do
-    with {day, period_id} <- socket.assigns.selected,
-         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == tc_id)) do
-      scope = socket.assigns.current_scope
-
-      result =
-        case tc.combined_course do
-          %CombinedCourse{} = course ->
-            Timetabling.place_combined_slot(scope, course, day, period_id)
-
-          _ ->
-            Timetabling.place_slot(scope, socket.assigns.cg, %{
-              day: day,
-              period_id: period_id,
-              teaching_context_id: tc.id
-            })
-        end
-
-      after_write(result, socket)
-    else
-      _ -> {:noreply, socket}
-    end
-  end
+  def handle_event("place", %{"tc" => tc_id}, socket), do: place(socket, tc_id)
 
   def handle_event("clear", _params, socket) do
     with {day, period_id} <- socket.assigns.selected,
@@ -244,6 +290,32 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
       |> after_write(socket)
     else
       _ -> after_write({:error, :invalid}, socket)
+    end
+  end
+
+  # Places the class's assignment `tc_id` in the selected cell (a combined course: in
+  # every member class).
+  defp place(socket, tc_id) do
+    with {day, period_id} <- socket.assigns.selected,
+         %{} = tc <- Enum.find(socket.assigns.assignments, &(&1.id == tc_id)) do
+      scope = socket.assigns.current_scope
+
+      result =
+        case tc.combined_course do
+          %CombinedCourse{} = course ->
+            Timetabling.place_combined_slot(scope, course, day, period_id)
+
+          _ ->
+            Timetabling.place_slot(scope, socket.assigns.cg, %{
+              day: day,
+              period_id: period_id,
+              teaching_context_id: tc.id
+            })
+        end
+
+      after_write(result, socket)
+    else
+      _ -> {:noreply, socket}
     end
   end
 
@@ -373,21 +445,153 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
 
   defp placed(tally, tc_id), do: Enum.find(tally, &(&1.teaching_context_id == tc_id))
 
-  defp tally_class(:under), do: "text-warning"
-  defp tally_class(:exact), do: "text-success"
-  defp tally_class(:over), do: "text-error"
+  defp placed_subjects(tally), do: for(%{status: :exact, subject: s} <- tally, do: s)
+
+  defp cell_title(slot, cg) do
+    Enum.join(
+      Enum.reject([slot.subject, slot.teacher_name, shown_room(slot, cg)], &is_nil/1),
+      " · "
+    )
+  end
+
+  # « 6e A · 20 h à placer · conflit »
+  defp class_suffix(class, to_place, problems) do
+    [
+      Map.get(to_place, class.id, 0) > 0 &&
+        gettext("%{hours} h à placer", hours: Map.get(to_place, class.id, 0)),
+      class_has_problem?(problems, class) && gettext("conflit")
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
+
+  defp view_label(:class), do: gettext("Classe")
+  defp view_label(:teacher), do: gettext("Enseignant")
+  defp view_label(:room), do: gettext("Salle")
+
+  defp view_path(:class, %{cg: nil}), do: ~p"/school/timetable"
+  defp view_path(:class, %{cg: cg}), do: ~p"/school/timetable?class=#{cg.id}"
+
+  defp view_path(:teacher, %{teacher_id: id}) when is_binary(id),
+    do: ~p"/school/timetable?view=teacher&teacher=#{id}"
+
+  defp view_path(:teacher, _assigns), do: ~p"/school/timetable?view=teacher"
+
+  defp view_path(:room, %{room_id: id}) when is_binary(id),
+    do: ~p"/school/timetable?view=room&room=#{id}"
+
+  defp view_path(:room, _assigns), do: ~p"/school/timetable?view=room"
+
+  # The read-only grid's cells, `{day, period_id} => [%{title, sub}]`, from `school_slots`.
+  defp read_only_cells(%{view: :teacher, teacher_id: id} = assigns) when is_binary(id),
+    do: cells_for(assigns, &(&1.teacher_id == id), &label_of(assigns.classes, &1.class_group_id))
+
+  defp read_only_cells(%{view: :room, room_id: id} = assigns) when is_binary(id),
+    do: cells_for(assigns, &(&1.room_id == id), &label_of(assigns.classes, &1.class_group_id))
+
+  defp read_only_cells(_assigns), do: %{}
+
+  defp cells_for(assigns, keep?, sub) do
+    assigns.slots
+    |> Enum.filter(keep?)
+    |> Enum.group_by(&{&1.day, &1.period_id}, &%{title: &1.subject, sub: sub.(&1)})
+    |> Map.new(fn {cell, views} -> {cell, Enum.uniq(views)} end)
+  end
+
+  defp read_only_empty(%{view: :teacher, teachers: []}), do: gettext("Aucun enseignant.")
+
+  defp read_only_empty(%{view: :room, rooms: []}),
+    do: gettext("Aucune salle. Ajoutez-en dans Paramètres › Salles.")
+
+  defp read_only_empty(_assigns), do: nil
+
+  attr :view, :atom, required: true
+  attr :cells, :map, required: true
+  attr :periods, :list, required: true
+  attr :calendar, :any, required: true
+  attr :empty, :string, default: nil
+
+  defp read_only_grid(assigns) do
+    ~H"""
+    <p :if={@empty} id="read-only-empty" class="text-sm text-base-content/70">{@empty}</p>
+    <div
+      :if={!@empty}
+      id={"#{@view}-grid"}
+      class="overflow-x-auto rounded-box border border-base-300 bg-base-100"
+    >
+      <table class="table table-sm table-fixed">
+        <thead>
+          <tr>
+            <th class="w-20"></th>
+            <th :for={d <- @calendar.lesson_days}>{DayOfWeek.label(d)}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={p <- @periods}>
+            <%= if p.kind == :break do %>
+              <td
+                colspan={length(@calendar.lesson_days) + 1}
+                class="py-0.5 text-center text-xs italic text-base-content/70"
+              >
+                {p.label}
+              </td>
+            <% else %>
+              <td class="whitespace-nowrap text-xs">
+                <span class="font-semibold">{p.label}</span>
+                <span class="block text-base-content/70">{hm(p.start_time)}</span>
+              </td>
+              <td :for={d <- @calendar.lesson_days} class="p-1">
+                <% views = @cells[{d, p.id}] || [] %>
+                <div
+                  id={"ro-cell-#{d}-#{p.id}"}
+                  class={[
+                    "flex min-h-11 flex-col justify-center overflow-hidden rounded-md px-1.5 text-xs leading-tight",
+                    cond do
+                      not SchoolCalendar.open_cell?(@calendar, d, p) ->
+                        "closed-cell bg-base-200/60 text-base-content/70"
+
+                      length(views) > 1 ->
+                        "border border-error bg-error/20"
+
+                      views != [] ->
+                        "bg-base-300/70"
+
+                      true ->
+                        "border border-dashed border-base-300"
+                    end
+                  ]}
+                >
+                  <span
+                    :if={not SchoolCalendar.open_cell?(@calendar, d, p)}
+                    class="text-base-content/70"
+                  >
+                    {gettext("Fermé")}
+                  </span>
+                  <span :for={v <- views} class="block truncate">
+                    <span class="font-semibold">{v.title}</span>
+                    <span class="text-base-content/70">· {v.sub}</span>
+                  </span>
+                </div>
+              </td>
+            <% end %>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    """
+  end
 
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="timetable-editor" class="space-y-5">
         <.page_header
-          eyebrow={gettext("Censorat · semaine type")}
-          title={
-            if @cg,
-              do: gettext("Emploi du temps · %{class}", class: @cg.label),
-              else: gettext("Emploi du temps")
+          eyebrow={
+            gettext("Semaine type · %{classes}",
+              classes: ngettext("%{count} classe", "%{count} classes", length(@classes))
+            )
           }
+          title={gettext("Emploi du temps")}
         >
           <:hint>
             <%!-- the verb follows the pointer --%>
@@ -450,26 +654,83 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
           </:actions>
         </.page_header>
 
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            :for={c <- @classes}
-            id={"class-tab-#{c.id}"}
-            type="button"
-            phx-click="tab"
-            phx-value-class={c.id}
-            class={["btn btn-xs", if(@cg && c.id == @cg.id, do: "btn-primary", else: "btn-ghost")]}
+        <div id="timetable-toolbar" class="ta-section flex flex-wrap items-center gap-2 p-2.5">
+          <nav class="ta-seg" aria-label={gettext("Vue")}>
+            <.link
+              :for={v <- [:class, :teacher, :room]}
+              id={"view-#{v}"}
+              patch={view_path(v, assigns)}
+              class="ta-seg__btn"
+              aria-current={to_string(@view == v)}
+            >
+              {view_label(v)}
+            </.link>
+          </nav>
+          <.class_picker
+            :if={@view == :class && @classes != []}
+            id="timetable-class"
+            classes={@classes}
+            current={@cg && @cg.id}
+            to={&~p"/school/timetable?class=#{&1.id}"}
+            change="tab"
+            select_class="font-semibold"
+            suffix={&class_suffix(&1, @to_place, @problems)}
+            class="min-w-0 flex-[0_1_22rem]"
+          />
+          <form
+            :if={@view == :teacher && @teachers != []}
+            id="timetable-teacher"
+            phx-change="pick_teacher"
+            class="min-w-0 flex-[0_1_22rem]"
           >
-            {c.label}
-            <span
-              :if={class_has_problem?(@problems, c)}
-              class="size-1.5 rounded-full bg-error"
-              aria-hidden="true"
-            ></span>
-            <span :if={class_has_problem?(@problems, c)} class="sr-only">{gettext("(à corriger)")}</span>
-          </button>
+            <select
+              id="timetable-teacher-select"
+              name="teacher"
+              aria-label={gettext("Enseignant")}
+              class="select w-full font-semibold"
+            >
+              <option :for={t <- @teachers} value={t.id} selected={t.id == @teacher_id}>
+                {t.name}
+              </option>
+            </select>
+          </form>
+          <form
+            :if={@view == :room && @rooms != []}
+            id="timetable-room"
+            phx-change="pick_room"
+            class="min-w-0 flex-[0_1_22rem]"
+          >
+            <select
+              id="timetable-room-select"
+              name="room"
+              aria-label={gettext("Salle")}
+              class="select w-full font-semibold"
+            >
+              <option :for={r <- @rooms} value={r.id} selected={r.id == @room_id}>
+                {r.name}
+              </option>
+            </select>
+          </form>
+          <span :if={@view != :class} class="text-xs text-base-content/70">
+            {gettext("Lecture seule : on modifie l'emploi du temps depuis la vue Classe.")}
+          </span>
         </div>
 
-        <div :if={@cg} class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <.read_only_grid
+          :if={@view != :class}
+          view={@view}
+          cells={read_only_cells(assigns)}
+          periods={@periods}
+          calendar={@calendar}
+          empty={read_only_empty(assigns)}
+        />
+
+        <div
+          :if={@view == :class && @cg}
+          id="timetable-workspace"
+          phx-hook="TimetableDrop"
+          class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"
+        >
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
             <table id="editor-grid" class="table table-sm">
               <thead>
@@ -509,21 +770,25 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                             phx-click="select"
                             phx-value-day={d}
                             phx-value-period={p.id}
+                            data-drop-day={!slot && d}
+                            data-drop-period={!slot && p.id}
+                            title={slot && cell_title(slot, @cg)}
                             class={[
-                              "h-11 w-full overflow-hidden rounded px-1.5 text-left text-xs leading-tight",
+                              "group h-11 w-full overflow-hidden rounded-md px-1.5 text-left text-xs leading-tight transition-colors",
                               problem?(@problems, @cg, d, p.id) &&
                                 "clash-cell border border-error bg-error/30",
-                              !problem?(@problems, @cg, d, p.id) && slot && "bg-primary/15",
+                              !problem?(@problems, @cg, d, p.id) && slot &&
+                                "bg-base-300/70 hover:bg-base-300",
                               !problem?(@problems, @cg, d, p.id) &&
                                 Map.has_key?(@over, {@cg.id, d, p.id}) &&
                                 "capacity-cell border border-warning",
-                              !slot && "border border-dashed border-base-300 text-base-content/70",
+                              !slot &&
+                                "border border-dashed border-base-300 text-base-content/60 hover:border-primary/60",
                               @selected == {d, p.id} && "ring-2 ring-base-content"
                             ]}
                           >
                             <%= if slot do %>
                               <span class="block truncate font-semibold">{slot.subject}</span>
-                              <span class="block truncate text-base-content/70">{slot.teacher_name}</span>
                               <span
                                 :if={room = shown_room(slot, @cg)}
                                 class="block truncate text-[0.65rem] text-base-content/70"
@@ -531,7 +796,13 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                                 {room}
                               </span>
                             <% else %>
-                              <span class="font-semibold text-info">{gettext("+ Libre")}</span>
+                              <span class="sr-only">{gettext("Libre")}</span>
+                              <span
+                                class="hidden text-base font-semibold text-primary group-hover:inline"
+                                aria-hidden="true"
+                              >
+                                +
+                              </span>
                             <% end %>
                           </button>
                       <% end %>
@@ -701,17 +972,57 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               </button>
             </div>
 
-            <div id="hours" class="ta-panel space-y-1 p-4">
-              <h2 class="ta-eyebrow">{gettext("Heures par matière")}</h2>
+            <section
+              id="hours"
+              aria-label={gettext("Reste à placer")}
+              class="ta-section flex flex-col gap-1.5 p-3.5"
+            >
+              <h2 class="ta-eyebrow mb-1">
+                {gettext("Reste à placer · %{hours} h", hours: Map.get(@to_place, @cg.id, 0))}
+              </h2>
               <div
-                :for={t <- @tally}
-                id={"hours-#{t.teaching_context_id}"}
-                class="flex justify-between text-sm"
+                :for={t <- Enum.filter(@tally, &(&1.status == :under))}
+                id={"todo-#{t.teaching_context_id}"}
+                draggable="true"
+                data-tc={t.teaching_context_id}
+                title={
+                  gettext("%{placed}/%{required} h placées", placed: t.placed, required: t.required)
+                }
+                class="flex min-h-10 cursor-grab items-center gap-2 rounded-lg border border-dashed border-base-content/25 px-2.5 text-sm transition-colors hover:border-primary/60 hover:bg-base-200/60 active:cursor-grabbing"
               >
-                <span>{t.subject}</span>
-                <span class={["ta-num", tally_class(t.status)]}>{t.placed}/{t.required} h</span>
+                <.icon name="hero-bars-2" class="size-3.5 shrink-0 opacity-50" />
+                <span class="min-w-0 flex-1 truncate">{t.subject}</span>
+                <span class="ta-num text-xs font-semibold text-warning">
+                  {t.required - t.placed} h
+                </span>
               </div>
-            </div>
+              <p
+                :for={t <- Enum.filter(@tally, &(&1.status == :over))}
+                id={"over-#{t.teaching_context_id}"}
+                class="flex items-center gap-2 px-1 text-sm text-error"
+              >
+                <span class="min-w-0 flex-1 truncate">{t.subject}</span>
+                <span class="ta-num text-xs font-semibold">
+                  {gettext("+%{hours} h", hours: t.placed - t.required)}
+                </span>
+              </p>
+              <p :if={@tally == []} class="text-sm text-base-content/70">
+                {gettext("Aucune matière affectée à cette classe.")}
+              </p>
+              <p
+                :if={Enum.any?(@tally, &(&1.status == :under))}
+                class="mt-1 text-xs text-base-content/70 pointer-coarse:hidden"
+              >
+                {gettext("Glissez une matière dans une case libre, ou touchez une case.")}
+              </p>
+              <p
+                :if={(placed = placed_subjects(@tally)) != []}
+                id="placed-subjects"
+                class="mt-1 text-xs text-base-content/70"
+              >
+                {gettext("Placées : %{subjects}", subjects: Enum.join(placed, ", "))}
+              </p>
+            </section>
           </aside>
         </div>
       </section>

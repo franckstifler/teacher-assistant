@@ -46,6 +46,27 @@ defmodule TeacherAssistantWeb.SignInPhoneTest do
     assert get_session(conn, "user_token") || get_session(conn, :user_token)
   end
 
+  test "a successful sign-in records when it happened", %{conn: conn} do
+    %{scope: scope} = TeacherFixtures.setup_complete_school_fixture()
+
+    {:ok, %{user: user, temporary_password: pw}} =
+      Accounts.add_member_by_phone(scope, %{name: "Ali", phone: "677123499", roles: [:teacher]})
+
+    assert user.last_sign_in_at == nil
+
+    {:ok, view, _html} = live(conn, ~p"/sign-in")
+
+    {:error, {:redirect, %{to: to}}} =
+      view
+      |> form("#phone-sign-in form", %{"user" => %{"phone" => "677123499", "password" => pw}})
+      |> render_submit()
+
+    get(conn, to)
+
+    {:ok, user} = Ash.get(TeacherAssistant.Accounts.User, user.id, authorize?: false)
+    assert %DateTime{} = user.last_sign_in_at
+  end
+
   describe "the method switch" do
     test "phone is selected by default; the switch toggles client-side", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/sign-in")

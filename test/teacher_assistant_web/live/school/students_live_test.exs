@@ -27,7 +27,7 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     {:ok, awa} =
       Enrollment.add_student(scope, fifth, %{full_name: "Awa Nkolo", sex: :f, matricule: "M-001"})
 
-    {:ok, _} = Enrollment.add_student(scope, sixth, %{full_name: "Zoé Abena", sex: :f})
+    {:ok, zoe} = Enrollment.add_student(scope, sixth, %{full_name: "Zoé Abena", sex: :f})
 
     {:ok, _} =
       Enrollment.add_guardian(scope, awa, %{
@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
       })
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, scope: scope, school: school, sixth: sixth, awa: awa}
+    %{conn: conn, scope: scope, school: school, sixth: sixth, fifth: fifth, awa: awa, zoe: zoe}
   end
 
   test "lists the year's students in class order with their main contact", %{conn: conn, awa: awa} do
@@ -67,26 +67,75 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     refute render(view) =~ "Awa Nkolo"
   end
 
-  test "the header counts the year and the students without a parent", %{conn: conn} do
+  test "the header counts the year, the banner the parent contacts", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/school/students?q=awa")
 
     # Independent of the active filters.
-    assert view |> element("#students-subtitle") |> render() =~
-             "2 inscrits en 2025-2026 · 1 sans contact parent"
+    assert view |> element("#students-subtitle") |> render() =~ "2025-2026 · 2 inscrits"
+    assert view |> element("#contacts-banner") |> render() =~ "Contacts parents : 1 sur 2"
   end
 
-  test "« Sans contact parent » keeps only students with no parent", %{conn: conn} do
+  test "the banner leads to the students with no parent, and back", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/school/students")
-    assert view |> element("#no-contact-chip") |> render() =~ "Sans contact parent · 1"
+    assert view |> element("#no-contact-link") |> render() =~ "Voir l&#39;élève sans contact"
 
-    view |> element("#no-contact-chip") |> render_click()
+    view |> element("#no-contact-link") |> render_click()
     assert_patch(view, ~p"/school/students?no_contact=1")
 
     rows = view |> element("#student-rows") |> render()
     assert rows =~ "Zoé Abena"
-    assert rows =~ "Aucun contact"
+    assert rows =~ "+ Ajouter"
     refute rows =~ "Awa Nkolo"
-    assert view |> element("#no-contact-chip[aria-pressed=true]") |> has_element?()
+    assert has_element?(view, "#no-contact-link[aria-pressed=true]", "Voir tous les élèves")
+
+    view |> element("#no-contact-link") |> render_click()
+    assert_patch(view, ~p"/school/students")
+  end
+
+  test "the banner offers the chosen class's import", %{conn: conn, sixth: sixth} do
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+    assert has_element?(view, "#import-contacts-hint")
+
+    {:ok, view, _html} = live(conn, ~p"/school/students?class=#{sixth.id}")
+
+    assert has_element?(
+             view,
+             ~s|#import-contacts-link[href="/school/classes/#{sixth.id}/import"]|,
+             "6e A"
+           )
+  end
+
+  test "« + Ajouter » opens the student with no contact", %{conn: conn, zoe: zoe} do
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+    assert has_element?(view, ~s|#add-contact-#{zoe.id}[href="/school/students/#{zoe.id}"]|)
+  end
+
+  test "« Redoublants » and « Sans photo » filter the list", ctx do
+    %{conn: conn, scope: scope, fifth: fifth} = ctx
+
+    {:ok, bob} =
+      Enrollment.add_student(scope, fifth, %{full_name: "Bob Ndi", sex: :m, repeater: true})
+
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+    assert has_element?(view, "#repeater-pill", "1")
+    assert has_element?(view, "#no-photo-pill", "3")
+    assert view |> element("#student-#{bob.id}") |> render() =~ "· redoublant"
+
+    view |> element("#repeater-pill") |> render_click()
+    assert_patch(view, ~p"/school/students?repeater=1")
+    rows = view |> element("#student-rows") |> render()
+    assert rows =~ "Bob Ndi"
+    refute rows =~ "Zoé Abena"
+    assert has_element?(view, "#repeater-pill[aria-current]")
+
+    {:ok, view, _html} = live(conn, ~p"/school/students?no_photo=1")
+    assert view |> element("#student-rows") |> render() =~ "Zoé Abena"
+  end
+
+  test "the class select groups classes by level", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+    assert has_element?(view, "#students-class-select optgroup[label='6ème'] option", "6e A")
+    assert has_element?(view, "#students-class-select optgroup[label='5ème'] option", "5e A")
   end
 
   test "a student whose main contact was removed counts as without contact", ctx do
@@ -104,7 +153,7 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/school/students?no_contact=1")
     assert view |> element("#student-rows") |> render() =~ "Awa Nkolo"
-    assert view |> element("#no-contact-chip") |> render() =~ "Sans contact parent · 2"
+    assert view |> element("#contacts-banner") |> render() =~ "Contacts parents : 0 sur 2"
   end
 
   test "a page past the end shows the last page", %{conn: conn} do

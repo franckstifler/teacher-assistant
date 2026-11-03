@@ -24,7 +24,19 @@ defmodule TeacherAssistantWeb.AuthController do
       )
       |> redirect(to: ~p"/sign-in")
     else
+      record_sign_in(user)
       sign_in(conn, activity, user)
+    end
+  end
+
+  # « Jamais connectés » on Membres; a failure here never blocks the sign-in.
+  defp record_sign_in(user) do
+    case TeacherAssistant.Accounts.record_sign_in(user) do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Could not record the sign-in of user #{user.id}: #{inspect(reason)}")
     end
   end
 

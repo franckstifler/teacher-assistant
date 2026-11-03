@@ -28,6 +28,7 @@ import {PhotoStudio} from "./hooks/photo_studio"
 import {ExamCard, ExamPhotos} from "./hooks/exam_photos"
 import {DirtyForm} from "./hooks/dirty_form"
 import {ScrollActiveTab} from "./hooks/scroll_active_tab"
+import {TimetableDrop} from "./hooks/timetable_drop"
 
 const setTheme = (theme) => {
   if (theme === "system") {
@@ -50,7 +51,15 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PhotoStudio, ExamCard, ExamPhotos, DirtyForm, ScrollActiveTab},
+  hooks: {
+    ...colocatedHooks,
+    PhotoStudio,
+    ExamCard,
+    ExamPhotos,
+    DirtyForm,
+    ScrollActiveTab,
+    TimetableDrop,
+  },
 })
 
 // Show progress bar on live navigation and form submits

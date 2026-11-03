@@ -1,8 +1,15 @@
 defmodule TeacherAssistantWeb.School.MembersLive do
+  @moduledoc """
+  Membres (UX refonte 2026-11-03 « Membres »): a table with checkboxes (Membre and
+  contact, Rôles, Service, Accès) on wide screens, the list on phones; filter pills
+  by role with counts and « Jamais connectés » (staff managers: `last_sign_in_at`
+  still nil); a selection bar that copies the selected members' numbers. The
+  « Ajouter un membre » and member drawers, resets and invitations are unchanged.
+  """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.{MembershipStatus, SchoolInvitation, SchoolRole, User}
-  alias TeacherAssistant.Accounts
+  alias TeacherAssistant.{Accounts, Timetabling}
   alias TeacherAssistantWeb.Dates
 
   import TeacherAssistantWeb.School.MembersComponents
@@ -20,6 +27,8 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        |> assign(:can_set_service?, Accounts.can_set_member_service?(scope))
        |> assign(:query, "")
        |> assign(:role_filter, nil)
+       |> assign(:never, false)
+       |> assign(:selected, MapSet.new())
        |> assign(:invite_form, invite_form())
        |> assign(:account_form, account_form())
        # nil | :add (the « Ajouter un membre » drawer) | :member (`@editing`)
@@ -40,7 +49,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="school-members" class="mx-auto max-w-4xl space-y-5">
+      <section id="school-members" class="mx-auto max-w-[1040px] space-y-5">
         <.page_header
           eyebrow={gettext("Organisation")}
           title={gettext("Membres")}
@@ -58,11 +67,39 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           </:actions>
         </.page_header>
 
+        <.filter_pills :if={@members != []} id="member-filters" label={gettext("Filtrer par rôle")}>
+          <:pill
+            id="filter-all"
+            patch={~p"/school/members"}
+            count={length(@members)}
+            current={is_nil(@role_filter) and not @never}
+          >
+            {gettext("Tous")}
+          </:pill>
+          <:pill
+            :if={@can_manage_staff?}
+            id="filter-never"
+            patch={~p"/school/members?f=never"}
+            count={@counts.never}
+            current={@never}
+          >
+            {gettext("Jamais connectés")}
+          </:pill>
+          <:pill
+            :for={{role, count} <- @counts.roles}
+            id={"filter-#{role}"}
+            patch={~p"/school/members?role=#{role}"}
+            count={count}
+            current={@role_filter == role}
+          >
+            {role_short(role)}
+          </:pill>
+        </.filter_pills>
+
         <form
           id="members-filter"
           phx-change="filter"
           phx-submit="filter"
-          class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_14rem]"
           role="search"
         >
           <.input
@@ -75,31 +112,117 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             autocomplete="off"
             phx-debounce="200"
           />
-          <.input
-            type="select"
-            id="members-role-filter"
-            name="role"
-            value={@role_filter && to_string(@role_filter)}
-            aria-label={gettext("Filtrer par rôle")}
-            prompt={gettext("Tous les rôles")}
-            options={role_options()}
-          />
         </form>
 
         <div
           :if={@visible_members != []}
+          id="members-table"
+          class="ta-section hidden overflow-x-auto sm:block"
+        >
+          <table class="table">
+            <thead>
+              <tr class="text-xs text-base-content/70">
+                <th class="w-10">
+                  <input
+                    id="select-all"
+                    type="checkbox"
+                    class="checkbox checkbox-sm"
+                    checked={all_selected?(@visible_members, @selected)}
+                    phx-click="toggle_all"
+                    aria-label={gettext("Tout sélectionner")}
+                  />
+                </th>
+                <th>{gettext("Membre")}</th>
+                <th>{gettext("Rôles")}</th>
+                <th>{gettext("Service")}</th>
+                <th :if={@can_manage_staff?}>{gettext("Accès")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                :for={m <- @visible_members}
+                id={"member-tr-#{m.id}"}
+                class={[
+                  "transition-colors hover:bg-base-200/50",
+                  MapSet.member?(@selected, m.id) && "bg-primary/8"
+                ]}
+              >
+                <td>
+                  <input
+                    id={"select-#{m.id}"}
+                    type="checkbox"
+                    class="checkbox checkbox-sm"
+                    checked={MapSet.member?(@selected, m.id)}
+                    phx-click="toggle_select"
+                    phx-value-id={m.id}
+                    aria-label={gettext("Sélectionner %{name}", name: User.display_name(m.user))}
+                  />
+                </td>
+                <td class="min-w-0">
+                  <button
+                    :if={@can_manage_staff? or @can_set_service?}
+                    id={"member-open-#{m.id}"}
+                    type="button"
+                    phx-click="edit_member"
+                    phx-value-id={m.id}
+                    class="text-left font-semibold hover:text-primary"
+                  >
+                    {User.display_name(m.user)}
+                  </button>
+                  <span :if={!(@can_manage_staff? or @can_set_service?)} class="font-semibold">
+                    {User.display_name(m.user)}
+                  </span>
+                  <span
+                    :if={m.user.name && User.contact(m.user)}
+                    class={["block text-xs text-base-content/70", !m.user.email && "ta-num"]}
+                  >
+                    {User.contact(m.user)}
+                  </span>
+                </td>
+                <td class="text-xs">
+                  {m.roles |> Enum.map(&role_short/1) |> Enum.join(", ")}
+                </td>
+                <td id={"member-service-#{m.id}"} class="ta-num whitespace-nowrap text-xs">
+                  <.service_cell member={m} service={@services[m.user_id]} />
+                </td>
+                <td :if={@can_manage_staff?} id={"member-access-#{m.id}"}>
+                  <.member_access state={@account_states[m.id]} user={m.user} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          :if={@visible_members != []}
           id="members-list"
-          class="ta-section"
+          class="ta-section sm:hidden"
           aria-label={gettext("Membres")}
         >
           <.member_row
             :for={m <- @visible_members}
             member={m}
             state={@account_states[m.id]}
+            never?={@can_manage_staff? and is_nil(m.user.last_sign_in_at)}
             editable?={@can_manage_staff? or @can_set_service?}
             selected={@editing && @editing.id == m.id}
           />
         </div>
+
+        <.bulk_bar id="members-bulk" count={MapSet.size(@selected)} clear="clear_selection">
+          <:actions>
+            <span id="selected-phones" hidden>{selected_phones(@members, @selected)}</span>
+            <button
+              id="copy-phones"
+              type="button"
+              class="btn btn-primary btn-sm"
+              disabled={selected_phones(@members, @selected) == ""}
+              phx-click={JS.dispatch("phx:copy", to: "#selected-phones") |> JS.push("phones_copied")}
+            >
+              <.icon name="hero-clipboard-document" class="size-4" /> {gettext("Copier les numéros")}
+            </button>
+          </:actions>
+        </.bulk_bar>
 
         <.empty_state
           :if={@members == []}
@@ -180,18 +303,79 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     """
   end
 
+  # The pills: a role (`?role=teacher`) or « Jamais connectés » (`?f=never`, staff
+  # managers only).
+  def handle_params(params, _uri, socket) do
+    {:noreply,
+     socket
+     |> assign(
+       role_filter: parse_role(params["role"]),
+       never: params["f"] == "never" and socket.assigns.can_manage_staff?
+     )
+     |> apply_filters()}
+  end
+
   # --- Events: list ------------------------------------------------------------------
 
   def handle_event("filter", params, socket) do
     {:noreply,
      socket
      |> assign(:query, String.trim(params["q"] || ""))
-     |> assign(:role_filter, parse_role(params["role"]))
      |> apply_filters()}
   end
 
   def handle_event("clear_filter", _params, socket) do
-    {:noreply, socket |> assign(query: "", role_filter: nil) |> apply_filters()}
+    {:noreply,
+     socket
+     |> assign(query: "", role_filter: nil, never: false)
+     |> apply_filters()
+     |> push_patch(to: ~p"/school/members")}
+  end
+
+  def handle_event("toggle_select", %{"id" => id}, socket) do
+    selected = socket.assigns.selected
+
+    selected =
+      case Enum.find(socket.assigns.visible_members, &(to_string(&1.id) == id)) do
+        nil ->
+          selected
+
+        m ->
+          if MapSet.member?(selected, m.id),
+            do: MapSet.delete(selected, m.id),
+            else: MapSet.put(selected, m.id)
+      end
+
+    {:noreply, assign(socket, :selected, selected)}
+  end
+
+  def handle_event("toggle_all", _params, socket) do
+    %{visible_members: visible, selected: selected} = socket.assigns
+    ids = MapSet.new(visible, & &1.id)
+
+    selected =
+      if all_selected?(visible, selected),
+        do: MapSet.difference(selected, ids),
+        else: MapSet.union(selected, ids)
+
+    {:noreply, assign(socket, :selected, selected)}
+  end
+
+  def handle_event("clear_selection", _params, socket),
+    do: {:noreply, assign(socket, :selected, MapSet.new())}
+
+  def handle_event("phones_copied", _params, socket) do
+    count =
+      socket.assigns.members
+      |> Enum.filter(&(MapSet.member?(socket.assigns.selected, &1.id) and &1.user.phone))
+      |> length()
+
+    {:noreply,
+     put_flash(
+       socket,
+       :info,
+       ngettext("%{count} numéro copié.", "%{count} numéros copiés.", count)
+     )}
   end
 
   def handle_event("open_add", _params, socket) do
@@ -644,8 +828,16 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   defp summary_line(members, invitations, states, manager?) do
     pending = Enum.count(states, fn {_id, s} -> s.kind in [:pending, :expired] end)
 
+    signed_in = Enum.count(members, & &1.user.last_sign_in_at)
+
     [
       ngettext("1 membre", "%{count} membres", length(members)),
+      manager? &&
+        ngettext(
+          "%{count} connecté au moins une fois",
+          "%{count} connectés au moins une fois",
+          signed_in
+        ),
       (manager? and pending > 0) &&
         ngettext(
           "1 compte en attente de première connexion",
@@ -675,9 +867,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
         roles
     end
   end
-
-  # Short labels for the list's chips; the full label is the chip's title.
-  defp role_options, do: Enum.map(SchoolRole.values(), &{SchoolRole.label(&1), to_string(&1)})
 
   # --- Forms & data ----------------------------------------------------------------
 
@@ -744,6 +933,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
     socket
     |> assign(:members, members)
+    |> assign(:services, Timetabling.teacher_services(scope, members))
+    |> assign(
+      :selected,
+      MapSet.intersection(socket.assigns.selected, MapSet.new(members, & &1.id))
+    )
+    |> assign(:counts, counts(members))
     |> assign(:resettable_member_ids, resettable)
     |> assign(:account_states, states)
     |> assign(:invitations, Accounts.list_pending_invitations(scope))
@@ -754,21 +949,54 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     %{members: members, invitations: invitations, query: query, role_filter: role} =
       socket.assigns
 
+    never = socket.assigns.never
     needle = fold(query)
     digits = String.replace(query, ~r/\D/, "")
 
     socket
     |> assign(
       :visible_members,
-      Enum.filter(members, &(role_match?(&1.roles, role) and member_match?(&1, needle, digits)))
+      Enum.filter(
+        members,
+        &(role_match?(&1.roles, role) and never_match?(&1, never) and
+            member_match?(&1, needle, digits))
+      )
     )
     |> assign(
       :visible_invitations,
       Enum.filter(
         invitations,
-        &(role_match?(&1.roles, role) and String.contains?(fold(to_string(&1.email)), needle))
+        &(not never and role_match?(&1.roles, role) and
+            String.contains?(fold(to_string(&1.email)), needle))
       )
     )
+  end
+
+  defp never_match?(_m, false), do: true
+  defp never_match?(m, true), do: is_nil(m.user.last_sign_in_at)
+
+  # The pills' counts, whatever the search: never signed in, and each role held.
+  defp counts(members) do
+    %{
+      never: Enum.count(members, &is_nil(&1.user.last_sign_in_at)),
+      roles:
+        for(
+          role <- SchoolRole.values(),
+          count = Enum.count(members, &(role in &1.roles)),
+          count > 0,
+          do: {role, count}
+        )
+    }
+  end
+
+  defp all_selected?([], _selected), do: false
+  defp all_selected?(visible, selected), do: Enum.all?(visible, &MapSet.member?(selected, &1.id))
+
+  # The selected members' phone numbers, for « Copier les numéros ».
+  defp selected_phones(members, selected) do
+    members
+    |> Enum.filter(&(MapSet.member?(selected, &1.id) and &1.user.phone))
+    |> Enum.map_join(", ", &to_string(&1.user.phone))
   end
 
   defp role_match?(_roles, nil), do: true

@@ -133,6 +133,33 @@ defmodule TeacherAssistant.Enrollment do
   end
 
   @doc """
+  « Mode désignation » (UX refonte, Classes): sets several classes' form masters
+  at once, each through `set_form_master/3`, all or nothing. `pairs` is a list of
+  `{class_group, user_id | nil}`; returns the updated classes in the same order.
+  """
+  def set_form_masters(%Scope{} = scope, pairs) when is_list(pairs) do
+    TeacherAssistant.Repo.transaction(fn ->
+      Enum.map_reduce(pairs, [], fn {cg, user_id}, notifications ->
+        cg
+        |> Ash.Changeset.for_update(:update, %{form_master_user_id: user_id}, scope: scope)
+        |> Ash.update(return_notifications?: true)
+        |> case do
+          {:ok, updated, more} -> {updated, notifications ++ more}
+          {:error, error} -> TeacherAssistant.Repo.rollback(error)
+        end
+      end)
+    end)
+    |> case do
+      {:ok, {updated, notifications}} ->
+        Ash.Notifier.notify(notifications)
+        {:ok, updated}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
   Sets (or clears, with nil) the class's home room (spec J3); `{:error, :invalid}` for a
   room that is not an active room of the school.
   """
@@ -509,26 +536,32 @@ defmodule TeacherAssistant.Enrollment do
         academic_year_id: year_id,
         class_group_id: opts[:class_group_id],
         query: query,
-        no_contact: opts[:no_contact] || false
+        no_contact: opts[:no_contact] || false,
+        repeater: opts[:repeater] || false,
+        no_photo: opts[:no_photo] || false
       },
       scope: scope
     )
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
   end
 
-  @doc "Élèves redesign: the year's enrolled students, and those with no main contact."
+  @doc """
+  Élèves: the year's enrolled students, and among them those with no main
+  contact, the repeaters and those without a photo.
+  """
   def student_counts(%Scope{} = scope, %AcademicYear{id: year_id}) do
-    count = fn no_contact ->
+    count = fn args ->
       Enrollment
-      |> Ash.Query.for_read(
-        :school_list,
-        %{academic_year_id: year_id, no_contact: no_contact},
-        scope: scope
-      )
+      |> Ash.Query.for_read(:school_list, Map.put(args, :academic_year_id, year_id), scope: scope)
       |> Ash.count!()
     end
 
-    %{total: count.(false), no_contact: count.(true)}
+    %{
+      total: count.(%{}),
+      no_contact: count.(%{no_contact: true}),
+      repeater: count.(%{repeater: true}),
+      no_photo: count.(%{no_photo: true})
+    }
   end
 
   @doc """

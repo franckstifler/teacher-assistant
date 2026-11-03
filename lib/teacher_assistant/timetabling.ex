@@ -499,6 +499,7 @@ defmodule TeacherAssistant.Timetabling do
         day: s.day,
         period_id: s.period_id,
         teaching_context_id: s.teaching_context_id,
+        subject: s.teaching_context.subject,
         teacher_id: s.teaching_context.teacher_user_id,
         combined_course_id: s.teaching_context.combined_course_id,
         # Spec J3: the effective room — the lesson's own, else the class's home room.
@@ -506,6 +507,27 @@ defmodule TeacherAssistant.Timetabling do
         home_room_id: s.class_group.home_room_id,
         class_size: Map.get(sizes, s.class_group_id, 0)
       }
+    end)
+  end
+
+  @doc """
+  UX refonte (Emploi du temps): the weekly hours still to place per class this year,
+  `class_group_id => hours` — each assignment's `weekly_hours` less its lessons
+  already in `slots` (from `school_slots/1`), never below zero. One read.
+  """
+  def hours_to_place(%Scope{current_academic_year: nil}, _slots), do: %{}
+
+  def hours_to_place(%Scope{current_academic_year: year} = scope, slots) do
+    placed = Enum.frequencies_by(slots, & &1.teaching_context_id)
+
+    TeachingContext
+    |> Ash.Query.filter(academic_year_id == ^year.id)
+    |> Ash.Query.select([:id, :class_group_id, :weekly_hours])
+    |> Ash.read!(scope: scope)
+    |> Enum.group_by(& &1.class_group_id)
+    |> Map.new(fn {class_id, contexts} ->
+      {class_id,
+       Enum.sum_by(contexts, &Kernel.max((&1.weekly_hours || 0) - Map.get(placed, &1.id, 0), 0))}
     end)
   end
 
@@ -533,6 +555,38 @@ defmodule TeacherAssistant.Timetabling do
       %{^user_id => %{load: load, service: service}} -> %{load: load, service: service}
       _none -> %{load: 0, service: AssignmentGrid.service(grid, user_id)}
     end
+  end
+
+  @doc """
+  UX refonte (Membres, « Service »): `teacher_service/2` for every member at once,
+  `user_id => %{load, service}`. Two reads.
+  """
+  def teacher_services(%Scope{current_academic_year: nil}, members),
+    do: Map.new(members, &{&1.user_id, %{load: 0, service: nil}})
+
+  def teacher_services(%Scope{current_academic_year: year} = scope, members) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+
+    grid = %{
+      services: Map.new(members, &{&1.user_id, &1.statutory_hours}),
+      school_hours: profile.statutory_hours
+    }
+
+    loads =
+      TeachingContext
+      |> Ash.Query.filter(academic_year_id == ^year.id)
+      |> Ash.read!(scope: scope)
+      |> AssignmentGrid.loads(grid)
+
+    Map.new(members, fn %{user_id: user_id} ->
+      case loads do
+        %{^user_id => %{load: load, service: service}} ->
+          {user_id, %{load: load, service: service}}
+
+        _none ->
+          {user_id, %{load: 0, service: AssignmentGrid.service(grid, user_id)}}
+      end
+    end)
   end
 
   @doc """

@@ -66,6 +66,9 @@ defmodule TeacherAssistant.Academics.Enrollment do
       argument :query, :string
       # Élèves redesign: only students with no main contact (the rows' « Aucun contact »).
       argument :no_contact, :boolean, allow_nil?: false, default: false
+      # UX refonte (Élèves): only repeaters / only students without a photo.
+      argument :repeater, :boolean, allow_nil?: false, default: false
+      argument :no_photo, :boolean, allow_nil?: false, default: false
 
       pagination offset?: true, countable: true, required?: false, default_limit: 50
 
@@ -76,6 +79,9 @@ defmodule TeacherAssistant.Academics.Enrollment do
                not (^arg(:no_contact)) or
                  not exists(student.guardian_links, primary_contact == true)
              )
+
+      filter expr(not (^arg(:repeater)) or repeater == true)
+      filter expr(not (^arg(:no_photo)) or is_nil(student.photo_path))
 
       filter expr(
                is_nil(^arg(:query)) or
