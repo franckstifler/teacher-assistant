@@ -202,6 +202,14 @@ defmodule TeacherAssistant.Accounts.User do
       accept []
       change set_attribute(:role, :admin)
     end
+
+    # UX refonte (Membres, « Jamais connectés »): stamped by the auth controller on
+    # every successful sign-in.
+    update :record_sign_in do
+      accept []
+      require_atomic? false
+      change set_attribute(:last_sign_in_at, &DateTime.utc_now/0)
+    end
   end
 
   policies do
@@ -260,6 +268,10 @@ defmodule TeacherAssistant.Accounts.User do
     policy action(:promote_to_admin) do
       authorize_if actor_attribute_equals(:role, :admin)
     end
+
+    policy action(:record_sign_in) do
+      authorize_if expr(id == ^actor(:id))
+    end
   end
 
   validations do
@@ -286,6 +298,9 @@ defmodule TeacherAssistant.Accounts.User do
       public?: true
 
     attribute :temporary_password_expires_at, :utc_datetime, public?: true
+
+    # The last successful sign-in (nil: never signed in since it was recorded).
+    attribute :last_sign_in_at, :utc_datetime, allow_nil?: true, public?: true
 
     timestamps()
   end
