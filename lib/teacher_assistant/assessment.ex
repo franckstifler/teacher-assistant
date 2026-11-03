@@ -600,6 +600,20 @@ defmodule TeacherAssistant.Assessment do
   def approve_correction(%Scope{} = scope, %MarkCorrection{} = correction, note \\ nil),
     do: decide_correction(scope, correction, :approve, note)
 
+  @doc """
+  Approves each of `corrections` in turn — one decision per request, each atomic and
+  traced like `approve_correction/3`. Returns `{approved, failed}` counts (a request
+  whose mark changed since it was asked fails and stays pending).
+  """
+  def approve_corrections(%Scope{} = scope, corrections, note \\ nil) do
+    Enum.reduce(corrections, {0, 0}, fn correction, {approved, failed} ->
+      case approve_correction(scope, correction, note) do
+        {:ok, _} -> {approved + 1, failed}
+        {:error, _} -> {approved, failed + 1}
+      end
+    end)
+  end
+
   @doc "Refuses a pending request; the mark is untouched. `note` as in `approve_correction/3`."
   def refuse_correction(%Scope{} = scope, %MarkCorrection{} = correction, note \\ nil),
     do: decide_correction(scope, correction, :refuse, note)
