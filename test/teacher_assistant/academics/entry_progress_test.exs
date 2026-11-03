@@ -288,10 +288,12 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
     assert cells[ctx.tc.id] == %{
              entered: expected.entered,
              expected: expected.expected,
-             pct: expected.pct
+             pct: expected.pct,
+             assessments: length(expected.assessments)
            }
 
     assert cells[ctx.tc.id].entered == 1
+    assert cells[ctx.tc.id].assessments >= 1
     assert map_size(cells) == 1
   end
 end

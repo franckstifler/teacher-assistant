@@ -78,7 +78,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   @doc """
   The `grid/3` cell figures of the given courses only (« Mes cours » cards):
-  `%{tc_id => %{entered:, expected:, pct:}}`. Contexts need `:class_group_id`.
+  `%{tc_id => %{entered:, expected:, pct:, assessments:}}` (`assessments`: how many
+  the course has in the séquence). Contexts need `:class_group_id`.
   """
   def context_cells(%Scope{}, _year, _seq, []), do: %{}
 
@@ -94,7 +95,11 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     Map.new(contexts, fn tc ->
       tc_assessments = Map.get(assessments_by_tc, tc.id, [])
       cell = cell(tc, taking(tc, enrolled, exempt), tc_assessments, marks_by_assessment)
-      {tc.id, Map.take(cell, [:entered, :expected, :pct])}
+
+      {tc.id,
+       cell
+       |> Map.take([:entered, :expected, :pct])
+       |> Map.put(:assessments, length(tc_assessments))}
     end)
   end
 
