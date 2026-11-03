@@ -236,4 +236,60 @@ defmodule TeacherAssistant.Academics.FeesSetupTest do
 
     assert {:error, :not_rising} = Fees.update_tranche(ctx.scope, t1, %{percent: 100})
   end
+
+  describe "fee setup steps (UX refonte)" do
+    test "presets follow the sector: public schools charge no scolarité" do
+      assert %{defaults: ["Frais exigibles", "PTA"], suggestions: public_more} =
+               Fees.fee_type_presets(:public)
+
+      refute "Scolarité" in public_more
+
+      for sector <- [:private_lay, :private_confessional, :community] do
+        assert %{defaults: ["Inscription", "Scolarité", "APEE"]} = Fees.fee_type_presets(sector)
+      end
+    end
+
+    test "create_default_fee_types takes the preset's names, once", ctx do
+      {:ok, _} = Fees.create_default_fee_types(ctx.scope, ctx.year, ["Inscription", "Scolarité"])
+      assert names(Fees.list_fee_types(ctx.scope, ctx.year)) == ["Inscription", "Scolarité"]
+      {:ok, _} = Fees.create_default_fee_types(ctx.scope, ctx.year, ["APEE"])
+      assert names(Fees.list_fee_types(ctx.scope, ctx.year)) == ["Inscription", "Scolarité"]
+    end
+
+    test "set_level_fees sets every class of a level, whatever its série", ctx do
+      {:ok, d2} =
+        Enrollment.create_class_group(ctx.scope, ctx.year, %{
+          label: "Tle C",
+          level: "Tle",
+          serie: "C"
+        })
+
+      {fe, _pta} = defaults!(ctx)
+      :ok = Fees.set_level_fees(ctx.scope, ctx.year, "Tle", fe, 60_000)
+      grid = Fees.class_fee_grid(ctx.scope, ctx.year)
+      assert grid[{ctx.t.id, fe.id}] == 60_000
+      assert grid[{d2.id, fe.id}] == 60_000
+      assert grid[{ctx.q.id, fe.id}] == nil
+    end
+
+    test "setup_status unlocks the steps in order", ctx do
+      assert %{types: 0, priced: 0, tranches: 0, done: 0} = Fees.setup_status(ctx.scope, ctx.year)
+
+      {fe, _pta} = defaults!(ctx)
+      assert %{types: 2, priced: 0, done: 1} = Fees.setup_status(ctx.scope, ctx.year)
+
+      {:ok, _} = Fees.set_class_fee(ctx.scope, ctx.q, fe, 50_000)
+      assert %{priced: 1, classes: classes, done: 2} = Fees.setup_status(ctx.scope, ctx.year)
+      assert classes >= 3
+
+      {:ok, _} =
+        Fees.add_tranche(ctx.scope, ctx.year, %{
+          label: "T",
+          due_date: ~D[2025-10-15],
+          percent: 100
+        })
+
+      assert %{tranches: 1, done: 3} = Fees.setup_status(ctx.scope, ctx.year)
+    end
+  end
 end

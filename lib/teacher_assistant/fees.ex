@@ -100,20 +100,76 @@ defmodule TeacherAssistant.Fees do
     |> Ash.create()
   end
 
-  @doc "« Frais exigibles » then « PTA », for a year that has no fee type yet."
-  def create_default_fee_types(%Scope{} = scope, %AcademicYear{} = year) do
+  @public_defaults ["Frais exigibles", "PTA"]
+
+  @doc """
+  The fee types offered when a school sets its fees up (UX refonte 2026-11-03), by its
+  sector: `defaults` ticked at first, `suggestions` one tap away. A public school
+  charges no « scolarité »: its preset stays « Frais exigibles » + « PTA ».
+  """
+  def fee_type_presets(:public),
+    do: %{defaults: @public_defaults, suggestions: ["Frais d'examen", "Tenue"]}
+
+  def fee_type_presets(_sector),
+    do: %{
+      defaults: ["Inscription", "Scolarité", "APEE"],
+      suggestions: ["Frais d'examen", "Tenue"]
+    }
+
+  @doc "`names` in that order (« Frais exigibles » then « PTA » by default), for a year that has no fee type yet."
+  def create_default_fee_types(
+        %Scope{} = scope,
+        %AcademicYear{} = year,
+        names \\ @public_defaults
+      ) do
     case list_fee_types(scope, year) do
       [] ->
         Ash.transact([FeeType], fn ->
-          with {:ok, _} <- create_fee_type(scope, year, %{name: "Frais exigibles"}),
-               {:ok, _} <- create_fee_type(scope, year, %{name: "PTA"}) do
-            :ok
-          end
+          Enum.reduce_while(names, :ok, fn name, :ok ->
+            case create_fee_type(scope, year, %{name: name}) do
+              {:ok, _} -> {:cont, :ok}
+              error -> {:halt, error}
+            end
+          end)
         end)
 
       _types ->
         {:ok, :ok}
     end
+  end
+
+  @doc """
+  How far the fee setup has gone (the three steps types → amounts → tranches):
+  active regular `types`, `classes` of the year and how many are `priced` (an amount
+  above 0), `tranches`, and `done` — the steps completed in order (0..3).
+  """
+  def setup_status(%Scope{} = scope, %AcademicYear{} = year) do
+    types = scope |> list_fee_types(year) |> Enum.filter(&(&1.kind == :regular and &1.active?))
+    type_ids = MapSet.new(types, & &1.id)
+    classes = TeacherAssistant.Enrollment.list_class_groups(scope, year)
+
+    priced =
+      scope
+      |> class_fee_grid(year)
+      |> Enum.filter(fn {{_cg, type_id}, amount} -> amount > 0 and type_id in type_ids end)
+      |> Enum.map(fn {{cg, _}, _} -> cg end)
+      |> Enum.uniq()
+      |> length()
+
+    tranches = length(list_tranches(scope, year))
+
+    done =
+      [length(types) > 0, priced > 0, tranches > 0]
+      |> Enum.take_while(& &1)
+      |> length()
+
+    %{
+      types: length(types),
+      classes: length(classes),
+      priced: priced,
+      tranches: tranches,
+      done: done
+    }
   end
 
   def rename_fee_type(%Scope{} = scope, %FeeType{kind: :regular} = type, name),
@@ -199,11 +255,24 @@ defmodule TeacherAssistant.Fees do
         %FeeType{} = type,
         amount
       ) do
-    classes =
-      scope
-      |> TeacherAssistant.Enrollment.list_class_groups(year)
-      |> Enum.filter(&(&1.level == cg.level and &1.serie == cg.serie))
+    scope
+    |> TeacherAssistant.Enrollment.list_class_groups(year)
+    |> Enum.filter(&(&1.level == cg.level and &1.serie == cg.serie))
+    |> then(&set_classes_fee(scope, &1, type, amount))
+  end
 
+  @doc """
+  Sets the amount for every class of the year at `level`, whatever its série (the
+  « Montants par niveau » row); a class can be adjusted afterwards.
+  """
+  def set_level_fees(%Scope{} = scope, %AcademicYear{} = year, level, %FeeType{} = type, amount) do
+    scope
+    |> TeacherAssistant.Enrollment.list_class_groups(year)
+    |> Enum.filter(&(&1.level == level))
+    |> then(&set_classes_fee(scope, &1, type, amount))
+  end
+
+  defp set_classes_fee(scope, classes, type, amount) do
     Ash.transact([ClassFee], fn ->
       Enum.reduce_while(classes, :ok, fn c, :ok ->
         case set_class_fee(scope, c, type, amount) do

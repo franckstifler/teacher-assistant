@@ -2,13 +2,16 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
   @moduledoc """
   Frais (Fees 1, rule 21): the school's recovery figures, one row per class, a student
   search (name or matricule) that opens the student's fee card, and the latest receipts.
-  Fees axis (Proviseur, Censeur, Intendant).
+  Fees axis (Proviseur, Censeur, Intendant). Until fee types and amounts are set, the
+  page shows the three setup steps and where to continue instead of 0 % figures.
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.{Enrollment, Fees, Organization}
   alias TeacherAssistant.Academics.Reference
   alias TeacherAssistantWeb.{Money, ReceiptPrintHTML}
+
+  import TeacherAssistantWeb.FeeSetupComponents
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -21,6 +24,7 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
        |> assign(
          page_title: gettext("Frais"),
          year: year,
+         status: Fees.setup_status(scope, year),
          recovery: Fees.recovery(scope, year, Reference.today()),
          recent: Fees.recent_payments(scope, year),
          q: "",
@@ -60,8 +64,48 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
           </:actions>
         </.page_header>
 
+        <section :if={@status.done < 2} id="fee-setup-cta" class="flex flex-col gap-3">
+          <p class="text-sm text-base-content/75">
+            {gettext(
+              "Les frais ne sont pas encore en place : trois réglages, puis l'encaissement, les reçus et le suivi des retards s'activent."
+            )}
+          </p>
+          <ol class="flex flex-col gap-2">
+            <.fee_step
+              id="cta-step-1"
+              n={1}
+              state={step_state(1, @status.done)}
+              title={gettext("Types de frais")}
+              summary={
+                @status.types > 0 &&
+                  ngettext("%{count} type de frais", "%{count} types de frais", @status.types)
+              }
+            />
+            <.fee_step
+              id="cta-step-2"
+              n={2}
+              state={step_state(2, @status.done)}
+              title={gettext("Montants par niveau")}
+            />
+            <.fee_step
+              id="cta-step-3"
+              n={3}
+              state={step_state(3, @status.done)}
+              title={gettext("Tranches et échéances")}
+            />
+          </ol>
+          <div>
+            <.link id="start-fee-setup" navigate={~p"/school/settings/fees"} class="btn btn-primary">
+              {if @status.done == 0,
+                do: gettext("Mettre en place les frais"),
+                else: gettext("Continuer la mise en place")}
+              <.icon name="hero-arrow-right" class="size-4" />
+            </.link>
+          </div>
+        </section>
+
         <% r = @recovery.school %>
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div :if={@status.done >= 2} class="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div class="ta-panel p-3 sm:p-4">
             <p class="ta-eyebrow">{gettext("Recouvrement")}</p>
             <p class={["ta-num text-2xl font-semibold sm:text-3xl", tone(r.rate)]}>{r.rate} %</p>
@@ -94,7 +138,7 @@ defmodule TeacherAssistantWeb.School.FeesOverviewLive do
           </div>
         </div>
 
-        <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div :if={@status.done >= 2} class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
             <table id="recovery-classes" class="table table-sm">
               <thead>

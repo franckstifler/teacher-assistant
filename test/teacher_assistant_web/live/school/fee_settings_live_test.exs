@@ -61,15 +61,68 @@ defmodule TeacherAssistantWeb.School.FeeSettingsLiveTest do
     [fe, _] = Fees.list_fee_types(ctx.scope, ctx.year)
     {:ok, view, _} = live(conn, ~p"/school/settings/fees")
 
-    view |> form("#fee-#{ctx.q.id}-#{fe.id}", %{amount: "45000"}) |> render_change()
-    assert Fees.class_fee_grid(ctx.scope, ctx.year)[{ctx.q.id, fe.id}] == 45_000
+    level_form = "#fee-grid form:has(input[value='6ème'])[id$='-#{fe.id}']"
+    view |> form(level_form, %{amount: "45000"}) |> render_change()
+    grid = Fees.class_fee_grid(ctx.scope, ctx.year)
+    assert grid[{ctx.q.id, fe.id}] == 45_000
+    assert grid[{ctx.r.id, fe.id}] == 45_000
+    assert has_element?(view, "#{level_form} input[value='45000']")
 
-    view |> element("#level-#{ctx.q.id}-#{fe.id}") |> render_click()
-    assert Fees.class_fee_grid(ctx.scope, ctx.year)[{ctx.r.id, fe.id}] == 45_000
+    # one class adjusted: the level row says it varies
+    view |> form("#fee-#{ctx.q.id}-#{fe.id}", %{amount: "50000"}) |> render_change()
+    assert Fees.class_fee_grid(ctx.scope, ctx.year)[{ctx.q.id, fe.id}] == 50_000
+    assert has_element?(view, "#{level_form} input[placeholder='varie']")
+  end
+
+  test "the steps unlock in order", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/settings/fees")
+    assert has_element?(view, "#fee-types[data-state='current']")
+    assert has_element?(view, "#fee-grid[data-state='locked']")
+    refute has_element?(view, "#tranche-form")
+
+    view |> element("#create-default-types") |> render_click()
+    assert has_element?(view, "#fee-types[data-state='done']")
+    assert has_element?(view, "#fee-grid[data-state='current']")
+
+    [fe, _] = Fees.list_fee_types(ctx.scope, ctx.year)
+    view |> form("#fee-#{ctx.q.id}-#{fe.id}", %{amount: "45000"}) |> render_change()
+    assert has_element?(view, "#tranches[data-state='current']")
+    assert has_element?(view, "#tranche-form")
+  end
+
+  test "fee types are chips: tap to add, tap again to withdraw", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/settings/fees")
+    # a public school: no « Scolarité » proposed
+    refute has_element?(view, "#type-chips button", "Scolarité")
+
+    view |> element("#type-chips button", "Tenue") |> render_click()
+    assert {"Tenue", true} in types(ctx)
+    assert has_element?(view, "#type-chips button[aria-pressed='true']", "Tenue")
+
+    view |> element("#type-chips button", "Tenue") |> render_click()
+    assert {"Tenue", false} in types(ctx)
+    view |> element("#type-chips button", "Tenue") |> render_click()
+    assert {"Tenue", true} in types(ctx)
+  end
+
+  test "a private school is offered Inscription, Scolarité and APEE", %{conn: conn} = ctx do
+    {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(ctx.scope)
+
+    {:ok, _} =
+      profile
+      |> Ash.Changeset.for_update(:update, %{sector: :private_lay}, scope: ctx.scope)
+      |> Ash.update()
+
+    {:ok, view, _} = live(conn, ~p"/school/settings/fees")
+    view |> element("#create-default-types") |> render_click()
+    assert Enum.map(types(ctx), &elem(&1, 0)) == ["Inscription", "Scolarité", "APEE"]
   end
 
   test "add a tranche; the last-percent warning shows until a 100 % tranche exists",
        %{conn: conn} = ctx do
+    {:ok, _} = Fees.create_default_fee_types(ctx.scope, ctx.year)
+    [fe, _] = Fees.list_fee_types(ctx.scope, ctx.year)
+    {:ok, _} = Fees.set_class_fee(ctx.scope, ctx.q, fe, 50_000)
     {:ok, view, _} = live(conn, ~p"/school/settings/fees")
 
     view

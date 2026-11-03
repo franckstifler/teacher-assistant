@@ -246,8 +246,7 @@ msgstr "Year"
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:273
 #: lib/teacher_assistant_web/live/school/councils_live.ex:330
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:107
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:445
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:102
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:146
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:384
 #: lib/teacher_assistant_web/live/school/students_live.ex:233
 #: lib/teacher_assistant_web/live/school/students_live.ex:288
@@ -562,7 +561,7 @@ msgstr "Email"
 #: lib/teacher_assistant_web/live/school/council_live.ex:592
 #: lib/teacher_assistant_web/live/school/councils_live.ex:447
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:364
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:566
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:740
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:220
 #: lib/teacher_assistant_web/live/school/members_components.ex:367
 #: lib/teacher_assistant_web/live/school/official_header_live.ex:161
@@ -647,7 +646,7 @@ msgstr "School name"
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:124
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:43
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:61
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:307
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:383
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:149
 #: lib/teacher_assistant_web/live/school/passage_live.ex:64
 #: lib/teacher_assistant_web/live/school/periods_live.ex:52
@@ -925,8 +924,8 @@ msgid "No classes yet"
 msgstr "No classes yet"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:146
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:162
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:163
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:206
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:207
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:277
 #: lib/teacher_assistant_web/live/school/students_live.ex:228
 #: lib/teacher_assistant_web/live/school/students_live.ex:229
@@ -944,7 +943,7 @@ msgid "Redoublant"
 msgstr "Repeater"
 
 #: lib/teacher_assistant_web/live/school/bulletin_template_live.ex:219
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:401
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:540
 #: lib/teacher_assistant_web/live/school/fees_live.ex:778
 #: lib/teacher_assistant_web/live/school/official_header_live.ex:229
 #: lib/teacher_assistant_web/live/school/student_live.ex:655
@@ -1328,7 +1327,7 @@ msgstr "Could not update the period."
 msgid "Jeudi"
 msgstr "Thursday"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:553
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:727
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:158
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:215
 #: lib/teacher_assistant_web/live/school/periods_live.ex:194
@@ -1383,7 +1382,7 @@ msgstr "Saturday"
 #: lib/teacher_assistant_web/live/school/appreciations_live.ex:263
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:287
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:288
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:527
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:701
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:196
 #: lib/teacher_assistant_web/live/school/periods_live.ex:293
 #: lib/teacher_assistant_web/live/school/rooms_live.ex:238
@@ -1465,7 +1464,7 @@ msgstr "Access denied."
 #: lib/teacher_assistant_web/live/school/evaluations_live.ex:317
 #: lib/teacher_assistant_web/live/school/fee_control_components.ex:162
 #: lib/teacher_assistant_web/live/school/fee_control_components.ex:237
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:574
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:748
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:229
 #: lib/teacher_assistant_web/live/school/members_components.ex:217
 #: lib/teacher_assistant_web/live/school/members_components.ex:452
@@ -1727,14 +1726,14 @@ msgstr "Amount (FCFA)"
 msgid "Méthode"
 msgstr "Method"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:524
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:698
 #, elixir-autogen, elixir-format
 msgid "Supprimer cette tranche ?"
 msgstr "Delete this tranche?"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:263
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:69
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:447
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:584
 #: lib/teacher_assistant_web/live/school/fees_live.ex:649
 #, elixir-autogen, elixir-format
 msgid "Total"
@@ -1765,8 +1764,8 @@ msgstr "Adamawa"
 msgid "Adresse"
 msgstr "Adresse"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:431
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:566
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:443
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:740
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:220
 #: lib/teacher_assistant_web/live/school/rooms_live.ex:272
 #: lib/teacher_assistant_web/live/school/settings_live.ex:622
@@ -2269,6 +2268,7 @@ msgstr "These classes are now taught together."
 #: lib/teacher_assistant_web/live/school/classes_live.ex:154
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:307
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:344
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:595
 #, elixir-autogen, elixir-format
 msgid "%{count} classe"
 msgid_plural "%{count} classes"
@@ -2701,7 +2701,7 @@ msgstr "verified"
 #: lib/teacher_assistant_web/live/school/class_shell.ex:190
 #: lib/teacher_assistant_web/live/school/courses_live.ex:346
 #: lib/teacher_assistant_web/live/school/exam_photos_live.ex:226
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:103
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:147
 #: lib/teacher_assistant_web/live/school/student_live.ex:403
 #: lib/teacher_assistant_web/live/school/students_live.ex:31
 #: lib/teacher_assistant_web/live/school/students_live.ex:181
@@ -3220,7 +3220,7 @@ msgstr "Own coefficient in: %{classes}. Reset them to turn this off."
 msgid "Espaces"
 msgstr "Spaces"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:55
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:59
 #: lib/teacher_assistant_web/spaces.ex:251
 #, elixir-autogen, elixir-format
 msgid "Intendance"
@@ -3989,7 +3989,7 @@ msgid "Publié le %{date} par %{who}"
 msgstr "Published on %{date} by %{who}"
 
 #: lib/teacher_assistant/academics/publication_status.ex:7
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:370
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:509
 #, elixir-autogen, elixir-format
 msgid "Retiré"
 msgstr "Withdrawn"
@@ -4931,7 +4931,7 @@ msgstr "Good Friday"
 msgid "Jour enregistré."
 msgstr "Day saved."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:517
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:691
 #: lib/teacher_assistant_web/live/school/holidays_live.ex:187
 #: lib/teacher_assistant_web/live/school/rooms_live.ex:218
 #: lib/teacher_assistant_web/live/school/student_live.ex:498
@@ -5029,7 +5029,7 @@ msgstr "Enter a number of hours between 1 and 40."
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:127
 #: lib/teacher_assistant_web/live/school/availability_live.ex:107
 #: lib/teacher_assistant_web/live/school/fee_control_live.ex:77
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:267
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:286
 #: lib/teacher_assistant_web/live/school/fees_live.ex:200
 #: lib/teacher_assistant_web/live/school/fees_live.ex:256
 #: lib/teacher_assistant_web/live/school/fees_live.ex:390
@@ -6589,7 +6589,7 @@ msgid "Aperçu"
 msgstr "Preview"
 
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:405
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:172
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:216
 #, elixir-autogen, elixir-format
 msgid "Aucun élève trouvé."
 msgstr "No student found."
@@ -6753,6 +6753,7 @@ msgstr "SURNAME First names"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:121
 #: lib/teacher_assistant_web/live/school/classes_live.ex:330
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:582
 #, elixir-autogen, elixir-format
 msgid "Niveau"
 msgstr "Level"
@@ -9083,8 +9084,8 @@ msgid "En jours de cours. Vide : à tout moment."
 msgstr "In school days. Empty: any time."
 
 #: lib/teacher_assistant_web/live/school/fees_live.ex:451
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:87
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:107
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:131
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:151
 #: lib/teacher_assistant_web/live/school/register_live.ex:205
 #, elixir-autogen, elixir-format
 msgid "En retard"
@@ -10773,12 +10774,12 @@ msgctxt "room"
 msgid "Inactive"
 msgstr "Inactive"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:562
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:736
 #, elixir-autogen, elixir-format
 msgid "% cumulé"
 msgstr "Cumulative %"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:249
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:268
 #, elixir-autogen, elixir-format
 msgid "%{count} reliquat reporté."
 msgid_plural "%{count} reliquats reportés."
@@ -10792,7 +10793,7 @@ msgstr "%{school} — Receipt no. %{number} of %{date}: %{amount} paid for %{stu
 
 #: lib/teacher_assistant_web/live/school/fee_control_components.ex:217
 #: lib/teacher_assistant_web/live/school/fees_live.ex:717
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:199
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:243
 #, elixir-autogen, elixir-format
 msgid "Annulé"
 msgstr "Cancelled"
@@ -10802,7 +10803,7 @@ msgstr "Cancelled"
 msgid "Appliquer"
 msgstr "Apply"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:104
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:148
 #, elixir-autogen, elixir-format
 msgid "Attendu"
 msgstr "Expected"
@@ -10818,22 +10819,22 @@ msgid "Aucun montant pour cette classe."
 msgstr "No amount for this class."
 
 #: lib/teacher_assistant_web/live/school/fees_live.ex:700
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:190
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "Aucun paiement."
 msgstr "No payment."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:232
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:251
 #, elixir-autogen, elixir-format
 msgid "Aucune année précédente avec des frais."
 msgstr "No previous year with fees."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:109
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:295
 #, elixir-autogen, elixir-format
 msgid "Ce frais est utilisé (montants ou paiements) : mettez ses montants à 0 d'abord."
 msgstr "This fee is in use (amounts or payments): set its amounts to 0 first."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:80
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:109
 #, elixir-autogen, elixir-format
 msgid "Ce nom est vide ou déjà utilisé."
 msgstr "This name is empty or already used."
@@ -10842,11 +10843,6 @@ msgstr "This name is empty or already used."
 #, elixir-autogen, elixir-format
 msgid "Ce reçu"
 msgstr "This receipt"
-
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:496
-#, elixir-autogen, elixir-format
-msgid "Chaque tranche dit quelle part du total chaque élève doit avoir payée à sa date (cumulée)."
-msgstr "Each instalment says what share of the total every student must have paid by its date (cumulative)."
 
 #: lib/teacher_assistant_web/live/school/fees_live.ex:414
 #, elixir-autogen, elixir-format
@@ -10858,37 +10854,32 @@ msgstr "Choose a payment method."
 msgid "Code"
 msgstr "Code"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:335
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:464
 #, elixir-autogen, elixir-format
 msgid "Copier l'année précédente"
 msgstr "Copy the previous year"
-
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:327
-#, elixir-autogen, elixir-format
-msgid "Créer Frais exigibles et PTA"
-msgstr "Create Frais exigibles and PTA"
 
 #: lib/teacher_assistant_web/live/school/fees_live.ex:450
 #, elixir-autogen, elixir-format
 msgid "Dans les temps"
 msgstr "On track"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:556
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:730
 #, elixir-autogen, elixir-format
 msgid "Date limite"
 msgstr "Due date"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:188
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:232
 #, elixir-autogen, elixir-format
 msgid "Derniers paiements"
 msgstr "Latest payments"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:389
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:528
 #, elixir-autogen, elixir-format
 msgid "Descendre"
 msgstr "Move down"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:584
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:760
 #, elixir-autogen, elixir-format
 msgid "Décochez les élèves dont l'école ne réclame pas la dette. Un élève non réinscrit ne peut pas être reporté."
 msgstr "Untick the students whose debt the school does not claim. A student who was not re-enrolled cannot be carried over."
@@ -10910,13 +10901,13 @@ msgstr "Late only"
 msgid "Encaisser"
 msgstr "Take payment"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:155
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:199
 #, elixir-autogen, elixir-format
 msgid "Encaisser pour un élève"
 msgstr "Take a payment for a student"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:78
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:105
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:122
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:149
 #, elixir-autogen, elixir-format
 msgid "Encaissé"
 msgstr "Collected"
@@ -10936,8 +10927,8 @@ msgstr "Send by WhatsApp to %{name}"
 #: lib/teacher_assistant_web/live/school/class_shell.ex:196
 #: lib/teacher_assistant_web/live/school/fees_live.ex:632
 #: lib/teacher_assistant_web/live/school/fees_live.ex:787
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:22
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:55
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:25
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:59
 #: lib/teacher_assistant_web/spaces.ex:510
 #, elixir-autogen, elixir-format
 msgid "Frais"
@@ -10965,17 +10956,17 @@ msgstr "Enter a positive amount and a reason."
 msgid "Indiquez un montant positif."
 msgstr "Enter a positive amount."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:273
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:348
 #, elixir-autogen, elixir-format
 msgid "Indiquez une date et un pourcentage entre 1 et 100."
 msgstr "Enter a date and a percentage between 1 and 100."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:315
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:482
 #, elixir-autogen, elixir-format
 msgid "L'ordre est l'ordre de paiement : une somme versée règle d'abord le premier frais."
 msgstr "The order is the payment order: money paid settles the first fee first."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:539
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:713
 #, elixir-autogen, elixir-format
 msgid "La dernière tranche devrait être à 100 % pour que tout le monde doive tout payer."
 msgstr "The last instalment should be at 100% so that everyone owes everything."
@@ -10990,11 +10981,6 @@ msgstr "The reduction is more than the student owes for this fee."
 msgid "La référence est obligatoire pour le mobile money et le virement."
 msgstr "The reference is required for mobile money and bank transfers."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:439
-#, elixir-autogen, elixir-format
-msgid "Laissez vide ou 0 pour une classe qui ne paie pas ce frais."
-msgstr "Leave empty or 0 for a class that does not pay this fee."
-
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:50
 #: lib/teacher_assistant_web/live/school/fees_live.ex:682
 #, elixir-autogen, elixir-format
@@ -11006,33 +10992,23 @@ msgstr "Method"
 msgid "Montant de la réduction"
 msgstr "Reduction amount"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:138
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:153
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Montant invalide."
 msgstr "Invalid amount."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:437
-#, elixir-autogen, elixir-format
-msgid "Montants par classe"
-msgstr "Amounts per class"
-
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:378
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:517
 #, elixir-autogen, elixir-format
 msgid "Monter"
 msgstr "Move up"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:476
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:477
-#, elixir-autogen, elixir-format
-msgid "Même montant pour tout le niveau"
-msgstr "Same amount for the whole level"
-
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:366
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:505
 #, elixir-autogen, elixir-format
 msgid "Nom du frais"
 msgstr "Fee name"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:427
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:440
 #, elixir-autogen, elixir-format
 msgid "Nouveau frais"
 msgstr "New fee"
@@ -11042,11 +11018,11 @@ msgstr "New fee"
 msgid "Paiement non enregistré."
 msgstr "Payment not saved."
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:22
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:308
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:26
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:384
 #: lib/teacher_assistant_web/live/school/fees_live.ex:505
 #: lib/teacher_assistant_web/live/school/fees_live.ex:506
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:58
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:62
 #: lib/teacher_assistant_web/live/school/settings_live.ex:130
 #: lib/teacher_assistant_web/spaces.ex:516
 #, elixir-autogen, elixir-format
@@ -11074,17 +11050,17 @@ msgstr "Reason"
 msgid "Raison de l'annulation"
 msgstr "Reason for cancelling"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:66
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "Recouvrement"
 msgstr "Recovery"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:611
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:787
 #, elixir-autogen, elixir-format
 msgid "Reporter"
 msgstr "Carry over"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:582
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:758
 #, elixir-autogen, elixir-format
 msgid "Reporter les reliquats de l'année précédente"
 msgstr "Carry over last year's unpaid fees"
@@ -11153,7 +11129,7 @@ msgstr "Reduction or waiver"
 msgid "Référence de la transaction"
 msgstr "Transaction reference"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:411
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:550
 #, elixir-autogen, elixir-format
 msgid "Rétablir"
 msgstr "Restore"
@@ -11163,18 +11139,14 @@ msgstr "Restore"
 msgid "Situation"
 msgstr "Status"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:494
-#, elixir-autogen, elixir-format
-msgid "Tranches"
-msgstr "Instalments"
-
 #: lib/teacher_assistant_web/controllers/receipt_print_html.ex:13
 #: lib/teacher_assistant_web/controllers/receipt_verify_html.ex:12
 #, elixir-autogen, elixir-format
 msgid "Trop-perçu : %{amount}"
 msgstr "Overpaid: %{amount}"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:313
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:401
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:78
 #, elixir-autogen, elixir-format
 msgid "Types de frais"
 msgstr "Fee types"
@@ -11189,12 +11161,12 @@ msgstr "Fee types, amounts per class, instalments, carried-over debts."
 msgid "Vérifiez ce reçu en scannant le code QR, ou sur %{url} avec le numéro et le code :"
 msgstr "Check this receipt by scanning the QR code, or at %{url} with the number and the code:"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:75
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:119
 #, elixir-autogen, elixir-format
 msgid "de ce qui est échu"
 msgstr "of what is due"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:68
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:112
 #, elixir-autogen, elixir-format
 msgid "de l'année"
 msgstr "of the year"
@@ -11204,39 +11176,39 @@ msgstr "of the year"
 msgid "francs CFA"
 msgstr "CFA francs"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:605
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:781
 #, elixir-autogen, elixir-format
 msgid "non réinscrit"
 msgstr "not re-enrolled"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:83
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:127
 #, elixir-autogen, elixir-format
 msgid "sur %{amount}"
 msgstr "of %{amount}"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:359
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:498
 #, elixir-autogen, elixir-format
 msgid "toujours en premier"
 msgstr "always first"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:71
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "À ce jour"
 msgstr "To date"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:344
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:473
 #, elixir-autogen, elixir-format
 msgid "À compléter : %{classes}"
 msgstr "To complete: %{classes}"
 
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:92
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:136
 #, elixir-autogen, elixir-format
 msgid "élève sur %{total}"
 msgid_plural "élèves sur %{total}"
 msgstr[0] "student of %{total}"
 msgstr[1] "students of %{total}"
 
-#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:181
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:200
 #, elixir-autogen, elixir-format
 msgid "Une tranche plus tardive doit demander un pourcentage plus grand."
 msgstr "A later instalment must ask for a larger percentage."
@@ -11424,14 +11396,14 @@ msgstr "Warnings not issued."
 #: lib/teacher_assistant_web/live/school/fee_control_live.ex:119
 #: lib/teacher_assistant_web/live/school/fee_control_live.ex:134
 #: lib/teacher_assistant_web/live/school/fees_live.ex:486
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:128
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:172
 #, elixir-autogen, elixir-format
 msgid "Contrôle des frais"
 msgstr "Fee check"
 
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/control.html.heex:6
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/control.html.heex:19
-#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:130
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:174
 #, elixir-autogen, elixir-format
 msgid "Contrôle des frais — %{class}"
 msgstr "Fee check — %{class}"
@@ -13776,3 +13748,95 @@ msgstr "to plan"
 #, elixir-autogen, elixir-format
 msgid "à planifier · date du trimestre : %{date}"
 msgstr "to plan · term date: %{date}"
+
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:81
+#, elixir-autogen, elixir-format
+msgid "%{count} type de frais"
+msgid_plural "%{count} types de frais"
+msgstr[0] "%{count} fee type"
+msgstr[1] "%{count} fee types"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:571
+#, elixir-autogen, elixir-format
+msgid "%{priced} classes sur %{total} ont leurs montants"
+msgstr "%{priced} classes out of %{total} have their amounts"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:426
+#, elixir-autogen, elixir-format
+msgid "+ Autre"
+msgstr "+ Other"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:626
+#, elixir-autogen, elixir-format
+msgid "Ajuster une classe"
+msgstr "Adjust a class"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:402
+#, elixir-autogen, elixir-format
+msgid "Cochez ceux que l'établissement perçoit."
+msgstr "Tick the ones the school collects."
+
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:101
+#, elixir-autogen, elixir-format
+msgid "Continuer la mise en place"
+msgstr "Continue the setup"
+
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:69
+#, elixir-autogen, elixir-format
+msgid "Les frais ne sont pas encore en place : trois réglages, puis l'encaissement, les reçus et le suivi des retards s'activent."
+msgstr "Fees are not set up yet: three settings, then payments, receipts and arrears tracking switch on."
+
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:100
+#, elixir-autogen, elixir-format
+msgid "Mettre en place les frais"
+msgstr "Set up fees"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:563
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:88
+#, elixir-autogen, elixir-format
+msgid "Montants par niveau"
+msgstr "Amounts by level"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:479
+#, elixir-autogen, elixir-format
+msgid "Ordre de paiement et noms"
+msgstr "Payment order and names"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:670
+#, elixir-autogen, elixir-format
+msgid "Par exemple 3 tranches : rentrée, janvier, avril. Chaque tranche dit quelle part du total chaque élève doit avoir payée à sa date (cumulée) ; les retards se calculent à partir de ces dates."
+msgstr "For example 3 instalments: back to school, January, April. Each says what share of the total every student must have paid by its date (cumulative); arrears are computed from these dates."
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:456
+#, elixir-autogen, elixir-format
+msgid "Prendre : %{names}"
+msgstr "Use: %{names}"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:668
+#: lib/teacher_assistant_web/live/school/fees_overview_live.ex:94
+#, elixir-autogen, elixir-format
+msgid "Tranches et échéances"
+msgstr "Instalments and due dates"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:389
+#, elixir-autogen, elixir-format
+msgid "Trois réglages, puis l'encaissement, les reçus et le suivi des retards s'activent pour %{count} élève."
+msgid_plural "Trois réglages, puis l'encaissement, les reçus et le suivi des retards s'activent pour les %{count} élèves."
+msgstr[0] "Three settings, then payments, receipts and arrears tracking switch on for %{count} student."
+msgstr[1] "Three settings, then payments, receipts and arrears tracking switch on for the %{count} students."
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:565
+#, elixir-autogen, elixir-format
+msgid "Un montant par niveau s'applique à toutes ses classes ; ajustez une classe ensuite si besoin. Laissez vide ou 0 quand un niveau ne paie pas ce frais."
+msgstr "One amount per level applies to all its classes; adjust a class afterwards if needed. Leave empty or 0 when a level does not pay this fee."
+
+#: lib/teacher_assistant_web/components/fee_setup_components.ex:58
+#, elixir-autogen, elixir-format
+msgid "après l'étape %{n}"
+msgstr "after step %{n}"
+
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:608
+#: lib/teacher_assistant_web/live/school/fee_settings_live.ex:618
+#, elixir-autogen, elixir-format
+msgid "varie"
+msgstr "varies"
