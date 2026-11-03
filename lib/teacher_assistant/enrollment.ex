@@ -536,26 +536,32 @@ defmodule TeacherAssistant.Enrollment do
         academic_year_id: year_id,
         class_group_id: opts[:class_group_id],
         query: query,
-        no_contact: opts[:no_contact] || false
+        no_contact: opts[:no_contact] || false,
+        repeater: opts[:repeater] || false,
+        no_photo: opts[:no_photo] || false
       },
       scope: scope
     )
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
   end
 
-  @doc "Élèves redesign: the year's enrolled students, and those with no main contact."
+  @doc """
+  Élèves: the year's enrolled students, and among them those with no main
+  contact, the repeaters and those without a photo.
+  """
   def student_counts(%Scope{} = scope, %AcademicYear{id: year_id}) do
-    count = fn no_contact ->
+    count = fn args ->
       Enrollment
-      |> Ash.Query.for_read(
-        :school_list,
-        %{academic_year_id: year_id, no_contact: no_contact},
-        scope: scope
-      )
+      |> Ash.Query.for_read(:school_list, Map.put(args, :academic_year_id, year_id), scope: scope)
       |> Ash.count!()
     end
 
-    %{total: count.(false), no_contact: count.(true)}
+    %{
+      total: count.(%{}),
+      no_contact: count.(%{no_contact: true}),
+      repeater: count.(%{repeater: true}),
+      no_photo: count.(%{no_photo: true})
+    }
   end
 
   @doc """
