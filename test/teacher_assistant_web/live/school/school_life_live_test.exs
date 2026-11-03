@@ -168,12 +168,15 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
              "#roll-call-grid a[href='/school/classes/#{ctx.cg.id}/attendance/#{ctx.p2.id}?date=2025-09-15']"
            )
 
-    # phone: one row per class with its lessons' strip, linking to today's register
-    assert has_element?(view, "#class-day-#{ctx.cg.id}", "1 manquant")
+    # phone: the lessons of the day, each with its state, opening onto its classes
+    assert has_element?(view, "#period-hero")
+    assert has_element?(view, "#period-#{ctx.p1.id}", "1/1 · 1 abs.")
+    assert has_element?(view, "#period-#{ctx.p2.id}", "0/1 à jour")
 
     assert has_element?(
              view,
-             "a#class-day-#{ctx.cg.id}[href='/school/classes/#{ctx.cg.id}/register?date=2025-09-15']"
+             "#period-#{ctx.p2.id} a[href='/school/classes/#{ctx.cg.id}/attendance/#{ctx.p2.id}?date=2025-09-15']",
+             "Appel non fait"
            )
 
     assert has_element?(view, "#missed-#{ctx.cg.id}-#{ctx.p2.id}")
@@ -328,6 +331,13 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
       assert has_element?(view, "#kpi-calls", "1 sur feuille")
       assert has_element?(view, "#calls-summary", "1 appel sur feuille, à saisir")
       assert has_element?(view, ~s(#print-all-sheets[href="/school/roll-sheets/print"]))
+
+      # phone: a paper lesson opens the class's roll sheet
+      assert has_element?(
+               view,
+               ~s(#period-#{ctx.p2.id} a[href="/school/classes/#{ctx.cg.id}/roll-sheet"]),
+               "Sur feuille"
+             )
 
       assert has_element?(
                view,

@@ -4,6 +4,11 @@ defmodule TeacherAssistantWeb.School.DayLive do
   §2.1): today's roll calls as a classes × periods grid, the missed roll calls
   with « Relancer », and the school's latest sanctions. Absences are justified on
   `/school/absences`. The surveillant space's home.
+
+  On phones (UX refonte 2026-11-03) the grid gives way to a hero card for the lesson
+  under way (calls done, on paper, absents, one action) and the day's lessons, each
+  with its progress and state, opening onto its classes. Typing a whole lesson's paper
+  sheets at once is deferred: the action opens a class's roll sheet.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -100,6 +105,9 @@ defmodule TeacherAssistantWeb.School.DayLive do
         on_paper: on_paper(assigns.day)
       )
 
+    periods = period_rows(assigns.day, assigns.current)
+    assigns = assign(assigns, periods: periods, hero: hero_period(periods))
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="school-day" class="grid items-start gap-5 lg:grid-cols-2">
@@ -133,6 +141,8 @@ defmodule TeacherAssistantWeb.School.DayLive do
             </:actions>
           </.page_header>
         </div>
+
+        <.period_hero :if={@day.rows != []} hero={@hero} tally={@tally} today={@today} />
 
         <p
           :if={@day.rows != []}
@@ -198,11 +208,12 @@ defmodule TeacherAssistantWeb.School.DayLive do
         >
           <header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pb-2 pt-4">
             <h2 class="text-base font-semibold">
-              {gettext("Appels par créneau · nombre d'absents")}
+              <span class="sm:hidden">{gettext("Créneaux du jour")}</span>
+              <span class="max-sm:hidden">{gettext("Appels par créneau · nombre d'absents")}</span>
             </h2>
             <div
               id="grid-legend"
-              class="flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-base-content/75"
+              class="flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-base-content/75 max-sm:hidden"
             >
               <span
                 :for={status <- [:done, :in_progress, :missed, :on_paper, :not_held, :upcoming]}
@@ -261,9 +272,9 @@ defmodule TeacherAssistantWeb.School.DayLive do
             </div>
           </div>
 
-          <ul id="class-day-list" class="border-t border-base-300 sm:hidden">
-            <li :for={row <- @day.rows}>
-              <.class_day_row row={row} periods={@day.periods} today={@today} />
+          <ul id="day-periods" class="border-t border-base-300 sm:hidden">
+            <li :for={row <- @periods}>
+              <.period_row row={row} today={@today} />
             </li>
           </ul>
         </section>
@@ -412,67 +423,257 @@ defmodule TeacherAssistantWeb.School.DayLive do
     """
   end
 
-  attr :row, :map, required: true
-  attr :periods, :list, required: true
+  attr :hero, :map, default: nil
+  attr :tally, :map, required: true
   attr :today, :any, required: true
 
-  # Phone: one row per class — its lessons' states as a strip, each under its
-  # lesson number (no hover on a phone to name it), the missed count, and today's
-  # register when a roll call was taken.
-  defp class_day_row(assigns) do
-    cells =
-      for {p, n} <- Enum.with_index(assigns.periods, 1),
-          cell = assigns.row.cells[p.id],
-          do: Map.put(cell, :n, n)
+  # Phone: the lesson under way (else the next one), its three figures and one action.
+  defp period_hero(%{hero: nil} = assigns) do
+    ~H"""
+    <section id="period-hero" class="ta-section flex flex-col gap-1 p-4 sm:hidden">
+      <span class="ta-eyebrow">{gettext("Journée terminée")}</span>
+      <span class="ta-num text-lg font-semibold">
+        {ngettext("%{count} appel fait", "%{count} appels faits", @tally.done)} / {@tally.done +
+          @tally.missed + @tally.on_paper}
+      </span>
+    </section>
+    """
+  end
 
-    assigns =
-      assign(assigns,
-        cells: cells,
-        missed: Enum.count(cells, &(&1.status == :missed)),
-        detail?: Enum.any?(cells, &(&1.status == :done))
-      )
+  defp period_hero(assigns) do
+    assigns = assign(assigns, :paper, first_paper(assigns.hero))
 
     ~H"""
-    <.link
-      :if={@detail?}
-      id={"class-day-#{@row.class_group.id}"}
-      navigate={~p"/school/classes/#{@row.class_group.id}/register?date=#{Date.to_iso8601(@today)}"}
-      class="ta-list-row"
+    <section
+      id="period-hero"
+      aria-label={gettext("Créneau en cours")}
+      class={[
+        "flex flex-col gap-3 rounded-box border-2 bg-base-100 p-4 sm:hidden",
+        if(@hero.state == :current, do: "border-primary", else: "border-base-300")
+      ]}
     >
-      <.class_day_body {assigns} />
-      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
-    </.link>
-    <div :if={!@detail?} id={"class-day-#{@row.class_group.id}"} class="ta-list-row">
-      <.class_day_body {assigns} />
+      <div class="flex items-center gap-2">
+        <span class={[
+          "ta-num rounded-full px-2 py-0.5 text-[0.7rem] font-semibold uppercase",
+          if(@hero.state == :current,
+            do: "bg-primary text-primary-content",
+            else: "bg-base-200 text-base-content/75"
+          )
+        ]}>
+          {if @hero.state == :current, do: gettext("En cours"), else: gettext("Prochain")} · {@hero.period.label}
+        </span>
+        <span class="ta-num text-sm text-base-content/70">
+          {hm(@hero.period.start_time)} – {hm(@hero.period.end_time)}
+        </span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p class="ta-num text-[1.4rem] font-semibold leading-tight">{@hero.done}</p>
+          <p class="text-[0.72rem] text-base-content/70">
+            {ngettext("appel fait", "appels faits", @hero.done)}
+          </p>
+        </div>
+        <div>
+          <p class={[
+            "ta-num text-[1.4rem] font-semibold leading-tight",
+            @hero.on_paper > 0 && "text-warning"
+          ]}>
+            {@hero.on_paper}
+          </p>
+          <p class="text-[0.72rem] text-base-content/70">{gettext("sur feuille")}</p>
+        </div>
+        <div>
+          <p class={[
+            "ta-num text-[1.4rem] font-semibold leading-tight",
+            @hero.absent > 0 && "text-error"
+          ]}>
+            {@hero.absent}
+          </p>
+          <p class="text-[0.72rem] text-base-content/70">
+            {ngettext("absent", "absents", @hero.absent)}
+          </p>
+        </div>
+      </div>
+      <.link
+        :if={@paper}
+        id="hero-action"
+        navigate={~p"/school/classes/#{@paper.class_group.id}/roll-sheet"}
+        class="btn btn-primary min-h-12"
+      >
+        {gettext("Saisir la feuille d'appel · %{class}", class: @paper.class_group.label)}
+      </.link>
+      <a
+        :if={!@paper && @hero.missed > 0}
+        id="hero-action"
+        href="#missed-roll-calls"
+        class="btn btn-primary min-h-12"
+      >
+        {ngettext("Relancer l'appel non fait", "Relancer les %{count} appels non faits", @hero.missed)}
+      </a>
+      <p
+        :if={!@paper && @hero.missed == 0}
+        class="text-center text-sm text-base-content/70"
+      >
+        {hero_note(@hero)}
+      </p>
+    </section>
+    """
+  end
+
+  attr :row, :map, required: true
+  attr :today, :any, required: true
+
+  # Phone: one lesson of the day — its progress and state, opening onto its classes.
+  defp period_row(assigns) do
+    ~H"""
+    <details id={"period-#{@row.period.id}"} class="group border-b border-base-300 last:border-b-0">
+      <summary class="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
+        <span class="flex w-16 shrink-0 flex-col">
+          <span class="truncate text-[0.88rem] font-semibold">{@row.period.label}</span>
+          <span class="ta-num text-[0.72rem] text-base-content/70">{hm(@row.period.start_time)}</span>
+        </span>
+        <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-base-300/70">
+          <span
+            class={["block h-full rounded-full", period_bar(@row.state)]}
+            style={"width: #{period_pct(@row)}%"}
+          ></span>
+        </span>
+        <span class={[
+          "ta-num w-28 shrink-0 text-right text-[0.76rem] font-medium",
+          period_tone(@row.state)
+        ]}>
+          {period_state_text(@row)}
+        </span>
+        <.icon
+          name="hero-chevron-down"
+          class="size-4 shrink-0 text-base-content/60 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <ul class="pb-2">
+        <li :for={cell <- @row.cells}>
+          <.period_class cell={cell} today={@today} />
+        </li>
+      </ul>
+    </details>
+    """
+  end
+
+  attr :cell, :map, required: true
+  attr :today, :any, required: true
+
+  defp period_class(%{cell: %{status: status}} = assigns) when status in [:upcoming, :not_held] do
+    ~H"""
+    <div class="flex min-h-11 items-center gap-3 px-4 text-sm text-base-content/70">
+      <span class="flex-1 truncate">{@cell.class_group.label} · {@cell.subject}</span>
+      <span class="text-xs">{cell_state_text(@cell)}</span>
     </div>
     """
   end
 
-  defp class_day_body(assigns) do
+  defp period_class(assigns) do
     ~H"""
-    <span class="flex min-w-0 flex-1 flex-col gap-1.5">
-      <span class="text-[0.95rem] font-semibold">{@row.class_group.label}</span>
-      <span class="flex flex-wrap gap-1">
-        <span
-          :for={cell <- @cells}
-          title={"#{cell.period.label} · #{cell_title(cell)}"}
-          class="flex flex-col items-center gap-0.5"
-        >
-          <span class="ta-num text-[0.7rem] leading-none text-base-content/70">{cell.n}</span>
-          <span class={[
-            "ta-num grid h-[22px] min-w-[26px] place-items-center rounded-[0.3rem] border px-1 text-[0.75rem] font-semibold",
-            cell_class(cell)
-          ]}>
-            {cell_text(cell)}
-          </span>
-        </span>
+    <.link
+      id={"period-class-#{@cell.class_group.id}-#{@cell.period.id}"}
+      navigate={period_class_path(@cell, @today)}
+      class="flex min-h-11 items-center gap-3 px-4 text-sm hover:bg-base-200/60 hover:no-underline"
+    >
+      <span class="flex-1 truncate">
+        <span class="font-medium">{@cell.class_group.label}</span>
+        <span class="text-base-content/70">· {@cell.subject}</span>
       </span>
-    </span>
-    <span :if={@missed > 0} class="ta-num shrink-0 text-[0.8rem] font-semibold text-error">
-      {ngettext("%{count} manquant", "%{count} manquants", @missed)}
-    </span>
+      <span class={["ta-num rounded-[0.3rem] border px-1.5 text-xs font-semibold", cell_class(@cell)]}>
+        {cell_state_text(@cell)}
+      </span>
+      <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/60" />
+    </.link>
     """
   end
+
+  # A paper lesson opens its class's sheet, any other its roll call.
+  defp period_class_path(%{status: :on_paper} = cell, _today),
+    do: ~p"/school/classes/#{cell.class_group.id}/roll-sheet"
+
+  defp period_class_path(cell, today),
+    do:
+      ~p"/school/classes/#{cell.class_group.id}/attendance/#{cell.period.id}?date=#{Date.to_iso8601(today)}"
+
+  defp cell_state_text(%{status: :done, absent: n}),
+    do: ngettext("%{count} absent", "%{count} absents", n)
+
+  defp cell_state_text(%{status: :missed}), do: gettext("Appel non fait")
+  defp cell_state_text(%{status: :in_progress}), do: gettext("En cours")
+  defp cell_state_text(%{status: :upcoming}), do: gettext("À venir")
+  defp cell_state_text(%{status: :on_paper}), do: gettext("Sur feuille")
+  defp cell_state_text(%{status: :not_held}), do: gettext("Non assuré")
+
+  # The day's lessons with at least one class, each with its tally and state:
+  # `:current` (under way), `:upcoming`, `:complete` (every call in) or `:behind`.
+  defp period_rows(day, current) do
+    for p <- day.periods,
+        cells =
+          day.rows
+          |> Enum.map(& &1.cells[p.id])
+          |> Enum.reject(&is_nil/1),
+        cells != [] do
+      counted = Enum.reject(cells, &(&1.status == :not_held))
+      freq = Enum.frequencies_by(counted, & &1.status)
+      count = &Map.get(freq, &1, 0)
+
+      row = %{
+        period: p,
+        cells: cells,
+        total: length(counted),
+        done: count.(:done),
+        missed: count.(:missed),
+        on_paper: count.(:on_paper),
+        in_progress: count.(:in_progress),
+        upcoming: count.(:upcoming),
+        absent: for(%{status: :done, absent: n} <- counted, reduce: 0, do: (acc -> acc + n))
+      }
+
+      Map.put(row, :state, period_state(row, current))
+    end
+  end
+
+  defp period_state(%{period: %{id: id}}, %{id: id}), do: :current
+  defp period_state(%{total: n, upcoming: n}, _current) when n > 0, do: :upcoming
+  defp period_state(%{missed: 0, on_paper: 0, in_progress: 0}, _current), do: :complete
+  defp period_state(_row, _current), do: :behind
+
+  defp hero_period(rows),
+    do: Enum.find(rows, &(&1.state == :current)) || Enum.find(rows, &(&1.state == :upcoming))
+
+  defp first_paper(hero), do: Enum.find(hero.cells, &(&1.status == :on_paper))
+
+  defp hero_note(%{state: :upcoming}), do: gettext("Les appels s'ouvrent au début du cours.")
+  defp hero_note(%{in_progress: n}) when n > 0, do: gettext("Les enseignants font l'appel.")
+  defp hero_note(_hero), do: gettext("Tous les appels de ce cours sont faits.")
+
+  defp period_pct(%{total: 0}), do: 0
+  defp period_pct(%{done: done, total: total}), do: div(done * 100, total)
+
+  defp period_bar(:complete), do: "bg-success"
+  defp period_bar(:current), do: "bg-primary"
+  defp period_bar(:behind), do: "bg-warning"
+  defp period_bar(:upcoming), do: "bg-base-content/20"
+
+  defp period_tone(:complete), do: "text-base-content/70"
+  defp period_tone(:current), do: "text-primary"
+  defp period_tone(:behind), do: "text-warning"
+  defp period_tone(:upcoming), do: "text-base-content/70"
+
+  defp period_state_text(%{state: :current} = row),
+    do: gettext("en cours · %{done}/%{total}", done: row.done, total: row.total)
+
+  defp period_state_text(%{state: :upcoming}), do: gettext("à venir")
+
+  defp period_state_text(%{state: :complete} = row),
+    do:
+      "#{row.done}/#{row.total} · " <>
+        ngettext("%{count} abs.", "%{count} abs.", row.absent)
+
+  defp period_state_text(row),
+    do: gettext("%{done}/%{total} à jour", done: row.done, total: row.total)
 
   attr :cell, :map, default: nil
   attr :today, :any, required: true
