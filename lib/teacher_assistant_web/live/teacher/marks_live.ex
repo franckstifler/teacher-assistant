@@ -1396,7 +1396,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         :if={@keypad && @column}
         {keypad_assigns(assigns)}
         column={@column}
-        course_title={@title}
+        course_title={if @course, do: @course.label, else: @ctx.subject}
         scores={@scores}
         errors={@errors}
         done={@done}

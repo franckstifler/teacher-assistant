@@ -594,6 +594,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
             // never patches a focused input): let it go first.
             const active = document.activeElement
             if (active && active !== document.body && active.blur) active.blur()
+            this.busy = false
+            this.queue = []
             this.sync(true)
             this.el.addEventListener("click", (e) => {
               const key = e.target.closest("[data-key]")
@@ -618,6 +620,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
             this.render()
           },
           press(key) {
+            // While the server has not answered a move, keys wait: they belong to
+            // the student the server moves to, never to the one just sent.
+            if (this.busy) { this.queue.push(key); return }
             const v = this.value
             const code = v === "abs" || v === "abj" || v === "a"
             if (key === "back") {
@@ -640,7 +645,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
             this.render()
           },
           send(event) {
-            this.pushEvent(event, {student: this.student, value: this.value})
+            this.busy = true
+            this.pushEvent(event, {student: this.student, value: this.value}, () => {
+              this.busy = false
+              this.sync(false)
+              const queued = this.queue
+              this.queue = []
+              queued.forEach((key) => this.press(key))
+            })
           },
           render() {
             const display = this.el.querySelector("[data-keypad-display]")

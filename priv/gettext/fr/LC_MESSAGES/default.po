@@ -7665,14 +7665,14 @@ msgstr ""
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:180
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:481
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:569
-#: lib/teacher_assistant_web/live/teacher/marks_components.ex:677
+#: lib/teacher_assistant_web/live/teacher/marks_components.ex:689
 #, elixir-autogen, elixir-format
 msgid "Absence justifiée"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:177
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:480
-#: lib/teacher_assistant_web/live/teacher/marks_components.ex:676
+#: lib/teacher_assistant_web/live/teacher/marks_components.ex:688
 #, elixir-autogen, elixir-format
 msgid "Absent — rattrapage possible"
 msgstr ""
