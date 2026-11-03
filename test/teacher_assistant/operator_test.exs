@@ -1,6 +1,8 @@
 defmodule TeacherAssistant.OperatorTest do
   use TeacherAssistant.DataCase, async: true
 
+  import Ecto.Query, only: [from: 2]
+
   alias TeacherAssistant.{Operator, Organization, Scope, TeacherFixtures}
 
   setup do
@@ -44,8 +46,9 @@ defmodule TeacherAssistant.OperatorTest do
       assert o.usage.active_schools == 1
       assert o.usage.active_users == 1
       assert o.funnel == %{signed_up: 1, verified: 1, set_up: 1, active: 1}
-      assert [%{id: id, actions_7d: 1}] = o.top_schools
+      assert [%{id: id, actions_7d: 1, students: 1, status: :verified}] = o.school_rows
       assert id == ws.id
+      assert o.schools.total == 1
       assert o.modules[:discipline].used == 1
       assert o.modules[:emploi_du_temps].used == nil
       assert o.attention.quiet == [] and o.attention.silent == []
@@ -94,10 +97,35 @@ defmodule TeacherAssistant.OperatorTest do
     refute ws.id in ids.(Operator.list_schools(op, %{module: :frais}))
   end
 
+  test "every school is a row, the active first, with its activated accounts", %{
+    op: op,
+    ws: ws,
+    head: head
+  } do
+    %{workspace: pending} = TeacherFixtures.setup_complete_school_fixture(%{verified: false})
+    _teacher = TeacherFixtures.member_scope_fixture(head, %{roles: [:teacher]})
+
+    head_id = Ecto.UUID.dump!(head.current_user.id)
+
+    TeacherAssistant.Repo.update_all(
+      from(u in "users", where: u.id == ^head_id),
+      set: [must_change_password: true]
+    )
+
+    rows = Operator.overview(op).school_rows
+    assert Enum.map(rows, & &1.id) |> Enum.sort() == Enum.sort([ws.id, pending.id])
+    row = Enum.find(rows, &(&1.id == ws.id))
+    assert row.members == 2
+    assert row.activated == 1
+    assert Enum.find(rows, &(&1.id == pending.id)).status == :unverified
+  end
+
   test "get_school returns members and counts", %{op: op, ws: ws, head: head} do
     {:ok, school} = Operator.get_school(op, ws.id)
     assert Enum.any?(school.members, &(&1.user_id == head.current_user.id))
     assert school.counts.classes > 0
+    assert school.module_use.discipline == 0
+    assert school.module_use.emploi_du_temps == nil
     assert {:error, :not_found} = Operator.get_school(op, Ecto.UUID.generate())
   end
 

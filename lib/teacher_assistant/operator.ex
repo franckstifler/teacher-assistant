@@ -26,11 +26,14 @@ defmodule TeacherAssistant.Operator do
   ]
   @weeks 12
   @quiet_days 14
+  # Rows of the overview's school table; the rest is one click away (« Tous → »).
+  @school_rows 10
 
   @doc """
   The platform at a glance: schools by status, what needs the operator (verification queue,
   schools gone quiet or never started), growth, the activation funnel, the last 7 days' use,
-  12 weeks of activity, module adoption, the most active schools and system health.
+  12 weeks of activity, module adoption, a table of schools (most active first, at most
+  #{@school_rows}) and system health.
   """
   def overview(%Scope{} = scope) do
     ensure_operator!(scope)
@@ -52,7 +55,8 @@ defmodule TeacherAssistant.Operator do
         unverified: Enum.count(profiles, &(&1.verification_status == :unverified)),
         verified: Enum.count(profiles, &(&1.verification_status == :verified)),
         rejected: Enum.count(profiles, &(&1.verification_status == :rejected)),
-        suspended: Enum.count(profiles, &(&1.workspace.suspended_at != nil))
+        suspended: Enum.count(profiles, &(&1.workspace.suspended_at != nil)),
+        total: length(profiles)
       },
       members: count(from(m in "school_memberships", where: m.active == true)),
       students: Enum.sum(Map.values(with_students)),
@@ -64,7 +68,7 @@ defmodule TeacherAssistant.Operator do
       usage: usage(live, per_school, week_ago),
       weekly: weekly(now),
       modules: modules(live, now),
-      top_schools: top_schools(profiles, per_school, with_students),
+      school_rows: school_rows(profiles, per_school, with_students, accounts_per_school()),
       system: system()
     }
   end
@@ -88,7 +92,11 @@ defmodule TeacherAssistant.Operator do
     |> Enum.map(&%{workspace: &1.workspace, profile: &1, owner: &1.owner_user})
   end
 
-  @doc "One school: workspace, profile, active members (with user), counts, last activity."
+  @doc """
+  One school: workspace, profile, active members (with user), counts, last activity, and
+  per module its actions in the last 30 days (`module_use`; nil for a module with no
+  activity trail).
+  """
   def get_school(%Scope{} = scope, id) do
     ensure_operator!(scope)
 
@@ -116,7 +124,8 @@ defmodule TeacherAssistant.Operator do
              |> Ash.count!(@read),
            staff: length(members)
          },
-         last_activity: last_activity(ws.id)
+         last_activity: last_activity(ws.id),
+         module_use: module_use(ws.id, DateTime.utc_now())
        }}
     else
       _ -> {:error, :not_found}
@@ -395,23 +404,55 @@ defmodule TeacherAssistant.Operator do
     end)
   end
 
-  defp top_schools(profiles, per_school, with_students) do
+  # Every school, most active this week first, then by last action, then newest: its
+  # status, students, activated accounts (members past their temporary password) and use.
+  defp school_rows(profiles, per_school, with_students, accounts) do
     profiles
-    |> Enum.filter(&((get_in(per_school, [&1.workspace.id, :actions_7d]) || 0) > 0))
     |> Enum.map(fn p ->
-      row = per_school[p.workspace.id]
+      id = p.workspace.id
+      row = Map.get(per_school, id, %{actions_7d: 0, last_at: nil})
+      members = Map.get(accounts, id, %{total: 0, activated: 0})
 
       %{
-        id: p.workspace.id,
+        id: id,
         name: p.workspace.name,
         town: p.town,
+        status: p.verification_status,
+        suspended?: p.workspace.suspended_at != nil,
+        students: Map.get(with_students, id, 0),
+        members: members.total,
+        activated: members.activated,
         actions_7d: row.actions_7d,
         last_at: row.last_at,
-        students: Map.get(with_students, p.workspace.id, 0)
+        inserted_at: p.workspace.inserted_at
       }
     end)
-    |> Enum.sort_by(& &1.actions_7d, :desc)
-    |> Enum.take(8)
+    |> Enum.sort_by(
+      &{-&1.actions_7d, -unix(&1.last_at), -unix(&1.inserted_at)},
+      :asc
+    )
+    |> Enum.take(@school_rows)
+  end
+
+  defp unix(nil), do: 0
+  defp unix(%DateTime{} = at), do: DateTime.to_unix(at)
+
+  # Active members per school, and how many of them chose their own password.
+  defp accounts_per_school do
+    from(m in "school_memberships",
+      join: u in "users",
+      on: u.id == m.user_id,
+      where: m.active == true,
+      group_by: m.workspace_id,
+      select:
+        {type(m.workspace_id, Ecto.UUID),
+         %{
+           total: count(),
+           activated: fragment("count(*) FILTER (WHERE NOT ?)", u.must_change_password)
+         }}
+    )
+    |> Repo.all()
+    |> Map.new()
   end
 
   defp system do
@@ -438,6 +479,23 @@ defmodule TeacherAssistant.Operator do
       uptime_ms: uptime_ms,
       version: to_string(Application.spec(:teacher_assistant, :vsn))
     }
+  end
+
+  defp module_use(workspace_id, now) do
+    used =
+      from(a in subquery(activity_since(DateTime.add(now, -30, :day))),
+        where: a.workspace_id == type(^workspace_id, :binary_id),
+        group_by: a.module,
+        select: {a.module, count()}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    tracked = @activity |> Enum.map(&elem(&1, 2)) |> MapSet.new()
+
+    Map.new(TeacherAssistant.Modules.keys(), fn key ->
+      {key, if(key in tracked, do: Map.get(used, Atom.to_string(key), 0))}
+    end)
   end
 
   defp last_activity(workspace_id) do

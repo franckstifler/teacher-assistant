@@ -1,10 +1,12 @@
 defmodule TeacherAssistantWeb.Admin.OverviewLive do
   @moduledoc """
-  Operator console spec §5: the platform at a glance — what needs the operator, growth, the
-  activation funnel, the last weeks' use, module adoption, the most active schools and system
-  health.
+  Operator console spec §5: the platform at a glance — the park in one line, what needs the
+  operator, the 7-day KPIs, every school's use (most active first), the weekly activity, the
+  activation funnel, the journal, system health and module adoption.
   """
   use TeacherAssistantWeb, :live_view
+
+  import TeacherAssistantWeb.Admin.AdminComponents
 
   alias TeacherAssistant.{Accounts, Modules, Operator}
   alias TeacherAssistant.Accounts.AuditEvent
@@ -34,8 +36,8 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="admin-overview" class="space-y-6">
-        <.page_header eyebrow={gettext("Administration")} title={gettext("Vue d'ensemble")}>
+      <section id="admin-overview" class="space-y-5">
+        <.page_header eyebrow={park_line(@overview)} title={gettext("Vue d'ensemble")}>
           <:actions>
             <.side_chip id="overview-updated">
               {gettext("Mis à jour %{at}", at: Dates.short_datetime(@now))}
@@ -43,105 +45,163 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
           </:actions>
         </.page_header>
 
-        <div id="overview-attention" class="ta-panel flex flex-col gap-1">
-          <h2 class="ta-eyebrow pb-1">{gettext("À traiter · %{n}", n: @attention_count)}</h2>
-          <p
-            :if={@attention_count == 0}
-            id="attention-empty"
-            class="py-2 text-sm text-base-content/70"
+        <.attention_card
+          id="overview-attention"
+          count={@attention_count}
+          title={gettext("À traiter")}
+        >
+          <.attention_row
+            :for={s <- Enum.take(@overview.attention.pending, list_limit())}
+            id={"attention-pending-#{s.id}"}
+            tone={:warning}
+            solid
+            title={gettext("%{name} attend sa vérification", name: s.name)}
+            reason={waiting_text(s.since, @now)}
+            action={gettext("Vérifier")}
+            navigate={~p"/admin/schools/#{s.id}"}
+          />
+          <.attention_row
+            :for={s <- Enum.take(@overview.attention.quiet, list_limit())}
+            id={"attention-quiet-#{s.id}"}
+            tone={:error}
+            title={gettext("%{name} ne saisit plus rien", name: s.name)}
+            reason={gettext("Dernière saisie le %{date}", date: Dates.short(local_date(s.last_at)))}
+            action={gettext("Voir")}
+            navigate={~p"/admin/schools/#{s.id}"}
+          />
+          <.attention_row
+            :for={s <- Enum.take(@overview.attention.silent, list_limit())}
+            id={"attention-silent-#{s.id}"}
+            title={gettext("%{name} n'a encore rien saisi", name: s.name)}
+            reason={gettext("Inscrit le %{date}", date: Dates.short(DateTime.to_date(s.since)))}
+            action={gettext("Voir")}
+            navigate={~p"/admin/schools/#{s.id}"}
+          />
+          <li
+            :if={@overview.system.jobs.failed > 0}
+            id="attention-jobs"
+            class="ta-row-rule flex min-h-14 items-center gap-3 py-2.5 last:border-b-0 sm:min-h-0"
           >
-            {gettext("Rien à traiter")}
-          </p>
-          <ul class="flex flex-col">
-            <.todo_row
-              :for={s <- Enum.take(@overview.attention.pending, list_limit())}
-              id={"attention-pending-#{s.id}"}
-              tone={:warning}
-              title={gettext("%{name} attend sa vérification", name: s.name)}
-              sub={waiting_text(s.since, @now)}
-              cta={gettext("Vérifier")}
-              navigate={~p"/admin/schools/#{s.id}"}
-            />
-            <.todo_row
-              :for={s <- Enum.take(@overview.attention.quiet, list_limit())}
-              id={"attention-quiet-#{s.id}"}
-              tone={:error}
-              title={gettext("%{name} ne saisit plus rien", name: s.name)}
-              sub={gettext("Dernière saisie le %{date}", date: Dates.short(local_date(s.last_at)))}
-              cta={gettext("Voir")}
-              navigate={~p"/admin/schools/#{s.id}"}
-            />
-            <.todo_row
-              :for={s <- Enum.take(@overview.attention.silent, list_limit())}
-              id={"attention-silent-#{s.id}"}
-              tone={:neutral}
-              title={gettext("%{name} n'a encore rien saisi", name: s.name)}
-              sub={gettext("Inscrit le %{date}", date: Dates.short(DateTime.to_date(s.since)))}
-              cta={gettext("Voir")}
-              navigate={~p"/admin/schools/#{s.id}"}
-            />
-            <li
-              :if={@overview.system.jobs.failed > 0}
-              id="attention-jobs"
-              class="ta-row-rule flex min-h-14 items-center gap-3 py-2.5 last:border-b-0 sm:min-h-0"
+            <span class="size-2 shrink-0 rounded-full bg-error" aria-hidden="true"></span>
+            <span class="text-[0.95rem] font-semibold leading-snug">
+              {ngettext(
+                "%{count} tâche de fond abandonnée après échecs",
+                "%{count} tâches de fond abandonnées après échecs",
+                @overview.system.jobs.failed
+              )}
+            </span>
+          </li>
+          <li :if={length(@overview.attention.pending) > list_limit()} class="py-2">
+            <.link
+              navigate={~p"/admin/schools?#{%{status: :unverified}}"}
+              class="link text-sm"
             >
-              <span class="size-2 shrink-0 rounded-full bg-error" aria-hidden="true"></span>
-              <span class="text-[0.95rem] font-semibold leading-snug">
-                {ngettext(
-                  "%{count} tâche de fond abandonnée après échecs",
-                  "%{count} tâches de fond abandonnées après échecs",
-                  @overview.system.jobs.failed
-                )}
-              </span>
-            </li>
-          </ul>
-          <.link
-            :if={length(@overview.attention.pending) > list_limit()}
-            navigate={~p"/admin/schools?#{%{status: :unverified}}"}
-            class="link pt-1 text-sm"
-          >
-            {gettext("Toute la file de vérification")}
-          </.link>
-        </div>
+              {gettext("Toute la file de vérification")}
+            </.link>
+          </li>
+        </.attention_card>
 
-        <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-          <.kpi
+        <.stat_strip id="overview-kpis" label={gettext("Activité")}>
+          <.stat_tile
             id="overview-active-schools"
             label={gettext("Établissements actifs · 7 j")}
             value={"#{@overview.usage.active_schools} / #{@overview.usage.live_schools}"}
+            sub={gettext("vérifiés ayant saisi")}
+          />
+          <.stat_tile
+            id="overview-active-users"
+            label={gettext("Membres actifs · 7 j")}
+            value={"#{@overview.usage.active_users} / #{@overview.members}"}
             sub={gettext("ont saisi au moins une donnée")}
           />
-          <.kpi
-            id="overview-active-users"
-            label={gettext("Utilisateurs actifs · 7 j")}
-            value={Integer.to_string(@overview.usage.active_users)}
-            sub={
-              ngettext(
-                "sur %{count} membre actif",
-                "sur %{count} membres actifs",
-                @overview.members
-              )
-            }
-          />
-          <.kpi
+          <.stat_tile
             id="overview-new-schools"
             label={gettext("Nouveaux établissements · 30 j")}
             value={Integer.to_string(@overview.growth.new_schools)}
             sub={trend(@overview.growth.new_schools, @overview.growth.new_schools_before)}
           />
-          <.kpi
+          <.stat_tile
             id="overview-new-users"
             label={gettext("Nouveaux utilisateurs · 30 j")}
             value={Integer.to_string(@overview.growth.new_users)}
             sub={trend(@overview.growth.new_users, @overview.growth.new_users_before)}
           />
-        </div>
+        </.stat_strip>
+
+        <section id="overview-schools" class="ta-section" aria-labelledby="overview-schools-title">
+          <header class="flex items-center gap-3 border-b border-base-300 px-4 py-3">
+            <.panel_title class="flex-1">
+              <span id="overview-schools-title">{gettext("Établissements · usage sur 7 jours")}</span>
+            </.panel_title>
+            <.link
+              id="overview-schools-all"
+              navigate={~p"/admin/schools"}
+              class="link link-hover text-sm font-semibold text-primary"
+            >
+              {gettext("Tous")}
+              <span class="ta-num text-base-content/60">{@overview.schools.total}</span> →
+            </.link>
+          </header>
+          <p :if={@overview.school_rows == []} class="px-4 py-3 text-sm text-base-content/70">
+            {gettext("Aucun établissement inscrit.")}
+          </p>
+          <div :if={@overview.school_rows != []} class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr class="text-xs text-base-content/70">
+                  <th class="font-medium">{gettext("Établissement")}</th>
+                  <th class="font-medium">{gettext("Statut")}</th>
+                  <th class="text-right font-medium">{gettext("Élèves")}</th>
+                  <th class="text-right font-medium">{gettext("Comptes activés")}</th>
+                  <th class="text-right font-medium">{gettext("Saisies · 7 j")}</th>
+                  <th class="font-medium">{gettext("Dernière activité")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  :for={s <- @overview.school_rows}
+                  id={"school-#{s.id}"}
+                  class="transition-colors hover:bg-base-200/60"
+                >
+                  <td class="min-w-48">
+                    <.link
+                      navigate={~p"/admin/schools/#{s.id}"}
+                      class="font-semibold hover:underline"
+                    >
+                      {s.name}
+                    </.link>
+                    <span :if={s.town} class="ta-text-2 block text-xs">{s.town}</span>
+                  </td>
+                  <td>
+                    <.school_status status={s.status} suspended={s.suspended?} />
+                  </td>
+                  <td class="ta-num text-right">{s.students}</td>
+                  <td
+                    id={"school-#{s.id}-activated"}
+                    class={[
+                      "ta-num whitespace-nowrap text-right",
+                      few_activated?(s) && "font-semibold text-warning"
+                    ]}
+                  >
+                    {s.activated} / {s.members}
+                  </td>
+                  <td class="ta-num text-right">{s.actions_7d}</td>
+                  <td class="ta-text-2 whitespace-nowrap text-sm">
+                    {if s.last_at,
+                      do: Dates.relative(local_date(s.last_at), local_date(@now)),
+                      else: "—"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <div class="grid gap-4 lg:grid-cols-5">
           <section id="overview-weekly" class="ta-panel flex min-w-0 flex-col gap-3 lg:col-span-3">
-            <header>
-              <h2 class="font-semibold">{gettext("Activité sur 12 semaines")}</h2>
-              <p class="ta-text-2 text-sm">
+            <header class="space-y-1">
+              <.panel_title>{gettext("Saisies par semaine · 12 semaines")}</.panel_title>
+              <p class="ta-text-2 text-xs">
                 {gettext(
                   "Données saisies par semaine : notes, appels, absences, sanctions, paiements."
                 )}
@@ -151,9 +211,9 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
           </section>
 
           <section id="overview-funnel" class="ta-panel flex min-w-0 flex-col gap-3 lg:col-span-2">
-            <header>
-              <h2 class="font-semibold">{gettext("Parcours d'activation")}</h2>
-              <p class="ta-text-2 text-sm">
+            <header class="space-y-1">
+              <.panel_title>{gettext("Parcours d'activation")}</.panel_title>
+              <p class="ta-text-2 text-xs">
                 {gettext("Chaque étape ne garde que les établissements de l'étape précédente.")}
               </p>
             </header>
@@ -177,107 +237,8 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
         </div>
 
         <div class="grid gap-4 lg:grid-cols-5">
-          <section
-            id="overview-top-schools"
-            class="ta-panel flex min-w-0 flex-col gap-2 lg:col-span-3"
-          >
-            <h2 class="font-semibold">{gettext("Établissements les plus actifs · 7 j")}</h2>
-            <p :if={@overview.top_schools == []} class="py-2 text-sm text-base-content/70">
-              {gettext("Aucune saisie cette semaine.")}
-            </p>
-            <div :if={@overview.top_schools != []} class="overflow-x-auto">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>{gettext("Établissement")}</th>
-                    <th class="text-right">{gettext("Élèves")}</th>
-                    <th class="text-right">{gettext("Saisies")}</th>
-                    <th class="text-right">{gettext("Dernière")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr :for={s <- @overview.top_schools} id={"top-school-#{s.id}"}>
-                    <td>
-                      <.link navigate={~p"/admin/schools/#{s.id}"} class="link link-hover font-medium">
-                        {s.name}
-                      </.link>
-                      <span :if={s.town} class="ta-text-2 block text-xs">{s.town}</span>
-                    </td>
-                    <td class="ta-num text-right">{s.students}</td>
-                    <td class="ta-num text-right">{s.actions_7d}</td>
-                    <td class="ta-text-2 text-right text-xs">
-                      {Dates.relative(local_date(s.last_at), local_date(@now))}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section id="overview-modules" class="ta-panel flex min-w-0 flex-col gap-2 lg:col-span-2">
-            <h2 class="font-semibold">{gettext("Modules")}</h2>
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>{gettext("Module")}</th>
-                  <th class="text-right">{gettext("Activé")}</th>
-                  <th class="text-right">{gettext("Utilisé · 30 j")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={key <- Modules.keys()} id={"module-#{key}"}>
-                  <td>{Modules.label(key)}</td>
-                  <td class="ta-num text-right">{@overview.modules[key].enabled}</td>
-                  <td class="ta-num text-right">{@overview.modules[key].used || "—"}</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="ta-text-2 text-xs">
-              {gettext("« — » : ce module ne laisse pas de trace de saisie à compter.")}
-            </p>
-          </section>
-        </div>
-
-        <section class="space-y-2">
-          <h2 class="font-semibold">{gettext("Parc")}</h2>
-          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <.link
-              :for={
-                {status, label} <- [
-                  unverified: gettext("À vérifier"),
-                  verified: gettext("Vérifiés"),
-                  rejected: gettext("Rejetés")
-                ]
-              }
-              id={"overview-schools-#{status}"}
-              navigate={~p"/admin/schools?#{%{status: status}}"}
-              class="ta-leaf p-4 transition-colors hover:border-base-content/30 hover:no-underline"
-            >
-              <span class="ta-num block text-2xl font-semibold">{@overview.schools[status]}</span>
-              <span class="text-sm text-base-content/70">{label}</span>
-            </.link>
-            <.link
-              id="overview-schools-suspended"
-              navigate={~p"/admin/schools?#{%{suspended: 1}}"}
-              class="ta-leaf p-4 transition-colors hover:border-base-content/30 hover:no-underline"
-            >
-              <span class="ta-num block text-2xl font-semibold">{@overview.schools.suspended}</span>
-              <span class="text-sm text-base-content/70">{gettext("Suspendus")}</span>
-            </.link>
-            <div id="overview-members" class="ta-leaf p-4">
-              <span class="ta-num block text-2xl font-semibold">{@overview.members}</span>
-              <span class="text-sm text-base-content/70">{gettext("Membres actifs")}</span>
-            </div>
-            <div id="overview-students" class="ta-leaf p-4">
-              <span class="ta-num block text-2xl font-semibold">{@overview.students}</span>
-              <span class="text-sm text-base-content/70">{gettext("Élèves inscrits")}</span>
-            </div>
-          </div>
-        </section>
-
-        <div class="grid gap-4 lg:grid-cols-5">
           <section class="ta-panel flex min-w-0 flex-col gap-2 lg:col-span-3">
-            <h2 class="font-semibold">{gettext("Dernières actions")}</h2>
+            <.panel_title>{gettext("Dernières actions")}</.panel_title>
             <p :if={@events == []} class="py-2 text-sm text-base-content/70">
               {gettext("Aucune action enregistrée.")}
             </p>
@@ -295,7 +256,7 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
           </section>
 
           <section id="overview-system" class="ta-panel flex min-w-0 flex-col gap-2 lg:col-span-2">
-            <h2 class="font-semibold">{gettext("Système")}</h2>
+            <.panel_title>{gettext("Système")}</.panel_title>
             <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-sm">
               <dt class="ta-text-2">{gettext("Version")}</dt>
               <dd class="ta-num text-right">{@overview.system.version}</dd>
@@ -332,45 +293,32 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
             </dl>
           </section>
         </div>
+
+        <section id="overview-modules" class="ta-panel flex min-w-0 flex-col gap-2">
+          <.panel_title>{gettext("Modules · 30 j")}</.panel_title>
+          <ul class="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+            <li
+              :for={key <- Modules.keys()}
+              id={"module-#{key}"}
+              class="ta-row-rule flex items-baseline gap-3 py-2 text-sm"
+            >
+              <span class="flex-1">{Modules.label(key)}</span>
+              <span class="ta-num text-xs text-base-content/70">
+                {gettext("activé %{n}", n: @overview.modules[key].enabled)} · {gettext(
+                  "utilisé %{n}",
+                  n: @overview.modules[key].used || "—"
+                )}
+              </span>
+            </li>
+          </ul>
+          <p class="ta-text-2 text-xs">
+            {gettext("« — » : ce module ne laisse pas de trace de saisie à compter.")}
+          </p>
+        </section>
       </section>
     </Layouts.app>
     """
   end
-
-  attr :id, :string, required: true
-  attr :tone, :atom, required: true
-  attr :title, :string, required: true
-  attr :sub, :string, default: nil
-  attr :cta, :string, required: true
-  attr :navigate, :string, required: true
-
-  defp todo_row(assigns) do
-    ~H"""
-    <li id={@id} class="ta-row-rule last:border-b-0">
-      <.link
-        navigate={@navigate}
-        class="group flex min-h-14 items-center gap-3 rounded-lg py-2.5 hover:no-underline sm:min-h-0"
-      >
-        <span class={["size-2 shrink-0 rounded-full", tone_class(@tone)]} aria-hidden="true"></span>
-        <span class="flex min-w-0 flex-1 flex-col">
-          <span class="text-[0.95rem] font-semibold leading-snug">{@title}</span>
-          <span :if={@sub} class="text-[0.8rem] text-base-content/70">{@sub}</span>
-        </span>
-        <span class="flex items-center gap-1 text-sm font-medium text-primary">
-          {@cta}
-          <.icon
-            name="hero-chevron-right"
-            class="size-3.5 transition-transform group-hover:translate-x-0.5"
-          />
-        </span>
-      </.link>
-    </li>
-    """
-  end
-
-  defp tone_class(:warning), do: "bg-warning"
-  defp tone_class(:error), do: "bg-error"
-  defp tone_class(:neutral), do: "bg-base-content/40"
 
   attr :weeks, :list, required: true
 
@@ -455,6 +403,22 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
     </li>
     """
   end
+
+  # « 3 établissements · 455 élèves · 68 membres »
+  defp park_line(overview) do
+    Enum.join(
+      [
+        ngettext("%{count} établissement", "%{count} établissements", overview.schools.total),
+        ngettext("%{count} élève", "%{count} élèves", overview.students),
+        ngettext("%{count} membre", "%{count} membres", overview.members)
+      ],
+      " · "
+    )
+  end
+
+  # Fewer than half the school's accounts past their temporary password.
+  defp few_activated?(%{members: members, activated: activated}),
+    do: members > 0 and activated * 2 < members
 
   # The day in Cameroon (UTC+1), as `Dates.short_datetime/1` shows it.
   defp local_date(at), do: at |> DateTime.add(3600) |> DateTime.to_date()
