@@ -558,6 +558,38 @@ defmodule TeacherAssistant.Timetabling do
   end
 
   @doc """
+  UX refonte (Membres, « Service »): `teacher_service/2` for every member at once,
+  `user_id => %{load, service}`. Two reads.
+  """
+  def teacher_services(%Scope{current_academic_year: nil}, members),
+    do: Map.new(members, &{&1.user_id, %{load: 0, service: nil}})
+
+  def teacher_services(%Scope{current_academic_year: year} = scope, members) do
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+
+    grid = %{
+      services: Map.new(members, &{&1.user_id, &1.statutory_hours}),
+      school_hours: profile.statutory_hours
+    }
+
+    loads =
+      TeachingContext
+      |> Ash.Query.filter(academic_year_id == ^year.id)
+      |> Ash.read!(scope: scope)
+      |> AssignmentGrid.loads(grid)
+
+    Map.new(members, fn %{user_id: user_id} ->
+      case loads do
+        %{^user_id => %{load: load, service: service}} ->
+          {user_id, %{load: load, service: service}}
+
+        _none ->
+          {user_id, %{load: 0, service: AssignmentGrid.service(grid, user_id)}}
+      end
+    end)
+  end
+
+  @doc """
   « Confier à un autre enseignant » (Vie scolaire redesign §1.4): the teachers who
   could take `tc` (the whole subject of that class, every slot of it) — active
   teachers other than its own, free at every one of its slots in `slots` (as

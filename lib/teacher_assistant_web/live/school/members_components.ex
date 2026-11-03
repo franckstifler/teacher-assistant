@@ -1,7 +1,8 @@
 defmodule TeacherAssistantWeb.School.MembersComponents do
   @moduledoc """
-  The Membres page's parts: a member's row, the « Ajouter un membre » and member
-  drawers, and the reset and temporary-password dialogs. Events are handled by
+  The Membres page's parts: a member's row (phones), the table's service and
+  access cells, the « Ajouter un membre » and member drawers, and the reset and
+  temporary-password dialogs. Events are handled by
   `TeacherAssistantWeb.School.MembersLive`.
   """
   use TeacherAssistantWeb, :html
@@ -16,6 +17,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
   attr :state, :map, default: nil, doc: "the account state; staff managers only"
   attr :editable?, :boolean, required: true
   attr :selected, :boolean, default: false
+  attr :never?, :boolean, default: false, doc: "never signed in (staff managers only)"
 
   def member_row(assigns) do
     ~H"""
@@ -53,11 +55,55 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
           <span class="ta-num">{@member.statutory_hours}</span> {gettext("h/sem.")}
         </span>
         <.account_state :if={@state} state={@state} class="inline-flex sm:hidden" />
+        <span :if={@never?} class="font-semibold text-warning">{gettext("Jamais connecté")}</span>
       </span>
       <:trailing :if={@state}>
         <.account_state state={@state} class="hidden sm:inline-flex" />
       </:trailing>
     </.list_row>
+    """
+  end
+
+  attr :member, :map, required: true
+
+  attr :service, :map,
+    default: nil,
+    doc: "`%{load, service}` from `Timetabling.teacher_services/2`"
+
+  @doc "The table's « Service » cell: « 12 / 18 h » for a teacher, else « — »."
+  def service_cell(assigns) do
+    ~H"""
+    <%= case @service do %>
+      <% %{load: load, service: service} when load > 0 or not is_nil(service) -> %>
+        <span
+          :if={:teacher in @member.roles or load > 0}
+          class={(is_integer(service) and load > service) && "font-semibold text-error"}
+        >
+          {if service, do: "#{load} / #{service} h", else: "#{load} h"}
+        </span>
+        <span :if={not (:teacher in @member.roles or load > 0)} class="text-base-content/50">—</span>
+      <% _ -> %>
+        <span class="text-base-content/50">—</span>
+    <% end %>
+    """
+  end
+
+  attr :state, :map, default: nil
+  attr :user, :map, required: true
+
+  @doc "The table's « Accès » cell: the account's state, then the last sign-in."
+  def member_access(assigns) do
+    ~H"""
+    <.account_state :if={@state} state={@state} />
+    <span
+      :if={is_nil(@user.last_sign_in_at)}
+      class="block text-xs font-semibold text-warning"
+    >
+      {gettext("Jamais connecté")}
+    </span>
+    <span :if={@user.last_sign_in_at} class="block text-xs text-base-content/70">
+      {gettext("Connecté le %{date}", date: Dates.day_month(DateTime.to_date(@user.last_sign_in_at)))}
+    </span>
     """
   end
 
