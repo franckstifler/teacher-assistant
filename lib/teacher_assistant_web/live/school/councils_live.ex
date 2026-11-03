@@ -3,12 +3,17 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
   Conseils de classe (spec I3, mockup Censeur → "Conseils de classe"): one trimester at a
   time, one row per class with its council date, mark-entry rate and status (À planifier,
   Planifié, Tenu, Clôturé). A row opens the class's council. Proviseur and Censeur.
+
+  UX refonte 2026-11-03: classes grouped by level with a status filter; planning stays
+  manual, one class at a time (the automatic planner is deferred).
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.{Councils, Discipline, Enrollment, Organization, ReportCards}
   alias TeacherAssistantWeb.Dates
-  alias TeacherAssistant.Academics.{EntryProgress, Reference}
+  alias TeacherAssistant.Academics.{EntryProgress, Reference, SchoolTemplates}
+
+  @filters ~w(to_plan planned held)
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -21,7 +26,10 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
          page_title: gettext("Conseils de classe"),
          year: year,
          terms: terms,
-         classes: Enrollment.list_class_groups(scope, year),
+         classes:
+           scope
+           |> Enrollment.list_class_groups(year, load: [:enrollment_count])
+           |> Enum.sort_by(&SchoolTemplates.class_sort_key/1),
          planning: nil,
          plan_error: nil
        )}
@@ -44,7 +52,12 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
              Councils.default_term(terms, Reference.today())}
       end
 
-    {:noreply, socket |> assign(period: period, planning: nil, plan_error: nil) |> load_rows()}
+    filter = if params["s"] in @filters, do: params["s"], else: nil
+
+    {:noreply,
+     socket
+     |> assign(period: period, filter: filter, planning: nil, plan_error: nil)
+     |> load_rows()}
   end
 
   def handle_event("plan_open", %{"id" => id}, socket),
@@ -103,6 +116,7 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
 
     councils = Councils.for_period(scope, period)
     rates = EntryProgress.class_rates(scope, year, sequences)
+    conduct = Discipline.conduct_entered_by_class(scope, year, period)
     published = ReportCards.published_class_ids(scope, period)
     default_date = default_date(period, terms)
 
@@ -118,18 +132,24 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
           default_date: default_date,
           rate: rate,
           status: status,
-          conduct_missing?: conduct_missing?(scope, cg, period)
+          conduct_missing?: conduct_missing?(conduct[cg.id])
         }
       end)
 
     assign(socket, rows: rows, counts: counts(rows))
   end
 
-  defp conduct_missing?(scope, cg, period),
+  # Every student of the class has a conduct mark over the period (one batched read).
+  defp conduct_missing?(nil), do: false
+  defp conduct_missing?(%{entered: entered, effectif: effectif}), do: entered < effectif
+
+  defp filter_rows(rows, nil), do: rows
+  defp filter_rows(rows, "held"), do: Enum.filter(rows, &(&1.status in [:held, :closed]))
+  defp filter_rows(rows, status), do: Enum.filter(rows, &(Atom.to_string(&1.status) == status))
+
+  defp filter_path(period, filter),
     do:
-      scope
-      |> Discipline.class_discipline(cg, period)
-      |> Enum.any?(&(elem(&1, 1).note_de_conduite == nil))
+      ~p"/school/councils?#{Map.merge(period_params(period), if(filter, do: %{s: filter}, else: %{}))}"
 
   defp counts(rows) do
     by = Enum.frequencies_by(rows, & &1.status)
@@ -169,6 +189,13 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
   defp date_text(%{council: %{held_on: d, starts_at: t}}),
     do: Dates.short(d) <> " · " <> Calendar.strftime(t, "%H:%M")
 
+  # Under the class name: when it is, or that it is still to plan (with the term's date).
+  defp state_line(%{status: :to_plan, default_date: %Date{} = d}),
+    do: gettext("à planifier · date du trimestre : %{date}", date: Dates.short(d))
+
+  defp state_line(%{status: :to_plan}), do: gettext("à planifier")
+  defp state_line(row), do: date_text(row)
+
   defp rate_text(nil), do: "—"
   defp rate_text(rate), do: "#{rate} %"
 
@@ -196,6 +223,13 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
   defp ready?(_), do: false
 
   def render(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :groups,
+        assigns.rows |> filter_rows(assigns.filter) |> Enum.chunk_by(& &1.class_group.level)
+      )
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="councils" class="space-y-4">
@@ -237,116 +271,195 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
           </.link>
         </div>
 
-        <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-          <table id="councils-table" class="table">
-            <thead>
-              <tr>
-                <th>{gettext("Classe")}</th>
-                <th class="hidden md:table-cell">{gettext("Date")}</th>
-                <th class="hidden md:table-cell">{gettext("Préparation")}</th>
-                <th>{gettext("Statut")}</th>
-                <th><span class="sr-only">{gettext("Action")}</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                :for={row <- @rows}
-                id={"council-row-#{row.class_group.id}"}
-                class="align-top transition-colors hover:bg-base-200/60"
-              >
-                <td class="font-semibold">
-                  <.link
-                    id={"class-link-#{row.class_group.id}"}
-                    navigate={~p"/school/councils/#{row.class_group.id}?#{period_params(@period)}"}
-                    class="link link-hover"
-                  >
-                    {row.class_group.label}
-                  </.link>
-                  <div class="mt-0.5 text-xs font-normal md:hidden">
-                    <div class="ta-num mb-0.5">{date_text(row)}</div>
-                    <.prep row={row} />
-                  </div>
-                </td>
-                <td class="ta-num hidden whitespace-nowrap md:table-cell">{date_text(row)}</td>
-                <td class="hidden text-sm md:table-cell">
-                  <.prep row={row} />
-                </td>
-                <td>
-                  <span
-                    data-status={row.status}
-                    class={[
-                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
-                      status_class(row.status)
-                    ]}
-                  >
-                    {status_label(row.status)}
-                  </span>
-                </td>
-                <td class="md:min-w-44">
-                  <button
-                    :if={row.status == :to_plan && @planning != row.class_group.id}
-                    id={"plan-#{row.class_group.id}"}
-                    type="button"
-                    phx-click="plan_open"
-                    phx-value-id={row.class_group.id}
-                    class="btn btn-primary btn-sm gap-1"
-                  >
-                    <.icon name="hero-calendar-days" class="size-4" /> {gettext("Planifier")}
-                  </button>
-                  <.form
-                    :if={row.status == :to_plan && @planning == row.class_group.id}
-                    for={%{}}
-                    as={:plan}
-                    id={"plan-form-#{row.class_group.id}"}
-                    phx-submit="plan"
-                    class="flex flex-wrap items-end gap-2"
-                  >
-                    <input type="hidden" name="plan[id]" value={row.class_group.id} />
-                    <input
-                      type="date"
-                      name="plan[date]"
-                      value={prefill_date(row)}
-                      aria-label={gettext("Date")}
-                      class="input input-sm w-full md:w-40"
-                    />
-                    <input
-                      type="time"
-                      name="plan[time]"
-                      value={prefill_time(row)}
-                      aria-label={gettext("Heure")}
-                      class="input input-sm w-full md:w-28"
-                    />
-                    <button type="submit" class="btn btn-primary btn-sm">
-                      {gettext("Enregistrer")}
-                    </button>
-                    <button type="button" phx-click="plan_cancel" class="btn btn-ghost btn-sm">
-                      {gettext("Annuler")}
-                    </button>
-                    <p :if={@plan_error} data-plan-error class="w-full text-xs text-error">
-                      {@plan_error}
-                    </p>
-                  </.form>
-                  <.link
-                    :if={row.status == :planned}
-                    id={"prepare-#{row.class_group.id}"}
-                    navigate={~p"/school/councils/#{row.class_group.id}?#{period_params(@period)}"}
-                    class="btn btn-outline btn-sm gap-1"
-                  >
-                    <.icon name="hero-clipboard-document-list" class="size-4" /> {gettext("Préparer")}
-                  </.link>
-                  <a
-                    :if={row.status in [:held, :closed]}
-                    id={"pv-#{row.class_group.id}"}
-                    href={~p"/school/councils/#{row.class_group.id}/print?#{period_params(@period)}"}
-                    target="_blank"
-                    class="btn btn-ghost btn-sm gap-1"
-                  >
-                    <.icon name="hero-document-text" class="size-4" /> {gettext("Voir le PV")}
-                  </a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <.filter_pills id="council-filters">
+          <:pill
+            id="filter-all"
+            patch={filter_path(@period, nil)}
+            count={@counts.total}
+            current={@filter == nil}
+          >
+            {gettext("Toutes")}
+          </:pill>
+          <:pill
+            id="filter-to_plan"
+            patch={filter_path(@period, "to_plan")}
+            count={@counts.to_plan}
+            current={@filter == "to_plan"}
+          >
+            {gettext("À planifier")}
+          </:pill>
+          <:pill
+            id="filter-planned"
+            patch={filter_path(@period, "planned")}
+            count={@counts.planned}
+            current={@filter == "planned"}
+          >
+            {gettext("Planifiés")}
+          </:pill>
+          <:pill
+            id="filter-held"
+            patch={filter_path(@period, "held")}
+            count={@counts.held}
+            current={@filter == "held"}
+          >
+            {gettext("Tenus")}
+          </:pill>
+        </.filter_pills>
+
+        <div id="councils-table" class="flex flex-col gap-5">
+          <p :if={@groups == []} class="ta-panel text-sm text-base-content/70">
+            {gettext("Aucune classe ne correspond.")}
+          </p>
+          <.level_group
+            :for={[first | _] = group <- @groups}
+            level={first.class_group.level || gettext("Autres")}
+            classes={length(group)}
+            students={Enum.sum_by(group, &(&1.class_group.enrollment_count || 0))}
+          >
+            <div class="ta-panel overflow-x-auto !p-0">
+              <table class="table table-fixed">
+                <colgroup>
+                  <col class="w-auto" />
+                  <col class="hidden w-44 md:table-column" />
+                  <col class="hidden w-40 md:table-column" />
+                  <col class="w-28" />
+                  <col class="w-32 md:w-48" />
+                </colgroup>
+                <thead class="sr-only">
+                  <tr>
+                    <th>{gettext("Classe")}</th>
+                    <th class="hidden md:table-cell">{gettext("Date")}</th>
+                    <th class="hidden md:table-cell">{gettext("Préparation")}</th>
+                    <th>{gettext("Statut")}</th>
+                    <th>{gettext("Action")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <%= for row <- group do %>
+                    <tr
+                      id={"council-row-#{row.class_group.id}"}
+                      class="align-top transition-colors hover:bg-base-200/60"
+                    >
+                      <td class="font-semibold">
+                        <.link
+                          id={"class-link-#{row.class_group.id}"}
+                          navigate={
+                            ~p"/school/councils/#{row.class_group.id}?#{period_params(@period)}"
+                          }
+                          class="link link-hover"
+                        >
+                          {row.class_group.label}
+                        </.link>
+                        <div class={[
+                          "mt-0.5 text-xs font-normal",
+                          if(row.status == :to_plan, do: "text-warning", else: "text-base-content/75")
+                        ]}>
+                          <span class="ta-num">{state_line(row)}</span>
+                        </div>
+                        <div class="mt-0.5 text-xs font-normal md:hidden">
+                          <.prep row={row} />
+                        </div>
+                      </td>
+                      <td class="ta-num hidden whitespace-nowrap text-sm md:table-cell">
+                        {date_text(row)}
+                      </td>
+                      <td class="hidden text-sm md:table-cell">
+                        <.prep row={row} />
+                      </td>
+                      <td>
+                        <span
+                          data-status={row.status}
+                          class={[
+                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+                            status_class(row.status)
+                          ]}
+                        >
+                          {status_label(row.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          :if={row.status == :to_plan && @planning != row.class_group.id}
+                          id={"plan-#{row.class_group.id}"}
+                          type="button"
+                          phx-click="plan_open"
+                          phx-value-id={row.class_group.id}
+                          class="btn btn-primary btn-sm gap-1"
+                        >
+                          <.icon name="hero-calendar-days" class="size-4" /> {gettext("Planifier")}
+                        </button>
+                        <.link
+                          :if={row.status == :planned}
+                          id={"prepare-#{row.class_group.id}"}
+                          navigate={
+                            ~p"/school/councils/#{row.class_group.id}?#{period_params(@period)}"
+                          }
+                          class="btn btn-outline btn-sm gap-1"
+                        >
+                          <.icon name="hero-clipboard-document-list" class="size-4" /> {gettext(
+                            "Préparer"
+                          )}
+                        </.link>
+                        <a
+                          :if={row.status in [:held, :closed]}
+                          id={"pv-#{row.class_group.id}"}
+                          href={
+                            ~p"/school/councils/#{row.class_group.id}/print?#{period_params(@period)}"
+                          }
+                          target="_blank"
+                          class="btn btn-ghost btn-sm gap-1"
+                        >
+                          <.icon name="hero-document-text" class="size-4" /> {gettext("Voir le PV")}
+                        </a>
+                      </td>
+                    </tr>
+                    <tr
+                      :if={row.status == :to_plan && @planning == row.class_group.id}
+                      id={"plan-row-#{row.class_group.id}"}
+                    >
+                      <td colspan="5" class="bg-base-200/50">
+                        <.form
+                          for={%{}}
+                          as={:plan}
+                          id={"plan-form-#{row.class_group.id}"}
+                          phx-submit="plan"
+                          class="flex flex-wrap items-end gap-2"
+                        >
+                          <input type="hidden" name="plan[id]" value={row.class_group.id} />
+                          <span class="w-full text-sm font-semibold sm:w-auto sm:pr-2">
+                            {gettext("Conseil de %{class}", class: row.class_group.label)}
+                          </span>
+                          <input
+                            type="date"
+                            name="plan[date]"
+                            value={prefill_date(row)}
+                            aria-label={gettext("Date")}
+                            class="input input-sm w-full sm:w-40"
+                          />
+                          <input
+                            type="time"
+                            name="plan[time]"
+                            value={prefill_time(row)}
+                            aria-label={gettext("Heure")}
+                            class="input input-sm w-full sm:w-28"
+                          />
+                          <button type="submit" class="btn btn-primary btn-sm">
+                            {gettext("Enregistrer")}
+                          </button>
+                          <button type="button" phx-click="plan_cancel" class="btn btn-ghost btn-sm">
+                            {gettext("Annuler")}
+                          </button>
+                          <p :if={@plan_error} data-plan-error class="w-full text-xs text-error">
+                            {@plan_error}
+                          </p>
+                        </.form>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </.level_group>
         </div>
       </section>
     </Layouts.app>
