@@ -47,22 +47,33 @@ defmodule TeacherAssistantWeb.School.SchoolLifeComponents do
   end
 
   attr :row, :map, required: true
+  attr :reasons, :list, default: nil, doc: "the reasons offered (default: all of them)"
+  attr :class, :any, default: nil
 
+  @doc "One button per justification reason, each justifying the row's day at once."
   def reason_chips(assigns) do
+    assigns = assign(assigns, :reasons, assigns.reasons || JustificationReason.values())
+
     ~H"""
-    <div class="flex flex-wrap gap-1.5">
+    <div class={["flex flex-wrap gap-1.5", @class]}>
       <button
-        :for={reason <- JustificationReason.values()}
+        :for={reason <- @reasons}
         id={"justify-#{@row.id}-#{reason}"}
         type="button"
-        class="cursor-pointer rounded-full border border-primary px-3 py-1.5 text-[0.76rem] font-semibold text-primary transition-colors hover:bg-primary/15"
+        class="btn btn-outline btn-sm flex-1 sm:flex-none"
         phx-click="justify"
         phx-value-row={@row.id}
         phx-value-reason={reason}
       >
-        {JustificationReason.label(reason)}
+        {reason_label(reason)}
       </button>
     </div>
     """
   end
+
+  # short labels for the row buttons (« Famille » for « Raison familiale »)
+  defp reason_label(:famille), do: gettext("Famille")
+  defp reason_label(:autre), do: gettext("Autre")
+  defp reason_label(:convocation), do: gettext("Convocation")
+  defp reason_label(reason), do: JustificationReason.label(reason)
 end

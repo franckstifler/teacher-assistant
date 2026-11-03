@@ -225,7 +225,8 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#absences-footer") |> render() =~ "1 sur 1"
   end
 
-  test "Absences: the repeated-absence banner links to the student", %{conn: conn} = ctx do
+  test "Absences: « Au-delà du seuil » lists the students over the threshold",
+       %{conn: conn} = ctx do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(ctx.scope)
 
     {:ok, _} =
@@ -235,17 +236,52 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
       )
       |> Ash.update()
 
+    row_id = "#{ctx.e.id}-2025-09-15"
+    {:ok, view, _} = live(conn, ~p"/school/absences")
+    assert has_element?(view, "#absences header", "seuil d'alerte 1 h injustifiée")
+    assert view |> element("#filter-flagged") |> render() =~ ~r/Au-delà du seuil.*0/s
+
     # 2 periods missed: 1 h 40 unjustified, over the 1 h threshold.
     {:ok, _} =
       Attendance.record_period(ctx.scope, ctx.cg, ctx.p2, nil, @today, [{ctx.e.id, :absent}])
 
-    {:ok, view, _} = live(conn, ~p"/school/absences")
-    assert view |> element("#repeated-banner") |> render() =~ "Awa"
+    {:ok, view, _} = live(conn, ~p"/school/absences?filter=flagged")
+    assert has_element?(view, "#filter-flagged[aria-current]")
+    assert view |> element("#filter-flagged") |> render() =~ ~r/Au-delà du seuil.*1/s
+    # the badge is the séquence's unjustified hours, in red over the threshold
+    assert has_element?(view, "#hours-#{row_id}.badge-error", "1,7 h")
+    # the day reads by lessons, not clock times
+    assert view |> element("#row-#{row_id}") |> render() =~ "cours 1 à 2"
 
     assert has_element?(
              view,
-             "#repeated-#{ctx.e.id}[href='/school/students/#{ctx.e.student_id}']"
+             "#row-#{row_id} a[href='/school/students/#{ctx.e.student_id}']"
            )
+  end
+
+  test "Absences: Maladie / Famille / Autre… on every row; Autre… opens the other reasons",
+       %{conn: conn} = ctx do
+    row_id = "#{ctx.e.id}-2025-09-15"
+
+    {:ok, _} =
+      Enrollment.add_guardian(ctx.scope, ctx.e.student, %{
+        full_name: "Jean",
+        relationship: :pere,
+        phone: "677123456"
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/absences")
+    assert has_element?(view, "#justify-#{row_id}-maladie")
+    assert has_element?(view, "#justify-#{row_id}-famille")
+    assert has_element?(view, "#call-#{row_id}[href='tel:677123456']")
+    refute has_element?(view, "#justify-#{row_id}-convocation")
+
+    view |> element("#open-#{row_id}", "Autre") |> render_click()
+    assert has_element?(view, "#justify-#{row_id}-convocation")
+    assert has_element?(view, "#justify-#{row_id}-autre")
+
+    view |> element("#justify-#{row_id}-maladie") |> render_click()
+    refute has_element?(view, "#row-#{row_id}")
   end
 
   test "the surveillant's menu counts missed roll calls and unjustified absences", ctx do
