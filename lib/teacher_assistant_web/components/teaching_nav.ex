@@ -19,6 +19,10 @@ defmodule TeacherAssistantWeb.TeachingNav do
   attr :label, :string, required: true, doc: "the course on screen, « Mathématiques · 2nde A »"
   attr :current, :atom, required: true, values: [:marks, :summary, :roster]
 
+  attr :crumbs, :boolean,
+    default: true,
+    doc: "false when the page draws its own header (the marks page's course picker)"
+
   def teaching_nav(assigns) do
     assigns =
       assign(assigns, :tabs, [
@@ -29,7 +33,7 @@ defmodule TeacherAssistantWeb.TeachingNav do
       ])
 
     ~H"""
-    <.breadcrumb>
+    <.breadcrumb :if={@crumbs}>
       <:crumb id="teaching-nav-back" navigate={~p"/school/courses"}>{gettext("Mes cours")}</:crumb>
       <:crumb>{@label}</:crumb>
     </.breadcrumb>

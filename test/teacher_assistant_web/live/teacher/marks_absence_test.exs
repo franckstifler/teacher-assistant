@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
     assert by_student == %{ctx.awa.id => :absent, ctx.bob.id => :excused}
     assert has_element?(view, "#mark-input-#{ctx.awa.id}[value='abs']")
 
-    # An absent cell is disabled: the toggle brings it back to blank.
+    # The row's « ⋯ » toggle brings an absence back to blank.
     view |> element("#absent-#{ctx.awa.id}") |> render_click()
     blur(view, ctx.bob.id, "abj")
 
@@ -55,6 +55,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
   test "a new assessment takes its type's weight and the school's maximum", ctx do
     [ie | _] = Assessment.list_assessment_types(ctx.scope)
     {:ok, view, _} = live(ctx.conn, ctx.path)
+    view |> element("#new-eval-card") |> render_click()
 
     view
     |> form("#new-assessment-form", %{
