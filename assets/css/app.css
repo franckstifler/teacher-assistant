@@ -848,6 +848,14 @@ form[data-dirty] .ta-savebar {
   animation: ta-rise 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Timetable editor: « Reste à placer » dragged onto a free cell (TimetableDrop). */
+.ta-dragging { opacity: 0.5; }
+.ta-drop-over {
+  border-style: solid !important;
+  border-color: var(--color-primary) !important;
+  background: color-mix(in oklch, var(--color-primary) 18%, transparent);
+}
+
 /* =========================================================================
    Landing page (PageHTML.home): screens of the app in device frames
    ========================================================================= */
