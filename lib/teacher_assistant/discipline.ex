@@ -417,6 +417,38 @@ defmodule TeacherAssistant.Discipline do
   end
 
   @doc """
+  UX refonte (Conduite): the ids of `year`'s classes whose every enrolled student
+  has a conduct mark for `sequence` — the classes « validées ». Two reads.
+  """
+  def validated_conduct_classes(
+        %Scope{} = scope,
+        %AcademicYear{id: year_id},
+        %Sequence{id: sequence_id}
+      ) do
+    enrollments =
+      Enrollment
+      |> Ash.Query.filter(academic_year_id == ^year_id)
+      |> Ash.Query.select([:id, :class_group_id])
+      |> Ash.read!(scope: scope)
+
+    marked =
+      case Enum.map(enrollments, & &1.id) do
+        [] ->
+          MapSet.new()
+
+        ids ->
+          ids
+          |> conduct_marks_for_enrollments_sequences!([sequence_id], scope: scope)
+          |> MapSet.new(& &1.enrollment_id)
+      end
+
+    for {class_id, rows} <- Enum.group_by(enrollments, & &1.class_group_id),
+        Enum.all?(rows, &MapSet.member?(marked, &1.id)),
+        into: MapSet.new(),
+        do: class_id
+  end
+
+  @doc """
   Saves the class's conduct marks for `sequence` from `values`
   (`enrollment_id => value`, comma or dot), skipping blanks, in one
   transaction: any bad value or foreign student saves nothing.
