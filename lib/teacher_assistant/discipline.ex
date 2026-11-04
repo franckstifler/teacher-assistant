@@ -103,6 +103,25 @@ defmodule TeacherAssistant.Discipline do
     |> Ash.read!(page: [limit: 50, offset: opts[:offset] || 0, count: true])
   end
 
+  @doc """
+  How many of `year`'s sanctions `list_school_sanctions/3` would list with the same
+  options (`class_group_id`, `type`, `to_notify`) — the counts on the filter pills.
+  """
+  def count_school_sanctions(%Scope{} = scope, %AcademicYear{id: year_id}, opts) do
+    SanctionEntry
+    |> Ash.Query.for_read(
+      :school_list,
+      %{
+        academic_year_id: year_id,
+        class_group_id: opts[:class_group_id],
+        type: opts[:type],
+        to_notify: opts[:to_notify] == true
+      },
+      scope: scope
+    )
+    |> Ash.count!()
+  end
+
   @doc "Spec KLM4: `year`'s sanctions whose parents are not yet notified (menu badge)."
   def count_parents_to_notify(%Scope{} = scope, %AcademicYear{id: year_id}) do
     SanctionEntry

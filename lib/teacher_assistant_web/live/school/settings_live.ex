@@ -44,7 +44,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   end
 
   def handle_params(_params, _uri, socket) do
-    {:noreply, assign(socket, :page_title, page_title(socket.assigns.live_action))}
+    socket = assign(socket, :page_title, page_title(socket.assigns.live_action))
+    {:noreply, if(socket.assigns.live_action == :index, do: load_hub(socket), else: socket)}
   end
 
   defp page_title(:profile), do: gettext("Profil et en-tête")
@@ -53,179 +54,101 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   defp page_title(_), do: gettext("Paramètres")
 
   def render(%{live_action: :index} = assigns) do
+    assigns =
+      assign(assigns,
+        groups: visible_hub_groups(assigns.hub_groups, assigns.q),
+        todo: hub_todo(assigns)
+      )
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="school-settings-page" class="mx-auto max-w-5xl space-y-8">
+      <section id="school-settings-page" class="mx-auto max-w-3xl space-y-6">
         <.page_header
-          eyebrow={gettext("École")}
+          eyebrow={
+            if @active_year,
+              do: gettext("Réglages de l'année %{year}", year: @active_year.name),
+              else: gettext("École")
+          }
           title={gettext("Paramètres")}
-          subtitle={gettext("Ce qu'on règle une fois par an. Le travail du jour est dans le menu.")}
-        />
+        >
+          <:actions>
+            <form id="settings-search" phx-change="search" phx-submit="search" class="w-full sm:w-72">
+              <label class="input w-full">
+                <.icon name="hero-magnifying-glass" class="size-4 opacity-60" />
+                <input
+                  type="search"
+                  name="q"
+                  value={@q}
+                  phx-debounce="150"
+                  placeholder={gettext("Rechercher : coefficient, salle…")}
+                  aria-label={gettext("Rechercher un réglage")}
+                />
+              </label>
+            </form>
+          </:actions>
+        </.page_header>
 
-        <section id="school-modules" class="ta-leaf space-y-2 p-4">
-          <h2 class="font-semibold">{gettext("Modules")}</h2>
-          <%!-- what is switched on, not controls: plain checked labels, nothing to tap --%>
-          <ul class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
-            <li
-              :for={key <- @current_scope.current_workspace.modules}
-              id={"school-module-#{key}"}
-              class="flex items-center gap-1.5"
+        <.attention_card id="settings-todo" count={length(@todo)}>
+          <.attention_row
+            :for={t <- @todo}
+            id={t.id}
+            title={t.title}
+            reason={t.reason}
+            action={t.action}
+            navigate={t.path}
+            tone={:warning}
+          />
+        </.attention_card>
+
+        <section :for={{key, title, rows} <- @groups} id={"settings-group-#{key}"} class="space-y-2">
+          <h2 class="ta-eyebrow px-1">{title}</h2>
+          <div class="ta-section">
+            <.list_row
+              :for={row <- rows}
+              id={row.id}
+              navigate={row.path}
+              title={row.title}
+              meta={row.text}
             >
-              <.icon name="hero-check" class="size-4 text-primary" />
-              {TeacherAssistant.Modules.label(key)}
-            </li>
-          </ul>
-          <p class="text-sm text-base-content/70">
-            {gettext("Contactez l'administrateur pour en activer d'autres.")}
-          </p>
+              <:trailing :if={row.state}>
+                <span class={[
+                  "ta-num text-xs font-medium",
+                  if(row.status == :todo, do: "text-warning", else: "text-primary")
+                ]}>
+                  {row.state}
+                </span>
+              </:trailing>
+            </.list_row>
+          </div>
         </section>
 
-        <.hub_group
-          :if={@can_edit_profile? or @can_rename_school? or @years != [] or @can_manage_periods?}
-          title={gettext("L'établissement")}
+        <p
+          :if={@groups == []}
+          id="settings-no-match"
+          class="ta-section px-4 py-6 text-center text-sm text-base-content/70"
         >
-          <.hub_card
-            :if={@can_edit_profile? or @can_rename_school?}
-            scope={@current_scope}
-            id="hub-profile"
-            navigate={~p"/school/settings/profile"}
-            icon="hero-building-library"
-            title={gettext("Profil et en-tête officiel")}
-            text={gettext("Nom, type, coordonnées, logo, en-tête des documents imprimés.")}
-            status={profile_status(@profile)}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="hub-year"
-            navigate={~p"/school/settings/year"}
-            icon="hero-calendar-days"
-            title={gettext("Année scolaire et calendrier")}
-            text={gettext("Trimestres, séquences, limites de saisie, conseils de classe.")}
-            status={year_status(@active_year, @active_sequences)}
-          />
-          <.hub_card
-            :if={@can_manage_subjects?}
-            scope={@current_scope}
-            id="holidays-link"
-            navigate={~p"/school/settings/holidays"}
-            icon="hero-sun"
-            title={gettext("Congés & jours fériés")}
-            text={gettext("Les jours sans cours, exclus des appels.")}
-          />
-          <.hub_card
-            :if={@can_edit_timetable?}
-            scope={@current_scope}
-            id="rooms-link"
-            navigate={~p"/school/settings/rooms"}
-            icon="hero-building-office"
-            title={gettext("Salles")}
-            text={gettext("Salles, laboratoires et salles de classe.")}
-          />
-          <.hub_card
-            :if={@can_manage_fees?}
-            scope={@current_scope}
-            id="fee-settings-link"
-            navigate={~p"/school/settings/fees"}
-            icon="hero-banknotes"
-            title={gettext("Paramètres des frais")}
-            text={gettext("Types de frais, montants par classe, tranches, reliquats.")}
-          />
-          <.hub_card
-            :if={@can_manage_periods?}
-            scope={@current_scope}
-            id="periods-link"
-            navigate={~p"/school/periods"}
-            icon="hero-clock"
-            title={gettext("Horaires des cours")}
-            text={gettext("Jours de classe, créneaux, récréations.")}
-          />
-        </.hub_group>
+          {gettext("Aucun réglage ne correspond à « %{q} ».", q: @q)}
+        </p>
 
-        <.hub_group :if={@can_manage_subjects?} title={gettext("Notes et bulletins")}>
-          <.hub_card
-            scope={@current_scope}
-            id="hub-subjects"
-            navigate={~p"/school/settings/subjects"}
-            icon="hero-book-open"
-            title={gettext("Matières")}
-            text={gettext("Le catalogue des matières et leur groupe sur le bulletin.")}
-            status={
-              {:ok,
-               ngettext(
-                 "1 matière active",
-                 "%{count} matières actives",
-                 Enum.count(@subjects, & &1.active?)
-               )}
-            }
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="coefficients-link"
-            navigate={~p"/school/settings/coefficients"}
-            icon="hero-table-cells"
-            title={gettext("Coefficients")}
-            text={gettext("La grille des coefficients par niveau et par série.")}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="evaluations-link"
-            navigate={~p"/school/settings/evaluations"}
-            icon="hero-calculator"
-            title={gettext("Évaluations & moyennes")}
-            text={gettext("Types d'évaluation, barème, calcul des moyennes.")}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="appreciations-link"
-            navigate={~p"/school/settings/appreciations"}
-            icon="hero-academic-cap"
-            title={gettext("Appréciations & distinctions")}
-            text={gettext("Mentions, tableau d'honneur, avertissements.")}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="passage-link"
-            navigate={~p"/school/settings/passage"}
-            icon="hero-arrow-trending-up"
-            title={gettext("Passage & redoublement")}
-            text={gettext("Seuils de passage par niveau.")}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="bulletin-template-link"
-            navigate={~p"/school/settings/bulletin"}
-            icon="hero-document-duplicate"
-            title={gettext("Modèle de bulletin")}
-            text={gettext("Mise en page et blocs affichés.")}
-          />
-        </.hub_group>
-
-        <.hub_group :if={@can_manage_subjects?} title={gettext("Organisation et accès")}>
-          <.hub_card
-            scope={@current_scope}
-            id="assignments-link"
-            navigate={~p"/school/settings/assignments"}
-            icon="hero-squares-2x2"
-            title={gettext("Affectations")}
-            text={gettext("Qui enseigne quoi, dans quelle classe.")}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="school-life-link"
-            navigate={~p"/school/settings/school-life"}
-            icon="hero-scale"
-            title={gettext("Assiduité & discipline")}
-            text={gettext("Seuils d'absence et barème de conduite.")}
-          />
-          <.hub_card
-            scope={@current_scope}
-            id="roles-link"
-            navigate={~p"/school/settings/roles"}
-            icon="hero-key"
-            title={gettext("Rôles et droits")}
-            text={gettext("Ce que chaque rôle peut voir et faire.")}
-          />
-        </.hub_group>
+        <section :if={@q == ""} id="school-modules" class="space-y-2">
+          <h2 class="ta-eyebrow px-1">{gettext("Modules")}</h2>
+          <div class="ta-section space-y-2 px-4 py-3">
+            <%!-- what is switched on, not controls: plain checked labels, nothing to tap --%>
+            <ul class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
+              <li
+                :for={key <- @current_scope.current_workspace.modules}
+                id={"school-module-#{key}"}
+                class="flex items-center gap-1.5"
+              >
+                <.icon name="hero-check" class="size-4 text-primary" />
+                {TeacherAssistant.Modules.label(key)}
+              </li>
+            </ul>
+            <p class="text-sm text-base-content/70">
+              {gettext("Contactez l'administrateur pour en activer d'autres.")}
+            </p>
+          </div>
+        </section>
       </section>
     </Layouts.app>
     """
@@ -738,56 +661,292 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
     """
   end
 
-  attr :title, :string, required: true
-  slot :inner_block, required: true
+  # --- The hub ------------------------------------------------------------------
 
-  defp hub_group(assigns) do
-    ~H"""
-    <section class="space-y-3">
-      <h2 class="text-base font-semibold">{@title}</h2>
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{render_slot(@inner_block)}</div>
-    </section>
-    """
+  defp load_hub(socket) do
+    a = socket.assigns
+    scope = a.scope
+    fee_types? = a.can_manage_fees? and a.active_year != nil
+    fee_types = if fee_types?, do: TeacherAssistant.Fees.list_fee_types(scope, a.active_year)
+
+    holidays =
+      if a.can_manage_subjects? and a.active_year,
+        do: Organization.list_holidays(scope, a.active_year)
+
+    lessons =
+      if a.can_manage_periods?,
+        do:
+          scope |> TeacherAssistant.Attendance.list_periods() |> Enum.count(&(&1.kind == :lesson))
+
+    rows =
+      [
+        {:school, a.can_edit_profile? or a.can_rename_school?,
+         row(
+           "hub-profile",
+           ~p"/school/settings/profile",
+           gettext("Profil et en-tête officiel"),
+           gettext("Nom, coordonnées, logo, en-tête des documents imprimés"),
+           profile_status(a.profile),
+           "etablissement ecole logo telephone proviseur"
+         )},
+        {:school, a.can_manage_fees?,
+         row(
+           "fee-settings-link",
+           ~p"/school/settings/fees",
+           gettext("Paramètres des frais"),
+           gettext("Types de frais, montants par classe, tranches, reliquats"),
+           fee_status(fee_types),
+           "scolarite pension tranche montant"
+         )},
+        {:calendar, true,
+         row(
+           "hub-year",
+           ~p"/school/settings/year",
+           gettext("Année scolaire"),
+           gettext("Trimestres, séquences, dates limites de saisie"),
+           year_status(a.active_year, a.active_sequences),
+           "calendrier trimestre sequence"
+         )},
+        {:calendar, a.can_manage_subjects?,
+         row(
+           "holidays-link",
+           ~p"/school/settings/holidays",
+           gettext("Congés et jours fériés"),
+           gettext("Jours sans cours, exclus des appels"),
+           count_status(holidays, :holidays),
+           "vacances ferie"
+         )},
+        {:calendar, a.can_manage_periods?,
+         row(
+           "periods-link",
+           ~p"/school/periods",
+           gettext("Horaires des cours"),
+           gettext("Jours de classe, créneaux, récréations"),
+           count_status(lessons, :lessons),
+           "periode creneau heure recreation"
+         )},
+        {:grades, a.can_manage_subjects?,
+         row(
+           "hub-subjects",
+           ~p"/school/settings/subjects",
+           gettext("Matières"),
+           gettext("Le catalogue et le groupe de chaque matière sur le bulletin"),
+           count_status(Enum.count(a.subjects, & &1.active?), :subjects),
+           "discipline"
+         )},
+        {:grades, a.can_manage_subjects?,
+         row(
+           "coefficients-link",
+           ~p"/school/settings/coefficients",
+           gettext("Coefficients"),
+           gettext("Par niveau et par série"),
+           nil,
+           "coefficient serie"
+         )},
+        {:grades, a.can_manage_subjects?,
+         row(
+           "evaluations-link",
+           ~p"/school/settings/evaluations",
+           gettext("Évaluations et moyennes"),
+           gettext("Types d'évaluation, barème, calcul des moyennes"),
+           nil,
+           "devoir interrogation composition moyenne"
+         )},
+        {:grades, a.can_manage_subjects?,
+         row(
+           "appreciations-link",
+           ~p"/school/settings/appreciations",
+           gettext("Appréciations et distinctions"),
+           gettext("Mentions, tableau d'honneur, avertissements"),
+           nil,
+           "mention"
+         )},
+        {:grades, a.can_manage_subjects?,
+         row(
+           "bulletin-template-link",
+           ~p"/school/settings/bulletin",
+           gettext("Modèle de bulletin"),
+           gettext("Mise en page, blocs affichés"),
+           nil,
+           "signature"
+         )},
+        {:grades, a.can_manage_subjects?,
+         row(
+           "passage-link",
+           ~p"/school/settings/passage",
+           gettext("Passage en classe supérieure"),
+           gettext("Seuils et décisions par niveau"),
+           nil,
+           "redoublement"
+         )},
+        {:life, a.can_manage_subjects?,
+         row(
+           "school-life-link",
+           ~p"/school/settings/school-life",
+           gettext("Assiduité et discipline"),
+           gettext("Seuils d'absence, barème de conduite"),
+           nil,
+           "absence seuil conduite"
+         )},
+        {:life, a.can_edit_timetable?,
+         row(
+           "rooms-link",
+           ~p"/school/settings/rooms",
+           gettext("Salles"),
+           gettext("Salles, laboratoires, ateliers"),
+           count_status(length(a.rooms), :rooms),
+           "laboratoire atelier"
+         )},
+        {:life, a.can_manage_subjects?,
+         row(
+           "assignments-link",
+           ~p"/school/settings/assignments",
+           gettext("Affectations"),
+           gettext("Qui enseigne quoi, dans quelle classe"),
+           nil,
+           "enseignant professeur"
+         )},
+        {:life, a.can_manage_subjects?,
+         row(
+           "roles-link",
+           ~p"/school/settings/roles",
+           gettext("Rôles et accès"),
+           gettext("Ce que chaque rôle peut voir et faire"),
+           nil,
+           "droits permission"
+         )},
+        {:life, a.can_manage_calendar? and a.active_year != nil and a.active_year.status == :open,
+         row(
+           "new-year-link",
+           ~p"/school/settings/new-year",
+           gettext("Nouvelle année"),
+           new_year_text(a.active_year),
+           nil,
+           "rentree"
+         )}
+      ]
+      |> Enum.filter(fn {_group, show?, r} ->
+        show? and TeacherAssistantWeb.Spaces.path_allowed?(scope, r.path)
+      end)
+
+    groups =
+      for {key, title} <- hub_group_titles(),
+          group_rows = for({^key, _, r} <- rows, do: r),
+          group_rows != [],
+          do: {key, title, group_rows}
+
+    assign(socket,
+      hub_groups: groups,
+      fees_todo?:
+        fee_types == [] and Enum.any?(rows, fn {_, _, r} -> r.id == "fee-settings-link" end),
+      q: Map.get(socket.assigns, :q, "")
+    )
   end
 
-  attr :scope, :map, required: true
-  attr :id, :string, required: true
-  attr :navigate, :string, required: true
-  attr :icon, :string, required: true
-  attr :title, :string, required: true
-  attr :text, :string, required: true
-  attr :status, :any, default: nil, doc: "{:ok | :todo, text} or nil"
+  defp hub_group_titles do
+    [
+      school: gettext("L'établissement"),
+      calendar: gettext("Calendrier"),
+      grades: gettext("Notes et bulletins"),
+      life: gettext("Vie scolaire et organisation")
+    ]
+  end
 
-  # A card leading to a module the school does not have is not shown (operator
-  # console spec §1).
-  defp hub_card(assigns) do
-    ~H"""
-    <.link
-      :if={TeacherAssistantWeb.Spaces.path_allowed?(@scope, @navigate)}
-      id={@id}
-      navigate={@navigate}
-      class="ta-section group flex min-h-28 flex-col gap-2 p-4 transition-colors hover:border-base-content/30"
-    >
-      <span class="flex items-center gap-2.5 font-semibold">
-        <.icon name={@icon} class="size-5 text-primary" />
-        <span class="flex-1">{@title}</span>
-        <.icon
-          name="hero-chevron-right"
-          class="size-4 text-base-content/70 transition-transform group-hover:translate-x-0.5"
-        />
-      </span>
-      <span class="flex-1 text-sm text-base-content/70">{@text}</span>
-      <span
-        :if={@status}
-        class={[
-          "inline-flex items-center gap-1.5 text-xs font-semibold",
-          if(elem(@status, 0) == :ok, do: "text-success", else: "text-error")
-        ]}
-      >
-        <span class="size-1.5 rounded-full bg-current"></span>{elem(@status, 1)}
-      </span>
-    </.link>
-    """
+  defp row(id, path, title, text, status, keywords) do
+    {status, state} = status || {nil, nil}
+
+    %{
+      id: id,
+      path: path,
+      title: title,
+      text: text,
+      status: status,
+      state: state,
+      search: fold("#{title} #{text} #{keywords}")
+    }
+  end
+
+  defp new_year_text(%{name: name}) do
+    case TeacherAssistant.Academics.NewYearPlan.next_name(name) do
+      "" -> gettext("Préparer l'année suivante")
+      next -> gettext("Préparer %{year}", year: next)
+    end
+  end
+
+  defp new_year_text(_), do: gettext("Préparer l'année suivante")
+
+  defp fee_status(nil), do: nil
+  defp fee_status([]), do: {:todo, gettext("Aucun type")}
+
+  defp fee_status(types),
+    do: {:ok, ngettext("1 type", "%{count} types", Enum.count(types, & &1.active?))}
+
+  defp count_status(nil, _), do: nil
+  defp count_status(list, kind) when is_list(list), do: count_status(length(list), kind)
+  defp count_status(n, :holidays), do: {:ok, ngettext("1 congé", "%{count} congés", n)}
+  defp count_status(n, :lessons), do: {:ok, ngettext("1 cours", "%{count} cours", n)}
+  defp count_status(n, :subjects), do: {:ok, ngettext("1 active", "%{count} actives", n)}
+  defp count_status(n, :rooms), do: {:ok, ngettext("1 salle", "%{count} salles", n)}
+
+  # The rows' groups, without the rows the search leaves out.
+  defp visible_hub_groups(groups, q) do
+    case fold(q) do
+      "" ->
+        groups
+
+      needle ->
+        for {key, title, rows} <- groups,
+            rows = Enum.filter(rows, &String.contains?(&1.search, needle)),
+            rows != [],
+            do: {key, title, rows}
+    end
+  end
+
+  # Pinned « À compléter »: every row whose state is to do, plus fees without a type.
+  defp hub_todo(assigns) do
+    rows = for {_, _, rows} <- assigns.hub_groups, row <- rows, do: row
+
+    todo =
+      for %{status: :todo, id: id} = r <- rows, id != "fee-settings-link" do
+        %{
+          id: "todo-#{id}",
+          path: r.path,
+          title: r.title,
+          reason: todo_reason(id, r),
+          action: gettext("Compléter")
+        }
+      end
+
+    fees =
+      if assigns.fees_todo?,
+        do: [
+          %{
+            id: "todo-fees",
+            path: ~p"/school/settings/fees",
+            title: gettext("Frais de scolarité"),
+            reason: gettext("Aucun type de frais · l'encaissement s'active ensuite"),
+            action: gettext("Configurer")
+          }
+        ],
+        else: []
+
+    todo ++ fees
+  end
+
+  defp todo_reason("hub-profile", r),
+    do: gettext("%{state} · imprimées sur chaque bulletin", state: r.state)
+
+  defp todo_reason(_id, r), do: r.state
+
+  # Case- and accent-insensitive: « Élève » matches « eleve ».
+  defp fold(nil), do: ""
+
+  defp fold(text) do
+    text
+    |> String.normalize(:nfd)
+    |> String.replace(~r/\p{Mn}/u, "")
+    |> String.downcase()
+    |> String.trim()
   end
 
   @profile_fields ~w(short_name school_type region town phone head_name)a
@@ -821,6 +980,8 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   defp calendar_label(:start_date), do: gettext("Début")
   defp calendar_label(:end_date), do: gettext("Fin")
   defp calendar_label(:entry_deadline), do: gettext("Limite de saisie")
+
+  def handle_event("search", %{"q" => q}, socket), do: {:noreply, assign(socket, :q, q)}
 
   def handle_event("edit_subject", %{"id" => id}, socket) do
     {:noreply,

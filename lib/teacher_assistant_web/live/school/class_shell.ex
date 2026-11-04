@@ -1,8 +1,11 @@
 defmodule TeacherAssistantWeb.School.ClassShell do
   @moduledoc """
-  The class page's frame (spec 2026-10-08 §3): breadcrumb, header and the tab
-  bar shared by the class's pages. Each tab is its own LiveView; `allowed?/3`
-  is the single access rule both the tab bar and each page's `mount/3` use.
+  The class page's frame (spec 2026-10-08 §3; UX refonte batch 5): « ← Classes » and
+  the previous / next class, the header (class, « niveau · sous-système · N élèves
+  (f filles, g garçons) · r redoublants ») and the tab bar shared by the class's
+  pages, with counts (« Élèves · 14 », « Enseignements · 11/13 »). Each tab is its
+  own LiveView; `allowed?/3` is the single access rule both the tab bar and each
+  page's `mount/3` use. « Vue d'ensemble » is the class's root URL.
   """
   use TeacherAssistantWeb, :html
 
@@ -10,11 +13,12 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   alias TeacherAssistant.Academics.{ClassGroup, SchoolTemplates}
   alias TeacherAssistant.Accounts.User
 
-  @tabs [:students, :teachings, :timetable, :register, :discipline, :results, :fees]
+  @tabs [:overview, :students, :teachings, :timetable, :register, :discipline, :results, :fees]
 
   @doc "Whether the scope may open the class's `tab`."
-  def allowed?(scope, %ClassGroup{} = cg, tab) when tab in [:students, :teachings, :timetable],
-    do: Enrollment.class_manager?(scope, cg)
+  def allowed?(scope, %ClassGroup{} = cg, tab)
+      when tab in [:overview, :students, :teachings, :timetable],
+      do: Enrollment.class_manager?(scope, cg)
 
   def allowed?(scope, %ClassGroup{} = cg, tab) when tab in [:register, :discipline],
     do: Discipline.can_manage_conduct?(scope) or Enrollment.class_manager?(scope, cg)
@@ -33,7 +37,8 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   end
 
   @doc "Where a tab lives."
-  def tab_url(%ClassGroup{id: id}, :students), do: ~p"/school/classes/#{id}"
+  def tab_url(%ClassGroup{id: id}, :overview), do: ~p"/school/classes/#{id}"
+  def tab_url(%ClassGroup{id: id}, :students), do: ~p"/school/classes/#{id}/students"
   def tab_url(%ClassGroup{id: id}, :teachings), do: ~p"/school/classes/#{id}/teachings"
   def tab_url(%ClassGroup{id: id}, :timetable), do: ~p"/school/classes/#{id}/timetable"
   def tab_url(%ClassGroup{id: id}, :register), do: ~p"/school/classes/#{id}/register"
@@ -44,29 +49,77 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   @doc """
   Everything the header and tab bar show, loaded once per page mount (and
   again after a roster or assignment change). A page that has already read
-  the class's headcount (`count:`) or unassigned subjects (`unassigned:`)
-  passes them in `known`, so the shell does not read them again.
+  the class's roster (`roster:`, rows of `Enrollment.list_roster/2`) or its
+  assignments (`assigned:` count and `unassigned:` subjects) passes them in
+  `known`, so the shell does not read them again.
   """
   def load(scope, %ClassGroup{} = cg, known \\ []) do
     tabs = visible_tabs(scope, cg)
+    roster = Keyword.get_lazy(known, :roster, fn -> Enrollment.list_roster(scope, cg) end)
+    count = length(roster)
 
-    count =
-      Keyword.get_lazy(known, :count, fn -> length(Enrollment.list_roster(scope, cg)) end)
-
-    unassigned =
+    {assigned, unassigned} =
       cond do
-        :teachings not in tabs -> 0
-        Keyword.has_key?(known, :unassigned) -> length(known[:unassigned])
-        true -> length(Curriculum.unassigned_subjects_by_class(scope, [cg])[cg.id])
+        :teachings not in tabs ->
+          {0, []}
+
+        Keyword.has_key?(known, :unassigned) and Keyword.has_key?(known, :assigned) ->
+          {known[:assigned], known[:unassigned]}
+
+        true ->
+          status = Curriculum.assignment_status_by_class(scope, [cg])[cg.id]
+          {status.assigned, status.unassigned}
       end
 
     %{
       tabs: Enum.map(tabs, &{&1, tab_url(cg, &1)}),
       capacity: Enrollment.capacity(scope, cg, count),
+      girls: Enum.count(roster, &(&1.student.sex == :f)),
+      boys: Enum.count(roster, &(&1.student.sex == :m)),
+      repeaters: Enum.count(roster, & &1.enrollment.repeater),
       form_master: Enrollment.form_master(scope, cg),
-      unassigned: unassigned
+      assigned: assigned,
+      unassigned: length(unassigned),
+      unassigned_subjects: unassigned,
+      neighbours: neighbours(scope, cg)
     }
   end
+
+  # The previous and next classes of the year in the class list's order, each with
+  # the tabs the scope may open there (nil when none, or for a past year's class).
+  defp neighbours(%{current_academic_year: %{id: year_id} = year} = scope, %ClassGroup{} = cg)
+       when year_id == cg.academic_year_id do
+    sorted =
+      scope
+      |> Enrollment.list_class_groups(year)
+      |> Enum.sort_by(&SchoolTemplates.class_sort_key/1)
+
+    case Enum.find_index(sorted, &(&1.id == cg.id)) do
+      nil ->
+        %{prev: nil, next: nil}
+
+      index ->
+        %{
+          prev: if(index > 0, do: neighbour(scope, Enum.at(sorted, index - 1))),
+          next: neighbour(scope, Enum.at(sorted, index + 1))
+        }
+    end
+  end
+
+  defp neighbours(_scope, _cg), do: %{prev: nil, next: nil}
+
+  defp neighbour(_scope, nil), do: nil
+
+  defp neighbour(scope, cg) do
+    case visible_tabs(scope, cg) do
+      [] -> nil
+      tabs -> %{cg: cg, tabs: tabs}
+    end
+  end
+
+  # The neighbour's same tab, else its first one.
+  defp neighbour_url(%{cg: cg, tabs: tabs}, tab),
+    do: tab_url(cg, if(tab in tabs, do: tab, else: hd(tabs)))
 
   @doc "Assigns `:shell` on the socket (see `load/3` for `known`)."
   def assign_shell(socket, known \\ []),
@@ -90,44 +143,63 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   slot :inner_block, required: true
 
   def class_shell(assigns) do
-    assigns =
-      assign(
-        assigns,
-        :chip,
-        "inline-flex items-center rounded-[0.4rem] border border-base-300 bg-base-100 px-2.5 py-1"
-      )
-
     ~H"""
     <section id="class-shell" class="space-y-5">
-      <.breadcrumb>
-        <:crumb navigate={~p"/school/classes"}>{gettext("Classes")}</:crumb>
-        <:crumb navigate={@trail != [] && tab_url(@cg, @tab)}>{@cg.label}</:crumb>
-        <:crumb :for={label <- @trail}>{label}</:crumb>
-      </.breadcrumb>
+      <div class="flex flex-wrap items-center gap-2">
+        <.link
+          :if={@trail == []}
+          id="class-back"
+          navigate={~p"/school/classes"}
+          class="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          <.icon name="hero-arrow-left" class="size-4" /> {gettext("Classes")}
+        </.link>
+        <.breadcrumb :if={@trail != []}>
+          <:crumb navigate={~p"/school/classes"}>{gettext("Classes")}</:crumb>
+          <:crumb navigate={tab_url(@cg, @tab)}>{@cg.label}</:crumb>
+          <:crumb :for={label <- @trail}>{label}</:crumb>
+        </.breadcrumb>
+        <span class="flex-1"></span>
+        <.link
+          :if={@shell.neighbours.prev}
+          id="class-prev"
+          navigate={neighbour_url(@shell.neighbours.prev, @tab)}
+          class="btn btn-ghost btn-sm text-base-content/75"
+          aria-label={gettext("Classe précédente : %{label}", label: @shell.neighbours.prev.cg.label)}
+        >
+          <.icon name="hero-chevron-left" class="size-4" />{@shell.neighbours.prev.cg.label}
+        </.link>
+        <.link
+          :if={@shell.neighbours.next}
+          id="class-next"
+          navigate={neighbour_url(@shell.neighbours.next, @tab)}
+          class="btn btn-ghost btn-sm text-base-content/75"
+          aria-label={gettext("Classe suivante : %{label}", label: @shell.neighbours.next.cg.label)}
+        >
+          {@shell.neighbours.next.cg.label}<.icon name="hero-chevron-right" class="size-4" />
+        </.link>
+      </div>
 
       <header class="flex flex-wrap items-end justify-between gap-4">
-        <div class="min-w-0 space-y-2">
+        <div class="min-w-0 space-y-1.5">
           <h1 class="font-display text-3xl font-semibold leading-none sm:text-[2.2rem]">
             {@cg.label}
           </h1>
-          <div class="flex flex-wrap gap-2 text-xs">
-            <span id="class-cycle" class={@chip}>{subsystem_cycle(@cg)}</span>
-            <span id="class-form-master" class={@chip}>
-              {gettext("PP : %{name}",
-                name:
-                  if(@shell.form_master,
-                    do: User.display_name(@shell.form_master),
-                    else: gettext("à désigner")
-                  )
-              )}
-            </span>
+          <p id="class-summary" class="text-[0.95rem] text-base-content/75">
+            <span id="class-cycle">{level_line(@cg)}</span>
+            ·
             <span
               id="class-size"
-              class={[@chip, "ta-num", @shell.capacity.over? && "border-warning/60 text-warning"]}
-            >
-              {capacity_text(@shell.capacity)}
+              class={["ta-num", @shell.capacity.over? && "font-semibold text-warning"]}
+            >{capacity_text(@shell.capacity)}</span>
+            <span :if={@shell.capacity.count > 0} class="ta-num">({sex_split(@shell)})</span>
+            <span :if={@shell.repeaters > 0} class="ta-num">
+              · {ngettext("%{count} redoublant", "%{count} redoublants", @shell.repeaters)}
             </span>
-          </div>
+            <span :if={@shell.form_master} id="class-form-master">
+              · {gettext("PP : %{name}", name: User.display_name(@shell.form_master))}
+            </span>
+          </p>
         </div>
         <%!-- Full width on phones, so a trailing « ⋯ » sits at the right edge and its menu fits. --%>
         <div :if={@actions != []} class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -148,7 +220,7 @@ defmodule TeacherAssistantWeb.School.ClassShell do
               id={"class-tab-#{tab}"}
               aria-current={tab == @tab && "page"}
               class={[
-                "-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors",
+                "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors",
                 if(tab == @tab,
                   do: "border-primary text-base-content",
                   else: "border-transparent text-base-content/70 hover:text-base-content"
@@ -156,17 +228,25 @@ defmodule TeacherAssistantWeb.School.ClassShell do
               ]}
             >
               {tab_label(tab)}
-              <span
-                :if={tab == :students}
-                class="ta-num rounded-full bg-base-300 px-1.5 text-[0.7rem] text-base-content/70"
-              >
-                {@shell.capacity.count}
+              <span :if={tab == :students} class="ta-num font-normal text-base-content/70">
+                · {@shell.capacity.count}
               </span>
               <span
-                :if={tab == :teachings and @shell.unassigned > 0}
-                class="ta-num rounded-full bg-error/20 px-1.5 text-[0.7rem] text-error"
+                :if={tab == :teachings}
+                class={[
+                  "ta-num font-normal",
+                  if(@shell.unassigned > 0, do: "text-error", else: "text-base-content/70")
+                ]}
+                title={
+                  @shell.unassigned > 0 &&
+                    ngettext(
+                      "%{count} matière sans enseignant",
+                      "%{count} matières sans enseignant",
+                      @shell.unassigned
+                    )
+                }
               >
-                {@shell.unassigned}
+                · {@shell.assigned}/{@shell.assigned + @shell.unassigned}
               </span>
             </.link>
           </li>
@@ -187,6 +267,7 @@ defmodule TeacherAssistantWeb.School.ClassShell do
   def page_title(%ClassGroup{label: label}, name) when is_binary(name), do: "#{label} · #{name}"
 
   @doc "A tab's label in the tab bar."
+  def tab_label(:overview), do: gettext("Vue d'ensemble")
   def tab_label(:students), do: gettext("Élèves")
   def tab_label(:teachings), do: gettext("Enseignements")
   def tab_label(:timetable), do: gettext("Emploi du temps")
@@ -205,6 +286,23 @@ defmodule TeacherAssistantWeb.School.ClassShell do
       _ -> sub
     end
   end
+
+  # « 6ème · Francophone · 1er cycle »
+  defp level_line(%ClassGroup{level: level} = cg) when is_binary(level) and level != "",
+    do: "#{level} · #{subsystem_cycle(cg)}"
+
+  defp level_line(cg), do: subsystem_cycle(cg)
+
+  # « 13 filles, 1 garçon »
+  defp sex_split(%{girls: girls, boys: boys}),
+    do:
+      Enum.join(
+        [
+          ngettext("%{count} fille", "%{count} filles", girls),
+          ngettext("%{count} garçon", "%{count} garçons", boys)
+        ],
+        ", "
+      )
 
   defp capacity_text(%{count: count, max: nil}),
     do: ngettext("%{count} élève", "%{count} élèves", count)

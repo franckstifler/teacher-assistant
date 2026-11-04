@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "shows the roster with status and repeater", %{conn: conn, cg: cg, scope: scope} do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, repeater: true})
-    {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, html} = live(conn, ~p"/school/classes/#{cg.id}/students")
     assert html =~ "Awa"
     # The sex in words, not the stored code.
     assert view |> element("tr", "Awa") |> render() =~ "Féminin"
@@ -41,12 +41,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     File.cp!("test/support/fixtures/files/1x1.jpg", tmp)
     {:ok, _} = TeacherAssistant.StudentPhotos.store(scope, st, tmp)
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     assert render(view) =~ ~s(src="/school/students/#{st.id}/photo?v=)
   end
 
   test "enrolls a new student (inscription) from the drawer", %{conn: conn, cg: cg, scope: scope} do
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
 
     view
@@ -69,7 +69,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "enrolling with a new parent records them as the main contact", ctx do
     %{conn: conn, cg: cg, scope: scope} = ctx
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
 
     params = %{
@@ -99,7 +99,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
         phone: "699112233"
       })
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
 
     view
@@ -137,7 +137,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
         })
     end
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
     params = %{"enroll" => %{"full_name" => "Bi", "parent_phone" => "699112233"}}
     view |> form("#enroll-form", params) |> render_change()
@@ -153,7 +153,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     {:ok, cg} = Enrollment.set_class_max_size(scope, cg, 1)
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
 
     assert has_element?(view, "#enroll-after.text-warning", "2 / 1 élèves après cet ajout")
@@ -161,7 +161,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "« Inscrire et en ajouter un autre » keeps the drawer open and empty", ctx do
     %{conn: conn, cg: cg, scope: scope} = ctx
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
 
     view
@@ -175,7 +175,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "duplicate matricule surfaces a friendly error", %{conn: conn, cg: cg, scope: scope} do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
 
     view |> element("#enroll-button") |> render_click()
 
@@ -197,7 +197,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
     :ok = Enrollment.withdraw(scope, e)
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/students")
     view |> element("#enroll-button") |> render_click()
     view |> element("#enroll-mode-existing") |> render_click()
     view |> form("#enroll-search-form", %{"q" => "M-1"}) |> render_change()
@@ -227,7 +227,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     {:ok, %{student: current}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Zang Abi", sex: :f})
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/students")
     view |> element("#enroll-button") |> render_click()
     view |> element("#enroll-mode-existing") |> render_click()
     view |> form("#enroll-search-form", %{"q" => "Zang"}) |> render_change()
@@ -238,7 +238,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     refute has_element?(view, "#search-enroll-#{current.id}")
 
     # A class of a past year offers no transfer: transfers stay within a year.
-    {:ok, old_view, _} = live(conn, ~p"/school/classes/#{old_cg.id}")
+    {:ok, old_view, _} = live(conn, ~p"/school/classes/#{old_cg.id}/students")
 
     assert has_element?(
              old_view,
@@ -251,7 +251,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
   test "transfer moves a student to another class", ctx do
     %{conn: conn, cg: cg, cg2: cg2, scope: scope} = ctx
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
 
     view |> element("#transfer-#{e.id}") |> render_click()
     assert has_element?(view, "#transfer-drawer", "Awa")
@@ -267,7 +267,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "withdraw removes the enrollment", %{conn: conn, cg: cg, scope: scope} do
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#withdraw-#{e.id}") |> render_click()
     assert [] = Enrollment.list_roster(scope, cg)
   end
@@ -296,7 +296,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     _ = user
 
     assert {:error, {:live_redirect, %{to: "/school/classes"}}} =
-             live(conn, ~p"/school/classes/#{ocg.id}")
+             live(conn, ~p"/school/classes/#{ocg.id}/students")
   end
 
   test "non-admin non-form-master member is redirected", ctx do
@@ -318,7 +318,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       |> Plug.Conn.put_session(:workspace_id, school.id)
 
     assert {:error, {:live_redirect, %{to: "/school"}}} =
-             live(conn, ~p"/school/classes/#{cg.id}")
+             live(conn, ~p"/school/classes/#{cg.id}/students")
   end
 
   test "the roster filters by sex and repeaters, and searches by name", ctx do
@@ -328,7 +328,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     {:ok, %{enrollment: b}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Bob", sex: :m, repeater: true})
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     assert has_element?(view, "#roster-summary", "1 F · 1 G · 1 redoublant")
 
     view |> element("#roster-filter-f") |> render_click()
@@ -347,7 +347,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "the class menu sets the class's maximum and deletes an empty class", ctx do
     %{conn: conn, cg: cg, scope: scope, year: year} = ctx
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
 
     view |> element("#open-class-settings") |> render_click()
     view |> form("#class-settings-form", %{"max_size" => "30"}) |> render_submit()
@@ -361,7 +361,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "a refused maximum or delete says why", ctx do
     %{conn: conn, cg: cg, scope: scope, year: year} = ctx
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
 
     view |> element("#open-class-settings") |> render_click()
     view |> form("#class-settings-form", %{"max_size" => "500"}) |> render_submit()
@@ -379,13 +379,13 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
   test "delete is refused while the class has students", %{conn: conn, cg: cg, scope: scope} do
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#delete-class") |> render_click()
     assert render(view) =~ "retirez-les"
   end
 
   test "the class page has no fees link (fees deferred)", %{conn: conn, cg: cg} do
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/students")
     refute has_element?(view, "#go-to-fees")
   end
 
@@ -413,7 +413,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     end
 
     test "form master reaches the class and can enroll", %{fm_conn: conn, cg: cg, scope: scope} do
-      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
       view |> element("#enroll-button") |> render_click()
       # a teacher who is form master records no parent (guardians are admin / conduct)
       refute has_element?(view, "#enroll-parent")
@@ -431,12 +431,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
       %{cg2: cg2, fm_conn: conn} = ctx
       # fm is form master of cg, not cg2
       assert {:error, {:live_redirect, %{to: "/school"}}} =
-               live(conn, ~p"/school/classes/#{cg2.id}")
+               live(conn, ~p"/school/classes/#{cg2.id}/students")
     end
   end
 
   test "offers both class lists to print", %{conn: conn, cg: cg} do
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/students")
 
     assert has_element?(
              view,

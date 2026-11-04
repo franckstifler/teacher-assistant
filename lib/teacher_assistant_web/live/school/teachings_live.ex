@@ -471,7 +471,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
         )
     )
     |> assign_editing()
-    |> ClassShell.assign_shell(count: length(students), unassigned: unassigned)
+    |> ClassShell.assign_shell(assigned: length(assignments), unassigned: unassigned)
   end
 
   # The drawer's assignment, re-read from the freshly loaded list (nil once removed).
@@ -640,7 +640,7 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
        socket
        |> assign(cg: cg)
        |> ClassShell.assign_shell(
-         count: length(socket.assigns.roster_students),
+         assigned: length(socket.assigns.assignments),
          unassigned: socket.assigns.unassigned
        )
        |> put_flash(:info, message)}

@@ -114,7 +114,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
               <button id="import-parse" type="submit" class="btn btn-primary btn-sm">
                 {gettext("Vérifier la liste")}
               </button>
-              <.link navigate={~p"/school/classes/#{@cg.id}"} class="btn btn-ghost btn-sm">
+              <.link navigate={~p"/school/classes/#{@cg.id}/students"} class="btn btn-ghost btn-sm">
                 {gettext("Annuler")}
               </.link>
             </div>
@@ -216,7 +216,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLive do
             {gettext("La classe dépasse l'effectif maximum (%{max}).", max: @capacity.max)}
           </p>
           <div class="flex flex-wrap gap-2">
-            <.link navigate={~p"/school/classes/#{@cg.id}"} class="btn btn-primary btn-sm">
+            <.link navigate={~p"/school/classes/#{@cg.id}/students"} class="btn btn-primary btn-sm">
               {gettext("Retour à la %{class}", class: @cg.label)}
             </.link>
             <button type="button" id="import-restart" phx-click="restart" class="btn btn-ghost btn-sm">

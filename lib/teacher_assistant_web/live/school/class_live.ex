@@ -427,7 +427,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       # Same level first, then the rest by label.
       transfer_targets: Enum.sort_by(others, &{&1.level != cg.level, &1.label})
     )
-    |> ClassShell.assign_shell(count: length(roster))
+    |> ClassShell.assign_shell(roster: roster)
   end
 
   defp roster_filters, do: @roster_filters
@@ -554,7 +554,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
       {:noreply,
        socket
        |> assign(cg: cg, drawer: nil)
-       |> ClassShell.assign_shell(count: length(socket.assigns.roster))
+       |> ClassShell.assign_shell(roster: socket.assigns.roster)
        |> put_flash(:info, gettext("Effectif maximum enregistré."))}
     else
       :invalid ->

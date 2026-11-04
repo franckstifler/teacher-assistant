@@ -19,7 +19,16 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
   describe "visible_tabs/2" do
     test "an admin sees every tab", %{scope: scope, cg: cg} do
       assert ClassShell.visible_tabs(scope, cg) ==
-               [:students, :teachings, :timetable, :register, :discipline, :results, :fees]
+               [
+                 :overview,
+                 :students,
+                 :teachings,
+                 :timetable,
+                 :register,
+                 :discipline,
+                 :results,
+                 :fees
+               ]
     end
 
     test "the form master sees every tab", %{scope: scope, cg: cg} do
@@ -28,7 +37,16 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
       {:ok, cg} = Enrollment.fetch_owned_class_group(scope, cg.id)
 
       assert ClassShell.visible_tabs(fm, cg) ==
-               [:students, :teachings, :timetable, :register, :discipline, :results, :fees]
+               [
+                 :overview,
+                 :students,
+                 :teachings,
+                 :timetable,
+                 :register,
+                 :discipline,
+                 :results,
+                 :fees
+               ]
     end
 
     test "the surveillant général sees the register and discipline only", %{scope: scope, cg: cg} do
@@ -70,7 +88,7 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
       assert has_element?(view, "#class-tab-teachings[aria-current=page]")
 
-      for tab <- ~w(students timetable register discipline results),
+      for tab <- ~w(overview students timetable register discipline results),
           do: assert(has_element?(view, "#class-tab-#{tab}"))
 
       assert has_element?(view, "#class-cycle", "1er cycle")
@@ -89,6 +107,9 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
 
     test "a class page names the class, then the tab", %{conn: conn, cg: cg} do
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+      assert page_title(view) =~ "#{cg.label} · Vue d'ensemble"
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
       assert page_title(view) =~ "#{cg.label} · Élèves"
 
       {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/fees")

@@ -89,6 +89,7 @@ defmodule TeacherAssistant.Modules do
     W.School.CoursesLive,
     W.School.ClassesLive,
     W.School.ClassLive,
+    W.School.ClassOverviewLive,
     W.School.TeachingsLive,
     W.School.StudentsLive,
     W.School.StudentLive,

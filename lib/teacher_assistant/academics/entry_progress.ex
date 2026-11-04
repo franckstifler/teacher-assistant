@@ -104,6 +104,30 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   end
 
   @doc """
+  UX refonte (class page): how far the class's courses are in `seq` —
+  `{started, total}`, `started` being the courses with at least one mark entered
+  (`context_cells/4`'s `entered`), `total` the class's courses this year.
+  """
+  def class_subjects_started(
+        %Scope{} = scope,
+        %AcademicYear{} = year,
+        %ClassGroup{id: cg_id},
+        %Sequence{} = seq
+      ) do
+    contexts =
+      TeachingContext
+      |> Ash.Query.filter(academic_year_id == ^year.id and class_group_id == ^cg_id)
+      |> Ash.read!(scope: scope)
+
+    started =
+      scope
+      |> context_cells(year, seq, contexts)
+      |> Enum.count(fn {_id, cell} -> cell.entered > 0 end)
+
+    {started, length(contexts)}
+  end
+
+  @doc """
   Every class's mark-entry rate over `sequences` (spec I2/I3: a trimester's or the year's
   séquences): per class, the mean of its course cells' % across those séquences, with the
   cell rules of `grid/3` (a course with students but no assessment is 0 %); rounded down,

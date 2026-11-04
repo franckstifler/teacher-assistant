@@ -1,9 +1,12 @@
 defmodule TeacherAssistantWeb.School.SanctionsLive do
   @moduledoc """
-  SG → Sanctions (spec KLM4, L1; Vie scolaire redesign §2.4): a sticky
-  « Nouvelle sanction » form (student, type, date, hours or days, reason) beside
-  the year's sanctions with filters (class, type, parents to notify), an inline
-  « Marquer notifiés », and a detail panel with the main guardian's phone.
+  SG → Sanctions (spec KLM4, L1; Vie scolaire redesign §2.4; UX refonte batch 5):
+  the year's sanctions as list rows (« name · class », « type · date · reason », a
+  « Famille à prévenir / prévenue » badge, one CTA « Marquer notifié » plus a `tel:`
+  call link) under pills « À notifier · N » / « Toutes · N » and a class select (the
+  type filter sits in a menu); a detail panel with the guardian and « Supprimer »;
+  the « Nouvelle sanction » form (student, type, date, hours or days, reason) on the
+  right. No SMS (deferred).
   """
   use TeacherAssistantWeb, :live_view
 
@@ -59,19 +62,42 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
     selected =
       socket.assigns.selected && Enum.find(page.results, &(&1.id == socket.assigns.selected.id))
 
+    other =
+      Discipline.count_school_sanctions(scope, scope.current_academic_year,
+        class_group_id: f.class,
+        type: f.type,
+        to_notify: !f.notify
+      )
+
+    counts =
+      if f.notify,
+        do: %{notify: page.count || 0, all: other},
+        else: %{notify: other, all: page.count || 0}
+
     assign(socket,
       page: page,
       selected: selected,
+      counts: counts,
+      year_total:
+        if(f.class || f.type || f.notify,
+          do: Discipline.count_school_sanctions(scope, scope.current_academic_year, []),
+          else: page.count || 0
+        ),
       families: Discipline.count_families_to_notify(scope, scope.current_academic_year)
     )
   end
 
   def handle_event("filter", params, socket) do
-    query =
-      %{"class" => params["class"], "type" => params["type"], "notify" => params["notify"]}
-      |> Enum.reject(fn {_k, v} -> v in [nil, "", "false"] end)
+    f = socket.assigns.filters
 
-    {:noreply, push_patch(socket, to: ~p"/school/sanctions?#{query}")}
+    filters = %{
+      f
+      | class: blank_to_nil(params["class"]),
+        type: Enum.find(SanctionType.values(), &(Atom.to_string(&1) == params["type"])),
+        page: 1
+    }
+
+    {:noreply, push_patch(socket, to: filter_link(filters))}
   end
 
   def handle_event("select", %{"id" => id}, socket),
@@ -184,17 +210,19 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
 
   defp date(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
 
-  defp page_link(filters, page) do
+  defp page_link(filters, page), do: filter_link(%{filters | page: page})
+
+  defp filter_link(filters) do
     query =
-      %{
-        "class" => filters.class,
-        "type" => filters.type,
-        "notify" => if(filters.notify, do: "1"),
-        "page" => page
-      }
+      [
+        {"notify", if(filters.notify, do: "1")},
+        {"class", filters.class},
+        {"type", filters.type},
+        {"page", if(filters.page > 1, do: filters.page)}
+      ]
       |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
 
-    ~p"/school/sanctions?#{query}"
+    if query == [], do: ~p"/school/sanctions", else: ~p"/school/sanctions?#{query}"
   end
 
   # The rail badge (parents to notify) is computed on mount; refresh it after a change.
@@ -230,7 +258,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
   end
 
   defp meta_cell(s) do
-    [Calendar.strftime(s.date, "%d/%m"), s.reason]
+    [type_cell(s), Calendar.strftime(s.date, "%d/%m"), s.reason]
     |> Enum.reject(&(&1 in [nil, ""]))
     |> Enum.join(" · ")
   end
@@ -250,21 +278,240 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
           eyebrow={gettext("Vie scolaire")}
           title={gettext("Sanctions")}
           subtitle={
-            ngettext("%{count} famille à prévenir", "%{count} familles à prévenir", @families)
+            gettext("Cette année · %{sanctions} · %{families}",
+              sanctions: ngettext("%{count} sanction", "%{count} sanctions", @year_total),
+              families:
+                ngettext("%{count} famille à prévenir", "%{count} familles à prévenir", @families)
+            )
           }
-        >
-          <:actions>
-            <.side_chip id="sanctions-count">
-              {ngettext("%{count} sanction", "%{count} sanctions", @page.count || 0)}
-            </.side_chip>
-          </:actions>
-        </.page_header>
+        />
 
-        <div class="grid items-start gap-4 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-          <div
-            id="new-sanction"
-            class="ta-panel flex flex-col gap-3 lg:sticky lg:top-4"
-          >
+        <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+          <div class="flex min-w-0 flex-col gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <.filter_pills id="sanction-pills" label={gettext("Sanctions")}>
+                <:pill
+                  id="pill-notify"
+                  patch={filter_link(%{@filters | notify: true, page: 1})}
+                  count={@counts.notify}
+                  current={@filters.notify}
+                >
+                  {gettext("À notifier")}
+                </:pill>
+                <:pill
+                  id="pill-all"
+                  patch={filter_link(%{@filters | notify: false, page: 1})}
+                  count={@counts.all}
+                  current={!@filters.notify}
+                >
+                  {gettext("Toutes")}
+                </:pill>
+              </.filter_pills>
+              <form
+                id="sanction-filters"
+                phx-change="filter"
+                class="flex flex-1 flex-wrap items-center justify-end gap-2"
+              >
+                <.class_picker
+                  id="sanction-class"
+                  classes={@classes}
+                  current={@filters.class}
+                  stepper={false}
+                  prompt={gettext("Toutes les classes")}
+                  class="w-auto min-w-44"
+                />
+                <div class="dropdown dropdown-end">
+                  <div
+                    tabindex="0"
+                    role="button"
+                    class={["btn btn-sm", if(@filters.type, do: "btn-primary", else: "btn-ghost")]}
+                    aria-label={gettext("Filtrer par type")}
+                  >
+                    <.icon name="hero-funnel" class="size-4" />
+                    <span :if={@filters.type}>{SanctionType.label(@filters.type)}</span>
+                  </div>
+                  <div
+                    tabindex="-1"
+                    class="dropdown-content z-30 mt-1 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl"
+                  >
+                    <select
+                      name="type"
+                      aria-label={gettext("Type de sanction")}
+                      class="select select-sm w-full"
+                    >
+                      <option value="">{gettext("Tous les types")}</option>
+                      <option
+                        :for={t <- SanctionType.values()}
+                        value={t}
+                        selected={t == @filters.type}
+                      >
+                        {SanctionType.label(t)}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <aside
+              :if={@selected}
+              id="sanction-panel"
+              class="ta-panel flex min-w-0 flex-col gap-2 !border-primary"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <.link
+                  navigate={~p"/school/students/#{@selected.enrollment.student_id}"}
+                  class="font-display text-lg font-semibold hover:text-primary"
+                >
+                  {@selected.enrollment.student.full_name}
+                </.link>
+                <button
+                  type="button"
+                  phx-click="select"
+                  phx-value-id=""
+                  class="btn btn-ghost btn-square btn-sm"
+                  aria-label={gettext("Fermer")}
+                >
+                  <.icon name="hero-x-mark" class="size-4" />
+                </button>
+              </div>
+              <span class="text-sm">
+                {@selected.enrollment.class_group.label} · {type_cell(@selected)} · {date(
+                  @selected.date
+                )}
+              </span>
+              <span :if={@selected.reason} class="text-sm">{@selected.reason}</span>
+              <span :if={@issuers[@selected.issued_by_user_id]} class="text-xs text-base-content/70">
+                {gettext("Par %{name}", name: @issuers[@selected.issued_by_user_id])}
+              </span>
+              <span :if={@selected.parents_notified_on} class="text-sm text-primary">
+                {gettext("Famille prévenue le %{date}", date: date(@selected.parents_notified_on))}
+              </span>
+              <%= case guardian(@selected) do %>
+                <% nil -> %>
+                  <.link
+                    navigate={~p"/school/students/#{@selected.enrollment.student_id}"}
+                    class="link text-sm text-warning"
+                  >
+                    {gettext("Aucun contact")}
+                  </.link>
+                <% g -> %>
+                  <span class="text-sm">
+                    {g.full_name} · {GuardianRelationship.label(g.relationship)}
+                    <a href={"tel:#{g.phone_key}"} class="link link-primary font-mono">{g.phone}</a>
+                    <a :if={g.phone_2} href={"tel:#{g.phone_2}"} class="link link-primary font-mono">{g.phone_2}</a>
+                  </span>
+              <% end %>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button
+                  :if={!@selected.parents_notified_on}
+                  id={"notify-#{@selected.id}"}
+                  phx-click="notify"
+                  phx-value-id={@selected.id}
+                  class="btn btn-primary btn-sm"
+                >
+                  {gettext("Marquer notifié")}
+                </button>
+                <button
+                  id={"delete-#{@selected.id}"}
+                  phx-click="delete"
+                  phx-value-id={@selected.id}
+                  data-confirm={gettext("Supprimer cette sanction ?")}
+                  class="btn btn-ghost btn-sm text-error"
+                >
+                  {gettext("Supprimer")}
+                </button>
+              </div>
+            </aside>
+
+            <div class="ta-section">
+              <ul id="sanction-rows">
+                <li
+                  :for={s <- @page.results}
+                  id={"sanction-#{s.id}"}
+                  class={[
+                    "ta-list-row flex-wrap gap-y-2",
+                    @selected && @selected.id == s.id && "ta-list-row--selected"
+                  ]}
+                >
+                  <%!-- the identity opens the detail panel; the CTA and the call link sit beside it --%>
+                  <button
+                    id={"open-#{s.id}"}
+                    type="button"
+                    phx-click="select"
+                    phx-value-id={s.id}
+                    aria-pressed={to_string(@selected != nil and @selected.id == s.id)}
+                    class="flex min-w-0 flex-[1_1_14rem] cursor-pointer flex-col text-left"
+                  >
+                    <span class="truncate font-semibold">
+                      {s.enrollment.student.full_name}
+                      <span class="font-normal text-base-content/70">
+                        · {s.enrollment.class_group.label}
+                      </span>
+                    </span>
+                    <span class="truncate text-sm text-base-content/75">{meta_cell(s)}</span>
+                  </button>
+                  <span class="flex shrink-0 items-center gap-2">
+                    <span
+                      :if={!s.parents_notified_on}
+                      class="badge badge-sm border-warning/40 bg-warning/15 font-semibold text-warning"
+                    >
+                      {gettext("Famille à prévenir")}
+                    </span>
+                    <span
+                      :if={s.parents_notified_on}
+                      class="badge badge-sm border-primary/30 bg-primary/10 font-semibold text-primary"
+                      title={date(s.parents_notified_on)}
+                    >
+                      {gettext("Famille prévenue")}
+                    </span>
+                    <a
+                      :for={g <- List.wrap(guardian(s))}
+                      id={"call-#{s.id}"}
+                      href={"tel:#{g.phone_key}"}
+                      class="btn btn-ghost btn-square btn-sm text-primary"
+                      aria-label={
+                        gettext("Appeler %{name} : %{phone}", name: g.full_name, phone: g.phone)
+                      }
+                      title={g.phone}
+                    >
+                      <.icon name="hero-phone" class="size-4" />
+                    </a>
+                    <button
+                      :if={!s.parents_notified_on}
+                      id={"notify-row-#{s.id}"}
+                      type="button"
+                      phx-click="notify"
+                      phx-value-id={s.id}
+                      class="btn btn-primary btn-sm whitespace-nowrap"
+                    >
+                      {gettext("Marquer notifié")}
+                    </button>
+                  </span>
+                </li>
+              </ul>
+              <p :if={@page.results == []} class="p-4 text-sm text-base-content/70">
+                {if @filters.notify,
+                  do: gettext("Toutes les familles sont prévenues."),
+                  else: gettext("Aucune sanction.")}
+              </p>
+              <nav
+                :if={(@page.count || 0) > 50}
+                id="sanctions-pager"
+                class="join flex justify-center border-t border-base-300 p-2"
+              >
+                <.link
+                  :for={p <- 1..div((@page.count || 0) + 49, 50)}
+                  patch={page_link(@filters, p)}
+                  class={["join-item btn btn-xs", p == @filters.page && "btn-active"]}
+                >
+                  {p}
+                </.link>
+              </nav>
+            </div>
+          </div>
+
+          <div id="new-sanction" class="ta-panel flex flex-col gap-3 lg:sticky lg:top-4">
             <h2 class="text-[1.05rem] font-semibold">{gettext("Nouvelle sanction")}</h2>
             <form id="student-search" phx-change="search" class="flex flex-col gap-1.5">
               <label for="sanction-student" class="text-[0.8rem] font-semibold">
@@ -273,6 +520,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
               <input
                 id="sanction-student"
                 name="q"
+                type="search"
                 value={@q}
                 placeholder={gettext("Nom ou matricule")}
                 phx-debounce="300"
@@ -310,7 +558,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                   phx-value-type={t}
                   aria-pressed={to_string(@entry.type == t)}
                   class={[
-                    "rounded-[0.45rem] border px-2.5 py-1.5 text-[0.78rem] font-semibold transition-colors",
+                    "min-h-9 rounded-full border px-3 text-[0.78rem] font-semibold transition-colors",
                     if(@entry.type == t,
                       do: "border-primary bg-primary/15 text-primary",
                       else: "border-base-300 hover:border-primary/60"
@@ -358,7 +606,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
                 <span class="text-[0.8rem] font-semibold">{gettext("Motif")}</span>
                 <input
                   name="entry[reason]"
-                  placeholder={gettext("Bavardages répétés en Maths")}
+                  placeholder={gettext("Ex. bavardages répétés")}
                   class="input input-sm w-full"
                 />
               </label>
@@ -369,179 +617,10 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
               >
                 {type_note(@entry.type)}
               </p>
-              <button type="submit" id="save-sanction" class="btn btn-primary btn-sm w-full">
-                {gettext("Enregistrer la sanction")}
+              <button type="submit" id="save-sanction" class="btn btn-primary w-full">
+                {gettext("Enregistrer")}
               </button>
             </form>
-          </div>
-
-          <div class="flex min-w-0 flex-col gap-3">
-            <form
-              id="sanction-filters"
-              phx-change="filter"
-              class="flex flex-wrap items-center gap-2"
-            >
-              <select name="class" aria-label={gettext("Classe")} class="select select-sm w-auto">
-                <option value="">{gettext("Toutes les classes")}</option>
-                <option :for={c <- @classes} value={c.id} selected={c.id == @filters.class}>
-                  {c.label}
-                </option>
-              </select>
-              <select
-                name="type"
-                aria-label={gettext("Type de sanction")}
-                class="select select-sm w-auto"
-              >
-                <option value="">{gettext("Tous les types")}</option>
-                <option :for={t <- SanctionType.values()} value={t} selected={t == @filters.type}>
-                  {SanctionType.label(t)}
-                </option>
-              </select>
-              <label class="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  name="notify"
-                  value="1"
-                  checked={@filters.notify}
-                  class="checkbox checkbox-sm"
-                />
-                {gettext("À notifier")}
-              </label>
-            </form>
-
-            <aside
-              :if={@selected}
-              id="sanction-panel"
-              class="ta-panel flex min-w-0 flex-col gap-2 !border-primary"
-            >
-              <.link
-                navigate={~p"/school/students/#{@selected.enrollment.student_id}"}
-                class="font-display text-lg font-semibold hover:text-primary"
-              >
-                {@selected.enrollment.student.full_name}
-              </.link>
-              <span class="text-sm">
-                {@selected.enrollment.class_group.label} · {type_cell(@selected)} · {date(
-                  @selected.date
-                )}
-              </span>
-              <span :if={@selected.reason} class="text-sm">{@selected.reason}</span>
-              <span :if={@issuers[@selected.issued_by_user_id]} class="text-xs text-base-content/70">
-                {gettext("Par %{name}", name: @issuers[@selected.issued_by_user_id])}
-              </span>
-              <%= case guardian(@selected) do %>
-                <% nil -> %>
-                  <.link
-                    navigate={~p"/school/students/#{@selected.enrollment.student_id}"}
-                    class="link text-sm text-warning"
-                  >
-                    {gettext("Aucun contact")}
-                  </.link>
-                <% g -> %>
-                  <span class="text-sm">
-                    {g.full_name} · {GuardianRelationship.label(g.relationship)}
-                    <a href={"tel:#{g.phone_key}"} class="link link-primary font-mono">{g.phone}</a>
-                    <a :if={g.phone_2} href={"tel:#{g.phone_2}"} class="link link-primary font-mono">{g.phone_2}</a>
-                  </span>
-              <% end %>
-              <div class="flex flex-wrap gap-2 pt-1">
-                <button
-                  :if={!@selected.parents_notified_on}
-                  id={"notify-#{@selected.id}"}
-                  phx-click="notify"
-                  phx-value-id={@selected.id}
-                  class="btn btn-primary btn-sm"
-                >
-                  {gettext("Marquer les parents notifiés")}
-                </button>
-                <button
-                  id={"delete-#{@selected.id}"}
-                  phx-click="delete"
-                  phx-value-id={@selected.id}
-                  data-confirm={gettext("Supprimer cette sanction ?")}
-                  class="btn btn-ghost btn-sm text-error"
-                >
-                  {gettext("Supprimer")}
-                </button>
-              </div>
-            </aside>
-
-            <div class="min-w-0 overflow-x-auto rounded-box border border-base-300 bg-base-100">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>{gettext("Élève")}</th>
-                    <th>{gettext("Type")}</th>
-                    <th class="hidden sm:table-cell">{gettext("Date · motif")}</th>
-                    <th>{gettext("Parents")}</th>
-                  </tr>
-                </thead>
-                <tbody id="sanction-rows">
-                  <tr
-                    :for={s <- @page.results}
-                    id={"sanction-#{s.id}"}
-                    phx-click="select"
-                    phx-value-id={s.id}
-                    class={[
-                      "cursor-pointer hover:bg-base-200/60",
-                      @selected && @selected.id == s.id && "bg-primary/10"
-                    ]}
-                  >
-                    <td>
-                      <%!-- A real button so the row opens from the keyboard too; its click
-                           bubbles to the row's phx-click. --%>
-                      <button
-                        type="button"
-                        aria-pressed={to_string(@selected != nil and @selected.id == s.id)}
-                        class="flex cursor-pointer flex-col text-left"
-                      >
-                        <span class="font-semibold">{s.enrollment.student.full_name}</span>
-                        <span class="text-[0.74rem] text-base-content/75">
-                          {s.enrollment.class_group.label}
-                        </span>
-                      </button>
-                    </td>
-                    <td class="font-semibold">{type_cell(s)}</td>
-                    <td class="hidden max-w-64 truncate text-[0.8rem] text-base-content/85 sm:table-cell">
-                      {meta_cell(s)}
-                    </td>
-                    <td>
-                      <span :if={s.parents_notified_on} class="text-[0.78rem] text-primary">
-                        {gettext("Notifiés le %{date}",
-                          date: Calendar.strftime(s.parents_notified_on, "%d/%m")
-                        )}
-                      </span>
-                      <button
-                        :if={!s.parents_notified_on}
-                        id={"notify-row-#{s.id}"}
-                        type="button"
-                        phx-click="notify"
-                        phx-value-id={s.id}
-                        class="btn btn-outline btn-warning btn-xs whitespace-nowrap"
-                      >
-                        {gettext("Marquer notifiés")}
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <p :if={@page.results == []} class="p-4 text-sm text-base-content/70">
-                {gettext("Aucune sanction.")}
-              </p>
-              <nav
-                :if={(@page.count || 0) > 50}
-                id="sanctions-pager"
-                class="join flex justify-center border-t border-base-300 p-2"
-              >
-                <.link
-                  :for={p <- 1..div((@page.count || 0) + 49, 50)}
-                  patch={page_link(@filters, p)}
-                  class={["join-item btn btn-xs", p == @filters.page && "btn-active"]}
-                >
-                  {p}
-                </.link>
-              </nav>
-            </div>
           </div>
         </div>
       </section>

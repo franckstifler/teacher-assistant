@@ -442,7 +442,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
                 <.link
                   :if={@current}
                   id="student-class"
-                  navigate={~p"/school/classes/#{@current.class_group_id}"}
+                  navigate={~p"/school/classes/#{@current.class_group_id}/students"}
                   class="font-semibold text-base-content hover:text-primary"
                 >
                   {@current.class_group.label}

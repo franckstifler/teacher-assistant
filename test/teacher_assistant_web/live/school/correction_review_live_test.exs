@@ -137,4 +137,40 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert html =~ "La note dépasse 500 caractères."
     assert [_] = Assessment.list_corrections(ctx.censeur, :pending)
   end
+
+  test "the title counts the requests; « Approuver / Refuser… » on each card", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    assert has_element?(view, "#correction-review h1", "Corrections à valider · 1")
+    assert has_element?(view, "#correction-review header", "chaque décision est tracée")
+    assert has_element?(view, "#accept-form-#{ctx.c.id} button[type=submit]", "Approuver")
+    assert has_element?(view, "#refuse-#{ctx.c.id}", "Refuser…")
+    # the journal folds, its summary counts
+    assert has_element?(view, "details#journal summary", "Journal des notes")
+    assert has_element?(view, "details#journal summary", "1 verrouillage")
+    # no bulk action without an « erreur de saisie »
+    refute has_element?(view, "#approve-typos")
+  end
+
+  test "« Approuver les N erreurs de saisie » approves those only, each traced", ctx do
+    {:ok, typo} =
+      Assessment.request_correction(ctx.t, %{
+        assessment_id: ctx.a.id,
+        student_id: ctx.s2.id,
+        requested_status: :graded,
+        requested_score: Decimal.new(18),
+        motive: :erreur_saisie
+      })
+
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    assert has_element?(view, "#approve-typos", "erreur de saisie")
+
+    html = view |> element("#approve-typos") |> render_click()
+    assert html =~ "1 correction approuvée"
+
+    assert [%{id: id, status: :approved}] = Assessment.list_corrections(ctx.censeur, :decided)
+    assert id == typo.id
+    assert [%{id: pending_id}] = Assessment.list_corrections(ctx.censeur, :pending)
+    assert pending_id == ctx.c.id
+    refute has_element?(view, "#approve-typos")
+  end
 end

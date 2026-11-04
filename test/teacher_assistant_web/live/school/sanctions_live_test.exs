@@ -2,7 +2,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
-  alias TeacherAssistant.{Discipline, Enrollment, Organization}
+  alias TeacherAssistant.{Discipline, Enrollment}
   alias TeacherAssistant.TeacherFixtures
 
   setup :register_and_log_in_user
@@ -42,16 +42,49 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/sanctions")
     assert has_element?(view, "#sanction-filters select[name='class'][aria-label='Classe']")
     assert has_element?(view, "#sanction-filters select[name='type'][aria-label]")
-    assert has_element?(view, "#sanction-rows tr button[type='button']")
+    assert has_element?(view, "#sanction-rows li button[type='button'][phx-click='select']")
+  end
+
+  test "pills « À notifier · N » / « Toutes · N »; one CTA and a call link per row",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/school/sanctions")
+
+    assert has_element?(
+             view,
+             "#sanction-pills a[href='/school/sanctions?notify=1']",
+             "À notifier"
+           )
+
+    assert view |> element("#pill-notify") |> render() =~ ~r/À notifier.*2/s
+    assert view |> element("#pill-all") |> render() =~ ~r/Toutes.*2/s
+    assert has_element?(view, "#pill-all[aria-current]")
+
+    row = view |> element("#sanction-#{ctx.s1.id}") |> render()
+    assert row =~ "Famille à prévenir"
+    assert row =~ "Blâme"
+    assert row =~ "Insolence"
+    assert has_element?(view, "#call-#{ctx.s1.id}[href='tel:677123456']")
+
+    view |> element("#notify-row-#{ctx.s1.id}") |> render_click()
+    assert view |> element("#pill-notify") |> render() =~ ~r/À notifier.*1/s
+
+    {:ok, view, _} = live(conn, ~p"/school/sanctions?notify=1")
+    assert has_element?(view, "#pill-notify[aria-current]")
+    refute has_element?(view, "#sanction-#{ctx.s1.id}")
+
+    # the class select keeps the pill
+    view |> form("#sanction-filters", %{"class" => ctx.cg_a.id, "type" => ""}) |> render_change()
+    assert_patch(view, "/school/sanctions?notify=1&class=#{ctx.cg_a.id}")
   end
 
   test "lists the year's sanctions and filters them", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sanctions")
     rows = view |> element("#sanction-rows") |> render()
     assert rows =~ "Awa Nkolo" and rows =~ "Bob Eyong"
-    assert rows =~ "Marquer notifiés"
+    assert rows =~ "Marquer notifié"
     assert rows =~ "Consigne · 2 h"
     assert rows =~ "12/09 · Insolence"
+    assert has_element?(view, "#save-sanction", "Enregistrer")
     assert view |> element("#sanctions header") |> render() =~ "2 familles à prévenir"
 
     {:ok, view, _} = live(conn, ~p"/school/sanctions?class=#{ctx.cg_a.id}")
@@ -64,7 +97,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
   test "the panel shows the guardian; notifying removes the row from « À notifier »",
        %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sanctions?notify=1&class=#{ctx.cg_a.id}")
-    view |> element("#sanction-#{ctx.s1.id}") |> render_click()
+    view |> element("#open-#{ctx.s1.id}") |> render_click()
 
     panel = view |> element("#sanction-panel") |> render()
     assert panel =~ "Jean Nkolo"
@@ -130,7 +163,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/sanctions")
     view |> element("#notify-row-#{ctx.s1.id}") |> render_click()
 
-    assert view |> element("#sanction-#{ctx.s1.id}") |> render() =~ "Notifiés le"
+    assert view |> element("#sanction-#{ctx.s1.id}") |> render() =~ "Famille prévenue"
     assert view |> element("#sanctions header") |> render() =~ "1 famille à prévenir"
   end
 
@@ -193,7 +226,7 @@ defmodule TeacherAssistantWeb.School.SanctionsLiveTest do
     {:ok, view, _} = live(conn, ~p"/school/sanctions")
     assert view |> element("#nav-school-sanctions .badge") |> render() =~ "2"
 
-    view |> element("#sanction-#{ctx.s1.id}") |> render_click()
+    view |> element("#open-#{ctx.s1.id}") |> render_click()
     view |> element("#notify-#{ctx.s1.id}") |> render_click()
     assert view |> element("#nav-school-sanctions .badge") |> render() =~ "1"
   end
