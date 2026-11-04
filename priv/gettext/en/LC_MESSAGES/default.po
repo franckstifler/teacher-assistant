@@ -14410,8 +14410,8 @@ msgstr "%{name} is now the class's form master."
 
 #: lib/teacher_assistant_web/live/school/class_overview_live.ex:140
 #, elixir-autogen, elixir-format
-msgid "%{rate} %% saisi"
-msgstr "%{rate} %% entered"
+msgid "%{rate} % saisi"
+msgstr "%{rate} % entered"
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:937
 #, elixir-autogen, elixir-format

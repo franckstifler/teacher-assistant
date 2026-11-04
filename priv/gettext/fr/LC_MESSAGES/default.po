@@ -14400,7 +14400,7 @@ msgstr ""
 
 #: lib/teacher_assistant_web/live/school/class_overview_live.ex:140
 #, elixir-autogen, elixir-format
-msgid "%{rate} %% saisi"
+msgid "%{rate} % saisi"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/settings_live.ex:937

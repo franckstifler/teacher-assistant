@@ -85,6 +85,16 @@ defmodule TeacherAssistantWeb.School.ClassOverviewLiveTest do
     assert has_element?(view, "#tile-timetable[href='/school/classes/#{ctx.cg.id}/timetable']")
   end
 
+  test "the notes tile shows the entry rate with a single percent sign", ctx do
+    TeacherFixtures.assigned_context_fixture(ctx.scope, ctx.year, %{class_group: ctx.cg})
+    {:ok, view, _} = live(ctx.conn, ~p"/school/classes/#{ctx.cg.id}")
+
+    # Gettext has no « %% » escape: « 0 % saisi », never « 0 %% saisi ».
+    notes = view |> element("#tile-notes") |> render()
+    assert notes =~ ~r/\d+ % saisi/
+    refute notes =~ "%%"
+  end
+
   test "the surveillant général lands on the register; a plain teacher is sent back", ctx do
     sg = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:discipline_master]})
 

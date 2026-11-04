@@ -137,7 +137,7 @@ defmodule TeacherAssistantWeb.School.ClassOverviewLive do
         sub:
           join([
             gettext("matières commencées"),
-            rate && gettext("%{rate} %% saisi", rate: rate),
+            rate && gettext("%{rate} % saisi", rate: rate),
             Dates.countdown(seq.grade_entry_deadline, today)
           ]),
         tone: if(total > 0 and started == total, do: :ok, else: :neutral),
