@@ -953,8 +953,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             phx-click={JS.push("open_sheet", value: %{sheet: "course"})}
             class="flex min-w-0 flex-1 flex-col items-start text-left"
           >
-            <span class="flex max-w-full items-center gap-1 font-semibold">
-              <span class="truncate">{@title}</span>
+            <%!-- two lines rather than cut: on a narrow phone the class would be lost --%>
+            <span class="flex max-w-full items-center gap-1 font-semibold leading-tight">
+              <span id="marks-phone-title" class="line-clamp-2">{@title}</span>
               <.icon name="hero-chevron-down" class="size-3.5 shrink-0" />
             </span>
             <span class="max-w-full truncate text-xs text-base-content/70">
@@ -1578,8 +1579,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     """
   end
 
-  # The keypad's focus: the student, the two before (dimmed), the one after, and
-  # how many boxes are still empty in their class.
+  # The keypad's focus: the student, the two before (dimmed), the next few (as many
+  # as a tall phone shows; the keypad clips the rest), and how many boxes are still
+  # empty in their class.
   defp keypad_assigns(%{keypad: id, roster: roster, loaded: loaded}) do
     index = Enum.find_index(roster, &(&1.student.id == id)) || 0
     focus = Enum.at(roster, index)
@@ -1593,7 +1595,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     %{
       focus: focus,
       prev_rows: Enum.slice(roster, max(index - 2, 0), min(index, 2)),
-      next_rows: Enum.slice(roster, index + 1, 1),
+      next_rows: Enum.slice(roster, index + 1, 8),
       remaining: remaining
     }
   end

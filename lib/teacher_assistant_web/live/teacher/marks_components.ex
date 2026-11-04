@@ -448,7 +448,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
   attr :course_title, :string, required: true
   attr :focus, :map, required: true, doc: "`%{student, class_group, n}` in focus"
   attr :prev_rows, :list, default: [], doc: "up to two rows before, same shape"
-  attr :next_rows, :list, default: [], doc: "the row after, same shape"
+
+  attr :next_rows, :list,
+    default: [],
+    doc: "the rows after (clipped to the height left), same shape"
+
   attr :scores, :map, required: true
   attr :errors, :map, required: true
   attr :remaining, :integer, required: true, doc: "empty boxes left in the focus's class"
@@ -499,11 +503,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           <p id="marks-keypad-title" class="truncate text-[0.95rem] font-semibold">
             {gettext("%{label} · sur %{max}", label: @column.label, max: max_text(@column))}
           </p>
-          <p class="ta-num truncate text-xs text-base-content/70">
-            {@course_title} · {@focus.class_group.label} · {gettext("%{done}/%{total} saisies",
-              done: @done,
-              total: @total
-            )}
+          <%!-- the count never truncates: the course name gives way first on narrow phones --%>
+          <p class="ta-num flex gap-1 text-xs text-base-content/70">
+            <span class="min-w-0 truncate">{@course_title} · {@focus.class_group.label} ·</span>
+            <span id="keypad-progress" class="shrink-0">
+              {gettext("%{done}/%{total} saisies", done: @done, total: @total)}
+            </span>
           </p>
         </div>
         <.save_indicator
@@ -515,12 +520,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
         />
       </header>
 
-      <div class="flex flex-1 flex-col gap-1 overflow-hidden px-4 pt-2">
-        <.keypad_neighbour :for={row <- @prev_rows} row={row} scores={@scores} />
+      <%!-- The card never shrinks: on a short screen the previous rows give way
+           first (keeping the nearest), and the next rows fill whatever height is left. --%>
+      <div class="flex min-h-0 flex-1 flex-col gap-1 px-4 pt-2">
+        <div
+          id="keypad-prev"
+          class="flex min-h-0 flex-col justify-end gap-1 overflow-hidden [mask-image:linear-gradient(to_top,black_80%,transparent)]"
+        >
+          <.keypad_neighbour :for={row <- @prev_rows} row={row} scores={@scores} />
+        </div>
         <section
           id="keypad-card"
           aria-label={gettext("Élève en cours")}
-          class="flex flex-col gap-3 rounded-2xl border-2 border-primary bg-base-200 px-4 py-4"
+          class="flex shrink-0 flex-col gap-3 rounded-2xl border-2 border-primary bg-base-200 px-4 py-4"
         >
           <div class="flex items-center gap-3 text-xs">
             <span class="ta-num font-semibold text-primary">
@@ -558,7 +570,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           </div>
           <p :if={@error} id="keypad-error" class="text-sm font-semibold text-error">{@error}</p>
         </section>
-        <.keypad_neighbour :for={row <- @next_rows} row={row} scores={@scores} />
+        <div
+          id="keypad-next"
+          class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_75%,transparent)]"
+        >
+          <.keypad_neighbour :for={row <- @next_rows} row={row} scores={@scores} />
+        </div>
       </div>
 
       <div

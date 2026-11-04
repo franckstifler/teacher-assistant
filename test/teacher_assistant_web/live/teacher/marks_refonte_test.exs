@@ -109,6 +109,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksRefonteTest do
       assert has_element?(view, "#marks-keypad[data-student='#{ctx.s1.id}']")
       assert has_element?(view, "#keypad-student", "Awa")
       assert has_element?(view, "#keypad-remaining", "2 restants")
+      # the count has its own element (it never truncates); the next students fill the space
+      assert has_element?(view, "#keypad-progress", "0/2 saisies")
+      assert has_element?(view, "#keypad-next", "Beti")
+      refute has_element?(view, "#keypad-prev div")
 
       render_hook(view, "keypad_next", %{"student" => ctx.s1.id, "value" => "13,5"})
 
