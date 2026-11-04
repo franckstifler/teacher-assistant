@@ -2,7 +2,6 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   alias TeacherAssistant.Accounts
-  alias TeacherAssistant.Attendance
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Organization
@@ -50,72 +49,21 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     |> Plug.Conn.put_session(:workspace_id, school.id)
   end
 
-  test "an assigned teacher sees one row per course with its four links", %{
+  test "an assigned teacher sees one row per course, under its subject, opening its marks", %{
     school: school,
     teacher: teacher,
-    cg: cg,
-    tc: tc,
-    scope: scope
+    tc: tc
   } do
     {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
 
-    assert has_element?(view, "#courses")
-    assert has_element?(view, "#course-#{tc.id}", "Maths")
+    assert has_element?(view, "#courses section[aria-label='Maths'] h2", "Maths · 1 cours")
     assert has_element?(view, "#course-#{tc.id}", "3e M2")
-    assert has_element?(view, "#course-#{tc.id} a[href='/teacher/contexts/#{tc.id}/roster']")
     assert has_element?(view, "#course-#{tc.id} a[href='/teacher/contexts/#{tc.id}/marks']")
-
-    assert has_element?(
-             view,
-             "#course-#{tc.id} a[href='/teacher/contexts/#{tc.id}/marks/summary']"
-           )
-
-    first_lesson = scope |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))
-
-    assert has_element?(
-             view,
-             "#course-#{tc.id} a[href^='/school/classes/#{cg.id}/attendance/#{first_lesson.id}?date=']"
-           )
-  end
-
-  test "the Appel link targets the teacher's own slot period, not a colleague's", %{
-    school: school,
-    teacher: teacher,
-    cg: cg,
-    tc: tc,
-    head: head,
-    scope: scope
-  } do
-    [p1, p2 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
-    {:ok, tc_head} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Physique"})
-
-    case Date.day_of_week(TeacherAssistant.Academics.Reference.today()) do
-      7 ->
-        # No lessons on Sunday: the link falls back to the first lesson period.
-        {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
-        assert has_element?(view, "#course-#{tc.id} a[href*='/attendance/#{p1.id}?']")
-
-      n ->
-        day = Enum.at(~w(monday tuesday wednesday thursday friday saturday)a, n - 1)
-
-        {:ok, _} =
-          TeacherAssistant.Timetabling.place_slot(scope, cg, %{
-            day: day,
-            period_id: p1.id,
-            teaching_context_id: tc_head.id
-          })
-
-        {:ok, _} =
-          TeacherAssistant.Timetabling.place_slot(scope, cg, %{
-            day: day,
-            period_id: p2.id,
-            teaching_context_id: tc.id
-          })
-
-        {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
-        assert has_element?(view, "#course-#{tc.id} a[href*='/attendance/#{p2.id}?']")
-        refute has_element?(view, "#course-#{tc.id} a[href*='/attendance/#{p1.id}?']")
-    end
+    # results and roster are the course's tabs now; the roll call is the day's
+    refute has_element?(view, "#course-#{tc.id} a[href$='/roster']")
+    refute has_element?(view, "#course-#{tc.id} a[href*='/attendance/']")
+    # no evaluation yet in the séquence
+    assert has_element?(view, "#course-#{tc.id} [data-role='progress']", "0 éval.")
   end
 
   test "a combined course is one row, not one per class", %{
@@ -132,7 +80,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
 
     {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
 
-    assert has_element?(view, "#course-combined-#{course.id}", course.label)
+    assert has_element?(view, "#course-combined-#{course.id}", "2 classes")
     assert has_element?(view, "#course-combined-#{course.id}", cg.label)
     assert has_element?(view, "#course-combined-#{course.id}", cg_b.label)
     refute has_element?(view, "#course-#{tc.id}")
@@ -250,7 +198,24 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       assert has_element?(view, card, "2 élèves")
       assert has_element?(view, card, "coef. 4")
       assert has_element?(view, "#{card} [data-role='pp']")
-      assert has_element?(view, "#{card} [data-role='progress']", "1 / 2")
+      assert has_element?(view, "#{card} [data-role='progress']", "1/2")
+    end
+
+    test "filter pills count the courses with marks or a competence to enter", %{
+      conn: conn,
+      card_tc: tc,
+      tc: other
+    } do
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+      assert has_element?(view, "#filter-all", "2")
+      assert has_element?(view, "#filter-marks", "2")
+      refute has_element?(view, "#filter-competence")
+
+      view |> element("#filter-marks") |> render_click()
+      assert_patch(view, ~p"/school/courses?f=marks")
+      assert has_element?(view, "#course-#{tc.id}")
+      assert has_element?(view, "#course-#{other.id}")
+      assert has_element?(view, "#filter-marks[aria-current='true']")
     end
 
     test "no competence line when the school's report cards are not APC", %{
@@ -277,9 +242,11 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       line = "#course-#{tc.id} [data-role='competence']"
       assert has_element?(view, line, "Compétence Séq. #{seq.number} : à saisir")
 
+      assert has_element?(view, "#filter-competence", "2")
+
       assert has_element?(
                view,
-               "#{line} a[href='/teacher/contexts/#{tc.id}/marks?seq=#{seq.id}']"
+               "#course-#{tc.id} a[href='/teacher/contexts/#{tc.id}/marks?seq=#{seq.id}']"
              )
 
       :ok =
@@ -287,7 +254,7 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
 
       {:ok, view, _} = live(conn, ~p"/school/courses")
       assert has_element?(view, line, "Compétence Séq. #{seq.number} ✓")
-      refute has_element?(view, "#{line} a")
+      assert has_element?(view, "#course-#{tc.id} a[href='/teacher/contexts/#{tc.id}/marks']")
     end
   end
 
@@ -301,6 +268,6 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     {:ok, _} = Curriculum.assign_teacher(scope, cg, teacher, %{subject: "Physique"})
 
     {:ok, view, _} = live(conn_for(school, teacher), ~p"/school/courses")
-    assert has_element?(view, "#courses header", "2 cours · 1 élève")
+    assert has_element?(view, "#courses-subtitle", "2 cours · 1 élève")
   end
 end
