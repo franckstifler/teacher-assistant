@@ -33,7 +33,7 @@ defmodule TeacherAssistantWeb.School.AbsenceHoursLive do
          appel?: Scope.module?(scope, :appel),
          errors: %{}
        )
-       |> ClassShell.assign_shell(count: length(Enrollment.list_roster(scope, cg)))}
+       |> ClassShell.assign_shell()}
     else
       false ->
         {:ok,

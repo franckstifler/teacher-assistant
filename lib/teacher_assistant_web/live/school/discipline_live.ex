@@ -35,7 +35,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
          sanction_types: Attendance.school_life_rules(scope).sanction_types_in_use,
          add_type: nil
        )
-       |> ClassShell.assign_shell(count: length(roster))
+       |> ClassShell.assign_shell(roster: roster)
        |> select_period(nil)}
     else
       false ->

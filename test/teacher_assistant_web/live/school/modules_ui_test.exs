@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.School.ModulesUiTest do
        %{conn: conn, op: op, ws: ws, scope: scope} do
     {:ok, _} = Organization.set_modules(op, ws, [:notes])
     [cg | _] = Enrollment.list_class_groups(scope, scope.current_academic_year)
-    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/students")
     assert has_element?(view, ~s|#class-tabs a[href="/school/classes/#{cg.id}/results"]|)
     refute has_element?(view, ~s|#class-tabs a[href="/school/classes/#{cg.id}/discipline"]|)
     refute has_element?(view, ~s|#class-tabs a[href="/school/classes/#{cg.id}/register"]|)

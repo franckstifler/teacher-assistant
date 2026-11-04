@@ -294,13 +294,16 @@ defmodule TeacherAssistantWeb.UIComponents do
   end
 
   @doc """
-  « ⋯ » menu for a row's or a page's secondary actions. Each `item` is a link
+  « ⋯ » menu for a row's or a page's secondary actions (or, with `text`, a labelled
+  menu button such as « Imprimer… »). Each `item` is a link
   (`navigate`/`href`) or a button running `click` (an event name or a `JS`
   command, e.g. `JS.push("transfer", value: %{id: id})`), with an optional
   `confirm` question; `danger` items come last, in coral.
   """
   attr :id, :string, required: true
   attr :label, :string, default: nil, doc: "accessible name of the « ⋯ » button"
+  attr :text, :string, default: nil, doc: "a labelled button (« Imprimer… ») instead of « ⋯ »"
+  attr :icon, :string, default: nil, doc: "the labelled button's icon"
   attr :class, :any, default: nil
 
   slot :item, required: true do
@@ -320,6 +323,7 @@ defmodule TeacherAssistantWeb.UIComponents do
       <%!-- a focusable div, not a <button>: Safari does not focus a clicked button,
            and daisyUI's dropdown opens on focus --%>
       <div
+        :if={!@text}
         tabindex="0"
         role="button"
         class="btn btn-ghost btn-square"
@@ -327,6 +331,16 @@ defmodule TeacherAssistantWeb.UIComponents do
         aria-haspopup="menu"
       >
         <.icon name="hero-ellipsis-horizontal" class="size-5" />
+      </div>
+      <div
+        :if={@text}
+        tabindex="0"
+        role="button"
+        class="btn btn-outline gap-1.5"
+        aria-label={@label}
+        aria-haspopup="menu"
+      >
+        <.icon :if={@icon} name={@icon} class="size-4" />{@text}
       </div>
       <ul
         tabindex="-1"

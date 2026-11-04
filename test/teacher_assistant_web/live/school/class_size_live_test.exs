@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.School.ClassSizeLiveTest do
 
   test "enrolling past the limit succeeds with the message", %{conn: conn, scope: scope, cg: cg} do
     limit(scope, 2)
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     view |> element("#enroll-button") |> render_click()
 
     view

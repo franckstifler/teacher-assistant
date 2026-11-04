@@ -116,7 +116,7 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLive do
       <section id="class-photos" class="space-y-5">
         <.breadcrumb>
           <:crumb navigate={~p"/school/classes"}>{gettext("Classes")}</:crumb>
-          <:crumb navigate={~p"/school/classes/#{@cg.id}"}>{@cg.label}</:crumb>
+          <:crumb navigate={~p"/school/classes/#{@cg.id}/students"}>{@cg.label}</:crumb>
           <:crumb>{gettext("Photos")}</:crumb>
         </.breadcrumb>
 

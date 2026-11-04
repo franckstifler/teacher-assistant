@@ -89,7 +89,7 @@ defmodule TeacherAssistantWeb.School.ClassPhotosLiveTest do
     assert {:error, {:live_redirect, %{to: "/school"}}} =
              live(conn, ~p"/school/classes/#{cg.id}/photos")
 
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}")
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
     refute has_element?(view, "#go-to-photos")
   end
 
