@@ -1,22 +1,64 @@
 defmodule TeacherAssistantWeb.PageControllerTest do
   use TeacherAssistantWeb.ConnCase
 
-  test "GET / renders the schools landing page", %{conn: conn} do
-    html = conn |> get(~p"/") |> html_response(200)
+  defp landing(conn), do: conn |> get(~p"/") |> html_response(200)
+
+  defp doc(html), do: LazyHTML.from_document(html)
+
+  defp hrefs(doc, selector),
+    do: doc |> LazyHTML.query(selector) |> LazyHTML.attribute("href")
+
+  test "GET / renders the schools landing page, section by section", %{conn: conn} do
+    html = landing(conn)
+    doc = doc(html)
 
     assert html =~ "Teacher Assistant"
-    assert html =~ "Tout l&#39;établissement sur un seul tableau"
-    # a school day role by role, the roles, Cameroon specifics and the pilot price
-    for id <- ~w(journee bulletins roles terrain tarif questions),
+    assert [_] = doc |> LazyHTML.query("h1") |> Enum.to_list()
+    assert LazyHTML.text(doc["h1"]) =~ "Tout l'établissement, sur le téléphone de chacun."
+
+    for id <- ~w(contenu sequence bulletins roles tarif questions),
         do: assert(html =~ ~s(id="#{id}"))
 
+    # the header nav (and its phone menu) point at the sections
+    for anchor <- ~w(#sequence #roles #tarif #questions),
+        do: assert(anchor in hrefs(doc, ~s(header nav a)))
+
+    # one sequence in four steps, the four role cards, three start steps, four questions
+    assert doc |> LazyHTML.query("#sequence ol > li") |> Enum.count() == 4
+    assert doc |> LazyHTML.query("#roles article") |> Enum.count() == 4
+    assert doc |> LazyHTML.query("#tarif ol > li") |> Enum.count() == 3
+    assert doc |> LazyHTML.query("#questions details") |> Enum.count() == 4
+
+    assert html =~ "Phase pilote 2026-2027"
     assert html =~ "Gratuit pendant la phase pilote"
-    # real screens of the app
-    assert html =~ "/images/landing/roll-call.webp"
+    assert html =~ "Votre établissement, prêt pour la prochaine séquence."
+  end
+
+  test "GET / draws the app instead of shipping screenshots", %{conn: conn} do
+    html = landing(conn)
+    doc = doc(html)
+
+    refute html =~ "/images/landing/"
+    assert doc |> LazyHTML.query("main img") |> Enum.count() == 0
+    # the drawings are decorative: the hero art and the printed bulletin
+    assert doc |> LazyHTML.query(~s(main [aria-hidden="true"])) |> Enum.count() >= 2
+  end
+
+  test "GET / says only what the app does: no placeholders, no promises", %{conn: conn} do
+    html = landing(conn)
+
+    for placeholder <- ["[N]", "[délai]", "[Réponse", "séquence 3"],
+        do: refute(html =~ placeholder)
+
+    # no automatic council planner, publication does not notify families, no printed codes
+    refute html =~ "Calendrier des conseils proposé"
+    refute html =~ "familles prévenues"
+    refute html =~ "code imprimé"
+    refute html =~ "Que se passe-t-il après la phase pilote"
   end
 
   test "GET / speaks to schools only: no solo-teacher lane", %{conn: conn} do
-    html = conn |> get(~p"/") |> html_response(200)
+    html = landing(conn)
 
     refute html =~ "Enseignant seul"
     refute html =~ "je commence seul"
@@ -25,35 +67,46 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     refute html =~ ~s(id="portes")
   end
 
-  test "GET / spares phones the desktop screenshots they never show", %{conn: conn} do
-    pictures =
-      conn
-      |> get(~p"/")
-      |> html_response(200)
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("picture")
+  test "GET / links to every entry point the front door needs", %{conn: conn} do
+    doc = conn |> landing() |> doc()
 
-    for shot <- ~w(dash-desktop dash-desktop-light bulletins-desktop) do
-      picture =
-        Enum.find(
-          pictures,
-          &(LazyHTML.attribute(&1["img"], "src") == ["/images/landing/#{shot}.webp"])
-        )
+    assert hrefs(doc, ~s(a[href="#contenu"])) == ["#contenu"]
+    # the header, the hero, the price card and the closing band all enrol a school
+    assert doc |> LazyHTML.query(~s(a[href="/schools/start"])) |> Enum.count() >= 4
+    assert "/schools/start" in hrefs(doc, "header a")
+    assert "/sign-in" in hrefs(doc, "header a")
 
-      assert [media] = picture |> LazyHTML.query("source") |> LazyHTML.attribute("media")
-      assert media =~ "max-width"
-    end
+    hero = LazyHTML.query(doc, ~s(section[aria-labelledby="landing-title"]))
+    assert LazyHTML.text(hero) =~ "Je suis enseignant : me connecter"
+    assert hrefs(hero, "a") == ["/schools/start", "/sign-in"]
+
+    # bilingual switch
+    assert "/locale/fr" in hrefs(doc, "header a")
+    assert "/locale/en" in hrefs(doc, "header a")
+    refute doc |> LazyHTML.query("#landing-my-space") |> Enum.any?()
   end
 
-  test "GET / links to every entry point the front door needs", %{conn: conn} do
-    html = conn |> get(~p"/") |> html_response(200)
+  test "GET / phone menu is a native disclosure with the sections and the language", %{
+    conn: conn
+  } do
+    menu = conn |> landing() |> doc() |> LazyHTML.query("details#landing-menu")
 
-    assert html =~ ~s(href="/sign-in")
-    # school onboarding intent (carries you to school setup after auth)
-    assert html =~ ~s(href="/schools/start")
-    # bilingual switch
-    assert html =~ ~s(href="/locale/fr")
-    assert html =~ ~s(href="/locale/en")
+    assert LazyHTML.text(menu["summary"]) =~ "Menu"
+
+    for href <- ~w(#sequence #roles #tarif #questions /locale/fr /locale/en),
+        do: assert(href in hrefs(menu, "a"))
+  end
+
+  test "GET / in English reads in English", %{conn: conn} do
+    html = conn |> init_test_session(%{locale: "en"}) |> landing()
+
+    assert html =~ "The whole school, on everyone&#39;s phone."
+    assert html =~ "One sequence, from roll call to report card"
+    assert html =~ "I&#39;m a teacher: sign in"
+    assert html =~ "Free during the pilot phase"
+    assert html =~ "Report cards ready to print, in the official format."
+    refute html =~ "Tout l&#39;établissement"
+    refute html =~ "Inscrire mon établissement"
   end
 
   test "GET /schools/start sends a visitor to register, bound for school setup", %{conn: conn} do
@@ -84,11 +137,16 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     end
 
     test "GET / offers their space instead of « Se connecter »", %{conn: conn} do
-      html = conn |> get(~p"/") |> html_response(200)
+      html = landing(conn)
+      doc = doc(html)
 
       assert html =~ ~s(id="landing-my-space")
-      assert html =~ ~s(href="/school")
+      assert "/school" in hrefs(doc, "header a")
       refute html =~ ~s(href="/sign-in")
+      refute html =~ "Je suis enseignant : me connecter"
+
+      hero = LazyHTML.query(doc, ~s(section[aria-labelledby="landing-title"]))
+      assert hrefs(hero, "a") == ["/schools/start", "/school"]
     end
   end
 end

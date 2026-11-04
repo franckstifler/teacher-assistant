@@ -4,327 +4,164 @@ defmodule TeacherAssistantWeb.PageHTML do
 
   See the `page_html` directory for all templates available.
 
-  The landing (`home`) speaks to schools only (UI review 2026-10): it walks a
-  school day role by role with real screens of the demo school, in the app's
-  « Tableau, affiné » look, and follows the visitor's theme.
+  The landing (`home`) speaks to schools only: one sequence from the roll call to
+  the bulletin, role by role, in the app's « Tableau, affiné » look. Its pictures
+  of the app are drawn in HTML with the theme's tokens (decorative, aria-hidden),
+  so they follow the visitor's theme and never go stale with the UI.
   """
   use TeacherAssistantWeb, :html
 
   embed_templates "page_html/*"
 
-  attr :src, :string, required: true
-  attr :alt, :string, required: true
-  attr :class, :any, default: nil
-  attr :eager, :boolean, default: false
-
-  @doc "A phone screen in a device frame (captures are 780×1688)."
-  def phone_shot(assigns) do
-    ~H"""
-    <div class={["ta-device", @class]}>
-      <img
-        src={@src}
-        alt={@alt}
-        width="390"
-        height="844"
-        loading={if @eager, do: "eager", else: "lazy"}
-        decoding="async"
-      />
-    </div>
-    """
-  end
-
-  attr :src, :string, required: true
-  attr :alt, :string, required: true
-  attr :width, :integer, default: 1920
-  attr :height, :integer, default: 1200
-  attr :class, :any, default: nil
-  attr :eager, :boolean, default: false
-
-  attr :from, :atom,
-    values: [nil, :sm, :md],
-    default: nil,
-    doc: "the breakpoint the shot is shown from; below it the browser fetches a blank pixel"
-
-  @doc "A desktop screen in a plain window frame."
-  def window_shot(assigns) do
-    ~H"""
-    <div class={["ta-window", @class]}>
-      <picture>
-        <source :if={@from} media={narrower_than(@from)} srcset={blank_pixel()} />
-        <img
-          src={@src}
-          alt={@alt}
-          width={@width}
-          height={@height}
-          loading={if @eager, do: "eager", else: "lazy"}
-          decoding="async"
-        />
-      </picture>
-    </div>
-    """
-  end
-
-  # Tailwind's sm (40rem) and md (48rem), minus a hair so the two never overlap.
-  defp narrower_than(:sm), do: "(max-width: 39.99rem)"
-  defp narrower_than(:md), do: "(max-width: 47.99rem)"
-
-  # A transparent 1×1 GIF: a hidden <img> is still downloaded, its <source> is not.
-  defp blank_pixel,
-    do: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-
   attr :items, :list, required: true
+  attr :class, :any, default: nil
 
   @doc "A short list of facts, each with a check."
   def checks(assigns) do
     ~H"""
-    <ul class="mt-5 flex flex-col gap-2.5">
+    <ul class={["flex flex-col gap-2.5", @class]}>
       <li :for={item <- @items} class="flex gap-3 text-[0.95rem] leading-snug">
-        <.icon name="hero-check-circle" class="mt-0.5 size-5 flex-none text-primary" />
+        <.icon name="hero-check" class="mt-0.5 size-5 flex-none text-primary" />
         <span>{item}</span>
       </li>
     </ul>
     """
   end
 
-  @doc "The role-by-role walk through a school day."
-  def day_steps do
+  @doc "The current locale, for the FR · EN switch."
+  def locale, do: Gettext.get_locale(TeacherAssistantWeb.Gettext)
+
+  @doc "The landing's sections, for the header nav (desktop) and its menu (phone)."
+  def sections do
+    [
+      {"#sequence", gettext("Comment ça marche")},
+      {"#roles", gettext("Rôles")},
+      {"#tarif", gettext("Tarif")},
+      {"#questions", gettext("Questions")}
+    ]
+  end
+
+  @doc "The hero window: how far each level's marks are entered (a drawing)."
+  def entry_bars do
+    [
+      {gettext("Niveau 1"), 82},
+      {gettext("Niveau 2"), 64},
+      {gettext("Niveau 3"), 91},
+      {gettext("2nde"), 48},
+      {gettext("1ère"), 73},
+      {gettext("Terminale"), 100}
+    ]
+  end
+
+  @doc "The hero phone: a teacher's next lessons (a drawing)."
+  def lessons do
+    [
+      {"07:30", gettext("Anglais · 2nde"), :done},
+      {"08:20", gettext("Anglais · Niv. 1"), :done},
+      {"11:05", gettext("Anglais · Niv. 2"), :upcoming},
+      {"11:55", gettext("Trav. manuels"), :upcoming}
+    ]
+  end
+
+  @doc "« 82 % » in French, « 82% » in English."
+  def percent(value), do: gettext("%{value} %", value: value)
+
+  @doc "One sequence, from the roll call to the bulletin."
+  def sequence_steps do
     [
       %{
-        id: "appel",
-        time: "07:30",
         role: gettext("Enseignant"),
-        title: gettext("L'appel en un geste, depuis le téléphone"),
+        title: gettext("L'appel en début de cours"),
         text:
           gettext(
-            "Présent, absent, en retard : un geste par élève, et l'appel est enregistré avant la fin du cours. L'enseignant retrouve sa journée de cours, et les appels oubliés lui sont rappelés."
+            "Tout le monde est présent par défaut : on touche seulement les absents et les retards. Un cours groupé de cinq classes se fait en un seul appel."
           ),
-        points: [
-          gettext("La journée de cours en un coup d'œil"),
-          gettext("Les appels en retard signalés à l'enseignant"),
-          gettext("Notes et appel au même endroit")
-        ],
-        shots: [
-          {"/images/landing/roll-call.webp",
-           gettext("L'appel de la 5e A sur téléphone : présents, absents et retards")},
-          {"/images/landing/teacher-today.webp",
-           gettext("La journée d'une enseignante : cours, appels à faire, notes à saisir")}
-        ]
+        proof: gettext("Un seul appel par cours groupé")
       },
       %{
-        id: "vie-scolaire",
-        time: "09:00",
-        role: gettext("Surveillant général"),
-        title: gettext("La vie scolaire remonte toute seule"),
-        text:
-          gettext(
-            "Appels non faits, absents, retards et absences à justifier, classe par classe. Le surveillant général relance un appel manquant en un geste, enregistre les justificatifs et sait quels parents prévenir."
-          ),
-        points: [
-          gettext("Appels manquants relancés en un geste"),
-          gettext("Absences justifiées ou non, cumulées par séquence"),
-          gettext("Conduite, sanctions et parents à prévenir")
-        ],
-        shots: [
-          {"/images/landing/surveillant-day.webp",
-           gettext("La journée du surveillant général : appels faits, absents, retards")}
-        ]
-      },
-      %{
-        id: "notes",
-        time: "14:00",
         role: gettext("Enseignant"),
-        title: gettext("Des notes saisies au fil de la séquence"),
+        title: gettext("Les notes saisies en classe"),
         text:
           gettext(
-            "Chaque note est enregistrée dès que l'enseignant quitte la case. Absences justifiées ou non, évaluations notées sur 20 ou sur un autre barème : les moyennes et les rangs se calculent seuls."
+            "Un pavé numérique pensé pour le téléphone, une note par élève, enregistrée aussitôt. Absent ou absence justifiée en une touche."
           ),
-        points: [
-          gettext("Saisie ouverte jusqu'à la date de clôture de la séquence"),
-          gettext("Corrections de notes validées par l'administration"),
-          gettext("Résultats de la classe par séquence")
-        ],
-        shots: [
-          {"/images/landing/marks.webp",
-           gettext("La saisie des notes d'une interrogation en 1re D")}
-        ]
+        proof: gettext("Enregistrement élève par élève")
       },
       %{
-        id: "suivi",
-        time: "16:00",
         role: gettext("Censeur"),
-        title: gettext("Le censeur relance avant la clôture, pas après"),
+        title: gettext("Le suivi au jour le jour"),
         text:
           gettext(
-            "Qui a fini, qui est en retard, matière par matière et classe par classe. Le censeur voit la saisie avancer et relance les enseignants pendant qu'il en est encore temps."
+            "Avancement par enseignant, par classe et par matière. Une relance groupée pour tous ceux qui n'ont pas commencé, bien avant la clôture."
           ),
-        points: [
-          gettext("Avancement de la saisie par classe et par matière"),
-          gettext("Relance des enseignants en retard"),
-          gettext("Emploi du temps des classes, conflits signalés")
-        ],
-        shots: [
-          {"/images/landing/censeur-suivi.webp",
-           gettext("Le suivi de la saisie des notes de la séquence 1 par le censeur")}
-        ]
+        proof: gettext("Relance en un clic")
+      },
+      %{
+        role: gettext("Proviseur"),
+        title: gettext("Le conseil, puis les bulletins"),
+        text:
+          gettext(
+            "Conseils de classe planifiés, bulletins calculés, publiés et imprimés le soir même."
+          ),
+        proof: gettext("Format officiel, code QR")
       }
     ]
+  end
+
+  @doc "The drawn bulletin's rows: subject, coefficient, mark."
+  def bulletin_rows do
+    [
+      {gettext("Français"), 4, 13.5},
+      {gettext("Anglais"), 3, 14.0},
+      {gettext("Mathématiques"), 4, 11.25},
+      {gettext("Économie familiale"), 5, 15.0},
+      {gettext("Hygiène"), 2, 12.0},
+      {gettext("Histoire-géo"), 2, 10.5},
+      {gettext("ECM"), 1, 13.0},
+      {gettext("EPS"), 1, 16.0}
+    ]
+  end
+
+  @doc "A mark as printed: « 13,50 » in French, « 13.50 » in English."
+  def mark(value) do
+    text = :erlang.float_to_binary(value * 1.0, decimals: 2)
+    if locale() == "fr", do: String.replace(text, ".", ","), else: text
   end
 
   @doc "What each role finds in its space (the phone tab bar of each)."
   def roles do
     [
       %{
-        icon: "hero-building-library",
-        title: gettext("Proviseur"),
+        title: gettext("Enseignant"),
         text:
           gettext(
-            "La vue d'ensemble : ce qui bloque, par ordre d'urgence, la saisie de chaque classe et les décisions à prendre."
+            "Sa journée de cours, l'appel, la saisie des notes et les résultats de ses classes."
           ),
-        tabs: [gettext("Accueil"), gettext("Classes"), gettext("Élèves"), gettext("Bulletins")]
+        tabs: [gettext("Ma journée"), gettext("Mes cours"), gettext("Bulletins"), gettext("EDT")]
       },
       %{
-        icon: "hero-chart-bar-square",
         title: gettext("Censeur"),
         text:
           gettext(
-            "Le suivi pédagogique : saisie des notes, emplois du temps, conseils de classe et bulletins."
+            "L'avancement de la saisie, les relances, l'emploi du temps et la validation des corrections."
           ),
-        tabs: [
-          gettext("Suivi"),
-          gettext("Emploi du temps"),
-          gettext("Classes"),
-          gettext("Bulletins")
-        ]
+        tabs: [gettext("Suivi"), gettext("EDT"), gettext("Classes"), gettext("Bulletins")]
       },
       %{
-        icon: "hero-clipboard-document-check",
         title: gettext("Surveillant général"),
         text:
           gettext(
-            "La journée de l'établissement : appels, absences à justifier, conduite et sanctions."
+            "Les appels du jour, les absences à justifier, la conduite et les familles à prévenir."
           ),
         tabs: [gettext("Journée"), gettext("Absences"), gettext("Élèves"), gettext("Sanctions")]
       },
       %{
-        icon: "hero-academic-cap",
-        title: gettext("Enseignant"),
+        title: gettext("Proviseur et intendant"),
         text:
           gettext(
-            "Ses cours du jour, l'appel, les notes de ses classes et son emploi du temps — rien de plus."
+            "Le pilotage de l'établissement, les bulletins, l'équipe, les frais et les reçus."
           ),
-        tabs: [
-          gettext("Aujourd'hui"),
-          gettext("Mes cours"),
-          gettext("Notes"),
-          gettext("Emploi du temps")
-        ]
-      }
-    ]
-  end
-
-  @doc "The rest of the toolbox, one line each."
-  def more_features do
-    [
-      %{
-        icon: "hero-table-cells",
-        title: gettext("Emplois du temps"),
-        text:
-          gettext(
-            "Grille par classe et par enseignant, quotas horaires par matière, conflits signalés, impression."
-          )
-      },
-      %{
-        icon: "hero-user-group",
-        title: gettext("Conseils de classe"),
-        text:
-          gettext("Préparation, appréciations et décisions de passage, procès-verbal imprimable.")
-      },
-      %{
-        icon: "hero-identification",
-        title: gettext("Photos et cartes scolaires"),
-        text:
-          gettext(
-            "Photos des élèves prises en classe, cartes scolaires imprimées à 10 par feuille A4."
-          )
-      },
-      %{
-        icon: "hero-banknotes",
-        title: gettext("Frais de scolarité"),
-        text:
-          gettext(
-            "Tranches par classe, paiements en espèces, Mobile Money ou virement, soldes par élève."
-          )
-      },
-      %{
-        icon: "hero-calendar-days",
-        title: gettext("Calendrier scolaire"),
-        text:
-          gettext("Année, séquences et trimestres, congés et jours fériés de l'établissement.")
-      },
-      %{
-        icon: "hero-arrow-up-tray",
-        title: gettext("Import des listes"),
-        text:
-          gettext(
-            "Collez la liste d'une classe depuis votre tableur : chaque ligne est vérifiée avant l'import."
-          )
-      },
-      %{
-        icon: "hero-device-phone-mobile",
-        title: gettext("Comptes par téléphone"),
-        text:
-          gettext(
-            "L'équipe se connecte avec son numéro : pas besoin d'adresse e-mail pour commencer."
-          )
-      },
-      %{
-        icon: "hero-bell",
-        title: gettext("Notifications"),
-        text:
-          gettext(
-            "Relances, corrections décidées, bulletins publiés : chacun est prévenu de ce qui le concerne."
-          )
-      }
-    ]
-  end
-
-  @doc "How Cameroon's system is built in, not translated."
-  def terrain do
-    [
-      %{
-        title: gettext("Les deux sous-systèmes"),
-        text:
-          gettext(
-            "Francophone et anglophone, avec leurs niveaux et leurs séries, dans une interface en français ou en anglais."
-          )
-      },
-      %{
-        title: gettext("Séquences et trimestres"),
-        text:
-          gettext(
-            "Six séquences, trois trimestres, dates de clôture de la saisie et moyennes conformes aux usages."
-          )
-      },
-      %{
-        title: gettext("Coefficients et appréciations"),
-        text:
-          gettext(
-            "Coefficients par niveau et par série, barème d'appréciations et distinctions de l'établissement."
-          )
-      },
-      %{
-        title: gettext("Bulletins imprimables"),
-        text:
-          gettext(
-            "En-tête officiel, cachet et signature, pensés pour l'impression en noir et blanc."
-          )
-      },
-      %{
-        title: gettext("D'abord le téléphone"),
-        text:
-          gettext(
-            "Chaque écran est conçu pour un téléphone et des pages légères ; l'ordinateur reste là pour l'administration."
-          )
+        tabs: [gettext("Accueil"), gettext("Classes"), gettext("Bulletins"), gettext("Frais")]
       }
     ]
   end
@@ -336,21 +173,21 @@ defmodule TeacherAssistantWeb.PageHTML do
         title: gettext("Inscrivez l'établissement"),
         text:
           gettext(
-            "Le chef d'établissement crée son compte et renseigne l'identité de l'établissement."
+            "Le chef d'établissement crée le compte en quelques minutes ; nous vérifions l'établissement avant l'ouverture des appels et des notes."
           )
       },
       %{
-        title: gettext("Configurez l'année"),
+        title: gettext("Importez classes et élèves"),
         text:
           gettext(
-            "Un assistant guide l'année scolaire, les classes, les matières et les coefficients."
+            "En collant vos listes depuis Excel : classes et élèves, puis matières et coefficients, réglés par l'établissement."
           )
       },
       %{
         title: gettext("Invitez l'équipe"),
         text:
           gettext(
-            "Chaque membre reçoit un compte à son numéro de téléphone, avec le rôle qui est le sien."
+            "Chaque membre se connecte avec son numéro de téléphone et un mot de passe provisoire remis par l'établissement."
           )
       }
     ]
@@ -361,19 +198,19 @@ defmodule TeacherAssistantWeb.PageHTML do
     [
       {gettext("Faut-il un ordinateur ?"),
        gettext(
-         "Non. L'appel, les notes et le suivi se font sur téléphone. Un ordinateur et une imprimante servent surtout à imprimer les bulletins, les emplois du temps et les cartes scolaires."
+         "Un smartphone suffit pour les enseignants et le surveillant général. Le proviseur et le censeur profitent d'un écran plus large pour l'emploi du temps et les bulletins."
        )},
-      {gettext("Les enseignants doivent-ils avoir une adresse e-mail ?"),
+      {gettext("Les enseignants ont-ils besoin d'une adresse e-mail ?"),
        gettext(
-         "Non. L'établissement crée leur compte avec leur numéro de téléphone et un mot de passe temporaire ; ils choisissent ensuite le leur."
+         "Un numéro de téléphone suffit. L'établissement leur remet un mot de passe provisoire ; ils peuvent ensuite choisir le leur."
        )},
       {gettext("Qui voit quoi ?"),
        gettext(
-         "Chacun voit ce que son rôle lui permet : un enseignant voit ses classes, le surveillant général la vie scolaire, l'administration l'ensemble. Les données d'un établissement ne sont visibles que par ses membres."
+         "Chaque rôle voit ce qui le concerne : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais. Le proviseur voit tout. Les données d'un établissement ne sont visibles que par ses membres."
        )},
       {gettext("Les établissements anglophones sont-ils pris en charge ?"),
        gettext(
-         "Oui. Le sous-système anglophone a ses propres niveaux, et l'application se lit en français ou en anglais."
+         "Oui : le sous-système anglophone a ses propres niveaux, et l'application se lit en français ou en anglais, au choix de chacun."
        )}
     ]
   end

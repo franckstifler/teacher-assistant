@@ -73,6 +73,12 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
+// The landing's phone menu is a native <details>: a link in it closes it, so the
+// section it jumps to is not left under the open menu (it still works without JS).
+document.addEventListener("click", (event) => {
+  event.target.closest?.("details[data-close-on-link] a")?.closest("details")?.removeAttribute("open")
+})
+
 // Members page: copy the temporary password (or the full message) shown once.
 window.addEventListener("phx:copy", (event) => {
   if (navigator.clipboard) navigator.clipboard.writeText(event.target.textContent.trim())

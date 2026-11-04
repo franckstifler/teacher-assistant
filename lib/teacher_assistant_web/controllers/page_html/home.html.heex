@@ -1,8 +1,8 @@
 <%!--
-  Landing (UI review 2026-10): schools only, in the app's « Tableau, affiné » look
-  (daisyUI tokens, so it follows the visitor's theme). Rendered on the root layout
-  with its own header and footer. Screens are captures of the demo school,
-  renamed « Lycée de démonstration »; data lists live in PageHTML.
+  Landing v2 (2026-11): schools only, in the app's « Tableau, affiné » look (daisyUI
+  tokens, so it follows the visitor's theme). Rendered on the root layout with its
+  own header and footer. The pictures of the app are drawn in HTML (aria-hidden);
+  data lists and small formatters live in PageHTML.
 --%>
 <div class="ta-landing flex min-h-screen flex-col bg-base-200 text-base-content">
   <a
@@ -12,342 +12,402 @@
     {gettext("Aller au contenu")}
   </a>
 
-  <header class="sticky top-0 z-30 border-b border-base-300 bg-base-200/90 backdrop-blur">
-    <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:px-6">
-      <a href={~p"/"} class="flex min-h-11 items-center gap-2.5">
-        <span class="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-content ta-display">
+  <header class="sticky top-0 z-30 border-b border-base-300 bg-base-200/95 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6">
+      <a href={~p"/"} class="flex min-h-11 min-w-0 items-center gap-2.5">
+        <span class="ta-display grid size-8 flex-none place-items-center rounded-lg bg-primary text-[0.8rem] font-semibold text-primary-content">
           TA
         </span>
-        <span class="text-[0.95rem] font-semibold">Teacher Assistant</span>
+        <span class="truncate text-[0.95rem] font-semibold">Teacher Assistant</span>
       </a>
-      <nav class="ml-6 hidden items-center gap-1 lg:flex" aria-label={gettext("Sections")}>
-        <a href="#journee" class="ta-landing__nav">{gettext("Fonctionnalités")}</a>
-        <a href="#roles" class="ta-landing__nav">{gettext("Rôles")}</a>
-        <a href="#terrain" class="ta-landing__nav">{gettext("Cameroun")}</a>
-        <a href="#tarif" class="ta-landing__nav">{gettext("Tarif")}</a>
+      <nav class="ml-4 hidden items-center gap-0.5 lg:flex" aria-label={gettext("Sections")}>
+        <a :for={{href, label} <- sections()} href={href} class="ta-landing__nav !px-2.5">
+          {label}
+        </a>
       </nav>
       <div class="ml-auto flex items-center gap-2">
-        <div class="hidden items-center md:flex" aria-label={gettext("Langue")}>
-          <.link href={~p"/locale/fr"} class="ta-landing__nav !px-2">FR</.link>
+        <nav
+          class="hidden items-center font-mono text-[0.8rem] lg:flex"
+          aria-label={gettext("Langue")}
+        >
+          <.link
+            href={~p"/locale/fr"}
+            class="ta-landing__nav !px-2"
+            lang="fr"
+            aria-current={locale() == "fr" && "true"}
+          >
+            FR
+          </.link>
           <span class="ta-text-2" aria-hidden="true">·</span>
-          <.link href={~p"/locale/en"} class="ta-landing__nav !px-2">EN</.link>
-        </div>
+          <.link
+            href={~p"/locale/en"}
+            class="ta-landing__nav !px-2"
+            lang="en"
+            aria-current={locale() == "en" && "true"}
+          >
+            EN
+          </.link>
+        </nav>
         <.link
           :if={@current_user}
           id="landing-my-space"
           href={~p"/school"}
-          class="btn btn-ghost min-h-11 px-3"
+          class="btn btn-outline ta-landing__strong-rule min-h-11 px-2.5 text-[0.8125rem] sm:px-4 sm:text-sm"
         >
           {gettext("Mon espace")}
         </.link>
-        <.link :if={!@current_user} href={~p"/sign-in"} class="btn btn-ghost min-h-11 px-3">
+        <.link
+          :if={!@current_user}
+          href={~p"/sign-in"}
+          class="btn btn-outline ta-landing__strong-rule min-h-11 px-2.5 text-[0.8125rem] sm:px-4 sm:text-sm"
+        >
           {gettext("Se connecter")}
         </.link>
-        <.link href={~p"/schools/start"} class="btn btn-primary hidden min-h-11 sm:inline-flex">
+        <.link
+          href={~p"/schools/start"}
+          class="btn btn-primary hidden min-h-11 px-4 md:inline-flex"
+        >
           {gettext("Inscrire mon établissement")}
         </.link>
+
+        <details id="landing-menu" class="ta-landing__menu relative lg:hidden" data-close-on-link>
+          <summary class="-mr-2 grid size-11 cursor-pointer place-items-center rounded-lg">
+            <span class="sr-only">{gettext("Menu")}</span>
+            <.icon name="hero-bars-3" class="ta-landing__menu-open size-6" />
+            <.icon name="hero-x-mark" class="ta-landing__menu-close size-6" />
+          </summary>
+          <div class="absolute right-0 top-full mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-box border border-base-300 bg-base-100 p-2 shadow-xl">
+            <nav aria-label={gettext("Sections")}>
+              <ul class="flex flex-col">
+                <li :for={{href, label} <- sections()}>
+                  <a href={href} class="ta-landing__nav w-full !text-base">{label}</a>
+                </li>
+              </ul>
+            </nav>
+            <div class="mt-1 flex items-center gap-1 border-t border-base-300 px-1 pt-2">
+              <nav
+                class="flex items-center font-mono text-[0.85rem]"
+                aria-label={gettext("Langue")}
+              >
+                <.link
+                  href={~p"/locale/fr"}
+                  class="ta-landing__nav min-w-11 justify-center"
+                  lang="fr"
+                  aria-current={locale() == "fr" && "true"}
+                >
+                  FR
+                </.link>
+                <.link
+                  href={~p"/locale/en"}
+                  class="ta-landing__nav min-w-11 justify-center"
+                  lang="en"
+                  aria-current={locale() == "en" && "true"}
+                >
+                  EN
+                </.link>
+              </nav>
+            </div>
+            <.link
+              href={~p"/schools/start"}
+              class="btn btn-primary mt-2 min-h-11 w-full md:hidden"
+            >
+              {gettext("Inscrire mon établissement")}
+            </.link>
+          </div>
+        </details>
       </div>
     </div>
   </header>
 
   <main id="contenu" class="flex-1">
     <%!-- HERO --%>
-    <section class="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:pb-24 lg:pt-16">
+    <section
+      aria-labelledby="landing-title"
+      class="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-8 sm:px-6 md:pb-14 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-12 lg:pb-16 lg:pt-16"
+    >
       <div>
-        <p class="ta-eyebrow">{gettext("Lycées et collèges du Cameroun")}</p>
-        <h1 class="mt-3 text-[2.35rem] font-semibold leading-[1.05] tracking-[-0.015em] sm:text-5xl lg:text-[3.4rem] [text-wrap:balance]">
-          {gettext("Tout l'établissement sur un seul tableau.")}
+        <p class="ta-landing__eyebrow">
+          <span class="sm:hidden">{gettext("Lycées et collèges du Cameroun")}</span>
+          <span class="hidden sm:inline">
+            {gettext("Lycées et collèges du Cameroun · francophones et anglophones")}
+          </span>
+        </p>
+        <h1
+          id="landing-title"
+          class="mt-4 text-[2rem] font-semibold leading-[1.08] tracking-[-0.01em] sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] [text-wrap:balance]"
+        >
+          {gettext("Tout l'établissement, sur le téléphone de chacun.")}
         </h1>
-        <p class="ta-text-2 mt-5 max-w-xl text-[1.07rem] leading-relaxed [text-wrap:pretty]">
+        <p class="ta-landing__lead mt-5 max-w-[34rem] text-base leading-relaxed sm:text-lg [text-wrap:pretty]">
           {gettext(
-            "L'appel, les notes, les bulletins, les emplois du temps et la vie scolaire au même endroit. Chaque membre de l'équipe a son espace, sur téléphone comme sur ordinateur."
+            "L'appel, les notes et les bulletins, avec un espace pour chaque membre de l'équipe."
           )}
         </p>
-        <div class="mt-7 flex flex-wrap gap-3">
-          <.link href={~p"/schools/start"} class="btn btn-primary btn-lg min-h-12">
+        <div class="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
+          <.link href={~p"/schools/start"} class="btn btn-primary btn-lg min-h-13">
             {gettext("Inscrire mon établissement")}
             <.icon name="hero-arrow-right" class="size-5" />
           </.link>
-          <a href="#journee" class="btn btn-outline btn-lg min-h-12">
-            {gettext("Voir comment ça marche")}
-          </a>
+          <.link
+            :if={!@current_user}
+            href={~p"/sign-in"}
+            class="btn btn-outline btn-lg ta-landing__strong-rule min-h-13"
+          >
+            {gettext("Je suis enseignant : me connecter")}
+          </.link>
+          <.link
+            :if={@current_user}
+            href={~p"/school"}
+            class="btn btn-outline btn-lg ta-landing__strong-rule min-h-13"
+          >
+            {gettext("Mon espace")}
+          </.link>
         </div>
-        <p class="ta-text-2 mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <span class="inline-flex items-center gap-1.5">
-            <.icon name="hero-check" class="size-4 text-primary" />{gettext(
-              "Francophone et anglophone"
-            )}
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <.icon name="hero-check" class="size-4 text-primary" />{gettext(
-              "Gratuit pendant la phase pilote"
-            )}
-          </span>
-        </p>
+        <ul class="ta-text-2 mt-5 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.85rem] sm:text-sm">
+          <li class="inline-flex items-center gap-1.5">
+            <.icon name="hero-check" class="size-4 text-primary" />
+            {gettext("Gratuit pendant la phase pilote")}
+          </li>
+          <li class="hidden items-center gap-1.5 sm:inline-flex">
+            <.icon name="hero-check" class="size-4 text-primary" />
+            {gettext("Fonctionne sur tout smartphone")}
+          </li>
+          <li class="hidden items-center gap-1.5 sm:inline-flex">
+            <.icon name="hero-check" class="size-4 text-primary" />
+            {gettext("Comptes par numéro de téléphone")}
+          </li>
+          <li class="inline-flex items-center gap-1.5 sm:hidden">
+            <.icon name="hero-check" class="size-4 text-primary" />
+            {gettext("Comptes par téléphone")}
+          </li>
+          <li class="inline-flex items-center gap-1.5 sm:hidden">
+            <.icon name="hero-check" class="size-4 text-primary" /> Français · English
+          </li>
+        </ul>
       </div>
 
-      <div class="relative mx-auto w-full max-w-md sm:mb-14 sm:max-w-2xl lg:mb-0 lg:max-w-none">
-        <div class="hidden sm:block">
-          <.window_shot
-            src="/images/landing/dash-desktop.webp"
-            alt={
-              gettext(
-                "Le tableau de bord du proviseur : saisie des notes, appels du jour, absences à justifier, tâches à traiter"
-              )
-            }
-            class="ta-only-dark sm:ml-16 lg:ml-12"
-            from={:sm}
-            eager
-          />
-          <.window_shot
-            src="/images/landing/dash-desktop-light.webp"
-            alt={
-              gettext(
-                "Le tableau de bord du proviseur : saisie des notes, appels du jour, absences à justifier, tâches à traiter"
-              )
-            }
-            class="ta-only-light sm:ml-16 lg:ml-12"
-            from={:sm}
-            eager
-          />
+      <%!-- the app, drawn: the censeur's entry tracking + a teacher's phone --%>
+      <div
+        aria-hidden="true"
+        class="relative mx-auto w-full max-w-[34rem] select-none md:h-[470px] lg:max-w-none"
+      >
+        <div class="ta-landing__window absolute left-[7.5rem] right-0 top-0 ml-auto hidden max-w-[440px] md:block">
+          <div class="flex h-[26px] items-center gap-1.5 border-b border-base-300 px-2.5">
+            <span class="ta-landing__dot"></span>
+            <span class="ta-landing__dot"></span>
+            <span class="ta-landing__dot"></span>
+          </div>
+          <div class="flex flex-col gap-2.5 p-4">
+            <p class="ta-display text-lg font-semibold">
+              {gettext("Suivi de la saisie · Séq. 2")}
+            </p>
+            <div
+              :for={{name, pct} <- entry_bars()}
+              class="flex items-center gap-2.5 pl-[5rem] text-xs"
+            >
+              <span class="ta-text-2 w-[4.5rem] flex-none">{name}</span>
+              <span class="h-[7px] flex-1 overflow-hidden rounded bg-base-300">
+                <span
+                  class={["block h-full", if(pct == 100, do: "bg-primary", else: "bg-secondary")]}
+                  style={"width: #{pct}%"}
+                ></span>
+              </span>
+              <span class="ta-num ta-text-2 w-[2.6rem] flex-none text-right">{percent(pct)}</span>
+            </div>
+          </div>
         </div>
-        <.phone_shot
-          src="/images/landing/dash-phone.webp"
-          alt={gettext("L'accueil du proviseur sur téléphone")}
-          class="mx-auto w-[min(17rem,78vw)] sm:absolute sm:-bottom-14 sm:left-0 sm:w-[9.5rem] lg:-left-4 lg:w-[10.5rem]"
-          eager
-        />
+
+        <div class="ta-landing__phone mx-auto flex h-[15.5rem] w-[230px] flex-col gap-2 px-3 pt-3.5 md:absolute md:bottom-0 md:left-0 md:mx-0 md:h-[400px] md:w-[210px] lg:-left-2">
+          <p class="ta-display text-[15px] font-semibold">{gettext("Bonjour, Hélène")}</p>
+          <div class="flex flex-col gap-1.5 rounded-[10px] border-2 border-primary bg-base-100 p-2.5">
+            <span class="font-mono text-[9px] font-semibold uppercase text-primary">
+              {gettext("Maintenant · %{time}", time: "10:15")}
+            </span>
+            <span class="text-[13px] font-semibold">{gettext("Anglais · Niveau 2")}</span>
+            <span class="grid h-[30px] place-items-center rounded-[7px] bg-primary text-[11px] font-semibold text-primary-content">
+              {gettext("Faire l'appel")}
+            </span>
+          </div>
+          <div
+            :for={{time, name, status} <- lessons()}
+            class="flex h-7 items-center gap-1.5 border-b border-base-300 text-[10.5px]"
+          >
+            <span class="ta-num ta-text-2 w-8 flex-none">{time}</span>
+            <span class="flex-1 truncate">{name}</span>
+            <span class={["ta-landing__chip", status == :done && "ta-landing__chip--done"]}>
+              {if status == :done, do: gettext("Fait"), else: gettext("À venir")}
+            </span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <%!-- ROLE STRIP --%>
-    <div class="border-y border-base-300 bg-base-100">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4 text-sm sm:px-6">
-        <span class="ta-text-2">{gettext("Un espace pour chacun :")}</span>
-        <span
-          :for={r <- roles()}
-          class="inline-flex items-center gap-2 font-medium"
-        >
-          <.icon name={r.icon} class="size-4 text-primary" />{r.title}
-        </span>
-      </div>
-    </div>
-
-    <%!-- A SCHOOL DAY, ROLE BY ROLE --%>
-    <section id="journee" class="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-24">
-      <div class="max-w-2xl">
-        <p class="ta-eyebrow">{gettext("Une journée au lycée")}</p>
-        <h2 class="mt-2 text-3xl font-semibold tracking-[-0.01em] sm:text-4xl [text-wrap:balance]">
-          {gettext("Chacun fait sa part, et tout le monde la voit.")}
-        </h2>
-        <p class="ta-text-2 mt-4 text-[1.02rem] leading-relaxed [text-wrap:pretty]">
-          {gettext(
-            "Personne ne ressaisit le travail d'un autre : l'appel de l'enseignant nourrit la journée du surveillant général, ses notes nourrissent le suivi du censeur et les bulletins."
-          )}
+    <%!-- PILOT --%>
+    <section aria-label={gettext("Phase pilote")} class="border-y border-base-300 bg-base-100">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-10 gap-y-1.5 px-4 py-5 text-sm sm:px-6">
+        <p class="font-semibold">{gettext("Phase pilote 2026-2027")}</p>
+        <p class="ta-text-2 lg:ml-auto">
+          {gettext("Proviseur, censeur, surveillant général, intendant, enseignants")}
         </p>
       </div>
+    </section>
 
-      <div class="mt-14 flex flex-col gap-20 lg:gap-28">
-        <article
-          :for={{step, i} <- Enum.with_index(day_steps())}
-          id={"journee-#{step.id}"}
-          class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
+    <%!-- ONE SEQUENCE --%>
+    <section
+      id="sequence"
+      aria-labelledby="sequence-title"
+      class="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-22"
+    >
+      <p class="ta-landing__eyebrow">{gettext("Une séquence, de l'appel au bulletin")}</p>
+      <h2
+        id="sequence-title"
+        class="mt-3 max-w-[45rem] text-[1.85rem] font-semibold leading-[1.15] sm:text-[2.4rem] [text-wrap:balance]"
+      >
+        {gettext("Chacun fait sa part une fois. Le reste de l'équipe la retrouve aussitôt.")}
+      </h2>
+      <ol class="mt-10 grid gap-4 sm:grid-cols-2 lg:mt-12 lg:grid-cols-4">
+        <li
+          :for={{step, n} <- Enum.with_index(sequence_steps(), 1)}
+          class="flex flex-col gap-3 rounded-[14px] border border-base-300 bg-base-100 p-5"
         >
-          <div class={["max-w-xl", rem(i, 2) == 1 && "lg:order-2"]}>
-            <p class="flex items-center gap-3 text-sm">
-              <span class="ta-num rounded-full bg-base-100 px-2.5 py-1 text-[0.8rem] font-medium ring-1 ring-base-300">
-                {step.time}
-              </span>
-              <span class="ta-text-2 font-medium">{step.role}</span>
-            </p>
-            <h3 class="mt-4 text-2xl font-semibold leading-tight sm:text-[1.75rem] [text-wrap:balance]">
-              {step.title}
-            </h3>
-            <p class="ta-text-2 mt-3 text-[1.02rem] leading-relaxed [text-wrap:pretty]">
-              {step.text}
-            </p>
-            <.checks items={step.points} />
-          </div>
-          <div class={[
-            "flex items-start justify-center gap-4 sm:gap-6",
-            rem(i, 2) == 1 && "lg:order-1"
-          ]}>
-            <.phone_shot
-              :for={{{src, alt}, j} <- Enum.with_index(step.shots)}
-              src={src}
-              alt={alt}
-              class={
-                if(j == 0,
-                  do: "w-[min(16.5rem,70vw)]",
-                  else: "hidden w-[14rem] translate-y-10 sm:block"
-                )
-              }
-            />
-          </div>
-        </article>
-      </div>
+          <span class="flex items-center gap-2.5">
+            <span class="ta-num grid size-[30px] place-items-center rounded-full bg-primary text-[13px] font-semibold text-primary-content">
+              {n}
+            </span>
+            <span class="ta-text-2 text-[13px] font-semibold">{step.role}</span>
+          </span>
+          <h3 class="ta-landing__h3 text-[1.2rem] font-semibold leading-tight">{step.title}</h3>
+          <p class="ta-landing__lead text-[0.92rem] leading-relaxed">{step.text}</p>
+          <p class="mt-auto border-t border-base-300 pt-2.5 font-mono text-xs font-medium text-primary">
+            {step.proof}
+          </p>
+        </li>
+      </ol>
     </section>
 
     <%!-- BULLETINS --%>
-    <section id="bulletins" class="scroll-mt-20 border-y border-base-300 bg-base-100">
-      <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14 lg:py-24">
+    <section
+      id="bulletins"
+      aria-labelledby="bulletins-title"
+      class="scroll-mt-20 border-y border-base-300 bg-base-100"
+    >
+      <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:py-20">
         <div class="max-w-xl">
-          <p class="flex items-center gap-3 text-sm">
-            <span class="ta-text-2 font-medium">{gettext("Proviseur et censeur")}</span>
-          </p>
-          <h2 class="mt-3 text-3xl font-semibold tracking-[-0.01em] sm:text-4xl [text-wrap:balance]">
-            {gettext("Des bulletins prêts le jour du conseil de classe")}
+          <p class="ta-landing__eyebrow">{gettext("Le soir du conseil de classe")}</p>
+          <h2
+            id="bulletins-title"
+            class="mt-3 text-[1.85rem] font-semibold leading-[1.15] sm:text-[2.15rem] [text-wrap:balance]"
+          >
+            {gettext("Des bulletins prêts à imprimer, au format officiel.")}
           </h2>
-          <p class="ta-text-2 mt-4 text-[1.02rem] leading-relaxed [text-wrap:pretty]">
+          <p class="ta-landing__lead mt-4 leading-relaxed [text-wrap:pretty]">
             {gettext(
-              "Coefficients, moyennes, rangs, appréciations et distinctions se calculent à mesure que les notes arrivent. On voit ce qui manque encore, on tient le conseil de classe, on publie, puis on imprime toute la classe."
+              "Moyennes, coefficients, rangs et appréciations se calculent à mesure que les notes arrivent. Le proviseur voit ce qui reste à régler classe par classe, tient le conseil, puis imprime toute la classe en une fois."
             )}
           </p>
-          <.checks items={[
-            gettext("Format officiel, lisible imprimé en noir et blanc"),
-            gettext("Photo de l'élève et code QR pour vérifier un bulletin"),
-            gettext("Bulletins figés une fois publiés, prévenus par notification")
-          ]} />
-        </div>
-        <div class="relative">
-          <.window_shot
-            src="/images/landing/bulletins-desktop.webp"
-            alt={
-              gettext(
-                "Les bulletins du trimestre 1 de la 6e A : ce qui manque, le classement et le détail d'une élève"
-              )
-            }
-            class="hidden md:block"
-            from={:md}
+          <.checks
+            class="mt-5"
+            items={[
+              gettext("Lisible imprimé en noir et blanc"),
+              gettext("Photo de l'élève et code QR de vérification"),
+              gettext("Bulletins figés à la publication, enseignants prévenus")
+            ]}
           />
-          <div class="ta-paper mx-auto w-[min(21rem,88vw)] md:absolute md:-bottom-10 md:right-3 md:w-[42%] lg:-right-4">
-            <img
-              src="/images/landing/bulletin-print.webp"
-              alt={gettext("Un bulletin de notes imprimé, au format officiel")}
-              width="1200"
-              height="1467"
-              loading="lazy"
-              decoding="async"
-            />
+        </div>
+
+        <div aria-hidden="true" class="flex select-none justify-center py-2">
+          <div class="ta-landing__sheet flex h-[350px] w-[300px] max-w-full flex-col gap-2 p-[18px]">
+            <span class="ta-landing__flag block"></span>
+            <span class="text-center text-[10px] font-bold uppercase tracking-wide">
+              {gettext("Bulletin de notes · Trimestre 1")}
+            </span>
+            <span
+              :for={{subject, coef, value} <- bulletin_rows()}
+              class="ta-landing__sheet-rule flex gap-1.5 pb-[3px] text-[9.5px]"
+            >
+              <span class="flex-1">{subject}</span>
+              <span class="ta-num w-6 text-right">{coef}</span>
+              <span class="ta-num w-[2.15rem] text-right font-semibold">{mark(value)}</span>
+            </span>
+            <span class="mt-auto flex justify-between text-[10px] font-bold">
+              <span>{gettext("Moyenne %{average}", average: mark(12.46))}</span>
+              <span>{gettext("Rang 4e / 39")}</span>
+            </span>
           </div>
         </div>
       </div>
     </section>
 
     <%!-- ROLES --%>
-    <section id="roles" class="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-24">
-      <div class="max-w-2xl">
-        <p class="ta-eyebrow">{gettext("Chaque rôle a son espace")}</p>
-        <h2 class="mt-2 text-3xl font-semibold tracking-[-0.01em] sm:text-4xl [text-wrap:balance]">
-          {gettext("Un compte par personne, l'écran qui va avec son rôle.")}
-        </h2>
-        <p class="ta-text-2 mt-4 text-[1.02rem] leading-relaxed [text-wrap:pretty]">
-          {gettext(
-            "Sur téléphone, chacun retrouve en bas de l'écran les quatre pages dont il se sert le plus. Celui qui a deux rôles passe de l'un à l'autre en un geste."
-          )}
-        </p>
-      </div>
-      <div class="mt-10 grid gap-4 sm:grid-cols-2">
-        <div :for={r <- roles()} class="ta-panel flex flex-col gap-3 !p-5">
-          <div class="flex items-center gap-3">
-            <span class="grid size-10 place-items-center rounded-xl bg-primary/15 text-primary">
-              <.icon name={r.icon} class="size-5" />
-            </span>
-            <h3 class="text-lg font-semibold">{r.title}</h3>
-          </div>
-          <p class="ta-text-2 leading-relaxed">{r.text}</p>
-          <ul class="mt-1 flex flex-wrap gap-1.5" aria-label={gettext("Ses pages principales")}>
-            <li
-              :for={tab <- r.tabs}
-              class="rounded-full bg-base-200 px-3 py-1 text-sm font-medium ring-1 ring-base-300"
-            >
-              {tab}
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <%!-- AND ALSO --%>
-    <section class="border-y border-base-300 bg-base-100">
-      <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
-        <h2 class="text-2xl font-semibold tracking-[-0.01em] sm:text-3xl">
-          {gettext("Et tout le reste de l'année scolaire")}
-        </h2>
-        <div class="mt-8 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div :for={f <- more_features()} class="flex flex-col gap-2">
-            <.icon name={f.icon} class="size-6 text-primary" />
-            <h3 class="text-base font-semibold">{f.title}</h3>
-            <p class="ta-text-2 text-[0.95rem] leading-relaxed">{f.text}</p>
-          </div>
-        </div>
-        <div class="mt-12 hidden sm:block">
-          <.window_shot
-            src="/images/landing/timetable-desktop.webp"
-            alt={
-              gettext(
-                "L'éditeur d'emploi du temps de la 6e A, avec les quotas horaires par matière"
-              )
-            }
-          />
-        </div>
-      </div>
-    </section>
-
-    <%!-- CAMEROON --%>
     <section
-      id="terrain"
-      class="mx-auto grid max-w-6xl scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:py-24"
+      id="roles"
+      aria-labelledby="roles-title"
+      class="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-22"
     >
-      <div>
-        <p class="ta-eyebrow">{gettext("Pensé pour le Cameroun")}</p>
-        <h2 class="mt-2 text-3xl font-semibold tracking-[-0.01em] sm:text-4xl [text-wrap:balance]">
-          {gettext("Pas un logiciel étranger traduit.")}
-        </h2>
-        <p class="ta-text-2 mt-4 text-[1.02rem] leading-relaxed [text-wrap:pretty]">
-          {gettext(
-            "Les niveaux, les séquences, les coefficients et les bulletins sont ceux de vos établissements. Chaque établissement règle les siens : rien n'est figé dans le logiciel."
-          )}
-        </p>
+      <p class="ta-landing__eyebrow">{gettext("Un espace par rôle")}</p>
+      <h2
+        id="roles-title"
+        class="mt-3 max-w-[42rem] text-[1.85rem] font-semibold leading-[1.15] sm:text-[2.15rem] [text-wrap:balance]"
+      >
+        {gettext("Chacun ouvre l'application sur ce qu'il a à faire aujourd'hui.")}
+      </h2>
+      <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <article
+          :for={role <- roles()}
+          class="flex flex-col gap-2.5 rounded-[14px] border border-base-300 p-5 transition-colors hover:border-[var(--ta-rule-strong)]"
+        >
+          <h3 class="ta-landing__h3 text-[1.07rem] font-semibold">{role.title}</h3>
+          <p class="ta-landing__lead text-sm leading-relaxed">{role.text}</p>
+          <p class="ta-text-2 mt-auto pt-2 font-mono text-xs font-medium">
+            <span class="sr-only">{gettext("Ses pages principales :")}</span>
+            {Enum.join(role.tabs, " · ")}
+          </p>
+        </article>
       </div>
-      <dl class="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-        <div :for={t <- terrain()} class="border-t border-base-300 pt-4">
-          <dt class="font-semibold">{t.title}</dt>
-          <dd class="ta-text-2 mt-1.5 leading-relaxed">{t.text}</dd>
-        </div>
-      </dl>
     </section>
 
     <%!-- GETTING STARTED + PRICE --%>
-    <section id="tarif" class="scroll-mt-20 border-t border-base-300 bg-base-100">
-      <div class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-24">
+    <section
+      id="tarif"
+      aria-labelledby="tarif-title"
+      class="scroll-mt-20 border-t border-base-300 bg-base-100"
+    >
+      <div class="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:py-20">
         <div>
-          <p class="ta-eyebrow">{gettext("Pour commencer")}</p>
-          <h2 class="mt-2 text-3xl font-semibold tracking-[-0.01em] sm:text-4xl">
-            {gettext("Trois étapes, sans installation.")}
+          <p class="ta-landing__eyebrow">{gettext("Démarrer")}</p>
+          <h2
+            id="tarif-title"
+            class="mt-3 text-[1.85rem] font-semibold leading-[1.15] sm:text-[2.15rem] [text-wrap:balance]"
+          >
+            {gettext("Prêt pour la prochaine séquence en trois étapes.")}
           </h2>
-          <ol class="mt-8 flex flex-col gap-6">
-            <li :for={{s, i} <- Enum.with_index(start_steps(), 1)} class="flex gap-4">
-              <span class="ta-num grid size-9 flex-none place-items-center rounded-full bg-primary text-sm font-semibold text-primary-content">
-                {i}
+          <ol class="mt-7 flex flex-col gap-5">
+            <li :for={{step, n} <- Enum.with_index(start_steps(), 1)} class="flex gap-3.5">
+              <span class="ta-num grid size-[30px] flex-none place-items-center rounded-full border border-primary text-[13px] font-semibold text-primary">
+                {n}
               </span>
               <div>
-                <h3 class="font-semibold">{s.title}</h3>
-                <p class="ta-text-2 mt-1 leading-relaxed">{s.text}</p>
+                <h3 class="ta-landing__h3 text-base font-semibold">{step.title}</h3>
+                <p class="ta-landing__lead mt-1 text-[0.92rem] leading-relaxed">{step.text}</p>
               </div>
             </li>
           </ol>
         </div>
 
-        <div class="ta-panel flex flex-col gap-4 self-start !p-6 sm:!p-8">
-          <p class="ta-eyebrow">{gettext("Tarif")}</p>
-          <h2 class="text-3xl font-semibold">{gettext("Gratuit pendant la phase pilote")}</h2>
-          <p class="ta-text-2 leading-relaxed">
+        <div class="ta-landing__strong-rule flex flex-col gap-3.5 self-start rounded-2xl border bg-base-200 p-6 sm:p-7">
+          <p class="ta-landing__eyebrow">{gettext("Tarif")}</p>
+          <h3 class="text-[1.85rem] font-semibold leading-tight">
+            {gettext("Gratuit pendant la phase pilote")}
+          </h3>
+          <p class="ta-landing__lead leading-relaxed">
             {gettext(
-              "Toutes les fonctionnalités et tous les rôles, pour tout l'établissement. Le tarif par élève et par an sera annoncé avant la rentrée."
+              "Tous les modules et tous les rôles, pour tout l'établissement. Le tarif par élève et par an sera annoncé avant la rentrée."
             )}
           </p>
-          <.link href={~p"/schools/start"} class="btn btn-primary btn-lg mt-2 min-h-12 self-start">
+          <.link
+            href={~p"/schools/start"}
+            class="btn btn-primary btn-lg mt-1.5 min-h-12 w-full sm:w-auto sm:self-start"
+          >
             {gettext("Inscrire mon établissement")}
             <.icon name="hero-arrow-right" class="size-5" />
           </.link>
@@ -356,43 +416,53 @@
     </section>
 
     <%!-- FAQ --%>
-    <section id="questions" class="mx-auto max-w-3xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-20">
-      <h2 class="text-2xl font-semibold tracking-[-0.01em] sm:text-3xl">
+    <section
+      id="questions"
+      aria-labelledby="questions-title"
+      class="mx-auto w-full max-w-3xl scroll-mt-20 px-4 py-16 sm:px-6 lg:py-20"
+    >
+      <h2 id="questions-title" class="text-[1.85rem] font-semibold">
         {gettext("Questions fréquentes")}
       </h2>
-      <div class="mt-6 divide-y divide-base-300 border-y border-base-300">
-        <details :for={{q, a} <- faq()} class="group">
+      <div class="mt-5 border-t border-base-300">
+        <details :for={{q, a} <- faq()} class="group border-b border-base-300">
           <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold">
             {q}
             <.icon
               name="hero-chevron-down"
-              class="size-5 flex-none transition-transform group-open:rotate-180"
+              class="size-5 flex-none transition-transform group-open:rotate-180 motion-reduce:transition-none"
             />
           </summary>
-          <p class="ta-text-2 pb-5 leading-relaxed">{a}</p>
+          <p class="ta-landing__lead pb-5 leading-relaxed">{a}</p>
         </details>
       </div>
     </section>
 
     <%!-- CLOSING CTA --%>
-    <section class="border-t border-base-300 bg-base-100">
-      <div class="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-14 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-        <div class="max-w-xl">
-          <h2 class="text-2xl font-semibold tracking-[-0.01em] sm:text-3xl [text-wrap:balance]">
-            {gettext("Votre établissement, prêt pour la prochaine séquence.")}
-          </h2>
-          <p class="ta-text-2 mt-2 leading-relaxed">
-            {gettext("Le compte du chef d'établissement se crée en quelques minutes.")}
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-3">
+    <section aria-labelledby="closing-title" class="border-t border-base-300 bg-base-100">
+      <div class="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-12 sm:px-6 lg:flex-row lg:items-center">
+        <h2
+          id="closing-title"
+          class="flex-1 text-[1.6rem] font-semibold leading-tight [text-wrap:balance]"
+        >
+          {gettext("Votre établissement, prêt pour la prochaine séquence.")}
+        </h2>
+        <div class="flex flex-col gap-2.5 sm:flex-row sm:gap-3">
           <.link href={~p"/schools/start"} class="btn btn-primary btn-lg min-h-12">
             {gettext("Inscrire mon établissement")}
           </.link>
-          <.link :if={@current_user} href={~p"/school"} class="btn btn-outline btn-lg min-h-12">
+          <.link
+            :if={@current_user}
+            href={~p"/school"}
+            class="btn btn-outline btn-lg ta-landing__strong-rule min-h-12"
+          >
             {gettext("Mon espace")}
           </.link>
-          <.link :if={!@current_user} href={~p"/sign-in"} class="btn btn-outline btn-lg min-h-12">
+          <.link
+            :if={!@current_user}
+            href={~p"/sign-in"}
+            class="btn btn-outline btn-lg ta-landing__strong-rule min-h-12"
+          >
             {gettext("Se connecter")}
           </.link>
         </div>
@@ -403,7 +473,7 @@
   <footer class="border-t border-base-300">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-8 text-sm sm:px-6">
       <span class="flex items-center gap-2">
-        <span class="grid size-7 place-items-center rounded-md bg-primary text-xs font-bold text-primary-content ta-display">
+        <span class="ta-display grid size-7 place-items-center rounded-md bg-primary text-xs font-semibold text-primary-content">
           TA
         </span>
         <span class="font-semibold">Teacher Assistant</span>
@@ -419,8 +489,8 @@
         <.link href={~p"/schools/start"} class="ta-landing__nav">
           {gettext("Inscrire un établissement")}
         </.link>
-        <.link href={~p"/locale/fr"} class="ta-landing__nav">FR</.link>
-        <.link href={~p"/locale/en"} class="ta-landing__nav">EN</.link>
+        <.link href={~p"/locale/fr"} class="ta-landing__nav" lang="fr">FR</.link>
+        <.link href={~p"/locale/en"} class="ta-landing__nav" lang="en">EN</.link>
       </span>
     </div>
   </footer>
