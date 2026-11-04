@@ -115,11 +115,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, &(&1.id == id))
 
-  # « Séq. 1 · close », « Séq. 2 · en cours », « Séq. 3 · à venir »
+  # « Séq. 1 · verrouillée », « Séq. 2 · en cours », « Séq. 3 · à venir »
   defp seq_label(seq) do
     state =
       cond do
-        Lock.locked?(seq) -> gettext("close")
+        Lock.locked?(seq) -> gettext("verrouillée")
         Lock.not_started?(seq) -> gettext("à venir")
         true -> gettext("en cours")
       end

@@ -46,6 +46,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert has_element?(view, "#summary-row-#{s1.id}", "14")
   end
 
+  test "a locked séquence chip reads « verrouillée », not the close button's label",
+       %{conn: conn, ctx: ctx, seq: seq, scope: scope} do
+    TeacherAssistant.MarksFixtures.lock!(
+      %{head: scope, seq: seq},
+      Date.add(TeacherAssistant.Academics.Reference.today(), -1)
+    )
+
+    {:ok, view, _html} =
+      live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+
+    assert has_element?(view, "#summary-seq-#{seq.id}", "Séq. #{seq.number} · verrouillée")
+    refute has_element?(view, "#summary-seq-#{seq.id}", "fermer")
+  end
+
   test "ungraded student is not badged as failing", %{
     conn: conn,
     ctx: ctx,
