@@ -594,11 +594,11 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
           title={gettext("Emploi du temps")}
         >
           <:hint>
-            <%!-- the verb follows the pointer --%>
-            <span class="pointer-coarse:hidden">
+            <%!-- the verb follows the pointer; the teacher and room views are read-only --%>
+            <span :if={@view == :class} class="pointer-coarse:hidden">
               {gettext("Cliquez sur une case pour placer ou déplacer un cours.")}
             </span>
-            <span class="hidden pointer-coarse:inline">
+            <span :if={@view == :class} class="hidden pointer-coarse:inline">
               {gettext(
                 "Touchez une case pour placer ou déplacer un cours. Sur ordinateur, toute la semaine tient à l'écran."
               )}
@@ -996,6 +996,13 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
                   {t.required - t.placed} h
                 </span>
               </div>
+              <p
+                :if={Enum.any?(@tally, &(&1.status == :over))}
+                id="over-heading"
+                class="ta-eyebrow mt-2 text-error"
+              >
+                {gettext("Placées en trop")}
+              </p>
               <p
                 :for={t <- Enum.filter(@tally, &(&1.status == :over))}
                 id={"over-#{t.teaching_context_id}"}
