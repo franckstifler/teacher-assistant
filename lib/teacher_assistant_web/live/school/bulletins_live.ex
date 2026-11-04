@@ -756,16 +756,19 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
                 navigate={~p"/teacher/contexts/#{course.context_id}/marks"}
                 class="ta-list-row"
               >
-                <span class="min-w-0 flex-1 truncate text-[0.92rem] font-semibold">
-                  {course.title}
-                </span>
-                <span class="ta-num flex shrink-0 flex-wrap justify-end gap-x-2.5 gap-y-0.5 text-xs">
-                  <span
-                    :for={seq <- @sequences}
-                    data-seq={seq.number}
-                    class={seq_tone(@seq_progress[seq.id][course.id])}
-                  >
-                    {seq_state(seq, @seq_progress[seq.id][course.id])}
+                <%!-- Phones: the séquence states under the course, so its class stays readable. --%>
+                <span class="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+                  <span class="min-w-0 flex-1 truncate text-[0.92rem] font-semibold">
+                    {course.title}
+                  </span>
+                  <span class="ta-num flex shrink-0 flex-wrap gap-x-2.5 gap-y-0.5 text-xs sm:justify-end">
+                    <span
+                      :for={seq <- @sequences}
+                      data-seq={seq.number}
+                      class={seq_tone(@seq_progress[seq.id][course.id])}
+                    >
+                      {seq_state(seq, @seq_progress[seq.id][course.id])}
+                    </span>
                   </span>
                 </span>
                 <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
