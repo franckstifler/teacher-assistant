@@ -45,7 +45,6 @@ msgstr "Dashboard"
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:49
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:52
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:78
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:271
 #: lib/teacher_assistant_web/live/school/councils_live.ex:331
 #: lib/teacher_assistant_web/live/school/councils_live.ex:436
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:240
@@ -231,7 +230,6 @@ msgstr "Year"
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:205
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:974
 #: lib/teacher_assistant_web/live/school/classes_live.ex:217
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:273
 #: lib/teacher_assistant_web/live/school/councils_live.ex:330
 #: lib/teacher_assistant_web/live/school/enroll_drawer.ex:107
 #: lib/teacher_assistant_web/live/school/fees_overview_live.ex:146
@@ -356,8 +354,7 @@ msgstr "students"
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:1224
 #: lib/teacher_assistant_web/live/school/class_live.ex:231
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:415
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:217
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:272
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:341
 #: lib/teacher_assistant_web/live/school/council_live.ex:459
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:238
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:315
@@ -673,7 +670,6 @@ msgstr "Settings"
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:26
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:76
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:417
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:275
 #: lib/teacher_assistant_web/live/school/councils_live.ex:333
 #, elixir-autogen, elixir-format
 msgid "Statut"
@@ -1599,7 +1595,7 @@ msgstr "Temporary exclusion"
 
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/note.html.heex:20
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:40
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:233
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:409
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:242
 #: lib/teacher_assistant_web/live/school/fee_control_components.ex:178
 #: lib/teacher_assistant_web/live/school/register_live.ex:547
@@ -2757,7 +2753,8 @@ msgid "Terminé"
 msgstr "Done"
 
 #: lib/teacher_assistant/academics/progression_entry_type.ex:9
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:206
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:325
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:487
 #, elixir-autogen, elixir-format
 msgid "Évaluation"
 msgstr "Assessment"
@@ -3234,7 +3231,7 @@ msgstr "Action"
 msgid "Aucune demande en attente."
 msgstr "No pending requests."
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:281
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:459
 #, elixir-autogen, elixir-format
 msgid "Aucune demande pour l'instant."
 msgstr "No requests yet."
@@ -3244,7 +3241,7 @@ msgstr "No requests yet."
 msgid "Aucune demande traitée."
 msgstr "No decided requests."
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:192
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:307
 #, elixir-autogen, elixir-format
 msgid "Aucune évaluation verrouillée dans vos cours."
 msgstr "No locked assessments in your courses."
@@ -3255,7 +3252,6 @@ msgid "Auteur"
 msgstr "Author"
 
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:416
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:274
 #, elixir-autogen, elixir-format
 msgid "Avant → après"
 msgstr "Before → after"
@@ -3286,19 +3282,19 @@ msgstr "Correction requested"
 msgid "Correction refusée"
 msgstr "Correction refused"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:18
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:171
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:36
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:282
 #: lib/teacher_assistant_web/spaces.ex:410
 #, elixir-autogen, elixir-format
 msgid "Corrections de notes"
 msgstr "Mark corrections"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:91
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:168
 #, elixir-autogen, elixir-format
 msgid "Demande envoyée au censeur."
 msgstr "Request sent to the vice-principal."
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:82
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "Demande impossible : la note doit être valide, différente de la note actuelle, et sans demande déjà en attente."
 msgstr "Request not possible: the mark must be valid, differ from the current mark, and have no request already pending."
@@ -3318,18 +3314,13 @@ msgstr "Decision not saved."
 msgid "Démarches"
 msgstr "Requests"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:170
-#, elixir-autogen, elixir-format
-msgid "Démarches · notes verrouillées"
-msgstr "Requests · locked marks"
-
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:385
 #, elixir-autogen, elixir-format
 msgid "Détail"
 msgstr "Detail"
 
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:270
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:322
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:518
 #, elixir-autogen, elixir-format
 msgid "En attente"
 msgstr "Pending"
@@ -3354,18 +3345,18 @@ msgstr "The mark changed since the request: the request must be made again."
 msgid "Le journal est vide."
 msgstr "The journal is empty."
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:46
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:118
 #, elixir-autogen, elixir-format
 msgid "Note invalide : un nombre, abs, abj ou vide."
 msgstr "Invalid mark: a number, abs, abj or blank."
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:184
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:190
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:293
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:305
 #, elixir-autogen, elixir-format
 msgid "Nouvelle demande"
 msgstr "New request"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:227
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:396
 #, elixir-autogen, elixir-format
 msgid "Nouvelle note (0–20, abs, abj ou vide)"
 msgstr "New mark (0–20, abs, abj or blank)"
@@ -3375,7 +3366,7 @@ msgstr "New mark (0–20, abs, abj or blank)"
 msgid "Refuser"
 msgstr "Refuse"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:324
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:520
 #, elixir-autogen, elixir-format
 msgid "Refusée"
 msgstr "Refused"
@@ -3596,6 +3587,7 @@ msgstr "Justified · %{reason}"
 msgid "La vie scolaire est réservée à l'administration."
 msgstr "School life is reserved for the administration."
 
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:281
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:38
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:586
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:591
@@ -5299,6 +5291,7 @@ msgstr "Remove this parent from the student's record?"
 msgid "Second téléphone"
 msgstr "Second phone"
 
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:73
 #: lib/teacher_assistant_web/live/school/student_live.ex:795
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:971
 #: lib/teacher_assistant_web/live/teacher/marks_summary_live.ex:127
@@ -7604,7 +7597,7 @@ msgstr "Justified absence"
 msgid "Absent — rattrapage possible"
 msgstr "Absent — make-up possible"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:323
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:519
 #, elixir-autogen, elixir-format
 msgid "Acceptée"
 msgstr "Accepted"
@@ -7619,7 +7612,7 @@ msgstr "Roll call saved."
 msgid "Copie retrouvée"
 msgstr "Paper found"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:92
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:169
 #, elixir-autogen, elixir-format
 msgid "Demande envoyée à %{name} (censeur)."
 msgstr "Request sent to %{name} (vice-principal)."
@@ -7644,12 +7637,7 @@ msgstr "Saved · %{time}"
 msgid "Entrée"
 msgstr "Enter"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:258
-#, elixir-autogen, elixir-format
-msgid "Envoyer la demande"
-msgstr "Send the request"
-
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:148
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:253
 #, elixir-autogen, elixir-format
 msgid "Envoyée au censeur"
 msgstr "Sent to the vice-principal"
@@ -7666,7 +7654,7 @@ msgstr[1] "Error: %{count} marks to fix"
 msgid "Erreur de calcul"
 msgstr "Calculation error"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:141
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:439
 #, elixir-autogen, elixir-format
 msgid "Le bulletin n'est recalculé qu'après validation."
 msgstr "The report card is only recalculated after approval."
@@ -7705,7 +7693,7 @@ msgstr "Mark between 0 and %{max}"
 msgid "Nouvelle évaluation"
 msgstr "New assessment"
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:152
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:257
 #, elixir-autogen, elixir-format
 msgid "Par %{name} le %{date}"
 msgstr "By %{name} on %{date}"
@@ -7751,11 +7739,6 @@ msgstr "All present"
 msgid "Toutes les notes sont saisies."
 msgstr "All marks are entered."
 
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:173
-#, elixir-autogen, elixir-format
-msgid "Une note verrouillée ne change qu'après validation du censeur. Tout est tracé."
-msgstr "A locked mark only changes after the vice-principal approves. Everything is logged."
-
 #: lib/teacher_assistant_web/live/school/roll_call.ex:396
 #, elixir-autogen, elixir-format
 msgid "Valider l'appel"
@@ -7765,11 +7748,6 @@ msgstr "Submit roll call"
 #, elixir-autogen, elixir-format
 msgid "coef. %{n}"
 msgstr "coef. %{n}"
-
-#: lib/teacher_assistant_web/live/school/corrections_live.ex:221
-#, elixir-autogen, elixir-format
-msgid "note actuelle"
-msgstr "current mark"
 
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1693
 #, elixir-autogen, elixir-format
@@ -14668,5 +14646,36 @@ msgstr "Your marks for the year"
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:714
 #, elixir-autogen, elixir-format
 msgid "Étapes"
-
 msgstr "Steps"
+
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:335
+#, elixir-autogen, elixir-format
+msgid "Changer"
+msgstr "Change"
+
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:233
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:236
+#, elixir-autogen, elixir-format
+msgid "Envoyer au censeur"
+msgstr "Send to the vice-principal"
+
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:283
+#, elixir-autogen, elixir-format
+msgid "Le censeur valide · tout est tracé"
+msgstr "The vice-principal approves · everything is logged"
+
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:456
+#, elixir-autogen, elixir-format
+msgid "Mes demandes"
+msgstr "My requests"
+
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:383
+#, elixir-autogen, elixir-format
+msgid "Nouvelle note"
+msgstr "New mark"
+
+#: lib/teacher_assistant_web/live/school/corrections_live.ex:378
+#, elixir-autogen, elixir-format
+msgid "Voir les %{count} élèves"
+
+msgstr "See the %{count} students"
