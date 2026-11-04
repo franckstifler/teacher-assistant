@@ -19,7 +19,16 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
   describe "visible_tabs/2" do
     test "an admin sees every tab", %{scope: scope, cg: cg} do
       assert ClassShell.visible_tabs(scope, cg) ==
-               [:overview, :students, :teachings, :timetable, :register, :discipline, :results, :fees]
+               [
+                 :overview,
+                 :students,
+                 :teachings,
+                 :timetable,
+                 :register,
+                 :discipline,
+                 :results,
+                 :fees
+               ]
     end
 
     test "the form master sees every tab", %{scope: scope, cg: cg} do
@@ -28,7 +37,16 @@ defmodule TeacherAssistantWeb.School.ClassShellTest do
       {:ok, cg} = Enrollment.fetch_owned_class_group(scope, cg.id)
 
       assert ClassShell.visible_tabs(fm, cg) ==
-               [:overview, :students, :teachings, :timetable, :register, :discipline, :results, :fees]
+               [
+                 :overview,
+                 :students,
+                 :teachings,
+                 :timetable,
+                 :register,
+                 :discipline,
+                 :results,
+                 :fees
+               ]
     end
 
     test "the surveillant général sees the register and discipline only", %{scope: scope, cg: cg} do

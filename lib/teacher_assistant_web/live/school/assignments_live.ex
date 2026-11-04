@@ -297,9 +297,10 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
                   <p class="text-sm">
                     {gettext("Cours regroupé : modifiez-le depuis la fiche de la classe.")}
                   </p>
-                  <.link navigate={~p"/school/classes/#{cg_id}/teachings"} class="link link-primary text-sm">{gettext(
-                    "Ouvrir la classe"
-                  )}</.link>
+                  <.link
+                    navigate={~p"/school/classes/#{cg_id}/teachings"}
+                    class="link link-primary text-sm"
+                  >{gettext("Ouvrir la classe")}</.link>
                 <% else %>
                   <p class="text-sm text-base-content/70">
                     {if current,
