@@ -392,18 +392,21 @@ defmodule TeacherAssistantWeb.Admin.SchoolLive do
                   checked={k in @school.workspace.modules}
                   class="checkbox checkbox-sm"
                 />
-                <span class="flex-1">{Modules.label(k)}</span>
-                <span
-                  id={"module-use-#{k}"}
-                  class={[
-                    "ta-num text-[0.7rem]",
-                    if((@school.module_use[k] || 0) > 0,
-                      do: "text-base-content/70",
-                      else: "text-base-content/50"
-                    )
-                  ]}
-                >
-                  {module_use(@school.module_use[k])}
+                <%!-- the use under the name: side by side, the narrow column wrapped the name --%>
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <span>{Modules.label(k)}</span>
+                  <span
+                    id={"module-use-#{k}"}
+                    class={[
+                      "ta-num text-[0.7rem]",
+                      if((@school.module_use[k] || 0) > 0,
+                        do: "text-base-content/70",
+                        else: "text-base-content/50"
+                      )
+                    ]}
+                  >
+                    {module_use(@school.module_use[k])}
+                  </span>
                 </span>
               </label>
               <button type="submit" class="btn btn-primary btn-sm mt-2 self-start">
