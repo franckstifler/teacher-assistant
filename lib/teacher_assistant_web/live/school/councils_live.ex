@@ -320,8 +320,8 @@ defmodule TeacherAssistantWeb.School.CouncilsLive do
               <table class="table table-fixed">
                 <colgroup>
                   <col class="w-auto" />
-                  <col class="hidden w-44 md:table-column" />
-                  <col class="hidden w-40 md:table-column" />
+                  <col class="hidden w-36 md:table-column" />
+                  <col class="hidden w-72 md:table-column" />
                   <col class="w-28" />
                   <col class="w-32 md:w-48" />
                 </colgroup>
