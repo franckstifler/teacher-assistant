@@ -106,13 +106,15 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
       |> Map.values()
       |> Enum.sort_by(&hd(&1).class_label)
 
-  # « 14 h par semaine · service attendu : 18 h » (service part only when one is set).
-  defp hours_line(%{load: load, service: nil}), do: gettext("%{n} h par semaine", n: load)
+  # « 14 h par semaine · service attendu : 18 h » (service part only when one is set),
+  # as parts that each stay on one line.
+  defp hours_parts(%{load: load, service: nil}), do: [gettext("%{n} h par semaine", n: load)]
 
-  defp hours_line(%{load: load, service: service}),
-    do:
-      gettext("%{n} h par semaine", n: load) <>
-        " · " <> gettext("service attendu : %{m} h", m: service)
+  defp hours_parts(%{load: load, service: service}),
+    do: [
+      gettext("%{n} h par semaine", n: load),
+      gettext("service attendu : %{m} h", m: service)
+    ]
 
   # The day's lessons and the breaks between the first and the last, by start time.
   defp day_items([], _periods), do: []
@@ -177,7 +179,9 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
               id="my-timetable-hours"
               class="ta-num mt-1.5 text-[0.85rem] text-base-content/75 sm:text-[0.95rem]"
             >
-              {hours_line(@service)}
+              <%= for {part, i} <- Enum.with_index(hours_parts(@service)) do %>
+                {if i > 0, do: " · "}<span class="whitespace-nowrap">{part}</span>
+              <% end %>
             </p>
           </div>
           <a
