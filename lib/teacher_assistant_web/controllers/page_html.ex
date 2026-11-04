@@ -210,7 +210,7 @@ defmodule TeacherAssistantWeb.PageHTML do
        )},
       {gettext("Les établissements anglophones sont-ils pris en charge ?"),
        gettext(
-         "Oui : le sous-système anglophone a ses propres niveaux, et l'application se lit en français ou en anglais, au choix de chacun."
+         "Oui : le sous-système anglophone a ses propres niveaux, ses bulletins s'impriment en anglais, et l'application se lit en français ou en anglais, au choix de chacun."
        )}
     ]
   end

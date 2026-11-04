@@ -14988,11 +14988,6 @@ msgstr ""
 msgid "Niveau 3"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:212
-#, elixir-autogen, elixir-format
-msgid "Oui : le sous-système anglophone a ses propres niveaux, et l'application se lit en français ou en anglais, au choix de chacun."
-msgstr ""
-
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:246
 #, elixir-autogen, elixir-format
 msgid "Phase pilote"
@@ -15111,4 +15106,9 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/page_html.ex:117
 #, elixir-autogen, elixir-format
 msgid "Économie familiale"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:212
+#, elixir-autogen, elixir-format
+msgid "Oui : le sous-système anglophone a ses propres niveaux, ses bulletins s'impriment en anglais, et l'application se lit en français ou en anglais, au choix de chacun."
 msgstr ""
