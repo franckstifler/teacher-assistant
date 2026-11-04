@@ -364,6 +364,7 @@ defmodule TeacherAssistant.Timetabling do
   defp slot_view(slot, class_label \\ nil) do
     base = %{
       teaching_context_id: slot.teaching_context_id,
+      combined_course_id: slot.teaching_context.combined_course_id,
       subject: slot.teaching_context.subject,
       teacher_name: User.display_name(slot.teaching_context.teacher),
       day: slot.day,

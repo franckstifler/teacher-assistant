@@ -59,15 +59,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     {:ok, view, _html} =
       live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
 
-    # ungraded student shows "—" and no mention badge at all
+    # ungraded student shows "—" and no mention, never in coral
     ungraded_row = render(element(view, "#summary-row-#{ungraded.id}"))
     assert ungraded_row =~ "—"
-    refute ungraded_row =~ "hero-x-circle"
+    assert ungraded_row =~ "Pas de note"
+    refute ungraded_row =~ "text-error"
 
-    # graded failing student (score 8 < 10) is badged with its band, as failing
+    # graded failing student (score 8 < 10) carries its band, in coral
     s2_row = render(element(view, "#summary-row-#{s2.id}"))
     assert s2_row =~ "Médiocre"
-    assert s2_row =~ "hero-x-circle"
+    assert s2_row =~ "text-error"
   end
 
   test "shows mention distribution, sex bars and missing-marks line", %{
@@ -85,8 +86,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     # Awa 14 => Bien; Beba 8 => Médiocre
     assert render(element(view, "#summary-mentions")) =~ "Bien"
     assert render(element(view, "#summary-mentions")) =~ "Médiocre"
-    assert has_element?(view, "#summary-sex-bars", "Filles")
-    assert has_element?(view, "#summary-sex-bars", "Garçons")
+    assert has_element?(view, "#summary-sex", "Réussite filles 100 % · garçons 0 %")
     # 1 of 3 students has no marks
     assert has_element?(view, "#summary-missing", "1")
   end
@@ -97,9 +97,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary")
 
-    view
-    |> element("#summary-seq-select")
-    |> render_change(%{"seq" => seq2.id})
+    assert has_element?(view, "#summary-seq-#{seq2.id}", "Séq. #{seq2.number} · ")
+    view |> element("#summary-seq-#{seq2.id}") |> render_click()
 
     assert_patch(view, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq2.id}")
     # séquence 2 has no assessments -> guided empty state, not stats
@@ -129,6 +128,54 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert has_element?(view, "#summary-distribution [data-band='5 – 10']", "1")
     assert has_element?(view, "#summary-distribution [data-band='0 – 5']", "0")
     assert has_element?(view, "#teacher-marks-summary h1", "Maths")
-    assert has_element?(view, "#back-to-entry[href^='/teacher/contexts/#{ctx.id}/marks']")
+    assert has_element?(view, "#teaching-nav-marks[href^='/teacher/contexts/#{ctx.id}/marks']")
+    assert has_element?(view, "#teaching-nav-back-arrow[href='/school/courses']")
+  end
+
+  test "ranks read as ordinals, the ranking sorts A → Z, the range reads min → max", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    s1: s1,
+    s2: s2
+  } do
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+    assert has_element?(view, "#summary-row-#{s1.id}", "1er")
+    assert has_element?(view, "#summary-row-#{s2.id}", "2e")
+    assert has_element?(view, "#summary-range", "8 → 14")
+    assert has_element?(view, "#sort-rank[aria-pressed='true']")
+
+    view |> element("#sort-az") |> render_click()
+    assert_patch(view, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}&sort=az")
+    assert has_element?(view, "#sort-az[aria-pressed='true']")
+  end
+
+  test "a combined course gathers every member class, each row naming its class", %{
+    conn: conn,
+    ctx: ctx,
+    seq: seq,
+    cg: cg,
+    scope: scope
+  } do
+    year = Organization.current_academic_year(scope)
+
+    ctx_b =
+      TeacherFixtures.assigned_context_fixture(scope, year, %{
+        subject: "Maths",
+        level: "3ème",
+        teacher: scope.current_user
+      })
+
+    {:ok, cg_b} = Enrollment.fetch_owned_class_group(scope, ctx_b.class_group_id)
+    {:ok, s3} = Enrollment.add_student(scope, cg_b, %{full_name: "Chloé", sex: :f})
+    {:ok, a_b} = Assessment.create_assessment(scope, ctx_b, seq, %{label: "Devoir 1"})
+    :ok = Assessment.upsert_marks(scope, a_b, [%{student_id: s3.id, score: Decimal.new("17")}])
+    {:ok, _course} = TeacherAssistant.Curriculum.combine_course(scope, [ctx, ctx_b])
+
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary?seq=#{seq.id}")
+    assert has_element?(view, "#summary-row-#{s3.id}", "1er")
+    assert has_element?(view, "#summary-row-#{s3.id}", cg_b.label)
+    assert has_element?(view, "#summary-range", "8 → 17")
+    assert has_element?(view, "#summary-table", cg.label)
   end
 end

@@ -1,117 +1,199 @@
 defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
+  @moduledoc """
+  Résultats of a course in a séquence (UX refonte 2026-11-03): séquence chips with
+  their lock state, three figures (average, pass rate, min → max), the five-band
+  distribution as one stacked bar, the pass rate by sex and the mentions on one
+  line each, then the ranking (ordinal ranks, marks under 10 in coral, Rang / A→Z).
+  A combined course gathers every member class, each row naming its class.
+  """
   use TeacherAssistantWeb, :live_view
 
   import TeacherAssistantWeb.TeachingNav
-  alias TeacherAssistant.Assessment
-  alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Marks
-  alias TeacherAssistant.Organization
-  alias TeacherAssistant.Curriculum
 
-  def mount(%{"id" => ctx_id} = params, _session, socket) do
+  alias TeacherAssistant.{Assessment, Curriculum, Enrollment, Organization}
+  alias TeacherAssistant.Academics.{Lock, Marks, SchoolTemplates}
+
+  def mount(%{"id" => ctx_id}, _session, socket) do
     scope = socket.assigns.current_scope
 
     with {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(scope, ctx_id),
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
       year = Organization.current_academic_year(scope)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
-      seq = pick(sequences, params["seq"]) || List.first(sequences)
-      exempt = TeacherAssistant.Curriculum.exempt_student_ids(scope, ctx)
-
-      students =
-        scope |> Enrollment.list_students(cg) |> Enum.reject(&MapSet.member?(exempt, &1.id))
+      {title, members} = members(scope, ctx, cg)
 
       {:ok,
        socket
-       |> assign(:page_title, "#{ctx.subject} · #{cg.label} · #{gettext("Résultats")}")
+       |> assign(:page_title, "#{title} · #{gettext("Résultats")}")
        |> assign(:ctx, ctx)
-       |> assign(:cg, cg)
+       |> assign(:title, title)
+       |> assign(:members, members)
+       |> assign(:combined?, length(members) > 1)
        |> assign(:sequences, sequences)
-       |> assign(:seq, seq)
-       |> assign(:students, students)
-       |> assign_summary()}
+       |> assign(:students, Enum.flat_map(members, & &1.students))}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  def handle_params(params, _uri, socket) do
-    seq = pick(socket.assigns.sequences, params["seq"]) || List.first(socket.assigns.sequences)
-    {:noreply, socket |> assign(:seq, seq) |> assign_summary()}
+  # Every member class of the course (one for a solo course): its context and its
+  # students taking the subject, each tagged with the class's label.
+  defp members(scope, %{combined_course_id: nil} = ctx, cg),
+    do: {"#{ctx.subject} · #{cg.label}", [member(scope, ctx, cg)]}
+
+  defp members(scope, ctx, _cg) do
+    {:ok, course} = Curriculum.get_course(scope, ctx.combined_course_id)
+
+    members =
+      ctx.combined_course_id
+      |> Curriculum.contexts_of_course!(scope: scope)
+      |> Ash.load!(:class_group, scope: scope)
+      |> Enum.sort_by(&SchoolTemplates.class_sort_key(&1.class_group))
+      |> Enum.map(&member(scope, &1, &1.class_group))
+
+    {course.label, members}
   end
 
-  def handle_event("select_seq", %{"seq" => seq_id}, socket) do
-    {:noreply,
-     push_patch(socket,
-       to: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks/summary?seq=#{seq_id}"
-     )}
+  defp member(scope, ctx, cg) do
+    exempt = Curriculum.exempt_student_ids(scope, ctx)
+
+    students =
+      for s <- Enrollment.list_students(scope, cg), not MapSet.member?(exempt, s.id) do
+        %{id: s.id, sex: s.sex, full_name: s.full_name, class_label: cg.label}
+      end
+
+    %{ctx: ctx, class_group: cg, students: students}
   end
+
+  def handle_params(params, _uri, socket) do
+    %{sequences: sequences} = socket.assigns
+    seq = pick(sequences, params["seq"]) || List.first(sequences)
+    sort = if params["sort"] == "az", do: "az", else: "rank"
+
+    {:noreply, socket |> assign(seq: seq, sort: sort) |> assign_summary()}
+  end
+
+  defp summary_path(assigns, overrides) do
+    params =
+      [seq: assigns.seq && assigns.seq.id, sort: assigns.sort != "rank" && assigns.sort]
+      |> Keyword.merge(overrides)
+      |> Enum.reject(fn {_k, v} -> v in [nil, false] end)
+
+    ~p"/teacher/contexts/#{assigns.ctx.id}/marks/summary?#{params}"
+  end
+
+  defp assign_summary(%{assigns: %{seq: nil}} = socket), do: assign(socket, :summary, nil)
 
   defp assign_summary(socket) do
-    %{ctx: ctx, seq: seq, students: students, current_scope: scope} = socket.assigns
+    %{members: members, seq: seq, students: students, current_scope: scope} = socket.assigns
+
+    assessments = Enum.flat_map(members, &Assessment.list_assessments(scope, &1.ctx, seq))
 
     summary =
-      if seq do
-        assessments = Assessment.list_assessments(scope, ctx, seq)
-        marks = Assessment.list_marks_for_context_sequence(scope, ctx, seq)
+      if assessments != [] do
+        marks =
+          Enum.flat_map(members, &Assessment.list_marks_for_context_sequence(scope, &1.ctx, seq))
 
-        if assessments == [] do
-          nil
-        else
-          Marks.summarize(
-            Enum.map(students, fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end),
-            Enum.map(assessments, fn a ->
-              %{id: a.id, weight: a.weight, max_score: a.max_score}
-            end),
-            Enum.map(marks, fn m ->
-              %{
-                assessment_id: m.assessment_id,
-                student_id: m.student_id,
-                score: m.score,
-                status: m.status
-              }
-            end),
-            Assessment.grading_rules(scope)
-          )
-        end
+        Marks.summarize(
+          Enum.map(students, &%{id: &1.id, sex: &1.sex, name: &1.full_name}),
+          Enum.map(assessments, &%{id: &1.id, weight: &1.weight, max_score: &1.max_score}),
+          Enum.map(marks, fn m ->
+            %{
+              assessment_id: m.assessment_id,
+              student_id: m.student_id,
+              score: m.score,
+              status: m.status
+            }
+          end),
+          Assessment.grading_rules(scope)
+        )
       end
 
     assign(socket, :summary, summary)
   end
 
-  defp notes_count(summary),
-    do: summary.per_student |> Map.values() |> Enum.count(&(&1.average != nil))
-
-  # Bars of the « Répartition des notes » chart, height relative to the largest band.
-  defp distribution(summary) do
-    bands = summary.per_student |> Map.values() |> Enum.map(& &1.average) |> Marks.distribution()
-    top = bands |> Enum.map(& &1.count) |> Enum.max(fn -> 0 end) |> max(1)
-    Enum.map(bands, &Map.put(&1, :pct, round(&1.count * 100 / top)))
-  end
-
   defp pick(_list, nil), do: nil
-  defp pick(list, id), do: Enum.find(list, fn x -> x.id == id end)
+  defp pick(list, id), do: Enum.find(list, &(&1.id == id))
+
+  # « Séq. 1 · close », « Séq. 2 · en cours », « Séq. 3 · à venir »
+  defp seq_label(seq) do
+    state =
+      cond do
+        Lock.locked?(seq) -> gettext("close")
+        Lock.not_started?(seq) -> gettext("à venir")
+        true -> gettext("en cours")
+      end
+
+    gettext("Séq. %{n}", n: seq.number) <> " · " <> state
+  end
 
   defp fmt(nil), do: "—"
 
   defp fmt(%Decimal{} = d),
     do: d |> Decimal.round(2) |> Decimal.to_string(:normal) |> String.replace(".", ",")
 
-  defp pct(rate), do: "#{round(rate * 100)}%"
+  defp short(nil), do: "—"
+  # « 8 », « 12,5 »: the range keeps one decimal at most.
+  defp short(%Decimal{} = d),
+    do:
+      d
+      |> Decimal.round(1)
+      |> Decimal.normalize()
+      |> Decimal.to_string(:normal)
+      |> String.replace(".", ",")
 
-  # Appreciation counts, best band first.
-  defp mention_distribution(summary) do
+  defp pct(rate), do: "#{round(rate * 100)} %"
+
+  defp low?(%Decimal{} = d), do: Decimal.lt?(d, 10)
+  defp low?(_), do: false
+
+  # The five domain bands, best last, each with its share of the graded students.
+  defp distribution(summary),
+    do: summary.per_student |> Map.values() |> Enum.map(& &1.average) |> Marks.distribution()
+
+  defp band_tone(%{below_pass?: true}, _i), do: "bg-error text-error-content"
+  defp band_tone(_band, 2), do: "bg-primary/45 text-base-content"
+  defp band_tone(_band, 3), do: "bg-primary/70 text-primary-content"
+  defp band_tone(_band, _i), do: "bg-primary text-primary-content"
+
+  # « Excellent ×2 · Bien ×3 », best first.
+  defp mentions_line(summary) do
     summary.per_student
     |> Map.values()
     |> Enum.reject(&is_nil(&1.mention))
     |> Enum.frequencies_by(& &1.mention)
     |> Enum.sort_by(fn {mention, _count} -> mention.position end, :desc)
+    |> Enum.map_join(" · ", fn {mention, count} -> "#{mention.label} ×#{count}" end)
   end
 
-  defp missing_count(students, summary), do: length(students) - summary.graded_count
+  # « Réussite filles 75 % · garçons 50 % » (a sex without marks reads « — »).
+  defp sex_line(%{by_sex: %{f: f, m: m}}),
+    do:
+      gettext("Réussite filles %{f} · garçons %{m}",
+        f: sex_rate(f),
+        m: sex_rate(m)
+      )
 
-  defp bar_width(%Decimal{} = avg), do: "#{avg |> Decimal.mult(5) |> Decimal.round(0)}%"
-  defp bar_width(rate) when is_float(rate), do: "#{round(rate * 100)}%"
+  defp sex_rate(%{graded_count: 0}), do: "—"
+  defp sex_rate(%{pass_rate: rate}), do: pct(rate)
+
+  defp ranking(students, _summary, "az"),
+    do: Enum.sort_by(students, &String.downcase(&1.full_name))
+
+  defp ranking(students, summary, _rank) do
+    Enum.sort_by(students, fn s ->
+      {summary.per_student[s.id].rank || 9_999, String.downcase(s.full_name)}
+    end)
+  end
+
+  defp ordinal(nil), do: "—"
+
+  defp ordinal(n),
+    do:
+      TeacherAssistantWeb.School.BulletinsLive.ordinal(
+        Gettext.get_locale(TeacherAssistantWeb.Gettext),
+        n
+      )
 
   def render(assigns) do
     ~H"""
@@ -120,191 +202,199 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
       current_scope={@current_scope}
       current_path={@current_path}
       nav={["courses"]}
+      immersive
     >
       <section id="teacher-marks-summary" class="mx-auto max-w-2xl space-y-4">
-        <.teaching_nav
-          context_id={@ctx.id}
-          label={"#{@ctx.subject} · #{@cg.label}"}
-          current={:summary}
-        />
-        <.page_header
-          eyebrow={
-            if @seq,
+        <.teaching_nav context_id={@ctx.id} label={@title} current={:summary} />
+
+        <header class="hidden sm:block">
+          <p class="ta-eyebrow">
+            {if @seq,
               do: gettext("Résultats · Séquence %{n}", n: @seq.number),
-              else: gettext("Résultats")
-          }
-          title={"#{@ctx.subject} · #{@cg.label}"}
-          subtitle={
-            @summary &&
-              ngettext("%{count} élève", "%{count} élèves", length(@students)) <>
-                " · " <>
-                ngettext("%{count} note", "%{count} notes", notes_count(@summary))
-          }
+              else: gettext("Résultats")}
+          </p>
+          <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{@title}</h1>
+          <p :if={@summary} class="text-[0.95rem] text-base-content/75">
+            {ngettext("%{count} élève", "%{count} élèves", length(@students))} · {ngettext(
+              "%{count} note",
+              "%{count} notes",
+              @summary.graded_count
+            )}
+          </p>
+        </header>
+
+        <nav
+          :if={@sequences != []}
+          id="summary-seq-chips"
+          role="tablist"
+          aria-label={gettext("Séquence")}
+          class="ta-pills"
         >
-          <:actions>
-            <.link
-              id="back-to-entry"
-              navigate={
-                ~p"/teacher/contexts/#{@ctx.id}/marks?#{if @seq, do: [seq: @seq.id], else: []}"
-              }
-              class="btn btn-outline btn-sm"
-            >
-              <.icon name="hero-arrow-left" class="size-4" /> {gettext("Retour à la saisie")}
-            </.link>
-            <form :if={@sequences != []} id="summary-seq-select" phx-change="select_seq">
-              <.input
-                type="select"
-                name="seq"
-                value={@seq && @seq.id}
-                options={for s <- @sequences, do: {gettext("Séquence") <> " #{s.number}", s.id}}
-              />
-            </form>
-          </:actions>
-        </.page_header>
+          <.link
+            :for={s <- @sequences}
+            id={"summary-seq-#{s.id}"}
+            role="tab"
+            patch={summary_path(assigns, seq: s.id)}
+            aria-selected={to_string(@seq && @seq.id == s.id)}
+            aria-current={@seq && @seq.id == s.id && "true"}
+            class="ta-pill"
+          >
+            {seq_label(s)}
+          </.link>
+        </nav>
 
         <%= if @summary do %>
-          <div id="summary-stats" class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div id="summary-class-average" class="contents">
-              <.stat
-                label={gettext("Class average")}
-                value={fmt(@summary.class_average)}
-                suffix="/20"
-                tone={:primary}
-              />
+          <section
+            id="summary-stats"
+            aria-label={gettext("Synthèse")}
+            class="grid grid-cols-3 gap-px overflow-hidden rounded-box border border-base-300 bg-base-300"
+          >
+            <div id="summary-class-average" class="bg-base-100 p-3">
+              <p class="text-xs text-base-content/70">{gettext("Moyenne")}</p>
+              <p class={[
+                "ta-num mt-0.5 text-[1.35rem] font-semibold",
+                low?(@summary.class_average) && "text-error"
+              ]}>
+                {fmt(@summary.class_average)}
+              </p>
             </div>
-            <div id="summary-pass-rate" class="contents">
-              <.stat label={gettext("≥ 10/20")} value={pct(@summary.pass_rate)} tone={:primary} />
+            <div id="summary-pass-rate" class="bg-base-100 p-3">
+              <p class="text-xs text-base-content/70">{gettext("Réussite")}</p>
+              <p class="ta-num mt-0.5 text-[1.35rem] font-semibold text-primary">
+                {pct(@summary.pass_rate)}
+              </p>
             </div>
-            <.stat label={gettext("Highest")} value={fmt(@summary.highest)} suffix="/20" />
-            <.stat
-              label={gettext("Lowest")}
-              value={fmt(@summary.lowest)}
-              suffix="/20"
-              tone={:error}
-            />
-          </div>
-
-          <div id="summary-distribution" class="ta-leaf space-y-3">
-            <p class="ta-eyebrow">{gettext("Répartition des notes")}</p>
-            <div class="grid h-40 grid-cols-5 items-end gap-2">
-              <div
-                :for={b <- distribution(@summary)}
-                data-band={b.label}
-                class="flex h-full flex-col items-center justify-end gap-1"
-              >
-                <span class="ta-num text-sm font-semibold">{b.count}</span>
-                <div
-                  class={[
-                    "w-full rounded-t transition-[height] duration-500",
-                    if(b.below_pass?, do: "bg-error", else: "bg-primary")
-                  ]}
-                  style={"height: #{b.pct}%"}
-                >
-                </div>
-                <span class="ta-num whitespace-nowrap text-[0.7rem] text-base-content/70">
-                  {b.label}
-                </span>
-              </div>
+            <div id="summary-range" class="bg-base-100 p-3">
+              <p class="text-xs text-base-content/70">{gettext("Écart")}</p>
+              <p class="ta-num mt-0.5 text-base font-semibold leading-[2rem]">
+                {short(@summary.lowest)} → {short(@summary.highest)}
+              </p>
             </div>
-          </div>
+          </section>
 
-          <div id="summary-mentions" class="flex flex-wrap items-center gap-2">
-            <span
-              :for={{mention, count} <- mention_distribution(@summary)}
-              class="badge badge-soft gap-1"
-            >
-              <.mention_badge mention={mention} />
-              <span class="ta-num">×{count}</span>
-            </span>
-          </div>
-
-          <div id="summary-sex-bars" class="ta-leaf space-y-2">
-            <p class="ta-eyebrow">{gettext("Pass rate — filles / garçons")}</p>
+          <section
+            id="summary-distribution"
+            aria-label={gettext("Répartition des notes")}
+            class="space-y-2"
+          >
             <div
-              :for={
-                {label, stats} <-
-                  [{gettext("Filles"), @summary.by_sex.f}, {gettext("Garçons"), @summary.by_sex.m}]
-              }
-              class="flex items-center gap-2 text-sm"
+              :if={@summary.graded_count > 0}
+              class="ta-num flex h-7 overflow-hidden rounded-field text-xs font-semibold"
+              aria-hidden="true"
             >
-              <span class="w-20 shrink-0 text-base-content/70">{label}</span>
-              <div class="h-2 flex-1 overflow-hidden rounded-full bg-base-300">
-                <div
-                  class="h-full rounded-full bg-primary"
-                  style={"width: #{bar_width(stats.pass_rate)}"}
-                >
-                </div>
-              </div>
-              <span class="ta-num w-12 text-right">{pct(stats.pass_rate)}</span>
+              <span
+                :for={{b, i} <- Enum.with_index(distribution(@summary))}
+                :if={b.count > 0}
+                class={["grid place-items-center", band_tone(b, i)]}
+                style={"flex: #{b.count}"}
+              >
+                {b.count}
+              </span>
             </div>
-          </div>
+            <ul class="ta-num flex flex-wrap gap-x-3 gap-y-1 text-[0.72rem] text-base-content/70">
+              <li
+                :for={{b, i} <- Enum.with_index(distribution(@summary))}
+                data-band={b.label}
+                class="flex items-center gap-1"
+              >
+                <span class={["size-2 rounded-full", band_tone(b, i)]}></span>
+                {b.label} · {b.count}
+              </li>
+            </ul>
+            <p id="summary-sex" class="text-xs text-base-content/70">{sex_line(@summary)}</p>
+            <p id="summary-mentions" class="text-xs text-base-content/70">
+              {mentions_line(@summary)}
+            </p>
+          </section>
 
           <p
-            :if={missing_count(@students, @summary) > 0}
+            :if={length(@students) > @summary.graded_count}
             id="summary-missing"
             class="flex items-center gap-2 text-sm text-warning"
           >
             <.icon name="hero-exclamation-triangle" class="size-4" />
-            {gettext("%{count} student(s) without marks in this séquence",
-              count: missing_count(@students, @summary)
+            {gettext("%{count} élève(s) sans note dans cette séquence",
+              count: length(@students) - @summary.graded_count
             )}
           </p>
 
-          <div id="summary-table" class="ta-section">
-            <.list_row
-              :for={s <- @students}
-              id={"summary-row-#{s.id}"}
-              title={s.full_name}
-            >
-              <:leading>
-                <span class="ta-num grid size-9 place-items-center rounded-full bg-base-200 text-sm">
-                  {@summary.per_student[s.id].rank || "—"}
-                </span>
-              </:leading>
-              <span :if={@summary.per_student[s.id].average} class="text-sm">
-                <.mention_badge mention={@summary.per_student[s.id].mention} />
-              </span>
-              <span
-                :if={is_nil(@summary.per_student[s.id].average)}
-                class="text-sm text-base-content/70"
+          <section id="summary-table" aria-label={gettext("Classement")}>
+            <div class="mb-1.5 flex items-center justify-between gap-2">
+              <h2 class="px-1 text-xs font-semibold uppercase tracking-wide text-base-content/70">
+                {gettext("Classement")}
+              </h2>
+              <div role="group" aria-label={gettext("Trier")} class="flex gap-1">
+                <.link
+                  id="sort-rank"
+                  patch={summary_path(assigns, sort: false)}
+                  aria-pressed={to_string(@sort == "rank")}
+                  class={["btn btn-xs h-8", if(@sort == "rank", do: "btn-neutral", else: "btn-ghost")]}
+                >
+                  {gettext("Rang")}
+                </.link>
+                <.link
+                  id="sort-az"
+                  patch={summary_path(assigns, sort: "az")}
+                  aria-pressed={to_string(@sort == "az")}
+                  class={["btn btn-xs h-8", if(@sort == "az", do: "btn-neutral", else: "btn-ghost")]}
+                >
+                  {gettext("A → Z")}
+                </.link>
+              </div>
+            </div>
+            <ol class="ta-section">
+              <li
+                :for={s <- ranking(@students, @summary, @sort)}
+                id={"summary-row-#{s.id}"}
+                class="flex min-h-12 items-center gap-3 border-t border-base-300/60 px-4 py-1.5 first:border-t-0"
               >
-                {gettext("Pas de note")}
-              </span>
-              <:trailing>
-                <span class="flex flex-col items-end gap-1">
-                  <span class="ta-num text-base font-semibold">
-                    {fmt(@summary.per_student[s.id].average)}
-                  </span>
-                  <span
-                    :if={@summary.per_student[s.id].average}
-                    class="h-1.5 w-16 overflow-hidden rounded-full bg-base-300"
-                    aria-hidden="true"
-                  >
-                    <span
-                      class="block h-full rounded-full bg-primary"
-                      style={"width: #{bar_width(@summary.per_student[s.id].average)}"}
-                    ></span>
+                <span class="ta-num w-9 shrink-0 text-xs font-semibold text-base-content/70">
+                  {ordinal(@summary.per_student[s.id].rank)}
+                </span>
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <span class="truncate text-[0.92rem]">{s.full_name}</span>
+                  <span :if={@combined?} class="ta-num text-[0.7rem] text-base-content/70">
+                    {s.class_label}
                   </span>
                 </span>
-              </:trailing>
-            </.list_row>
-          </div>
+                <span class={[
+                  "shrink-0 text-xs",
+                  if(low?(@summary.per_student[s.id].average),
+                    do: "text-error",
+                    else: "text-base-content/70"
+                  )
+                ]}>
+                  {if @summary.per_student[s.id].mention,
+                    do: @summary.per_student[s.id].mention.label,
+                    else: gettext("Pas de note")}
+                </span>
+                <span class={[
+                  "ta-num w-12 shrink-0 text-right text-[0.95rem] font-semibold",
+                  low?(@summary.per_student[s.id].average) && "text-error"
+                ]}>
+                  {fmt(@summary.per_student[s.id].average)}
+                </span>
+              </li>
+            </ol>
+          </section>
         <% else %>
           <p :if={@sequences == []} class="ta-leaf">
-            {gettext("No séquences yet — set up the school year first.")}
+            {gettext("Pas encore de séquences — configurez d'abord l'année scolaire.")}
           </p>
           <.empty_state
             :if={@sequences != []}
             icon="hero-pencil-square"
-            title={gettext("No marks in this séquence yet")}
-            message={gettext("Enter marks for an assessment to see the séquence results.")}
+            title={gettext("Pas encore de notes dans cette séquence")}
+            message={
+              gettext("Saisissez les notes d'une évaluation pour voir les résultats de la séquence.")
+            }
           >
             <:action>
               <.link
                 navigate={~p"/teacher/contexts/#{@ctx.id}/marks?seq=#{@seq && @seq.id}"}
                 class="btn btn-primary btn-sm"
               >
-                {gettext("Enter marks")}
+                {gettext("Saisir les notes")}
               </.link>
             </:action>
           </.empty_state>

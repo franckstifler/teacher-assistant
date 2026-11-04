@@ -1,177 +1,76 @@
 defmodule TeacherAssistantWeb.School.CoursesLive do
   @moduledoc """
-  "Mes cours": the signed-in teacher's assignments in the current school,
-  one row per solo assignment or combined course, each linking to the
-  roster, marks, results and today's roll call. The landing page for
-  members who are neither admins nor form masters.
+  "Mes cours" (UX refonte 2026-11-03): the signed-in teacher's courses in the
+  current school as compact rows grouped by subject (« Anglais · 8 cours »), one
+  per solo assignment or combined course. A row opens the course's marks page and
+  shows its classes, its séquence state (« 3/39 », « 0 éval. ») and, small, the
+  coefficient and the form-master badge; results and roster are the course's tabs.
+  Filter pills: all, marks to enter, competence to enter (APC schools).
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Enrollment, Organization}
-  alias TeacherAssistant.Timetabling
-
-  alias TeacherAssistant.Academics.{
-    CoefficientRules,
-    CombinedCourse,
-    EntryProgress,
-    Lock,
-    Reference
-  }
-
+  alias TeacherAssistant.Academics.{Lock, Reference, TeacherCourses}
   alias TeacherAssistantWeb.Dates
+
+  @filters ~w(all marks competence)
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil do
-      today = TeacherAssistant.Academics.Reference.today()
-      units = scope |> Curriculum.list_units_for_scope() |> Enum.map(&with_contexts(&1, scope))
-      contexts = Enum.flat_map(units, &elem(&1, 1))
-      seq = current_sequence(scope)
-
-      lessons =
-        scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
-
-      ctx = %{
-        today: today,
-        day: day_of_week(today),
-        lessons: lessons,
-        own_slots: Timetabling.teacher_timetable(scope, scope.current_user),
-        scope: scope,
-        user_id: scope.current_user.id,
-        coefficients: Curriculum.coefficient_cells(scope),
-        progress: progress(scope, seq, contexts),
-        competences: competences_due(scope, seq, contexts),
-        students: student_counts(scope, contexts)
-      }
-
-      courses = Enum.map(units, &course_row(&1, ctx))
+      today = Reference.today()
+      seq = TeacherCourses.current_sequence(scope, today)
+      courses = TeacherCourses.list(scope, seq)
 
       {:ok,
-       socket
-       |> assign(:page_title, gettext("Mes cours"))
-       |> assign(:courses, courses)
-       |> assign(:seq, seq)
-       # Each class once, even when the teacher has it in two subjects.
-       |> assign(:student_total, ctx.students |> Map.values() |> Enum.sum())
-       |> assign(:today, today)}
+       assign(socket,
+         page_title: gettext("Mes cours"),
+         courses: courses,
+         seq: seq,
+         today: today,
+         # Each class once, even when the teacher has it in two subjects.
+         student_total: TeacherCourses.student_total(courses),
+         counts: %{
+           "all" => length(courses),
+           "marks" => Enum.count(courses, &TeacherCourses.to_enter?/1),
+           "competence" => Enum.count(courses, &(&1.competence == :missing))
+         },
+         apc?: Enum.any?(courses, &(&1.competence != nil))
+       )}
     else
       {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  # Every unit with its member contexts (and their class), loaded once.
-  defp with_contexts({:course, %CombinedCourse{} = course} = unit, scope) do
-    contexts =
-      course.id
-      |> Curriculum.contexts_of_course!(scope: scope)
-      # `:class_group` is also multitenant — Ash needs a scope to resolve the load.
-      |> Ash.load!(:class_group, scope: scope)
-
-    {unit, contexts}
+  def handle_params(params, _uri, socket) do
+    filter = if params["f"] in @filters, do: params["f"], else: "all"
+    {:noreply, assign(socket, :filter, filter)}
   end
 
-  defp with_contexts({:solo, tc} = unit, _scope), do: {unit, [tc]}
+  defp filtered(courses, "marks"), do: Enum.filter(courses, &TeacherCourses.to_enter?/1)
+  defp filtered(courses, "competence"), do: Enum.filter(courses, &(&1.competence == :missing))
+  defp filtered(courses, _all), do: courses
 
-  defp current_sequence(%{current_academic_year: nil}), do: nil
-
-  defp current_sequence(%{current_academic_year: year} = scope),
-    do:
-      scope |> Organization.list_sequences(year) |> Assessment.default_sequence(Reference.today())
-
-  defp progress(_scope, nil, _contexts), do: %{}
-
-  defp progress(scope, seq, contexts),
-    do: EntryProgress.context_cells(scope, scope.current_academic_year, seq, contexts)
-
-  defp competences_due(_scope, nil, _contexts), do: nil
-
-  defp competences_due(scope, seq, contexts),
-    do: Assessment.competences_due(scope, seq, Enum.map(contexts, & &1.id))
-
-  defp student_counts(scope, contexts) do
-    contexts
-    |> Enum.map(& &1.class_group)
-    |> Enum.uniq_by(& &1.id)
-    |> Map.new(&{&1.id, length(Enrollment.list_students(scope, &1))})
+  # Subjects in the order the courses come, each with its courses.
+  defp by_subject(courses) do
+    grouped = Enum.group_by(courses, & &1.subject)
+    courses |> Enum.map(& &1.subject) |> Enum.uniq() |> Enum.map(&{&1, grouped[&1]})
   end
 
-  # One row per unit. A combined course lists every member class; the marks
-  # and roster pages take any member context id (they resolve the course).
-  defp course_row({{:course, %CombinedCourse{} = course}, contexts}, ctx) do
-    representative = List.first(contexts)
-
-    Map.merge(facts(contexts, ctx), %{
-      id: "combined-#{course.id}",
-      label: course.label,
-      subject: course.subject,
-      context_id: representative.id,
-      attendance_class_id: representative.class_group_id,
-      roll_call_period: roll_call_period(representative.class_group, ctx)
-    })
-  end
-
-  defp course_row({{:solo, tc} = unit, contexts}, ctx) do
-    Map.merge(facts(contexts, ctx), %{
-      id: tc.id,
-      label: Curriculum.unit_label(unit),
-      subject: tc.subject,
-      context_id: tc.id,
-      attendance_class_id: tc.class_group_id,
-      roll_call_period: roll_call_period(tc.class_group, ctx)
-    })
-  end
-
-  # Card facts over the member contexts: students, coefficient (first member's grid
-  # cell), form master, séquence entry progress, APC competence (nil when none is due).
-  defp facts([first | _] = contexts, ctx) do
-    classes = Enum.map(contexts, & &1.class_group)
-    cells = Enum.map(contexts, &Map.get(ctx.progress, &1.id, %{entered: 0, expected: 0}))
-    entered = cells |> Enum.map(& &1.entered) |> Enum.sum()
-    expected = cells |> Enum.map(& &1.expected) |> Enum.sum()
-
-    %{
-      classes: classes,
-      students: classes |> Enum.map(&Map.get(ctx.students, &1.id, 0)) |> Enum.sum(),
-      coefficient: coefficient(ctx.coefficients, first),
-      pp?: Enum.any?(classes, &(&1.form_master_user_id == ctx.user_id)),
-      progress: %{entered: entered, expected: expected, pct: EntryProgress.pct(entered, expected)},
-      competence: competence(contexts, ctx.competences)
-    }
-  end
-
-  defp competence(_contexts, nil), do: nil
-
-  defp competence(contexts, texts),
-    do: if(Enum.any?(contexts, &is_nil(texts[&1.id])), do: :missing, else: :done)
-
-  defp coefficient(_cells, %{subject_id: nil}), do: nil
-
-  defp coefficient(cells, %{subject_id: subject_id, class_group: cg}) do
-    key = %{subject_id: subject_id, subsystem: cg.subsystem, level: cg.level, serie: cg.serie}
-
-    case CoefficientRules.resolve(cells, key) do
-      nil -> nil
-      found -> cells[found].coefficient
-    end
-  end
+  defp filter_path("all"), do: ~p"/school/courses"
+  defp filter_path(f), do: ~p"/school/courses?f=#{f}"
 
   defp coef_label(n), do: TeacherAssistantWeb.Numbers.decimal(n, trim: true)
 
-  defp progress_tone(%{expected: 0}), do: "bg-base-300"
-  defp progress_tone(%{pct: 100}), do: "bg-primary"
-  defp progress_tone(%{entered: 0}), do: "bg-error"
-  defp progress_tone(_progress), do: "bg-warning"
-
-  defp subtitle(courses, students, seq) do
+  defp subtitle(courses, students, seq, today) do
     base =
       ngettext("%{count} cours", "%{count} cours", length(courses)) <>
         " · " <> ngettext("%{count} élève", "%{count} élèves", students)
 
-    if seq && not Lock.locked?(seq) do
+    if seq && not Lock.locked?(seq, today) do
       base <>
         " · " <>
-        gettext("Séquence %{n} ouverte jusqu'au %{date}",
+        gettext("Séq. %{n} jusqu'au %{date}",
           n: seq.number,
           date: Dates.day_month(seq.grade_entry_deadline)
         )
@@ -180,47 +79,44 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
     end
   end
 
-  # Today's roll call target for a class: the teacher's own slot on today's
-  # weekday when the timetable has one, otherwise the first lesson period the
-  # class has nothing placed on (assignment-based roll call), otherwise the
-  # first lesson period.
-  defp roll_call_period(_class_group, %{lessons: []}), do: nil
-  defp roll_call_period(_class_group, %{day: nil, lessons: [first | _]}), do: first
+  # « Niveau 2 · 5 classes » for a combined course over several classes.
+  defp row_title(%{classes: [_, _ | _] = classes, name: name}),
+    do: name <> " · " <> ngettext("%{count} classe", "%{count} classes", length(classes))
 
-  defp roll_call_period(class_group, %{day: day, lessons: lessons, own_slots: own_slots} = ctx) do
-    own =
-      Enum.find(lessons, fn p ->
-        own_slots |> Map.get({day, p.id}, []) |> Enum.any?(&(&1.class_group_id == class_group.id))
-      end)
+  defp row_title(course), do: course.name
 
-    own || first_free_lesson(ctx.scope, class_group, day, lessons) || List.first(lessons)
-  end
+  # « COME 2 · ELEQ 2 — 39 él. » for a combined course, « 6 élèves » for one class.
+  defp classes_line(%{classes: [_, _ | _] = classes, students: n}),
+    do:
+      Enum.map_join(classes, " · ", & &1.label) <>
+        " — " <> ngettext("%{count} él.", "%{count} él.", n)
 
-  defp first_free_lesson(scope, class_group, day, lessons) do
-    %{slots: grid} = Timetabling.class_timetable(scope, class_group)
-    Enum.find(lessons, &(not Map.has_key?(grid, {day, &1.id})))
-  end
-
-  defp day_of_week(date) do
-    case Date.day_of_week(date) do
-      7 -> nil
-      n -> Enum.at([:monday, :tuesday, :wednesday, :thursday, :friday, :saturday], n - 1)
-    end
-  end
+  defp classes_line(%{students: n}), do: ngettext("%{count} élève", "%{count} élèves", n)
 
   def render(assigns) do
+    assigns = assign(assigns, :shown, filtered(assigns.courses, assigns.filter))
+
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="courses" class="space-y-4">
-        <.page_header
-          eyebrow={
-            if @current_scope.current_academic_year,
-              do: gettext("Enseignement") <> " · " <> @current_scope.current_academic_year.name,
-              else: gettext("Enseignement")
-          }
-          title={gettext("Mes cours")}
-          subtitle={@courses != [] && subtitle(@courses, @student_total, @seq)}
-        />
+      <section id="courses" class="mx-auto max-w-3xl space-y-4">
+        <header class="space-y-1">
+          <p :if={@current_scope.current_academic_year} class="ta-eyebrow hidden sm:block">
+            {gettext("Enseignement")} · {@current_scope.current_academic_year.name}
+          </p>
+          <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{gettext("Mes cours")}</h1>
+          <p :if={@courses != []} id="courses-subtitle" class="text-[0.95rem] text-base-content/75">
+            {subtitle(@courses, @student_total, @seq, @today)}
+            <span
+              :if={
+                @seq && !Lock.locked?(@seq, @today) &&
+                  Dates.countdown(@seq.grade_entry_deadline, @today)
+              }
+              class="ta-num font-semibold text-warning"
+            >
+              · {Dates.countdown(@seq.grade_entry_deadline, @today)}
+            </span>
+          </p>
+        </header>
 
         <div :if={@courses == []} id="courses-empty">
           <.empty_state
@@ -234,123 +130,137 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
           />
         </div>
 
-        <ul
-          :if={@courses != []}
-          class="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(270px,1fr))]"
-        >
-          <li
-            :for={course <- @courses}
-            id={"course-#{course.id}"}
-            class="ta-section flex flex-col gap-3 p-4"
+        <.filter_pills :if={@courses != [] && @seq} id="course-filters">
+          <:pill
+            id="filter-all"
+            patch={filter_path("all")}
+            count={@counts["all"]}
+            current={@filter == "all"}
           >
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <h2 class="font-display text-2xl leading-tight">
-                  <%= if length(course.classes) > 1 do %>
-                    {course.label}
-                  <% else %>
-                    {hd(course.classes).label}
-                  <% end %>
-                </h2>
-                <p class="mt-0.5 text-sm text-base-content/70">
-                  {course.subject} · {ngettext("%{count} élève", "%{count} élèves", course.students)}
-                  <span :if={course.coefficient}>
-                    · {gettext("coef. %{n}", n: coef_label(course.coefficient))}
-                  </span>
-                </p>
-                <p :if={length(course.classes) > 1} class="mt-1 flex flex-wrap gap-1">
-                  <span :for={cg <- course.classes} class="badge badge-ghost badge-sm">
-                    {cg.label}
-                  </span>
-                </p>
-              </div>
-              <span
-                :if={course.pp?}
-                data-role="pp"
-                title={gettext("Professeur principal")}
-                class="badge badge-sm border-0 bg-warning/20 font-semibold text-warning"
-              >
-                PP
-              </span>
-            </div>
+            {gettext("Tous")}
+          </:pill>
+          <:pill
+            id="filter-marks"
+            patch={filter_path("marks")}
+            count={@counts["marks"]}
+            current={@filter == "marks"}
+          >
+            {gettext("Notes à saisir")}
+          </:pill>
+          <:pill
+            :if={@apc?}
+            id="filter-competence"
+            patch={filter_path("competence")}
+            count={@counts["competence"]}
+            current={@filter == "competence"}
+          >
+            {gettext("Compétence")}
+          </:pill>
+        </.filter_pills>
 
-            <div :if={@seq} data-role="progress" class="space-y-1">
-              <div class="flex items-baseline justify-between text-xs">
-                <span class="text-base-content/70">
-                  {gettext("Notes Séq. %{n}", n: @seq.number)}
-                </span>
-                <span :if={course.progress.expected > 0} class="ta-num font-semibold">
-                  {course.progress.entered} / {course.progress.expected}
-                </span>
-                <span :if={course.progress.expected == 0} class="text-base-content/70">
-                  {gettext("aucune évaluation")}
-                </span>
-              </div>
-              <div class="h-1.5 overflow-hidden rounded-full bg-base-300">
-                <div
-                  class={["h-full rounded-full transition-all", progress_tone(course.progress)]}
-                  style={"width: #{course.progress.pct || 0}%"}
-                >
-                </div>
-              </div>
-            </div>
+        <p
+          :if={@courses != [] && @shown == []}
+          id="courses-filtered-empty"
+          class="ta-leaf text-sm text-base-content/75"
+        >
+          {gettext("Aucun cours dans ce filtre.")}
+        </p>
 
-            <div :if={course.competence} data-role="competence" class="-mt-1 text-xs">
+        <section
+          :for={{subject, rows} <- by_subject(@shown)}
+          aria-label={subject}
+          class="space-y-1.5"
+        >
+          <h2 class="px-1 text-xs font-semibold uppercase tracking-wide text-base-content/70">
+            {subject} · {ngettext("%{count} cours", "%{count} cours", length(rows))}
+          </h2>
+          <ul class="ta-section">
+            <li :for={course <- rows} id={"course-#{course.id}"} class="ta-list-row !p-0">
               <.link
-                :if={course.competence == :missing}
-                navigate={~p"/teacher/contexts/#{course.context_id}/marks?seq=#{@seq.id}"}
-                class="inline-flex items-center gap-1 font-semibold text-warning hover:underline"
+                navigate={course_path(course, @seq)}
+                class="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 transition-colors hover:bg-base-content/5"
               >
-                <.icon name="hero-exclamation-triangle" class="size-3.5" />
-                {gettext("Compétence Séq. %{n} : à saisir", n: @seq.number)}
-                <.icon name="hero-arrow-right" class="size-3" />
-              </.link>
-              <span :if={course.competence == :done} class="text-base-content/70">
-                {gettext("Compétence Séq. %{n} ✓", n: @seq.number)}
-              </span>
-            </div>
-
-            <div class="mt-auto space-y-2">
-              <.link
-                navigate={~p"/teacher/contexts/#{course.context_id}/marks"}
-                class="btn btn-primary w-full"
-              >
-                <.icon name="hero-pencil-square" class="size-4" />{gettext("Saisir les notes")}
-              </.link>
-              <div class="grid grid-cols-3 gap-2">
-                <.link
-                  :if={course.roll_call_period}
-                  navigate={
-                    ~p"/school/classes/#{course.attendance_class_id}/attendance/#{course.roll_call_period.id}?date=#{Date.to_iso8601(@today)}"
-                  }
-                  class="btn btn-ghost border-base-300 px-1"
-                >
-                  {gettext("Appel")}
-                </.link>
-                <span
-                  :if={!course.roll_call_period}
-                  class="btn btn-ghost btn-disabled border-base-300 px-1"
-                >
-                  {gettext("Appel")}
+                <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span class="flex items-center gap-2">
+                    <span class="truncate text-[0.95rem] font-semibold">{row_title(course)}</span>
+                    <span
+                      :if={course.pp?}
+                      data-role="pp"
+                      title={gettext("Professeur principal")}
+                      class="badge badge-xs shrink-0 border-0 bg-warning/20 font-semibold text-warning"
+                    >
+                      PP
+                    </span>
+                  </span>
+                  <span class="ta-num truncate text-[0.72rem] text-base-content/70">
+                    {classes_line(course)}<span :if={course.coefficient}> · {gettext("coef. %{n}",
+                      n: coef_label(course.coefficient)
+                    )}</span>
+                  </span>
+                  <span
+                    :if={@seq && course.competence}
+                    data-role="competence"
+                    class={[
+                      "text-[0.72rem]",
+                      if(course.competence == :missing,
+                        do: "font-semibold text-warning",
+                        else: "text-base-content/70"
+                      )
+                    ]}
+                  >
+                    <%= if course.competence == :missing do %>
+                      {gettext("Compétence Séq. %{n} : à saisir", n: @seq.number)}
+                    <% else %>
+                      {gettext("Compétence Séq. %{n} ✓", n: @seq.number)}
+                    <% end %>
+                  </span>
                 </span>
-                <.link
-                  navigate={~p"/teacher/contexts/#{course.context_id}/marks/summary"}
-                  class="btn btn-ghost border-base-300 px-1"
-                >
-                  {gettext("Résultats")}
-                </.link>
-                <.link
-                  navigate={~p"/teacher/contexts/#{course.context_id}/roster"}
-                  class="btn btn-ghost border-base-300 px-1"
-                >
-                  {gettext("Élèves")}
-                </.link>
-              </div>
-            </div>
-          </li>
-        </ul>
+                <.state_pill :if={@seq} progress={course.progress} />
+                <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
+              </.link>
+            </li>
+          </ul>
+        </section>
       </section>
     </Layouts.app>
     """
   end
+
+  # The séquence's marks page: with the séquence in the URL when a competence is due,
+  # so the competence form opens on it.
+  defp course_path(%{competence: :missing, context_id: id}, %{id: seq_id}),
+    do: ~p"/teacher/contexts/#{id}/marks?seq=#{seq_id}"
+
+  defp course_path(%{context_id: id}, _seq), do: ~p"/teacher/contexts/#{id}/marks"
+
+  @doc "« 3/39 » (amber while incomplete, green ✓ once complete) or « 0 éval. »."
+  attr :progress, :map, required: true
+
+  def state_pill(assigns) do
+    ~H"""
+    <span
+      data-role="progress"
+      class={[
+        "ta-num shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-[0.72rem] font-semibold",
+        state_tone(@progress)
+      ]}
+    >
+      <%= cond do %>
+        <% @progress.assessments == 0 -> %>
+          {gettext("0 éval.")}
+        <% @progress.expected > 0 and @progress.entered >= @progress.expected -> %>
+          {@progress.entered}/{@progress.expected} ✓
+        <% true -> %>
+          {@progress.entered}/{@progress.expected}
+      <% end %>
+    </span>
+    """
+  end
+
+  defp state_tone(%{assessments: 0}), do: "bg-warning/15 text-warning"
+
+  defp state_tone(%{entered: e, expected: x}) when x > 0 and e >= x,
+    do: "bg-success/15 text-success"
+
+  defp state_tone(_progress), do: "bg-warning/15 text-warning"
 end

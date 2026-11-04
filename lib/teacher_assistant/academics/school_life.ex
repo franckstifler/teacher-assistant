@@ -254,6 +254,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       class_group: slot.class_group,
       teacher: tc && tc.teacher,
       teaching_context_id: tc && tc.id,
+      combined_course_id: tc && tc.combined_course_id,
       subject: tc && subject_label(tc),
       code: tc && EntryProgress.column_code(tc.catalog_subject, subject_label(tc)),
       status: status,

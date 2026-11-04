@@ -92,6 +92,13 @@ defmodule TeacherAssistantWeb.School.AttendanceCombinedTest do
     assert has_element?(view, "#class-attendance", course.label)
     assert has_element?(view, "#attendance-class-#{maco.id}", maco.label)
     assert has_element?(view, "#attendance-class-#{menu.id}", menu.label)
+    # chips jump to each class; each class header sums its exceptions up
+    assert has_element?(
+             view,
+             ~s(#roll-class-chip-#{menu.id}[href="#attendance-class-#{menu.id}"])
+           )
+
+    assert has_element?(view, "#attendance-class-#{menu.id} h3", "Tous présents")
   end
 
   test "marking a MENU student absent and recording lands the entry on MENU's enrollment, MACO's on theirs",

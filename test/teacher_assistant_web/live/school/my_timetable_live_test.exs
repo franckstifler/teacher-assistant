@@ -125,6 +125,60 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/timetable/me")
     assert has_element?(view, "#cell-monday-#{period.id}", "6e A")
     assert has_element?(view, "#cell-monday-#{period.id}", "6e B")
+    assert has_element?(view, "#cell-monday-#{period.id} .bg-error\\/15")
+  end
+
+  test "a combined course is one lesson, not a clash", %{
+    conn: conn,
+    year: year,
+    period: period,
+    head: head,
+    school: school,
+    tc: tc
+  } do
+    scope = school_scope(head, school)
+    {:ok, cg_b} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
+    {:ok, tc_b} = Curriculum.assign_teacher(scope, cg_b, head, %{subject: "Maths"})
+    {:ok, course} = Curriculum.combine_course(scope, [tc, tc_b])
+
+    {:ok, _} =
+      Timetabling.place_slot(scope, cg_b, %{
+        day: :monday,
+        period_id: period.id,
+        teaching_context_id: tc_b.id
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/school/timetable/me?day=monday")
+    assert has_element?(view, "#cell-monday-#{period.id}", "6e A, 6e B")
+    refute has_element?(view, "#cell-monday-#{period.id} .bg-error\\/15")
+
+    # phones: the day strip counts one lesson, shown once with its classes
+    assert has_element?(view, "#day-tab-monday", "1 c.")
+    assert has_element?(view, "#my-timetable-days li[id^='lesson-']", course.label)
+    assert has_element?(view, "#my-timetable-days", "2 classes")
+  end
+
+  test "today's lessons carry their roll-call state (clock: Monday 13:00)", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    year: year,
+    head: head,
+    school: school
+  } do
+    scope = school_scope(head, school)
+    :ok = Organization.build_default_calendar(scope, year)
+    {:ok, _} = Enrollment.set_paper_roll_call(scope, cg, false)
+
+    {:ok, view, _html} = live(conn, ~p"/school/timetable/me")
+    assert has_element?(view, "#day-tab-monday[aria-selected='true']")
+    # the first period is over and its roll call was not taken
+    assert has_element?(
+             view,
+             "#lesson-call-#{cg.id}-#{period.id}[href^='/school/classes/#{cg.id}/attendance/#{period.id}']"
+           )
+
+    assert has_element?(view, "#lesson-#{cg.id}-#{period.id}.opacity-60")
   end
 
   describe "weekly load header" do
