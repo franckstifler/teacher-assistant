@@ -368,13 +368,42 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
       assert ReportCards.current_publication(scope, ready.cg, {:trimester, ready.term})
     end
 
-    test "a teacher without a class keeps the per-class view", ctx do
+    test "a teacher without a class sees the teacher's view, not the overview", ctx do
       %{teacher: teacher} =
         TeacherFixtures.school_teacher_fixture(ctx.scope, %{class_group: ctx.cg, subject: "SVT"})
 
-      {:ok, view, _} = live(conn_for(ctx.scope, teacher), ~p"/school/bulletins")
+      tconn = conn_for(ctx.scope, teacher)
+      {:ok, view, _} = live(tconn, ~p"/school/bulletins?period=trim:#{ctx.term.id}")
       refute has_element?(view, "#bulletins-overview")
+      assert has_element?(view, "#bulletins-teacher")
+      # trimesters and the year, no séquence
+      assert has_element?(view, "#period-trim-#{ctx.term.id}[aria-current='true']")
+      assert has_element?(view, "#period-annee")
+      refute has_element?(view, "[id^='period-seq-']")
+
+      # the steps: each séquence's marks, then councils and publication
+      [seq1 | _] = ctx.term.sequences
+      assert has_element?(view, "#bulletin-steps", "Notes de la séquence #{seq1.number}")
+      assert has_element?(view, "#bulletin-steps", "Conseils de classe")
+      assert has_element?(view, "#bulletin-steps", "Publication des bulletins")
+
+      # the teacher's own course, one state per séquence
+      assert has_element?(view, "[id^='teacher-course-']", "SVT · 4e B")
+      assert has_element?(view, "[id^='teacher-course-'] [data-seq='#{seq1.number}']")
+
+      # nothing published yet, then the class once published
+      refute has_element?(view, "#published-#{ctx.cg.id}")
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, ctx.term)
+      {:ok, view, _} = live(tconn, ~p"/school/bulletins?period=trim:#{ctx.term.id}")
+
+      assert has_element?(
+               view,
+               "#published-#{ctx.cg.id}[href='/school/bulletins?class=#{ctx.cg.id}&period=trim%3A#{ctx.term.id}']"
+             )
+
+      view |> element("#published-#{ctx.cg.id}") |> render_click()
       assert has_element?(view, "#bulletins")
+      assert has_element?(view, "#back-to-teacher")
       refute has_element?(view, "#back-to-overview")
     end
   end
