@@ -75,11 +75,17 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
 
     conn = post(conn, ~p"/school/space/enseignant")
     conn = post(conn, ~p"/teacher/select-context/#{tc.id}")
-    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary")
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/roster")
     # a course's pages belong to « Mes cours », on the phone and on the rail
     assert has_element?(view, "#tab-nav-school-courses[aria-current=page]")
     assert has_element?(view, "#nav-school-courses[aria-current=page]")
     assert has_element?(view, "#tab-nav-school-bulletins")
+
+    # its results are a task like its marks (UX refonte): a back arrow, no tab bar
+    {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary")
+    refute has_element?(view, "#tab-nav-school-courses")
+    assert has_element?(view, "#nav-school-courses[aria-current=page]")
+    assert has_element?(view, "#teaching-nav-back-arrow")
 
     # entering marks is a full-screen task on phones: no tab bar, the rail stays
     {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks")
