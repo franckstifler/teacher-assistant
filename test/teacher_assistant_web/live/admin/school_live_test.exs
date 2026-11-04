@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.Admin.SchoolLiveTest do
   use TeacherAssistantWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
+  import Ecto.Query, only: [from: 2]
   alias TeacherAssistant.{Accounts, Operator, Scope, TeacherFixtures}
 
   setup %{conn: conn} do
@@ -43,7 +44,11 @@ defmodule TeacherAssistantWeb.Admin.SchoolLiveTest do
 
   test "suspends with a reason, then reactivates", %{conn: conn, ws: ws, op: op} do
     {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}")
+    assert has_element?(view, "#suspend-impact", "membre perd l'accès")
+    refute has_element?(view, "#suspend-form")
+    view |> element("#suspend-school") |> render_click()
     view |> form("#suspend-form", %{"reason" => "Impayé"}) |> render_submit()
+    refute has_element?(view, "#suspend-modal")
     assert has_element?(view, "#school-suspended-badge")
     view |> element("#reactivate-school") |> render_click()
     refute has_element?(view, "#school-suspended-badge")
@@ -54,6 +59,7 @@ defmodule TeacherAssistantWeb.Admin.SchoolLiveTest do
 
   test "an empty reason is refused", %{conn: conn, ws: ws} do
     {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}")
+    view |> element("#suspend-school") |> render_click()
     html = view |> form("#suspend-form", %{"reason" => " "}) |> render_submit()
     assert html =~ "motif"
     refute has_element?(view, "#school-suspended-badge")
@@ -66,6 +72,50 @@ defmodule TeacherAssistantWeb.Admin.SchoolLiveTest do
     assert has_element?(view, "#reset-password-value")
     view |> element("#reset-close") |> render_click()
     refute has_element?(view, "#reset-password-value")
+  end
+
+  test "status, meta line and modules' 30-day use", %{conn: conn, ws: ws} do
+    {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}")
+    assert has_element?(view, "#school-back[href='/admin/schools']")
+    assert has_element?(view, "#school-verification", "À vérifier")
+    assert has_element?(view, "#school-meta", "1 membre")
+    assert has_element?(view, "#school-meta", "aucune saisie")
+    assert has_element?(view, "#module-use-notes", "inutilisé")
+    refute has_element?(view, "#module-use-emploi_du_temps", "30 j")
+
+    view |> element("#verify-school") |> render_click()
+    assert has_element?(view, "#school-verification", "Vérifié le")
+    refute has_element?(view, "#school-verify")
+  end
+
+  test "searches members by name or phone, and filters temporary passwords", %{
+    conn: conn,
+    ws: ws,
+    head: head
+  } do
+    scope = school_scope(head, ws)
+    teacher = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+    t = teacher.current_user
+    t_id = Ecto.UUID.dump!(t.id)
+
+    TeacherAssistant.Repo.update_all(
+      from(u in "users", where: u.id == ^t_id),
+      set: [must_change_password: true, phone: "+237677001122", name: "Zoé Mbarga"]
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}")
+    assert has_element?(view, "#filter-temp", "1")
+
+    view |> form("#member-search", %{"q" => "77 00 11"}) |> render_change()
+    assert has_element?(view, "#member-#{t.id}")
+    refute has_element?(view, "#member-#{head.id}")
+
+    view |> form("#member-search", %{"q" => "zoé"}) |> render_change()
+    assert has_element?(view, "#member-#{t.id}")
+
+    {:ok, view, _html} = live(conn, ~p"/admin/schools/#{ws.id}?temp=1")
+    assert has_element?(view, "#member-#{t.id}", "Mot de passe temporaire")
+    refute has_element?(view, "#member-#{head.id}")
   end
 
   test "an unknown school goes back to the list", %{conn: conn} do

@@ -5,114 +5,184 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{gettext("Cartes scolaires")} — {@cg.label}</title>
     <style>
-      @page { size: A4 portrait; margin: 10mm 14mm; }
+      /* The sheet is drawn at its real size (A4, no printer margin) so the 2 × 5 grid and
+         its crop marks sit where the cutter expects them. */
+      @page { size: A4 portrait; margin: 0; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { margin: 0; font-family: "IBM Plex Sans", Arial, sans-serif; color: #111; }
-      .toolbar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; background: #f4f1ea; }
-      .sheet { display: grid; grid-template-columns: repeat(2, 85.6mm); grid-auto-rows: 54mm; gap: 0; justify-content: center; padding: 6mm 0; }
-      .sheet + .sheet { break-before: page; }
-      .card { position: relative; width: 85.6mm; height: 54mm; outline: 0.2mm dashed #999; overflow: hidden; break-inside: avoid;
-              display: flex; flex-direction: column; font-size: 5.4pt; line-height: 1.2; }
-      .flag { height: 1mm; flex: none; background: linear-gradient(90deg, #007a5e 33.3%, #ce1126 33.3% 66.6%, #fcd116 66.6%); }
-      .nat { display: grid; grid-template-columns: 1fr 9mm 1fr; gap: 1mm; text-align: center; font-size: 3.9pt; padding: 0.8mm 1.5mm 0; color: #333; }
-      .nat .col div:first-child { font-weight: 700; font-size: 4.3pt; color: #111; text-transform: uppercase; }
-      .nat .col div:nth-child(2) { font-style: italic; }
-      .nat .col div:nth-child(3) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .nat img { height: 8mm; width: 8mm; object-fit: contain; margin: 0 auto; }
-      .sch { text-align: center; padding: 0.4mm 1.5mm 0; }
-      .sch .n { font-weight: 700; font-size: 6.2pt; color: #1f3a2e; text-transform: uppercase; }
-      .sch .c { font-size: 4.4pt; color: #444; }
-      .ttl { margin: 0.7mm 2mm 0; background: #1f3a2e; color: #fff; text-align: center; font-weight: 700; font-size: 5.2pt;
-             letter-spacing: .05em; padding: 0.5mm; border-radius: 0.8mm; }
-      .body { display: grid; grid-template-columns: 18mm 1fr 14mm; gap: 1.8mm; padding: 1.2mm 2mm 0; }
-      .photo { width: 18mm; height: 22mm; object-fit: cover; border: 0.2mm solid #333; }
-      .photo-empty { width: 18mm; height: 22mm; border: 0.2mm dashed #666; display: grid; place-items: center; font-size: 5pt; color: #666; }
-      .name { font-weight: 700; font-size: 7pt; line-height: 1.1; margin-bottom: 0.6mm; }
-      .fields div { line-height: 1.35; }
-      .fields b { font-weight: 400; color: #555; }
-      .side { display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 1mm; }
-      .year { background: #fcd116; color: #111; font-weight: 700; padding: 0.4mm 1mm; border-radius: 0.8mm; }
-      .qr svg { width: 12mm; height: 12mm; }
-      .foot { position: absolute; left: 2mm; right: 2mm; bottom: 1.2mm; display: flex; justify-content: flex-end; font-size: 4.6pt; }
-      .head { text-align: right; position: relative; }
-      .head .marks { display: flex; gap: 1mm; justify-content: flex-end; align-items: flex-end; }
-      .head .marks img { height: 6mm; }
-      @media print { .toolbar { display: none; } .sheet { padding: 0; } }
+      body { margin: 0; font-family: "IBM Plex Sans", Arial, sans-serif; color: #14211B; background: #E4E8E5; }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; background: #f4f1ea; }
+      .sheet { position: relative; width: 210mm; height: 297mm; margin: 8mm auto; background: #fff; overflow: hidden;
+               box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+      .caption { position: absolute; left: 19.3mm; top: 4mm; margin: 0; font-size: 7.5pt; color: #5B6A62; }
+      .grid { position: absolute; left: 19.3mm; top: 13.3mm; display: grid; grid-template-columns: repeat(2, 85.6mm);
+              grid-auto-rows: 54mm; }
+      .mark { position: absolute; border: 0 solid #14211B; }
+      .mark-v { border-left-width: 0.15mm; }
+      .mark-h { border-top-width: 0.15mm; }
+
+      /* One ID-1 card (85.6 × 54 mm): the flag down the left edge, then the content. */
+      .card { position: relative; width: 85.6mm; height: 54mm; overflow: hidden; break-inside: avoid; display: flex;
+              background: #fff; outline: 0.15mm solid #D5DBD7; outline-offset: -0.075mm; line-height: 1.15; }
+      .flag { width: 1.5mm; flex: none; background: linear-gradient(180deg, #007A5E 33.33%, #CE1126 33.33% 66.66%, #FCD116 66.66%); }
+      .inner { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.2mm; padding: 2mm 2.3mm 1.7mm 2mm; }
+
+      .hd { display: flex; align-items: center; gap: 1.7mm; }
+      .logo { flex: none; width: 7.7mm; height: 7.7mm; border-radius: 50%; object-fit: contain; }
+      .hd-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25mm; }
+      .rep { font-size: 5pt; font-weight: 600; letter-spacing: 0.06em; color: #4A5A52; text-transform: uppercase;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .school { font-size: 7pt; font-weight: 700; line-height: 1.1; color: #1F3A2E; display: -webkit-box;
+                -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .code { font-size: 5pt; color: #4A5A52; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .year { flex: none; align-self: flex-start; padding: 0.6mm 1.3mm; border-radius: 0.8mm; background: #FCD116;
+              font: 600 5.6pt "IBM Plex Mono", ui-monospace, monospace; }
+
+      .band { display: flex; justify-content: space-between; align-items: center; padding: 0.5mm 1.3mm; border-radius: 0.7mm;
+              background: #1F3A2E; color: #fff; font-size: 5pt; font-weight: 700; letter-spacing: 0.1em; }
+      .band span + span { font-weight: 500; opacity: 0.85; }
+
+      .body { flex: 1; min-height: 0; display: flex; gap: 1.8mm; }
+      .pic { flex: none; position: relative; width: 20mm; height: 25mm; }
+      .photo { display: block; width: 20mm; height: 25mm; object-fit: cover; border: 0.2mm solid #1F3A2E; }
+      .photo-empty { width: 20mm; height: 25mm; border: 0.2mm solid #1F3A2E; background: #EEF1EE; display: grid;
+                     place-items: center; font-size: 5pt; color: #5B6A62; }
+      .stamp { position: absolute; right: -3.7mm; bottom: -2.3mm; width: 10mm; height: 10mm; object-fit: contain;
+               transform: rotate(-12deg); mix-blend-mode: multiply; opacity: 0.9; }
+
+      .mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1mm; }
+      .name { margin: 0; font-size: 7.5pt; font-weight: 700; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical; overflow: hidden; }
+      .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8mm 1.2mm; }
+      .f { min-width: 0; }
+      .f.wide { grid-column: span 2; }
+      .f .l { font-size: 5pt; font-weight: 600; letter-spacing: 0.03em; color: #5B6A62; text-transform: uppercase;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .lang-bilingual .f .l { text-transform: none; letter-spacing: 0; }
+      .f .v { font-size: 6.2pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .f .v.strong { font-weight: 700; }
+      .f .v.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 500; }
+
+      .sign { margin-top: auto; }
+      .sign-line { height: 3mm; border-bottom: 0.2mm solid #8A968F; display: flex; align-items: flex-end; }
+      .sign-line img { max-height: 3.4mm; max-width: 18mm; object-fit: contain; }
+      .sign p { margin: 0.4mm 0 0; font-size: 5pt; color: #4A5A52; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .sign p + p { margin-top: 0; font-weight: 600; color: #14211B; }
+
+      .qr { flex: none; width: 13mm; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 0.5mm; }
+      .qr svg { display: block; width: 13mm; height: 13mm; }
+      .qr span { font-size: 5pt; line-height: 1.15; color: #4A5A52; text-align: center; }
+
+      @media print {
+        body { background: #fff; }
+        .toolbar { display: none; }
+        .sheet { margin: 0; box-shadow: none; break-after: page; }
+        .sheet:last-of-type { break-after: auto; }
+      }
     </style>
   </head>
-  <body>
+  <body class={"lang-#{@lang}"}>
     <div class="toolbar">
       <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <span>{gettext("Imprimer en A4, échelle 100 %, sans marges.")}</span>
       <span :if={@missing > 0}>
         {ngettext("1 élève sans photo", "%{count} élèves sans photo", @missing)} —
         <a href={~p"/school/classes/#{@cg.id}/photos"}>{gettext("Compléter les photos")}</a>
       </span>
     </div>
 
-    <main :for={cards <- @pages} class="sheet">
-      <article :for={c <- cards} class="card">
-        <div class="flag"></div>
-        <div class="nat">
-          <div class="col">
-            <div :for={line <- card_lines(@header, :fr)}>{line}</div>
-          </div>
-          <img :if={@logo?} src={~p"/school/logo"} alt="" />
-          <div :if={!@logo?}></div>
-          <div class="col">
-            <div :for={line <- card_lines(@header, :en)}>{line}</div>
-          </div>
-        </div>
-        <div class="sch">
-          <div class="n">{@school}</div>
-          <div class="c">{contact_line(@header)}</div>
-        </div>
-        <div class="ttl">CARTE SCOLAIRE · SCHOOL IDENTITY CARD</div>
-        <div class="body">
-          <img :if={c.student.photo_path} class="photo" src={student_photo_url(c.student)} alt="" />
-          <div :if={!c.student.photo_path} class="photo-empty">
-            {tr(@lang, fn -> gettext("Photo") end)}
-          </div>
-          <div>
-            <div class="name">{c.student.full_name}</div>
-            <div class="fields">
-              <div :if={c.student.birth_date || c.student.birth_place}>
-                <b>{tr(@lang, fn -> gettext("Né(e) le") end)}</b>
-                {date(c.student.birth_date)}
-                <span :if={c.student.birth_place}>
-                  <b>{tr(@lang, fn -> gettext("à") end)}</b> {c.student.birth_place}
+    <main
+      :for={{cards, i} <- Enum.with_index(@pages, 1)}
+      class="sheet"
+      aria-label={sheet_caption(@cg.label, i, length(@pages), length(cards))}
+    >
+      <p class="caption">{sheet_caption(@cg.label, i, length(@pages), length(cards))}</p>
+
+      <div class="grid">
+        <article :for={c <- cards} class="card">
+          <div class="flag"></div>
+          <div class="inner">
+            <header class="hd">
+              <img :if={@logo?} class="logo" src={~p"/school/logo"} alt="" />
+              <div class="hd-text">
+                <span class="rep">{republic_line(@header)}</span>
+                <span class="school">{@school}</span>
+                <span :if={contact_line(@header) != ""} class="code">{contact_line(@header)}</span>
+              </div>
+              <span :if={@year} class="year">{@year}</span>
+            </header>
+
+            <div class="band"><span>CARTE SCOLAIRE</span><span>STUDENT ID CARD</span></div>
+
+            <div class="body">
+              <div class="pic">
+                <img
+                  :if={c.student.photo_path}
+                  class="photo"
+                  src={student_photo_url(c.student)}
+                  alt=""
+                />
+                <div :if={!c.student.photo_path} class="photo-empty">
+                  {card_label(@lang, fn -> gettext("Photo") end)}
+                </div>
+                <img :if={@stamp?} class="stamp" src={~p"/school/logo?kind=stamp"} alt="" />
+              </div>
+
+              <div class="mid">
+                <p class="name">{c.student.full_name}</p>
+                <div class="fields">
+                  <div class="f">
+                    <div class="l">{card_label(@lang, fn -> gettext("Classe") end)}</div>
+                    <div class="v strong">{@cg.label}</div>
+                  </div>
+                  <div class="f">
+                    <div class="l">{card_label(@lang, fn -> gettext("Sexe") end)}</div>
+                    <div class="v">{sex_label(c.student.sex)}</div>
+                  </div>
+                  <div class="f">
+                    <div class="l">{card_label(@lang, fn -> gettext("Né(e) le") end)}</div>
+                    <div class="v">{date(c.student.birth_date) || "—"}</div>
+                  </div>
+                  <div class="f">
+                    <div class="l">{card_label(@lang, fn -> gettext("à") end)}</div>
+                    <div class="v">{c.student.birth_place || "—"}</div>
+                  </div>
+                  <div class="f">
+                    <div class="l">{card_label(@lang, fn -> gettext("Matricule") end)}</div>
+                    <div class="v mono">{c.student.matricule || "—"}</div>
+                  </div>
+                  <div class="f">
+                    <div class="l">{card_label(@lang, fn -> gettext("Urgence") end)}</div>
+                    <div class="v mono">{(c.contact && c.contact.phone) || "—"}</div>
+                  </div>
+                  <div :if={c.student.national_id} class="f wide">
+                    <div class="l">
+                      {card_label(@lang, fn -> gettext("Identifiant unique") end)}
+                    </div>
+                    <div class="v mono">{c.student.national_id}</div>
+                  </div>
+                </div>
+
+                <div class="sign">
+                  <div class="sign-line">
+                    <img :if={@signature?} src={~p"/school/logo?kind=signature"} alt="" />
+                  </div>
+                  <p>{head_title(@header)}</p>
+                  <p :if={@header.head_name}>{@header.head_name}</p>
+                </div>
+              </div>
+
+              <div class="qr">
+                <div :if={c.qr_svg}>{Phoenix.HTML.raw(c.qr_svg)}</div>
+                <span :for={line <- card_lines(@lang, fn -> gettext("Scanner pour vérifier") end)}>
+                  {line}
                 </span>
               </div>
-              <div>
-                <b>{tr(@lang, fn -> gettext("Classe") end)}</b> <strong>{@cg.label}</strong>
-                · <b>{tr(@lang, fn -> gettext("Sexe") end)}</b> {sex_label(c.student.sex)}
-              </div>
-              <div :if={c.student.matricule}>
-                <b>{tr(@lang, fn -> gettext("Matricule") end)}</b> {c.student.matricule}
-              </div>
-              <div :if={c.student.national_id}>
-                <b>{tr(@lang, fn -> gettext("Identifiant unique") end)}</b> {c.student.national_id}
-              </div>
-              <div :if={c.contact}>
-                <b>{tr(@lang, fn -> gettext("Contact") end)}</b> {c.contact.full_name} · {c.contact.phone}
-              </div>
             </div>
           </div>
-          <div class="side">
-            <div :if={@year} class="year">{@year}</div>
-            <div :if={c.qr_svg} class="qr">{Phoenix.HTML.raw(c.qr_svg)}</div>
-          </div>
-        </div>
-        <div class="foot">
-          <div class="head">
-            <div class="marks">
-              <img :if={@stamp?} src={~p"/school/logo?kind=stamp"} alt="" />
-              <img :if={@signature?} src={~p"/school/logo?kind=signature"} alt="" />
-            </div>
-            <div>{head_title(@header)}</div>
-            <div :if={@header.head_name}>{@header.head_name}</div>
-          </div>
-        </div>
-      </article>
+        </article>
+      </div>
+
+      <span :for={{class, style} <- crop_marks()} class={class} style={style}></span>
     </main>
   </body>
 </html>

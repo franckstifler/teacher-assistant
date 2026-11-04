@@ -13,8 +13,8 @@ defmodule TeacherAssistantWeb.UIComponents do
 
   And the pieces of the UX refonte (spec 2026-11-03, « Shared pieces »):
   `filter_pills/1`, `class_picker/1`, `level_group/1`, `progress_meter/1`,
-  `bulk_bar/1`, `attention_card/1` + `attention_row/1`, `stat_tile/1`, and
-  `back_header/1`'s `task` mode (the phone task header).
+  `bulk_bar/1`, `attention_card/1` + `attention_row/1`, `stat_tile/1` (joined in a
+  `stat_strip/1`), and `back_header/1`'s `task` mode (the phone task header).
   """
   use Phoenix.Component
   use Gettext, backend: TeacherAssistantWeb.Gettext
@@ -295,9 +295,9 @@ defmodule TeacherAssistantWeb.UIComponents do
 
   @doc """
   « ⋯ » menu for a row's or a page's secondary actions. Each `item` is a link
-  (`navigate`/`href`) or a button running `click` (an event name or a `JS`
-  command, e.g. `JS.push("transfer", value: %{id: id})`), with an optional
-  `confirm` question; `danger` items come last, in coral.
+  (`navigate`/`href`, with `method` for a POST link) or a button running `click`
+  (an event name or a `JS` command, e.g. `JS.push("transfer", value: %{id: id})`),
+  with an optional `confirm` question; `danger` items come last, in coral.
   """
   attr :id, :string, required: true
   attr :label, :string, default: nil, doc: "accessible name of the « ⋯ » button"
@@ -311,6 +311,7 @@ defmodule TeacherAssistantWeb.UIComponents do
   slot :item, required: true do
     attr :navigate, :string
     attr :href, :string
+    attr :method, :string
     attr :target, :string
     attr :click, :any
     attr :confirm, :string
@@ -352,6 +353,7 @@ defmodule TeacherAssistantWeb.UIComponents do
             role="menuitem"
             navigate={item[:navigate]}
             href={item[:href]}
+            method={item[:method] || "get"}
             target={item[:target]}
             class={["min-h-11", item[:danger] && "text-error"]}
           >
@@ -692,6 +694,11 @@ defmodule TeacherAssistantWeb.UIComponents do
   attr :navigate, :string, default: nil
   attr :patch, :string, default: nil
   attr :tone, :atom, default: nil, values: [nil, :warning, :error, :info]
+
+  attr :solid, :boolean,
+    default: false,
+    doc: "an amber filled action (the one thing to do first) instead of an outline"
+
   attr :rest, :global
 
   def attention_row(assigns) do
@@ -725,7 +732,12 @@ defmodule TeacherAssistantWeb.UIComponents do
       <span class="text-[0.95rem] font-semibold leading-snug">{@title}</span>
       <span :if={@reason} class="text-[0.8rem] text-base-content/70">{@reason}</span>
     </span>
-    <span class="btn btn-outline btn-xs hidden shrink-0 sm:inline-flex">{@action}</span>
+    <span class={[
+      "btn btn-xs hidden shrink-0 sm:inline-flex",
+      if(@solid, do: "btn-warning", else: "btn-outline")
+    ]}>
+      {@action}
+    </span>
     <span class="sr-only sm:hidden">{@action}</span>
     <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70 sm:hidden" />
     """
@@ -783,6 +795,27 @@ defmodule TeacherAssistantWeb.UIComponents do
       {@value}
     </span>
     <span :if={@sub} class="text-xs text-base-content/70">{@sub}</span>
+    """
+  end
+
+  @doc """
+  `stat_tile/1`s joined into one strip with hairlines between them (the console's
+  KPI row): two per row on phones, `cols` from `lg`.
+
+      <.stat_strip id="kpis" label="Activité">
+        <.stat_tile label="Membres actifs · 7 j" value="12 / 68" />
+      </.stat_strip>
+  """
+  attr :id, :string, default: nil
+  attr :label, :string, default: nil, doc: "the strip's accessible name"
+  attr :class, :any, default: "grid-cols-2 lg:grid-cols-4"
+  slot :inner_block, required: true
+
+  def stat_strip(assigns) do
+    ~H"""
+    <section id={@id} aria-label={@label} class={["ta-stat-strip grid", @class]}>
+      {render_slot(@inner_block)}
+    </section>
     """
   end
 

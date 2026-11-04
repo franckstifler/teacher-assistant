@@ -36,9 +36,18 @@ defmodule TeacherAssistantWeb.CardPrintControllerTest do
     html = conn |> get(~p"/school/classes/#{cg.id}/cards/print") |> html_response(200)
     assert html =~ "Awa Ngono" and html =~ "Ben Ateba" and html =~ "M1"
     assert html =~ ~s(src="/school/students/#{awa.id}/photo)
-    assert html =~ "Marie Ngono" and html =~ "677001122"
+    assert html =~ "Urgence" and html =~ "677001122"
     assert html =~ "1 élève sans photo"
     assert length(Regex.scan(~r/class="card"/, html)) == 2
+  end
+
+  test "each sheet has its caption, hairline grid and crop marks", %{conn: conn, cg: cg} do
+    html = conn |> get(~p"/school/classes/#{cg.id}/cards/print") |> html_response(200)
+    assert html =~ "6e P · planche 1 / 1 · 2 cartes · A4, échelle 100 %"
+    assert html =~ "@page { size: A4 portrait; margin: 0; }"
+    assert length(Regex.scan(~r/class="mark mark-v"/, html)) == 6
+    assert length(Regex.scan(~r/class="mark mark-h"/, html)) == 12
+    refute html =~ "dashed"
   end
 
   test "the main contact is the one printed", %{conn: conn, scope: scope, cg: cg, awa: awa} do
@@ -62,8 +71,8 @@ defmodule TeacherAssistantWeb.CardPrintControllerTest do
       |> get(~p"/school/classes/#{cg.id}/cards/print?student=#{awa.id}")
       |> html_response(200)
 
-    assert html =~ "Paul Ngono"
-    refute html =~ "Marie Ngono"
+    assert html =~ "699887766"
+    refute html =~ "677001122"
   end
 
   test "a student without photo gets the empty Photo box", %{conn: conn, cg: cg, ben: ben} do
@@ -114,18 +123,28 @@ defmodule TeacherAssistantWeb.CardPrintControllerTest do
     defp cards(conn, cg),
       do: conn |> get(~p"/school/classes/#{cg.id}/cards/print") |> html_response(200)
 
-    test "card has the title, both national headers and the school code", %{
+    test "card has the split title, the one-line Republic and the school code", %{
       conn: conn,
       scope: scope,
       cg: cg
     } do
       set_profile(scope, %{school_code: "5MN1TEF110431106"})
       html = cards(conn, cg)
-      assert html =~ "CARTE SCOLAIRE · SCHOOL IDENTITY CARD"
-      assert html =~ "République du Cameroun"
-      assert html =~ "Republic of Cameroon"
-      assert html =~ "5MN1TEF110431106"
+      assert html =~ "<span>CARTE SCOLAIRE</span><span>STUDENT ID CARD</span>"
+      assert html =~ "République du Cameroun · Republic of Cameroon"
+      assert html =~ "Code 5MN1TEF110431106"
       assert html =~ ~s(class="flag")
+      assert html =~ "Scanner pour vérifier"
+      refute html =~ "Paix – Travail – Patrie"
+    end
+
+    test "a bilingual school's card gives both labels", %{conn: conn, scope: scope, cg: cg} do
+      set_profile(scope, %{bulletin_language: :bilingual})
+      html = cards(conn, cg)
+      assert html =~ "Classe · Class"
+      assert html =~ "Urgence · Emergency"
+      assert html =~ "Scan to verify"
+      assert html =~ ~s(class="lang-bilingual")
     end
 
     test "card shows the national ID when set", %{conn: conn, scope: scope, cg: cg, awa: awa} do

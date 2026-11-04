@@ -173,8 +173,22 @@ defmodule TeacherAssistantWeb.Layouts do
             class="ta-rail flex min-h-screen w-64 flex-col gap-4 p-3"
             aria-label={gettext("Sidebar")}
           >
+            <%!-- The operator outside any school: the console's identity, no school switcher. --%>
+            <div
+              :if={@operator? and !@in_school?}
+              id="operator-identity"
+              class="flex flex-col gap-1.5 px-2 pb-1 pt-1"
+            >
+              <span class="ta-num self-start rounded-md bg-[color:var(--ta-rail-fg)] px-2 py-0.5 text-[0.68rem] font-semibold tracking-[0.06em] text-[#0B1310]">
+                {gettext("OPÉRATEUR")}
+              </span>
+              <span class="text-sm font-semibold">{gettext("Console Teacher Assistant")}</span>
+              <span class="ta-num truncate text-xs text-[color:var(--ta-rail-faint)]">
+                {User.contact(@current_user)}
+              </span>
+            </div>
             <%!-- relative: the bell menu opens under this whole row, inside the rail. --%>
-            <div class="relative flex items-start gap-1">
+            <div :if={!(@operator? and !@in_school?)} class="relative flex items-start gap-1">
               <div id="workspace-switcher" class="dropdown min-w-0 flex-1">
                 <div
                   tabindex="0"
