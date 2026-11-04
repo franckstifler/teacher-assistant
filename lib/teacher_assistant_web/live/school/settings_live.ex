@@ -885,7 +885,10 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   defp count_status(nil, _), do: nil
   defp count_status(list, kind) when is_list(list), do: count_status(length(list), kind)
   defp count_status(n, :holidays), do: {:ok, ngettext("%{count} congé", "%{count} congés", n)}
-  defp count_status(n, :lessons), do: {:ok, pngettext("lesson periods", "%{count} cours", "%{count} cours", n)}
+
+  defp count_status(n, :lessons),
+    do: {:ok, pngettext("lesson periods", "%{count} cours", "%{count} cours", n)}
+
   defp count_status(n, :subjects), do: {:ok, ngettext("%{count} active", "%{count} actives", n)}
   defp count_status(n, :rooms), do: {:ok, ngettext("%{count} salle", "%{count} salles", n)}
 

@@ -1117,12 +1117,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         <div
           :if={@column || (@apc? && @seq)}
           id="marks-toolbar"
-          class={[
-            "flex flex-wrap items-center gap-x-3 gap-y-2",
-            # Without a competence line the box would frame a lone menu.
-            @apc? && @seq &&
-              "sm:rounded-box sm:border sm:border-base-300 sm:bg-base-100 sm:px-3.5 sm:py-2.5"
-          ]}
+          class={
+            [
+              "flex flex-wrap items-center gap-x-3 gap-y-2",
+              # Without a competence line the box would frame a lone menu.
+              @apc? && @seq &&
+                "sm:rounded-box sm:border sm:border-base-300 sm:bg-base-100 sm:px-3.5 sm:py-2.5"
+            ]
+          }
         >
           <%!-- Phones: one line, the full form in a sheet. --%>
           <button
