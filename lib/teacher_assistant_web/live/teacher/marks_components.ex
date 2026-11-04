@@ -221,8 +221,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
   @doc """
   « ✓ Enregistré · 10:42 » once something saved, « Erreur : n notes à corriger »
   while a box is refused, nothing before. `:pill` in a header, `:inline` in a line.
+  `time?: false` drops the time (the keypad header, where it would squeeze the title).
   """
   attr :id, :string, default: nil
+  attr :time?, :boolean, default: true
   attr :errors, :map, required: true
   attr :saved_at, :any, default: nil
   attr :variant, :atom, default: :pill, values: [:pill, :inline]
@@ -258,7 +260,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
       ]}
     >
       <.icon name="hero-check" class="size-3.5" />
-      {gettext("Enregistré · %{time}", time: Calendar.strftime(@saved_at, "%H:%M"))}
+      {if @time?,
+        do: gettext("Enregistré · %{time}", time: Calendar.strftime(@saved_at, "%H:%M")),
+        else: gettext("Enregistré")}
     </p>
     """
   end
@@ -507,6 +511,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           errors={@errors}
           saved_at={@saved_at}
           variant={:inline}
+          time?={false}
         />
       </header>
 

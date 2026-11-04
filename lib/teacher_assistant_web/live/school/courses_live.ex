@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 @seq && !Lock.locked?(@seq, @today) &&
                   Dates.countdown(@seq.grade_entry_deadline, @today)
               }
-              class="ta-num font-semibold text-warning"
+              class="ta-num whitespace-nowrap font-semibold text-warning"
             >
               · {Dates.countdown(@seq.grade_entry_deadline, @today)}
             </span>
