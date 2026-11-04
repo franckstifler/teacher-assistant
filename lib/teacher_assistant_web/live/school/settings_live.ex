@@ -879,14 +879,15 @@ defmodule TeacherAssistantWeb.School.SettingsLive do
   defp fee_status([]), do: {:todo, gettext("Aucun type")}
 
   defp fee_status(types),
-    do: {:ok, ngettext("1 type", "%{count} types", Enum.count(types, & &1.active?))}
+    do: {:ok, ngettext("%{count} type", "%{count} types", Enum.count(types, & &1.active?))}
 
+  # Singular msgids carry %{count}: French uses the singular for 0 (« 0 salle »).
   defp count_status(nil, _), do: nil
   defp count_status(list, kind) when is_list(list), do: count_status(length(list), kind)
-  defp count_status(n, :holidays), do: {:ok, ngettext("1 congé", "%{count} congés", n)}
-  defp count_status(n, :lessons), do: {:ok, ngettext("1 cours", "%{count} cours", n)}
-  defp count_status(n, :subjects), do: {:ok, ngettext("1 active", "%{count} actives", n)}
-  defp count_status(n, :rooms), do: {:ok, ngettext("1 salle", "%{count} salles", n)}
+  defp count_status(n, :holidays), do: {:ok, ngettext("%{count} congé", "%{count} congés", n)}
+  defp count_status(n, :lessons), do: {:ok, pngettext("lesson periods", "%{count} cours", "%{count} cours", n)}
+  defp count_status(n, :subjects), do: {:ok, ngettext("%{count} active", "%{count} actives", n)}
+  defp count_status(n, :rooms), do: {:ok, ngettext("%{count} salle", "%{count} salles", n)}
 
   # The rows' groups, without the rows the search leaves out.
   defp visible_hub_groups(groups, q) do

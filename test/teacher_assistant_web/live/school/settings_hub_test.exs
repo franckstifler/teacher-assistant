@@ -7,6 +7,14 @@ defmodule TeacherAssistantWeb.School.SettingsHubTest do
 
   setup :register_and_log_in_user
 
+  test "a count of zero reads « 0 salle », never « 1 salle »", %{conn: conn, scope: scope} do
+    assert Organization.list_rooms(scope) == []
+    {:ok, view, _} = live(conn, ~p"/school/settings")
+
+    assert has_element?(view, "#rooms-link", "0 salle")
+    refute has_element?(view, "#rooms-link", "1 salle")
+  end
+
   test "rows are grouped Calendrier / Notes et bulletins / Vie scolaire et organisation",
        %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/school/settings")
