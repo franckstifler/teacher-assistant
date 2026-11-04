@@ -53,7 +53,9 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     conn = post(conn, ~p"/school/space/enseignant")
     {:ok, view, html} = live(conn, ~p"/school/courses")
 
-    assert has_element?(view, "#course-combined-#{course.id}", course.label)
+    # under its subject's heading, the row names the course without the subject
+    name = String.replace_prefix(course.label, course.subject <> " · ", "")
+    assert has_element?(view, "#course-combined-#{course.id}", name <> " · 2 classes")
     assert length(Regex.scan(~r/id="course-[^"]+"/, html)) == 1
   end
 end
