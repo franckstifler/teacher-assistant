@@ -73,6 +73,13 @@ defmodule TeacherAssistant.Attendance do
   defdelegate roll_call_counts(day), to: TeacherAssistant.Academics.SchoolLife
   defdelegate teacher_day(scope, user, date, now), to: TeacherAssistant.Academics.SchoolLife
 
+  @doc """
+  The user's lessons on `date` as `LessonGroups.group/1` groups: a combined course
+  once per period, with its members' roll-call statuses folded into one.
+  """
+  def teacher_lessons(scope, user, %Date{} = date, %NaiveDateTime{} = now),
+    do: scope |> teacher_day(user, date, now) |> TeacherAssistant.Academics.LessonGroups.group()
+
   defdelegate class_lessons(scope, cg, first, last, now),
     to: TeacherAssistant.Academics.SchoolLife
 

@@ -1,30 +1,36 @@
 defmodule TeacherAssistantWeb.School.MyDayLive do
   @moduledoc """
-  Enseignant → Ma journée (spec G, V01/V03; UI review 2026-10-14). Phone first:
+  Enseignant → Ma journée (spec G, V01/V03; UX refonte 2026-11-03). Phone first:
 
     * a « Maintenant » card for the lesson in progress (else the next one, else the
-      last missed one) with « Faire l'appel » and « Saisir des notes »;
-    * the roll call of the selected slot (`?slot=<class>-<period>`) in its place
+      last missed one) with « Faire l'appel » and « Notes »;
+    * the roll call of the selected lesson (`?slot=<class>-<period>`) in its place
       once opened, names in full and a sticky « Valider l'appel »;
-    * today's lessons as a timeline, breaks as thin separators — a lesson whose
-      roll call can be taken opens it;
+    * today's lessons, a combined course once per period with its students, breaks
+      as thin separators — a lesson whose roll call can be taken opens it;
+    * « À faire »: the séquence's marks still to enter, with its deadline;
     * this week's missed roll calls, folded to a count line.
 
-  The teaching space's home.
+  From `lg`: the now-card lies flat with both buttons in a row, the séquence's
+  courses with their progress and next step sit under it, today's lessons on the right.
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.{Assessment, Attendance, Curriculum, Organization}
+  alias TeacherAssistant.{Attendance, Curriculum, Enrollment}
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.Academics.Reference
+  alias TeacherAssistant.Academics.{LessonGroups, Lock, Reference, TeacherCourses}
   alias TeacherAssistantWeb.Dates
-  alias TeacherAssistantWeb.School.RollCall
+  alias TeacherAssistantWeb.School.{LessonComponents, RollCall}
+
+  import LessonComponents, only: [hm: 1, status_tag: 1]
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
 
-    if scope.current_workspace != nil and Curriculum.list_units_for_scope(scope) != [] do
+    with %{} <- scope.current_workspace,
+         [_ | _] = units <- Curriculum.list_units_for_scope(scope) do
       today = Reference.today()
+      seq = TeacherCourses.current_sequence(scope, today)
 
       {:ok,
        socket
@@ -33,22 +39,20 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
          today: today,
          roll: nil,
          selected: nil,
-         seq: current_sequence(scope, today),
+         seq: seq,
+         labels: LessonComponents.course_labels(units),
+         sizes: Enrollment.class_sizes(scope, scope.current_academic_year),
+         courses: TeacherCourses.list(scope, seq),
          breaks: scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :break))
        )
        |> load_day()}
     else
-      {:ok, push_navigate(socket, to: space_home(scope))}
+      _ -> {:ok, push_navigate(socket, to: space_home(scope))}
     end
   end
 
   defp space_home(%{capabilities: %{space: %{home: home}}}) when home != "/school/today", do: home
   defp space_home(_scope), do: ~p"/school/classes"
-
-  defp current_sequence(%{current_academic_year: nil}, _today), do: nil
-
-  defp current_sequence(%{current_academic_year: year} = scope, today),
-    do: scope |> Organization.list_sequences(year) |> Assessment.default_sequence(today)
 
   defp load_day(socket) do
     %{current_scope: scope, today: today} = socket.assigns
@@ -57,33 +61,35 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
     assign(socket,
       now: now,
-      slots: Attendance.teacher_day(scope, user, today, now),
+      lessons: Attendance.teacher_lessons(scope, user, today, now),
       day_off: Attendance.day_off(scope, today),
-      missed: Attendance.teacher_missed_this_week(scope, user, today, now)
+      missed:
+        scope |> Attendance.teacher_missed_this_week(user, today, now) |> LessonGroups.group()
     )
   end
 
   # The roll call opens only on demand (« Faire l'appel », a tap on a lesson):
-  # `?slot=` names a slot whose roll call can be taken (not upcoming).
+  # `?slot=` names a lesson whose roll call can be taken (not upcoming). A combined
+  # course opens through its first class, and the roll covers every member class.
   def handle_params(params, _uri, socket) do
-    %{slots: slots, current_scope: scope, today: today} = socket.assigns
+    %{lessons: lessons, current_scope: scope, today: today} = socket.assigns
 
-    case Enum.find(slots, &(&1.status != :upcoming and slot_key(&1) == params["slot"])) do
+    case Enum.find(lessons, &(&1.status != :upcoming and &1.key == params["slot"])) do
       nil ->
         {:noreply, assign(socket, selected: nil, roll: nil)}
 
-      slot ->
+      lesson ->
+        [first | _] = lesson.members
+
         roll =
-          case RollCall.open(scope, slot.class_group.id, slot.period.id, today) do
+          case RollCall.open(scope, first.class_group.id, lesson.period.id, today) do
             {:ok, roll} -> roll
             {:error, _} -> nil
           end
 
-        {:noreply, assign(socket, selected: roll && slot_key(slot), roll: roll)}
+        {:noreply, assign(socket, selected: roll && lesson.key, roll: roll)}
     end
   end
-
-  defp slot_key(slot), do: "#{slot.class_group.id}-#{slot.period.id}"
 
   def handle_event("all_present", _params, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.all_present(&1)))}
@@ -116,39 +122,50 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   def render(assigns) do
     assigns =
       assign(assigns,
-        focus: focus_slot(assigns.slots, NaiveDateTime.to_time(assigns.now)),
-        selected_slot: Enum.find(assigns.slots, &(slot_key(&1) == assigns.selected))
+        focus: focus_lesson(assigns.lessons, NaiveDateTime.to_time(assigns.now)),
+        selected_lesson: Enum.find(assigns.lessons, &(&1.key == assigns.selected)),
+        open?: assigns.seq && not Lock.locked?(assigns.seq, assigns.today),
+        todo: todo(assigns.courses)
       )
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
       <section id="my-day" class="flex flex-col gap-5">
-        <.page_header
-          eyebrow={eyebrow(@today, @seq)}
-          title={greeting(@current_scope.current_user)}
-          subtitle={@slots != [] && subtitle(@slots)}
-        />
+        <header class="space-y-1">
+          <p id="my-day-eyebrow" class="ta-eyebrow ta-num">
+            {Dates.long(@today)}<span :if={@seq}> · {gettext("Séquence %{n}", n: @seq.number)}</span><span
+              :if={@open?}
+              class="hidden lg:inline"
+            > · {deadline_text(@seq, @today)}</span>
+          </p>
+          <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">
+            {greeting(@current_scope.current_user)}
+          </h1>
+          <p :if={@lessons != []} class="text-[0.95rem] text-base-content/75">
+            {subtitle(@lessons)}
+          </p>
+        </header>
 
-        <div :if={@slots == []} id="no-lessons">
+        <div :if={@lessons == []} id="no-lessons">
           <.empty_state icon="hero-sun" title={no_lessons_title(@day_off)} />
         </div>
 
         <div
-          :if={@slots != []}
-          class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]"
+          :if={@lessons != []}
+          class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]"
         >
-          <div class="flex min-w-0 flex-col gap-4">
+          <div class="flex min-w-0 flex-col gap-5">
             <RollCall.roll_panel
               :if={@roll}
               roll={@roll}
-              title={roll_title(@roll)}
-              eyebrow={roll_eyebrow(@selected_slot)}
+              title={roll_title(@roll, @selected_lesson, @labels)}
+              eyebrow={roll_eyebrow(@selected_lesson)}
             >
               <:actions>
                 <.link
-                  :if={@selected_slot && @selected_slot.teaching_context_id}
+                  :if={@roll.teaching_context}
                   id="roll-marks"
-                  navigate={~p"/teacher/contexts/#{@selected_slot.teaching_context_id}/marks"}
+                  navigate={~p"/teacher/contexts/#{@roll.teaching_context.id}/marks"}
                   class="btn btn-ghost btn-sm btn-square"
                   aria-label={gettext("Saisir des notes")}
                   title={gettext("Saisir des notes")}
@@ -167,7 +184,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
               </:actions>
             </RollCall.roll_panel>
 
-            <.now_card :if={!@roll && @focus} slot={@focus} />
+            <.now_card :if={!@roll && @focus} lesson={@focus} labels={@labels} sizes={@sizes} />
 
             <div
               :if={!@roll && !@focus}
@@ -184,19 +201,27 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
                 </span>
               </span>
             </div>
+
+            <.sequence_panel :if={@seq && @courses != []} seq={@seq} courses={@courses} />
           </div>
 
           <div class="flex min-w-0 flex-col gap-4">
-            <section id="today-slots" class="ta-section">
-              <h2 class="px-4 pb-1 pt-4 text-base font-semibold">{gettext("Ma journée")}</h2>
-              <ol class="flex flex-col pb-2">
+            <section id="today-slots" aria-label={gettext("Aujourd'hui")}>
+              <h2 class="px-1 pb-1.5 text-xs font-semibold uppercase tracking-wide text-base-content/70">
+                {gettext("Aujourd'hui")}
+              </h2>
+              <ol class="ta-section flex flex-col">
                 <.timeline_item
-                  :for={item <- timeline(@slots, @breaks)}
+                  :for={item <- timeline(@lessons, @breaks)}
                   item={item}
                   selected={@selected}
+                  labels={@labels}
+                  sizes={@sizes}
                 />
               </ol>
             </section>
+
+            <.todo_card :if={@open? && @todo} seq={@seq} todo={@todo} today={@today} />
 
             <details
               :if={@missed != []}
@@ -222,15 +247,15 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
               <ul class="border-t border-base-300">
                 <li :for={m <- @missed}>
                   <.link
-                    id={"missed-#{m.class_group.id}-#{m.period.id}-#{m.date}"}
+                    id={"missed-#{m.key}-#{m.date}"}
                     navigate={
-                      ~p"/school/classes/#{m.class_group.id}/attendance/#{m.period.id}?date=#{Date.to_iso8601(m.date)}"
+                      ~p"/school/classes/#{hd(m.members).class_group.id}/attendance/#{m.period.id}?date=#{Date.to_iso8601(m.date)}"
                     }
                     class="ta-list-row"
                   >
                     <span class="flex min-w-0 flex-1 flex-col">
                       <span class="text-[0.92rem] font-medium leading-snug">
-                        {m.class_group.label} · {m.subject}
+                        {LessonComponents.lesson_title(m, @labels)}
                       </span>
                       <span class="tabular-nums text-[0.75rem] text-base-content/70">
                         {Dates.short(m.date)} · {m.period.label} · {hm(m.period.start_time)}
@@ -253,18 +278,149 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   # The hero's lesson: the one under way (its roll call taken or not), else the
   # next one, else the last one missed today.
-  defp focus_slot(slots, time) do
-    Enum.find(slots, &under_way?(&1.period, time)) ||
-      Enum.find(slots, &(&1.status == :upcoming)) ||
-      slots |> Enum.filter(&(&1.status == :missed)) |> List.last()
+  defp focus_lesson(lessons, time) do
+    Enum.find(lessons, &under_way?(&1.period, time)) ||
+      Enum.find(lessons, &(&1.status == :upcoming)) ||
+      lessons |> Enum.filter(&(&1.status == :missed)) |> List.last()
   end
 
   defp under_way?(period, time),
     do:
       Time.compare(period.start_time, time) != :gt and Time.compare(time, period.end_time) == :lt
 
+  # « clôture des notes le 9 déc. (J-36) »
+  defp deadline_text(seq, today) do
+    date = Dates.day_month(seq.grade_entry_deadline)
+
+    case Dates.countdown(seq.grade_entry_deadline, today) do
+      nil -> gettext("clôture des notes le %{date}", date: date)
+      left -> gettext("clôture des notes le %{date} (%{left})", date: date, left: left)
+    end
+  end
+
+  # The « À faire » figures: courses without an evaluation, courses in progress and
+  # their marks; nil when nothing is left to enter.
+  defp todo(courses) do
+    none = Enum.count(courses, &(&1.progress.assessments == 0))
+
+    started =
+      Enum.filter(courses, fn %{progress: p} ->
+        p.assessments > 0 and p.entered < p.expected
+      end)
+
+    if none + length(started) > 0 do
+      %{
+        none: none,
+        started: length(started),
+        entered: Enum.sum_by(started, & &1.progress.entered),
+        expected: Enum.sum_by(started, & &1.progress.expected)
+      }
+    end
+  end
+
+  attr :seq, :map, required: true
+  attr :todo, :map, required: true
+  attr :today, :any, required: true
+
+  # Phones: one row for the séquence's marks (from lg, the panel says it in full).
+  defp todo_card(assigns) do
+    ~H"""
+    <section id="todo" aria-label={gettext("À faire")} class="flex flex-col gap-1.5 lg:hidden">
+      <h2 class="px-1 text-xs font-semibold uppercase tracking-wide text-base-content/70">
+        {gettext("À faire")}
+      </h2>
+      <.link
+        id="todo-marks"
+        navigate={~p"/school/courses?f=marks"}
+        class="ta-panel flex items-center gap-3 transition-colors hover:border-base-content/30"
+      >
+        <.icon name="hero-pencil" class="size-5 shrink-0 text-warning" />
+        <span class="flex min-w-0 flex-1 flex-col">
+          <span class="text-[0.95rem] font-medium">
+            {gettext("Notes de la séquence %{n}", n: @seq.number)}
+          </span>
+          <span class="text-[0.8rem] text-base-content/70">{todo_line(@todo)}</span>
+        </span>
+        <span
+          :if={Dates.countdown(@seq.grade_entry_deadline, @today)}
+          class="ta-num shrink-0 text-[0.8rem] font-semibold text-warning"
+        >
+          {Dates.countdown(@seq.grade_entry_deadline, @today)}
+        </span>
+      </.link>
+    </section>
+    """
+  end
+
+  # « 8 cours sans évaluation · 1 en cours (3/39) »
+  defp todo_line(todo) do
+    [
+      todo.none > 0 &&
+        ngettext("%{count} cours sans évaluation", "%{count} cours sans évaluation", todo.none),
+      todo.started > 0 &&
+        ngettext("%{count} en cours", "%{count} en cours", todo.started) <>
+          " (#{todo.entered}/#{todo.expected})"
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
+
+  attr :seq, :map, required: true
+  attr :courses, :list, required: true
+
+  # From lg: each course's entry in the séquence and its next step.
+  defp sequence_panel(assigns) do
+    ~H"""
+    <section
+      id="sequence-panel"
+      aria-label={gettext("Notes de la séquence %{n}", n: @seq.number)}
+      class="ta-panel hidden !p-0 lg:block"
+    >
+      <h2 class="px-4 pb-2 pt-3.5 text-base font-semibold">
+        {gettext("Notes de la séquence %{n}", n: @seq.number)}
+      </h2>
+      <ul>
+        <li :for={course <- @courses} id={"seq-course-#{course.id}"}>
+          <.link
+            navigate={~p"/teacher/contexts/#{course.context_id}/marks?seq=#{@seq.id}"}
+            class="grid grid-cols-[minmax(0,11rem)_minmax(4rem,1fr)_minmax(0,9rem)_auto] items-center gap-4 border-t border-base-300/60 px-4 py-2.5 transition-colors hover:bg-base-content/5"
+          >
+            <span class="truncate text-sm font-semibold">{course.title}</span>
+            <span class="h-1.5 overflow-hidden rounded-full bg-base-300/70" aria-hidden="true">
+              <span
+                class={["block h-full rounded-full", bar_tone(course.progress)]}
+                style={"width: #{course.progress.pct || 0}%"}
+              ></span>
+            </span>
+            <span class="ta-num truncate text-xs text-base-content/70">
+              {course_state(course.progress)}
+            </span>
+            <span class="whitespace-nowrap text-sm font-semibold text-primary">
+              {course_cta(course.progress)}
+            </span>
+          </.link>
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  defp bar_tone(%{expected: x, entered: e}) when x > 0 and e >= x, do: "bg-primary"
+  defp bar_tone(_progress), do: "bg-warning"
+
+  defp course_state(%{assessments: 0}), do: gettext("Aucune évaluation")
+
+  defp course_state(%{assessments: n, entered: e, expected: x}),
+    do: ngettext("%{count} évaluation", "%{count} évaluations", n) <> " · #{e}/#{x}"
+
+  defp course_cta(%{assessments: 0}), do: gettext("Créer une évaluation")
+  defp course_cta(%{entered: e, expected: x}) when e < x, do: gettext("Continuer la saisie")
+  defp course_cta(_progress), do: gettext("Voir les notes")
+
   attr :item, :any, required: true
   attr :selected, :string, default: nil
+  attr :labels, :map, required: true
+  attr :sizes, :map, required: true
 
   defp timeline_item(%{item: {:break, period}} = assigns) do
     assigns = assign(assigns, :period, period)
@@ -280,84 +436,110 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     """
   end
 
-  defp timeline_item(%{item: {:slot, slot}} = assigns) do
-    assigns = assign(assigns, slot: slot, key: slot_key(slot))
+  defp timeline_item(%{item: {:lesson, lesson}} = assigns) do
+    assigns = assign(assigns, :lesson, lesson)
 
     ~H"""
-    <li>
-      <.slot_row id={"slot-#{@key}"} slot={@slot} selected={@selected == @key} />
+    <li class="border-t border-base-300/60 first:border-t-0">
+      <.lesson_row
+        id={"slot-#{@lesson.key}"}
+        lesson={@lesson}
+        selected={@selected == @lesson.key}
+        labels={@labels}
+        sizes={@sizes}
+      />
     </li>
     """
   end
 
   # Lessons and the breaks that fall between the first and the last one, by start time.
-  defp timeline([], _breaks), do: []
-
-  defp timeline(slots, breaks) do
-    first = hd(slots).period.start_time
-    last = List.last(slots).period.start_time
+  defp timeline([first | _] = lessons, breaks) do
+    from = first.period.start_time
+    to = List.last(lessons).period.start_time
 
     breaks =
       for b <- breaks,
-          Time.compare(b.start_time, first) == :gt,
-          Time.compare(b.start_time, last) == :lt,
+          Time.compare(b.start_time, from) == :gt,
+          Time.compare(b.start_time, to) == :lt,
           do: {:break, b}
 
-    (Enum.map(slots, &{:slot, &1}) ++ breaks)
+    (Enum.map(lessons, &{:lesson, &1}) ++ breaks)
     |> Enum.sort_by(fn {_kind, x} -> start_time(x) end, Time)
   end
 
   defp start_time(%{period: p}), do: p.start_time
   defp start_time(%{start_time: t}), do: t
 
-  attr :slot, :map, required: true
+  attr :lesson, :map, required: true
+  attr :labels, :map, required: true
+  attr :sizes, :map, required: true
 
   defp now_card(assigns) do
     ~H"""
-    <div
+    <section
       id="now-card"
+      aria-label={hero_eyebrow(@lesson.status)}
       class={[
-        "ta-panel flex flex-col gap-3 border-l-4 !p-4 sm:!p-5",
-        hero_border(@slot.status)
+        "ta-panel flex flex-col gap-3 !p-4 sm:!p-5 lg:flex-row lg:items-center lg:gap-5",
+        hero_outline(@lesson.status)
       ]}
     >
-      <div class="flex items-center justify-between gap-3">
-        <p class={["ta-eyebrow", hero_tone(@slot.status)]}>{hero_eyebrow(@slot.status)}</p>
-        <span class="ta-num text-[0.85rem] text-base-content/70">
-          {hm(@slot.period.start_time)} – {hm(@slot.period.end_time)}
-        </span>
-      </div>
-      <div>
-        <h2 class="font-display text-[1.4rem] font-semibold leading-tight">
-          {@slot.class_group.label} · {@slot.subject}
+      <div class="flex min-w-0 flex-1 flex-col gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class={[
+            "ta-num rounded-full px-2 py-[3px] text-[0.7rem] font-semibold uppercase tracking-wide",
+            hero_pill(@lesson.status)
+          ]}>
+            {hero_eyebrow(@lesson.status)}
+          </span>
+          <span class="ta-num text-[0.85rem] text-base-content/70">
+            {hm(@lesson.period.start_time)} – {hm(@lesson.period.end_time)} · {@lesson.period.label}
+          </span>
+        </div>
+        <h2 class="text-[1.3rem] font-semibold leading-tight">
+          {LessonComponents.lesson_title(@lesson, @labels)}
         </h2>
-        <p id="now-state" class={["mt-1 text-[0.9rem]", state_tone(@slot.status)]}>
-          {hero_state(@slot)}
+        <p class="text-[0.85rem] text-base-content/75">
+          <span :if={LessonGroups.combined?(@lesson)}>{gettext("Cours groupé")} ·</span>
+          {LessonComponents.lesson_sub(%{@lesson | hour: 1}, @sizes)}
+          <span
+            :if={LessonGroups.combined?(@lesson)}
+            class="ta-num mt-1 block text-[0.78rem] font-medium"
+          >
+            {LessonComponents.classes_line(@lesson)}
+          </span>
+        </p>
+        <p id="now-state" class={["text-[0.85rem]", state_tone(@lesson.status)]}>
+          {hero_state(@lesson)}
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex gap-2 lg:shrink-0">
         <.link
-          :if={@slot.status != :upcoming}
+          :if={@lesson.status != :upcoming}
           id="now-call"
-          patch={~p"/school/today?slot=#{slot_key(@slot)}"}
+          patch={~p"/school/today?slot=#{@lesson.key}"}
           class={[
-            "btn h-11 max-sm:flex-1",
-            if(@slot.status == :done, do: "btn-outline", else: "btn-primary")
+            "btn h-12 max-lg:flex-1",
+            if(@lesson.status == :done, do: "btn-outline", else: "btn-primary")
           ]}
         >
           <.icon name="hero-clipboard-document-check" class="size-5" />
-          {if @slot.status == :done, do: gettext("Modifier l'appel"), else: gettext("Faire l'appel")}
+          {if @lesson.status == :done,
+            do: gettext("Modifier l'appel"),
+            else: gettext("Faire l'appel")}
         </.link>
         <.link
-          :if={@slot.teaching_context_id}
+          :if={hd(@lesson.members).teaching_context_id}
           id="now-marks"
-          navigate={~p"/teacher/contexts/#{@slot.teaching_context_id}/marks"}
-          class="btn btn-ghost h-11 max-sm:flex-1"
+          navigate={~p"/teacher/contexts/#{hd(@lesson.members).teaching_context_id}/marks"}
+          class="btn btn-outline h-12 border-base-300"
         >
-          <.icon name="hero-pencil-square" class="size-5" /> {gettext("Saisir des notes")}
+          <.icon name="hero-pencil-square" class="size-5" />
+          <span class="lg:hidden">{gettext("Notes")}</span>
+          <span class="hidden lg:inline">{gettext("Saisir des notes")}</span>
         </.link>
       </div>
-    </div>
+    </section>
     """
   end
 
@@ -381,16 +563,16 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp hero_state(%{status: :upcoming, period: p}),
     do: gettext("L'appel s'ouvrira à %{time}", time: hm(p.start_time))
 
-  defp hero_border(:in_progress), do: "border-l-warning"
-  defp hero_border(:missed), do: "border-l-error"
-  defp hero_border(:done), do: "border-l-success"
+  # The lesson under way stands out with a solid outline; a missed one in coral.
+  defp hero_outline(status) when status in [:in_progress, :done], do: "!border-2 !border-primary"
+  defp hero_outline(:missed), do: "!border-2 !border-error"
+  defp hero_outline(_status), do: nil
 
-  defp hero_border(status) when status in [:upcoming, :on_paper, :not_held],
-    do: "border-l-base-300"
+  defp hero_pill(status) when status in [:in_progress, :done],
+    do: "bg-primary text-primary-content"
 
-  defp hero_tone(:in_progress), do: "text-warning"
-  defp hero_tone(:missed), do: "text-error"
-  defp hero_tone(_), do: nil
+  defp hero_pill(:missed), do: "bg-error text-error-content"
+  defp hero_pill(_status), do: "bg-base-200 text-base-content/75"
 
   defp state_tone(:done), do: "text-success"
   defp state_tone(:in_progress), do: "text-warning"
@@ -408,28 +590,23 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   defp greeting(_user), do: gettext("Ma journée")
 
-  defp eyebrow(today, nil), do: Dates.long(today)
-
-  defp eyebrow(today, seq),
-    do: Dates.long(today) <> " · " <> gettext("Séquence %{n}", n: seq.number)
-
-  defp subtitle(slots) do
-    to_call = Enum.count(slots, &(&1.status in [:in_progress, :missed]))
-    lessons = ngettext("%{count} cours aujourd'hui", "%{count} cours aujourd'hui", length(slots))
+  defp subtitle(lessons) do
+    to_call = Enum.count(lessons, &(&1.status in [:in_progress, :missed]))
+    count = ngettext("%{count} cours aujourd'hui", "%{count} cours aujourd'hui", length(lessons))
 
     if to_call > 0,
       do:
-        lessons <>
+        count <>
           " · " <>
           ngettext(
             "%{count} appel à faire maintenant",
             "%{count} appels à faire maintenant",
             to_call
           ),
-      else: lessons
+      else: count
   end
 
-  # « En cours · 10:00 – 10:55 » over the panel when its slot is in progress, else
+  # « En cours · 10:00 – 10:55 » over the panel when its lesson is in progress, else
   # « Cours 2 · 08:55 – 09:50 ».
   defp roll_eyebrow(%{status: :in_progress, period: p}),
     do: gettext("En cours · %{from} – %{to}", from: hm(p.start_time), to: hm(p.end_time))
@@ -437,118 +614,63 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp roll_eyebrow(%{period: p}), do: "#{p.label} · #{hm(p.start_time)} – #{hm(p.end_time)}"
   defp roll_eyebrow(nil), do: nil
 
-  attr :id, :string, required: true
-  attr :slot, :map, required: true
-  attr :selected, :boolean, required: true
+  defp roll_title(_roll, %{} = lesson, labels),
+    do: gettext("Appel · %{what}", what: LessonComponents.lesson_title(lesson, labels))
 
-  # A lesson of the timeline: a link opening its roll call once it has started.
-  defp slot_row(assigns) do
+  defp roll_title(roll, nil, _labels),
+    do: gettext("Appel · %{what}", what: roll.cg.label)
+
+  attr :id, :string, required: true
+  attr :lesson, :map, required: true
+  attr :selected, :boolean, required: true
+  attr :labels, :map, required: true
+  attr :sizes, :map, required: true
+
+  # A lesson of the day: a link opening its roll call once it has started.
+  defp lesson_row(assigns) do
     ~H"""
     <.link
-      :if={@slot.status != :upcoming}
+      :if={@lesson.status != :upcoming}
       id={@id}
-      patch={~p"/school/today?slot=#{slot_key(@slot)}"}
+      patch={~p"/school/today?slot=#{@lesson.key}"}
       aria-current={@selected && "true"}
       class={[row_class(), @selected && "bg-primary/12", !@selected && "hover:bg-base-content/5"]}
     >
-      <.slot_cells slot={@slot} />
+      <.lesson_cells lesson={@lesson} labels={@labels} sizes={@sizes} />
     </.link>
-    <div :if={@slot.status == :upcoming} id={@id} class={row_class()}>
-      <.slot_cells slot={@slot} />
+    <div :if={@lesson.status == :upcoming} id={@id} class={row_class()}>
+      <.lesson_cells lesson={@lesson} labels={@labels} sizes={@sizes} />
     </div>
     """
   end
 
   defp row_class,
     do:
-      "grid min-h-14 grid-cols-[3rem_0.75rem_minmax(0,1fr)_auto] items-center gap-x-2.5 px-4 py-2 transition-colors"
+      "grid min-h-[3.25rem] grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2 transition-colors"
 
-  attr :slot, :map, required: true
+  attr :lesson, :map, required: true
+  attr :labels, :map, required: true
+  attr :sizes, :map, required: true
 
-  defp slot_cells(assigns) do
+  defp lesson_cells(assigns) do
     ~H"""
-    <span class="ta-num flex flex-col text-[0.85rem] font-semibold leading-tight">
-      {hm(@slot.period.start_time)}
-      <span class="text-[0.7rem] font-normal text-base-content/70">
-        {hm(@slot.period.end_time)}
-      </span>
+    <span class="ta-num text-[0.82rem] font-medium text-base-content/70">
+      {hm(@lesson.period.start_time)}
     </span>
-    <span class={["size-2.5 justify-self-center rounded-full", dot_class(@slot.status)]}></span>
     <span class="flex min-w-0 flex-col">
       <span class={[
-        "text-[0.92rem] font-medium leading-snug",
-        @slot.status == :done && "text-base-content/75"
+        "truncate text-[0.92rem] leading-snug",
+        @lesson.status == :in_progress && "font-semibold",
+        @lesson.status in [:done, :on_paper, :not_held] && "text-base-content/70"
       ]}>
-        {@slot.class_group.label} · {@slot.subject}
+        {LessonComponents.lesson_title(@lesson, @labels)}
       </span>
-      <span class="tabular-nums text-[0.72rem] text-base-content/70">
-        <%= if @slot.status == :done do %>
-          {ngettext("%{count} absent", "%{count} absents", @slot.absent)}
-        <% else %>
-          {@slot.period.label}
-        <% end %>
+      <span class="truncate text-[0.72rem] text-base-content/70">
+        {LessonComponents.lesson_sub(@lesson, @sizes)}<span :if={@lesson.status == :done}>
+          · {ngettext("%{count} absent", "%{count} absents", @lesson.absent)}</span>
       </span>
     </span>
-    <.status_tag status={@slot.status} />
+    <.status_tag status={@lesson.status} />
     """
   end
-
-  defp dot_class(:done), do: "bg-success"
-  defp dot_class(:in_progress), do: "bg-warning ring-4 ring-warning/25"
-  defp dot_class(:missed), do: "bg-error"
-  defp dot_class(:upcoming), do: "border border-base-content/35"
-  defp dot_class(:on_paper), do: "bg-base-content/35"
-  defp dot_class(:not_held), do: "border border-dashed border-base-content/35"
-
-  attr :status, :atom, required: true
-
-  defp status_tag(%{status: :done} = assigns) do
-    ~H"""
-    <span class="inline-flex items-center gap-1 whitespace-nowrap text-[0.75rem] font-semibold text-success">
-      <.icon name="hero-check-mini" class="size-4" /> {gettext("Fait")}
-    </span>
-    """
-  end
-
-  defp status_tag(%{status: :in_progress} = assigns),
-    do: ~H|<.tag tone={:now}>{gettext("Maintenant")}</.tag>|
-
-  defp status_tag(%{status: :missed} = assigns),
-    do: ~H|<.tag tone={:error}>{gettext("Non fait")}</.tag>|
-
-  defp status_tag(%{status: :upcoming} = assigns),
-    do: ~H|<.tag tone={:muted}>{gettext("À venir")}</.tag>|
-
-  defp status_tag(%{status: :on_paper} = assigns),
-    do: ~H|<.tag tone={:muted}>{gettext("Sur feuille")}</.tag>|
-
-  defp status_tag(%{status: :not_held} = assigns),
-    do: ~H|<.tag tone={:muted}>{gettext("Non assuré")}</.tag>|
-
-  attr :tone, :atom, required: true
-  slot :inner_block, required: true
-
-  defp tag(assigns) do
-    ~H"""
-    <span class={[
-      "whitespace-nowrap rounded-full px-2 py-[3px] text-[0.7rem] font-semibold",
-      tone_class(@tone)
-    ]}>
-      {render_slot(@inner_block)}
-    </span>
-    """
-  end
-
-  defp tone_class(:now), do: "bg-warning text-warning-content"
-  defp tone_class(:error), do: "bg-error/15 text-error"
-  defp tone_class(:muted), do: "text-base-content/70"
-
-  defp roll_title(roll),
-    do:
-      gettext("Appel · %{class} · %{what}",
-        class: roll.cg.label,
-        what: (roll.teaching_context && roll.teaching_context.subject) || roll.period.label
-      )
-
-  defp hm(time), do: Calendar.strftime(time, "%H:%M")
 end

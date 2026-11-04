@@ -75,18 +75,19 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
   test "Ma journée lists today's slots with their roll-call status", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/today")
 
-    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "Fait"
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "Appel fait"
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "1 absent"
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render() =~ "1 élève"
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Non fait"
     assert has_element?(view, "#my-day h1", "Bonjour")
-    assert has_element?(view, "#today-slots h2", "Ma journée")
+    assert has_element?(view, "#today-slots h2", "Aujourd'hui")
     assert has_element?(view, "#my-day header", "2 cours aujourd'hui")
     # a break between two lessons is a thin separator — none between p1 and p2
     refute has_element?(view, "#today-slots", "Récréation")
     # nothing under way at 13:00 and nothing left: the hero is the missed lesson,
     # its roll call closed until « Faire l'appel »
     assert has_element?(view, "#now-card", "Appel non fait")
-    assert has_element?(view, "#now-card", "6e A · Maths")
+    assert has_element?(view, "#now-card", "Maths · 6e A")
     assert has_element?(view, "#now-marks[href^='/teacher/contexts/']")
     refute has_element?(view, "#roll-panel")
 
@@ -138,7 +139,63 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     view |> element("#record-roll") |> render_click()
 
     assert has_element?(view, "#record-roll", "Modifier l'appel")
-    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Fait"
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Appel fait"
+  end
+
+  test "Ma journée: a combined course is one lesson, its next period « mêmes classes »",
+       %{conn: conn} = ctx do
+    {:ok, cg_b} =
+      Enrollment.create_class_group(ctx.scope, Organization.current_academic_year(ctx.scope), %{
+        label: "6e B",
+        level: "6ème"
+      })
+
+    {:ok, cg_b} = Enrollment.set_paper_roll_call(ctx.scope, cg_b, false)
+    {:ok, _} = Enrollment.add_student(ctx.scope, cg_b, %{full_name: "Bello", sex: :m})
+    tc = ctx.cg.id |> Timetabling.list_for_class!(scope: ctx.scope) |> hd()
+
+    tc =
+      Ash.get!(TeacherAssistant.Academics.TeachingContext, tc.teaching_context_id,
+        scope: ctx.scope
+      )
+
+    head = ctx.scope.current_user
+    {:ok, tc_b} = Curriculum.assign_teacher(ctx.scope, cg_b, head, %{subject: "Maths"})
+    {:ok, course} = Curriculum.combine_course(ctx.scope, [tc, tc_b])
+
+    for p <- [ctx.p1, ctx.p2] do
+      {:ok, _} =
+        Timetabling.place_slot(ctx.scope, cg_b, %{
+          day: :monday,
+          period_id: p.id,
+          teaching_context_id: tc_b.id
+        })
+    end
+
+    {:ok, view, _} = live(conn, ~p"/school/today")
+
+    first = view |> element("#slot-#{ctx.cg.id}-#{ctx.p1.id}") |> render()
+    assert first =~ course.label
+    assert first =~ "2 classes · 2 élèves"
+    refute has_element?(view, "#slot-#{cg_b.id}-#{ctx.p1.id}")
+
+    assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~
+             "mêmes classes · 2e heure"
+
+    assert has_element?(view, "#my-day header", "2 cours aujourd'hui")
+  end
+
+  test "Ma journée: « À faire » counts the séquence's courses without an evaluation",
+       %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/school/today")
+
+    assert has_element?(
+             view,
+             "#todo-marks[href='/school/courses?f=marks']",
+             "1 cours sans évaluation"
+           )
+
+    assert has_element?(view, "#sequence-panel", "Créer une évaluation")
   end
 
   test "Ma journée sends non-teachers to their space home", ctx do
