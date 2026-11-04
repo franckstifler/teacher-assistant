@@ -107,7 +107,10 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
           <p :if={@courses != []} id="courses-subtitle" class="text-[0.95rem] text-base-content/75">
             {subtitle(@courses, @student_total, @seq, @today)}
             <span
-              :if={@seq && !Lock.locked?(@seq, @today) && Dates.countdown(@seq.grade_entry_deadline, @today)}
+              :if={
+                @seq && !Lock.locked?(@seq, @today) &&
+                  Dates.countdown(@seq.grade_entry_deadline, @today)
+              }
               class="ta-num font-semibold text-warning"
             >
               · {Dates.countdown(@seq.grade_entry_deadline, @today)}
@@ -190,7 +193,9 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                     </span>
                   </span>
                   <span class="ta-num truncate text-[0.72rem] text-base-content/70">
-                    {classes_line(course)}<span :if={course.coefficient}> · {gettext("coef. %{n}", n: coef_label(course.coefficient))}</span>
+                    {classes_line(course)}<span :if={course.coefficient}> · {gettext("coef. %{n}",
+                      n: coef_label(course.coefficient)
+                    )}</span>
                   </span>
                   <span
                     :if={@seq && course.competence}

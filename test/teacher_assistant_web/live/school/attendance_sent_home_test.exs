@@ -94,7 +94,7 @@ defmodule TeacherAssistantWeb.School.AttendanceSentHomeTest do
     {:ok, view, _html} = live(ctx.conn, att_path(ctx.cg, ctx.period, ctx.date))
 
     refute has_element?(view, "#sent-home-#{ctx.enrollment.id}")
-    assert has_element?(view, "#att-#{ctx.enrollment.id}-present[aria-pressed='true']")
+    assert has_element?(view, "#student-row-#{ctx.enrollment.id}[data-status='present']")
   end
 
   test "a teacher can switch a sent-home student to present but not to absent", ctx do
@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.School.AttendanceSentHomeTest do
     assert has_element?(view, "#sent-home-#{ctx.enrollment.id}")
 
     render_click(view, "set", %{"enrollment_id" => other_enr.id, "status" => "sent_home"})
-    assert has_element?(view, "#att-#{other_enr.id}-present[aria-pressed='true']")
+    assert has_element?(view, "#student-row-#{other_enr.id}[data-status='present']")
 
     view |> element("#att-#{ctx.enrollment.id}-present") |> render_click()
     refute has_element?(view, "#sent-home-#{ctx.enrollment.id}")

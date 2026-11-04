@@ -133,9 +133,10 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
   test "Ma journée records the selected slot's roll call in place", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
 
-    assert has_element?(view, "#record-roll", "Valider l'appel · 0 absent, 0 retard")
+    assert has_element?(view, "#record-roll", "Valider l'appel")
+    assert has_element?(view, "#roll-counts", "0 retard")
     view |> element("#att-#{ctx.e.id}-late") |> render_click()
-    assert has_element?(view, "#record-roll", "Valider l'appel · 0 absent, 1 retard")
+    assert has_element?(view, "#roll-counts", "1 retard")
     view |> element("#record-roll") |> render_click()
 
     assert has_element?(view, "#record-roll", "Modifier l'appel")

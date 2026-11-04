@@ -71,7 +71,12 @@ defmodule TeacherAssistant.Academics.TeacherCourses do
 
   @doc "The students of the courses' classes, each class counted once."
   def student_total(courses),
-    do: courses |> Enum.map(& &1.class_sizes) |> Enum.reduce(%{}, &Map.merge/2) |> Map.values() |> Enum.sum()
+    do:
+      courses
+      |> Enum.map(& &1.class_sizes)
+      |> Enum.reduce(%{}, &Map.merge/2)
+      |> Map.values()
+      |> Enum.sum()
 
   @doc "Whether a course has marks left to enter in the séquence (none yet, or some missing)."
   def to_enter?(%{progress: %{assessments: 0}}), do: true

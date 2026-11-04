@@ -98,7 +98,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_minutes(&1, minutes)))}
 
   def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
-    do: {:noreply, update(socket, :roll, &(&1 && RollCall.set(&1, id, status)))}
+    do: {:noreply, update(socket, :roll, &(&1 && RollCall.toggle(&1, id, status)))}
 
   def handle_event("record", _params, %{assigns: %{roll: %{}}} = socket) do
     case RollCall.record(socket.assigns.current_scope, socket.assigns.roll) do
@@ -666,8 +666,10 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         {LessonComponents.lesson_title(@lesson, @labels)}
       </span>
       <span class="truncate text-[0.72rem] text-base-content/70">
-        {LessonComponents.lesson_sub(@lesson, @sizes)}<span :if={@lesson.status == :done}>
-          · {ngettext("%{count} absent", "%{count} absents", @lesson.absent)}</span>
+        {LessonComponents.lesson_sub(@lesson, @sizes)}
+        <span :if={@lesson.status == :done}>
+          · {ngettext("%{count} absent", "%{count} absents", @lesson.absent)}
+        </span>
       </span>
     </span>
     <.status_tag status={@lesson.status} />

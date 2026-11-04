@@ -86,8 +86,10 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
 
     {:ok, view, _html} = live(conn, att_path(cg, period, date))
 
-    # present is the default selection for a fresh roll
-    assert has_element?(view, "#att-#{enrollment.id}-present[aria-pressed='true']")
+    # present is the default for a fresh roll: neither toggle is on
+    assert has_element?(view, "#student-row-#{enrollment.id}[data-status='present']")
+    assert has_element?(view, "#att-#{enrollment.id}-absent[aria-pressed='false']")
+    assert has_element?(view, "#roll-help", "présent par défaut")
 
     # record without touching anyone
     view |> element("#record-roll") |> render_click()
@@ -141,7 +143,8 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     {:ok, view, _html} = live(conn_for(school, dm), att_path(cg, period, date))
 
     # the surveillant's way back is their own « Aujourd'hui », lit in the menu
-    assert has_element?(view, ~s(#attendance-back[href="/school/day"]))
+    assert has_element?(view, ~s(#back-header-arrow[href="/school/day"]))
+    assert has_element?(view, ~s(#back-header-parent[href="/school/day"]))
     assert has_element?(view, "#nav-school-day[aria-current=page]")
 
     view |> element("#att-#{enrollment.id}-absent") |> render_click()
@@ -360,7 +363,7 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     assert has_element?(view, "#late-minutes-#{e2.id}")
 
     view |> element("#all-present") |> render_click()
-    assert has_element?(view, "#att-#{e1.id}-present[aria-pressed='true']")
+    assert has_element?(view, "#student-row-#{e1.id}[data-status='present']")
     refute has_element?(view, "#late-minutes-#{e2.id}")
     assert has_element?(view, "#roll-counts", "0 absent")
   end
@@ -375,5 +378,30 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     assert has_element?(view, "#record-roll", "Valider l'appel")
     view |> element("#record-roll") |> render_click()
     assert has_element?(view, "#record-roll", "Modifier l'appel")
+  end
+
+  test "tapping an active toggle puts the student back to present", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    date: date,
+    enrollment: e
+  } do
+    {:ok, view, _html} = live(conn, att_path(cg, period, date))
+    assert has_element?(view, "#class-attendance h1", "Appel · ")
+
+    view |> element("#att-#{e.id}-absent") |> render_click()
+    assert has_element?(view, "#student-row-#{e.id}[data-status='absent']")
+    assert has_element?(view, "#att-#{e.id}-absent[aria-pressed='true']")
+    assert has_element?(view, "#roll-counts", "1 absent")
+
+    view |> element("#att-#{e.id}-absent") |> render_click()
+    assert has_element?(view, "#student-row-#{e.id}[data-status='present']")
+
+    view |> element("#att-#{e.id}-late") |> render_click()
+    assert has_element?(view, "#late-minutes-#{e.id}")
+    view |> element("#att-#{e.id}-absent") |> render_click()
+    assert has_element?(view, "#student-row-#{e.id}[data-status='absent']")
+    refute has_element?(view, "#late-minutes-#{e.id}")
   end
 end

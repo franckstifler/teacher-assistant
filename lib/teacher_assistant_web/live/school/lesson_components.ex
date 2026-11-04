@@ -46,7 +46,9 @@ defmodule TeacherAssistantWeb.School.LessonComponents do
     students = ngettext("%{count} élève", "%{count} élèves", students(group, sizes))
 
     if LessonGroups.combined?(group),
-      do: ngettext("%{count} classe", "%{count} classes", length(group.members)) <> " · " <> students,
+      do:
+        ngettext("%{count} classe", "%{count} classes", length(group.members)) <>
+          " · " <> students,
       else: students
   end
 
