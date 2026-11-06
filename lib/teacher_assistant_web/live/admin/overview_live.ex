@@ -31,7 +31,8 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
       assign(assigns,
         attention_count:
           length(assigns.overview.attention.pending) + length(assigns.overview.attention.quiet) +
-            length(assigns.overview.attention.silent) + assigns.overview.system.jobs.failed
+            length(assigns.overview.attention.silent) + assigns.overview.system.jobs.failed +
+            assigns.overview.system.open_errors
       )
 
     ~H"""
@@ -91,6 +92,21 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
               )}
             </span>
           </li>
+          <.attention_row
+            :if={@overview.system.open_errors > 0}
+            id="attention-errors"
+            tone={:error}
+            title={
+              ngettext(
+                "%{count} erreur à corriger",
+                "%{count} erreurs à corriger",
+                @overview.system.open_errors
+              )
+            }
+            reason={gettext("Pages ou tâches qui ont planté")}
+            action={gettext("Voir")}
+            navigate={~p"/admin/errors"}
+          />
           <li :if={length(@overview.attention.pending) > list_limit()} class="py-2">
             <.link
               navigate={~p"/admin/schools?#{%{status: :unverified}}"}
@@ -283,6 +299,13 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
                 class={["ta-num text-right", @overview.system.jobs.failed > 0 && "text-error"]}
               >
                 {@overview.system.jobs.failed}
+              </dd>
+              <dt class="ta-text-2">{gettext("Erreurs ouvertes")}</dt>
+              <dd
+                id="system-open-errors"
+                class={["ta-num text-right", @overview.system.open_errors > 0 && "text-error"]}
+              >
+                {@overview.system.open_errors}
               </dd>
               <dt class="ta-text-2">{gettext("Dernière tâche réussie")}</dt>
               <dd class="ta-num text-right">

@@ -68,6 +68,7 @@ defmodule TeacherAssistant.MixProject do
       {:picosat_elixir, "~> 0.2"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:oban, "~> 2.22"},
+      {:error_tracker, "~> 0.9"},
       {:live_debugger, "~> 1.0", only: [:dev]},
       {:ash_authentication_phoenix, "~> 2.0"},
       {:ash_authentication, "~> 4.0"},

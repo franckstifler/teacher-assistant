@@ -28,6 +28,16 @@ config :teacher_assistant, Oban,
      ]}
   ]
 
+# Unhandled errors, grouped into issues in this app's database and shown to the
+# operator at /admin/errors (TeacherAssistant.ErrorReporting). The filter keeps
+# no request or job data: these are records about minors.
+config :error_tracker,
+  repo: TeacherAssistant.Repo,
+  otp_app: :teacher_assistant,
+  filter: TeacherAssistant.ErrorReporting.Filter,
+  # A resolved error and its occurrences are deleted 30 days later.
+  plugins: [{ErrorTracker.Plugins.Pruner, max_age: :timer.hours(24 * 30)}]
+
 config :ash,
   default_string_length_count: :codepoints,
   allow_forbidden_field_for_relationships_by_default?: true,

@@ -3,6 +3,7 @@ defmodule TeacherAssistantWeb.Router do
 
   use AshAuthentication.Phoenix.Router
   import AshAuthentication.Plug.Helpers
+  import ErrorTracker.Web.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -246,6 +247,16 @@ defmodule TeacherAssistantWeb.Router do
       live "/admin/users", Admin.UsersLive
       live "/admin/journal", Admin.JournalLive
     end
+
+    # ErrorTracker's own screens, in their own live_session and layout; the same
+    # guards as the console: signed in (from the session cookie), then operator only.
+    error_tracker_dashboard("/admin/errors",
+      on_mount: [
+        AshAuthentication.Phoenix.LiveSession,
+        {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
+        {TeacherAssistantWeb.LiveUserAuth, :require_operator}
+      ]
+    )
   end
 
   if Application.compile_env(:teacher_assistant, :dev_routes) do

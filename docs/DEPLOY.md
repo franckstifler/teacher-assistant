@@ -84,6 +84,25 @@ open to the server itself: put Caddy or nginx in front for HTTPS (see above).
 The build context leaves out `priv/uploads/` and `priv/repo/*.local.exs`
 (`.dockerignore`): dev photos and real schools' seeds never go into an image.
 
+## Errors
+
+Unhandled errors (a page or request that crashed, a background task that failed, any
+other process that crashed) are stored in the app's own database and grouped: the same
+error is one line, with how many times and when it last happened. Operators see them
+in the console, under **Erreurs** (`/admin/errors`), and the overview counts the open
+ones under « À traiter ».
+
+Each operator with an e-mail address gets an e-mail (through Brevo) when an error is
+new, or comes back after being marked resolved: not at every occurrence. Mute an error
+in `/admin/errors` to stop its e-mails while still counting it. A resolved error is
+deleted 30 days later.
+
+An error keeps where it happened (page, action, task) and for whom (school, user and
+operator ids), never what was typed or sent: no form contents, query strings, IP
+addresses or task arguments (`TeacherAssistant.ErrorReporting.Filter`).
+
+Nothing to configure: the tables come with the migrations (`bin/migrate`).
+
 ## Backups
 
 The uploads directory is not a backup: it dies with the disk or the server. Copy

@@ -4,6 +4,8 @@ config :teacher_assistant, uploads_dir: Path.join(System.tmp_dir!(), "ta_test_up
 
 config :bcrypt_elixir, log_rounds: 1
 config :teacher_assistant, Oban, testing: :manual
+# Off, so a test that makes a page crash writes nothing; ErrorReportingTest turns it on.
+config :error_tracker, enabled: false, plugins: []
 config :teacher_assistant, token_signing_secret: "stzKJzc4mx3IO7M9Pw+9nK9sEIlPXcOa"
 config :bcrypt_elixir, log_rounds: 1
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true

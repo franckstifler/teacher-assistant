@@ -36,12 +36,11 @@ defmodule TeacherAssistantWeb.Plug.Scope do
     # No menu badges: controller responses (photos, logos, prints) draw no menu.
     scope = TeacherAssistantWeb.Spaces.put_space(scope, get_session(conn, :space), counts?: false)
 
+    scope = %{scope | locale: conn.assigns[:locale] || "fr", impersonation: impersonation}
+    TeacherAssistant.ErrorReporting.put_scope(scope)
+
     conn
     |> assign(:current_user, user)
-    |> assign(:current_scope, %{
-      scope
-      | locale: conn.assigns[:locale] || "fr",
-        impersonation: impersonation
-    })
+    |> assign(:current_scope, scope)
   end
 end

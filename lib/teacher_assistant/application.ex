@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Application do
 
   @impl true
   def start(_type, _args) do
+    TeacherAssistant.ErrorReporting.attach()
+
     children = [
       TeacherAssistantWeb.Telemetry,
       TeacherAssistant.Repo,

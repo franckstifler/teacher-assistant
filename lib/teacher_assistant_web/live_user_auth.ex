@@ -205,6 +205,8 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
         impersonation: impersonation
     }
 
+    TeacherAssistant.ErrorReporting.put_scope(scope)
+
     socket
     |> assign(:impersonation_ended?, session["impersonation"] != nil and is_nil(impersonation))
     |> assign(:current_user, user)

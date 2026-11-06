@@ -1,5 +1,5 @@
 defmodule TeacherAssistant.Accounts.Emails do
-  @moduledoc "Builds Swoosh emails for account/invitation flows. Delivery is via TeacherAssistant.Mailer."
+  @moduledoc "Builds Swoosh emails for account/invitation flows and operator alerts. Delivery is via TeacherAssistant.Mailer."
   import Swoosh.Email
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
@@ -40,6 +40,46 @@ defmodule TeacherAssistant.Accounts.Emails do
     |> text_body(gettext("Connectez-vous ici : %{url}", url: magic_url))
     |> html_body(gettext("<p><a href=\"%{url}\">Se connecter</a></p>", url: magic_url))
   end
+
+  @doc """
+  To an operator: an unhandled error stored in `/admin/errors`, new or back after being
+  resolved (`TeacherAssistant.Workers.ErrorAlert`).
+  """
+  def error_alert(user, error, reopened?, url) do
+    reason = String.slice(error.reason, 0, 500)
+    source = "#{error.source_function} (#{error.source_line})"
+
+    subject =
+      if reopened?,
+        do: gettext("Erreur revenue : %{kind}", kind: short_kind(error.kind)),
+        else: gettext("Nouvelle erreur : %{kind}", kind: short_kind(error.kind))
+
+    html = &(&1 |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string())
+
+    base()
+    |> to(to_string(user.email))
+    |> subject(subject)
+    |> text_body(
+      gettext("%{kind} : %{reason}\n\nÀ %{source}\n\nVoir l'erreur : %{url}",
+        kind: short_kind(error.kind),
+        reason: reason,
+        source: source,
+        url: url
+      )
+    )
+    |> html_body(
+      gettext(
+        "<p><strong>%{kind}</strong> : %{reason}</p><p>À <code>%{source}</code></p><p><a href=\"%{url}\">Voir l'erreur</a></p>",
+        kind: html.(short_kind(error.kind)),
+        reason: html.(reason),
+        source: html.(source),
+        url: html.(url)
+      )
+    )
+  end
+
+  defp short_kind("Elixir." <> kind), do: kind
+  defp short_kind(kind), do: kind
 
   defp base do
     new() |> from(from_address())

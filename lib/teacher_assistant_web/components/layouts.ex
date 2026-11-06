@@ -336,6 +336,14 @@ defmodule TeacherAssistantWeb.Layouts do
               >
                 {gettext("Journal")}
               </.rail_link>
+              <.rail_link
+                id="nav-admin-errors"
+                href={~p"/admin/errors"}
+                icon="hero-bug-ant"
+                current_path={@current_path}
+              >
+                {gettext("Erreurs")}
+              </.rail_link>
             </nav>
 
             <div class="mt-auto flex flex-col gap-2 border-t border-[color:var(--ta-rail-line)] pt-3">

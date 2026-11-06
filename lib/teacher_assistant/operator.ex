@@ -474,6 +474,14 @@ defmodule TeacherAssistant.Operator do
         from(j in "oban_jobs", where: j.state == "completed", select: max(j.completed_at))
         |> Repo.one()
         |> then(&(&1 && to_datetime(&1))),
+      # Unhandled errors not yet resolved (ErrorTracker, /admin/errors); muted ones are
+      # known and left aside on purpose.
+      open_errors:
+        from(e in "error_tracker_errors",
+          where: e.status == "unresolved" and not e.muted,
+          select: count()
+        )
+        |> Repo.one(),
       db_bytes: db_bytes,
       memory_bytes: :erlang.memory(:total),
       uptime_ms: uptime_ms,
