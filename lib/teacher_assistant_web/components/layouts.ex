@@ -15,6 +15,16 @@ defmodule TeacherAssistantWeb.Layouts do
   # and other static content.
   embed_templates "layouts/*"
 
+  # The `<meta name="description">` and link-preview text: the landing's headline
+  # and lede, so it reads in the visitor's language with no copy of its own.
+  defp description do
+    gettext("Tout l'établissement, sur le téléphone de chacun.") <>
+      " " <>
+      gettext(
+        "L'appel, les notes et les bulletins, avec un espace pour chaque membre de l'équipe."
+      )
+  end
+
   @doc """
   Renders your app layout.
 
@@ -116,9 +126,7 @@ defmodule TeacherAssistantWeb.Layouts do
             >
               <.icon name="hero-bars-3" class="size-5" />
             </label>
-            <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-              S
-            </span>
+            <img src={~p"/images/brand/scolaka-icon.svg"} alt="" class="size-8 flex-none rounded-lg" />
             <span class="min-w-0 flex-1 leading-tight">
               <span class="block truncate text-sm font-semibold">
                 {@workspace_name || "Scolaka"}
@@ -195,9 +203,11 @@ defmodule TeacherAssistantWeb.Layouts do
                   role="button"
                   class="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-[color:var(--ta-rail-hover)]"
                 >
-                  <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-                    S
-                  </span>
+                  <img
+                    src={~p"/images/brand/scolaka-icon.svg"}
+                    alt=""
+                    class="size-8 flex-none rounded-lg"
+                  />
                   <span class="min-w-0 flex-1 leading-tight">
                     <span class="block truncate text-sm font-semibold ta-display">
                       {@workspace_name}
@@ -392,10 +402,7 @@ defmodule TeacherAssistantWeb.Layouts do
       <div class="flex min-h-screen flex-col bg-base-200 text-base-content">
         <header class="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-base-300 bg-base-100/95 px-4 backdrop-blur sm:px-6">
           <a href="/" class="flex items-center gap-2.5">
-            <span class="grid size-8 place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-              S
-            </span>
-            <span class="text-sm font-semibold ta-display">Scolaka</span>
+            <.logo class="h-7 w-auto" />
           </a>
           <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm ml-auto">
             <.icon name="hero-arrow-left-on-rectangle" class="size-4" />
@@ -741,6 +748,29 @@ defmodule TeacherAssistantWeb.Layouts do
     do: TeacherAssistant.Accounts.SchoolRole.label(role)
 
   defp role_label(_), do: nil
+
+  @doc """
+  The Scolaka logo: white and mint on the dark board, deep green in the light « craie »
+  mode. `on_dark` keeps the white one in both modes, for surfaces that stay dark.
+  """
+  attr :class, :string, default: "h-7 w-auto"
+  attr :on_dark, :boolean, default: false
+
+  def logo(assigns) do
+    ~H"""
+    <img
+      src={~p"/images/brand/scolaka-logo-reverse.svg"}
+      alt="Scolaka"
+      class={[@class, !@on_dark && "craie:hidden"]}
+    />
+    <img
+      :if={!@on_dark}
+      src={~p"/images/brand/scolaka-logo.svg"}
+      alt="Scolaka"
+      class={[@class, "hidden craie:block"]}
+    />
+    """
+  end
 
   @doc "The strip on every page while the operator acts as a member, with the way back."
   attr :scope, :map, required: true

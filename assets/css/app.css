@@ -26,6 +26,8 @@
 
 /* Use the data attribute for dark mode  */
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+/* The light « craie » mode (the dark board is the default, with no attribute). */
+@custom-variant craie (&:where([data-theme=light], [data-theme=light] *));
 
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }

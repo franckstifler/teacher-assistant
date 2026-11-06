@@ -97,6 +97,22 @@ defmodule TeacherAssistantWeb.PageControllerTest do
         do: assert(href in hrefs(menu, "a"))
   end
 
+  test "GET / carries a meta description, in the visitor's language", %{conn: conn} do
+    description = fn conn ->
+      conn
+      |> landing()
+      |> doc()
+      |> LazyHTML.query(~s(meta[name="description"]))
+      |> LazyHTML.attribute("content")
+    end
+
+    assert [fr] = description.(conn)
+    assert fr =~ "Tout l'établissement, sur le téléphone de chacun. L'appel, les notes"
+
+    assert [en] = conn |> init_test_session(%{locale: "en"}) |> description.()
+    assert en =~ "The whole school, on everyone's phone. "
+  end
+
   test "GET / in English reads in English", %{conn: conn} do
     html = conn |> init_test_session(%{locale: "en"}) |> landing()
 

@@ -17,7 +17,9 @@ defmodule TeacherAssistantWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths,
+    do:
+      ~w(assets fonts images favicon.ico robots.txt apple-touch-icon.png site.webmanifest icon-192.png icon-512.png icon-maskable-512.png og-image.png)
 
   def router do
     quote do

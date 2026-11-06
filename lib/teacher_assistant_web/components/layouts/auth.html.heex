@@ -367,16 +367,8 @@
     class="flex flex-wrap items-center justify-between gap-x-3 gap-y-5 px-4 py-3 sm:px-10 sm:py-4 lg:w-[42%] lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-8 lg:px-14 lg:py-12"
     style="background: #172321; color: #E8E5DC"
   >
-    <a href="/" class="flex items-center gap-2.5">
-      <span
-        class="grid size-9 place-items-center rounded-lg"
-        style="background: #E8E5DC; color: #172321; font-family: Fraunces, Georgia, serif; font-size: 1rem; font-weight: 700"
-      >
-        S
-      </span>
-      <span style="font-family: Fraunces, Georgia, serif; font-size: 1.05rem; font-weight: 600; color: #FFFFFF">
-        Scolaka
-      </span>
+    <a href="/" class="flex items-center">
+      <.logo on_dark class="h-8 w-auto" />
     </a>
 
     <div :if={@auth_copy[:panel]} class="hidden max-w-md lg:block">

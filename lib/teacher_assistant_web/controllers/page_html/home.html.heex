@@ -14,11 +14,8 @@
 
   <header class="sticky top-0 z-30 border-b border-base-300 bg-base-200/95 backdrop-blur">
     <div class="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6">
-      <a href={~p"/"} class="flex min-h-11 min-w-0 items-center gap-2.5">
-        <span class="ta-display grid size-8 flex-none place-items-center rounded-lg bg-primary text-[0.8rem] font-semibold text-primary-content">
-          S
-        </span>
-        <span class="truncate text-[0.95rem] font-semibold">Scolaka</span>
+      <a href={~p"/"} class="flex min-h-11 min-w-0 items-center">
+        <Layouts.logo class="h-7 w-auto" />
       </a>
       <nav class="ml-4 hidden items-center gap-0.5 lg:flex" aria-label={gettext("Sections")}>
         <a :for={{href, label} <- sections()} href={href} class="ta-landing__nav !px-2.5">
@@ -472,12 +469,7 @@
 
   <footer class="border-t border-base-300">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-8 text-sm sm:px-6">
-      <span class="flex items-center gap-2">
-        <span class="ta-display grid size-7 place-items-center rounded-md bg-primary text-xs font-semibold text-primary-content">
-          S
-        </span>
-        <span class="font-semibold">Scolaka</span>
-      </span>
+      <Layouts.logo class="h-6 w-auto" />
       <span class="ta-text-2">{gettext("Francophone et anglophone · Cameroun")}</span>
       <span class="flex flex-wrap items-center gap-x-1 sm:ml-auto">
         <.link :if={@current_user} href={~p"/school"} class="ta-landing__nav">

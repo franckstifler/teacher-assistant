@@ -1,0 +1,31 @@
+SCOLAKA — fichiers de marque (6 novembre 2026)
+
+logo/
+  scolaka-logo.svg / .png          Logo horizontal, vert profond, pour fonds clairs
+  scolaka-logo-reverse.svg / .png  Logo horizontal, blanc + menthe, pour fonds sombres
+  scolaka-logo-mono.svg            Une couleur (cachets, impression noir et blanc)
+  scolaka-mark*.svg                Le S seul : couleur, inversé, une couleur
+  Le nom est vectorisé (Plus Jakarta Sans ExtraBold) : aucune police à installer.
+
+icons/
+  favicon.ico (16, 32, 48), favicon-16/32/48.png   Onglet du navigateur
+  apple-touch-icon.png (180)                         Écran d'accueil iPhone
+  icon-192.png, icon-512.png                         Android, application installée
+  icon-maskable-512.png                              Android, icône adaptative (zone de sécurité respectée)
+  scolaka-icon.svg / scolaka-icon-mint.svg           Icône vectorielle, fond vert ou menthe
+  site.webmanifest                                   Nom, couleurs et icônes de l'application installée
+
+social/
+  og-image.png (1200 × 630)   Aperçu des liens partagés sur WhatsApp, Facebook, LinkedIn
+
+Couleurs
+  Vert profond  #1F3A2E    Menthe  #7FD9AE    Crème  #F4F1EA    Fond sombre de l'application  #0E1714
+
+Balises à placer dans le <head> du site :
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#1F3A2E">
+  <meta property="og:image" content="https://scolaka.com/og-image.png">
+  <meta property="og:title" content="Scolaka">
+  <meta property="og:description" content="Tout l'établissement, sur le téléphone de chacun.">

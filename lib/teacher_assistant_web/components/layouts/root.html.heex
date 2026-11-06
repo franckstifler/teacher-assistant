@@ -9,6 +9,17 @@
     <.live_title default="Scolaka" suffix=" · Cameroon Schools">
       {assigns[:page_title]}
     </.live_title>
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <link rel="apple-touch-icon" href={~p"/apple-touch-icon.png"} />
+    <link rel="manifest" href={~p"/site.webmanifest"} />
+    <meta name="theme-color" content="#1F3A2E" />
+    <%!-- The landing's headline and lede: the search-result snippet. --%>
+    <meta name="description" content={description()} />
+    <%!-- The preview WhatsApp, Facebook and LinkedIn show for a shared link. --%>
+    <meta property="og:title" content="Scolaka" />
+    <meta property="og:description" content={description()} />
+    <meta property="og:image" content={url(~p"/og-image.png")} />
+    <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="preload"
       href={~p"/fonts/ibm-plex-sans-normal-latin.woff2"}
