@@ -117,11 +117,11 @@ defmodule TeacherAssistantWeb.Layouts do
               <.icon name="hero-bars-3" class="size-5" />
             </label>
             <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-              TA
+              S
             </span>
             <span class="min-w-0 flex-1 leading-tight">
               <span class="block truncate text-sm font-semibold">
-                {@workspace_name || gettext("Teacher Assistant")}
+                {@workspace_name || "Scolaka"}
               </span>
               <span :if={@space} class="ta-text-2 block truncate text-xs">
                 {space_line(@space)}
@@ -182,7 +182,7 @@ defmodule TeacherAssistantWeb.Layouts do
               <span class="ta-num self-start rounded-md bg-[color:var(--ta-rail-fg)] px-2 py-0.5 text-[0.68rem] font-semibold tracking-[0.06em] text-[#0B1310]">
                 {gettext("OPÉRATEUR")}
               </span>
-              <span class="text-sm font-semibold">{gettext("Console Teacher Assistant")}</span>
+              <span class="text-sm font-semibold">{gettext("Console Scolaka")}</span>
               <span class="ta-num truncate text-xs text-[color:var(--ta-rail-faint)]">
                 {User.contact(@current_user)}
               </span>
@@ -196,7 +196,7 @@ defmodule TeacherAssistantWeb.Layouts do
                   class="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-[color:var(--ta-rail-hover)]"
                 >
                   <span class="grid size-8 flex-none place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-                    TA
+                    S
                   </span>
                   <span class="min-w-0 flex-1 leading-tight">
                     <span class="block truncate text-sm font-semibold ta-display">
@@ -385,9 +385,9 @@ defmodule TeacherAssistantWeb.Layouts do
         <header class="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-base-300 bg-base-100/95 px-4 backdrop-blur sm:px-6">
           <a href="/" class="flex items-center gap-2.5">
             <span class="grid size-8 place-items-center rounded-lg bg-primary text-primary-content ta-display text-sm font-bold">
-              TA
+              S
             </span>
-            <span class="text-sm font-semibold ta-display">Teacher Assistant</span>
+            <span class="text-sm font-semibold ta-display">Scolaka</span>
           </a>
           <.link navigate={~p"/sign-in"} class="btn btn-primary btn-sm ml-auto">
             <.icon name="hero-arrow-left-on-rectangle" class="size-4" />

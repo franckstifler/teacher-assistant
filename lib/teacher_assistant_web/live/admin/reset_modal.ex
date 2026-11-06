@@ -29,7 +29,7 @@ defmodule TeacherAssistantWeb.Admin.ResetModal do
           {@password}
         </p>
         <textarea id="reset-message" readonly class="textarea textarea-bordered w-full text-sm">{gettext(
-          "Votre mot de passe temporaire Teacher Assistant : %{password}. Il est valable 7 jours ; vous en choisirez un nouveau à la connexion.",
+          "Votre mot de passe temporaire Scolaka : %{password}. Il est valable 7 jours ; vous en choisirez un nouveau à la connexion.",
           password: @password
         )}</textarea>
       <% else %>

@@ -106,7 +106,7 @@ config :teacher_assistant, TeacherAssistantWeb.Endpoint,
 config :teacher_assistant, TeacherAssistant.Mailer, adapter: Swoosh.Adapters.Local
 
 config :teacher_assistant, TeacherAssistant.Accounts.Emails,
-  from: {"Teacher Assistant", "no-reply@teacherassistant.cm"}
+  from: {"Scolaka", "no-reply@scolaka.com"}
 
 # Configure esbuild (the version is required)
 config :esbuild,

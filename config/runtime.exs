@@ -147,9 +147,9 @@ if config_env() == :prod do
         Create one in Brevo: SMTP & API → API keys.
         """)
 
-  # The sender, as verified in Brevo (default: « Teacher Assistant » <no-reply@teacherassistant.cm>).
+  # The sender, as verified in Brevo (default: « Scolaka » <no-reply@scolaka.com>).
   if from_address = System.get_env("MAIL_FROM_ADDRESS") do
     config :teacher_assistant, TeacherAssistant.Accounts.Emails,
-      from: {System.get_env("MAIL_FROM_NAME") || "Teacher Assistant", from_address}
+      from: {System.get_env("MAIL_FROM_NAME") || "Scolaka", from_address}
   end
 end

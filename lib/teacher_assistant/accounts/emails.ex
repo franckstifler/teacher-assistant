@@ -9,7 +9,7 @@ defmodule TeacherAssistant.Accounts.Emails do
     |> subject(gettext("Invitation à rejoindre %{school}", school: school_name))
     |> text_body(
       gettext(
-        "Vous avez été invité(e) à rejoindre %{school} sur Teacher Assistant.\n\nAcceptez l'invitation ici : %{url}",
+        "Vous avez été invité(e) à rejoindre %{school} sur Scolaka.\n\nAcceptez l'invitation ici : %{url}",
         school: school_name,
         url: accept_url
       )
@@ -47,6 +47,6 @@ defmodule TeacherAssistant.Accounts.Emails do
 
   defp from_address do
     Application.get_env(:teacher_assistant, __MODULE__)[:from] ||
-      {"Teacher Assistant", "no-reply@teacherassistant.cm"}
+      {"Scolaka", "no-reply@scolaka.com"}
   end
 end

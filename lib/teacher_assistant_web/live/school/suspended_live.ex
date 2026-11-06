@@ -31,7 +31,7 @@ defmodule TeacherAssistantWeb.School.SuspendedLive do
         </p>
         <p class="text-sm text-base-content/70">
           {gettext(
-            "Contactez l'administrateur de Teacher Assistant pour rétablir l'accès. Si vous appartenez à un autre établissement, choisissez-le dans le menu."
+            "Contactez l'administrateur de Scolaka pour rétablir l'accès. Si vous appartenez à un autre établissement, choisissez-le dans le menu."
           )}
         </p>
       </section>

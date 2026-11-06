@@ -2558,11 +2558,6 @@ msgstr ""
 msgid "Séquence %{n}"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:124
-#, elixir-autogen, elixir-format
-msgid "Teacher Assistant"
-msgstr ""
-
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:689
 #, elixir-autogen, elixir-format
 msgid "Terminer la configuration"
@@ -2605,11 +2600,6 @@ msgstr ""
 #: lib/teacher_assistant/accounts/emails.ex:39
 #, elixir-autogen, elixir-format
 msgid "Votre lien de connexion"
-msgstr ""
-
-#: lib/teacher_assistant/accounts/emails.ex:11
-#, elixir-autogen, elixir-format
-msgid "Vous avez été invité(e) à rejoindre %{school} sur Teacher Assistant.\n\nAcceptez l'invitation ici : %{url}"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:175
@@ -9576,11 +9566,6 @@ msgstr ""
 msgid "Ce module n'est pas activé pour votre établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/suspended_live.ex:33
-#, elixir-autogen, elixir-format
-msgid "Contactez l'administrateur de Teacher Assistant pour rétablir l'accès. Si vous appartenez à un autre établissement, choisissez-le dans le menu."
-msgstr ""
-
 #: lib/teacher_assistant_web/live/school/settings_live.ex:148
 #, elixir-autogen, elixir-format
 msgid "Contactez l'administrateur pour en activer d'autres."
@@ -9707,11 +9692,6 @@ msgstr ""
 #: lib/teacher_assistant_web/live/admin/users_live.ex:69
 #, elixir-autogen, elixir-format
 msgid "Utilisateurs"
-msgstr ""
-
-#: lib/teacher_assistant_web/live/admin/reset_modal.ex:31
-#, elixir-autogen, elixir-format
-msgid "Votre mot de passe temporaire Teacher Assistant : %{password}. Il est valable 7 jours ; vous en choisirez un nouveau à la connexion."
 msgstr ""
 
 #: lib/teacher_assistant_web/components/layouts.ex:313
@@ -13752,11 +13732,6 @@ msgstr ""
 msgid "Comptes activés"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:185
-#, elixir-autogen, elixir-format
-msgid "Console Teacher Assistant"
-msgstr ""
-
 #: lib/teacher_assistant_web/live/admin/school_live.ex:442
 #, elixir-autogen, elixir-format
 msgid "Depuis le %{date} : %{reason}"
@@ -15118,4 +15093,24 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/page_html.ex:212
 #, elixir-autogen, elixir-format
 msgid "Oui : le sous-système anglophone a ses propres niveaux, ses bulletins s'impriment en anglais, et l'application se lit en français ou en anglais, au choix de chacun."
+msgstr ""
+
+#: lib/teacher_assistant_web/components/layouts.ex:185
+#, elixir-autogen, elixir-format
+msgid "Console Scolaka"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/suspended_live.ex:33
+#, elixir-autogen, elixir-format
+msgid "Contactez l'administrateur de Scolaka pour rétablir l'accès. Si vous appartenez à un autre établissement, choisissez-le dans le menu."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/admin/reset_modal.ex:31
+#, elixir-autogen, elixir-format
+msgid "Votre mot de passe temporaire Scolaka : %{password}. Il est valable 7 jours ; vous en choisirez un nouveau à la connexion."
+msgstr ""
+
+#: lib/teacher_assistant/accounts/emails.ex:11
+#, elixir-autogen, elixir-format
+msgid "Vous avez été invité(e) à rejoindre %{school} sur Scolaka.\n\nAcceptez l'invitation ici : %{url}"
 msgstr ""

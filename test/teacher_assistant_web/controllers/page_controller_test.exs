@@ -12,7 +12,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     html = landing(conn)
     doc = doc(html)
 
-    assert html =~ "Teacher Assistant"
+    assert html =~ "Scolaka"
     assert [_] = doc |> LazyHTML.query("h1") |> Enum.to_list()
     assert LazyHTML.text(doc["h1"]) =~ "Tout l'établissement, sur le téléphone de chacun."
 
