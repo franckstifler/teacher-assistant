@@ -14,8 +14,8 @@ The server refuses to start when a required variable is missing.
 | `PORT` | no | Defaults to 4000 |
 | `POOL_SIZE` | no | Database connections, default 10 |
 | `BREVO_API_KEY` | yes | Sends invitations, magic links and password resets |
-| `MAIL_FROM_ADDRESS` | yes in practice | The sender, verified in Brevo, e.g. `no-reply@example.cm` |
-| `MAIL_FROM_NAME` | no | The sender's name, default « Teacher Assistant » |
+| `MAIL_FROM_ADDRESS` | yes in practice | The sender, verified in Brevo, e.g. `no-reply@scolaka.com` (also the default) |
+| `MAIL_FROM_NAME` | no | The sender's name, default « Scolaka » |
 | `UPLOADS_DIR` | yes (set by the Docker image to `/data/uploads`) | Where logos, signatures, stamps and student photos are stored. The server refuses to start if the directory doesn't exist or isn't writable. |
 
 Changing `SECRET_KEY_BASE` invalidates the QR and check codes already printed on
