@@ -94,11 +94,24 @@ defmodule TeacherAssistantWeb.SpacesTest do
       assert tab_labels(:enseignant, facts([:teacher], form_master?: true)) ==
                ["Bulletins", "EDT", "Classes"]
 
-      assert tab_labels(:intendant, facts([:bursar])) == [
-               "Frais",
-               "Classes",
-               "Paramètres des frais"
-             ]
+      assert tab_labels(:intendant, facts([:bursar])) == ["Frais", "Classes", "Paramètres"]
+    end
+
+    test "topped-up tabs get short labels too" do
+      # a school without « Emploi du temps »: the teacher's fourth tab comes from the menu
+      space = Spaces.space(:enseignant, facts([:teacher], teaches?: true))
+
+      no_timetable = %{
+        space
+        | sections:
+            for(
+              s <- space.sections,
+              do: %{s | items: Enum.reject(s.items, &(&1.id == "nav-school-timetable-me"))}
+            )
+      }
+
+      assert for(tab <- Spaces.tab_bar(no_timetable).primary, do: tab.label) ==
+               ["Ma journée", "Mes cours", "Bulletins", "Corrections"]
     end
   end
 

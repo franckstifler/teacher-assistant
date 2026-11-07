@@ -288,23 +288,23 @@ defmodule TeacherAssistantWeb.Spaces do
 
   @doc """
   The phone tab bar of a space (UI review 2026-10): up to four `primary` tabs,
-  each an item of the space's menu under a short label, and the menu `more`
+  each an item of the space's menu under its short tab label, and the menu `more`
   sections minus those items (the « Plus » sheet). A space whose chosen items
-  are missing (a member who does not teach…) is topped up from its menu in
-  order.
+  are missing (a member who does not teach, a school without a module…) is
+  topped up from its menu in order, under short labels too.
   """
   def tab_bar(%{key: key, sections: sections}) do
     items = Enum.flat_map(sections, & &1.items)
     by_id = Map.new(items, &{&1.id, &1})
 
-    chosen =
-      for {id, label} <- tab_spec(key),
-          item = by_id["nav-school-" <> id],
-          item != nil,
-          do: %{item | label: label}
-
+    chosen = for id <- tab_spec(key), item = by_id["nav-school-" <> id], item != nil, do: item
     taken = MapSet.new(chosen, & &1.id)
-    primary = Enum.take(chosen ++ Enum.reject(items, &MapSet.member?(taken, &1.id)), 4)
+
+    primary =
+      (chosen ++ Enum.reject(items, &MapSet.member?(taken, &1.id)))
+      |> Enum.take(4)
+      |> Enum.map(&%{&1 | label: tab_label(&1)})
+
     shown = MapSet.new(primary, & &1.id)
 
     more =
@@ -355,41 +355,33 @@ defmodule TeacherAssistantWeb.Spaces do
   def owner_item_for(%{capabilities: %{space: %{} = space}}, ids), do: owner_item(space, ids)
   def owner_item_for(_scope, _ids), do: nil
 
-  defp tab_spec(:proviseur),
-    do: [
-      {"dashboard", gettext("Accueil")},
-      {"classes", gettext("Classes")},
-      {"students", gettext("Élèves")},
-      {"bulletins", gettext("Bulletins")}
-    ]
-
-  defp tab_spec(:censeur),
-    do: [
-      {"sequences", gettext("Suivi")},
-      {"timetable-editor", gettext("EDT")},
-      {"classes", gettext("Classes")},
-      {"bulletins", gettext("Bulletins")}
-    ]
-
-  defp tab_spec(:surveillant),
-    do: [
-      {"day", gettext("Journée")},
-      {"absences", gettext("Absences")},
-      {"students", gettext("Élèves")},
-      {"sanctions", gettext("Sanctions")}
-    ]
+  defp tab_spec(:proviseur), do: ["dashboard", "classes", "students", "bulletins"]
+  defp tab_spec(:censeur), do: ["sequences", "timetable-editor", "classes", "bulletins"]
+  defp tab_spec(:surveillant), do: ["day", "absences", "students", "sanctions"]
 
   # Marks are entered per course, so « Mes cours » covers them (a course's pages
-  # name it as their menu entry); Bulletins gets the fourth tab.
-  defp tab_spec(:enseignant),
-    do: [
-      {"today", gettext("Ma journée")},
-      {"courses", gettext("Mes cours")},
-      {"bulletins", gettext("Bulletins")},
-      {"timetable-me", gettext("EDT")}
-    ]
-
+  # name it as their menu entry); Bulletins gets the third tab.
+  defp tab_spec(:enseignant), do: ["today", "courses", "bulletins", "timetable-me"]
   defp tab_spec(_key), do: []
+
+  # A tab is a fifth of a phone's width: menu labels longer than a word get a
+  # short one, for chosen tabs and topped-up ones alike.
+  defp tab_label(%{id: "nav-school-" <> id} = item) do
+    case id do
+      "dashboard" -> gettext("Accueil")
+      "sequences" -> gettext("Suivi")
+      "timetable-editor" -> gettext("EDT")
+      "timetable-me" -> gettext("EDT")
+      "day" -> gettext("Journée")
+      "corrections" -> gettext("Corrections")
+      "correction-review" -> gettext("Validations")
+      "councils" -> gettext("Conseils")
+      "settings" -> gettext("Paramètres")
+      "fee-settings" -> gettext("Paramètres")
+      "school-life" -> gettext("Règles")
+      _ -> item.label
+    end
+  end
 
   defp section(label, items), do: %{label: label, items: items}
 
