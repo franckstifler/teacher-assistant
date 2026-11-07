@@ -45,3 +45,6 @@ npm-debug.log
 
 # Uploaded files in dev (logos, student photos)
 /priv/uploads/
+
+# Seeds holding a real school's data (students are minors): local only
+/priv/repo/*.local.exs
