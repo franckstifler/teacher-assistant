@@ -10,7 +10,7 @@ defmodule TeacherAssistant.RuntimeMailConfigTest do
     "TOKEN_SIGNING_SECRET" => "t",
     "UPLOADS_DIR" => "/data/uploads"
   }
-  @mail_vars ~w(BREVO_API_KEY MAIL_FROM_ADDRESS MAIL_FROM_NAME)
+  @mail_vars ~w(BREVO_API_KEY MAIL_FROM_ADDRESS MAIL_FROM_NAME TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID)
 
   setup do
     saved = Map.new(Map.keys(@base) ++ @mail_vars, &{&1, System.get_env(&1)})
@@ -54,5 +54,16 @@ defmodule TeacherAssistant.RuntimeMailConfigTest do
   test "without them the sender keeps its default" do
     System.put_env("BREVO_API_KEY", "k")
     refute prod_config()[:teacher_assistant][TeacherAssistant.Accounts.Emails]
+  end
+
+  test "Telegram alerts take the bot token and chat id from the environment, if set" do
+    System.put_env(%{"BREVO_API_KEY" => "k"})
+    refute TeacherAssistant.Telegram.configured?()
+    assert prod_config()[:teacher_assistant][TeacherAssistant.Telegram][:bot_token] == nil
+
+    System.put_env(%{"TELEGRAM_BOT_TOKEN" => "123:ABC", "TELEGRAM_CHAT_ID" => "-1001"})
+    telegram = prod_config()[:teacher_assistant][TeacherAssistant.Telegram]
+    assert telegram[:bot_token] == "123:ABC"
+    assert telegram[:chat_id] == "-1001"
   end
 end

@@ -11,7 +11,8 @@ defmodule TeacherAssistant.ErrorReporting do
     * crashes of other processes (GenServers, Tasks), from their `:logger` crash
       reports — once only, when the crash was already reported by ErrorTracker;
     * an e-mail to the operators when an error is new or comes back after being
-      resolved (`TeacherAssistant.Workers.ErrorAlert`);
+      resolved (`TeacherAssistant.Workers.ErrorAlert`), and a Telegram message when
+      Telegram is set up (`TeacherAssistant.Workers.TelegramAlert`);
     * its integrations attached again if a failure (the database down, say) made
       `:telemetry` detach them, instead of errors going unrecorded until a restart.
 
@@ -99,6 +100,8 @@ defmodule TeacherAssistant.ErrorReporting do
     %{"error_id" => error.id, "reopened" => reopened?}
     |> TeacherAssistant.Workers.ErrorAlert.new()
     |> Oban.insert()
+
+    TeacherAssistant.Workers.TelegramAlert.error(error, reopened?)
   end
 
   @doc false

@@ -15193,3 +15193,18 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Validations"
 msgstr ""
+
+#: lib/teacher_assistant/workers/telegram_alert.ex:74
+#, elixir-autogen, elixir-format
+msgid "Erreur revenue : %{kind}\nÀ %{source}\n%{url}"
+msgstr ""
+
+#: lib/teacher_assistant/workers/telegram_alert.ex:80
+#, elixir-autogen, elixir-format
+msgid "Nouvelle erreur : %{kind}\nÀ %{source}\n%{url}"
+msgstr ""
+
+#: lib/teacher_assistant/workers/telegram_alert.ex:51
+#, elixir-autogen, elixir-format
+msgid "Nouvelle école à vérifier : %{name} (%{town})\n%{url}"
+msgstr ""

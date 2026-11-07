@@ -16,6 +16,8 @@ The server refuses to start when a required variable is missing.
 | `BREVO_API_KEY` | yes | Sends invitations, magic links and password resets |
 | `MAIL_FROM_ADDRESS` | yes in practice | The sender, verified in Brevo, e.g. `no-reply@scolaka.com` (also the default) |
 | `MAIL_FROM_NAME` | no | The sender's name, default « Scolaka » |
+| `TELEGRAM_BOT_TOKEN` | no | With `TELEGRAM_CHAT_ID`: operator alerts on Telegram (see « Telegram alerts ») |
+| `TELEGRAM_CHAT_ID` | no | The chat the alerts go to |
 | `UPLOADS_DIR` | yes (set by the Docker image to `/data/uploads`) | Where logos, signatures, stamps and student photos are stored. The server refuses to start if the directory doesn't exist or isn't writable. |
 
 Changing `SECRET_KEY_BASE` invalidates the QR and check codes already printed on
@@ -102,6 +104,30 @@ operator ids), never what was typed or sent: no form contents, query strings, IP
 addresses or task arguments (`TeacherAssistant.ErrorReporting.Filter`).
 
 Nothing to configure: the tables come with the migrations (`bin/migrate`).
+
+## Telegram alerts
+
+Optional. With `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` both set, the operators'
+Telegram chat gets a message when:
+
+- a school signs up and waits to be verified, with its name, town and `/admin` link;
+- an error is new or comes back (the same events as the e-mails above, muting included).
+
+Error messages carry the error's kind, where it happened and its link, never its text:
+Telegram is a third party and the text may hold a pupil's data. Read it in
+`/admin/errors`.
+
+To set it up:
+
+1. In Telegram, talk to **@BotFather**, send `/newbot` and pick a name. It answers with
+   the bot token: that is `TELEGRAM_BOT_TOKEN`.
+2. Open the new bot and send it any message (a bot can only write to a chat that wrote
+   to it first). For a group, add the bot to the group and post a message there.
+3. Find the chat id: open `https://api.telegram.org/bot<TOKEN>/getUpdates` and read
+   `"chat":{"id": …}` (a group's id starts with `-`). That is `TELEGRAM_CHAT_ID`.
+4. Set both on the server and restart the container.
+
+Without them nothing is sent, and nothing is queued.
 
 ## Backups
 

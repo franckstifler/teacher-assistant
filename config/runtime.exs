@@ -147,6 +147,12 @@ if config_env() == :prod do
         Create one in Brevo: SMTP & API → API keys.
         """)
 
+  # Operator alerts on Telegram (new schools, errors): optional, both or nothing.
+  # See docs/DEPLOY.md.
+  config :teacher_assistant, TeacherAssistant.Telegram,
+    bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
+    chat_id: System.get_env("TELEGRAM_CHAT_ID")
+
   # The sender, as verified in Brevo (default: « Scolaka » <no-reply@scolaka.com>).
   if from_address = System.get_env("MAIL_FROM_ADDRESS") do
     config :teacher_assistant, TeacherAssistant.Accounts.Emails,

@@ -64,7 +64,9 @@ defmodule TeacherAssistant.Academics.Workspace do
                         Map.get(profile_attrs, :subsystem)
                       ),
                     :ok <- seed_periods(workspace),
-                    :ok <- seed_assessment_types(workspace) do
+                    :ok <- seed_assessment_types(workspace),
+                    # queued in this transaction: no message for a school rolled back
+                    :ok <- TeacherAssistant.Workers.TelegramAlert.new_school(workspace) do
                  {:ok, workspace}
                end
              end)
