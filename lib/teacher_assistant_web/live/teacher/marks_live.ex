@@ -105,7 +105,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     |> assign(:roster, roster(socket.assigns.groups))
     |> assign(errors: %{}, saved_at: nil, today: Reference.today())
     |> assign(:apc?, apc?(scope, socket.assigns.groups))
-    |> assign(competence: nil, competence_reminder_dismissed?: false)
+    |> assign(competence: nil, competence_reminder_dismissed?: false, new_competence: "")
     |> assign(sheet: nil, keypad: nil, keypad_pending?: false)
     |> assign(course_units: [], course_query: "", auto_label: nil, edit_form: nil)
     |> assign_assessment_defaults(scope)
@@ -377,9 +377,29 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   defp start_entry(socket, seq, assessment_id) do
     socket
+    |> put_new_competence(seq)
     |> assign(:keypad_pending?, true)
     |> push_patch(to: marks_path(socket, seq, assessment_id))
   end
+
+  # The competence written in « Nouvelle évaluation » (asked there only while the
+  # séquence has none): saved with the évaluation, never blocking it.
+  defp put_new_competence(%{assigns: %{apc?: true, competence: nil}} = socket, seq) do
+    case String.trim(socket.assigns.new_competence) do
+      "" ->
+        socket
+
+      text ->
+        %{current_scope: scope, ctx: ctx} = socket.assigns
+
+        case Assessment.put_sequence_competence(scope, ctx, seq, text) do
+          :ok -> socket
+          {:error, _} -> put_flash(socket, :error, gettext("Compétence non enregistrée."))
+        end
+    end
+  end
+
+  defp put_new_competence(socket, _seq), do: socket
 
   defp marks_path(socket, seq, nil),
     do: ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}"
@@ -484,7 +504,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       end
 
     form = AshPhoenix.Form.validate(socket.assigns.new_assessment_form, p, errors: false)
-    {:noreply, assign(socket, new_assessment_form: form, auto_label: auto)}
+
+    {:noreply,
+     assign(socket,
+       new_assessment_form: form,
+       auto_label: auto,
+       new_competence: get_in(params, ["competence", "text"]) || socket.assigns.new_competence
+     )}
   end
 
   def handle_event("save_competence", %{"competence" => %{"text" => text}}, socket),
@@ -505,7 +531,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   def handle_event("new_assessment", _params, %{assigns: %{locked?: true}} = socket),
     do: {:noreply, put_flash(socket, :error, gettext("Séquence verrouillée."))}
 
-  def handle_event("new_assessment", %{"assessment" => p}, socket) do
+  def handle_event("new_assessment", %{"assessment" => p} = params, socket) do
+    socket =
+      case get_in(params, ["competence", "text"]) do
+        text when is_binary(text) -> assign(socket, :new_competence, text)
+        _ -> socket
+      end
+
     case socket.assigns[:course] do
       %CombinedCourse{} = course ->
         new_combined_assessment(socket, course, normalize_assessment_params(p, socket))
@@ -623,6 +655,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      assign(socket,
        sheet: :new_eval,
        auto_label: nil,
+       new_competence: "",
        new_assessment_form: new_assessment_form(socket, socket.assigns.seq)
      )}
   end
@@ -1127,9 +1160,28 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             ]
           }
         >
-          <%!-- Phones: one line, the full form in a sheet. --%>
+          <%!-- Phones: one line, the full form in a sheet; while it is missing (and
+               can still be written), a banner the teacher cannot overlook. --%>
           <button
-            :if={@apc? && @seq}
+            :if={@apc? && @seq && is_nil(@competence) && !@locked?}
+            type="button"
+            id="competence-open"
+            phx-click={JS.push("open_sheet", value: %{sheet: "competence"})}
+            class="flex w-full items-center gap-3 rounded-box border border-warning/50 bg-warning/10 px-3 py-2.5 text-left sm:hidden"
+          >
+            <.icon name="hero-pencil-square" class="size-5 shrink-0 text-warning" />
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-semibold">
+                {gettext("Compétence de la séquence %{n} à écrire", n: @seq.number)}
+              </span>
+              <span class="block text-xs text-base-content/70">
+                {gettext("Elle figure sur le bulletin de chaque élève.")}
+              </span>
+            </span>
+            <span class="btn btn-sm btn-warning shrink-0">{gettext("Écrire")}</span>
+          </button>
+          <button
+            :if={@apc? && @seq && !(is_nil(@competence) && !@locked?)}
             type="button"
             id="competence-open"
             phx-click={JS.push("open_sheet", value: %{sheet: "competence"})}
@@ -1142,7 +1194,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               do: gettext("Compétence : %{text}", text: @competence),
               else: gettext("Compétence à renseigner — elle figure sur le bulletin")}
           </button>
-          <span :if={!(@apc? && @seq)} class="flex-1 sm:hidden"></span>
+          <%!-- pushes the evaluation menu to the right, under the banner --%>
+          <span
+            :if={!(@apc? && @seq) or (is_nil(@competence) && !@locked?)}
+            class="flex-1 sm:hidden"
+          ></span>
           <.competence_form
             :if={@apc? && @seq}
             id="sequence-competence"
@@ -1542,6 +1598,23 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           <p class="-mt-3 text-xs text-base-content/70">
             {gettext("Le nom se remplit d'après le type ; modifiable.")}
           </p>
+          <%!-- APC: one competence per séquence, so asked only while it has none --%>
+          <div :if={@apc? && is_nil(@competence)} id="new-eval-competence-field">
+            <.input
+              type="text"
+              id="new-eval-competence"
+              name="competence[text]"
+              value={@new_competence}
+              maxlength="140"
+              label={gettext("Compétence évaluée (séquence %{n})", n: @seq.number)}
+              placeholder={gettext("ex. Résoudre une équation")}
+            />
+            <p class="mt-1 text-xs text-base-content/70">
+              {gettext(
+                "Une par séquence pour la matière ; elle figure sur le bulletin. Vous pouvez aussi l'écrire plus tard."
+              )}
+            </p>
+          </div>
           <button type="submit" id="new-eval-submit" class="btn btn-primary h-12 w-full">
             {gettext("Créer et commencer la saisie")}
           </button>

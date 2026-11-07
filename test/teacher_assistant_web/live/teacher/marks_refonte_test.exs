@@ -80,7 +80,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksRefonteTest do
       refute has_element?(view, "#keypad-open")
     end
 
-    test "the competence is one line on phones, its form in a sheet", ctx do
+    test "the competence is a banner on phones while missing, its form in a sheet", ctx do
       {:ok, _} =
         Assessment.update_bulletin_settings(ctx.head, %{
           "language" => "by_class",
@@ -88,7 +88,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksRefonteTest do
         })
 
       {:ok, view, _} = live(ctx.conn, ctx.path)
-      assert has_element?(view, "#competence-open", "à renseigner")
+      assert has_element?(view, "#competence-open", "à écrire")
 
       view |> element("#competence-open") |> render_click()
 

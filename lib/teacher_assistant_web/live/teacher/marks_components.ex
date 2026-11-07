@@ -551,7 +551,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
               )}
             </span>
           </div>
-          <p id="keypad-student" class="truncate text-[1.375rem] font-semibold">
+          <p id="keypad-student" class="line-clamp-2 text-[1.375rem] font-semibold leading-tight">
             {@focus.student.full_name}
           </p>
           <div class="ta-num flex items-baseline gap-1.5">

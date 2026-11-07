@@ -557,6 +557,80 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
       refute has_element?(view, "#sequence-competence")
       refute has_element?(view, "#competence-reminder")
+      open_new_eval(view)
+      refute has_element?(view, "#new-eval-competence")
+    end
+
+    test "phones: a banner while the competence is missing, one line once written", %{
+      conn: conn,
+      ctx: ctx,
+      seq: seq,
+      scope: scope
+    } do
+      apc_on(scope)
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+      assert has_element?(
+               view,
+               "#competence-open",
+               "Compétence de la séquence #{seq.number} à écrire"
+             )
+
+      :ok = Assessment.put_sequence_competence(scope, ctx, seq, "Résoudre une équation")
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+      assert has_element?(view, "#competence-open", "Compétence : Résoudre une équation")
+    end
+
+    test "« Nouvelle évaluation » asks the séquence's competence while it has none", %{
+      conn: conn,
+      ctx: ctx,
+      seq: seq,
+      scope: scope
+    } do
+      apc_on(scope)
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+      open_new_eval(view)
+      assert has_element?(view, "#new-eval-competence")
+
+      view
+      |> form("#new-assessment-form", %{
+        "assessment" => %{"label" => "Devoir 2"},
+        "competence" => %{"text" => " Résoudre une équation "}
+      })
+      |> render_submit()
+
+      assert Enum.any?(Assessment.list_assessments(scope, ctx, seq), &(&1.label == "Devoir 2"))
+
+      assert Assessment.sequence_competences(scope, [ctx.id], [seq.id]) ==
+               %{{ctx.id, seq.id} => "Résoudre une équation"}
+
+      # written once for the séquence: the next évaluation does not ask again
+      open_new_eval(view)
+      refute has_element?(view, "#new-eval-competence")
+    end
+
+    test "« Nouvelle évaluation » left without a competence still creates it", %{
+      conn: conn,
+      ctx: ctx,
+      seq: seq,
+      scope: scope
+    } do
+      apc_on(scope)
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks?seq=#{seq.id}")
+
+      open_new_eval(view)
+
+      view
+      |> form("#new-assessment-form", %{
+        "assessment" => %{"label" => "Devoir 2"},
+        "competence" => %{"text" => ""}
+      })
+      |> render_submit()
+
+      assert Enum.any?(Assessment.list_assessments(scope, ctx, seq), &(&1.label == "Devoir 2"))
+      assert Assessment.sequence_competences(scope, [ctx.id], [seq.id]) == %{}
     end
   end
 end
