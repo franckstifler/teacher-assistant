@@ -25,7 +25,16 @@ defmodule TeacherAssistantWeb.Endpoint do
     at: "/",
     from: :teacher_assistant,
     gzip: not code_reloading?,
-    only: TeacherAssistantWeb.static_paths()
+    only: TeacherAssistantWeb.static_paths(),
+    # In production ~p links a root file by its digested name
+    # (/site-<hash>.webmanifest): serve those too, or the manifest, icons and
+    # link-preview image are 404s and the app can't be installed.
+    only_matching:
+      for(
+        path <- TeacherAssistantWeb.static_paths(),
+        Path.extname(path) != "",
+        do: Path.rootname(path) <> "-"
+      )
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
