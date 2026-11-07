@@ -1228,7 +1228,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           <div class="space-y-3">
             <.pending_makeups names={@pending_makeups} />
             <div class="-mx-4 border-y border-base-300 bg-base-100 sm:mx-0 sm:overflow-x-auto sm:rounded-box sm:border">
-              <table id="marks-table" class="table table-sm block sm:table" phx-hook=".MarksGrid">
+              <%!-- `max-sm:block`, not `block sm:table`: daisyUI's `table` class is also
+                   Tailwind's `display: table` utility, which comes after `.block` and
+                   would keep a real table on phones, as wide as its longest name --%>
+              <table id="marks-table" class="table table-sm max-sm:block" phx-hook=".MarksGrid">
                 <thead class="hidden sm:table-header-group">
                   <tr>
                     <th>{gettext("N°")}</th>

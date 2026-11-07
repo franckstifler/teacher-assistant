@@ -88,7 +88,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
         {@n}
       </td>
       <td class="min-w-0 flex-1 p-0 sm:px-4 sm:py-2">
-        <span class="block truncate text-[0.95rem] sm:text-sm">{@student.full_name}</span>
+        <%!-- two lines on phones rather than cut: long names often differ only at the end --%>
+        <span class="block text-[0.95rem] leading-snug max-sm:line-clamp-2 sm:truncate sm:text-sm">
+          {@student.full_name}
+        </span>
         <span class="block truncate text-xs sm:hidden">
           <span :if={@error} class="font-semibold text-error">{@error}</span>
           <.appreciation

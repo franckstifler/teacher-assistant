@@ -320,7 +320,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               <:leading><.student_avatar student={e.student} class="size-10 text-xs" /></:leading>
             </.list_row>
           </div>
-          <table class="table hidden sm:table">
+          <table class="table max-sm:hidden">
             <thead>
               <tr>
                 <th>{gettext("Élève")}</th>
