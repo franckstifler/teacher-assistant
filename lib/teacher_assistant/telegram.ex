@@ -24,7 +24,14 @@ defmodule TeacherAssistant.Telegram do
         text: text,
         link_preview_options: %{is_disabled: true}
       },
-      retry: false
+      # Telegram answers within a second. A pooled connection left idle (a day, for the
+      # morning digest) can be dead and only time out: then one retry, on a new one.
+      receive_timeout: 5_000,
+      connect_options: [timeout: 5_000],
+      retry: :transient,
+      max_retries: 1,
+      retry_delay: 200,
+      retry_log_level: false
     ]
     |> Keyword.merge(config[:req_options] || [])
     |> Req.post()

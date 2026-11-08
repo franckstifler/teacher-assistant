@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
 
   import TeacherAssistantWeb.Admin.AdminComponents
 
-  alias TeacherAssistant.{Accounts, Modules, Operator}
+  alias TeacherAssistant.{Accounts, Modules, Operator, Telegram}
   alias TeacherAssistant.Accounts.AuditEvent
   alias TeacherAssistantWeb.Dates
 
@@ -22,9 +22,55 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
        page_title: gettext("Vue d'ensemble"),
        overview: Operator.overview(scope),
        events: Accounts.list_audit_events(scope, limit: 10),
-       now: DateTime.utc_now()
+       now: DateTime.utc_now(),
+       telegram?: Telegram.configured?(),
+       telegram_sending?: false
      )}
   end
+
+  # Sent in the background: a slow Telegram must not freeze the console.
+  def handle_event("telegram_test", _params, %{assigns: %{telegram_sending?: false}} = socket) do
+    scope = socket.assigns.current_scope
+    text = gettext("Scolaka : les alertes Telegram fonctionnent.")
+
+    {:noreply,
+     socket
+     |> assign(telegram_sending?: true)
+     |> start_async(:telegram_test, fn -> Operator.send_telegram_test(scope, text) end)}
+  end
+
+  def handle_event("telegram_test", _params, socket), do: {:noreply, socket}
+
+  def handle_async(:telegram_test, result, socket) do
+    socket =
+      case result do
+        {:ok, :ok} ->
+          put_flash(socket, :info, gettext("Message test envoyé sur Telegram."))
+
+        {:ok, {:error, reason}} ->
+          put_flash(
+            socket,
+            :error,
+            gettext("Telegram a refusé le message : %{reason}", reason: refusal(reason))
+          )
+
+        {:exit, _reason} ->
+          put_flash(socket, :error, gettext("Le message test n'a pas pu partir."))
+      end
+
+    {:noreply, assign(socket, telegram_sending?: false)}
+  end
+
+  # The two set-up mistakes, named after the variable to fix; anything else as Telegram says it.
+  defp refusal({401, _description}),
+    do: gettext("jeton du bot refusé, vérifiez TELEGRAM_BOT_TOKEN")
+
+  defp refusal({400, "Bad Request: chat not found"}),
+    do: gettext("chat introuvable, vérifiez TELEGRAM_CHAT_ID et écrivez d'abord au bot")
+
+  defp refusal({status, nil}), do: "HTTP #{status}"
+  defp refusal({_status, description}), do: description
+  defp refusal(message), do: message
 
   def render(assigns) do
     assigns =
@@ -314,6 +360,26 @@ defmodule TeacherAssistantWeb.Admin.OverviewLive do
                   else: "—"}
               </dd>
             </dl>
+            <div class="mt-1 flex items-center justify-between gap-3 border-t border-base-300 pt-2 text-sm">
+              <span class="ta-text-2">{gettext("Alertes Telegram")}</span>
+              <button
+                :if={@telegram?}
+                id="telegram-test"
+                type="button"
+                phx-click="telegram_test"
+                disabled={@telegram_sending?}
+                class="btn btn-ghost btn-xs"
+              >
+                <span :if={@telegram_sending?} class="loading loading-spinner loading-xs"></span>
+                <.icon :if={!@telegram_sending?} name="hero-paper-airplane" class="size-3.5" />
+                {if @telegram_sending?,
+                  do: gettext("Envoi…"),
+                  else: gettext("Envoyer un message test")}
+              </button>
+              <span :if={!@telegram?} id="telegram-off" class="ta-text-2">
+                {gettext("Non configurées")}
+              </span>
+            </div>
           </section>
         </div>
 

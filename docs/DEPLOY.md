@@ -111,7 +111,11 @@ Optional. With `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` both set, the operato
 Telegram chat gets a message when:
 
 - a school signs up and waits to be verified, with its name, town and `/admin` link;
-- an error is new or comes back (the same events as the e-mails above, muting included).
+- an error is new or comes back (the same events as the e-mails above, muting included);
+- every morning at 07:00 (school time): schools waiting to be verified, schools gone
+  quiet or never used, open errors and jobs abandoned since yesterday. It is sent even
+  when there is nothing to handle (« Rien à traiter »): no message means the app or
+  its alerts are down.
 
 Error messages carry the error's kind, where it happened and its link, never its text:
 Telegram is a third party and the text may hold a pupil's data. Read it in
@@ -126,6 +130,8 @@ To set it up:
 3. Find the chat id: open `https://api.telegram.org/bot<TOKEN>/getUpdates` and read
    `"chat":{"id": …}` (a group's id starts with `-`). That is `TELEGRAM_CHAT_ID`.
 4. Set both on the server and restart the container.
+5. Check: in the console (`/admin`), panel « Système », press « Envoyer un message
+   test ». A wrong token or chat id is named in the error shown.
 
 Without them nothing is sent, and nothing is queued.
 

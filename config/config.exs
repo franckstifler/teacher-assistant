@@ -24,7 +24,9 @@ config :teacher_assistant, Oban,
         args: %{"half" => "afternoon"}},
        # Monday 06:30 school time: paper roll-call sheets of past weeks not typed in.
        {"30 5 * * 1", TeacherAssistant.Workers.PaperSheetsOverdue},
-       {"10 6 * * *", TeacherAssistant.Workers.ExpiredTemporaryPasswords}
+       {"10 6 * * *", TeacherAssistant.Workers.ExpiredTemporaryPasswords},
+       # 07:00 school time: the operators' morning message on Telegram, when set up.
+       {"0 6 * * *", TeacherAssistant.Workers.TelegramDigest}
      ]}
   ]
 

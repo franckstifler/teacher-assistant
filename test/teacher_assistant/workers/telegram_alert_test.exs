@@ -6,28 +6,7 @@ defmodule TeacherAssistant.Workers.TelegramAlertTest do
   alias TeacherAssistant.{Telegram, TeacherFixtures}
   alias TeacherAssistant.Workers.TelegramAlert
 
-  @test_config Application.compile_env(:teacher_assistant, Telegram, [])
-
-  defp set_up_telegram do
-    Application.put_env(
-      :teacher_assistant,
-      Telegram,
-      Keyword.merge(@test_config, bot_token: "123:ABC", chat_id: "-1001")
-    )
-
-    on_exit(fn -> Application.put_env(:teacher_assistant, Telegram, @test_config) end)
-  end
-
-  # The messages Telegram would receive, sent to the test process.
-  defp stub_telegram(status \\ 200, body \\ %{"ok" => true}) do
-    test = self()
-
-    Req.Test.stub(Telegram, fn conn ->
-      {:ok, raw, conn} = Plug.Conn.read_body(conn)
-      send(test, {:telegram, conn.request_path, Jason.decode!(raw)})
-      conn |> Plug.Conn.put_status(status) |> Req.Test.json(body)
-    end)
-  end
+  import TeacherAssistant.TelegramHelpers
 
   defp report(message) do
     raise message
@@ -120,12 +99,29 @@ defmodule TeacherAssistant.Workers.TelegramAlertTest do
     set_up_telegram()
     assert Telegram.configured?()
 
-    Application.put_env(
-      :teacher_assistant,
-      Telegram,
-      Keyword.put(@test_config, :bot_token, "1:A")
-    )
-
+    set_up_telegram(bot_token: "1:A", chat_id: nil)
     refute Telegram.configured?()
+  end
+
+  test "a dead connection is retried once, on a new one" do
+    set_up_telegram()
+    test = self()
+
+    Req.Test.expect(TeacherAssistant.Telegram, 2, fn conn ->
+      send(test, :attempt)
+
+      case Process.get(:telegram_attempts, 0) do
+        0 ->
+          Process.put(:telegram_attempts, 1)
+          Req.Test.transport_error(conn, :closed)
+
+        _ ->
+          Req.Test.json(conn, %{"ok" => true})
+      end
+    end)
+
+    assert :ok = Telegram.send_message("hello")
+    assert_received :attempt
+    assert_received :attempt
   end
 end

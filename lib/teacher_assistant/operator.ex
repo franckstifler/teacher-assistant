@@ -40,13 +40,7 @@ defmodule TeacherAssistant.Operator do
     now = DateTime.utc_now()
     week_ago = DateTime.add(now, -7, :day)
     profiles = SchoolProfile |> Ash.Query.load(:workspace) |> Ash.read!(@read)
-
-    live =
-      Enum.filter(
-        profiles,
-        &(&1.verification_status == :verified and is_nil(&1.workspace.suspended_at))
-      )
-
+    live = live_schools(profiles)
     per_school = activity_per_school(now)
     with_students = schools_with_students()
 
@@ -71,6 +65,33 @@ defmodule TeacherAssistant.Operator do
       school_rows: school_rows(profiles, per_school, with_students, accounts_per_school()),
       system: system()
     }
+  end
+
+  @doc """
+  The morning Telegram digest (`TeacherAssistant.Workers.TelegramDigest`): the
+  overview's « À traiter » lists (`pending`, `quiet`, `silent`), the open errors and
+  the jobs abandoned in the last 24 hours. Read by a cron job, so with no actor: never
+  call it from a screen.
+  """
+  def digest(now \\ DateTime.utc_now()) do
+    profiles = SchoolProfile |> Ash.Query.load(:workspace) |> Ash.read!(@read)
+    day_ago = DateTime.add(now, -1, :day)
+
+    profiles
+    |> attention(live_schools(profiles), activity_per_school(now), now)
+    |> Map.merge(%{
+      open_errors: open_errors(),
+      failed_jobs:
+        count(
+          from(j in "oban_jobs", where: j.state == "discarded" and j.discarded_at >= ^day_ago)
+        )
+    })
+  end
+
+  @doc "Sends the operator's test message to Telegram (`TeacherAssistant.Telegram`)."
+  def send_telegram_test(%Scope{} = scope, text) do
+    ensure_operator!(scope)
+    TeacherAssistant.Telegram.send_message(text)
   end
 
   @doc """
@@ -474,20 +495,31 @@ defmodule TeacherAssistant.Operator do
         from(j in "oban_jobs", where: j.state == "completed", select: max(j.completed_at))
         |> Repo.one()
         |> then(&(&1 && to_datetime(&1))),
-      # Unhandled errors not yet resolved (ErrorTracker, /admin/errors); muted ones are
-      # known and left aside on purpose.
-      open_errors:
-        from(e in "error_tracker_errors",
-          where: e.status == "unresolved" and not e.muted,
-          select: count()
-        )
-        |> Repo.one(),
+      open_errors: open_errors(),
       db_bytes: db_bytes,
       memory_bytes: :erlang.memory(:total),
       uptime_ms: uptime_ms,
       version: to_string(Application.spec(:teacher_assistant, :vsn))
     }
   end
+
+  # Unhandled errors not yet resolved (ErrorTracker, /admin/errors); muted ones are
+  # known and left aside on purpose.
+  defp open_errors do
+    from(e in "error_tracker_errors",
+      where: e.status == "unresolved" and not e.muted,
+      select: count()
+    )
+    |> Repo.one()
+  end
+
+  # Verified and not suspended: the schools whose use is followed.
+  defp live_schools(profiles),
+    do:
+      Enum.filter(
+        profiles,
+        &(&1.verification_status == :verified and is_nil(&1.workspace.suspended_at))
+      )
 
   defp module_use(workspace_id, now) do
     used =
