@@ -115,7 +115,11 @@ Telegram chat gets a message when:
 - every morning at 07:00 (school time): schools waiting to be verified, schools gone
   quiet or never used, open errors and jobs abandoned since yesterday. It is sent even
   when there is nothing to handle (« Rien à traiter »): no message means the app or
-  its alerts are down.
+  its alerts are down. It ends with the schools that took a first step since
+  yesterday (first students, roll call, marks, published bulletins): who to call;
+- the app starts (« Scolaka a démarré »), at most once per 10 minutes: after a deploy,
+  the new version is up; without one, something restarted it (a crash, memory, the
+  server).
 
 Error messages carry the error's kind, where it happened and its link, never its text:
 Telegram is a third party and the text may hold a pupil's data. Read it in

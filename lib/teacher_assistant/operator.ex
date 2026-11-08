@@ -26,6 +26,15 @@ defmodule TeacherAssistant.Operator do
   ]
   @weeks 12
   @quiet_days 14
+  # A school's first steps, in the order they come: when its first row of each landed.
+  @milestones [
+    {:students, "enrollments", :inserted_at},
+    {:roll_call, "attendance_entries", :inserted_at},
+    {:roll_call, "typed_absences", :inserted_at},
+    {:marks, "mark_events", :inserted_at},
+    {:bulletins, "bulletin_publications", :published_at}
+  ]
+  @milestone_order [:students, :roll_call, :marks, :bulletins]
   # Rows of the overview's school table; the rest is one click away (« Tous → »).
   @school_rows 10
 
@@ -69,9 +78,10 @@ defmodule TeacherAssistant.Operator do
 
   @doc """
   The morning Telegram digest (`TeacherAssistant.Workers.TelegramDigest`): the
-  overview's « À traiter » lists (`pending`, `quiet`, `silent`), the open errors and
-  the jobs abandoned in the last 24 hours. Read by a cron job, so with no actor: never
-  call it from a screen.
+  overview's « À traiter » lists (`pending`, `quiet`, `silent`), the open errors, the
+  jobs abandoned in the last 24 hours, and the schools that took a first step in those
+  24 hours (`first_steps`: first students, roll call, marks or published bulletins).
+  Read by a cron job, so with no actor: never call it from a screen.
   """
   def digest(now \\ DateTime.utc_now()) do
     profiles = SchoolProfile |> Ash.Query.load(:workspace) |> Ash.read!(@read)
@@ -80,6 +90,7 @@ defmodule TeacherAssistant.Operator do
     profiles
     |> attention(live_schools(profiles), activity_per_school(now), now)
     |> Map.merge(%{
+      first_steps: first_steps(profiles, day_ago),
       open_errors: open_errors(),
       failed_jobs:
         count(
@@ -512,6 +523,36 @@ defmodule TeacherAssistant.Operator do
     )
     |> Repo.one()
   end
+
+  # Schools whose first row of a milestone landed since `since`, with those milestones
+  # in order: `[%{id, name, steps: [:students, :marks…]}]`, by name.
+  defp first_steps(profiles, since) do
+    names = Map.new(profiles, &{&1.workspace.id, &1.workspace.name})
+
+    firsts =
+      for {step, table, at} <- @milestones,
+          {id, first} <-
+            Repo.all(
+              from(r in table,
+                group_by: r.workspace_id,
+                select: {type(r.workspace_id, Ecto.UUID), min(field(r, ^at))}
+              )
+            ),
+          reduce: %{} do
+        acc -> Map.update(acc, {id, step}, first, &min_naive(&1, first))
+      end
+
+    firsts
+    |> Enum.filter(fn {_key, first} -> before?(since, to_datetime(first)) end)
+    |> Enum.group_by(fn {{id, _step}, _} -> id end, fn {{_id, step}, _} -> step end)
+    |> Enum.filter(fn {id, _steps} -> Map.has_key?(names, id) end)
+    |> Enum.map(fn {id, steps} ->
+      %{id: id, name: names[id], steps: Enum.filter(@milestone_order, &(&1 in steps))}
+    end)
+    |> Enum.sort_by(& &1.name)
+  end
+
+  defp min_naive(a, b), do: if(NaiveDateTime.compare(a, b) == :gt, do: b, else: a)
 
   # Verified and not suspended: the schools whose use is followed.
   defp live_schools(profiles),

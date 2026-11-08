@@ -3482,7 +3482,7 @@ msgstr "Sequence tracking"
 msgid "aucun élève"
 msgstr "no students"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:75
+#: lib/teacher_assistant/workers/telegram_digest.ex:102
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:239
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:271
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:1054
@@ -9702,7 +9702,7 @@ msgstr "Overview"
 msgid "Vérifiés"
 msgstr "Verified"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:32
+#: lib/teacher_assistant/workers/telegram_digest.ex:33
 #: lib/teacher_assistant_web/live/admin/admin_components.ex:41
 #, elixir-autogen, elixir-format
 msgid "À vérifier"
@@ -15145,7 +15145,7 @@ msgstr "Error back: %{kind}"
 msgid "Erreurs"
 msgstr "Errors"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:43
+#: lib/teacher_assistant/workers/telegram_digest.ex:44
 #: lib/teacher_assistant_web/live/admin/overview_live.ex:349
 #, elixir-autogen, elixir-format
 msgid "Erreurs ouvertes"
@@ -15201,17 +15201,17 @@ msgstr "Rules"
 msgid "Validations"
 msgstr "Approvals"
 
-#: lib/teacher_assistant/workers/telegram_alert.ex:74
+#: lib/teacher_assistant/workers/telegram_alert.ex:92
 #, elixir-autogen, elixir-format
 msgid "Erreur revenue : %{kind}\nÀ %{source}\n%{url}"
 msgstr "Error back: %{kind}\nAt %{source}\n%{url}"
 
-#: lib/teacher_assistant/workers/telegram_alert.ex:80
+#: lib/teacher_assistant/workers/telegram_alert.ex:98
 #, elixir-autogen, elixir-format
 msgid "Nouvelle erreur : %{kind}\nÀ %{source}\n%{url}"
 msgstr "New error: %{kind}\nAt %{source}\n%{url}"
 
-#: lib/teacher_assistant/workers/telegram_alert.ex:51
+#: lib/teacher_assistant/workers/telegram_alert.ex:69
 #, elixir-autogen, elixir-format
 msgid "Nouvelle école à vérifier : %{name} (%{town})\n%{url}"
 msgstr "New school to verify: %{name} (%{town})\n%{url}"
@@ -15236,7 +15236,7 @@ msgstr "Test message sent on Telegram."
 msgid "Non configurées"
 msgstr "Not set up"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:48
+#: lib/teacher_assistant/workers/telegram_digest.ex:49
 #, elixir-autogen, elixir-format
 msgid "Rien à traiter."
 msgstr "Nothing to handle."
@@ -15246,12 +15246,12 @@ msgstr "Nothing to handle."
 msgid "Scolaka : les alertes Telegram fonctionnent."
 msgstr "Scolaka: Telegram alerts work."
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:51
+#: lib/teacher_assistant/workers/telegram_digest.ex:52
 #, elixir-autogen, elixir-format
 msgid "Scolaka · point du matin"
 msgstr "Scolaka · morning summary"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:34
+#: lib/teacher_assistant/workers/telegram_digest.ex:35
 #, elixir-autogen, elixir-format
 msgid "Silencieuses depuis 14 jours"
 msgstr "Quiet for 14 days"
@@ -15261,24 +15261,25 @@ msgstr "Quiet for 14 days"
 msgid "Telegram a refusé le message : %{reason}"
 msgstr "Telegram refused the message: %{reason}"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:44
+#: lib/teacher_assistant/workers/telegram_digest.ex:45
 #, elixir-autogen, elixir-format
 msgid "Tâches abandonnées depuis hier"
 msgstr "Jobs abandoned since yesterday"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:39
+#: lib/teacher_assistant/workers/telegram_digest.ex:40
 #, elixir-autogen, elixir-format
 msgid "Vérifiées, jamais utilisées"
 msgstr "Verified, never used"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:76
+#: lib/teacher_assistant/workers/telegram_digest.ex:103
 #, elixir-autogen, elixir-format
 msgid "depuis %{count} jour"
 msgid_plural "depuis %{count} jours"
 msgstr[0] "since %{count} day"
 msgstr[1] "since %{count} days"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:63
+#: lib/teacher_assistant/workers/telegram_digest.ex:68
+#: lib/teacher_assistant/workers/telegram_digest.ex:90
 #, elixir-autogen, elixir-format
 msgid "• et %{count} autres"
 msgstr "• and %{count} more"
@@ -15297,3 +15298,33 @@ msgstr "chat not found, check TELEGRAM_CHAT_ID and message the bot first"
 #, elixir-autogen, elixir-format
 msgid "jeton du bot refusé, vérifiez TELEGRAM_BOT_TOKEN"
 msgstr "bot token refused, check TELEGRAM_BOT_TOKEN"
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:73
+#, elixir-autogen, elixir-format
+msgid "Premiers pas depuis hier"
+msgstr "First steps since yesterday"
+
+#: lib/teacher_assistant/workers/telegram_alert.ex:60
+#, elixir-autogen, elixir-format
+msgid "Scolaka a démarré (version %{version})."
+msgstr "Scolaka started (version %{version})."
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:79
+#, elixir-autogen, elixir-format
+msgid "premier appel"
+msgstr "first roll call"
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:81
+#, elixir-autogen, elixir-format
+msgid "premiers bulletins publiés"
+msgstr "first report cards published"
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:80
+#, elixir-autogen, elixir-format
+msgid "premières notes"
+msgstr "first marks"
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:78
+#, elixir-autogen, elixir-format
+msgid "élèves inscrits"
+msgstr "students enrolled"

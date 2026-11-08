@@ -2,7 +2,8 @@ defmodule TeacherAssistant.Workers.TelegramDigest do
   @moduledoc """
   The operators' morning message on Telegram (07:00 school time, config/config.exs):
   schools waiting to be verified, schools gone quiet or never started, open errors
-  and jobs abandoned overnight (`TeacherAssistant.Operator.digest/1`). Sent even
+  and jobs abandoned overnight, then the schools that took a first step since
+  yesterday (`TeacherAssistant.Operator.digest/1`). Sent even
   when there is nothing to handle: it is also the daily sign that the app and its
   alerts are alive. Nothing is sent while Telegram is not set up.
   """
@@ -48,10 +49,36 @@ defmodule TeacherAssistant.Workers.TelegramDigest do
     body = if sections == [], do: [gettext("Rien à traiter.")], else: sections
 
     Enum.join(
-      [gettext("Scolaka · point du matin")] ++ body ++ [url(~p"/admin")],
+      [gettext("Scolaka · point du matin")] ++
+        body ++ List.wrap(first_steps(digest.first_steps)) ++ [url(~p"/admin")],
       "\n\n"
     )
   end
+
+  # Good news, not something to handle: who to call to help them along.
+  defp first_steps([]), do: nil
+
+  defp first_steps(schools) do
+    lines =
+      for school <- Enum.take(schools, @names),
+          do: "• #{school.name} : #{Enum.map_join(school.steps, ", ", &step/1)}"
+
+    more =
+      case length(schools) - @names do
+        n when n > 0 -> [gettext("• et %{count} autres", count: n)]
+        _ -> []
+      end
+
+    Enum.join(
+      ["#{gettext("Premiers pas depuis hier")} : #{length(schools)}" | lines ++ more],
+      "\n"
+    )
+  end
+
+  defp step(:students), do: gettext("élèves inscrits")
+  defp step(:roll_call), do: gettext("premier appel")
+  defp step(:marks), do: gettext("premières notes")
+  defp step(:bulletins), do: gettext("premiers bulletins publiés")
 
   defp schools(_title, [], _age), do: nil
 

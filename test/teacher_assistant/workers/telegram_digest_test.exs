@@ -54,7 +54,8 @@ defmodule TeacherAssistant.Workers.TelegramDigestTest do
         quiet: [%{name: "Collège Calme", last_at: DateTime.add(@now, -20, :day)}],
         silent: [],
         open_errors: 3,
-        failed_jobs: 0
+        failed_jobs: 0,
+        first_steps: []
       }
 
       text = TelegramDigest.text(digest, @now)
@@ -66,6 +67,27 @@ defmodule TeacherAssistant.Workers.TelegramDigestTest do
       assert text =~ "Erreurs ouvertes : 3"
       refute text =~ "jamais utilisées"
       refute text =~ "Tâches abandonnées"
+    end
+
+    test "first steps come after what to handle, without hiding « Rien à traiter »" do
+      digest = %{
+        pending: [],
+        quiet: [],
+        silent: [],
+        open_errors: 0,
+        failed_jobs: 0,
+        first_steps: [
+          %{name: "Lycée de Kribi", steps: [:students, :marks]},
+          %{name: "Collège Nkam", steps: [:bulletins]}
+        ]
+      }
+
+      text = TelegramDigest.text(digest, @now)
+
+      assert text =~
+               "Rien à traiter.\n\nPremiers pas depuis hier : 2\n" <>
+                 "• Lycée de Kribi : élèves inscrits, premières notes\n" <>
+                 "• Collège Nkam : premiers bulletins publiés"
     end
   end
 end

@@ -124,4 +124,23 @@ defmodule TeacherAssistant.Workers.TelegramAlertTest do
     assert_received :attempt
     assert_received :attempt
   end
+
+  describe "app start" do
+    test "queues nothing without Telegram set up" do
+      assert :ok = TelegramAlert.started()
+      refute_enqueued(worker: TelegramAlert)
+    end
+
+    test "queues one message per 10 minutes, with the version" do
+      set_up_telegram()
+      stub_telegram()
+
+      assert :ok = TelegramAlert.started()
+      assert :ok = TelegramAlert.started()
+      assert [%{args: %{"event" => "started"} = args}] = all_enqueued(worker: TelegramAlert)
+
+      assert :ok = perform_job(TelegramAlert, args)
+      assert_received {:telegram, _, %{"text" => "Scolaka a démarré (version " <> _}}
+    end
+  end
 end

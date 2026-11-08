@@ -71,6 +71,27 @@ defmodule TeacherAssistant.OperatorTest do
     end
   end
 
+  test "the digest names a school whose first students came in since yesterday", %{
+    head: head,
+    ws: ws
+  } do
+    assert Operator.digest().first_steps == []
+
+    [cg | _] = TeacherAssistant.Enrollment.list_class_groups(head, head.current_academic_year)
+    {:ok, _} = TeacherAssistant.Enrollment.add_student(head, cg, %{full_name: "Awa", sex: :f})
+
+    assert [%{id: id, name: name, steps: [:students]}] = Operator.digest().first_steps
+    assert id == ws.id and name == ws.name
+
+    # an older first student: not a first step any more, even with a new one today
+    TeacherAssistant.Repo.update_all("enrollments",
+      set: [inserted_at: DateTime.add(DateTime.utc_now(), -3, :day)]
+    )
+
+    {:ok, _} = TeacherAssistant.Enrollment.add_student(head, cg, %{full_name: "Bello", sex: :m})
+    assert Operator.digest().first_steps == []
+  end
+
   test "a verified school with no activity for a week is listed as silent", %{op: op, ws: ws} do
     week_ago = DateTime.add(DateTime.utc_now(), -8, :day)
     TeacherAssistant.Repo.update_all("workspaces", set: [inserted_at: week_ago])

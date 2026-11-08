@@ -19,7 +19,15 @@ defmodule TeacherAssistant.Application do
       {AshAuthentication.Supervisor, [otp_app: :teacher_assistant]}
     ]
 
-    Supervisor.start_link(children, strategy: :one_for_one, name: TeacherAssistant.Supervisor)
+    with {:ok, _pid} = started <-
+           Supervisor.start_link(children,
+             strategy: :one_for_one,
+             name: TeacherAssistant.Supervisor
+           ) do
+      # On Telegram, when set up: a deploy is up, or something restarted the app.
+      TeacherAssistant.Workers.TelegramAlert.started()
+      started
+    end
   end
 
   @impl true
