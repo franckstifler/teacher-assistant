@@ -40,14 +40,31 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert html =~ "Votre établissement, prêt pour la prochaine séquence."
   end
 
-  test "GET / draws the app instead of shipping screenshots", %{conn: conn} do
-    html = landing(conn)
-    doc = doc(html)
+  test "GET / draws the hero's screens and shows real prints of the bulletin and receipt",
+       %{conn: conn} do
+    doc = conn |> landing() |> doc()
 
-    refute html =~ "/images/landing/"
-    assert doc |> LazyHTML.query("main img") |> Enum.count() == 0
-    # the drawings are decorative: the hero art, the printed bulletin and the receipt
-    assert doc |> LazyHTML.query(~s(main [aria-hidden="true"])) |> Enum.count() >= 3
+    # the hero's window and phone are decorative drawings
+    hero = LazyHTML.query(doc, ~s(section[aria-labelledby="landing-title"]))
+    assert hero |> LazyHTML.query(~s([aria-hidden="true"])) |> Enum.any?()
+    assert hero |> LazyHTML.query("img") |> Enum.count() == 0
+
+    # the bulletin and the receipt are real prints, described for screen readers
+    for {section, file} <- [{"#bulletins", "bulletin-demo.webp"}, {"#frais", "recu-demo.webp"}] do
+      [img] = doc |> LazyHTML.query("#{section} figure img") |> Enum.to_list()
+      [src] = LazyHTML.attribute(img, "src")
+      assert src =~ "/images/landing/#{file}"
+      assert [alt] = LazyHTML.attribute(img, "alt")
+      assert String.length(alt) > 40
+      assert LazyHTML.attribute(img, "loading") == ["lazy"]
+
+      assert File.exists?(
+               Path.join(:code.priv_dir(:teacher_assistant), "static/images/landing/#{file}")
+             )
+
+      assert LazyHTML.text(LazyHTML.query(doc, "#{section} figcaption")) =~
+               "établissement de démonstration"
+    end
   end
 
   test "GET / says only what the app does: no placeholders, no promises", %{conn: conn} do

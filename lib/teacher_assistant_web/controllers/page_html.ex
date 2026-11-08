@@ -5,9 +5,11 @@ defmodule TeacherAssistantWeb.PageHTML do
   See the `page_html` directory for all templates available.
 
   The landing (`home`) speaks to schools only: one sequence from the roll call to
-  the bulletin, role by role, in the app's « Tableau, affiné » look. Its pictures
-  of the app are drawn in HTML with the theme's tokens (decorative, aria-hidden),
-  so they follow the visitor's theme and never go stale with the UI.
+  the bulletin, role by role, in the app's « Tableau, affiné » look. The screens in
+  the hero are drawn in HTML with the theme's tokens (decorative, aria-hidden), so
+  they follow the visitor's theme and never go stale with the UI. The bulletin and
+  the receipt are real prints from the demo school (priv/static/images/landing),
+  because the printed paper is what a school judges.
   """
   use TeacherAssistantWeb, :html
 
@@ -178,26 +180,6 @@ defmodule TeacherAssistantWeb.PageHTML do
     ]
   end
 
-  @doc "The drawn bulletin's rows: subject, coefficient, mark."
-  def bulletin_rows do
-    [
-      {gettext("Français"), 4, 13.5},
-      {gettext("Anglais"), 3, 14.0},
-      {gettext("Mathématiques"), 4, 11.25},
-      {gettext("Économie familiale"), 5, 15.0},
-      {gettext("Hygiène"), 2, 12.0},
-      {gettext("Histoire-géo"), 2, 10.5},
-      {gettext("ECM"), 1, 13.0},
-      {gettext("EPS"), 1, 16.0}
-    ]
-  end
-
-  @doc "A mark as printed: « 13,50 » in French, « 13.50 » in English."
-  def mark(value) do
-    text = :erlang.float_to_binary(value * 1.0, decimals: 2)
-    if locale() == "fr", do: String.replace(text, ".", ","), else: text
-  end
-
   @doc "The pilot band: every module the pilot includes."
   def pilot_modules do
     [
@@ -209,32 +191,6 @@ defmodule TeacherAssistantWeb.PageHTML do
       gettext("Discipline"),
       gettext("Cartes d'élève")
     ]
-  end
-
-  @doc "The drawn receipt's rows: label and amount in FCFA."
-  def receipt_rows do
-    [
-      {gettext("Frais exigibles"), 10_000},
-      {gettext("Scolarité · tranche 2"), 25_000}
-    ]
-  end
-
-  @doc "The drawn receipt's totals: label and amount in FCFA."
-  def receipt_totals do
-    [
-      {gettext("Total payé à ce jour"), 60_000},
-      {gettext("Reste à payer"), 15_000}
-    ]
-  end
-
-  @doc "An amount as printed on a receipt: « 25 000 FCFA »."
-  def fcfa(amount), do: TeacherAssistantWeb.Money.format_fcfa(amount)
-
-  @doc "The drawn receipt's QR code: a fixed 7 × 7 pattern (1 = dark)."
-  def qr_cells do
-    ~w(1111101 1000101 1011101 0000000 1101011 0110100 1011011)
-    |> Enum.flat_map(&String.graphemes/1)
-    |> Enum.map(&(&1 == "1"))
   end
 
   @doc "Everything the pilot includes, module by module."

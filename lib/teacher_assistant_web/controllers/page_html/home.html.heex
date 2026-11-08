@@ -1,8 +1,9 @@
 <%!--
   Landing v2 (2026-11): schools only, in the app's « Tableau, affiné » look (daisyUI
   tokens, so it follows the visitor's theme). Rendered on the root layout with its
-  own header and footer. The pictures of the app are drawn in HTML (aria-hidden);
-  data lists and small formatters live in PageHTML.
+  own header and footer. The hero's screens are drawn in HTML (aria-hidden); the
+  bulletin and receipt are real prints of the demo school (images/landing). Data
+  lists and small formatters live in PageHTML.
 --%>
 <div class="ta-landing flex min-h-screen flex-col bg-base-200 text-base-content">
   <a
@@ -331,26 +332,24 @@
           />
         </div>
 
-        <div aria-hidden="true" class="flex select-none justify-center py-2">
-          <div class="ta-landing__sheet flex h-[350px] w-[300px] max-w-full flex-col gap-2 p-[18px]">
-            <span class="ta-landing__flag block"></span>
-            <span class="text-center text-[10px] font-bold uppercase tracking-wide">
-              {gettext("Bulletin de notes · Trimestre 1")}
-            </span>
-            <span
-              :for={{subject, coef, value} <- bulletin_rows()}
-              class="ta-landing__sheet-rule flex gap-1.5 pb-[3px] text-[9.5px]"
-            >
-              <span class="flex-1">{subject}</span>
-              <span class="ta-num w-6 text-right">{coef}</span>
-              <span class="ta-num w-[2.15rem] text-right font-semibold">{mark(value)}</span>
-            </span>
-            <span class="mt-auto flex justify-between text-[10px] font-bold">
-              <span>{gettext("Moyenne %{average}", average: mark(12.46))}</span>
-              <span>{gettext("Rang 4e / 39")}</span>
-            </span>
-          </div>
-        </div>
+        <figure class="flex flex-col items-center gap-3 py-2">
+          <img
+            src={~p"/images/landing/bulletin-demo.webp"}
+            width="1000"
+            height="946"
+            loading="lazy"
+            decoding="async"
+            alt={
+              gettext(
+                "Bulletin du premier trimestre d'une élève de 6e imprimé par Scolaka : notes des deux séquences, moyennes, rangs, appréciations et code QR de vérification."
+              )
+            }
+            class="ta-landing__print w-full max-w-[34rem]"
+          />
+          <figcaption class="ta-text-2 font-mono text-xs">
+            {gettext("Un vrai bulletin, imprimé depuis l'établissement de démonstration")}
+          </figcaption>
+        </figure>
       </div>
     </section>
 
@@ -360,45 +359,24 @@
       aria-labelledby="frais-title"
       class="mx-auto grid max-w-6xl scroll-mt-20 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:py-22"
     >
-      <div aria-hidden="true" class="flex select-none justify-center py-2 max-lg:order-last">
-        <div class="ta-landing__sheet ta-landing__sheet--tilt-right flex w-[300px] max-w-full flex-col gap-2 p-[18px] text-[10px]">
-          <span class="ta-landing__flag block"></span>
-          <span class="flex items-baseline justify-between gap-2">
-            <span class="text-[11px] font-bold uppercase tracking-wide">{gettext("Reçu")}</span>
-            <span class="ta-num font-semibold">R2026-000123</span>
-          </span>
-          <span class="ta-landing__sheet-rule flex justify-between pb-[3px]">
-            <span>{gettext("Élève")}</span>
-            <span class="font-semibold">Ngo Bassa Marie</span>
-          </span>
-          <span class="ta-landing__sheet-rule flex justify-between pb-[3px]">
-            <span>{gettext("Classe")}</span>
-            <span class="font-semibold">{gettext("2nde C")}</span>
-          </span>
-          <span
-            :for={{label, amount} <- receipt_rows()}
-            class="ta-landing__sheet-rule flex justify-between pb-[3px]"
-          >
-            <span>{label}</span>
-            <span class="ta-num">{fcfa(amount)}</span>
-          </span>
-          <span class="flex justify-between text-[11px] font-bold">
-            <span>{gettext("Ce reçu")}</span>
-            <span class="ta-num">{fcfa(35_000)}</span>
-          </span>
-          <span class="mt-2 flex items-end justify-between gap-3">
-            <span class="flex flex-col gap-1">
-              <span :for={{label, amount} <- receipt_totals()} class="flex gap-2">
-                <span>{label}</span>
-                <span class="ta-num font-semibold">{fcfa(amount)}</span>
-              </span>
-            </span>
-            <span class="grid size-14 flex-none grid-cols-7 gap-px">
-              <span :for={dark <- qr_cells()} class={dark && "bg-[#17231E]"}></span>
-            </span>
-          </span>
-        </div>
-      </div>
+      <figure class="flex flex-col items-center gap-3 py-2 max-lg:order-last">
+        <img
+          src={~p"/images/landing/recu-demo.webp"}
+          width="760"
+          height="638"
+          loading="lazy"
+          decoding="async"
+          alt={
+            gettext(
+              "Reçu de frais numéroté imprimé par Scolaka : montant en chiffres et en lettres, total payé, reste à payer et code QR de vérification."
+            )
+          }
+          class="ta-landing__print ta-landing__print--tilt-right w-full max-w-[26rem]"
+        />
+        <figcaption class="ta-text-2 font-mono text-xs">
+          {gettext("Un vrai reçu, imprimé depuis l'établissement de démonstration")}
+        </figcaption>
+      </figure>
 
       <div class="max-w-xl">
         <p class="ta-landing__eyebrow">{gettext("À l'intendance")}</p>

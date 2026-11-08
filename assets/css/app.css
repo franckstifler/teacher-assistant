@@ -869,9 +869,9 @@ form[data-dirty] .ta-savebar {
 }
 
 /* =========================================================================
-   Landing page (PageHTML.home): the app drawn in HTML (a window, a phone, a
-   printed bulletin) with the theme's tokens, so it never goes stale and costs
-   no image download. Only the paper and the flag keep their own colours.
+   Landing page (PageHTML.home): the hero's screens drawn in HTML (a window, a
+   phone) with the theme's tokens, so they never go stale and cost no image
+   download; the bulletin and receipt are real prints, shown as paper.
    ========================================================================= */
 .ta-landing { scroll-behavior: smooth; }
 .ta-landing__nav {
@@ -948,20 +948,14 @@ form[data-dirty] .ta-savebar {
   background: color-mix(in oklch, var(--color-primary) 14%, transparent);
 }
 
-/* a printed bulletin: paper in both themes */
-.ta-landing__sheet {
-  background: #F7F5EF;
-  color: #17231E;
-  border-radius: 0.375rem;
+/* a real print (bulletin, receipt): a sheet of paper lying slightly askew */
+.ta-landing__print {
+  height: auto;
+  border-radius: 0.25rem;
   box-shadow: 0 0 0 1px rgb(23 35 30 / 0.1), 0 24px 44px -18px rgb(4 8 6 / 0.45);
-  transform: rotate(-2deg);
+  transform: rotate(-1.5deg);
 }
-.ta-landing__sheet--tilt-right { transform: rotate(2deg); }
-.ta-landing__sheet-rule { border-bottom: 1px solid #DDD8CC; }
-.ta-landing__flag {
-  height: 4px;
-  background: linear-gradient(90deg, #007A5E 0 33.33%, #CE1126 33.33% 66.66%, #FCD116 66.66%);
-}
+.ta-landing__print--tilt-right { transform: rotate(1.5deg); }
 
 .ta-landing details > summary::-webkit-details-marker { display: none; }
 
