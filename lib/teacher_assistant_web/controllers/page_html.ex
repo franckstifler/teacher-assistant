@@ -38,6 +38,63 @@ defmodule TeacherAssistantWeb.PageHTML do
     )
   end
 
+  @doc "The WhatsApp number shown on the landing, or nil to hide its links."
+  def contact_whatsapp, do: contact(:whatsapp)
+
+  @doc "The contact e-mail shown on the landing, or nil to hide it."
+  def contact_email, do: contact(:email)
+
+  defp contact(key) do
+    case Application.get_env(:teacher_assistant, :contact, [])[key] do
+      value when is_binary(value) and value != "" -> value
+      _ -> nil
+    end
+  end
+
+  @doc "A wa.me link to the contact number with `message` already typed."
+  def whatsapp_url(message) do
+    digits = String.replace(contact_whatsapp(), ~r/\D/, "")
+    "https://wa.me/#{digits}?text=" <> URI.encode(message, &URI.char_unreserved?/1)
+  end
+
+  @doc "The message a visitor sends to ask for a demonstration."
+  def demo_message,
+    do: gettext("Bonjour, je souhaite une démonstration de Scolaka pour mon établissement.")
+
+  @doc "The message a visitor sends with a question."
+  def question_message, do: gettext("Bonjour, j'ai une question sur Scolaka.")
+
+  attr :class, :any, default: nil
+
+  @doc "« Une question ? » with the WhatsApp and e-mail links (nothing when neither is set)."
+  def contact_line(assigns) do
+    ~H"""
+    <p
+      :if={contact_whatsapp() || contact_email()}
+      class={["ta-landing__lead text-[0.95rem] leading-relaxed", @class]}
+    >
+      {gettext("Une question ?")}
+      <a
+        :if={contact_whatsapp()}
+        href={whatsapp_url(question_message())}
+        target="_blank"
+        rel="noopener"
+        class="font-semibold text-primary underline underline-offset-4"
+      >
+        {gettext("Écrivez-nous sur WhatsApp")}
+      </a>
+      <span :if={contact_whatsapp() && contact_email()}>{gettext("ou à")}</span>
+      <a
+        :if={contact_email()}
+        href={"mailto:" <> contact_email()}
+        class="font-semibold text-primary underline underline-offset-4"
+      >
+        {contact_email()}
+      </a>
+    </p>
+    """
+  end
+
   @doc "The current locale, for the FR · EN switch."
   def locale, do: Gettext.get_locale(TeacherAssistantWeb.Gettext)
 

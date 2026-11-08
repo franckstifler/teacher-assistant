@@ -158,7 +158,18 @@
             {gettext("Mon espace")}
           </.link>
         </div>
-        <ul class="ta-text-2 mt-5 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.85rem] sm:text-sm">
+        <a
+          :if={contact_whatsapp()}
+          id="landing-demo"
+          href={whatsapp_url(demo_message())}
+          target="_blank"
+          rel="noopener"
+          class="mt-4 inline-flex min-h-11 items-center gap-2 font-semibold text-primary underline-offset-4 hover:underline"
+        >
+          <.icon name="hero-chat-bubble-left-right" class="size-5" />
+          {gettext("Demander une démonstration sur WhatsApp")}
+        </a>
+        <ul class="ta-text-2 mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.85rem] sm:text-sm">
           <li class="inline-flex items-center gap-1.5">
             <.icon name="hero-check" class="size-4 text-primary" />
             {gettext("Gratuit pendant la phase pilote")}
@@ -515,6 +526,7 @@
             {gettext("Inscrire mon établissement")}
             <.icon name="hero-arrow-right" class="size-5" />
           </.link>
+          <.contact_line class="mt-1" />
         </div>
       </div>
     </section>
@@ -545,12 +557,15 @@
     <%!-- CLOSING CTA --%>
     <section aria-labelledby="closing-title" class="border-t border-base-300 bg-base-100">
       <div class="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-12 sm:px-6 lg:flex-row lg:items-center">
-        <h2
-          id="closing-title"
-          class="flex-1 text-[1.6rem] font-semibold leading-tight [text-wrap:balance]"
-        >
-          {gettext("Votre établissement, prêt pour la prochaine séquence.")}
-        </h2>
+        <div class="flex-1">
+          <h2
+            id="closing-title"
+            class="text-[1.6rem] font-semibold leading-tight [text-wrap:balance]"
+          >
+            {gettext("Votre établissement, prêt pour la prochaine séquence.")}
+          </h2>
+          <.contact_line class="mt-2" />
+        </div>
         <div class="flex flex-col gap-2.5 sm:flex-row sm:gap-3">
           <.link href={~p"/schools/start"} class="btn btn-primary btn-lg min-h-12">
             {gettext("Inscrire mon établissement")}
@@ -578,6 +593,31 @@
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-8 text-sm sm:px-6">
       <Layouts.logo class="h-6 w-auto" />
       <span class="ta-text-2">{gettext("Francophone et anglophone · Cameroun")}</span>
+      <span
+        :if={contact_whatsapp() || contact_email()}
+        id="landing-contact"
+        class="flex flex-wrap items-center gap-x-1"
+      >
+        <a
+          :if={contact_whatsapp()}
+          href={whatsapp_url(question_message())}
+          target="_blank"
+          rel="noopener"
+          class="ta-landing__nav gap-1.5"
+        >
+          <.icon name="hero-chat-bubble-left-right" class="size-4" />
+          <span class="sr-only">{gettext("WhatsApp :")}</span>
+          <span class="ta-num">{contact_whatsapp()}</span>
+        </a>
+        <a
+          :if={contact_email()}
+          href={"mailto:" <> contact_email()}
+          class="ta-landing__nav gap-1.5"
+        >
+          <.icon name="hero-envelope" class="size-4" />
+          {contact_email()}
+        </a>
+      </span>
       <span class="flex flex-wrap items-center gap-x-1 sm:ml-auto">
         <.link :if={@current_user} href={~p"/school"} class="ta-landing__nav">
           {gettext("Mon espace")}

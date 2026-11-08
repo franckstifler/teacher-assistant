@@ -153,6 +153,13 @@ if config_env() == :prod do
     bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
     chat_id: System.get_env("TELEGRAM_CHAT_ID")
 
+  # The landing's contact links (default in config.exs); an empty value hides one.
+  if whatsapp = System.get_env("CONTACT_WHATSAPP"),
+    do: config(:teacher_assistant, :contact, whatsapp: whatsapp)
+
+  if email = System.get_env("CONTACT_EMAIL"),
+    do: config(:teacher_assistant, :contact, email: email)
+
   # The sender, as verified in Brevo (default: « Scolaka » <no-reply@scolaka.com>).
   if from_address = System.get_env("MAIL_FROM_ADDRESS") do
     config :teacher_assistant, TeacherAssistant.Accounts.Emails,

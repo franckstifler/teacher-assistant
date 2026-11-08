@@ -9,6 +9,9 @@ config :teacher_assistant, Oban, testing: :manual
 config :teacher_assistant, TeacherAssistant.Telegram,
   req_options: [plug: {Req.Test, TeacherAssistant.Telegram}]
 
+# The landing's contact links, fixed so the tests don't follow config.exs.
+config :teacher_assistant, :contact, whatsapp: "+237 600 00 00 01", email: "contact@example.test"
+
 # Off, so a test that makes a page crash writes nothing; ErrorReportingTest turns it on.
 config :error_tracker, enabled: false, plugins: []
 config :teacher_assistant, token_signing_secret: "stzKJzc4mx3IO7M9Pw+9nK9sEIlPXcOa"

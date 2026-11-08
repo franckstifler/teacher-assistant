@@ -18,6 +18,8 @@ The server refuses to start when a required variable is missing.
 | `MAIL_FROM_NAME` | no | The sender's name, default « Scolaka » |
 | `TELEGRAM_BOT_TOKEN` | no | With `TELEGRAM_CHAT_ID`: operator alerts on Telegram (see « Telegram alerts ») |
 | `TELEGRAM_CHAT_ID` | no | The chat the alerts go to |
+| `CONTACT_WHATSAPP` | no | The landing's WhatsApp number, e.g. `+237 6XX XX XX XX` (default in `config/config.exs`; empty hides the link) |
+| `CONTACT_EMAIL` | no | The landing's contact e-mail (none by default; empty hides it) |
 | `UPLOADS_DIR` | yes (set by the Docker image to `/data/uploads`) | Where logos, signatures, stamps and student photos are stored. The server refuses to start if the directory doesn't exist or isn't writable. |
 
 Changing `SECRET_KEY_BASE` invalidates the QR and check codes already printed on

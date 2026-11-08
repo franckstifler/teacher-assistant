@@ -82,7 +82,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
 
     hero = LazyHTML.query(doc, ~s(section[aria-labelledby="landing-title"]))
     assert LazyHTML.text(hero) =~ "Je suis enseignant : me connecter"
-    assert hrefs(hero, "a") == ["/schools/start", "/sign-in"]
+    assert ["/schools/start", "/sign-in", "https://wa.me/" <> _] = hrefs(hero, "a")
 
     # bilingual switch
     assert "/locale/fr" in hrefs(doc, "header a")
@@ -128,6 +128,42 @@ defmodule TeacherAssistantWeb.PageControllerTest do
 
     assert conn |> init_test_session(%{locale: "en"}) |> title.() ==
              "Scolaka · School management in Cameroon"
+  end
+
+  describe "contact links" do
+    test "GET / offers a demo and questions on WhatsApp, and the e-mail", %{conn: conn} do
+      html = landing(conn)
+      doc = doc(html)
+
+      # the hero asks for a demonstration, with the message already typed
+      assert [demo] = hrefs(doc, "#landing-demo")
+      assert demo =~ "https://wa.me/237600000001?text="
+      assert URI.decode(demo) =~ "je souhaite une démonstration de Scolaka"
+
+      # the price card, the closing band and the footer all reach us
+      wa = Enum.filter(hrefs(doc, "a"), &String.starts_with?(&1, "https://wa.me/"))
+      assert length(wa) >= 4
+      assert LazyHTML.text(doc["#landing-contact"]) =~ "+237 600 00 00 01"
+      assert "mailto:contact@example.test" in hrefs(doc, "a")
+      assert html =~ "Écrivez-nous sur WhatsApp"
+    end
+
+    test "GET / hides a contact that is not set", %{conn: conn} do
+      previous = Application.get_env(:teacher_assistant, :contact)
+      on_exit(fn -> Application.put_env(:teacher_assistant, :contact, previous) end)
+
+      Application.put_env(:teacher_assistant, :contact, whatsapp: "+237 600 00 00 01", email: "")
+      html = landing(conn)
+      assert html =~ "wa.me"
+      refute html =~ "mailto:"
+
+      Application.put_env(:teacher_assistant, :contact, whatsapp: nil, email: nil)
+      html = landing(conn)
+      refute html =~ "wa.me"
+      refute html =~ ~s(id="landing-demo")
+      refute html =~ ~s(id="landing-contact")
+      refute html =~ "Une question ?"
+    end
   end
 
   test "GET / in English reads in English", %{conn: conn} do
@@ -181,7 +217,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
       refute html =~ "Je suis enseignant : me connecter"
 
       hero = LazyHTML.query(doc, ~s(section[aria-labelledby="landing-title"]))
-      assert hrefs(hero, "a") == ["/schools/start", "/school"]
+      assert ["/schools/start", "/school", "https://wa.me/" <> _] = hrefs(hero, "a")
     end
   end
 end
