@@ -122,7 +122,9 @@ config :teacher_assistant, TeacherAssistant.Accounts.Emails,
 
 # How a visitor reaches us from the landing. A missing or blank value hides its
 # link. Production may override them with CONTACT_WHATSAPP and CONTACT_EMAIL.
-config :teacher_assistant, :contact, whatsapp: "+237 678 28 42 65", email: nil
+config :teacher_assistant, :contact,
+  whatsapp: "+237 678 28 42 65",
+  email: "contact@scolaka.com"
 
 # Configure esbuild (the version is required)
 config :esbuild,

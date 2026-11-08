@@ -72,6 +72,7 @@ defmodule TeacherAssistantWeb.PageHTML do
     <p
       :if={contact_whatsapp() || contact_email()}
       class={["ta-landing__lead text-[0.95rem] leading-relaxed", @class]}
+      phx-no-format
     >
       {gettext("Une question ?")}
       <a
@@ -80,23 +81,24 @@ defmodule TeacherAssistantWeb.PageHTML do
         target="_blank"
         rel="noopener"
         class="font-semibold text-primary underline underline-offset-4"
-      >
-        {gettext("Écrivez-nous sur WhatsApp")}
-      </a>
+      >{gettext("Écrivez-nous sur WhatsApp")}</a>
       <span :if={contact_whatsapp() && contact_email()}>{gettext("ou à")}</span>
       <a
         :if={contact_email()}
         href={"mailto:" <> contact_email()}
         class="font-semibold text-primary underline underline-offset-4"
-      >
-        {contact_email()}
-      </a>
+      >{contact_email()}</a>
     </p>
     """
   end
 
   @doc "The current locale, for the FR · EN switch."
   def locale, do: Gettext.get_locale(TeacherAssistantWeb.Gettext)
+
+  attr :current_user, :any, default: nil
+
+  @doc "The public pages' footer (embedded from page_html/site_footer.html.heex)."
+  def site_footer(assigns)
 
   @doc "The landing's sections, for the header nav (desktop) and its menu (phone)."
   def sections do
@@ -357,7 +359,7 @@ defmodule TeacherAssistantWeb.PageHTML do
         title: gettext("Importez classes et élèves"),
         text:
           gettext(
-            "En collant vos listes depuis Excel : classes et élèves, puis matières et coefficients, réglés par l'établissement."
+            "En collant vos listes depuis Excel : classes et élèves, puis matières et coefficients. Pendant la phase pilote, nous le faisons avec vous."
           )
       },
       %{
@@ -366,6 +368,73 @@ defmodule TeacherAssistantWeb.PageHTML do
           gettext(
             "Chaque membre se connecte avec son numéro de téléphone et un mot de passe provisoire remis par l'établissement."
           )
+      }
+    ]
+  end
+
+  @doc "The privacy page, part by part: only what the app does today."
+  def privacy_sections do
+    [
+      %{
+        id: "owner",
+        title: gettext("Les données appartiennent à l'établissement"),
+        paragraphs: [
+          gettext(
+            "Chaque établissement décide de ce qu'il saisit dans Scolaka. Nous gardons ces données pour lui : nous ne les vendons pas, ne les louons pas et ne les utilisons pas pour de la publicité."
+          )
+        ]
+      },
+      %{
+        id: "kept",
+        title: gettext("Ce que nous gardons"),
+        paragraphs: [],
+        items: [
+          gettext(
+            "Pour chaque membre de l'équipe : son nom, son numéro de téléphone, son adresse e-mail s'il en donne une, son rôle et la date de sa dernière connexion. Son mot de passe est gardé sous une forme chiffrée que personne ne peut relire."
+          ),
+          gettext(
+            "Pour chaque élève : son nom, son sexe, son matricule, sa date et son lieu de naissance, sa photo, sa classe, ses notes, ses absences, sa conduite, ses sanctions et ses paiements de frais, ainsi que son numéro d'identification national si l'établissement le saisit."
+          ),
+          gettext(
+            "Pour les parents et tuteurs : leur nom, leur lien avec l'élève, leurs numéros de téléphone, leur adresse e-mail et la langue dans laquelle les contacter."
+          )
+        ]
+      },
+      %{
+        id: "seen",
+        title: gettext("Qui peut les voir"),
+        paragraphs: [
+          gettext(
+            "Seuls les membres d'un établissement voient ses données, et chacun selon son rôle : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais, le proviseur tout l'établissement."
+          ),
+          gettext(
+            "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal."
+          ),
+          gettext(
+            "Les bulletins, reçus et cartes scolaires portent un code QR. Celui qui le scanne voit seulement de quoi vérifier que le document est authentique : l'établissement, l'élève, sa classe et ce que dit le document."
+          )
+        ]
+      },
+      %{
+        id: "where",
+        title: gettext("Où elles se trouvent"),
+        paragraphs: [
+          gettext(
+            "Les données sont gardées sur un serveur loué à la société allemande Hetzner. Les pages passent par Cloudflare entre ce serveur et votre téléphone, et les e-mails de Scolaka (invitations, mot de passe oublié) sont envoyés par Brevo, qui reçoit pour cela l'adresse et le message."
+          ),
+          gettext(
+            "Quand vous envoyez un reçu par WhatsApp, c'est votre téléphone qui l'envoie : Scolaka n'a pas accès à vos conversations."
+          )
+        ]
+      },
+      %{
+        id: "cookies",
+        title: gettext("Cookies"),
+        paragraphs: [
+          gettext(
+            "Scolaka utilise un seul cookie, celui qui garde votre session ouverte et retient votre langue ; Cloudflare peut y ajouter un cookie technique de sécurité. Votre téléphone garde aussi le thème choisi, clair ou sombre. Il n'y a ni publicité ni outil de suivi."
+          )
+        ]
       }
     ]
   end
@@ -384,6 +453,10 @@ defmodule TeacherAssistantWeb.PageHTML do
       {gettext("Qui voit quoi ?"),
        gettext(
          "Chaque rôle voit ce qui le concerne : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais. Le proviseur voit tout. Les données d'un établissement ne sont visibles que par ses membres."
+       )},
+      {gettext("Et si le réseau est faible ?"),
+       gettext(
+         "L'application est légère : moins de 300 Ko au premier chargement, gardés ensuite par le téléphone, puis peu de données à chaque action. Elle a besoin du réseau pour enregistrer et ne fonctionne pas hors ligne. Pour une classe sans réseau, une feuille d'appel imprimée se remplit à la main et se saisit plus tard."
        )},
       {gettext("Les établissements anglophones sont-ils pris en charge ?"),
        gettext(

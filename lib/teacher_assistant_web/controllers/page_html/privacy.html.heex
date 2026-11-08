@@ -1,0 +1,60 @@
+<%!--
+  Privacy page: what Scolaka keeps, who sees it, where it lives. Every sentence is
+  something the code does today (no retention periods or deletion promises: the
+  operator has not decided them yet). Same look as the landing, same footer.
+--%>
+<div class="ta-landing flex min-h-screen flex-col bg-base-200 text-base-content">
+  <header class="border-b border-base-300">
+    <div class="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2 sm:px-6">
+      <a href={~p"/"} class="flex min-h-11 items-center">
+        <Layouts.logo class="h-7 w-auto" />
+      </a>
+      <.link href={~p"/"} class="ta-landing__nav ml-auto gap-1.5">
+        <.icon name="hero-arrow-left" class="size-4" />
+        {gettext("Retour à l'accueil")}
+      </.link>
+    </div>
+  </header>
+
+  <main id="contenu" class="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6 lg:py-16">
+    <p class="ta-landing__eyebrow">{gettext("Confidentialité")}</p>
+    <h1 class="mt-3 text-[2rem] font-semibold leading-[1.1] sm:text-[2.6rem] [text-wrap:balance]">
+      {gettext("Les données de votre établissement, et ce que nous en faisons.")}
+    </h1>
+    <p class="ta-landing__lead mt-5 text-lg leading-relaxed [text-wrap:pretty]">
+      {gettext(
+        "Scolaka aide les établissements scolaires à tenir l'appel, les notes, les bulletins et les frais. Cette page dit quelles données nous gardons, qui peut les voir et où elles se trouvent."
+      )}
+    </p>
+    <p class="ta-text-2 mt-3 text-sm">{gettext("Mise à jour le 8 novembre 2026")}</p>
+
+    <div class="mt-10 flex flex-col gap-10">
+      <section :for={part <- privacy_sections()} aria-labelledby={"privacy-#{part.id}"}>
+        <h2
+          id={"privacy-#{part.id}"}
+          class="ta-landing__h3 text-xl font-semibold"
+        >
+          {part.title}
+        </h2>
+        <p :for={text <- part.paragraphs} class="ta-landing__lead mt-3 leading-relaxed">
+          {text}
+        </p>
+        <.checks :if={part[:items]} class="mt-4" items={part.items} />
+      </section>
+
+      <section aria-labelledby="privacy-rights">
+        <h2 id="privacy-rights" class="ta-landing__h3 text-xl font-semibold">
+          {gettext("Consulter, corriger ou supprimer")}
+        </h2>
+        <p class="ta-landing__lead mt-3 leading-relaxed">
+          {gettext(
+            "Les données d'un élève ou d'un parent sont saisies et gérées par son établissement : adressez-vous d'abord à lui. Un membre de l'équipe change lui-même son mot de passe dans son espace."
+          )}
+        </p>
+        <.contact_line class="mt-3" />
+      </section>
+    </div>
+  </main>
+
+  <.site_footer current_user={@current_user} />
+</div>

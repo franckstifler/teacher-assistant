@@ -27,7 +27,9 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert doc |> LazyHTML.query("#sequence ol > li") |> Enum.count() == 4
     assert doc |> LazyHTML.query("#roles article") |> Enum.count() == 4
     assert doc |> LazyHTML.query("#tarif ol > li") |> Enum.count() == 3
-    assert doc |> LazyHTML.query("#questions details") |> Enum.count() == 4
+    assert doc |> LazyHTML.query("#questions details") |> Enum.count() == 5
+    assert html =~ "ne fonctionne pas hors ligne"
+    assert html =~ "installation accompagnée"
     # fees get their own section, and every module is listed once
     assert doc |> LazyHTML.query("#frais ul > li") |> Enum.count() == 4
     assert doc |> LazyHTML.query("#inclus ul > li") |> Enum.count() == 8
@@ -128,6 +130,46 @@ defmodule TeacherAssistantWeb.PageControllerTest do
 
     assert conn |> init_test_session(%{locale: "en"}) |> title.() ==
              "Scolaka · School management in Cameroon"
+  end
+
+  describe "privacy page" do
+    test "GET /confidentialite says what is kept, who sees it and where", %{conn: conn} do
+      html = conn |> get(~p"/confidentialite") |> html_response(200)
+      doc = doc(html)
+
+      assert LazyHTML.text(doc["h1"]) =~ "Les données de votre établissement"
+
+      for heading <- [
+            "Ce que nous gardons",
+            "Qui peut les voir",
+            "Où elles se trouvent",
+            "Cookies",
+            "Consulter, corriger ou supprimer"
+          ],
+          do: assert(LazyHTML.text(doc["main h2"]) =~ heading)
+
+      # the services that handle data are named, and the support access is disclosed
+      for name <- ["Hetzner", "Cloudflare", "Brevo"], do: assert(html =~ name)
+      assert html =~ "limité à une heure et inscrit dans un journal"
+      assert "mailto:contact@example.test" in hrefs(doc, "main a")
+      assert "/" in hrefs(doc, "header a")
+    end
+
+    test "GET /confidentialite reads in English", %{conn: conn} do
+      html =
+        conn
+        |> init_test_session(%{locale: "en"})
+        |> get(~p"/confidentialite")
+        |> html_response(200)
+
+      assert html =~ "What we keep"
+      refute html =~ "Ce que nous gardons"
+    end
+
+    test "the landing's footer links to it", %{conn: conn} do
+      doc = conn |> landing() |> doc()
+      assert "/confidentialite" in hrefs(doc, "footer a")
+    end
   end
 
   describe "contact links" do

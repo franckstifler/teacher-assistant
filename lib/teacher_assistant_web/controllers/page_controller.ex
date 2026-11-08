@@ -7,6 +7,10 @@ defmodule TeacherAssistantWeb.PageController do
     render(conn, :home)
   end
 
+  def privacy(conn, _params) do
+    render(conn, :privacy)
+  end
+
   @doc """
   Entry point for the "create a school" intent.
 

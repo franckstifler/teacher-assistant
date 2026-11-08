@@ -33,6 +33,7 @@ defmodule TeacherAssistantWeb.Router do
 
     get "/", PageController, :home
     get "/schools/start", PageController, :start_school
+    get "/confidentialite", PageController, :privacy
     auth_routes AuthController, TeacherAssistant.Accounts.User, path: "/auth"
 
     sign_out_route AuthController, "/sign-out",

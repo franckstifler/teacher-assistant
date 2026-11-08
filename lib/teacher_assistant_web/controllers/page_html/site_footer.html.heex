@@ -1,0 +1,48 @@
+<%!-- The public pages' footer (landing, privacy): contact, entry points, language. --%>
+<footer class="border-t border-base-300">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-8 text-sm sm:px-6">
+    <Layouts.logo class="h-6 w-auto" />
+    <span class="ta-text-2">{gettext("Francophone et anglophone · Cameroun")}</span>
+    <span
+      :if={contact_whatsapp() || contact_email()}
+      id="landing-contact"
+      class="flex flex-wrap items-center gap-x-1"
+    >
+      <a
+        :if={contact_whatsapp()}
+        href={whatsapp_url(question_message())}
+        target="_blank"
+        rel="noopener"
+        class="ta-landing__nav gap-1.5"
+      >
+        <.icon name="hero-chat-bubble-left-right" class="size-4" />
+        <span class="sr-only">{gettext("WhatsApp :")}</span>
+        <span>{contact_whatsapp()}</span>
+      </a>
+      <a
+        :if={contact_email()}
+        href={"mailto:" <> contact_email()}
+        class="ta-landing__nav gap-1.5"
+      >
+        <.icon name="hero-envelope" class="size-4" />
+        {contact_email()}
+      </a>
+    </span>
+    <span class="flex flex-wrap items-center gap-x-1 sm:ml-auto">
+      <.link :if={@current_user} href={~p"/school"} class="ta-landing__nav">
+        {gettext("Mon espace")}
+      </.link>
+      <.link :if={!@current_user} href={~p"/sign-in"} class="ta-landing__nav">
+        {gettext("Se connecter")}
+      </.link>
+      <.link href={~p"/schools/start"} class="ta-landing__nav">
+        {gettext("Inscrire un établissement")}
+      </.link>
+      <.link href={~p"/confidentialite"} class="ta-landing__nav">
+        {gettext("Confidentialité")}
+      </.link>
+      <.link href={~p"/locale/fr"} class="ta-landing__nav" lang="fr">FR</.link>
+      <.link href={~p"/locale/en"} class="ta-landing__nav" lang="en">EN</.link>
+    </span>
+  </div>
+</footer>
