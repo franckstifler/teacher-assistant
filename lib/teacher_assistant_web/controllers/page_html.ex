@@ -28,6 +28,16 @@ defmodule TeacherAssistantWeb.PageHTML do
     """
   end
 
+  @doc "The landing's headline (also the start of the meta description)."
+  def headline, do: gettext("Tout l'établissement, sur le téléphone de chacun.")
+
+  @doc "The hero's lede (also the rest of the meta description)."
+  def lede do
+    gettext(
+      "L'appel, les notes, les bulletins et les frais, avec un espace pour chaque membre de l'équipe. Les bulletins sont prêts le soir du conseil de classe."
+    )
+  end
+
   @doc "The current locale, for the FR · EN switch."
   def locale, do: Gettext.get_locale(TeacherAssistantWeb.Gettext)
 
@@ -35,7 +45,8 @@ defmodule TeacherAssistantWeb.PageHTML do
   def sections do
     [
       {"#sequence", gettext("Comment ça marche")},
-      {"#roles", gettext("Rôles")},
+      {"#frais", gettext("Frais")},
+      {"#inclus", gettext("Modules")},
       {"#tarif", gettext("Tarif")},
       {"#questions", gettext("Questions")}
     ]
@@ -126,6 +137,115 @@ defmodule TeacherAssistantWeb.PageHTML do
   def mark(value) do
     text = :erlang.float_to_binary(value * 1.0, decimals: 2)
     if locale() == "fr", do: String.replace(text, ".", ","), else: text
+  end
+
+  @doc "The pilot band: every module the pilot includes."
+  def pilot_modules do
+    [
+      gettext("Appel"),
+      gettext("Notes"),
+      gettext("Bulletins"),
+      gettext("Frais"),
+      gettext("Emploi du temps"),
+      gettext("Discipline"),
+      gettext("Cartes d'élève")
+    ]
+  end
+
+  @doc "The drawn receipt's rows: label and amount in FCFA."
+  def receipt_rows do
+    [
+      {gettext("Frais exigibles"), 10_000},
+      {gettext("Scolarité · tranche 2"), 25_000}
+    ]
+  end
+
+  @doc "The drawn receipt's totals: label and amount in FCFA."
+  def receipt_totals do
+    [
+      {gettext("Total payé à ce jour"), 60_000},
+      {gettext("Reste à payer"), 15_000}
+    ]
+  end
+
+  @doc "An amount as printed on a receipt: « 25 000 FCFA »."
+  def fcfa(amount), do: TeacherAssistantWeb.Money.format_fcfa(amount)
+
+  @doc "The drawn receipt's QR code: a fixed 7 × 7 pattern (1 = dark)."
+  def qr_cells do
+    ~w(1111101 1000101 1011101 0000000 1101011 0110100 1011011)
+    |> Enum.flat_map(&String.graphemes/1)
+    |> Enum.map(&(&1 == "1"))
+  end
+
+  @doc "Everything the pilot includes, module by module."
+  def modules do
+    [
+      %{
+        icon: "hero-clipboard-document-check",
+        title: gettext("Appel et absences"),
+        text:
+          gettext(
+            "L'appel à chaque cours, les absences à justifier, les heures d'absence par élève. Une feuille d'appel imprimée pour les classes sans téléphone, saisie ensuite par le surveillant."
+          )
+      },
+      %{
+        icon: "hero-pencil-square",
+        title: gettext("Notes et séquences"),
+        text:
+          gettext(
+            "La saisie au téléphone, le suivi de l'avancement par le censeur et les corrections validées avant d'arriver au bulletin."
+          )
+      },
+      %{
+        icon: "hero-document-text",
+        title: gettext("Bulletins et conseils"),
+        text:
+          gettext(
+            "Coefficients, rangs et appréciations, conseils de classe, puis le passage en classe supérieure en fin d'année."
+          )
+      },
+      %{
+        icon: "hero-banknotes",
+        title: gettext("Frais et reçus"),
+        text:
+          gettext(
+            "Montants par niveau, tranches et échéances, reçus numérotés vérifiables, retards de paiement classe par classe."
+          )
+      },
+      %{
+        icon: "hero-calendar-days",
+        title: gettext("Emploi du temps"),
+        text:
+          gettext(
+            "Construit par le censeur avec les salles et les disponibilités des enseignants, imprimé par classe ou par enseignant."
+          )
+      },
+      %{
+        icon: "hero-scale",
+        title: gettext("Discipline"),
+        text:
+          gettext(
+            "La conduite et les sanctions de chaque élève, à portée du surveillant général et du proviseur."
+          )
+      },
+      %{
+        icon: "hero-identification",
+        title: gettext("Élèves et cartes"),
+        text:
+          gettext(
+            "Les listes importées depuis Excel, les photos, les cartes scolaires avec code QR et les photos pour les examens officiels."
+          )
+      },
+      %{
+        icon: "hero-printer",
+        title: gettext("Impressions"),
+        text:
+          gettext(
+            "Listes de classe, emplois du temps, bulletins, reçus et lettres aux familles, prêts à imprimer."
+          )
+      }
+    ]
   end
 
   @doc "What each role finds in its space (the phone tab bar of each)."

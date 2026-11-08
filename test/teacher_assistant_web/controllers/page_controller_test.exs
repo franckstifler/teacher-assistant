@@ -16,11 +16,11 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert [_] = doc |> LazyHTML.query("h1") |> Enum.to_list()
     assert LazyHTML.text(doc["h1"]) =~ "Tout l'établissement, sur le téléphone de chacun."
 
-    for id <- ~w(contenu sequence bulletins roles tarif questions),
+    for id <- ~w(contenu sequence bulletins frais inclus roles tarif questions),
         do: assert(html =~ ~s(id="#{id}"))
 
     # the header nav (and its phone menu) point at the sections
-    for anchor <- ~w(#sequence #roles #tarif #questions),
+    for anchor <- ~w(#sequence #frais #inclus #tarif #questions),
         do: assert(anchor in hrefs(doc, ~s(header nav a)))
 
     # one sequence in four steps, the four role cards, three start steps, four questions
@@ -28,8 +28,12 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert doc |> LazyHTML.query("#roles article") |> Enum.count() == 4
     assert doc |> LazyHTML.query("#tarif ol > li") |> Enum.count() == 3
     assert doc |> LazyHTML.query("#questions details") |> Enum.count() == 4
+    # fees get their own section, and every module is listed once
+    assert doc |> LazyHTML.query("#frais ul > li") |> Enum.count() == 4
+    assert doc |> LazyHTML.query("#inclus ul > li") |> Enum.count() == 8
 
     assert html =~ "Phase pilote 2026-2027"
+    assert html =~ "Les bulletins sont prêts le soir du conseil de classe."
     assert html =~ "Gratuit pendant la phase pilote"
     assert html =~ "Votre établissement, prêt pour la prochaine séquence."
   end
@@ -40,8 +44,8 @@ defmodule TeacherAssistantWeb.PageControllerTest do
 
     refute html =~ "/images/landing/"
     assert doc |> LazyHTML.query("main img") |> Enum.count() == 0
-    # the drawings are decorative: the hero art and the printed bulletin
-    assert doc |> LazyHTML.query(~s(main [aria-hidden="true"])) |> Enum.count() >= 2
+    # the drawings are decorative: the hero art, the printed bulletin and the receipt
+    assert doc |> LazyHTML.query(~s(main [aria-hidden="true"])) |> Enum.count() >= 3
   end
 
   test "GET / says only what the app does: no placeholders, no promises", %{conn: conn} do
@@ -93,7 +97,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
 
     assert LazyHTML.text(menu["summary"]) =~ "Menu"
 
-    for href <- ~w(#sequence #roles #tarif #questions /locale/fr /locale/en),
+    for href <- ~w(#sequence #frais #inclus #tarif #questions /locale/fr /locale/en),
         do: assert(href in hrefs(menu, "a"))
   end
 
@@ -113,6 +117,19 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert en =~ "The whole school, on everyone's phone. "
   end
 
+  test "GET / has a page title that says what Scolaka is, in the visitor's language", %{
+    conn: conn
+  } do
+    title = fn conn ->
+      conn |> landing() |> doc() |> LazyHTML.query("title") |> LazyHTML.text()
+    end
+
+    assert title.(conn) == "Scolaka · Gestion scolaire au Cameroun"
+
+    assert conn |> init_test_session(%{locale: "en"}) |> title.() ==
+             "Scolaka · School management in Cameroon"
+  end
+
   test "GET / in English reads in English", %{conn: conn} do
     html = conn |> init_test_session(%{locale: "en"}) |> landing()
 
@@ -121,6 +138,8 @@ defmodule TeacherAssistantWeb.PageControllerTest do
     assert html =~ "I&#39;m a teacher: sign in"
     assert html =~ "Free during the pilot phase"
     assert html =~ "Report cards ready to print, in the official format."
+    assert html =~ "Every franc collected has its receipt, and every receipt can be checked."
+    assert html =~ "Everything included"
     refute html =~ "Tout l&#39;établissement"
     refute html =~ "Inscrire mon établissement"
   end

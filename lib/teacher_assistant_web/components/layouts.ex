@@ -17,13 +17,8 @@ defmodule TeacherAssistantWeb.Layouts do
 
   # The `<meta name="description">` and link-preview text: the landing's headline
   # and lede, so it reads in the visitor's language with no copy of its own.
-  defp description do
-    gettext("Tout l'établissement, sur le téléphone de chacun.") <>
-      " " <>
-      gettext(
-        "L'appel, les notes et les bulletins, avec un espace pour chaque membre de l'équipe."
-      )
-  end
+  defp description,
+    do: TeacherAssistantWeb.PageHTML.headline() <> " " <> TeacherAssistantWeb.PageHTML.lede()
 
   @doc """
   Renders your app layout.

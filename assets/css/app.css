@@ -882,6 +882,7 @@ form[data-dirty] .ta-savebar {
   border-radius: 0.5rem;
   font-size: 0.9rem;
   font-weight: 500;
+  white-space: nowrap;
   color: var(--ta-text-2);
   transition: color 120ms ease, background-color 120ms ease;
 }
@@ -955,6 +956,7 @@ form[data-dirty] .ta-savebar {
   box-shadow: 0 0 0 1px rgb(23 35 30 / 0.1), 0 24px 44px -18px rgb(4 8 6 / 0.45);
   transform: rotate(-2deg);
 }
+.ta-landing__sheet--tilt-right { transform: rotate(2deg); }
 .ta-landing__sheet-rule { border-bottom: 1px solid #DDD8CC; }
 .ta-landing__flag {
   height: 4px;

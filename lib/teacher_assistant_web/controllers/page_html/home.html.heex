@@ -17,7 +17,7 @@
       <a href={~p"/"} class="flex min-h-11 min-w-0 items-center">
         <Layouts.logo class="h-7 w-auto" />
       </a>
-      <nav class="ml-4 hidden items-center gap-0.5 lg:flex" aria-label={gettext("Sections")}>
+      <nav class="ml-4 hidden items-center gap-0.5 xl:flex" aria-label={gettext("Sections")}>
         <a :for={{href, label} <- sections()} href={href} class="ta-landing__nav !px-2.5">
           {label}
         </a>
@@ -67,7 +67,7 @@
           {gettext("Inscrire mon établissement")}
         </.link>
 
-        <details id="landing-menu" class="ta-landing__menu relative lg:hidden" data-close-on-link>
+        <details id="landing-menu" class="ta-landing__menu relative xl:hidden" data-close-on-link>
           <summary class="-mr-2 grid size-11 cursor-pointer place-items-center rounded-lg">
             <span class="sr-only">{gettext("Menu")}</span>
             <.icon name="hero-bars-3" class="ta-landing__menu-open size-6" />
@@ -81,7 +81,7 @@
                 </li>
               </ul>
             </nav>
-            <div class="mt-1 flex items-center gap-1 border-t border-base-300 px-1 pt-2">
+            <div class="mt-1 flex items-center gap-1 border-t border-base-300 px-1 pt-2 lg:hidden">
               <nav
                 class="flex items-center font-mono text-[0.85rem]"
                 aria-label={gettext("Langue")}
@@ -133,12 +133,10 @@
           id="landing-title"
           class="mt-4 text-[2rem] font-semibold leading-[1.08] tracking-[-0.01em] sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] [text-wrap:balance]"
         >
-          {gettext("Tout l'établissement, sur le téléphone de chacun.")}
+          {headline()}
         </h1>
         <p class="ta-landing__lead mt-5 max-w-[34rem] text-base leading-relaxed sm:text-lg [text-wrap:pretty]">
-          {gettext(
-            "L'appel, les notes et les bulletins, avec un espace pour chaque membre de l'équipe."
-          )}
+          {lede()}
         </p>
         <div class="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
           <.link href={~p"/schools/start"} class="btn btn-primary btn-lg min-h-13">
@@ -241,11 +239,19 @@
 
     <%!-- PILOT --%>
     <section aria-label={gettext("Phase pilote")} class="border-y border-base-300 bg-base-100">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-10 gap-y-1.5 px-4 py-5 text-sm sm:px-6">
-        <p class="font-semibold">{gettext("Phase pilote 2026-2027")}</p>
-        <p class="ta-text-2 lg:ml-auto">
-          {gettext("Proviseur, censeur, surveillant général, intendant, enseignants")}
+      <div class="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-5 text-sm sm:px-6 lg:flex-row lg:items-center lg:gap-10">
+        <p>
+          <span class="font-semibold">{gettext("Phase pilote 2026-2027")}</span>
+          <span class="ta-text-2">· {gettext("gratuite, tous les modules compris")}</span>
         </p>
+        <ul class="flex flex-wrap gap-1.5 lg:ml-auto" aria-label={gettext("Modules compris")}>
+          <li
+            :for={name <- pilot_modules()}
+            class="rounded-full border border-base-300 px-2.5 py-1 font-mono text-xs font-medium"
+          >
+            {name}
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -332,6 +338,107 @@
             </span>
           </div>
         </div>
+      </div>
+    </section>
+
+    <%!-- FEES --%>
+    <section
+      id="frais"
+      aria-labelledby="frais-title"
+      class="mx-auto grid max-w-6xl scroll-mt-20 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:py-22"
+    >
+      <div aria-hidden="true" class="flex select-none justify-center py-2 max-lg:order-last">
+        <div class="ta-landing__sheet ta-landing__sheet--tilt-right flex w-[300px] max-w-full flex-col gap-2 p-[18px] text-[10px]">
+          <span class="ta-landing__flag block"></span>
+          <span class="flex items-baseline justify-between gap-2">
+            <span class="text-[11px] font-bold uppercase tracking-wide">{gettext("Reçu")}</span>
+            <span class="ta-num font-semibold">R2026-000123</span>
+          </span>
+          <span class="ta-landing__sheet-rule flex justify-between pb-[3px]">
+            <span>{gettext("Élève")}</span>
+            <span class="font-semibold">Ngo Bassa Marie</span>
+          </span>
+          <span class="ta-landing__sheet-rule flex justify-between pb-[3px]">
+            <span>{gettext("Classe")}</span>
+            <span class="font-semibold">{gettext("2nde C")}</span>
+          </span>
+          <span
+            :for={{label, amount} <- receipt_rows()}
+            class="ta-landing__sheet-rule flex justify-between pb-[3px]"
+          >
+            <span>{label}</span>
+            <span class="ta-num">{fcfa(amount)}</span>
+          </span>
+          <span class="flex justify-between text-[11px] font-bold">
+            <span>{gettext("Ce reçu")}</span>
+            <span class="ta-num">{fcfa(35_000)}</span>
+          </span>
+          <span class="mt-2 flex items-end justify-between gap-3">
+            <span class="flex flex-col gap-1">
+              <span :for={{label, amount} <- receipt_totals()} class="flex gap-2">
+                <span>{label}</span>
+                <span class="ta-num font-semibold">{fcfa(amount)}</span>
+              </span>
+            </span>
+            <span class="grid size-14 flex-none grid-cols-7 gap-px">
+              <span :for={dark <- qr_cells()} class={dark && "bg-[#17231E]"}></span>
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div class="max-w-xl">
+        <p class="ta-landing__eyebrow">{gettext("À l'intendance")}</p>
+        <h2
+          id="frais-title"
+          class="mt-3 text-[1.85rem] font-semibold leading-[1.15] sm:text-[2.15rem] [text-wrap:balance]"
+        >
+          {gettext("Chaque franc encaissé a son reçu, et chaque reçu se vérifie.")}
+        </h2>
+        <p class="ta-landing__lead mt-4 leading-relaxed [text-wrap:pretty]">
+          {gettext(
+            "L'établissement fixe ses frais, les montants par niveau et les tranches avec leurs échéances. Chaque paiement donne un reçu numéroté qui ne se modifie plus, et l'intendant voit classe par classe qui est à jour et qui est en retard."
+          )}
+        </p>
+        <.checks
+          class="mt-5"
+          items={[
+            gettext("Reçus vérifiables en ligne, par code QR ou par numéro"),
+            gettext("Résumé du reçu envoyé aux parents par WhatsApp"),
+            gettext("Liste de contrôle par classe, lettres d'avertissement et bons de retour"),
+            gettext(
+              "Un élève renvoyé pour frais est noté comme tel à l'appel, sans compter d'absence"
+            )
+          ]}
+        />
+      </div>
+    </section>
+
+    <%!-- EVERYTHING INCLUDED --%>
+    <section
+      id="inclus"
+      aria-labelledby="inclus-title"
+      class="scroll-mt-20 border-y border-base-300 bg-base-100"
+    >
+      <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
+        <p class="ta-landing__eyebrow">{gettext("Tout ce qui est inclus")}</p>
+        <h2
+          id="inclus-title"
+          class="mt-3 max-w-[42rem] text-[1.85rem] font-semibold leading-[1.15] sm:text-[2.15rem] [text-wrap:balance]"
+        >
+          {gettext("Toute la vie de l'établissement, dans une seule application.")}
+        </h2>
+        <ul class="mt-10 grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
+          <li :for={module <- modules()} class="flex gap-3.5 sm:flex-col sm:gap-3">
+            <span class="grid size-10 flex-none place-items-center rounded-xl bg-primary/12 text-primary">
+              <.icon name={module.icon} class="size-5" />
+            </span>
+            <div>
+              <h3 class="ta-landing__h3 text-base font-semibold">{module.title}</h3>
+              <p class="ta-landing__lead mt-1 text-[0.92rem] leading-relaxed">{module.text}</p>
+            </div>
+          </li>
+        </ul>
       </div>
     </section>
 

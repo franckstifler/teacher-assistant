@@ -24,8 +24,8 @@ msgstr "Actions"
 msgid "Admin"
 msgstr "Administrateur"
 
-#: lib/teacher_assistant_web/components/layouts.ex:834
-#: lib/teacher_assistant_web/components/layouts.ex:846
+#: lib/teacher_assistant_web/components/layouts.ex:829
+#: lib/teacher_assistant_web/components/layouts.ex:841
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Tentative de reconnexion"
@@ -64,18 +64,18 @@ msgstr "Date de fin"
 msgid "Principal Teacher"
 msgstr "Professeur principal"
 
-#: lib/teacher_assistant_web/components/layouts.ex:409
+#: lib/teacher_assistant_web/components/layouts.ex:404
 #, elixir-autogen, elixir-format
 msgid "Sign in"
 msgstr "Se connecter"
 
-#: lib/teacher_assistant_web/components/layouts.ex:379
-#: lib/teacher_assistant_web/components/layouts.ex:690
+#: lib/teacher_assistant_web/components/layouts.ex:374
+#: lib/teacher_assistant_web/components/layouts.ex:685
 #, elixir-autogen, elixir-format
 msgid "Sign out"
 msgstr "Se déconnecter"
 
-#: lib/teacher_assistant_web/components/layouts.ex:841
+#: lib/teacher_assistant_web/components/layouts.ex:836
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "Une erreur est survenue !"
@@ -110,7 +110,7 @@ msgstr "Enseignant"
 msgid "Type"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:829
+#: lib/teacher_assistant_web/components/layouts.ex:824
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "Connexion internet introuvable"
@@ -213,6 +213,7 @@ msgstr "Année"
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:24
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:56
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/note.html.heex:19
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:362
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:48
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:39
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:51
@@ -232,8 +233,8 @@ msgstr "Année"
 msgid "Classe"
 msgstr "Classe"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:148
-#: lib/teacher_assistant_web/controllers/page_html.ex:164
+#: lib/teacher_assistant_web/controllers/page_html.ex:268
+#: lib/teacher_assistant_web/controllers/page_html.ex:284
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:115
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:197
 #: lib/teacher_assistant_web/live/onboarding/setup_wizard_live.ex:557
@@ -336,6 +337,7 @@ msgstr "élèves"
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:23
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:117
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/note.html.heex:18
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:358
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:45
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:38
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:50
@@ -360,6 +362,8 @@ msgid "Élève"
 msgstr "Élève"
 
 #: lib/teacher_assistant/modules.ex:117
+#: lib/teacher_assistant_web/controllers/page_html.ex:150
+#: lib/teacher_assistant_web/controllers/page_html.ex:226
 #: lib/teacher_assistant_web/live/school/class_shell.ex:275
 #, elixir-autogen, elixir-format
 msgid "Discipline"
@@ -395,9 +399,9 @@ msgstr "Année scolaire"
 
 #: lib/teacher_assistant/accounts/school_role.ex:34
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:48
-#: lib/teacher_assistant_web/controllers/page_html.ex:73
-#: lib/teacher_assistant_web/controllers/page_html.ex:82
-#: lib/teacher_assistant_web/controllers/page_html.ex:135
+#: lib/teacher_assistant_web/controllers/page_html.ex:84
+#: lib/teacher_assistant_web/controllers/page_html.ex:93
+#: lib/teacher_assistant_web/controllers/page_html.ex:255
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:66
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:532
 #: lib/teacher_assistant_web/live/school/members_components.ex:609
@@ -427,8 +431,8 @@ msgid "Aucune invitation en attente"
 msgstr "Aucune invitation en attente"
 
 #: lib/teacher_assistant/accounts/school_role.ex:30
-#: lib/teacher_assistant_web/controllers/page_html.ex:91
-#: lib/teacher_assistant_web/controllers/page_html.ex:143
+#: lib/teacher_assistant_web/controllers/page_html.ex:102
+#: lib/teacher_assistant_web/controllers/page_html.ex:263
 #: lib/teacher_assistant_web/live/school/members_components.ex:605
 #: lib/teacher_assistant_web/spaces.ex:182
 #, elixir-autogen, elixir-format
@@ -640,7 +644,6 @@ msgstr "Révoquer"
 msgid "Révoquer cette invitation ?"
 msgstr "Révoquer cette invitation ?"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:38
 #: lib/teacher_assistant_web/live/admin/school_live.ex:306
 #: lib/teacher_assistant_web/live/school/members_components.ex:456
 #: lib/teacher_assistant_web/live/school/members_live.ex:136
@@ -653,7 +656,7 @@ msgstr "Rôles"
 msgid "School name"
 msgstr "Nom de l'établissement"
 
-#: lib/teacher_assistant_web/components/layouts.ex:291
+#: lib/teacher_assistant_web/components/layouts.ex:286
 #, elixir-autogen, elixir-format
 msgid "School navigation"
 msgstr "Navigation de l'école"
@@ -673,7 +676,7 @@ msgid "Statut"
 msgstr "Statut"
 
 #: lib/teacher_assistant/accounts/school_role.ex:31
-#: lib/teacher_assistant_web/controllers/page_html.ex:151
+#: lib/teacher_assistant_web/controllers/page_html.ex:271
 #: lib/teacher_assistant_web/spaces.ex:183
 #, elixir-autogen, elixir-format
 msgid "Surveillant général"
@@ -1251,6 +1254,8 @@ msgstr "Cours"
 
 #: lib/teacher_assistant/accounts/school_role.ex:108
 #: lib/teacher_assistant/modules.ex:118
+#: lib/teacher_assistant_web/controllers/page_html.ex:149
+#: lib/teacher_assistant_web/controllers/page_html.ex:218
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:6
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:52
 #: lib/teacher_assistant_web/live/school/availability_live.ex:182
@@ -1439,6 +1444,7 @@ msgstr "Accès refusé."
 msgid "Annuler"
 msgstr "Annuler"
 
+#: lib/teacher_assistant_web/controllers/page_html.ex:145
 #: lib/teacher_assistant_web/live/school/attendance_live.ex:23
 #, elixir-autogen, elixir-format
 msgid "Appel"
@@ -1463,7 +1469,7 @@ msgstr "Cahier d'appel"
 msgid "Conduite"
 msgstr "Conduite"
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:225
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:223
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:265
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:529
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:316
@@ -1622,7 +1628,7 @@ msgid "Sanction removed."
 msgstr "Sanction supprimée."
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:316
-#: lib/teacher_assistant_web/controllers/page_html.ex:156
+#: lib/teacher_assistant_web/controllers/page_html.ex:276
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:23
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:279
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:292
@@ -1791,7 +1797,7 @@ msgstr "Communautaire"
 msgid "Create school"
 msgstr "Créer l'établissement"
 
-#: lib/teacher_assistant_web/components/layouts.ex:252
+#: lib/teacher_assistant_web/components/layouts.ex:247
 #, elixir-autogen, elixir-format
 msgid "Créer un établissement"
 msgstr ""
@@ -2298,7 +2304,7 @@ msgstr ""
 msgid "Cette invitation a été envoyée à %{email}. Déconnectez-vous pour l'accepter avec cette adresse."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:179
+#: lib/teacher_assistant_web/components/layouts.ex:174
 #, elixir-autogen, elixir-format
 msgid "Close navigation"
 msgstr "Fermer la navigation"
@@ -2413,7 +2419,7 @@ msgid "Lycée bilingue de Nkolbisson"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/teaching_nav.ex:51
-#: lib/teacher_assistant_web/controllers/page_html.ex:140
+#: lib/teacher_assistant_web/controllers/page_html.ex:260
 #: lib/teacher_assistant_web/live/school/courses_live.ex:27
 #: lib/teacher_assistant_web/live/school/courses_live.ex:106
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:328
@@ -2437,6 +2443,7 @@ msgid "Non précisé"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/teaching_nav.ex:30
+#: lib/teacher_assistant_web/controllers/page_html.ex:146
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:978
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:538
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:100
@@ -2444,7 +2451,7 @@ msgstr ""
 msgid "Notes"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:124
+#: lib/teacher_assistant_web/components/layouts.ex:119
 #, elixir-autogen, elixir-format
 msgid "Open navigation"
 msgstr "Ouvrir la navigation"
@@ -2488,10 +2495,10 @@ msgstr ""
 msgid "Résultats"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1018
+#: lib/teacher_assistant_web/components/layouts.ex:1013
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:61
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:463
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:479
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:570
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:586
 #: lib/teacher_assistant_web/controllers/school_invitation_html/show.html.heex:35
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:249
 #, elixir-autogen, elixir-format
@@ -2514,7 +2521,7 @@ msgstr "Configurez votre établissement"
 msgid "Setup is complete — here's a quick recap."
 msgstr "La configuration est terminée : en voici le récapitulatif."
 
-#: lib/teacher_assistant_web/components/layouts.ex:182
+#: lib/teacher_assistant_web/components/layouts.ex:177
 #, elixir-autogen, elixir-format
 msgid "Sidebar"
 msgstr "Barre latérale"
@@ -2642,7 +2649,7 @@ msgid "vérifié"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/teaching_nav.ex:33
-#: lib/teacher_assistant_web/controllers/page_html.ex:156
+#: lib/teacher_assistant_web/controllers/page_html.ex:276
 #: lib/teacher_assistant_web/live/admin/overview_live.ex:216
 #: lib/teacher_assistant_web/live/school/class_shell.ex:271
 #: lib/teacher_assistant_web/live/school/classes_live.ex:218
@@ -3153,8 +3160,8 @@ msgstr ""
 msgid "Coefficient propre dans : %{classes}. Réinitialisez-les pour désactiver."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:265
-#: lib/teacher_assistant_web/components/layouts.ex:605
+#: lib/teacher_assistant_web/components/layouts.ex:260
+#: lib/teacher_assistant_web/components/layouts.ex:600
 #, elixir-autogen, elixir-format
 msgid "Espaces"
 msgstr "Espaces"
@@ -3170,7 +3177,7 @@ msgstr "Intendance"
 msgid "Pilotage"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:100
+#: lib/teacher_assistant_web/controllers/page_html.ex:111
 #: lib/teacher_assistant_web/spaces.ex:181
 #, elixir-autogen, elixir-format
 msgid "Proviseur"
@@ -3502,7 +3509,7 @@ msgid "Évaluations"
 msgstr ""
 
 #: lib/teacher_assistant/academics/bulletin_element.ex:49
-#: lib/teacher_assistant_web/controllers/page_html.ex:156
+#: lib/teacher_assistant_web/controllers/page_html.ex:276
 #: lib/teacher_assistant_web/live/school/absences_live.ex:29
 #: lib/teacher_assistant_web/live/school/absences_live.ex:190
 #: lib/teacher_assistant_web/live/school/absences_live.ex:206
@@ -3552,7 +3559,7 @@ msgstr ""
 msgid "La vie scolaire est réservée à l'administration."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:140
+#: lib/teacher_assistant_web/controllers/page_html.ex:260
 #: lib/teacher_assistant_web/live/school/corrections_live.ex:281
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:38
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:586
@@ -3641,7 +3648,7 @@ msgstr ""
 msgid "parents à notifier"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:235
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:233
 #: lib/teacher_assistant_web/live/school/day_live.ex:605
 #: lib/teacher_assistant_web/live/school/day_live.ex:741
 #: lib/teacher_assistant_web/live/school/day_live.ex:754
@@ -3822,9 +3829,10 @@ msgstr ""
 msgid "Bulletin"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:140
-#: lib/teacher_assistant_web/controllers/page_html.ex:148
-#: lib/teacher_assistant_web/controllers/page_html.ex:164
+#: lib/teacher_assistant_web/controllers/page_html.ex:147
+#: lib/teacher_assistant_web/controllers/page_html.ex:260
+#: lib/teacher_assistant_web/controllers/page_html.ex:268
+#: lib/teacher_assistant_web/controllers/page_html.ex:284
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:33
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:698
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:831
@@ -4923,7 +4931,7 @@ msgid "Cours regroupé : modifiez-le depuis la fiche de la classe."
 msgstr ""
 
 #: lib/teacher_assistant_web/components/drawer.ex:66
-#: lib/teacher_assistant_web/components/layouts.ex:596
+#: lib/teacher_assistant_web/components/layouts.ex:591
 #: lib/teacher_assistant_web/components/student_photo_components.ex:157
 #: lib/teacher_assistant_web/live/admin/reset_modal.ex:45
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:291
@@ -5123,7 +5131,7 @@ msgid "Ajouter le parent"
 msgstr ""
 
 #: lib/teacher_assistant/academics/contact_language.ex:7
-#: lib/teacher_assistant_web/controllers/page_html.ex:115
+#: lib/teacher_assistant_web/controllers/page_html.ex:126
 #, elixir-autogen, elixir-format
 msgid "Anglais"
 msgstr ""
@@ -5179,7 +5187,7 @@ msgid "E-mail"
 msgstr ""
 
 #: lib/teacher_assistant/academics/contact_language.ex:6
-#: lib/teacher_assistant_web/controllers/page_html.ex:114
+#: lib/teacher_assistant_web/controllers/page_html.ex:125
 #, elixir-autogen, elixir-format
 msgid "Français"
 msgstr ""
@@ -5707,7 +5715,7 @@ msgstr ""
 msgid "Aucune notification pour l'instant."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:458
+#: lib/teacher_assistant_web/components/layouts.ex:453
 #, elixir-autogen, elixir-format
 msgid "Aucune notification."
 msgstr ""
@@ -5736,9 +5744,9 @@ msgstr ""
 msgid "Messagerie"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:142
-#: lib/teacher_assistant_web/components/layouts.ex:429
-#: lib/teacher_assistant_web/components/layouts.ex:446
+#: lib/teacher_assistant_web/components/layouts.ex:137
+#: lib/teacher_assistant_web/components/layouts.ex:424
+#: lib/teacher_assistant_web/components/layouts.ex:441
 #: lib/teacher_assistant_web/live/school/notifications_live.ex:14
 #: lib/teacher_assistant_web/live/school/notifications_live.ex:60
 #, elixir-autogen, elixir-format
@@ -5768,13 +5776,13 @@ msgstr ""
 msgid "Relancé"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:454
+#: lib/teacher_assistant_web/components/layouts.ex:449
 #: lib/teacher_assistant_web/live/school/notifications_live.ex:64
 #, elixir-autogen, elixir-format
 msgid "Tout marquer comme lu"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:497
+#: lib/teacher_assistant_web/components/layouts.ex:492
 #, elixir-autogen, elixir-format
 msgid "Tout voir"
 msgstr ""
@@ -6218,9 +6226,9 @@ msgstr "Indiquez le nom."
 
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:67
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:111
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:145
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:408
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:449
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:143
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:515
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:556
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:222
 #, elixir-autogen, elixir-format
 msgid "Inscrire mon établissement"
@@ -6236,7 +6244,7 @@ msgstr "L'ancien mot de passe cesse de fonctionner et %{name} est déconnecté·
 msgid "La personne reçoit un lien et crée son mot de passe elle-même."
 msgstr "La personne reçoit un lien et crée son mot de passe elle-même."
 
-#: lib/teacher_assistant_web/components/layouts.ex:952
+#: lib/teacher_assistant_web/components/layouts.ex:947
 #, elixir-autogen, elixir-format
 msgid "Le mot de passe temporaire ne sert qu'une fois. Ensuite, personne à l'établissement ne connaît le vôtre."
 msgstr "Le mot de passe temporaire ne sert qu'une fois. Ensuite, personne à l'établissement ne connaît le vôtre."
@@ -6297,7 +6305,7 @@ msgstr "Mot de passe temporaire expiré"
 msgid "Mot de passe temporaire expiré — demandez-en un nouveau à l'établissement."
 msgstr "Mot de passe temporaire expiré — demandez-en un nouveau à l'établissement."
 
-#: lib/teacher_assistant_web/components/layouts.ex:1001
+#: lib/teacher_assistant_web/components/layouts.ex:996
 #: lib/teacher_assistant_web/live/account/password_live.ex:82
 #, elixir-autogen, elixir-format
 msgid "Nouveau mot de passe"
@@ -6333,7 +6341,7 @@ msgstr "Pas encore connecté·e · expire le %{date}"
 msgid "Pour qui n'a pas d'e-mail. Vous recevez un mot de passe temporaire à transmettre."
 msgstr "Pour qui n'a pas d'e-mail. Vous recevez un mot de passe temporaire à transmettre."
 
-#: lib/teacher_assistant_web/components/layouts.ex:949
+#: lib/teacher_assistant_web/components/layouts.ex:944
 #, elixir-autogen, elixir-format
 msgid "Première connexion"
 msgstr "Première connexion"
@@ -6376,8 +6384,8 @@ msgstr "Transmettez le numéro et ce mot de passe à %{name} — de vive voix, p
 msgid "TÉL"
 msgstr "TÉL"
 
-#: lib/teacher_assistant_web/components/layouts.ex:950
-#: lib/teacher_assistant_web/components/layouts.ex:966
+#: lib/teacher_assistant_web/components/layouts.ex:945
+#: lib/teacher_assistant_web/components/layouts.ex:961
 #, elixir-autogen, elixir-format
 msgid "Un mot de passe rien qu'à vous."
 msgstr "Un mot de passe rien qu'à vous."
@@ -9360,39 +9368,39 @@ msgstr ""
 msgid "Évaluations et moyennes"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:164
+#: lib/teacher_assistant_web/controllers/page_html.ex:284
 #: lib/teacher_assistant_web/spaces.ex:371
 #, elixir-autogen, elixir-format
 msgid "Accueil"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:624
+#: lib/teacher_assistant_web/components/layouts.ex:619
 #, elixir-autogen, elixir-format
 msgid "Autres pages"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:877
+#: lib/teacher_assistant_web/components/layouts.ex:872
 #, elixir-autogen, elixir-format
 msgid "Craie"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:604
+#: lib/teacher_assistant_web/components/layouts.ex:599
 #, elixir-autogen, elixir-format
 msgid "Espace"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:705
+#: lib/teacher_assistant_web/components/layouts.ex:700
 #, elixir-autogen, elixir-format
 msgid "Espace %{space}"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:156
+#: lib/teacher_assistant_web/controllers/page_html.ex:276
 #: lib/teacher_assistant_web/spaces.ex:375
 #, elixir-autogen, elixir-format
 msgid "Journée"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:659
+#: lib/teacher_assistant_web/components/layouts.ex:654
 #: lib/teacher_assistant_web/components/layouts/auth.html.heex:419
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:28
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:87
@@ -9400,36 +9408,36 @@ msgstr ""
 msgid "Langue"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:374
-#: lib/teacher_assistant_web/components/layouts.ex:685
+#: lib/teacher_assistant_web/components/layouts.ex:369
+#: lib/teacher_assistant_web/components/layouts.ex:680
 #, elixir-autogen, elixir-format
 msgid "Mot de passe"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:525
+#: lib/teacher_assistant_web/components/layouts.ex:520
 #, elixir-autogen, elixir-format
 msgid "Navigation principale"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:552
-#: lib/teacher_assistant_web/components/layouts.ex:579
+#: lib/teacher_assistant_web/components/layouts.ex:547
+#: lib/teacher_assistant_web/components/layouts.ex:574
 #, elixir-autogen, elixir-format
 msgid "Plus"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:869
+#: lib/teacher_assistant_web/components/layouts.ex:864
 #, elixir-autogen, elixir-format
 msgid "Sombre"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:148
+#: lib/teacher_assistant_web/controllers/page_html.ex:268
 #: lib/teacher_assistant_web/spaces.ex:372
 #, elixir-autogen, elixir-format
 msgid "Suivi"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:654
-#: lib/teacher_assistant_web/components/layouts.ex:862
+#: lib/teacher_assistant_web/components/layouts.ex:649
+#: lib/teacher_assistant_web/components/layouts.ex:857
 #, elixir-autogen, elixir-format
 msgid "Thème"
 msgstr ""
@@ -9439,12 +9447,12 @@ msgstr ""
 msgid "Aller au contenu"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:178
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:176
 #, elixir-autogen, elixir-format
 msgid "Comptes par téléphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:199
+#: lib/teacher_assistant_web/controllers/page_html.ex:319
 #, elixir-autogen, elixir-format
 msgid "Faut-il un ordinateur ?"
 msgstr ""
@@ -9455,33 +9463,33 @@ msgstr ""
 msgid "Frais de scolarité"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:473
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:580
 #, elixir-autogen, elixir-format
 msgid "Francophone et anglophone · Cameroun"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:166
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:397
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:164
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:504
 #, elixir-autogen, elixir-format
 msgid "Gratuit pendant la phase pilote"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:482
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:589
 #, elixir-autogen, elixir-format
 msgid "Inscrire un établissement"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:173
+#: lib/teacher_assistant_web/controllers/page_html.ex:293
 #, elixir-autogen, elixir-format
 msgid "Inscrivez l'établissement"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:187
+#: lib/teacher_assistant_web/controllers/page_html.ex:307
 #, elixir-autogen, elixir-format
 msgid "Invitez l'équipe"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:211
+#: lib/teacher_assistant_web/controllers/page_html.ex:331
 #, elixir-autogen, elixir-format
 msgid "Les établissements anglophones sont-ils pris en charge ?"
 msgstr ""
@@ -9491,12 +9499,12 @@ msgstr ""
 msgid "Lycées et collèges du Cameroun"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:422
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:529
 #, elixir-autogen, elixir-format
 msgid "Questions fréquentes"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:207
+#: lib/teacher_assistant_web/controllers/page_html.ex:327
 #, elixir-autogen, elixir-format
 msgid "Qui voit quoi ?"
 msgstr ""
@@ -9507,8 +9515,8 @@ msgstr ""
 msgid "Sections"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:39
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:395
+#: lib/teacher_assistant_web/controllers/page_html.ex:50
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:502
 #, elixir-autogen, elixir-format
 msgid "Tarif"
 msgstr ""
@@ -9518,7 +9526,7 @@ msgstr ""
 msgid "Tout l'établissement sur un seul tableau."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:445
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:552
 #, elixir-autogen, elixir-format
 msgid "Votre établissement, prêt pour la prochaine séquence."
 msgstr ""
@@ -9529,8 +9537,8 @@ msgstr ""
 msgid "Accès"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:314
-#: lib/teacher_assistant_web/components/layouts.ex:316
+#: lib/teacher_assistant_web/components/layouts.ex:309
+#: lib/teacher_assistant_web/components/layouts.ex:311
 #: lib/teacher_assistant_web/live/admin/journal_live.ex:53
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:57
 #: lib/teacher_assistant_web/live/admin/users_live.ex:69
@@ -9539,6 +9547,7 @@ msgid "Administration"
 msgstr ""
 
 #: lib/teacher_assistant/modules.ex:116
+#: lib/teacher_assistant_web/controllers/page_html.ex:186
 #, elixir-autogen, elixir-format
 msgid "Appel et absences"
 msgstr ""
@@ -9574,7 +9583,7 @@ msgstr ""
 msgid "Indiquez le motif de la suspension."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:347
+#: lib/teacher_assistant_web/components/layouts.ex:342
 #: lib/teacher_assistant_web/live/admin/journal_live.ex:12
 #: lib/teacher_assistant_web/live/admin/journal_live.ex:53
 #: lib/teacher_assistant_web/live/admin/school_live.ex:418
@@ -9582,6 +9591,7 @@ msgstr ""
 msgid "Journal"
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/page_html.ex:49
 #: lib/teacher_assistant_web/live/admin/school_live.ex:380
 #: lib/teacher_assistant_web/live/school/settings_live.ex:134
 #, elixir-autogen, elixir-format
@@ -9675,14 +9685,14 @@ msgstr ""
 msgid "Un mot de passe temporaire valable 7 jours remplacera l'actuel. La personne sera déconnectée de tous ses appareils."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:339
+#: lib/teacher_assistant_web/components/layouts.ex:334
 #: lib/teacher_assistant_web/live/admin/users_live.ex:14
 #: lib/teacher_assistant_web/live/admin/users_live.ex:69
 #, elixir-autogen, elixir-format
 msgid "Utilisateurs"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:323
+#: lib/teacher_assistant_web/components/layouts.ex:318
 #: lib/teacher_assistant_web/live/admin/overview_live.ex:22
 #: lib/teacher_assistant_web/live/admin/overview_live.ex:87
 #: lib/teacher_assistant_web/live/school/class_shell.ex:270
@@ -9729,7 +9739,7 @@ msgstr ""
 msgid "Établissement vérifié"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:331
+#: lib/teacher_assistant_web/components/layouts.ex:326
 #: lib/teacher_assistant_web/live/admin/school_live.ex:193
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:17
 #: lib/teacher_assistant_web/live/admin/schools_live.ex:57
@@ -9997,6 +10007,7 @@ msgstr ""
 msgid "Ce nom est vide ou déjà utilisé."
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:373
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:62
 #, elixir-autogen, elixir-format
 msgid "Ce reçu"
@@ -10081,7 +10092,9 @@ msgstr ""
 msgid "Envoyer par WhatsApp à %{name}"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:164
+#: lib/teacher_assistant_web/controllers/page_html.ex:48
+#: lib/teacher_assistant_web/controllers/page_html.ex:148
+#: lib/teacher_assistant_web/controllers/page_html.ex:284
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:61
 #: lib/teacher_assistant_web/live/school/class_shell.ex:277
 #: lib/teacher_assistant_web/live/school/fees_live.ex:632
@@ -10230,12 +10243,14 @@ msgstr ""
 msgid "Reste"
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/page_html.ex:167
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:76
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:81
 #, elixir-autogen, elixir-format
 msgid "Reste à payer"
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:354
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:74
 #, elixir-autogen, elixir-format
 msgid "Reçu"
@@ -10397,6 +10412,7 @@ msgstr ""
 msgid "Raison : %{reason}"
 msgstr ""
 
+#: lib/teacher_assistant_web/controllers/page_html.ex:166
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:75
 #, elixir-autogen, elixir-format
 msgid "Total payé à ce jour"
@@ -11220,38 +11236,38 @@ msgstr ""
 msgid "APC / CBA · Francophone & anglophone"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:979
+#: lib/teacher_assistant_web/components/layouts.ex:974
 #, elixir-autogen, elixir-format
 msgid "Ce compte sera celui du responsable de l'établissement. Vous inviterez votre équipe juste après."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1004
+#: lib/teacher_assistant_web/components/layouts.ex:999
 #, elixir-autogen, elixir-format
 msgid "Ce lien de réinitialisation n'est valable qu'une seule fois."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1002
+#: lib/teacher_assistant_web/components/layouts.ex:997
 #, elixir-autogen, elixir-format
 msgid "Choisissez un nouveau mot de passe"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:977
+#: lib/teacher_assistant_web/components/layouts.ex:972
 #, elixir-autogen, elixir-format
 msgid "Commencez par votre compte"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1009
-#: lib/teacher_assistant_web/components/layouts.ex:1017
+#: lib/teacher_assistant_web/components/layouts.ex:1004
+#: lib/teacher_assistant_web/components/layouts.ex:1012
 #, elixir-autogen, elixir-format
 msgid "Connexion"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1010
+#: lib/teacher_assistant_web/components/layouts.ex:1005
 #, elixir-autogen, elixir-format
 msgid "Connexion en cours"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:976
+#: lib/teacher_assistant_web/components/layouts.ex:971
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:247
 #, elixir-autogen, elixir-format
 msgid "Créer un compte"
@@ -11262,58 +11278,58 @@ msgstr ""
 msgid "Demande envoyée"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1020
+#: lib/teacher_assistant_web/components/layouts.ex:1015
 #, elixir-autogen, elixir-format
 msgid "Entrez le numéro de téléphone ou l'adresse fournis par votre établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:923
+#: lib/teacher_assistant_web/components/layouts.ex:918
 #, elixir-autogen, elixir-format
 msgid "L'appel en un geste, même sur téléphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:925
+#: lib/teacher_assistant_web/components/layouts.ex:920
 #, elixir-autogen, elixir-format
 msgid "La couverture du programme, toute l'année"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:990
+#: lib/teacher_assistant_web/components/layouts.ex:985
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:248
 #, elixir-autogen, elixir-format
 msgid "Mot de passe oublié"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:924
+#: lib/teacher_assistant_web/components/layouts.ex:919
 #, elixir-autogen, elixir-format
 msgid "Notes et bulletins pour toutes les classes"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:992
+#: lib/teacher_assistant_web/components/layouts.ex:987
 #, elixir-autogen, elixir-format
 msgid "Nous envoyons un lien valable une heure à l'adresse de votre compte."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:983
+#: lib/teacher_assistant_web/components/layouts.ex:978
 #, elixir-autogen, elixir-format
 msgid "Nous n'utilisons votre e-mail que pour l'accès au service et les notifications de votre établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:991
+#: lib/teacher_assistant_web/components/layouts.ex:986
 #, elixir-autogen, elixir-format
 msgid "Recevez un lien de réinitialisation"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:994
+#: lib/teacher_assistant_web/components/layouts.ex:989
 #, elixir-autogen, elixir-format
 msgid "Si l'adresse n'existe pas, aucun message n'est envoyé — pour protéger les comptes de votre établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1003
+#: lib/teacher_assistant_web/components/layouts.ex:998
 #, elixir-autogen, elixir-format
 msgid "Votre nouveau mot de passe doit contenir au moins 8 caractères."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:1012
+#: lib/teacher_assistant_web/components/layouts.ex:1007
 #, elixir-autogen, elixir-format
 msgid "Vous allez être redirigé·e automatiquement."
 msgstr ""
@@ -11379,12 +11395,12 @@ msgstr ""
 msgid "Mot de passe changé. Reconnectez-vous avec le nouveau."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:968
+#: lib/teacher_assistant_web/components/layouts.ex:963
 #, elixir-autogen, elixir-format
 msgid "Personne à l'établissement ne connaît votre mot de passe. Changez-le dès que vous pensez qu'il a pu être vu."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:965
+#: lib/teacher_assistant_web/components/layouts.ex:960
 #: lib/teacher_assistant_web/live/account/password_live.ex:60
 #, elixir-autogen, elixir-format
 msgid "Votre compte"
@@ -11395,8 +11411,8 @@ msgstr ""
 msgid "Vous serez ensuite déconnecté·e de tous vos appareils : reconnectez-vous avec le nouveau mot de passe."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:140
-#: lib/teacher_assistant_web/controllers/page_html.ex:148
+#: lib/teacher_assistant_web/controllers/page_html.ex:260
+#: lib/teacher_assistant_web/controllers/page_html.ex:268
 #: lib/teacher_assistant_web/spaces.ex:373
 #: lib/teacher_assistant_web/spaces.ex:374
 #, elixir-autogen, elixir-format
@@ -11669,9 +11685,9 @@ msgid "à saisir"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:54
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:160
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:456
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:476
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:158
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:563
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:583
 #, elixir-autogen, elixir-format
 msgid "Mon espace"
 msgstr ""
@@ -12259,22 +12275,22 @@ msgstr ""
 msgid "Pas pendant que vous agissez en tant que ce membre."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:804
+#: lib/teacher_assistant_web/components/layouts.ex:799
 #, elixir-autogen, elixir-format
 msgid "Revenir à l'administration"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:787
+#: lib/teacher_assistant_web/components/layouts.ex:782
 #, elixir-autogen, elixir-format
 msgid "Vous agissez en tant que %{name}"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:792
+#: lib/teacher_assistant_web/components/layouts.ex:787
 #, elixir-autogen, elixir-format
 msgid "jusqu'à %{time}"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:803
+#: lib/teacher_assistant_web/components/layouts.ex:798
 #, elixir-autogen, elixir-format
 msgid "Revenir"
 msgstr ""
@@ -13763,7 +13779,7 @@ msgstr ""
 msgid "Nom ou téléphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:191
+#: lib/teacher_assistant_web/components/layouts.ex:186
 #, elixir-autogen, elixir-format
 msgid "OPÉRATEUR"
 msgstr ""
@@ -14701,218 +14717,212 @@ msgid_plural "%{count} cours"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:67
+#: lib/teacher_assistant_web/controllers/page_html.ex:78
 #, elixir-autogen, elixir-format
 msgid "%{value} %"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:51
+#: lib/teacher_assistant_web/controllers/page_html.ex:62
 #, elixir-autogen, elixir-format
 msgid "1ère"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:50
+#: lib/teacher_assistant_web/controllers/page_html.ex:61
 #, elixir-autogen, elixir-format
 msgid "2nde"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:59
+#: lib/teacher_assistant_web/controllers/page_html.ex:70
 #, elixir-autogen, elixir-format
 msgid "Anglais · 2nde"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:60
+#: lib/teacher_assistant_web/controllers/page_html.ex:71
 #, elixir-autogen, elixir-format
 msgid "Anglais · Niv. 1"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:61
+#: lib/teacher_assistant_web/controllers/page_html.ex:72
 #, elixir-autogen, elixir-format
 msgid "Anglais · Niv. 2"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:223
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:221
 #, elixir-autogen, elixir-format
 msgid "Anglais · Niveau 2"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:94
+#: lib/teacher_assistant_web/controllers/page_html.ex:105
 #, elixir-autogen, elixir-format
 msgid "Avancement par enseignant, par classe et par matière. Une relance groupée pour tous ceux qui n'ont pas commencé, bien avant la clôture."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:218
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:216
 #, elixir-autogen, elixir-format
 msgid "Bonjour, Hélène"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:319
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:325
 #, elixir-autogen, elixir-format
 msgid "Bulletin de notes · Trimestre 1"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:310
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:316
 #, elixir-autogen, elixir-format
 msgid "Bulletins figés à la publication, enseignants prévenus"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:263
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:269
 #, elixir-autogen, elixir-format
 msgid "Chacun fait sa part une fois. Le reste de l'équipe la retrouve aussitôt."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:349
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:456
 #, elixir-autogen, elixir-format
 msgid "Chacun ouvre l'application sur ce qu'il a à faire aujourd'hui."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:189
+#: lib/teacher_assistant_web/controllers/page_html.ex:309
 #, elixir-autogen, elixir-format
 msgid "Chaque membre se connecte avec son numéro de téléphone et un mot de passe provisoire remis par l'établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:208
+#: lib/teacher_assistant_web/controllers/page_html.ex:328
 #, elixir-autogen, elixir-format
 msgid "Chaque rôle voit ce qui le concerne : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais. Le proviseur voit tout. Les données d'un établissement ne sont visibles que par ses membres."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:37
+#: lib/teacher_assistant_web/controllers/page_html.ex:47
 #, elixir-autogen, elixir-format
 msgid "Comment ça marche"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:174
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:172
 #, elixir-autogen, elixir-format
 msgid "Comptes par numéro de téléphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:103
+#: lib/teacher_assistant_web/controllers/page_html.ex:114
 #, elixir-autogen, elixir-format
 msgid "Conseils de classe planifiés, bulletins calculés, publiés et imprimés le soir même."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:298
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:304
 #, elixir-autogen, elixir-format
 msgid "Des bulletins prêts à imprimer, au format officiel."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:374
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:481
 #, elixir-autogen, elixir-format
 msgid "Démarrer"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:120
+#: lib/teacher_assistant_web/controllers/page_html.ex:131
 #, elixir-autogen, elixir-format
 msgid "ECM"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:121
+#: lib/teacher_assistant_web/controllers/page_html.ex:132
 #, elixir-autogen, elixir-format
 msgid "EPS"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:182
+#: lib/teacher_assistant_web/controllers/page_html.ex:302
 #, elixir-autogen, elixir-format
 msgid "En collant vos listes depuis Excel : classes et élèves, puis matières et coefficients, réglés par l'établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:88
+#: lib/teacher_assistant_web/controllers/page_html.ex:99
 #, elixir-autogen, elixir-format
 msgid "Enregistrement élève par élève"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:235
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:233
 #, elixir-autogen, elixir-format
 msgid "Fait"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:170
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:168
 #, elixir-autogen, elixir-format
 msgid "Fonctionne sur tout smartphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:106
+#: lib/teacher_assistant_web/controllers/page_html.ex:117
 #, elixir-autogen, elixir-format
 msgid "Format officiel, code QR"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:119
+#: lib/teacher_assistant_web/controllers/page_html.ex:130
 #, elixir-autogen, elixir-format
 msgid "Histoire-géo"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:118
+#: lib/teacher_assistant_web/controllers/page_html.ex:129
 #, elixir-autogen, elixir-format
 msgid "Hygiène"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:180
+#: lib/teacher_assistant_web/controllers/page_html.ex:300
 #, elixir-autogen, elixir-format
 msgid "Importez classes et élèves"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:153
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:151
 #, elixir-autogen, elixir-format
 msgid "Je suis enseignant : me connecter"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:74
+#: lib/teacher_assistant_web/controllers/page_html.ex:85
 #, elixir-autogen, elixir-format
 msgid "L'appel en début de cours"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:23
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:139
-#, elixir-autogen, elixir-format
-msgid "L'appel, les notes et les bulletins, avec un espace pour chaque membre de l'équipe."
-msgstr ""
-
-#: lib/teacher_assistant_web/controllers/page_html.ex:145
+#: lib/teacher_assistant_web/controllers/page_html.ex:265
 #, elixir-autogen, elixir-format
 msgid "L'avancement de la saisie, les relances, l'emploi du temps et la validation des corrections."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:175
+#: lib/teacher_assistant_web/controllers/page_html.ex:295
 #, elixir-autogen, elixir-format
 msgid "Le chef d'établissement crée le compte en quelques minutes ; nous vérifions l'établissement avant l'ouverture des appels et des notes."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:101
+#: lib/teacher_assistant_web/controllers/page_html.ex:112
 #, elixir-autogen, elixir-format
 msgid "Le conseil, puis les bulletins"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:161
+#: lib/teacher_assistant_web/controllers/page_html.ex:281
 #, elixir-autogen, elixir-format
 msgid "Le pilotage de l'établissement, les bulletins, l'équipe, les frais et les reçus."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:293
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:299
 #, elixir-autogen, elixir-format
 msgid "Le soir du conseil de classe"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:92
+#: lib/teacher_assistant_web/controllers/page_html.ex:103
 #, elixir-autogen, elixir-format
 msgid "Le suivi au jour le jour"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:153
+#: lib/teacher_assistant_web/controllers/page_html.ex:273
 #, elixir-autogen, elixir-format
 msgid "Les appels du jour, les absences à justifier, la conduite et les familles à prévenir."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:203
+#: lib/teacher_assistant_web/controllers/page_html.ex:323
 #, elixir-autogen, elixir-format
 msgid "Les enseignants ont-ils besoin d'une adresse e-mail ?"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:83
+#: lib/teacher_assistant_web/controllers/page_html.ex:94
 #, elixir-autogen, elixir-format
 msgid "Les notes saisies en classe"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:308
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:314
 #, elixir-autogen, elixir-format
 msgid "Lisible imprimé en noir et blanc"
 msgstr ""
@@ -14922,12 +14932,12 @@ msgstr ""
 msgid "Lycées et collèges du Cameroun · francophones et anglophones"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:221
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:219
 #, elixir-autogen, elixir-format
 msgid "Maintenant · %{time}"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:116
+#: lib/teacher_assistant_web/controllers/page_html.ex:127
 #, elixir-autogen, elixir-format
 msgid "Mathématiques"
 msgstr ""
@@ -14937,158 +14947,152 @@ msgstr ""
 msgid "Menu"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:330
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:336
 #, elixir-autogen, elixir-format
 msgid "Moyenne %{average}"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:301
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:307
 #, elixir-autogen, elixir-format
 msgid "Moyennes, coefficients, rangs et appréciations se calculent à mesure que les notes arrivent. Le proviseur voit ce qui reste à régler classe par classe, tient le conseil, puis imprime toute la classe en une fois."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:47
+#: lib/teacher_assistant_web/controllers/page_html.ex:58
 #, elixir-autogen, elixir-format
 msgid "Niveau 1"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:48
+#: lib/teacher_assistant_web/controllers/page_html.ex:59
 #, elixir-autogen, elixir-format
 msgid "Niveau 2"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:49
+#: lib/teacher_assistant_web/controllers/page_html.ex:60
 #, elixir-autogen, elixir-format
 msgid "Niveau 3"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:243
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:241
 #, elixir-autogen, elixir-format
 msgid "Phase pilote"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:245
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:244
 #, elixir-autogen, elixir-format
 msgid "Phase pilote 2026-2027"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:309
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:315
 #, elixir-autogen, elixir-format
 msgid "Photo de l'élève et code QR de vérification"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:159
+#: lib/teacher_assistant_web/controllers/page_html.ex:279
 #, elixir-autogen, elixir-format
 msgid "Proviseur et intendant"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:247
-#, elixir-autogen, elixir-format
-msgid "Proviseur, censeur, surveillant général, intendant, enseignants"
-msgstr ""
-
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:379
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:486
 #, elixir-autogen, elixir-format
 msgid "Prêt pour la prochaine séquence en trois étapes."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:40
+#: lib/teacher_assistant_web/controllers/page_html.ex:51
 #, elixir-autogen, elixir-format
 msgid "Questions"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:331
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:337
 #, elixir-autogen, elixir-format
 msgid "Rang 4e / 39"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:97
+#: lib/teacher_assistant_web/controllers/page_html.ex:108
 #, elixir-autogen, elixir-format
 msgid "Relance en un clic"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:137
+#: lib/teacher_assistant_web/controllers/page_html.ex:257
 #, elixir-autogen, elixir-format
 msgid "Sa journée de cours, l'appel, la saisie des notes et les résultats de ses classes."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:359
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:466
 #, elixir-autogen, elixir-format
 msgid "Ses pages principales :"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:199
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:197
 #, elixir-autogen, elixir-format
 msgid "Suivi de la saisie · Séq. 2"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:52
+#: lib/teacher_assistant_web/controllers/page_html.ex:63
 #, elixir-autogen, elixir-format
 msgid "Terminale"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:400
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:507
 #, elixir-autogen, elixir-format
 msgid "Tous les modules et tous les rôles, pour tout l'établissement. Le tarif par élève et par an sera annoncé avant la rentrée."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:21
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:136
+#: lib/teacher_assistant_web/controllers/page_html.ex:32
 #, elixir-autogen, elixir-format
 msgid "Tout l'établissement, sur le téléphone de chacun."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:76
+#: lib/teacher_assistant_web/controllers/page_html.ex:87
 #, elixir-autogen, elixir-format
 msgid "Tout le monde est présent par défaut : on touche seulement les absents et les retards. Un cours groupé de cinq classes se fait en un seul appel."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:62
+#: lib/teacher_assistant_web/controllers/page_html.ex:73
 #, elixir-autogen, elixir-format
 msgid "Trav. manuels"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:344
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:451
 #, elixir-autogen, elixir-format
 msgid "Un espace par rôle"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:204
+#: lib/teacher_assistant_web/controllers/page_html.ex:324
 #, elixir-autogen, elixir-format
 msgid "Un numéro de téléphone suffit. L'établissement leur remet un mot de passe provisoire ; ils peuvent ensuite choisir le leur."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:85
+#: lib/teacher_assistant_web/controllers/page_html.ex:96
 #, elixir-autogen, elixir-format
 msgid "Un pavé numérique pensé pour le téléphone, une note par élève, enregistrée aussitôt. Absent ou absence justifiée en une touche."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:79
+#: lib/teacher_assistant_web/controllers/page_html.ex:90
 #, elixir-autogen, elixir-format
 msgid "Un seul appel par cours groupé"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:200
+#: lib/teacher_assistant_web/controllers/page_html.ex:320
 #, elixir-autogen, elixir-format
 msgid "Un smartphone suffit pour les enseignants et le surveillant général. Le proviseur et le censeur profitent d'un écran plus large pour l'emploi du temps et les bulletins."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:258
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:264
 #, elixir-autogen, elixir-format
 msgid "Une séquence, de l'appel au bulletin"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:117
+#: lib/teacher_assistant_web/controllers/page_html.ex:128
 #, elixir-autogen, elixir-format
 msgid "Économie familiale"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:212
+#: lib/teacher_assistant_web/controllers/page_html.ex:332
 #, elixir-autogen, elixir-format
 msgid "Oui : le sous-système anglophone a ses propres niveaux, ses bulletins s'impriment en anglais, et l'application se lit en français ou en anglais, au choix de chacun."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:193
+#: lib/teacher_assistant_web/components/layouts.ex:188
 #, elixir-autogen, elixir-format
 msgid "Console Scolaka"
 msgstr ""
@@ -15130,7 +15134,7 @@ msgstr ""
 msgid "Erreur revenue : %{kind}"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts.ex:355
+#: lib/teacher_assistant_web/components/layouts.ex:350
 #, elixir-autogen, elixir-format
 msgid "Erreurs"
 msgstr ""
@@ -15318,3 +15322,153 @@ msgstr "premières notes"
 #, elixir-autogen, elixir-format
 msgid "élèves inscrits"
 msgstr "élèves inscrits"
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:363
+#, elixir-autogen, elixir-format
+msgid "2nde C"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:202
+#, elixir-autogen, elixir-format
+msgid "Bulletins et conseils"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:151
+#, elixir-autogen, elixir-format
+msgid "Cartes d'élève"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:396
+#, elixir-autogen, elixir-format
+msgid "Chaque franc encaissé a son reçu, et chaque reçu se vérifie."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:204
+#, elixir-autogen, elixir-format
+msgid "Coefficients, rangs et appréciations, conseils de classe, puis le passage en classe supérieure en fin d'année."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:220
+#, elixir-autogen, elixir-format
+msgid "Construit par le censeur avec les salles et les disponibilités des enseignants, imprimé par classe ou par enseignant."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:210
+#, elixir-autogen, elixir-format
+msgid "Frais et reçus"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:158
+#, elixir-autogen, elixir-format
+msgid "Frais exigibles"
+msgstr ""
+
+#: lib/teacher_assistant_web/components/layouts/root.html.heex:9
+#, elixir-autogen, elixir-format
+msgid "Gestion scolaire au Cameroun"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:242
+#, elixir-autogen, elixir-format
+msgid "Impressions"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:188
+#, elixir-autogen, elixir-format
+msgid "L'appel à chaque cours, les absences à justifier, les heures d'absence par élève. Une feuille d'appel imprimée pour les classes sans téléphone, saisie ensuite par le surveillant."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:36
+#, elixir-autogen, elixir-format
+msgid "L'appel, les notes, les bulletins et les frais, avec un espace pour chaque membre de l'équipe. Les bulletins sont prêts le soir du conseil de classe."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:399
+#, elixir-autogen, elixir-format
+msgid "L'établissement fixe ses frais, les montants par niveau et les tranches avec leurs échéances. Chaque paiement donne un reçu numéroté qui ne se modifie plus, et l'intendant voit classe par classe qui est à jour et qui est en retard."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:228
+#, elixir-autogen, elixir-format
+msgid "La conduite et les sanctions de chaque élève, à portée du surveillant général et du proviseur."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:196
+#, elixir-autogen, elixir-format
+msgid "La saisie au téléphone, le suivi de l'avancement par le censeur et les corrections validées avant d'arriver au bulletin."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:236
+#, elixir-autogen, elixir-format
+msgid "Les listes importées depuis Excel, les photos, les cartes scolaires avec code QR et les photos pour les examens officiels."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:408
+#, elixir-autogen, elixir-format
+msgid "Liste de contrôle par classe, lettres d'avertissement et bons de retour"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:244
+#, elixir-autogen, elixir-format
+msgid "Listes de classe, emplois du temps, bulletins, reçus et lettres aux familles, prêts à imprimer."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:247
+#, elixir-autogen, elixir-format
+msgid "Modules compris"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:212
+#, elixir-autogen, elixir-format
+msgid "Montants par niveau, tranches et échéances, reçus numérotés vérifiables, retards de paiement classe par classe."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:194
+#, elixir-autogen, elixir-format
+msgid "Notes et séquences"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:406
+#, elixir-autogen, elixir-format
+msgid "Reçus vérifiables en ligne, par code QR ou par numéro"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:407
+#, elixir-autogen, elixir-format
+msgid "Résumé du reçu envoyé aux parents par WhatsApp"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:159
+#, elixir-autogen, elixir-format
+msgid "Scolarité · tranche 2"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:424
+#, elixir-autogen, elixir-format
+msgid "Tout ce qui est inclus"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:429
+#, elixir-autogen, elixir-format
+msgid "Toute la vie de l'établissement, dans une seule application."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:409
+#, elixir-autogen, elixir-format
+msgid "Un élève renvoyé pour frais est noté comme tel à l'appel, sans compter d'absence"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:245
+#, elixir-autogen, elixir-format
+msgid "gratuite, tous les modules compris"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html/home.html.heex:391
+#, elixir-autogen, elixir-format
+msgid "À l'intendance"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:234
+#, elixir-autogen, elixir-format
+msgid "Élèves et cartes"
+msgstr ""
