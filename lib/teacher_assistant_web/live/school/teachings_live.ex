@@ -287,6 +287,15 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
           value={@tc.teacher_user_id}
           options={member_options(@members, @tc.teacher)}
         />
+        <p
+          :if={@tc.combined_course_id && @partners != []}
+          id="teaching-teacher-scope"
+          class="text-xs text-base-content/70"
+        >
+          {gettext("Cours commun : l'enseignant change aussi en %{classes}.",
+            classes: Enum.join(@partners, ", ")
+          )}
+        </p>
 
         <.input
           :if={!@tc.combined_course_id}
@@ -723,19 +732,22 @@ defmodule TeacherAssistantWeb.School.TeachingsLive do
   defp find_assignment(socket, cid), do: Enum.find(socket.assigns.assignments, &(&1.id == cid))
 
   # A combined course keeps its hours (shared by its classes): only its teacher
-  # changes, as before. Otherwise teacher and hours go through `place_assignment/5`.
+  # changes, for every class of the course at once. The teacher already shown is
+  # passed on too, so saving it mends a course whose classes have different teachers.
   defp save_teacher_and_hours(socket, %{combined_course_id: course_id} = tc, attrs)
        when not is_nil(course_id) do
     uid = attrs["user_id"] || tc.teacher_user_id
 
-    with false <- uid == tc.teacher_user_id,
-         %{} = member <- Enum.find(socket.assigns.members, &(&1.user_id == uid)),
-         {:ok, _} <- Curriculum.reassign_teacher(socket.assigns.current_scope, tc, member.user) do
-      :ok
-    else
-      true -> :ok
-      nil -> {:error, :not_assignable}
-      {:error, reason} -> {:error, reason}
+    case Enum.find(socket.assigns.members, &(&1.user_id == uid)) do
+      # The teacher in place has left the school: unchanged, nothing to write.
+      nil when uid == tc.teacher_user_id ->
+        :ok
+
+      nil ->
+        {:error, :not_assignable}
+
+      member ->
+        socket.assigns.current_scope |> Curriculum.reassign_teacher(tc, member.user) |> ok()
     end
   end
 

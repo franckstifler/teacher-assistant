@@ -460,13 +460,50 @@ defmodule TeacherAssistant.Curriculum do
     end
   end
 
+  @doc """
+  Gives `tc` to `teacher`. A class of a combined course is never taught apart from
+  its course: every member class still on another teacher changes too, in one
+  transaction (this also mends a course whose classes ended up with different
+  teachers). Returns `{:ok, tc}` updated.
+  """
+  def reassign_teacher(
+        %Scope{} = scope,
+        %TeachingContext{combined_course_id: nil} = tc,
+        %User{} = teacher
+      ) do
+    with :ok <- assignable(scope, teacher), do: set_teacher(scope, tc, teacher)
+  end
+
   def reassign_teacher(%Scope{} = scope, %TeachingContext{} = tc, %User{} = teacher) do
     with :ok <- assignable(scope, teacher) do
+      Ash.transact([TeachingContext], fn ->
+        tc.combined_course_id
+        |> contexts_of_course!(scope: scope)
+        |> Enum.reject(&(&1.teacher_user_id == teacher.id))
+        |> Enum.reduce_while(:ok, fn member, :ok ->
+          case set_teacher(scope, member, teacher) do
+            {:ok, _} -> {:cont, :ok}
+            {:error, _} = error -> {:halt, error}
+          end
+        end)
+        |> case do
+          :ok -> get_teaching_context(scope, tc.id)
+          error -> error
+        end
+      end)
+      |> case do
+        {:ok, {:ok, tc}} -> {:ok, tc}
+        {:ok, {:error, _} = error} -> error
+        {:error, _} = error -> error
+      end
+    end
+  end
+
+  defp set_teacher(scope, tc, teacher),
+    do:
       tc
       |> Ash.Changeset.for_update(:update, %{teacher_user_id: teacher.id}, scope: scope)
       |> Ash.update()
-    end
-  end
 
   def set_assignment_coefficient(%Scope{} = scope, %TeachingContext{} = tc, value) do
     with {:ok, %{class_coefficients_allowed?: true}} <- Accounts.fetch_school_profile(scope),

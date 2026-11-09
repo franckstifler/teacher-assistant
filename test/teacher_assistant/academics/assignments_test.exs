@@ -58,6 +58,58 @@ defmodule TeacherAssistant.Academics.AssignmentsTest do
     assert tc.teacher_user_id == other.id
   end
 
+  describe "reassigning a class of a combined course" do
+    setup ctx do
+      %{head: head, school: school, scope: scope, year: year, cg: cg} = ctx
+      {:ok, cg2} = Enrollment.create_class_group(scope, year, %{label: "6e B", level: "6ème"})
+      other = TeacherFixtures.user_fixture()
+      {:ok, _m} = add_active_member(school, head, other)
+      {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+      {:ok, tc2} = Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
+      {:ok, course} = Curriculum.combine_course(scope, [tc, tc2])
+      %{other: other, tc: tc, tc2: tc2, course: course}
+    end
+
+    test "gives the whole course to the new teacher", ctx do
+      %{head: head, other: other, scope: scope, year: year, tc: tc, course: course} = ctx
+      {:ok, tc} = Curriculum.get_teaching_context(scope, tc.id)
+
+      assert {:ok, %{teacher_user_id: other_id}} = Curriculum.reassign_teacher(scope, tc, other)
+      assert other_id == other.id
+
+      teachers =
+        course.id
+        |> Curriculum.contexts_of_course!(scope: scope)
+        |> Enum.map(& &1.teacher_user_id)
+
+      assert teachers == [other.id, other.id]
+      assert Curriculum.list_units_for_user(scope, year, head) == []
+      assert [{:course, %{id: course_id}}] = Curriculum.list_units_for_user(scope, year, other)
+      assert course_id == course.id
+    end
+
+    # Before the fix only one class changed: choosing the same teacher again on that
+    # class repairs the course.
+    test "repairs a course whose classes have different teachers", ctx do
+      %{other: other, scope: scope, tc: tc, course: course} = ctx
+      {:ok, tc} = Curriculum.get_teaching_context(scope, tc.id)
+
+      {:ok, tc} =
+        tc
+        |> Ash.Changeset.for_update(:update, %{teacher_user_id: other.id}, scope: scope)
+        |> Ash.update()
+
+      assert {:ok, _} = Curriculum.reassign_teacher(scope, tc, other)
+
+      teachers =
+        course.id
+        |> Curriculum.contexts_of_course!(scope: scope)
+        |> Enum.map(& &1.teacher_user_id)
+
+      assert teachers == [other.id, other.id]
+    end
+  end
+
   test "remove is blocked when the context has data", ctx do
     %{head: head, scope: scope, cg: cg} = ctx
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})

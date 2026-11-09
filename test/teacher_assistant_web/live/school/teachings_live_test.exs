@@ -429,6 +429,34 @@ defmodule TeacherAssistantWeb.School.TeachingsLiveTest do
       assert reloaded_tc2.combined_course_id == nil
     end
 
+    test "a new teacher takes every class of the combined course", ctx do
+      %{conn: conn, cg: cg, cg2: cg2, user: head, scope: scope} = ctx
+      grace = TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Grace Tabi"})
+      TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{user: grace})
+
+      {:ok, tc} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+
+      {:ok, tc2} =
+        TeacherAssistant.Curriculum.assign_teacher(scope, cg2, head, %{subject: "Maths"})
+
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course(scope, [tc, tc2])
+
+      {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/teachings")
+      open_teaching(view, tc)
+      assert has_element?(view, "#teaching-teacher-scope", "6e B")
+
+      view
+      |> form("#teaching-form-#{tc.id}", %{"teaching" => %{"user_id" => grace.id}})
+      |> render_submit()
+
+      {:ok, reloaded_tc} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc.id)
+      {:ok, reloaded_tc2} = TeacherAssistant.Curriculum.get_teaching_context(scope, tc2.id)
+      assert reloaded_tc.teacher_user_id == grace.id
+      assert reloaded_tc2.teacher_user_id == grace.id
+      assert reloaded_tc2.combined_course_id == reloaded_tc.combined_course_id
+    end
+
     test "a mismatched combine (different subject) surfaces a friendly flash", %{
       conn: conn,
       cg: cg,
