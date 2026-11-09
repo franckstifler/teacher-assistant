@@ -40,6 +40,17 @@ defmodule TeacherAssistant.Accounts.User do
         sign_in_with_token_action_name :sign_in_with_phone_token
       end
 
+      # « Rester connecté » (both sign-in forms): a 30-day cookie that signs the
+      # person back in after the browser dropped its session — phones close the
+      # browser in the background. Its tokens are stored like the others, so
+      # signing out and `Accounts.revoke_all_sessions/2` (every password reset
+      # or change) end it.
+      remember_me :remember_me do
+        sign_in_action_name :sign_in_with_remember_me
+        cookie_name :remember_me
+        token_lifetime {30, :days}
+      end
+
       magic_link do
         identity_field :email
         registration_enabled? false
@@ -73,19 +84,26 @@ defmodule TeacherAssistant.Accounts.User do
       argument :email, :ci_string, allow_nil?: false
       argument :password, :string, allow_nil?: false, sensitive?: true
 
+      argument :remember_me, :boolean, allow_nil?: true
+
       prepare AshAuthentication.Strategy.Password.SignInPreparation
       prepare {TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn, identity: :email}
+      prepare AshAuthentication.Strategy.RememberMe.MaybeGenerateTokenPreparation
 
       metadata :token, :string, allow_nil?: false
+      metadata :remember_me, :map, allow_nil?: true
     end
 
     read :sign_in_with_token do
       get? true
 
       argument :token, :string, allow_nil?: false, sensitive?: true
+      argument :remember_me, :boolean, allow_nil?: true
       prepare AshAuthentication.Strategy.Password.SignInWithTokenPreparation
+      prepare AshAuthentication.Strategy.RememberMe.MaybeGenerateTokenPreparation
 
       metadata :token, :string, allow_nil?: false
+      metadata :remember_me, :map, allow_nil?: true
     end
 
     read :sign_in_with_phone do
@@ -94,17 +112,33 @@ defmodule TeacherAssistant.Accounts.User do
       argument :phone, TeacherAssistant.Accounts.Phone, allow_nil?: false
       argument :password, :string, allow_nil?: false, sensitive?: true
 
+      argument :remember_me, :boolean, allow_nil?: true
+
       prepare AshAuthentication.Strategy.Password.SignInPreparation
       prepare {TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn, identity: :phone}
+      prepare AshAuthentication.Strategy.RememberMe.MaybeGenerateTokenPreparation
 
       metadata :token, :string, allow_nil?: false
+      metadata :remember_me, :map, allow_nil?: true
     end
 
     read :sign_in_with_phone_token do
       get? true
 
       argument :token, :string, allow_nil?: false, sensitive?: true
+      argument :remember_me, :boolean, allow_nil?: true
       prepare AshAuthentication.Strategy.Password.SignInWithTokenPreparation
+      prepare AshAuthentication.Strategy.RememberMe.MaybeGenerateTokenPreparation
+
+      metadata :token, :string, allow_nil?: false
+      metadata :remember_me, :map, allow_nil?: true
+    end
+
+    read :sign_in_with_remember_me do
+      get? true
+
+      argument :token, :string, allow_nil?: false, sensitive?: true
+      prepare AshAuthentication.Strategy.RememberMe.SignInPreparation
 
       metadata :token, :string, allow_nil?: false
     end

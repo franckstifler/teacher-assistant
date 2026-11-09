@@ -20,8 +20,9 @@ defmodule TeacherAssistantWeb.AuthSmokeTest do
              "Entrez le numéro de téléphone ou l&#39;adresse fournis par votre établissement."
 
     assert html =~ "Mot de passe oublié ?"
-    # no decorative « Rester connecté »: the session ends with the browser
-    refute html =~ "Rester connecté"
+    # « Rester connecté » is a real remember-me box now (RememberMeTest), not decoration
+    assert html =~ "Rester connecté"
+    assert html =~ ~s(name="user[remember_me]")
     assert html =~ "Tout l&#39;établissement sur un seul tableau."
     # magic link is no longer rendered on /sign-in (its routes stay); the
     # register/reset forms not matching the live_action are hidden via CSS

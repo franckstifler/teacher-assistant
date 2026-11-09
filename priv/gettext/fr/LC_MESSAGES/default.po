@@ -6021,27 +6021,27 @@ msgid_plural "%{count} / %{max} élèves"
 msgstr[0] "%{count} / %{max} élève"
 msgstr[1] "%{count} / %{max} élèves"
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:72
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:76
 #, elixir-autogen, elixir-format
 msgid "You are now signed in"
 msgstr "Vous êtes connecté."
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:97
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:119
 #, elixir-autogen, elixir-format
 msgid "You are now signed out"
 msgstr "Vous êtes déconnecté."
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:52
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:56
 #, elixir-autogen, elixir-format
 msgid "You have already signed in another way, but have not confirmed your account. You can confirm your account using the link we sent to you, or by resetting your password."
 msgstr "Vous vous êtes déjà connecté autrement, mais votre compte n'est pas confirmé. Confirmez-le avec le lien que nous vous avons envoyé, ou en réinitialisant votre mot de passe."
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:70
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:74
 #, elixir-autogen, elixir-format
 msgid "Your email address has now been confirmed"
 msgstr "Votre adresse e-mail est confirmée."
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:71
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:75
 #, elixir-autogen, elixir-format
 msgid "Your password has successfully been reset"
 msgstr "Votre mot de passe a été réinitialisé."
@@ -6190,7 +6190,7 @@ msgstr "Expiré — donnez-en un nouveau"
 msgid "Identifiant"
 msgstr "Identifiant"
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:57
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:61
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:255
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:277
 #, elixir-autogen, elixir-format
@@ -6292,7 +6292,7 @@ msgstr "Mot de passe temporaire de %{name}"
 msgid "Mot de passe temporaire expiré"
 msgstr "Mot de passe temporaire expiré"
 
-#: lib/teacher_assistant_web/controllers/auth_controller.ex:23
+#: lib/teacher_assistant_web/controllers/auth_controller.ex:27
 #: lib/teacher_assistant_web/live/auth/sign_in_live.ex:259
 #, elixir-autogen, elixir-format
 msgid "Mot de passe temporaire expiré — demandez-en un nouveau à l'établissement."
@@ -9394,7 +9394,7 @@ msgid "Journée"
 msgstr ""
 
 #: lib/teacher_assistant_web/components/layouts.ex:654
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:419
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:441
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:29
 #: lib/teacher_assistant_web/controllers/page_html/home.html.heex:88
 #, elixir-autogen, elixir-format
@@ -9514,7 +9514,7 @@ msgstr ""
 msgid "Tarif"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:396
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:418
 #, elixir-autogen, elixir-format
 msgid "Tout l'établissement sur un seul tableau."
 msgstr ""
@@ -11220,7 +11220,7 @@ msgstr ""
 msgid "Préparation de l'année suivante…"
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:417
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:439
 #, elixir-autogen, elixir-format
 msgid "APC / CBA · Francophone & anglophone"
 msgstr ""
@@ -11323,7 +11323,7 @@ msgstr ""
 msgid "Vous allez être redirigé·e automatiquement."
 msgstr ""
 
-#: lib/teacher_assistant_web/components/layouts/auth.html.heex:393
+#: lib/teacher_assistant_web/components/layouts/auth.html.heex:415
 #, elixir-autogen, elixir-format
 msgid "Établissements secondaires · Cameroun"
 msgstr ""
