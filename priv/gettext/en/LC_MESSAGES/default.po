@@ -1382,7 +1382,7 @@ msgstr "—"
 msgid "A"
 msgstr "A"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:296
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:297
 #: lib/teacher_assistant_web/live/school/student_live.ex:919
 #, elixir-autogen, elixir-format
 msgid "Absences justifiées"
@@ -1567,7 +1567,7 @@ msgstr "Reprimand"
 msgid "Consigne"
 msgstr "Detention"
 
-#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:307
+#: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:308
 #: lib/teacher_assistant_web/live/school/student_live.ex:922
 #, elixir-autogen, elixir-format
 msgid "Consignes"
@@ -15618,3 +15618,18 @@ msgstr "Permanently delete %{name}? This cannot be undone."
 #, elixir-autogen, elixir-format
 msgid "Supprimer l'élève"
 msgstr "Delete the student"
+
+#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:75
+#, elixir-autogen, elixir-format
+msgid "Aucun cours attribué : pas de liste à imprimer."
+msgstr "No course assigned: no list to print."
+
+#: lib/teacher_assistant_web/live/school/courses_live.ex:127
+#, elixir-autogen, elixir-format
+msgid "Imprimer mes listes de classe"
+msgstr "Print my class lists"
+
+#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:71
+#, elixir-autogen, elixir-format
+msgid "Mes listes de classe"
+msgstr "My class lists"
