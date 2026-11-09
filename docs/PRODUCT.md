@@ -85,6 +85,14 @@ The build is sequenced so each phase ships a usable product. Detailed specs are 
 
 ### Later
 - National **syllabus library** · **offline-first** sync · **AI**-assisted remarks and scaffolding.
+- **Half-class lessons** (deferred 2026-11-09). Technical schools split a class into two groups
+  for workshops: two teachers, two subjects, same class, same hour (Ngog-Mapubi « génie bois »,
+  e.g. 1ère AMEB F.F.O + Mécanique appliquée on Thursday 12:00). A timetable cell holds one
+  lesson per class (`TimetableSlot` identity `unique_cell`), so the second lesson can't be
+  placed: it's missing from that teacher's timetable, « Ma journée » and roll call (courses,
+  marks and bulletins are unaffected). To decide: a group label on the slot or real sub-groups
+  with their own students, roll call per group, two lessons in one cell on screen and in prints,
+  clash checks.
 
 ## Product quality bar
 
