@@ -34,7 +34,7 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
       })
 
     conn = Plug.Conn.put_session(conn, :workspace_id, school.id)
-    %{conn: conn, scope: scope, school: school, cg: cg, other: other, awa: awa}
+    %{conn: conn, scope: scope, school: school, year: year, cg: cg, other: other, awa: awa}
   end
 
   defp conn_for(school, user) do
@@ -346,5 +346,47 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
     {:ok, awa} = Enrollment.fetch_owned_student(scope, awa.id)
     assert awa.national_id == "241592812"
     assert has_element?(view, "#student-national-id", "241592812")
+  end
+
+  describe "deleting a student added by mistake" do
+    test "the head deletes a student with nothing official and lands on the list", %{
+      conn: conn,
+      scope: scope,
+      awa: awa
+    } do
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+
+      assert has_element?(view, "#student-delete button", "Supprimer l'élève")
+
+      assert {:error, {:live_redirect, %{to: "/school/students"}}} =
+               view |> element("#student-delete button") |> render_click()
+
+      assert {:error, :not_found} = Enrollment.fetch_owned_student(scope, awa.id)
+    end
+
+    test "a student with a receipt cannot be deleted, and the page says why", %{
+      conn: conn,
+      scope: scope,
+      year: year
+    } do
+      %{e: e, student: s} = TeacherAssistant.FeesFixtures.fees_setup(scope, year)
+
+      {:ok, _} =
+        TeacherAssistant.Fees.record_payment(scope, e, TeacherAssistant.FeesFixtures.cash(5_000))
+
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{s.id}")
+
+      refute has_element?(view, "#student-delete button")
+      assert view |> element("#student-delete") |> render() =~ "Retirer de la classe"
+    end
+
+    test "the head of discipline does not see it", %{scope: scope, school: school, awa: awa} do
+      sg = member_scope_fixture(scope, %{roles: [:discipline_master]})
+      {:ok, view, _html} = live(conn_for(school, sg.current_user), ~p"/school/students/#{awa.id}")
+
+      refute has_element?(view, "#student-delete")
+      assert render_click(view, "delete_student", %{}) =~ "Awa Nkolo"
+      assert {:ok, _} = Enrollment.fetch_owned_student(scope, awa.id)
+    end
   end
 end

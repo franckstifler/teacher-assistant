@@ -34,6 +34,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          page_title: student.full_name,
          student: student,
          access: access,
+         can_delete?: Ash.can?({student, :destroy}, scope),
          editing: false,
          adding_guardian: false,
          match: [],
@@ -96,6 +97,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
     links = Enrollment.list_guardian_links(scope, student)
 
     assign(socket,
+      deletion_blocker:
+        socket.assigns.can_delete? && Enrollment.student_deletion_blocker(scope, student),
       links: links,
       children: Enrollment.guardian_children(scope, Enum.map(links, & &1.guardian_id)),
       history: Enum.sort_by(history, & &1.academic_year.start_date, {:desc, Date}),
@@ -305,7 +308,40 @@ defmodule TeacherAssistantWeb.School.StudentLive do
     end
   end
 
+  def handle_event("delete_student", _params, socket) when socket.assigns.can_delete? do
+    %{current_scope: scope, student: student} = socket.assigns
+
+    case Enrollment.delete_student(scope, student) do
+      :ok ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Fiche de %{name} supprimée.", name: student.full_name))
+         |> push_navigate(to: ~p"/school/students")}
+
+      {:error, blocker} when blocker in [:marks, :fee_documents] ->
+        {:noreply,
+         socket
+         |> assign(deletion_blocker: blocker)
+         |> put_flash(:error, deletion_blocker_text(blocker))}
+
+      {:error, error} ->
+        {:noreply, Authz.put_failure(socket, error)}
+    end
+  end
+
   def handle_event(_event, _params, socket), do: {:noreply, Authz.put_not_allowed(socket)}
+
+  defp deletion_blocker_text(:marks),
+    do:
+      gettext(
+        "Des notes sont déjà saisies pour cet élève : sa fiche ne peut plus être supprimée. Pour qu'il ne compte plus dans une classe, utilisez « Retirer de la classe » sur la liste des élèves."
+      )
+
+  defp deletion_blocker_text(:fee_documents),
+    do:
+      gettext(
+        "Cet élève a déjà un reçu, un avertissement ou un bon de retour : sa fiche ne peut plus être supprimée. Pour qu'il ne compte plus dans une classe, utilisez « Retirer de la classe » sur la liste des élèves."
+      )
 
   defp run_on_link(socket, id, fun) do
     with %{} = link <- Enum.find(socket.assigns.links, &(&1.id == id)),
@@ -830,6 +866,39 @@ defmodule TeacherAssistantWeb.School.StudentLive do
             </article>
           </div>
         </div>
+
+        <article
+          :if={@can_delete?}
+          id="student-delete"
+          class="ta-panel flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="min-w-0 space-y-1">
+            <h2 class="font-display text-lg font-semibold">{gettext("Supprimer l'élève")}</h2>
+            <p :if={!@deletion_blocker} class="text-sm text-base-content/80">
+              {gettext(
+                "Pour un élève ajouté par erreur, en double par exemple. Sa fiche, ses inscriptions, ses absences et ses liens avec ses parents sont effacés, sans retour possible."
+              )}
+            </p>
+            <p :if={@deletion_blocker} class="text-sm text-base-content/80">
+              {deletion_blocker_text(@deletion_blocker)}
+            </p>
+          </div>
+          <button
+            :if={!@deletion_blocker}
+            type="button"
+            phx-click="delete_student"
+            data-confirm={
+              gettext("Supprimer définitivement %{name} ? Cette action est irréversible.",
+                name: @student.full_name
+              )
+            }
+            class="btn btn-outline btn-error shrink-0"
+          >
+            <.icon name="hero-trash" class="size-4" />
+            {gettext("Supprimer l'élève")}
+          </button>
+        </article>
+
         <.photo_viewer :if={@viewing_photo?} student={@student} />
         <%= if @access == :manage do %>
           <.photo_sheet :if={@sheet} student={@student} confirm_remove?={@confirm_remove?} />

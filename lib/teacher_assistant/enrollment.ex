@@ -7,7 +7,11 @@ defmodule TeacherAssistant.Enrollment do
     AcademicYear,
     ClassGroup,
     Enrollment,
+    FeeWarning,
     Guardian,
+    Mark,
+    Payment,
+    ReturnNote,
     Student,
     StudentGuardian
   }
@@ -234,8 +238,44 @@ defmodule TeacherAssistant.Enrollment do
 
   # --- Student -----------------------------------------------------------
 
-  def delete_student(%Scope{} = scope, %Student{} = s),
-    do: Ash.destroy(s, scope: scope)
+  @doc """
+  Deletes a student added by mistake, with their enrolments (and what hangs on them:
+  attendance, conduct, sanctions), parent links and exemptions; the parents
+  themselves stay. Refused once something official exists for them, as
+  `{:error, :marks}` or `{:error, :fee_documents}` (`student_deletion_blocker/2`);
+  the database refuses it too. Admins only (the student's destroy policy). The photo
+  file stays on disk, like every photo (`TeacherAssistant.StudentPhotos`).
+  """
+  def delete_student(%Scope{} = scope, %Student{} = s) do
+    case student_deletion_blocker(scope, s) do
+      nil -> Ash.destroy(s, scope: scope)
+      blocker -> {:error, blocker}
+    end
+  end
+
+  @doc """
+  Why `student` can no longer be deleted: `:marks` once a mark is entered for them,
+  `:fee_documents` once they have a receipt, a warning letter or a return note
+  (numbered papers anyone can check). `nil` while nothing official exists. Counts
+  every record of the school, whatever the reader may see.
+  """
+  def student_deletion_blocker(%Scope{current_workspace: %{id: ws_id}}, %Student{id: id}) do
+    opts = [authorize?: false, tenant: ws_id]
+
+    cond do
+      Mark |> Ash.Query.filter(student_id == ^id) |> Ash.exists?(opts) ->
+        :marks
+
+      Enum.any?(
+        [Payment, FeeWarning, ReturnNote],
+        &(&1 |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts))
+      ) ->
+        :fee_documents
+
+      true ->
+        nil
+    end
+  end
 
   def fetch_owned_student(%Scope{} = scope, id) do
     Student
