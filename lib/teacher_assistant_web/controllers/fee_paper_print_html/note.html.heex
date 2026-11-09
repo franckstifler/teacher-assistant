@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a5} />
     <title>{gettext("Autorisation n° %{number}", number: @paper.note.number)}</title>
     <.paper_style />
   </head>
@@ -24,7 +24,7 @@
       <.check_foot paper={@paper} />
     </div>
 
-    <div :if={n.status == :valid} class="actions">
+    <div :if={n.status == :valid} class="actions print-actions">
       <button type="button" onclick="window.print()">{gettext("Imprimer l'autorisation")}</button>
     </div>
   </body>

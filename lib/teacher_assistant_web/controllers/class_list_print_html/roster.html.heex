@@ -2,7 +2,7 @@
 <html lang={html_lang(@lang)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
     <title>{tr(@lang, fn -> gettext("Liste de classe") end)} — {@cg.label}</title>
     <style>
       * { box-sizing: border-box; }
@@ -13,7 +13,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       @page { size: A4; margin: 10mm; }
-      @media print { body { padding: 0; } .no-print { display: none; } tr { break-inside: avoid; } }
+      @media print { body { padding: 0; } tr { break-inside: avoid; } }
       .header { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; font-size: 0.86em; }
       .header .col div:first-child { font-weight: bold; text-transform: uppercase; }
       .header .col div:nth-child(2) { font-style: italic; }
@@ -39,13 +39,10 @@
       .foot { display: flex; justify-content: space-between; gap: 6mm; margin-top: 4mm; }
       .head { text-align: center; min-width: 50mm; }
       .head .space { height: 18mm; }
-      .actions { margin-bottom: 12px; }
     </style>
   </head>
   <body>
-    <div class="actions no-print">
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
-    </div>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
 
     <.official_header header={@template.header} logo?={@logo?} />
 

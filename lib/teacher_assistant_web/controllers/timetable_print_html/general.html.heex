@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a3_landscape} />
     <title>{gettext("Emploi du temps général")}</title>
     <style>
       * { box-sizing: border-box; }
@@ -13,7 +13,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       @page { size: A3 landscape; margin: 8mm; }
-      @media print { body { padding: 0; } .no-print { display: none; } tr { break-inside: avoid; } }
+      @media print { body { padding: 0; } tr { break-inside: avoid; } }
       h1 { text-align: center; font-size: 14pt; letter-spacing: .05em; margin: 0 0 1mm; }
       .meta { text-align: center; font-size: 9pt; margin: 0 0 3mm; }
       table { border-collapse: collapse; width: 100%; table-layout: fixed; }
@@ -26,13 +26,10 @@
       .code { display: block; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
       .teacher { display: block; color: #444; font-size: 0.9em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
       .half + .half { margin-top: 5mm; }
-      .actions { margin-bottom: 12px; }
     </style>
   </head>
   <body>
-    <div class="actions no-print">
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
-    </div>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
 
     <h1>{gettext("EMPLOI DU TEMPS GÉNÉRAL")}</h1>
     <p class="meta">

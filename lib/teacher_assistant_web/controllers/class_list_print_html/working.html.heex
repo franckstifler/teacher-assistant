@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
     <title>{@title}</title>
     <style>
       * { box-sizing: border-box; }
@@ -13,7 +13,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       @page { size: A4; margin: 8mm 10mm; }
-      @media print { body { padding: 0; } .no-print { display: none; } }
+      @media print { body { padding: 0; } }
       .top { display: flex; justify-content: space-between; font-size: 0.9em; text-transform: uppercase; }
       h1 { text-align: center; font-size: 1.3em; letter-spacing: .06em; margin: 2mm 0 1mm; }
       .fill { display: flex; gap: 8mm; margin: 1mm 0 2mm; }
@@ -30,16 +30,13 @@
       .dense { font-size: 7pt; }
       .dense th, .dense td { height: 3.4mm; padding: 0 1mm; }
       .foot { margin-top: 2mm; }
-      .actions { margin-bottom: 12px; }
       /* several courses: each list on its own A4 page */
       .sheet + .sheet { break-before: page; page-break-before: always; }
       @media screen { .sheet + .sheet { margin-top: 12mm; border-top: 0.3mm dashed #999; padding-top: 6mm; } }
     </style>
   </head>
   <body>
-    <div class="actions no-print">
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
-    </div>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
 
     <section :for={sheet <- @sheets} class={["sheet", sheet.density]}>
       <div class="top">

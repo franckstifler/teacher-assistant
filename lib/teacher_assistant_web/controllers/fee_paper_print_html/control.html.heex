@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a5} />
     <title>{gettext("Contrôle des frais — %{class}", class: @cg.label)}</title>
     <.paper_style />
     <style>
@@ -51,7 +51,7 @@
       </p>
     </div>
 
-    <div class="actions">
+    <div class="actions print-actions">
       <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
     </div>
   </body>

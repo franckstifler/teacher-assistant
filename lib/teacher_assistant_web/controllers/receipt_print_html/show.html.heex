@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a5} />
     <title>{gettext("Reçu n° %{number}", number: @receipt.payment.number)}</title>
     <style>
       @page { size: A5; margin: 10mm; }
@@ -93,7 +93,7 @@
       </div>
     </div>
 
-    <div :if={p.status == :valid} class="actions">
+    <div :if={p.status == :valid} class="actions print-actions">
       <button type="button" class="primary" onclick="window.print()">
         {gettext("Imprimer le reçu")}
       </button>

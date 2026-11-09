@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
     <title>{gettext("Procès-verbal du conseil de classe")} — {@cg.label}</title>
     <style>
       * { box-sizing: border-box; }
@@ -38,6 +38,7 @@
     </style>
   </head>
   <body>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
     <div :if={@draft?} class="watermark">{gettext("PROJET")}</div>
     <div class="national">
       <div class="fr">République du Cameroun — Paix · Travail · Patrie</div>

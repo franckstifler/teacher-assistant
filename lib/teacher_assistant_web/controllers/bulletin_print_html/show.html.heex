@@ -2,7 +2,7 @@
 <html lang={html_lang(@lang)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
     <title>{tr(@lang, fn -> gettext("Bulletin de notes") end)} — {@cg.label}</title>
     <style>
       * { box-sizing: border-box; }
@@ -79,6 +79,7 @@
     </style>
   </head>
   <body>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
     <section :for={b <- @bundles} class={["bulletin-page", "density-#{b.density}"]}>
       <div :if={@draft?} class="watermark">{tr(@lang, fn -> gettext("BROUILLON") end)}</div>
       <p :if={@published_on} class="published">

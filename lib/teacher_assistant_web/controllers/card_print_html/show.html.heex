@@ -2,7 +2,7 @@
 <html lang={html_lang(@lang)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
     <title>{gettext("Cartes scolaires")} — {@cg.label}</title>
     <style>
       /* The sheet is drawn at its real size (A4, no printer margin) so the 2 × 5 grid and
@@ -81,7 +81,7 @@
     </style>
   </head>
   <body class={"lang-#{@lang}"}>
-    <div class="toolbar">
+    <div class="toolbar print-actions">
       <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
       <span>{gettext("Imprimer en A4, échelle 100 %, sans marges.")}</span>
       <span :if={@missing > 0}>

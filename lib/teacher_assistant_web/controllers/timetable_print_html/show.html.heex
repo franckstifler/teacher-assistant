@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
     <title>{gettext("Emploi du temps")}{if @title, do: " — #{@title}"}</title>
     <style>
       * { box-sizing: border-box; }
@@ -19,10 +19,10 @@
       .cartouche td { border: 1px solid #999; padding: 4px 8px; vertical-align: top; }
       .cartouche .k { font-variant: small-caps; color: #444; width: 18%; }
       table.grid { width: 100%; border-collapse: collapse; margin-top: 8px; }
-      table.grid th, table.grid td { border: 1px solid #999; padding: 4px 6px; text-align: left; vertical-align: top; }
+      table.grid th, table.grid td { border: 1px solid #999; padding: 4px 6px; text-align: left; vertical-align: top; hyphens: auto; overflow-wrap: anywhere; }
       table.grid th { background: #f0f0f0; font-variant: small-caps; }
       table.grid td.period-col { font-weight: bold; white-space: nowrap; }
-      table.grid td.bell { font-size: 8pt; color: #444; display: block; }
+      table.grid .bell { font-size: 8pt; color: #444; display: block; }
       table.grid td.break-row { text-align: center; font-style: italic; color: #666; background: #f7f7f7; }
       table.grid td .subject { font-weight: bold; }
       table.grid td .teacher { font-size: 9pt; color: #444; display: block; }
@@ -30,18 +30,14 @@
       .sheet { break-after: page; }
       .sheet:last-of-type { break-after: auto; }
       @page { size: A4; margin: 15mm; }
-      .actions { margin-bottom: 12px; }
       @media print {
         body { padding: 0; }
-        .no-print { display: none; }
         tr { break-inside: avoid; }
       }
     </style>
   </head>
   <body>
-    <div class="actions no-print">
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
-    </div>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
     <p :if={@sheets == []} id="no-lesson">{gettext("Aucun cours placé")}</p>
     <section :for={sheet <- @sheets} class="sheet">
       <div class="national">

@@ -2,7 +2,7 @@
 <html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4_landscape} />
     <title>{gettext("Feuille d'appel")}</title>
     <style>
       * { box-sizing: border-box; }
@@ -34,6 +34,7 @@
     </style>
   </head>
   <body>
+    <TeacherAssistantWeb.PrintComponents.print_bar />
     <section :for={sheet <- @sheets} class="sheet">
       <div class="head">
         <h1>{gettext("Feuille d'appel")} · {sheet.class_group.label}</h1>
