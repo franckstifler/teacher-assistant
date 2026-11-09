@@ -201,8 +201,13 @@ defmodule TeacherAssistantWeb.School.ClassShell do
             </span>
           </p>
         </div>
-        <%!-- Full width on phones, so a trailing « ⋯ » sits at the right edge and its menu fits. --%>
-        <div :if={@actions != []} class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <%!-- At the right, also on phones and when the header wraps: a menu opens
+             leftwards from its button's right edge, so it then fits on the screen. --%>
+        <div
+          :if={@actions != []}
+          id="class-actions"
+          class="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto"
+        >
           {render_slot(@actions)}
         </div>
       </header>

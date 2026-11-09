@@ -42,6 +42,9 @@ defmodule TeacherAssistantWeb.School.ClassOverviewLiveTest do
 
     assert view |> element("#class-tab-teachings") |> render() =~ ~r/\d+\/\d+/
     assert has_element?(view, "#class-print-menu", "Imprimer…")
+    # on phones the actions sit at the right, so the menu (aligned on the button's
+    # right edge) opens inside the screen
+    assert has_element?(view, "#class-actions.justify-end #class-print-menu")
 
     assert has_element?(
              view,

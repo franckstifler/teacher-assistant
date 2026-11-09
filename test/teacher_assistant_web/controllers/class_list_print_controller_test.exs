@@ -208,7 +208,7 @@ defmodule TeacherAssistantWeb.ClassListPrintControllerTest do
       body =
         conn |> get(~p"/school/classes/#{big.id}/class-list/working/print") |> html_response(200)
 
-      assert body =~ ~s(<body class="dense">)
+      assert body =~ ~s(<section class="sheet dense">)
     end
 
     test "the working lists belong to core and notes" do
@@ -217,6 +217,66 @@ defmodule TeacherAssistantWeb.ClassListPrintControllerTest do
 
       assert Modules.module_for_controller(TeacherAssistantWeb.ClassListPrintController, :teacher) ==
                :notes
+    end
+  end
+
+  describe "all of a teacher's working lists" do
+    setup %{scope: scope, year: year, cg: cg, workspace: workspace} do
+      {:ok, other_cg} =
+        Enrollment.create_class_group(scope, year, %{label: "5e Q", level: "5ème"})
+
+      {:ok, _} = Enrollment.add_student(scope, other_cg, %{full_name: "Chantal Mbia", sex: :f})
+
+      %{teacher: teacher} =
+        TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg, subject: "Maths"})
+
+      TeacherFixtures.school_teacher_fixture(scope, %{
+        teacher: teacher,
+        class_group: other_cg,
+        subject: "SVT"
+      })
+
+      # a colleague's course stays out
+      TeacherFixtures.school_teacher_fixture(scope, %{class_group: cg, subject: "Anglais"})
+
+      conn =
+        build_conn()
+        |> log_in_user(teacher)
+        |> Plug.Conn.put_session(:workspace_id, workspace.id)
+
+      %{teacher_conn: conn, teacher: teacher}
+    end
+
+    test "one pre-filled page per course, each class's students on its own page", %{
+      teacher_conn: conn,
+      teacher: teacher
+    } do
+      body = conn |> get(~p"/teacher/class-lists/print") |> html_response(200)
+
+      assert length(Regex.scan(~r/<section class="sheet/, body)) == 2
+
+      for text <- ["6e P", "5e Q", "Maths", "SVT", "Awa Ngono", "Chantal Mbia"],
+          do: assert(body =~ text)
+
+      assert body =~ TeacherAssistant.Accounts.User.display_name(teacher)
+      refute body =~ "Anglais"
+      # each sheet starts a new A4 page
+      assert body =~ "break-before: page"
+    end
+
+    test "a member with no course goes back to « Mes cours »", %{
+      scope: scope,
+      workspace: workspace
+    } do
+      conn =
+        build_conn()
+        |> log_in_user(
+          TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]}).current_user
+        )
+        |> Plug.Conn.put_session(:workspace_id, workspace.id)
+        |> get(~p"/teacher/class-lists/print")
+
+      assert redirected_to(conn) == ~p"/school/courses"
     end
   end
 end

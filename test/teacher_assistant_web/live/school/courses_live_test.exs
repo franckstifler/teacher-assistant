@@ -270,4 +270,21 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     {:ok, view, _} = live(conn_for(school, teacher), ~p"/school/courses")
     assert has_element?(view, "#courses-subtitle", "2 cours · 1 élève")
   end
+
+  test "a teacher prints the working lists of all their classes", %{
+    school: school,
+    teacher: teacher
+  } do
+    {:ok, view, _html} = live(conn_for(school, teacher), ~p"/school/courses")
+
+    assert has_element?(
+             view,
+             "#print-all-class-lists[href='/teacher/class-lists/print'][target='_blank']"
+           )
+  end
+
+  test "no print link without a course", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/school/courses")
+    refute has_element?(view, "#print-all-class-lists")
+  end
 end

@@ -80,6 +80,7 @@ defmodule TeacherAssistant.Modules do
     {W.ClassListPrintController, :roster} => :core,
     {W.ClassListPrintController, :working} => :core,
     {W.ClassListPrintController, :teacher} => :notes,
+    {W.ClassListPrintController, :teacher_all} => :notes,
     {W.StudentPhotoController, :show} => :core,
     {W.SchoolLogoController, :show} => :core
   }

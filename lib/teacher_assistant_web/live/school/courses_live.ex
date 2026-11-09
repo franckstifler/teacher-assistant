@@ -116,6 +116,16 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
               · {Dates.countdown(@seq.grade_entry_deadline, @today)}
             </span>
           </p>
+          <a
+            :if={@courses != []}
+            id="print-all-class-lists"
+            href={~p"/teacher/class-lists/print"}
+            target="_blank"
+            class="btn btn-outline btn-sm mt-2 min-h-11 gap-1.5 sm:min-h-0"
+          >
+            <.icon name="hero-printer" class="size-4" />
+            {gettext("Imprimer mes listes de classe")}
+          </a>
         </header>
 
         <div :if={@courses == []} id="courses-empty">
