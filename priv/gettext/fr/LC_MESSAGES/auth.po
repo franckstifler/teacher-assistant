@@ -61,7 +61,7 @@ msgstr ""
 msgid "Mot de passe oublié ?"
 msgstr ""
 
-#: lib/teacher_assistant_web/auth_overrides.ex:220
+#: lib/teacher_assistant_web/auth_overrides.ex:225
 #, elixir-autogen, elixir-format
 msgid "Nom et prénom"
 msgstr ""
@@ -71,12 +71,12 @@ msgstr ""
 msgid "Numéro de téléphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/auth_overrides.ex:227
+#: lib/teacher_assistant_web/auth_overrides.ex:232
 #, elixir-autogen, elixir-format
 msgid "Prénom Nom"
 msgstr ""
 
-#: lib/teacher_assistant_web/auth_overrides.ex:199
+#: lib/teacher_assistant_web/auth_overrides.ex:204
 #, elixir-autogen, elixir-format
 msgid "Réinitialisation…"
 msgstr ""
@@ -90,4 +90,9 @@ msgstr ""
 #: lib/teacher_assistant_web/auth_overrides.ex:170
 #, elixir-autogen, elixir-format
 msgid "Si cette adresse existe, un lien de réinitialisation vient de lui être envoyé."
+msgstr ""
+
+#: lib/teacher_assistant_web/auth_overrides.ex:193
+#, elixir-autogen, elixir-format
+msgid "Rester connecté"
 msgstr ""

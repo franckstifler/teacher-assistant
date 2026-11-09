@@ -18,6 +18,10 @@ defmodule TeacherAssistantWeb.AuthController do
       end
 
       conn
+      # The library has already set « Rester connecté »'s cookie (its token is revoked above).
+      |> AshAuthentication.Strategy.RememberMe.Plug.Helpers.delete_all_remember_me_cookies(
+        :teacher_assistant
+      )
       |> put_flash(
         :error,
         gettext("Mot de passe temporaire expiré — demandez-en un nouveau à l'établissement.")
@@ -80,6 +84,24 @@ defmodule TeacherAssistantWeb.AuthController do
     |> assign(:current_user, user)
     |> put_flash(:info, message)
     |> redirect(to: return_to)
+  end
+
+  # « Rester connecté »'s cookie: same `secure` rule as the session cookie (HTTPS in
+  # production; plain http://localhost in development, where a Secure cookie would
+  # not come back).
+  def put_remember_me_cookie(conn, cookie_name, %{token: token, max_age: max_age}) do
+    put_resp_cookie(conn, cookie_name, token, [max_age: max_age] ++ remember_me_cookie_options())
+  end
+
+  def delete_remember_me_cookie(conn, cookie_name),
+    do: delete_resp_cookie(conn, cookie_name, remember_me_cookie_options())
+
+  defp remember_me_cookie_options do
+    [
+      http_only: true,
+      same_site: "Lax",
+      secure: Application.get_env(:teacher_assistant, :secure_session_cookie, false)
+    ]
   end
 
   def sign_out(conn, _params) do

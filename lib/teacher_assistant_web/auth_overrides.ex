@@ -186,6 +186,11 @@ defmodule TeacherAssistantWeb.AuthOverrides do
     set :error_li, nil
     set :input_debounce, 300
     set :submit_class, nil
+    # « Rester connecté » (the remember-me strategy), styled by `.ta-remember-me`
+    set :remember_me_class, "ta-remember-me"
+    set :checkbox_class, nil
+    set :checkbox_label_class, nil
+    set :remember_me_input_label, dgettext_noop("auth", "Rester connecté")
   end
 
   override Components.Reset.Form do

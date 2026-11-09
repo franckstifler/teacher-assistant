@@ -24,8 +24,27 @@ defmodule TeacherAssistantWeb.Auth.SignInForm do
   alias AshPhoenix.Form
   alias TeacherAssistant.Accounts.User.Preparations.ThrottleSignIn
 
+  # « Rester connecté » starts ticked: most sign-ins are on the person's own phone
+  # (the box shows only when the strategy offers it). Display only — the action's
+  # argument has no default.
   @impl true
-  defdelegate update(assigns, socket), to: SignInForm
+  def update(assigns, socket) do
+    {:ok, socket} = SignInForm.update(assigns, socket)
+
+    case socket.assigns do
+      %{remember_me_field: field, form: %Form{params: params} = form}
+      when not is_nil(field) and not is_map_key(params, "remember_me") ->
+        {:ok,
+         assign(
+           socket,
+           :form,
+           Form.validate(form, Map.put(params, to_string(field), "true"), errors: false)
+         )}
+
+      _ ->
+        {:ok, socket}
+    end
+  end
 
   @impl true
   defdelegate render(assigns), to: SignInForm

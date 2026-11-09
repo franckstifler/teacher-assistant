@@ -12,6 +12,8 @@ defmodule TeacherAssistantWeb.Router do
     plug :put_root_layout, html: {TeacherAssistantWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    # « Rester connecté »: a remember-me cookie signs back in a browser that lost its session.
+    plug :sign_in_with_remember_me
     plug :load_from_session
     plug TeacherAssistantWeb.Plug.EndImpersonation
     plug TeacherAssistantWeb.Plug.Locale
