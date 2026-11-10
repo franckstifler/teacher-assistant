@@ -410,7 +410,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:62
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:532
 #: lib/teacher_assistant_web/live/school/members_components.ex:617
-#: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:586
+#: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:596
 #: lib/teacher_assistant_web/live/school/teachings_live.ex:189
 #: lib/teacher_assistant_web/live/school/teachings_live.ex:286
 #: lib/teacher_assistant_web/live/school/timetable_editor_live.ex:469
@@ -15672,6 +15672,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:111
 #, elixir-autogen, elixir-format
 msgid "— : non saisie · Abs : absent · Disp : dispensé"
+msgstr ""
 
 #: lib/teacher_assistant_web/live/school/members_live.ex:500
 #, elixir-autogen, elixir-format
