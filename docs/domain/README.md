@@ -26,7 +26,10 @@ report cards, and official syllabus PDFs). Every non-obvious claim carries a sou
    the /20 scale, coefficients, average formulas, the bulletin, mentions, statistics.
 5. [`05-school-roles-and-fees.md`](05-school-roles-and-fees.md) — administrative roles &
    councils, teacher↔school relationship, school fees, fee-based access control, enrollment.
-6. [`glossary-fr-en.md`](glossary-fr-en.md) — bilingual (FR↔EN) controlled vocabulary.
+6. [`06-ministry-statistics-and-school-papers.md`](06-ministry-statistics-and-school-papers.md) —
+   the MINESEC annual statistics questionnaire, the CarteScolaire national register, and the papers
+   the secretariat issues (certificat de scolarité, exeat).
+7. [`glossary-fr-en.md`](glossary-fr-en.md) — bilingual (FR↔EN) controlled vocabulary.
 
 ## Confidence legend (used throughout)
 

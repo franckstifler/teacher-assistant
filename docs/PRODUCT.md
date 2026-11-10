@@ -83,6 +83,35 @@ The build is sequenced so each phase ships a usable product. Detailed specs are 
 - **Enrollment**, **fees** (multi-tranche schedules), and **fee-based access control** —
   configurable, overridable, audited (exam-gating is legally grey; never automatic).
 
+### Wanted next (picked 2026-11-10, to review)
+
+From a comparison with Cameroonian school software (EduCam Pro, Kalara, SAMIA, Skoulou, FobsSMS,
+EduManager Pro, Go4School). Facts behind both items:
+[`docs/domain/06`](domain/06-ministry-statistics-and-school-papers.md).
+
+1. **School papers the secretariat prints.** A **certificat de scolarité** on demand (name, birth
+   details, class, year, matricule and national matricule, issue date, the head's signature and
+   stamp, national header, QR check like the card and the receipt), possibly an **exeat**, and
+   perhaps a file in the **CarteScolaire** import template (new students, transfers) so lists are not
+   typed twice. Open: a real school's certificate to copy the wording; who may print it (secretariat?
+   head only?); numbering and a register of issued papers.
+2. **Statistics for the MINESEC campaign.** A printable « Statistiques — campagne MINESEC » page that
+   lays out the questionnaire's tables in its order and with its line codes, so the secretariat copies
+   the numbers into the official Excel file (Scolaka never writes into that file: it is protected,
+   full of macros and changes yearly). Fillable from our data: students by year and series —
+   divisions, students by sex, repeaters by sex (II.1.2); students by year × sex × birth year (II.1.1),
+   only where birth dates are entered, so the page lists the students without one; staff weekly hours
+   per cycle and main subject taught (from the timetable). Not stored today: staff matricule, birth
+   date, sex, grade, diplomas, years of service; OEV / disabled / refugee / displaced counts;
+   technical specialty codes per class. Open: this year's form (only the 2021 one was found), whether
+   to add the missing staff fields, and a trimester or end-of-year report from the head (no official
+   model found; a real copy is needed).
+
+Also seen in other software and **not wanted for now** (user, 2026-11-10): mobile money collection
+and anything payment-related, payroll, accounting. Not picked: parent portal and messages, a digital
+cahier de textes for the school, offline mode, staff clock-in, multi-campus, canteen / transport /
+boarding / library / infirmary.
+
 ### Later
 - National **syllabus library** · **offline-first** sync · **AI**-assisted remarks and scaffolding.
 - **Half-class lessons** (deferred 2026-11-09). Technical schools split a class into two groups
