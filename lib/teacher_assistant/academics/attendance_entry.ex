@@ -280,6 +280,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       forbid_unless {Checks.SchoolRole, any_of: :member}
       forbid_unless Checks.SchoolVerified
       authorize_if {Checks.SchoolRole, any_of: :conduct}
+      # The roll call checked ownership once for the whole batch (A2); other
+      # callers fall through to the row rule below.
+      authorize_if TeacherAssistant.Academics.AttendanceEntry.Checks.OwnsContext
       authorize_if expr(teaching_context.teacher_user_id == ^actor(:id))
     end
   end

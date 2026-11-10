@@ -214,6 +214,113 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     end
   end
 
+  describe "record_period/7 with several periods (A2)" do
+    @monday ~D[2025-09-15]
+
+    defp status_of(scope, cg, period, enrollment) do
+      %{students: students} = Attendance.period_roll(scope, cg, period, @monday)
+      Enum.find(students, &(&1.enrollment_id == enrollment.id))
+    end
+
+    # Queries run by the calling process during `fun` (the repo emits telemetry in it).
+    defp count_queries(fun) do
+      test_pid = self()
+      ref = make_ref()
+      counter = :counters.new(1, [])
+
+      :telemetry.attach(
+        {__MODULE__, ref},
+        [:teacher_assistant, :repo, :query],
+        fn _event, _measure, _meta, _ ->
+          if self() == test_pid, do: :counters.add(counter, 1, 1)
+        end,
+        nil
+      )
+
+      result = fun.()
+      :telemetry.detach({__MODULE__, ref})
+      {result, :counters.get(counter, 1)}
+    end
+
+    test "writes one entry per student per period in one go", ctx do
+      assert {:ok, 4} =
+               Attendance.record_period(
+                 ctx.scope,
+                 ctx.cg,
+                 [ctx.period, ctx.other_period],
+                 ctx.tc,
+                 @monday,
+                 [{ctx.enrollment1.id, :absent}, {ctx.enrollment2.id, :late, 5}]
+               )
+
+      for p <- [ctx.period, ctx.other_period] do
+        assert %{status: :absent} = status_of(ctx.scope, ctx.cg, p, ctx.enrollment1)
+
+        assert %{status: :late, late_minutes: 5} =
+                 status_of(ctx.scope, ctx.cg, p, ctx.enrollment2)
+      end
+    end
+
+    test "a sent-home mark is accepted for both periods", ctx do
+      {:ok, _} = TeacherAssistant.FeeControl.record_send_out(ctx.scope, ctx.enrollment1, @monday)
+
+      assert {:ok, 2} =
+               Attendance.record_period(
+                 ctx.scope,
+                 ctx.cg,
+                 [ctx.period, ctx.other_period],
+                 ctx.tc,
+                 @monday,
+                 [{ctx.enrollment1.id, :sent_home}]
+               )
+
+      for p <- [ctx.period, ctx.other_period],
+          do: assert(%{status: :sent_home} = status_of(ctx.scope, ctx.cg, p, ctx.enrollment1))
+    end
+
+    test "one refused row rolls every period back", ctx do
+      other = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Attendance.record_period(
+                 other,
+                 ctx.cg,
+                 [ctx.period, ctx.other_period],
+                 ctx.tc,
+                 @monday,
+                 [{ctx.enrollment1.id, :absent}]
+               )
+
+      for p <- [ctx.period, ctx.other_period],
+          do: assert(%{status: nil} = status_of(ctx.scope, ctx.cg, p, ctx.enrollment1))
+    end
+
+    test "an app roll overwrites a paper row", ctx do
+      {:ok, 1} =
+        Attendance.record_period(
+          ctx.scope,
+          ctx.cg,
+          ctx.period,
+          ctx.tc,
+          @monday,
+          [{ctx.enrollment1.id, :absent}],
+          source: :paper
+        )
+
+      assert {:ok, 1} =
+               Attendance.record_period(ctx.scope, ctx.cg, [ctx.period], ctx.tc, @monday, [
+                 {ctx.enrollment1.id, :present}
+               ])
+
+      [entry] =
+        AttendanceEntry
+        |> Ash.Query.filter(enrollment_id == ^ctx.enrollment1.id)
+        |> Ash.read!(scope: ctx.scope)
+
+      assert %{status: :present, source: :app} = entry
+    end
+  end
+
   describe "class_register/3" do
     test "returns only lesson periods and every roster student with a cells map", ctx do
       marks = [{ctx.enrollment1.id, :present}, {ctx.enrollment2.id, :absent}]

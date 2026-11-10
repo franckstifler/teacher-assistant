@@ -338,23 +338,26 @@ defmodule TeacherAssistant.Attendance do
 
   @doc """
   Upserts one `AttendanceEntry` per `{enrollment_id, status}` or
-  `{enrollment_id, status, late_minutes}` mark (spec KLM2) for
-  `class_group`/`period`/`date`. Rejects the whole batch with `{:error, term}`
-  if any enrollment doesn't belong to `class_group` or any status is invalid,
-  and writes nothing if any row is refused (one transaction). Marks omitted
-  from the list are left untouched. Returns `{:ok, count}`. `opts`: `source:`
+  `{enrollment_id, status, late_minutes}` mark (spec KLM2) for `class_group`/`date`
+  at `period_or_periods` — one `%Period{}`, or a list of them when the same roll
+  covers back-to-back hours (spec audit follow-ups A2). Rejects the whole batch
+  with `{:error, term}` if any enrollment doesn't belong to `class_group` or any
+  status is invalid, and writes nothing if any row is refused (one transaction,
+  one bulk upsert per period). Marks omitted from the list are left untouched.
+  Returns `{:ok, count}`, the rows written over every period. `opts`: `source:`
   (`:app` by default, `:paper` for a typed-in sheet, spec 2026-10-28).
   """
   def record_period(
         %Scope{} = scope,
         %ClassGroup{} = class_group,
-        %Period{id: period_id},
+        period_or_periods,
         teaching_context,
         %Date{} = date,
         marks,
         opts \\ []
       )
       when is_list(marks) do
+    periods = List.wrap(period_or_periods)
     teaching_context_id = teaching_context_id(teaching_context)
 
     valid_enrollment_ids =
@@ -363,36 +366,66 @@ defmodule TeacherAssistant.Attendance do
       |> MapSet.new(& &1.enrollment.id)
 
     with :ok <- validate_marks(marks, valid_enrollment_ids),
-         :ok <- validate_sent_home(scope, marks, period_id, date) do
-      # All or nothing: a refused row rolls the others back, so "not saved" is true.
-      {action, source_attrs} =
+         :ok <- validate_sent_home_periods(scope, marks, periods, date) do
+      # What a re-taken roll rewrites: never the justification (`justify_day/4`).
+      upsert_fields = [
+        :status,
+        :late_minutes,
+        :teaching_context_id,
+        :recorded_by_user_id,
+        :updated_at
+      ]
+
+      {action, source_attrs, upsert_fields} =
         case Keyword.get(opts, :source, :app) do
-          :paper -> {:record_paper, %{}}
-          :app -> {:record, %{source: :app}}
+          :paper -> {:record_paper, %{}, upsert_fields}
+          :app -> {:record, %{source: :app}, [:source | upsert_fields]}
         end
 
-      TeacherAssistant.Repo.transaction(fn ->
-        Enum.reduce(marks, 0, fn mark, n ->
-          {enrollment_id, status, minutes} = mark_parts(mark)
+      # Ownership is the same for every row: checked once here, read by the
+      # `OwnsContext` policy check instead of a filter query per row.
+      owner? =
+        match?(%TeachingContext{teacher_user_id: id} when is_binary(id), teaching_context) and
+          scope.current_user != nil and teaching_context.teacher_user_id == scope.current_user.id
 
-          AttendanceEntry
-          |> Ash.Changeset.for_create(
-            action,
-            Map.merge(source_attrs, %{
-              date: date,
-              status: status,
-              late_minutes: minutes,
-              enrollment_id: enrollment_id,
-              period_id: period_id,
-              teaching_context_id: teaching_context_id,
-              recorded_by_user_id: scope.current_user && scope.current_user.id
-            }),
-            scope: scope
+      recorded_by = scope.current_user && scope.current_user.id
+
+      # All or nothing: a refused row rolls every period's writes back, so "not
+      # saved" is true.
+      TeacherAssistant.Repo.transaction(fn ->
+        Enum.reduce(periods, 0, fn %Period{id: period_id}, n ->
+          entries =
+            Enum.map(marks, fn mark ->
+              {enrollment_id, status, minutes} = mark_parts(mark)
+
+              Map.merge(source_attrs, %{
+                date: date,
+                status: status,
+                late_minutes: minutes,
+                enrollment_id: enrollment_id,
+                period_id: period_id,
+                teaching_context_id: teaching_context_id,
+                recorded_by_user_id: recorded_by
+              })
+            end)
+
+          entries
+          |> Ash.bulk_create(AttendanceEntry, action,
+            scope: scope,
+            context: %{roll_call: %{owner?: owner?}},
+            upsert?: true,
+            upsert_identity: :unique_mark,
+            upsert_fields: upsert_fields,
+            return_errors?: true,
+            return_records?: false,
+            stop_on_error?: true,
+            transaction: false,
+            batch_size: 500
           )
-          |> Ash.create()
           |> case do
-            {:ok, _} -> n + 1
-            {:error, error} -> TeacherAssistant.Repo.rollback(error)
+            %Ash.BulkResult{status: :success} -> n + length(entries)
+            %Ash.BulkResult{errors: [error | _]} -> TeacherAssistant.Repo.rollback(error)
+            %Ash.BulkResult{} -> TeacherAssistant.Repo.rollback(:record_failed)
           end
         end)
       end)
@@ -408,6 +441,15 @@ defmodule TeacherAssistant.Attendance do
           end
       end
     end
+  end
+
+  defp validate_sent_home_periods(scope, marks, periods, date) do
+    Enum.reduce_while(periods, :ok, fn %Period{id: period_id}, :ok ->
+      case validate_sent_home(scope, marks, period_id, date) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   @doc """
