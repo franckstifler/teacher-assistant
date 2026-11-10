@@ -354,7 +354,7 @@ mistaken student » path (2026-11-09) uses the same destroy.
   it is extended to attendance entries and sanctions and reused by the
   drawer, which offers « Supprimer (erreur de saisie) » only then and
   « Marquer parti » otherwise.
-- **Period rule** (user's call, proposed default): a departed student stays
+- **Period rule** (confirmed by the user, 2026-11-10): a departed student stays
   in every séquence and trimester **whose first day is before `left_on`**,
   with « parti le … » under the name on the bulletin, and is out of any
   period starting on or after `left_on`. So a student who leaves mid-séquence
@@ -470,6 +470,6 @@ Ordered by value to a Cameroonian school, from the feature pass:
 - A7: departure is `left_on` + `departure_reason`, the inscription /
   réinscription status is untouched; destroy is kept for enrollments without
   history (guard extended to attendance and sanctions); the fee balance of a
-  departed student is left as is. **The mid-period rule (a student who leaves
-  mid-séquence keeps that séquence's bulletin) is the user's to confirm.**
+  departed student is left as is. The mid-period rule (a student who leaves
+  mid-séquence keeps that séquence's bulletin) was confirmed by the user.
 - A9: three years before anonymisation.
