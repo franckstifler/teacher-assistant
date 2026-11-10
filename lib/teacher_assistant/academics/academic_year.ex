@@ -112,12 +112,14 @@ defmodule TeacherAssistant.Academics.AcademicYear do
     end
   end
 
+  changes do
+    # Spec KLM9: a closed year is never activated, updated or destroyed.
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:update, :destroy]
+  end
+
   validations do
     validate compare(:end_date, greater_than: :start_date),
       message: "must be after the start date"
-
-    # Spec KLM9: a closed year is never activated, updated or destroyed.
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:update, :destroy]
   end
 
   multitenancy do

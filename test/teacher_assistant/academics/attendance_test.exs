@@ -319,6 +319,29 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
 
       assert %{status: :present, source: :app} = entry
     end
+
+    test "a save of 40 students over two periods runs under 12 queries", ctx do
+      for n <- 1..38,
+          do: {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "E#{n}", sex: :m})
+
+      roster = Enrollment.list_roster(ctx.scope, ctx.cg)
+      marks = Enum.map(roster, &{&1.enrollment.id, :present})
+
+      {result, count} =
+        count_queries(fn ->
+          Attendance.record_period(
+            ctx.scope,
+            ctx.cg,
+            [ctx.period, ctx.other_period],
+            ctx.tc,
+            @monday,
+            marks
+          )
+        end)
+
+      assert {:ok, 80} = result
+      assert count <= 12, "#{count} queries"
+    end
   end
 
   describe "class_register/3" do

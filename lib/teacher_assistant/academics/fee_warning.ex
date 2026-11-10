@@ -97,8 +97,8 @@ defmodule TeacherAssistant.Academics.FeeWarning do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
   end
 
   multitenancy do

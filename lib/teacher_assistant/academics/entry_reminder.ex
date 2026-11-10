@@ -54,8 +54,8 @@ defmodule TeacherAssistant.Academics.EntryReminder do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
       on: [:create, :update, :destroy]
   end
 

@@ -181,10 +181,12 @@ defmodule TeacherAssistant.Academics.Assessment do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
       on: [:create, :update, :destroy]
+  end
 
+  validations do
     # The lock (spec D3b). `before_action?`: reads the séquence in the action's scope.
     validate {TeacherAssistant.Academics.Assessment.SequenceOpen, []},
       on: [:create, :update, :destroy],

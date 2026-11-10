@@ -54,8 +54,8 @@ defmodule TeacherAssistant.Academics.StudentArrear do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:enrollment]}, on: [:create, :destroy]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]}, on: [:create, :destroy]
   end
 
   multitenancy do

@@ -46,8 +46,8 @@ defmodule TeacherAssistant.Academics.SubjectExemption do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:teaching_context]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:teaching_context]},
       on: [:create, :update, :destroy]
   end
 

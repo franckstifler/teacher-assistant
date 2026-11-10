@@ -409,6 +409,10 @@ defmodule TeacherAssistant.Attendance do
               })
             end)
 
+          # A paper row never overwrites an app one (`:record_paper`'s upsert
+          # condition): a bulk upsert skips such a row silently, so the written rows
+          # are returned and counted — fewer than sent means a conflict, and the
+          # whole save rolls back as it did row by row.
           entries
           |> Ash.bulk_create(AttendanceEntry, action,
             scope: scope,
@@ -417,21 +421,33 @@ defmodule TeacherAssistant.Attendance do
             upsert_identity: :unique_mark,
             upsert_fields: upsert_fields,
             return_errors?: true,
-            return_records?: false,
+            return_records?: true,
             stop_on_error?: true,
             transaction: false,
             batch_size: 500
           )
           |> case do
-            %Ash.BulkResult{status: :success} -> n + length(entries)
-            %Ash.BulkResult{errors: [error | _]} -> TeacherAssistant.Repo.rollback(error)
-            %Ash.BulkResult{} -> TeacherAssistant.Repo.rollback(:record_failed)
+            %Ash.BulkResult{status: :success, records: records}
+            when length(records) == length(entries) ->
+              n + length(entries)
+
+            %Ash.BulkResult{status: :success} ->
+              TeacherAssistant.Repo.rollback(:upsert_skipped)
+
+            %Ash.BulkResult{errors: [error | _]} ->
+              TeacherAssistant.Repo.rollback(error)
+
+            %Ash.BulkResult{} ->
+              TeacherAssistant.Repo.rollback(:record_failed)
           end
         end)
       end)
       |> case do
         {:ok, count} ->
           {:ok, count}
+
+        {:error, :upsert_skipped} ->
+          {:error, :record_failed}
 
         # A refused create rolls the transaction back with its bare error.
         {:error, error} ->

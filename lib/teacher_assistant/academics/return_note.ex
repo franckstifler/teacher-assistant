@@ -98,9 +98,11 @@ defmodule TeacherAssistant.Academics.ReturnNote do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
+  end
 
+  validations do
     validate compare(:valid_until, greater_than_or_equal_to: :issued_on),
       on: [:create],
       message: "must not be before the issue date"

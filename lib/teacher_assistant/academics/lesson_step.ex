@@ -121,10 +121,10 @@ defmodule TeacherAssistant.Academics.LessonStep do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen,
-              path: [:lesson_plan, :progression_entry, :progression_plan]},
-             on: [:create, :update, :destroy]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen,
+            path: [:lesson_plan, :progression_entry, :progression_plan]},
+           on: [:create, :update, :destroy]
   end
 
   multitenancy do

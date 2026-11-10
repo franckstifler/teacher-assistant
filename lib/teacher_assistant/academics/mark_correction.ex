@@ -43,7 +43,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection do
     defaults [:read]
 
     create :request do
-      validate {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
+      change {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
       accept [:assessment_id, :student_id, :requested_status, :requested_score, :motive]
       change set_attribute(:requester_user_id, actor(:id))
       change set_attribute(:status, :pending)
@@ -51,14 +51,14 @@ defmodule TeacherAssistant.Academics.MarkCorrection do
     end
 
     update :approve do
-      validate {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
+      change {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
       require_atomic? false
       argument :decision_note, :string, constraints: [max_length: 500, trim?: true]
       change {Decide, decision: :approved}
     end
 
     update :refuse do
-      validate {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
+      change {TeacherAssistant.Academics.YearOpen, path: [:assessment, :sequence, :term]}
       require_atomic? false
       argument :decision_note, :string, constraints: [max_length: 500, trim?: true]
       change {Decide, decision: :refused}

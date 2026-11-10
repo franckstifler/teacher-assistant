@@ -53,8 +53,8 @@ defmodule TeacherAssistant.Academics.FeeTranche do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []},
       on: [:create, :update, :destroy]
   end
 

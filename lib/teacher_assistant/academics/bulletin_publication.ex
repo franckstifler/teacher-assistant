@@ -79,8 +79,8 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
   end
 
   multitenancy do

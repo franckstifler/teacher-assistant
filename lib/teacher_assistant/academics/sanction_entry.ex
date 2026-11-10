@@ -140,10 +140,12 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
+  end
 
+  validations do
     # Vie scolaire redesign §1.3: a consigne is given in hours.
     validate present(:duration_hours),
       where: [attribute_equals(:type, :consigne)],

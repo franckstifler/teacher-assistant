@@ -298,8 +298,11 @@ defmodule TeacherAssistant.Academics.ProgressionPlan do
     end
   end
 
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+  end
+
   validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
     validate TeacherAssistant.Academics.ProgressionPlan.ExactlyOneOwner, on: [:create]
   end
 

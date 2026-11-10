@@ -1,8 +1,8 @@
 defmodule TeacherAssistant.Academics.YearOpenTest do
   use TeacherAssistant.DataCase, async: true
 
-  alias TeacherAssistant.{Enrollment, Organization, TeacherFixtures}
-  alias TeacherAssistant.Academics.{Term, YearOpen}
+  alias TeacherAssistant.{Attendance, Enrollment, Organization, TeacherFixtures}
+  alias TeacherAssistant.Academics.{AttendanceEntry, Term, YearOpen}
 
   setup do
     %{scope: head, year: year} = TeacherFixtures.setup_complete_school_fixture()
@@ -72,6 +72,64 @@ defmodule TeacherAssistant.Academics.YearOpenTest do
              Enrollment.create_class_group(ctx.head, next, %{label: "6ème Y", level: "6ème"})
   end
 
+  test "a bulk write over a closed year refuses every row with one year lookup", ctx do
+    [cg | _] = Enrollment.list_class_groups(ctx.head, ctx.year)
+
+    for n <- 1..3,
+        do: {:ok, _} = Enrollment.add_student(ctx.head, cg, %{full_name: "E#{n}", sex: :m})
+
+    roster = Enrollment.list_roster(ctx.head, cg)
+    period = ctx.head |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))
+    %{teaching_context: tc} = TeacherFixtures.school_teacher_fixture(ctx.head, %{class_group: cg})
+    TeacherFixtures.close_year!(ctx.head, ctx.year)
+
+    entries =
+      for %{enrollment: e} <- roster,
+          do: %{
+            enrollment_id: e.id,
+            date: ~D[2025-09-15],
+            period_id: period.id,
+            status: :absent,
+            teaching_context_id: tc.id
+          }
+
+    {result, year_lookups} =
+      count_queries("academic_years", fn ->
+        Ash.bulk_create(entries, AttendanceEntry, :record,
+          scope: ctx.head,
+          upsert?: true,
+          upsert_identity: :unique_mark,
+          upsert_fields: [:status],
+          return_errors?: true,
+          stop_on_error?: false
+        )
+      end)
+
+    assert %Ash.BulkResult{status: :error, errors: errors} = result
+    assert length(errors) == 3
+    assert Enum.all?(errors, &(Exception.message(&1) =~ "est clôturée"))
+    assert year_lookups == 1
+  end
+
+  # SELECTs on `table` run by this process during `fun`.
+  defp count_queries(table, fun) do
+    test_pid = self()
+    counter = :counters.new(1, [])
+
+    :telemetry.attach(
+      {__MODULE__, table},
+      [:teacher_assistant, :repo, :query],
+      fn _event, _measure, %{query: query}, _ ->
+        if self() == test_pid and query =~ "FROM \"#{table}\"", do: :counters.add(counter, 1, 1)
+      end,
+      nil
+    )
+
+    result = fun.()
+    :telemetry.detach({__MODULE__, table})
+    {result, :counters.get(counter, 1)}
+  end
+
   test "a lookup that cannot be made refuses the write instead of letting it through", ctx do
     [cg | _] = Enrollment.list_class_groups(ctx.head, ctx.year)
     {:ok, student} = Enrollment.add_student(ctx.head, cg, %{full_name: "Zoé", sex: :f})
@@ -87,15 +145,14 @@ defmodule TeacherAssistant.Academics.YearOpenTest do
       |> Map.put(:tenant, nil)
     end
 
+    refused? = fn %Ash.Changeset{} = cs -> not cs.valid? and cs.errors != [] end
+
     # the year is read directly (`path: []`)
-    assert {:error, _} = YearOpen.validate(update.(cg, %{label: "Autre"}), [path: []], %{})
+    assert refused?.(YearOpen.change(update.(cg, %{label: "Autre"}), [path: []], %{}))
 
     # the parent is read first (`path: [:class_group]`)
-    assert {:error, _} =
-             YearOpen.validate(
-               update.(enrollment, %{repeater: true}),
-               [path: [:class_group]],
-               %{}
-             )
+    assert refused?.(
+             YearOpen.change(update.(enrollment, %{repeater: true}), [path: [:class_group]], %{})
+           )
   end
 end

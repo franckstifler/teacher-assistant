@@ -287,8 +287,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
   end
 

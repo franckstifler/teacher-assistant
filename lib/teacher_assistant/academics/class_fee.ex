@@ -57,8 +57,8 @@ defmodule TeacherAssistant.Academics.ClassFee do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:class_group]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:class_group]},
       on: [:create, :update, :destroy]
   end
 

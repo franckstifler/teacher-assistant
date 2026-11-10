@@ -69,8 +69,8 @@ defmodule TeacherAssistant.Academics.CouncilDecision do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:class_council]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:class_council]},
       on: [:create, :update, :destroy]
   end
 

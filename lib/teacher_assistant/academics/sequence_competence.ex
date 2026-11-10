@@ -74,8 +74,8 @@ defmodule TeacherAssistant.Academics.SequenceCompetence do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:sequence, :term]},
       on: [:create, :destroy]
   end
 

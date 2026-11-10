@@ -192,11 +192,11 @@ defmodule TeacherAssistant.Academics.Enrollment do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
 
     # A move into (or out of) a class is checked against that class's year too.
-    validate {TeacherAssistant.Academics.YearOpen, path: [:class_group]},
+    change {TeacherAssistant.Academics.YearOpen, path: [:class_group]},
       on: [:create, :update, :destroy]
   end
 

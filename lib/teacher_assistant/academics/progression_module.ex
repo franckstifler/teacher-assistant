@@ -98,8 +98,8 @@ defmodule TeacherAssistant.Academics.ProgressionModule do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:progression_plan]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:progression_plan]},
       on: [:create, :update, :destroy]
   end
 

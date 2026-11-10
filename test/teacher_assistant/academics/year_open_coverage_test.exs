@@ -84,11 +84,11 @@ defmodule TeacherAssistant.Academics.YearOpenCoverageTest do
 
   defp checks_year?(resource, action) do
     Enum.any?(
-      Ash.Resource.Info.validations(resource),
+      Ash.Resource.Info.changes(resource),
       &(year_open?(&1) and action.type in &1.on)
     ) or Enum.any?(action.changes, &year_open?/1)
   end
 
-  defp year_open?(%Ash.Resource.Validation{validation: {YearOpen, _opts}}), do: true
+  defp year_open?(%Ash.Resource.Change{change: {YearOpen, _opts}}), do: true
   defp year_open?(_other), do: false
 end

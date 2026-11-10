@@ -121,8 +121,11 @@ defmodule TeacherAssistant.Academics.ClassGroup do
     end
   end
 
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+  end
+
   validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
     # Only when the form master is set: a class whose form master has since left the
     # school must still take its other changes (exam codes, paper roll call…).
     validate TeacherAssistant.Academics.ClassGroup.FormMasterIsMember,

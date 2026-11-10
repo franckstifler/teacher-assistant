@@ -47,8 +47,8 @@ defmodule TeacherAssistant.Academics.RollCallReminder do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:timetable_slot, :class_group]},
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:timetable_slot, :class_group]},
       on: [:create]
   end
 

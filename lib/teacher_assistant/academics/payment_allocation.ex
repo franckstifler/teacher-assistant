@@ -54,8 +54,8 @@ defmodule TeacherAssistant.Academics.PaymentAllocation do
     end
   end
 
-  validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: [:payment]}, on: [:create]
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: [:payment]}, on: [:create]
   end
 
   multitenancy do

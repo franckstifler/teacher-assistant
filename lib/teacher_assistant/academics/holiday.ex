@@ -52,8 +52,11 @@ defmodule TeacherAssistant.Academics.Holiday do
     end
   end
 
+  changes do
+    change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+  end
+
   validations do
-    validate {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
     validate TeacherAssistant.Academics.Holiday.ValidateDates
   end
 
