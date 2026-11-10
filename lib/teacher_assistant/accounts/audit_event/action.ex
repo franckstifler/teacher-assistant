@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Action do
       :school_reactivated,
       :modules_changed,
       :password_reset,
+      :member_renamed,
       :impersonation_started,
       :impersonation_ended
     ]
@@ -19,6 +20,7 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Action do
   def label(:school_reactivated), do: gettext("Établissement réactivé")
   def label(:modules_changed), do: gettext("Modules modifiés")
   def label(:password_reset), do: gettext("Mot de passe réinitialisé")
+  def label(:member_renamed), do: gettext("Membre renommé")
   def label(:impersonation_started), do: gettext("Accès en tant que")
   def label(:impersonation_ended), do: gettext("Fin de l'accès en tant que")
 end

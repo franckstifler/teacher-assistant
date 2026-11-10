@@ -197,6 +197,14 @@ defmodule TeacherAssistant.Accounts.User do
       change {TeacherAssistant.Accounts.AuditEvent.Record, action: :password_reset}
     end
 
+    # A member's name, corrected by their school (`Accounts.rename_member/3`).
+    update :rename_by_school do
+      accept [:name]
+      require_atomic? false
+      validate present(:name)
+      change {TeacherAssistant.Accounts.AuditEvent.Record, action: :member_renamed}
+    end
+
     update :set_own_password do
       accept []
       require_atomic? false
@@ -284,6 +292,19 @@ defmodule TeacherAssistant.Accounts.User do
       forbid_if expr(id == ^actor(:id))
       forbid_if TeacherAssistant.Accounts.Checks.ActiveInAnotherSchool
       forbid_if TeacherAssistant.Accounts.Checks.HeadOfActingSchool
+      forbid_if TeacherAssistant.Accounts.Checks.NotCreatedByUnverifiedSchool
+      authorize_if TeacherAssistant.Accounts.Checks.HeadOfMembersSchool
+    end
+
+    # A member's name is corrected by their school, never by the member (decided by
+    # the user, 2026-11-10): never an operator's account; the operator renames anyone
+    # else; never, from a school not yet verified, an account it didn't create; the
+    # head of the acting school renames its active members, other heads and itself
+    # included. Someone active in another school too may be renamed: a name is not a
+    # credential, and their other school sees the correction.
+    policy action(:rename_by_school) do
+      forbid_if expr(role == :admin)
+      authorize_if actor_attribute_equals(:role, :admin)
       forbid_if TeacherAssistant.Accounts.Checks.NotCreatedByUnverifiedSchool
       authorize_if TeacherAssistant.Accounts.Checks.HeadOfMembersSchool
     end

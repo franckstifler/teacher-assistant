@@ -290,6 +290,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           error={@member_error}
           state={@account_states[@editing.id]}
           resettable?={MapSet.member?(@resettable_member_ids, @editing.id)}
+          renamable?={MapSet.member?(@renamable_member_ids, @editing.id)}
           can_manage_staff?={@can_manage_staff?}
           can_set_service?={@can_set_service?}
           roles={checked_roles(@member_form)}
@@ -478,6 +479,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     attrs = Map.get(params, "member", %{})
 
     with %{} = m <- find_membership(scope, id),
+         :ok <- save_name(scope, m, attrs),
          {:ok, m} <- save_service(scope, m, attrs),
          {:ok, m} <- save_roles(scope, m, attrs),
          {:ok, _} <- save_status(scope, m, attrs) do
@@ -492,6 +494,10 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
       {:error, %Ash.Error.Forbidden{}} ->
         {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, :blank_name} ->
+        {:noreply,
+         member_error(socket, attrs, nil, name: {gettext("Indiquez le nom et le prénom."), []})}
 
       {:error, :invalid_hours} ->
         {:noreply,
@@ -603,6 +609,27 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   end
 
   defp save_service(_scope, m, _attrs), do: {:ok, m}
+
+  # The name field shows only to those who may rename (the `:rename_by_school` policy
+  # decides); an unchanged name writes nothing. A member invited by e-mail may have no
+  # name yet: the field may stay empty, but a name is never erased.
+  defp save_name(scope, m, %{"name" => name}) when is_binary(name) do
+    cond do
+      blank?(name) and blank?(m.user.name) ->
+        :ok
+
+      blank?(name) ->
+        {:error, :blank_name}
+
+      Enum.join(String.split(name), " ") == m.user.name ->
+        :ok
+
+      true ->
+        with {:ok, _user} <- Accounts.rename_member(scope, m, name), do: :ok
+    end
+  end
+
+  defp save_name(_scope, _m, _attrs), do: :ok
 
   defp save_roles(scope, m, %{"roles" => roles}) when is_list(roles) do
     roles = parse_roles(roles)
@@ -889,6 +916,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   defp member_form(m) do
     to_form(
       %{
+        "name" => m.user.name || "",
         "roles" => Enum.map(m.roles, &to_string/1),
         "status" => if(m.status, do: to_string(m.status), else: ""),
         "service" => to_string(m.statutory_hours || "")
@@ -913,6 +941,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     resettable =
       if socket.assigns.can_manage_staff?,
         do: Accounts.resettable_member_ids(scope, members),
+        else: MapSet.new()
+
+    renamable =
+      if socket.assigns.can_manage_staff?,
+        do: Accounts.renamable_member_ids(scope, members),
         else: MapSet.new()
 
     # Colleagues' password state is for staff managers only.
@@ -940,6 +973,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     )
     |> assign(:counts, counts(members))
     |> assign(:resettable_member_ids, resettable)
+    |> assign(:renamable_member_ids, renamable)
     |> assign(:account_states, states)
     |> assign(:invitations, Accounts.list_pending_invitations(scope))
     |> apply_filters()

@@ -532,6 +532,49 @@ defmodule TeacherAssistant.Accounts do
 
   def resettable_member_ids(_scope, _members), do: MapSet.new()
 
+  @doc """
+  Corrects a member's name (the school's head, `User`'s `:rename_by_school` policy).
+  Spaces are tidied; a blank name is refused. Journaled with the old and new name.
+  """
+  def rename_member(%Scope{} = scope, %SchoolMembership{user: %User{} = user}, name)
+      when is_binary(name) do
+    user
+    |> Ash.Changeset.for_update(:rename_by_school, %{name: Enum.join(String.split(name), " ")},
+      scope: scope
+    )
+    |> Ash.update()
+  end
+
+  def can_rename_member?(%Scope{} = scope, %User{} = user),
+    do: Ash.can?({user, :rename_by_school}, scope)
+
+  @doc """
+  The ids of the `members` (from `list_members/1`, users loaded) whose name the scope
+  may correct, without a read per member. The `:rename_by_school` policy stays the
+  authority when a rename runs; a test keeps the two in step.
+  """
+  def renamable_member_ids(%Scope{current_user: %User{role: :admin}}, members),
+    do: for(m <- members, m.user.role != :admin, into: MapSet.new(), do: m.id)
+
+  def renamable_member_ids(
+        %Scope{current_user: %User{} = actor, current_workspace: %{id: ws_id}},
+        members
+      ) do
+    if Checks.SchoolRole.holds?(actor, ws_id, :head) do
+      verified? = Checks.SchoolVerified.verified?(ws_id)
+
+      for m <- members,
+          m.user.role != :admin,
+          verified? or m.user.created_in_workspace_id == ws_id,
+          into: MapSet.new(),
+          do: m.id
+    else
+      MapSet.new()
+    end
+  end
+
+  def renamable_member_ids(_scope, _members), do: MapSet.new()
+
   # Users among `user_ids` with an active membership in a school other than `ws_id`.
   # Check-style read (no tenant, `authorize?: false`), as `Checks.ActiveInAnotherSchool`.
   defp active_elsewhere([], _ws_id), do: MapSet.new()

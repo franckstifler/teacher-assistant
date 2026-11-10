@@ -1,12 +1,13 @@
 defmodule TeacherAssistant.Accounts.Checks.NotCreatedByUnverifiedSchool do
   @moduledoc """
-  Policy check for `:reset_temporary_password`: the school the actor acts in is
-  not verified yet, and the account being changed is not one it created.
+  Policy check for `:reset_temporary_password` and `:rename_by_school`: the school
+  the actor acts in is not verified yet, and the account being changed is not one
+  it created.
 
   Anyone can register and open a school, and a head links an existing phone
   account just by typing its number. Until an operator has verified the school,
-  its head must not be able to reset — and so take over — an account that
-  someone else owns.
+  its head must not be able to reset — and so take over — or rename an account
+  that someone else owns.
   """
   use Ash.Policy.SimpleCheck
 
