@@ -110,13 +110,29 @@ defmodule TeacherAssistantWeb.School.RollCall do
             {id, status, if(status == :late, do: roll.minutes[id])}
           end)
 
-        case write(scope, roll, marks) do
-          {:ok, _count} -> {:ok, reload(scope, roll)}
-          {:error, %Ash.Error.Forbidden{}} -> {:error, :forbidden}
-          {:error, _reason} -> {:error, :failed}
+        # A2: the following hours of the same lesson, when the box is on.
+        periods =
+          if roll[:record_following], do: [roll.period | roll.following], else: [roll.period]
+
+        case write(scope, roll, periods, marks) do
+          {:ok, _count} ->
+            {:ok,
+             scope
+             |> reload(roll)
+             |> put_adjacent(scope)
+             |> Map.put(:saved_periods, length(periods))}
+
+          {:error, %Ash.Error.Forbidden{}} ->
+            {:error, :forbidden}
+
+          {:error, _reason} ->
+            {:error, :failed}
         end
     end
   end
+
+  @doc "Flips « aussi pour la 2e heure » (A2)."
+  def toggle_following(roll), do: Map.update(roll, :record_following, false, &(not &1))
 
   @doc "Flashes why `record/2` failed."
   def put_error(socket, :forbidden), do: TeacherAssistantWeb.Authz.put_not_allowed(socket)
@@ -277,15 +293,15 @@ defmodule TeacherAssistantWeb.School.RollCall do
     end)
   end
 
-  defp write(scope, %{course: %CombinedCourse{} = course} = roll, marks),
-    do: Attendance.record_combined_period(scope, course, roll.period, roll.date, marks)
+  defp write(scope, %{course: %CombinedCourse{} = course} = roll, periods, marks),
+    do: Attendance.record_combined_period(scope, course, periods, roll.date, marks)
 
-  defp write(scope, roll, marks),
+  defp write(scope, roll, periods, marks),
     do:
       Attendance.record_period(
         scope,
         roll.cg,
-        roll.period,
+        periods,
         roll.teaching_context,
         roll.date,
         marks
@@ -357,6 +373,11 @@ defmodule TeacherAssistantWeb.School.RollCall do
   attr :roll, :map, required: true
   attr :title, :string, default: nil
   attr :eyebrow, :string, default: nil
+
+  attr :following?, :boolean,
+    default: false,
+    doc: "offer « aussi pour la 2e heure » when the lesson continues (Ma journée)"
+
   slot :actions, doc: "extra header links (« Saisir des notes », close)"
 
   def roll_panel(assigns) do
@@ -448,6 +469,31 @@ defmodule TeacherAssistantWeb.School.RollCall do
         id="roll-footer"
         class="ta-stickyfoot sticky bottom-0 z-10 flex flex-col gap-2 rounded-b-box border-t border-base-300 bg-base-200/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:items-center sm:px-[18px]"
       >
+        <button
+          :if={@following? and @roll[:following] != []}
+          id="record-following"
+          type="button"
+          role="checkbox"
+          aria-checked={to_string(@roll.record_following)}
+          phx-click="toggle_following"
+          class={[
+            "flex min-h-10 items-center gap-2 rounded-full border px-3 text-[0.82rem] font-semibold transition-colors",
+            if(@roll.record_following,
+              do: "border-primary bg-primary/12 text-primary",
+              else: "border-base-300 text-base-content/70 hover:bg-base-content/8"
+            )
+          ]}
+        >
+          <.icon
+            name={if @roll.record_following, do: "hero-check-circle-solid", else: "hero-circle"}
+            class="size-5"
+          />
+          {ngettext(
+            "Aussi pour la 2e heure",
+            "Aussi pour les %{count} heures suivantes",
+            length(@roll.following)
+          )}
+        </button>
         <div
           id="roll-counts"
           class="ta-num flex flex-wrap gap-x-4 gap-y-1 text-[0.82rem] font-medium sm:flex-1"
@@ -467,7 +513,10 @@ defmodule TeacherAssistantWeb.School.RollCall do
             )}
           </span>
           <span :if={@roll.taken?} class="flex items-center gap-1 text-success">
-            <.icon name="hero-check-circle" class="size-4" /> {gettext("Appel enregistré.")}
+            <.icon name="hero-check-circle" class="size-4" />
+            {if (@roll[:saved_periods] || 1) > 1,
+              do: gettext("Appel enregistré pour %{count} heures.", count: @roll.saved_periods),
+              else: gettext("Appel enregistré.")}
           </span>
         </div>
         <button

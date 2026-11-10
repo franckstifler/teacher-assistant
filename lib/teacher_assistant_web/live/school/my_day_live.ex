@@ -100,6 +100,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.toggle(&1, id, status)))}
 
+  def handle_event("toggle_following", _params, socket),
+    do: {:noreply, update(socket, :roll, &(&1 && RollCall.toggle_following(&1)))}
+
   def handle_event("record", _params, %{assigns: %{roll: %{}}} = socket) do
     case RollCall.record(socket.assigns.current_scope, socket.assigns.roll) do
       {:ok, roll} ->
@@ -160,6 +163,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
               roll={@roll}
               title={roll_title(@roll, @selected_lesson, @labels)}
               eyebrow={roll_eyebrow(@selected_lesson)}
+              following?
             >
               <:actions>
                 <.link

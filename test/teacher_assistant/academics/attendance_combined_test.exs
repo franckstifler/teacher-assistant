@@ -155,6 +155,26 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
                |> Ash.read!(scope: ctx.scope)
     end
 
+    test "two back-to-back periods are written for every member class in one save (A2)", ctx do
+      [_, p2 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+      marks = [{ctx.enr_maco.id, :present}, {ctx.enr_menu.id, :absent}]
+
+      assert {:ok, 4} =
+               Attendance.record_combined_period(
+                 ctx.scope,
+                 ctx.course,
+                 [ctx.period, p2],
+                 ctx.date,
+                 marks
+               )
+
+      for p <- [ctx.period, p2] do
+        groups = Attendance.combined_period_roll(ctx.scope, ctx.course, p, ctx.date)
+        statuses = for g <- groups, s <- g.students, into: %{}, do: {s.enrollment_id, s.status}
+        assert statuses == %{ctx.enr_maco.id => :present, ctx.enr_menu.id => :absent}
+      end
+    end
+
     test "a genuine DB-level failure in the second group rolls back the first group's already-written entry",
          ctx do
       # `Attendance.record_combined_period/5` pre-validates status/enrollment
@@ -185,7 +205,7 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
                |> Ash.ActionInput.for_action(
                  :record_combined_period,
                  %{
-                   period_id: ctx.period.id,
+                   period_ids: [ctx.period.id],
                    date: ctx.date,
                    recorded_by_user_id: ctx.head.id,
                    groups: groups

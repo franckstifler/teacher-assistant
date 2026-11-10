@@ -238,7 +238,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     # never opens a transaction at all — this action only ever sees
     # already-valid writes.
     action :record_combined_period, :integer do
-      argument :period_id, :uuid, allow_nil?: false
+      argument :period_ids, {:array, :uuid}, allow_nil?: false, constraints: [min_length: 1]
       argument :date, :date, allow_nil?: false
       argument :recorded_by_user_id, :uuid, allow_nil?: true
       argument :groups, {:array, :map}, allow_nil?: false
@@ -246,16 +246,19 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       transaction? true
 
       run fn input, scope ->
-        %{period_id: period_id, date: date, recorded_by_user_id: uid, groups: groups} =
+        %{period_ids: period_ids, date: date, recorded_by_user_id: uid, groups: groups} =
           input.arguments
 
-        groups
-        |> Enum.reduce_while({:ok, 0}, fn group, {:ok, acc} ->
-          case create_group_entries(group, period_id, date, uid, scope) do
-            {:ok, count} -> {:cont, {:ok, acc + count}}
-            {:error, reason} -> {:halt, {:error, reason}}
-          end
-        end)
+        for period_id <- period_ids, group <- groups, reduce: {:ok, 0} do
+          {:ok, acc} ->
+            case create_group_entries(group, period_id, date, uid, scope) do
+              {:ok, count} -> {:ok, acc + count}
+              {:error, reason} -> {:error, reason}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
       end
     end
   end
@@ -449,45 +452,65 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
   # --- Combined-write engine (private, behind :record_combined_period) -------
 
-  # Creates one `AttendanceEntry` per mark in `group` (upsert via `:record`,
-  # identity `[:enrollment_id, :date, :period_id]`), scoped to the action
-  # context's scope (shared by every member class of the combined course).
-  # `group` carries its own `teaching_context_id` — the per-class
-  # routing computed by `TeacherAssistant.Attendance.record_combined_period/5`
-  # before this action ever runs. Returns `{:ok, count}`, or the first
-  # `{:error, reason}` hit (halting the batch — the caller's `transaction?
-  # true` rolls back whatever earlier groups already wrote).
+  # One bulk upsert (`:record`, identity `[:enrollment_id, :date, :period_id]`)
+  # per group and period, scoped to the action context's scope (shared by every
+  # member class of the combined course). `group` carries its own
+  # `teaching_context_id` and `owner?` — the per-class routing and ownership
+  # computed by `TeacherAssistant.Attendance.record_combined_period/5` before
+  # this action ever runs. Returns `{:ok, count}` or `{:error, reason}`; the
+  # caller's `transaction? true` rolls back whatever earlier groups wrote.
   defp create_group_entries(
-         %{teaching_context_id: tc_id, marks: marks},
+         %{teaching_context_id: tc_id, marks: marks} = group,
          period_id,
          date,
          recorded_by_user_id,
          scope
        ) do
-    results =
+    entries =
       Enum.map(marks, fn %{enrollment_id: enrollment_id, status: status} = mark ->
-        __MODULE__
-        |> Ash.Changeset.for_create(
-          :record,
-          %{
-            date: date,
-            status: status,
-            late_minutes: Map.get(mark, :late_minutes),
-            enrollment_id: enrollment_id,
-            period_id: period_id,
-            teaching_context_id: tc_id,
-            recorded_by_user_id: recorded_by_user_id,
-            # Explicit, so it overwrites `:paper` on an upsert (defaults are not upserted).
-            source: :app
-          },
-          scope: scope
-        )
-        |> Ash.create()
+        %{
+          date: date,
+          status: status,
+          late_minutes: Map.get(mark, :late_minutes),
+          enrollment_id: enrollment_id,
+          period_id: period_id,
+          teaching_context_id: tc_id,
+          recorded_by_user_id: recorded_by_user_id,
+          # Explicit, so it overwrites `:paper` on an upsert (defaults are not upserted).
+          source: :app
+        }
       end)
 
-    case Enum.find(results, &match?({:error, _}, &1)) do
-      nil -> {:ok, length(results)}
-      {:error, error} -> {:error, error}
+    entries
+    |> Ash.bulk_create(__MODULE__, :record,
+      scope: scope,
+      context: %{roll_call: %{owner?: Map.get(group, :owner?, false)}},
+      upsert?: true,
+      upsert_identity: :unique_mark,
+      upsert_fields: [
+        :status,
+        :late_minutes,
+        :teaching_context_id,
+        :recorded_by_user_id,
+        :source,
+        :updated_at
+      ],
+      return_errors?: true,
+      return_records?: true,
+      stop_on_error?: true,
+      transaction: false,
+      batch_size: 500
+    )
+    |> case do
+      %Ash.BulkResult{status: :success, records: records}
+      when length(records) == length(entries) ->
+        {:ok, length(entries)}
+
+      %Ash.BulkResult{errors: [error | _]} ->
+        {:error, error}
+
+      %Ash.BulkResult{} ->
+        {:error, :record_failed}
     end
   end
 end

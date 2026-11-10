@@ -317,22 +317,25 @@ defmodule TeacherAssistant.Attendance do
   or `{enrollment_id, status, late_minutes}` tuples covering every member class's roster, as returned by
   `combined_period_roll/4`) are routed to each enrollment's own class and
   written via the `AttendanceEntry` `:record_combined_period` action — one
-  group per member class. Every mark is validated (roster membership + status)
-  *before* the transactional action ever runs, so an invalid mark for any
-  class never opens a transaction, let alone leaves a partial write: if any
-  member class's marks are invalid, NOTHING is persisted for ANY class (no
-  partial commit), mirroring the "record once, all classes together"
-  combined-marks save. Returns `{:ok, total_count}` or `{:error, reason}`.
+  group per member class, at `period_or_periods` (one `%Period{}`, or a list
+  when the same roll covers back-to-back hours, spec audit follow-ups A2).
+  Every mark is validated (roster membership + status) *before* the
+  transactional action ever runs, so an invalid mark for any class never opens
+  a transaction, let alone leaves a partial write: if any member class's marks
+  are invalid, NOTHING is persisted for ANY class (no partial commit),
+  mirroring the "record once, all classes together" combined-marks save.
+  Returns `{:ok, total_count}` (rows over every period) or `{:error, reason}`.
   """
   def record_combined_period(
         %Scope{} = scope,
         %CombinedCourse{} = course,
-        %Period{} = period,
+        period_or_periods,
         %Date{} = date,
         marks
       )
       when is_list(marks) do
-    groups = combined_period_roll(scope, course, period, date)
+    [first | _] = periods = List.wrap(period_or_periods)
+    groups = combined_period_roll(scope, course, first, date)
 
     per_group_marks =
       Enum.map(groups, fn %{class_group: cg, teaching_context: tc, students: students} ->
@@ -348,10 +351,10 @@ defmodule TeacherAssistant.Attendance do
       end)
 
     with :ok <- validate_group_marks(scope, per_group_marks),
-         :ok <- validate_sent_home(scope, marks, period.id, date) do
+         :ok <- validate_sent_home_periods(scope, marks, periods, date) do
       run_record_combined_period(
         per_group_marks,
-        period,
+        periods,
         date,
         scope.current_user && scope.current_user.id,
         scope
@@ -375,15 +378,19 @@ defmodule TeacherAssistant.Attendance do
 
   defp run_record_combined_period(
          per_group_marks,
-         %Period{id: period_id},
+         periods,
          date,
          recorded_by_user_id,
          %Scope{} = scope
        ) do
+    actor_id = scope.current_user && scope.current_user.id
+
     groups =
       Enum.map(per_group_marks, fn {_cg, tc, group_marks} ->
         %{
           teaching_context_id: teaching_context_id(tc),
+          # Ownership checked once per group (`OwnsContext`), not per row.
+          owner?: match?(%TeachingContext{teacher_user_id: ^actor_id}, tc) and actor_id != nil,
           marks:
             Enum.map(group_marks, fn mark ->
               {enrollment_id, status, minutes} = mark_parts(mark)
@@ -396,7 +403,7 @@ defmodule TeacherAssistant.Attendance do
     |> Ash.ActionInput.for_action(
       :record_combined_period,
       %{
-        period_id: period_id,
+        period_ids: Enum.map(periods, & &1.id),
         date: date,
         recorded_by_user_id: recorded_by_user_id,
         groups: groups

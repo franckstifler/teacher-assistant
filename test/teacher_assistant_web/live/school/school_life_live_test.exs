@@ -143,6 +143,79 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Appel fait"
   end
 
+  # A2: Cours 2 and Cours 3 are the same lesson back to back; Cours 1 is already taken.
+  defp place_third_hour(ctx) do
+    [_, _, p3 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+    tc =
+      ctx.scope
+      |> Curriculum.list_assignments_for_user(
+        Organization.current_academic_year(ctx.scope),
+        ctx.scope.current_user
+      )
+      |> hd()
+
+    {:ok, _} =
+      Timetabling.place_slot(ctx.scope, ctx.cg, %{
+        day: :monday,
+        period_id: p3.id,
+        teaching_context_id: tc.id
+      })
+
+    p3
+  end
+
+  defp roll_status(scope, cg, period, e) do
+    %{students: students} = Attendance.period_roll(scope, cg, period, @today)
+    Enum.find(students, &(&1.enrollment_id == e.id)).status
+  end
+
+  test "Ma journée: the first of two hours offers to record the second too",
+       %{conn: conn} = ctx do
+    p3 = place_third_hour(ctx)
+    {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
+
+    assert has_element?(view, "#record-following[aria-checked=true]", "2e heure")
+    # prefilled from Cours 1, where Awa was absent
+    assert has_element?(view, "#roll-counts", "1 absent")
+    view |> element("#record-roll") |> render_click()
+
+    assert has_element?(view, "#roll-footer", "pour 2 heures")
+    assert roll_status(ctx.scope, ctx.cg, ctx.p2, ctx.e) == :absent
+    assert roll_status(ctx.scope, ctx.cg, p3, ctx.e) == :absent
+    assert view |> element("#slot-#{ctx.cg.id}-#{p3.id}") |> render() =~ "Appel fait"
+  end
+
+  test "Ma journée: unchecked, only the first hour is written", %{conn: conn} = ctx do
+    p3 = place_third_hour(ctx)
+    {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
+
+    view |> element("#record-following") |> render_click()
+    assert has_element?(view, "#record-following[aria-checked=false]")
+    view |> element("#record-roll") |> render_click()
+
+    refute has_element?(view, "#roll-footer", "pour 2 heures")
+    assert roll_status(ctx.scope, ctx.cg, ctx.p2, ctx.e) == :absent
+    assert roll_status(ctx.scope, ctx.cg, p3, ctx.e) == nil
+  end
+
+  test "Ma journée: a second hour already taken is not offered", %{conn: conn} = ctx do
+    p3 = place_third_hour(ctx)
+
+    tc =
+      ctx.scope
+      |> Curriculum.list_assignments_for_user(
+        Organization.current_academic_year(ctx.scope),
+        ctx.scope.current_user
+      )
+      |> hd()
+
+    {:ok, _} = Attendance.record_period(ctx.scope, ctx.cg, p3, tc, @today, [{ctx.e.id, :present}])
+
+    {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
+    refute has_element?(view, "#record-following")
+  end
+
   test "Ma journée: a combined course is one lesson, its next period « mêmes classes »",
        %{conn: conn} = ctx do
     {:ok, cg_b} =
