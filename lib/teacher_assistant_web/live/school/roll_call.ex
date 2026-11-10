@@ -37,7 +37,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
           course: combined_course_for(scope, teaching_context)
         }
 
-        {:ok, reload(scope, roll)}
+        {:ok, scope |> reload(roll) |> put_adjacent(scope)}
       else
         {:error, :forbidden}
       end
@@ -161,6 +161,82 @@ defmodule TeacherAssistantWeb.School.RollCall do
       groups: nil,
       flags: earlier_absences(scope, roll)
     )
+  end
+
+  # --- back-to-back hours (spec audit follow-ups A2) ------------------------------
+
+  # `following`: the periods right after this one with the same lesson (for a
+  # combined course, in every member class) whose roll is not taken yet.
+  # `prefilled_from`: the period right before, when its roll is taken and this one is
+  # not — the roll then starts from it. `record_following`: the « aussi pour la 2e
+  # heure » box, on by default.
+  defp put_adjacent(roll, scope) do
+    adjacent =
+      Enum.map(
+        member_classes(roll),
+        &Attendance.adjacent_slots(scope, &1, roll.date, roll.period)
+      )
+
+    previous =
+      case Enum.map(adjacent, & &1.previous) |> Enum.uniq_by(&(&1 && &1.id)) do
+        [%{} = p] -> p
+        _ -> nil
+      end
+
+    following =
+      adjacent
+      |> Enum.map(fn %{following: f} -> MapSet.new(f, & &1.id) end)
+      |> Enum.reduce(&MapSet.intersection/2)
+      |> then(fn ids -> Enum.filter(hd(adjacent).following, &MapSet.member?(ids, &1.id)) end)
+      |> Enum.take_while(&(not taken?(scope, roll, &1)))
+
+    prefilled_from =
+      if (not roll.taken? and previous) && taken?(scope, roll, previous), do: previous
+
+    roll
+    |> then(&if(prefilled_from, do: prefill(scope, &1, prefilled_from), else: &1))
+    |> Map.merge(%{
+      following: following,
+      prefilled_from: prefilled_from,
+      record_following: following != []
+    })
+  end
+
+  defp member_classes(%{groups: [_ | _] = groups}), do: Enum.map(groups, & &1.class_group)
+  defp member_classes(%{cg: cg}), do: [cg]
+
+  defp taken?(scope, roll, period) do
+    Enum.any?(member_classes(roll), fn cg ->
+      %{students: students} = Attendance.period_roll(scope, cg, period, roll.date)
+      Enum.any?(students, &(&1.status != nil))
+    end)
+  end
+
+  # The previous hour's roll, as the start of this one: absences and students sent
+  # home carry over, a late is in the room now (present), minutes start empty.
+  defp prefill(scope, roll, previous) do
+    earlier =
+      roll
+      |> member_classes()
+      |> Enum.flat_map(&Attendance.period_roll(scope, &1, previous, roll.date).students)
+      |> Map.new(&{&1.enrollment_id, &1.status})
+
+    marks =
+      Map.new(roll.marks, fn {id, _} ->
+        {id,
+         case Map.get(earlier, id) do
+           :absent -> :absent
+           :sent_home -> :sent_home
+           _ -> :present
+         end}
+      end)
+
+    %{
+      roll
+      | marks: marks,
+        sent_home: for({id, :sent_home} <- marks, into: MapSet.new(), do: id),
+        minutes: Map.new(roll.minutes, fn {id, _} -> {id, nil} end)
+    }
   end
 
   # Fees 2: the students the bursar sent home that day.
@@ -312,6 +388,17 @@ defmodule TeacherAssistantWeb.School.RollCall do
           <span class="ta-num font-medium opacity-85">{length(group.students)}</span>
         </a>
       </nav>
+
+      <p
+        :if={@roll[:prefilled_from]}
+        id="roll-prefilled"
+        class="mx-4 mt-3 rounded-box bg-info/10 px-3 py-2 text-[0.82rem] text-info sm:mx-[18px]"
+      >
+        <.icon name="hero-arrow-uturn-right" class="mr-1 inline size-4 align-text-bottom" />
+        {gettext("Pré-rempli depuis l'heure précédente (%{label}) : qui est parti, qui est revenu ?",
+          label: @roll.prefilled_from.label
+        )}
+      </p>
 
       <div class="flex items-start justify-between gap-3 px-4 pt-3 sm:px-[18px]">
         <p id="roll-help" class="text-[0.82rem] text-base-content/70">

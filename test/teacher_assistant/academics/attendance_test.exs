@@ -344,6 +344,92 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     end
   end
 
+  describe "adjacent_slots/4 (A2)" do
+    # Monday for cg: Cours 1 + Cours 2 (tc), Cours 3 (another teacher), Cours 4 (tc)
+    # — Cours 4 follows the break.
+    setup ctx do
+      lessons = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+      [p1, p2, p3, p4 | _] = lessons
+      other = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
+
+      {:ok, other_tc} =
+        Curriculum.assign_teacher(ctx.scope, ctx.cg, other.current_user, %{subject: "Anglais"})
+
+      for {p, tc} <- [{p2, ctx.tc}, {p3, other_tc}, {p4, ctx.tc}] do
+        {:ok, _} =
+          Timetabling.place_slot(ctx.scope, ctx.cg, %{
+            day: :monday,
+            period_id: p.id,
+            teaching_context_id: tc.id
+          })
+      end
+
+      %{p1: p1, p2: p2, p3: p3, p4: p4}
+    end
+
+    test "the same context back to back is previous / following", ctx do
+      assert %{previous: nil, following: [%{id: p2_id}]} =
+               Attendance.adjacent_slots(ctx.scope, ctx.cg, @monday, ctx.p1)
+
+      assert p2_id == ctx.p2.id
+
+      assert %{previous: %{id: p1_id}, following: []} =
+               Attendance.adjacent_slots(ctx.scope, ctx.cg, @monday, ctx.p2)
+
+      assert p1_id == ctx.p1.id
+    end
+
+    test "another teacher's context is not adjacent", ctx do
+      assert %{previous: nil, following: []} =
+               Attendance.adjacent_slots(ctx.scope, ctx.cg, @monday, ctx.p3)
+    end
+
+    test "a break breaks the chain", ctx do
+      assert %{previous: nil, following: []} =
+               Attendance.adjacent_slots(ctx.scope, ctx.cg, @monday, ctx.p4)
+    end
+
+    test "a day without lessons has no neighbours", ctx do
+      assert %{previous: nil, following: []} =
+               Attendance.adjacent_slots(ctx.scope, ctx.cg, ~D[2025-09-14], ctx.p1)
+    end
+  end
+
+  describe "adjacent_slots/4 for a combined course (A2)" do
+    test "chains on the course, not the context", ctx do
+      {:ok, tc_other} =
+        Curriculum.assign_teacher(ctx.scope, ctx.cg_other, ctx.head, %{subject: "Maths"})
+
+      {:ok, course} = Curriculum.combine_course(ctx.scope, [ctx.tc, tc_other])
+      [p1, p2 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+      # Cours 1 goes to another teacher; the course takes Cours 2 and 3 in both classes
+      other = TeacherFixtures.member_scope_fixture(ctx.scope, %{roles: [:teacher]})
+
+      {:ok, other_tc} =
+        Curriculum.assign_teacher(ctx.scope, ctx.cg, other.current_user, %{subject: "Anglais"})
+
+      :ok = Timetabling.clear_slot(ctx.scope, ctx.cg, :monday, p1.id)
+
+      {:ok, _} =
+        Timetabling.place_slot(ctx.scope, ctx.cg, %{
+          day: :monday,
+          period_id: p1.id,
+          teaching_context_id: other_tc.id
+        })
+
+      {:ok, _} = Timetabling.place_combined_slot(ctx.scope, course, :monday, p2.id)
+      lessons3 = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+      p3 = Enum.at(lessons3, 2)
+      {:ok, _} = Timetabling.place_combined_slot(ctx.scope, course, :monday, p3.id)
+
+      # from p2 in cg: p3 follows (same course); p1 does not precede (solo context)
+      assert %{previous: nil, following: [%{id: p3_id}]} =
+               Attendance.adjacent_slots(ctx.scope, ctx.cg, @monday, p2)
+
+      assert p3_id == p3.id
+    end
+  end
+
   describe "class_register/3" do
     test "returns only lesson periods and every roster student with a cells map", ctx do
       marks = [{ctx.enrollment1.id, :present}, {ctx.enrollment2.id, :absent}]

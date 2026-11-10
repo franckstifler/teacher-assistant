@@ -170,6 +170,81 @@ defmodule TeacherAssistant.Attendance do
   end
 
   @doc """
+  The lesson periods back to back with `period` for `class_group` on `date`'s weekday
+  that hold the same lesson — the same teaching context, or the same combined course
+  (spec audit follow-ups A2): `%{previous: period | nil, following: [period]}`, the
+  chain before and the chain after, in bell order. Two periods are back to back when
+  one ends exactly when the next starts, so a break ends the chain. Sundays and days
+  without a slot have no neighbours.
+  """
+  def adjacent_slots(%Scope{} = scope, %ClassGroup{id: cg_id}, %Date{} = date, %Period{} = period) do
+    with {:ok, day} <- day_of_week(date),
+         %TimetableSlot{} = slot <- class_day_slot(scope, cg_id, day, period.id) do
+      lessons =
+        scope
+        |> list_periods()
+        |> Enum.filter(&(&1.kind == :lesson))
+        |> Enum.sort_by(& &1.position)
+
+      slots_by_period =
+        TimetableSlot
+        |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day)
+        |> Ash.Query.load(:teaching_context)
+        |> Ash.read!(scope: scope)
+        |> Map.new(&{&1.period_id, &1})
+
+      index = Enum.find_index(lessons, &(&1.id == period.id)) || 0
+      {before, [_ | after_]} = Enum.split(lessons, index)
+
+      %{
+        previous:
+          before
+          |> Enum.reverse()
+          |> chain(period, slots_by_period, slot, fn p, from -> p.end_time == from.start_time end)
+          |> List.first(),
+        following:
+          chain(after_, period, slots_by_period, slot, fn p, from ->
+            p.start_time == from.end_time
+          end)
+      }
+    else
+      _ -> %{previous: nil, following: []}
+    end
+  end
+
+  defp class_day_slot(scope, cg_id, day, period_id) do
+    TimetableSlot
+    |> Ash.Query.filter(class_group_id == ^cg_id and day == ^day and period_id == ^period_id)
+    |> Ash.Query.load(:teaching_context)
+    |> Ash.read_one!(scope: scope)
+  end
+
+  # Walks `periods` away from `from` while each is back to back (`touching?`) and holds
+  # the same lesson as `slot`.
+  defp chain(periods, from, slots_by_period, slot, touching?) do
+    periods
+    |> Enum.reduce_while({from, []}, fn p, {last, acc} ->
+      with true <- touching?.(p, last),
+           %TimetableSlot{} = next <- Map.get(slots_by_period, p.id),
+           true <- same_lesson?(next, slot) do
+        {:cont, {p, [p | acc]}}
+      else
+        _ -> {:halt, {last, acc}}
+      end
+    end)
+    |> elem(1)
+    |> Enum.reverse()
+  end
+
+  defp same_lesson?(%TimetableSlot{teaching_context: a}, %TimetableSlot{teaching_context: b}) do
+    case {a, b} do
+      {%{combined_course_id: id}, %{combined_course_id: id}} when is_binary(id) -> true
+      {%{id: id}, %{id: id}} -> true
+      _ -> false
+    end
+  end
+
+  @doc """
   Builds the roll for `class_group`/`period`/`date`: every roster student with
   their current attendance status (`nil` when unmarked), plus the teaching
   context for that slot (if any). Delegates to `AttendanceEntry`'s

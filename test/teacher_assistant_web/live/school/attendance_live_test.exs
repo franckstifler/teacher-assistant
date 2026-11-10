@@ -71,6 +71,43 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
   defp att_path(cg, period, date),
     do: "/school/classes/#{cg.id}/attendance/#{period.id}?date=#{Date.to_iso8601(date)}"
 
+  test "the second hour opens prefilled from the first: absences, not lates", ctx do
+    %{conn: conn, cg: cg, period: p1, date: date, scope: scope, tc: tc} = ctx
+    lessons = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    p2 = Enum.at(lessons, 1)
+
+    {:ok, _} =
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p2.id,
+        teaching_context_id: tc.id
+      })
+
+    {:ok, late} = Enrollment.add_student(scope, cg, %{full_name: "Beba Ndoumbe", sex: :m})
+
+    late_enr =
+      Enum.find(Enrollment.list_roster(scope, cg), &(&1.student.id == late.id)).enrollment
+
+    {:ok, 2} =
+      Attendance.record_period(scope, cg, p1, tc, date, [
+        {ctx.enrollment.id, :absent},
+        {late_enr.id, :late, 5}
+      ])
+
+    {:ok, view, _html} = live(conn, att_path(cg, p2, date))
+
+    assert has_element?(view, "#roll-prefilled", "heure précédente")
+    assert has_element?(view, "#student-row-#{ctx.enrollment.id}[data-status='absent']")
+    assert has_element?(view, "#student-row-#{late_enr.id}[data-status='present']")
+    assert has_element?(view, "#roll-counts", "1 absent")
+    assert has_element?(view, "#roll-counts", "0 retard")
+    # not taken yet
+    assert has_element?(view, "#record-roll", "Valider l'appel")
+    refute has_element?(view, "#roll-footer", "Appel enregistré")
+    # no « aussi pour la 2e heure » box on this page
+    refute has_element?(view, "#record-following")
+  end
+
   test "every student defaults to present, and recording writes present for all", %{
     conn: conn,
     cg: cg,
