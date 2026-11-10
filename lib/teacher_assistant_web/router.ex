@@ -25,9 +25,20 @@ defmodule TeacherAssistantWeb.Router do
     plug :set_actor, :user
   end
 
+  pipeline :health do
+    plug :accepts, ["json"]
+  end
+
   pipeline :school do
     plug TeacherAssistantWeb.Plug.Scope
     plug TeacherAssistantWeb.Plug.RequirePasswordChange
+  end
+
+  # The uptime check: no session, no cookie, no browser pipeline.
+  scope "/", TeacherAssistantWeb do
+    pipe_through :health
+
+    get "/health", HealthController, :show
   end
 
   scope "/", TeacherAssistantWeb do

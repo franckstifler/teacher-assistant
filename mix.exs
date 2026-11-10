@@ -72,6 +72,11 @@ defmodule TeacherAssistant.MixProject do
       {:live_debugger, "~> 1.0", only: [:dev]},
       {:ash_authentication_phoenix, "~> 2.0"},
       {:ash_authentication, "~> 4.0"},
+      # CVE-2026-117656 (Sign in with Apple) is fixed in assent 0.3.2, which
+      # ash_authentication 4.x pins below. Only password and magic link are used
+      # here, so the OAuth2 strategies that call Assent never run; drop the
+      # override once ash_authentication 5 allows assent >= 0.3.2.
+      {:assent, "~> 0.3.2", override: true},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.0"},
       {:ash, "~> 3.26"},
@@ -128,7 +133,9 @@ defmodule TeacherAssistant.MixProject do
         "phx.digest"
       ],
       precommit: [
-        "compile --warning-as-errors",
+        "compile --warnings-as-errors",
+        # Own OS process: Hex tasks are not loadable from inside an alias.
+        "cmd mix hex.audit",
         "deps.unlock --unused",
         "format",
         # Own OS process: extracting recompiles, which warns inside an already-consolidated VM.

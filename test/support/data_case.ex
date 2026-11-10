@@ -38,10 +38,6 @@ defmodule TeacherAssistant.DataCase do
   end
 
   @doc """
-  The real `Workspaces.scope_for/3` scope of `user` in `workspace` — the scope a
-  signed-in member gets. Raises when `user` is not an active member.
-  """
-  @doc """
   `Ash.Changeset.for_create/4` for a fee paper (payment, allocation, return note,
   warning) written straight to its resource: the action's own inputs, then the
   numbering and frozen fields (`seq`, `number`, names…) forced afterwards, as
@@ -56,6 +52,10 @@ defmodule TeacherAssistant.DataCase do
     |> Ash.Changeset.force_change_attributes(forced)
   end
 
+  @doc """
+  The real `Workspaces.scope_for/3` scope of `user` in `workspace` — the scope a
+  signed-in member gets. Raises when `user` is not an active member.
+  """
   def school_scope(user, %{id: workspace_id}) do
     {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, workspace_id)
     scope

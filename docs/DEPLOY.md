@@ -33,6 +33,14 @@ or load balancer that terminates TLS for `PHX_HOST` and forwards requests with t
 `X-Forwarded-Proto: https` header (Caddy, nginx, Fly.io and most hosts do this by
 default). Requests to `localhost` are not redirected, for health checks.
 
+## Health check
+
+`GET /health` answers `200 {"status":"ok"}` when the app is up and the database
+answers, `503 {"status":"error"}` otherwise. It needs no session and sets no
+cookie. Point the uptime monitor (UptimeRobot, Hetzner, or Cloudflare health
+checks) at `https://<PHX_HOST>/health`, and the container's own check at
+`http://127.0.0.1:4000/health`.
+
 ## Email with Brevo
 
 The app sends email through Brevo's API (free tier: 300 emails a day).
