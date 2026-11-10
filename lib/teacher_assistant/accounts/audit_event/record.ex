@@ -50,6 +50,10 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Record do
 
   defp details(:school_suspended, _before, record), do: %{"reason" => record.suspension_reason}
   defp details(:school_rejected, _before, record), do: %{"reason" => record.rejection_reason}
+
+  defp details(:member_renamed, before, record),
+    do: %{"before" => before.name, "after" => record.name}
+
   defp details(_action, _before, _record), do: %{}
 
   defp names(modules), do: Enum.map(modules || [], &to_string/1)

@@ -290,6 +290,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
   attr :error, :string, default: nil
   attr :state, :map, default: nil
   attr :resettable?, :boolean, required: true
+  attr :renamable?, :boolean, default: false, doc: "the school may correct the name"
   attr :can_manage_staff?, :boolean, required: true
   attr :can_set_service?, :boolean, required: true
   attr :roles, :list, required: true, doc: "the roles ticked in `form`"
@@ -321,6 +322,13 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
 
       <.form for={@form} id="member-form" phx-submit="save_member" class="space-y-4">
         <input type="hidden" name="member_id" value={@member.id} />
+        <.input
+          :if={@renamable?}
+          field={@form[:name]}
+          id="member-name"
+          label={gettext("Nom et prénom")}
+          autocomplete="off"
+        />
         <%= if @can_manage_staff? do %>
           <%!-- an empty value keeps « roles » in the params when every chip is off --%>
           <input type="hidden" name="member[roles][]" value="" />

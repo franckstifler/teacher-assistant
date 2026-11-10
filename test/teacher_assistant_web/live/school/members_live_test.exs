@@ -246,6 +246,73 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
   end
 
   describe "the member drawer" do
+    test "the head corrects a member's name", %{conn: conn, scope: scope} do
+      m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view
+      |> open_member(m.id)
+      |> form("#member-form", %{"member" => %{"name" => " Hélène  Mvondo "}})
+      |> render_submit()
+
+      refute has_element?(view, "#member-drawer")
+      assert has_element?(view, "#member-row-#{m.id}", "Hélène Mvondo")
+      {:ok, user} = Ash.get(Accounts.User, m.user_id, authorize?: false)
+      assert user.name == "Hélène Mvondo"
+    end
+
+    test "a name cannot be erased; the drawer stays open with the error", %{
+      conn: conn,
+      scope: scope
+    } do
+      user = TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Awa Ngono"})
+      m = TeacherAssistant.TeacherFixtures.membership_fixture(scope, %{user: user})
+      {:ok, before} = Ash.get(Accounts.User, m.user_id, authorize?: false)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+
+      view
+      |> open_member(m.id)
+      |> form("#member-form", %{"member" => %{"name" => "  "}})
+      |> render_submit()
+
+      assert has_element?(view, "#member-drawer", "Indiquez le nom et le prénom.")
+      {:ok, user} = Ash.get(Accounts.User, m.user_id, authorize?: false)
+      assert user.name == before.name
+    end
+
+    test "only the head sees the name field; a censeur's forged name is refused", %{
+      conn: conn,
+      scope: scope,
+      workspace: school
+    } do
+      m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      open_member(view, m.id)
+      assert has_element?(view, "#member-name")
+
+      censeur = TeacherAssistant.TeacherFixtures.user_fixture()
+
+      TeacherAssistant.TeacherFixtures.membership_fixture(scope, %{
+        user: censeur,
+        roles: [:vice_principal]
+      })
+
+      conn = build_conn() |> log_in_user(censeur) |> post(~p"/workspaces/select/#{school.id}")
+      {:ok, view, _html} = live(conn, ~p"/school/members")
+      render_click(view, "edit_member", %{"id" => m.id})
+      refute has_element?(view, "#member-name")
+
+      {:ok, before} = Ash.get(Accounts.User, m.user_id, authorize?: false)
+
+      render_submit(view, "save_member", %{
+        "member_id" => m.id,
+        "member" => %{"name" => "Nom forgé"}
+      })
+
+      {:ok, user} = Ash.get(Accounts.User, m.user_id, authorize?: false)
+      assert user.name == before.name
+    end
+
     test "the head changes roles with one save", %{conn: conn, scope: scope} do
       m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
       {:ok, view, _html} = live(conn, ~p"/school/members")
