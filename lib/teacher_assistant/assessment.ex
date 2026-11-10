@@ -19,6 +19,7 @@ defmodule TeacherAssistant.Assessment do
     AverageRounding,
     BulletinPublication,
     BulletinTemplate,
+    BulletinGroup,
     Bulletins,
     ClassCouncil,
     ClassGroup,
@@ -1209,6 +1210,7 @@ defmodule TeacherAssistant.Assessment do
          %{
            context_id: tc.id,
            label: tc.subject,
+           code: tc.catalog_subject.code,
            coefficient: tc.effective_coefficient,
            group: tc.catalog_subject.bulletin_group,
            position: tc.catalog_subject.position,
@@ -1295,6 +1297,69 @@ defmodule TeacherAssistant.Assessment do
       ) do
     seqs = TeacherAssistant.Organization.list_sequences(scope, year)
     period_result(scope, cg, {:annual, year}, seqs, :trimesters)
+  end
+
+  @doc """
+  The séquence marks of a class for the « relevé des notes » the Censeur prints so
+  students check them: `seqs` side by side, no average and no rank. Each cell is the
+  subject's séquence mark the bulletin uses (its evaluations weighted, rounded),
+  `:absent` when the student missed every evaluation, `:exempt` for a
+  subject they do not take, else `:blank` (nothing entered yet).
+
+      %{subjects: [%{context_id, label, code}], students: [%{id, name, cells}]}
+
+  `cells` are `%{{context_id, sequence_id} => cell}`; subjects come in bulletin order,
+  students in roster order.
+  """
+  def mark_sheet(%Scope{} = scope, %ClassGroup{} = cg, seqs) do
+    rules = grading_rules(scope)
+    students = TeacherAssistant.Enrollment.list_students(scope, cg)
+    by_seq = class_subjects_by_sequence(scope, cg, seqs)
+
+    subjects =
+      by_seq
+      |> Map.values()
+      |> List.first([])
+      |> Enum.sort_by(&{BulletinGroup.rank(&1.group), &1.position, &1.label})
+
+    # %{{context_id, sequence_id} => %{student_id => [mark]}}
+    marks =
+      for seq <- seqs, subj <- Map.fetch!(by_seq, seq.id), into: %{} do
+        {{subj.context_id, seq.id}, {subj, Enum.group_by(subj.marks, & &1.student_id)}}
+      end
+
+    %{
+      subjects: Enum.map(subjects, &Map.take(&1, [:context_id, :label, :code])),
+      students:
+        Enum.map(students, fn s ->
+          cells =
+            Map.new(marks, fn {key, {subj, by_student}} ->
+              {key, sheet_cell(s.id, subj, Map.get(by_student, s.id, []), rules)}
+            end)
+
+          %{id: s.id, name: s.full_name, cells: cells}
+        end)
+    }
+  end
+
+  # Absent from every evaluation reads « Abs », even where the school counts an
+  # absence as 0: the student checks what happened, not the arithmetic.
+  defp sheet_cell(student_id, subj, marks, rules) do
+    absent? = &(&1.status in [:absent, :excused])
+
+    cond do
+      MapSet.member?(subj.exempt, student_id) ->
+        :exempt
+
+      marks != [] and Enum.all?(marks, absent?) ->
+        :absent
+
+      true ->
+        case Marks.subject_average(marks, subj.assessments_by_id, rules) do
+          nil -> :blank
+          avg -> {:mark, GradingRules.round_average(avg, rules)}
+        end
+    end
   end
 
   # The roster as bulletin inputs. With the conduct gate on (spec I1), each student

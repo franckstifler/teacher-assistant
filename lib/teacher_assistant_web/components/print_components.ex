@@ -35,7 +35,7 @@ defmodule TeacherAssistantWeb.PrintComponents do
       .print-actions { margin: 0 0 12px; }
       .print-actions button { font: 15px system-ui, sans-serif; padding: 9px 16px; cursor: pointer; }
       @media screen and (max-device-width: 640px) { .print-actions { zoom: <%= @zoom %>; } }
-      @media print { .print-actions { display: none; } }
+      @media print { .print-actions { display: none !important; } }
     </style>
     """
   end

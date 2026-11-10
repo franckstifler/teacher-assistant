@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4_landscape} />
+    <title>{gettext("Relevé des notes")} — {period_title(:fr, @period)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111; background: #fff; margin: 0; padding: 12px;
+        font-size: 8.5pt; line-height: 1.05;
+      }
+      @page { size: A4 landscape; margin: 7mm 8mm; }
+      @media print { body { padding: 0; } }
+      .print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: system-ui, sans-serif; font-size: 14px; }
+      .print-actions select { font: inherit; padding: 7px 8px; }
+      .sheet + .sheet { break-before: page; page-break-before: always; }
+      @media screen { .sheet + .sheet { margin-top: 18px; padding-top: 14px; border-top: 1px dashed #bbb; } }
+      .top { display: flex; justify-content: space-between; gap: 12px; font-size: 0.9em; text-transform: uppercase; }
+      h1 { text-align: center; font-size: 1.3em; letter-spacing: .05em; margin: 1.5mm 0 1.5mm; text-transform: uppercase; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #777; padding: 0.3mm 1mm; text-align: center; white-space: nowrap; }
+      th { background: #eee; font-weight: 600; font-size: 0.92em; }
+      th.seq { font-weight: normal; font-size: 0.8em; color: #333; }
+      th.num, td.num { width: 7mm; }
+      th.name, td.name { text-align: left; width: 52mm; max-width: 52mm; overflow: hidden; text-overflow: ellipsis; }
+      td.abs { font-style: italic; }
+      td.empty { color: #777; }
+      tbody tr:nth-child(5n) td { border-bottom-color: #222; }
+      .compact { font-size: 6.8pt; }
+      .compact td { padding-top: 0; padding-bottom: 0; }
+      .dense { font-size: 6.2pt; line-height: 1; }
+      .dense td { padding-top: 0; padding-bottom: 0; }
+      .foot { margin-top: 1.5mm; font-size: 0.85em; color: #333; display: flex; justify-content: space-between; gap: 12px; }
+      .foot .subjects { white-space: normal; }
+      tr { break-inside: avoid; }
+    </style>
+  </head>
+  <body>
+    <form class="print-actions" method="get" action={@path}>
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <label>
+        {gettext("Période")}
+        <select name="period" onchange="this.form.submit()">
+          <option
+            :for={choice <- @choices}
+            value={Organization.period_param(choice)}
+            selected={Organization.period_param(choice) == @chosen}
+          >
+            {period_label(choice)}
+          </option>
+        </select>
+      </label>
+      <noscript><button type="submit">{gettext("Afficher")}</button></noscript>
+    </form>
+
+    <p :if={@sheets == []} id="no-students">{gettext("Aucun élève à afficher.")}</p>
+
+    <section
+      :for={sheet <- @sheets}
+      class={["sheet", density(sheet)]}
+      lang={html_lang(sheet.lang)}
+    >
+      <div class="top">
+        <span>{@school}</span>
+        <span>{@year}</span>
+      </div>
+      <h1>
+        {tr(sheet.lang, fn -> gettext("Relevé des notes") end)} — {period_title(
+          sheet.lang,
+          @period
+        )} — {sheet.class_group.label}
+      </h1>
+      <table>
+        <thead>
+          <tr>
+            <th class="num" rowspan={length(@seqs)}>{tr(sheet.lang, fn -> gettext("N°") end)}</th>
+            <th class="name" rowspan={length(@seqs)}>
+              {tr(sheet.lang, fn -> gettext("Noms et prénoms") end)}
+            </th>
+            <th :for={subject <- sheet.subjects} colspan={length(@seqs)} title={subject.label}>
+              {abbreviation(subject)}
+            </th>
+          </tr>
+          <tr :if={length(@seqs) > 1}>
+            <%= for _subject <- sheet.subjects, seq <- @seqs do %>
+              <th class="seq">S{seq.number}</th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={{student, n} <- Enum.with_index(sheet.students, 1)}>
+            <td class="num">{n}</td>
+            <td class="name">{student.name}</td>
+            <%= for subject <- sheet.subjects, seq <- @seqs do %>
+              <% value = cell(student, subject, seq) %>
+              <td class={cell_class(value)}>{cell_text(value, sheet.lang)}</td>
+            <% end %>
+          </tr>
+        </tbody>
+      </table>
+      <div class="foot">
+        <span class="subjects">
+          {sheet.subjects
+          |> Enum.reject(&(abbreviation(&1) == &1.label))
+          |> Enum.map_join(" · ", &"#{abbreviation(&1)} : #{&1.label}")}
+        </span>
+        <span>
+          {tr(sheet.lang, fn ->
+            gettext("— : non saisie · Abs : absent · Disp : dispensé")
+          end)} · {tr(sheet.lang, fn -> gettext("Imprimé le %{date}", date: date(@printed_on)) end)}
+        </span>
+      </div>
+    </section>
+  </body>
+</html>

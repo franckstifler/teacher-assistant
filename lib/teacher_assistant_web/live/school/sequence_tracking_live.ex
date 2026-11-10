@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.{Assessment, Organization, Pilotage}
+  alias TeacherAssistant.{Assessment, Organization, Pilotage, ReportCards}
   alias TeacherAssistant.Academics.{Lock, Reference}
   alias TeacherAssistantWeb.Dates
 
@@ -394,6 +394,16 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 </select>
               </label>
             </form>
+            <.link
+              :if={ReportCards.can_publish?(@current_scope)}
+              id="print-mark-sheets"
+              href={~p"/school/mark-sheets/print?#{[period: "seq:#{@seq.id}"]}"}
+              target="_blank"
+              class="btn btn-sm btn-ghost"
+            >
+              <.icon name="hero-printer" class="size-4" />
+              {gettext("Imprimer le relevé")}
+            </.link>
           </:actions>
         </.page_header>
 

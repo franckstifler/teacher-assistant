@@ -95,6 +95,13 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     assert has_element?(view, "#teacher-#{ctx.english.id}", "2 cours")
     assert has_element?(view, "#teacher-#{ctx.english.id}", "0/2")
     refute has_element?(view, "#entry-grid")
+
+    # the whole school's relevé des notes for the séquence on screen
+    assert has_element?(
+             view,
+             "#print-mark-sheets[href='/school/mark-sheets/print?period=seq%3A#{ctx.seq.id}']",
+             "Imprimer le relevé"
+           )
   end
 
   test "the teachers who started nothing are ticked on arrival", %{conn: conn} = ctx do

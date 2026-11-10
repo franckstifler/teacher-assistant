@@ -50,6 +50,13 @@ defmodule TeacherAssistantWeb.School.ClassOverviewLiveTest do
              view,
              "#print-class-list[href='/school/classes/#{ctx.cg.id}/class-list/print']"
            )
+
+    # the head prints the class's séquence marks for students to check
+    assert has_element?(
+             view,
+             "#print-mark-sheet[href='/school/classes/#{ctx.cg.id}/mark-sheet/print']",
+             "Relevé des notes"
+           )
   end
 
   test "« À régler »: the form master is designated inline; contacts are counted", ctx do

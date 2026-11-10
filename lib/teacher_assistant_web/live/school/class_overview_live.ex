@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.ClassOverviewLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.{Accounts, Attendance, Curriculum, Discipline, Enrollment, Organization}
-  alias TeacherAssistant.{Scope, Timetabling}
+  alias TeacherAssistant.{ReportCards, Scope, Timetabling}
   alias TeacherAssistant.Academics.{EntryProgress, Reference}
   alias TeacherAssistantWeb.{Dates, Spaces}
   alias TeacherAssistantWeb.School.ClassShell
@@ -337,6 +337,18 @@ defmodule TeacherAssistantWeb.School.ClassOverviewLive do
               target="_blank"
             >
               {gettext("Cartes scolaires")}
+            </:item>
+            <:item
+              :if={
+                ReportCards.can_publish?(@current_scope) and
+                  print?(@current_scope, ~p"/school/classes/#{@cg.id}/mark-sheet/print")
+              }
+              id="print-mark-sheet"
+              icon="hero-table-cells"
+              href={~p"/school/classes/#{@cg.id}/mark-sheet/print"}
+              target="_blank"
+            >
+              {gettext("Relevé des notes")}
             </:item>
           </.action_menu>
         </:actions>

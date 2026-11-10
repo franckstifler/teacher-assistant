@@ -21,7 +21,7 @@ defmodule TeacherAssistantWeb.PrintComponentsTest do
   test "on a phone the print bar is zoomed back to its normal size; on paper it is hidden" do
     html = setup_html(:a4)
     assert html =~ "(max-device-width: 640px) { .print-actions { zoom: 2.04; } }"
-    assert html =~ "@media print { .print-actions { display: none; } }"
+    assert html =~ "@media print { .print-actions { display: none !important; } }"
   end
 
   test "the print bar prints the page" do
