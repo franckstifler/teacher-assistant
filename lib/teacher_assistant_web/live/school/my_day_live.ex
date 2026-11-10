@@ -82,7 +82,9 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         [first | _] = lesson.members
 
         roll =
-          case RollCall.open(scope, first.class_group.id, lesson.period.id, today) do
+          case RollCall.open(scope, first.class_group.id, lesson.period.id, today,
+                 following: true
+               ) do
             {:ok, roll} -> roll
             {:error, _} -> nil
           end
@@ -163,7 +165,6 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
               roll={@roll}
               title={roll_title(@roll, @selected_lesson, @labels)}
               eyebrow={roll_eyebrow(@selected_lesson)}
-              following?
             >
               <:actions>
                 <.link

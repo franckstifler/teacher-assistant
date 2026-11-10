@@ -108,6 +108,47 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     refute has_element?(view, "#record-following")
   end
 
+  test "the roll-call page never writes the following hour", ctx do
+    %{conn: conn, cg: cg, period: p1, date: date, scope: scope, tc: tc} = ctx
+    lessons = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    p2 = Enum.at(lessons, 1)
+
+    {:ok, _} =
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p2.id,
+        teaching_context_id: tc.id
+      })
+
+    {:ok, view, _html} = live(conn, att_path(cg, p1, date))
+    view |> element("#att-#{ctx.enrollment.id}-late") |> render_click()
+    view |> element("#record-roll") |> render_click()
+
+    refute has_element?(view, "#roll-footer", "pour 2 heures")
+    %{students: [s]} = Attendance.period_roll(scope, cg, p2, date)
+    assert s.status == nil
+  end
+
+  test "a student sent home after the first hour opens the second as sent home", ctx do
+    %{conn: conn, cg: cg, period: p1, date: date, scope: scope, tc: tc} = ctx
+    lessons = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    p2 = Enum.at(lessons, 1)
+
+    {:ok, _} =
+      Timetabling.place_slot(scope, cg, %{
+        day: :monday,
+        period_id: p2.id,
+        teaching_context_id: tc.id
+      })
+
+    {:ok, 1} = Attendance.record_period(scope, cg, p1, tc, date, [{ctx.enrollment.id, :present}])
+    {:ok, _} = TeacherAssistant.FeeControl.record_send_out(scope, ctx.enrollment, date)
+
+    {:ok, view, _html} = live(conn, att_path(cg, p2, date))
+    assert has_element?(view, "#roll-prefilled")
+    assert has_element?(view, "#student-row-#{ctx.enrollment.id}[data-status='sent_home']")
+  end
+
   test "every student defaults to present, and recording writes present for all", %{
     conn: conn,
     cg: cg,

@@ -186,6 +186,41 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#slot-#{ctx.cg.id}-#{p3.id}") |> render() =~ "Appel fait"
   end
 
+  test "Ma journée: a late at the first hour is present at the second", %{conn: conn} = ctx do
+    p3 = place_third_hour(ctx)
+    {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
+
+    # Awa is prefilled absent from Cours 1; make her late at Cours 2 instead
+    view |> element("#att-#{ctx.e.id}-late") |> render_click()
+    view |> element("#record-roll") |> render_click()
+
+    assert has_element?(view, "#roll-footer", "pour 2 heures")
+    assert roll_status(ctx.scope, ctx.cg, ctx.p2, ctx.e) == :late
+    assert roll_status(ctx.scope, ctx.cg, p3, ctx.e) == :present
+  end
+
+  test "Ma journée: a second hour taken meanwhile is left alone at save time",
+       %{conn: conn} = ctx do
+    p3 = place_third_hour(ctx)
+    {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")
+    assert has_element?(view, "#record-following[aria-checked=true]")
+
+    # another device records Cours 3 while this page is open
+    tc =
+      ctx.scope
+      |> Curriculum.list_assignments_for_user(
+        Organization.current_academic_year(ctx.scope),
+        ctx.scope.current_user
+      )
+      |> hd()
+
+    {:ok, _} = Attendance.record_period(ctx.scope, ctx.cg, p3, tc, @today, [{ctx.e.id, :present}])
+
+    view |> element("#record-roll") |> render_click()
+    refute has_element?(view, "#roll-footer", "pour 2 heures")
+    assert roll_status(ctx.scope, ctx.cg, p3, ctx.e) == :present
+  end
+
   test "Ma journée: unchecked, only the first hour is written", %{conn: conn} = ctx do
     p3 = place_third_hour(ctx)
     {:ok, view, _} = live(conn, ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}")

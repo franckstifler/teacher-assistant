@@ -22,7 +22,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
   `{:error, :not_found}` or `{:error, :forbidden}` (neither the course's teacher
   nor a conduct manager).
   """
-  def open(%Scope{} = scope, cg_id, period_id, %Date{} = date) do
+  def open(%Scope{} = scope, cg_id, period_id, %Date{} = date, opts \\ []) do
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id),
          {:ok, period} <- fetch_period(scope, period_id) do
       slot = slot(scope, cg, date, period.id)
@@ -34,7 +34,10 @@ defmodule TeacherAssistantWeb.School.RollCall do
           period: period,
           date: date,
           teaching_context: teaching_context,
-          course: combined_course_for(scope, teaching_context)
+          course: combined_course_for(scope, teaching_context),
+          # A2: only a page that shows the « aussi pour la 2e heure » box may
+          # write the following hours (Ma journée); the roll-call page never does.
+          offer_following?: Keyword.get(opts, :following, false)
         }
 
         {:ok, scope |> reload(roll) |> put_adjacent(scope)}
@@ -110,17 +113,26 @@ defmodule TeacherAssistantWeb.School.RollCall do
             {id, status, if(status == :late, do: roll.minutes[id])}
           end)
 
-        # A2: the following hours of the same lesson, when the box is on.
-        periods =
-          if roll[:record_following], do: [roll.period | roll.following], else: [roll.period]
+        # A2: the following hours of the same lesson, when the box is on — minus any
+        # taken since the page opened (a later hour is never overwritten). A late at
+        # this hour is in the room for the next ones.
+        following =
+          if roll[:record_following],
+            do: Enum.take_while(roll.following, &(not taken?(scope, roll, &1))),
+            else: []
 
-        case write(scope, roll, periods, marks) do
+        following_marks =
+          Enum.map(marks, fn {id, status, _} ->
+            {id, if(status == :late, do: :present, else: status), nil}
+          end)
+
+        case write_all(scope, roll, marks, following, following_marks) do
           {:ok, _count} ->
             {:ok,
              scope
              |> reload(roll)
              |> put_adjacent(scope)
-             |> Map.put(:saved_periods, length(periods))}
+             |> Map.put(:saved_periods, 1 + length(following))}
 
           {:error, %Ash.Error.Forbidden{}} ->
             {:error, :forbidden}
@@ -214,7 +226,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
     |> Map.merge(%{
       following: following,
       prefilled_from: prefilled_from,
-      record_following: following != []
+      record_following: roll.offer_following? and following != []
     })
   end
 
@@ -228,8 +240,11 @@ defmodule TeacherAssistantWeb.School.RollCall do
     end)
   end
 
-  # The previous hour's roll, as the start of this one: absences and students sent
-  # home carry over, a late is in the room now (present), minutes start empty.
+  # The previous hour's roll, as the start of this one: absences carry over, a late
+  # is in the room now (present), minutes start empty. The bursar's send-outs of the
+  # day win over the earlier hour: a student sent home since is « renvoyé pour
+  # frais » now, one whose send-out was lifted is back — `roll.sent_home` holds
+  # today's set for a roll not taken yet (`put_students/4`).
   defp prefill(scope, roll, previous) do
     earlier =
       roll
@@ -239,20 +254,17 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
     marks =
       Map.new(roll.marks, fn {id, _} ->
-        {id,
-         case Map.get(earlier, id) do
-           :absent -> :absent
-           :sent_home -> :sent_home
-           _ -> :present
-         end}
+        status =
+          cond do
+            MapSet.member?(roll.sent_home, id) -> :sent_home
+            Map.get(earlier, id) == :absent -> :absent
+            true -> :present
+          end
+
+        {id, status}
       end)
 
-    %{
-      roll
-      | marks: marks,
-        sent_home: for({id, :sent_home} <- marks, into: MapSet.new(), do: id),
-        minutes: Map.new(roll.minutes, fn {id, _} -> {id, nil} end)
-    }
+    %{roll | marks: marks, minutes: Map.new(roll.minutes, fn {id, _} -> {id, nil} end)}
   end
 
   # Fees 2: the students the bursar sent home that day.
@@ -290,6 +302,22 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
     Map.new(students, fn s ->
       {s.enrollment_id, for(p <- earlier, s.cells[p.id] == :absent, do: p)}
+    end)
+  end
+
+  # This hour and the following ones in one transaction: a refused row anywhere
+  # saves nothing (each write runs inside the outer transaction).
+  defp write_all(scope, roll, marks, [], _following_marks),
+    do: write(scope, roll, [roll.period], marks)
+
+  defp write_all(scope, roll, marks, following, following_marks) do
+    TeacherAssistant.Repo.transaction(fn ->
+      with {:ok, n} <- write(scope, roll, [roll.period], marks),
+           {:ok, m} <- write(scope, roll, following, following_marks) do
+        n + m
+      else
+        {:error, reason} -> TeacherAssistant.Repo.rollback(reason)
+      end
     end)
   end
 
@@ -373,11 +401,6 @@ defmodule TeacherAssistantWeb.School.RollCall do
   attr :roll, :map, required: true
   attr :title, :string, default: nil
   attr :eyebrow, :string, default: nil
-
-  attr :following?, :boolean,
-    default: false,
-    doc: "offer « aussi pour la 2e heure » when the lesson continues (Ma journée)"
-
   slot :actions, doc: "extra header links (« Saisir des notes », close)"
 
   def roll_panel(assigns) do
@@ -470,7 +493,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
         class="ta-stickyfoot sticky bottom-0 z-10 flex flex-col gap-2 rounded-b-box border-t border-base-300 bg-base-200/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:items-center sm:px-[18px]"
       >
         <button
-          :if={@following? and @roll[:following] != []}
+          :if={@roll[:offer_following?] and @roll.following != []}
           id="record-following"
           type="button"
           role="checkbox"
