@@ -12,7 +12,13 @@ defmodule TeacherAssistant.Workers.AnonymiseDepartedStudentsTest do
     {:ok, %{enrollment: e, student: s}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
 
-    {:ok, _} = Enrollment.leave(scope, e, %{departure_reason: :dropout, left_on: ~D[2022-01-10]})
+    {:ok, _} = Enrollment.leave(scope, e, %{departure_reason: :dropout})
+
+    # A departure years ago (`:leave` takes only a day of the enrollment's year).
+    TeacherAssistant.Repo.query!("UPDATE enrollments SET left_on = $1 WHERE id = $2", [
+      ~D[2022-01-10],
+      Ecto.UUID.dump!(e.id)
+    ])
 
     assert :ok = perform_job(AnonymiseDepartedStudents, %{})
 

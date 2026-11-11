@@ -19,9 +19,19 @@ defmodule TeacherAssistant.EnrollmentAnonymisationTest do
     %{scope: scope, year: year, ws: ws, cg: cg, e: e, awa: awa}
   end
 
-  defp leave(ctx, e, left_on),
-    do:
-      {:ok, _} = Enrollment.leave(ctx.scope, e, %{departure_reason: :transfer, left_on: left_on})
+  # Years-old departures: `:leave` only takes a day within the enrollment's year and
+  # not after today, so the old day is written straight to the row (an old record).
+  defp leave(ctx, e, left_on) do
+    {:ok, _} = Enrollment.leave(ctx.scope, e, %{departure_reason: :transfer})
+    backdate_departure!(e, left_on)
+  end
+
+  defp backdate_departure!(e, left_on) do
+    TeacherAssistant.Repo.query!("UPDATE enrollments SET left_on = $1 WHERE id = $2", [
+      left_on,
+      Ecto.UUID.dump!(e.id)
+    ])
+  end
 
   defp reload(ctx, student),
     do: Ash.get!(TeacherAssistant.Academics.Student, student.id, scope: ctx.scope)

@@ -80,6 +80,8 @@ defmodule TeacherAssistant.Academics.Enrollment do
               TeacherAssistant.Academics.Reference.today()
             )
       end
+
+      validate TeacherAssistant.Academics.Enrollment.DepartureDate
     end
 
     # The student is back in the same class and year.

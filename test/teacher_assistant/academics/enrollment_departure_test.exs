@@ -29,6 +29,28 @@ defmodule TeacherAssistant.Academics.EnrollmentDepartureTest do
     assert e.status == :inscription
   end
 
+  test "the departure day lies within the enrollment's year and not after today (review)", ctx do
+    today = Reference.today()
+
+    assert {:error, %Ash.Error.Invalid{}} =
+             Enrollment.leave(ctx.scope, ctx.awa, %{
+               departure_reason: :transfer,
+               left_on: Date.add(today, 1)
+             })
+
+    assert {:error, %Ash.Error.Invalid{}} =
+             Enrollment.leave(ctx.scope, ctx.awa, %{
+               departure_reason: :transfer,
+               left_on: Date.add(ctx.year.start_date, -1)
+             })
+
+    assert {:ok, _} =
+             Enrollment.leave(ctx.scope, ctx.awa, %{
+               departure_reason: :transfer,
+               left_on: ctx.year.start_date
+             })
+  end
+
   test "a departed student is out of today's roster and in yesterday's", ctx do
     today = Reference.today()
     {:ok, _} = Enrollment.leave(ctx.scope, ctx.awa, %{departure_reason: :dropout})
