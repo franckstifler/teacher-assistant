@@ -92,6 +92,7 @@ defmodule TeacherAssistant.Operator do
     |> Map.merge(%{
       first_steps: first_steps(profiles, day_ago),
       open_errors: open_errors(),
+      swept_files: swept_files(now),
       failed_jobs:
         count(
           from(j in "oban_jobs", where: j.state == "discarded" and j.discarded_at >= ^day_ago)
@@ -516,6 +517,23 @@ defmodule TeacherAssistant.Operator do
 
   # Unhandled errors not yet resolved (ErrorTracker, /admin/errors); muted ones are
   # known and left aside on purpose.
+  # A9: what the latest weekly sweep deleted, if it ran in the last seven days.
+  defp swept_files(now) do
+    week_ago = DateTime.add(now, -7, :day)
+
+    from(e in "audit_events",
+      where: e.action == "files_swept" and e.inserted_at >= ^week_ago,
+      order_by: [desc: e.inserted_at],
+      limit: 1,
+      select: e.details
+    )
+    |> Repo.one()
+    |> case do
+      %{"deleted" => n} -> n
+      _ -> nil
+    end
+  end
+
   defp open_errors do
     from(e in "error_tracker_errors",
       where: e.status == "unresolved" and not e.muted,

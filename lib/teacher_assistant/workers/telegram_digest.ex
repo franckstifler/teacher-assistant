@@ -50,10 +50,18 @@ defmodule TeacherAssistant.Workers.TelegramDigest do
 
     Enum.join(
       [gettext("Scolaka · point du matin")] ++
-        body ++ List.wrap(first_steps(digest.first_steps)) ++ [url(~p"/admin")],
+        body ++
+        List.wrap(swept(Map.get(digest, :swept_files))) ++
+        List.wrap(first_steps(digest.first_steps)) ++ [url(~p"/admin")],
       "\n\n"
     )
   end
+
+  # Housekeeping, not something to handle (A9): what the weekly sweep deleted.
+  defp swept(n) when is_integer(n) and n > 0,
+    do: gettext("Fichiers orphelins supprimés cette semaine : %{n}", n: n)
+
+  defp swept(_n), do: nil
 
   # Good news, not something to handle: who to call to help them along.
   defp first_steps([]), do: nil

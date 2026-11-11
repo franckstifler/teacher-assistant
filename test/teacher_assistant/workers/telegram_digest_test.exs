@@ -55,6 +55,7 @@ defmodule TeacherAssistant.Workers.TelegramDigestTest do
         silent: [],
         open_errors: 3,
         failed_jobs: 0,
+        swept_files: nil,
         first_steps: []
       }
 
@@ -76,6 +77,7 @@ defmodule TeacherAssistant.Workers.TelegramDigestTest do
         silent: [],
         open_errors: 0,
         failed_jobs: 0,
+        swept_files: nil,
         first_steps: [
           %{name: "Lycée de Kribi", steps: [:students, :marks]},
           %{name: "Collège Nkam", steps: [:bulletins]}
@@ -88,6 +90,23 @@ defmodule TeacherAssistant.Workers.TelegramDigestTest do
                "Rien à traiter.\n\nPremiers pas depuis hier : 2\n" <>
                  "• Lycée de Kribi : élèves inscrits, premières notes\n" <>
                  "• Collège Nkam : premiers bulletins publiés"
+    end
+  end
+
+  describe "the weekly sweep (A9)" do
+    test "the morning text names the files the sweep deleted this week" do
+      digest = %{
+        pending: [],
+        quiet: [],
+        silent: [],
+        open_errors: 0,
+        failed_jobs: 0,
+        first_steps: [],
+        swept_files: 4
+      }
+
+      assert TelegramDigest.text(digest, DateTime.utc_now()) =~
+               "Fichiers orphelins supprimés cette semaine : 4"
     end
   end
 end

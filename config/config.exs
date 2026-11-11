@@ -29,7 +29,9 @@ config :teacher_assistant, Oban,
        {"0 6 * * *", TeacherAssistant.Workers.TelegramDigest},
        # Sunday 04:00 school time (A9): students who left three years ago lose what
        # identifies them.
-       {"0 3 * * 0", TeacherAssistant.Workers.AnonymiseDepartedStudents}
+       {"0 3 * * 0", TeacherAssistant.Workers.AnonymiseDepartedStudents},
+       # Sunday 04:30 school time (A9): upload files nothing points at any more.
+       {"30 3 * * 0", TeacherAssistant.Workers.SweepOrphanPhotos}
      ]}
   ]
 

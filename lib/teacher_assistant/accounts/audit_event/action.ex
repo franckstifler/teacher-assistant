@@ -9,7 +9,9 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Action do
       :password_reset,
       :member_renamed,
       :impersonation_started,
-      :impersonation_ended
+      :impersonation_ended,
+      # A9: the weekly sweep of upload files nothing points at.
+      :files_swept
     ]
 
   use Gettext, backend: TeacherAssistantWeb.Gettext
@@ -23,4 +25,5 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Action do
   def label(:member_renamed), do: gettext("Membre renommé")
   def label(:impersonation_started), do: gettext("Accès en tant que")
   def label(:impersonation_ended), do: gettext("Fin de l'accès en tant que")
+  def label(:files_swept), do: gettext("Fichiers orphelins supprimés")
 end
