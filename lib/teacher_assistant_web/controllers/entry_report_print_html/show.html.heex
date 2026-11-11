@@ -41,6 +41,7 @@
       td.low { font-weight: 700; }
       tr { break-inside: avoid; }
       .none { font-style: italic; }
+      .note { font-size: 0.85em; color: #333; margin: 1mm 0 0; }
       .foot { display: flex; justify-content: space-between; gap: 6mm; margin-top: 6mm; }
       .sign { text-align: center; min-width: 60mm; }
       .sign .space { height: 18mm; }
@@ -89,9 +90,8 @@
         <tr>
           <th class="text">{gettext("Enseignant")}</th>
           <th class="text">{gettext("Matières")}</th>
-          <th>{gettext("Cours")}</th>
-          <th>{gettext("Notes saisies")}</th>
-          <th>{gettext("Notes attendues")}</th>
+          <th>{gettext("Cours à jour")}</th>
+          <th>{gettext("Notes saisies / attendues")}</th>
           <th>{gettext("Taux")}</th>
         </tr>
       </thead>
@@ -99,13 +99,17 @@
         <tr :for={t <- @teachers}>
           <td class="text">{t.name}</td>
           <td class="text">{Enum.join(t.subjects, ", ")}</td>
-          <td>{t.courses}</td>
-          <td>{t.entered}</td>
-          <td>{t.expected}</td>
+          <td>{t.complete} / {t.measurable}</td>
+          <td>{t.entered} / {t.expected}</td>
           <td class={(t.pct != nil and t.pct < 100) && "low"}>{pct(t.pct)}</td>
         </tr>
       </tbody>
     </table>
+    <p :if={@teachers != []} class="note">
+      {gettext(
+        "Taux : moyenne des taux des cours de l'enseignant ; un cours sans devoir compte 0 %, un cours sans élève ne compte pas."
+      )}
+    </p>
 
     <h2>{gettext("Enseignants n'ayant pas terminé la saisie")}</h2>
     <p :if={@late == []} id="entry-report-none-late" class="none">

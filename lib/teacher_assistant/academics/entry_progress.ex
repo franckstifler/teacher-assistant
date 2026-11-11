@@ -443,7 +443,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   @doc """
   Per teacher, from a `grid/3` (the censeur's printed report): `%{teacher_id,
-  teacher, name, subjects, courses, entered, expected, pct, late}`. `pct` is the mean
+  teacher, name, subjects, courses, measurable, complete, entered, expected, pct,
+  late}` — `measurable` the courses with students, `complete` those at 100 %. `pct` is the mean
   of their courses' % (as a class's rate is; a course with students but no assessment
   is 0 %), rounded down, nil when no course is measurable; `entered` / `expected` sum
   the marks. `late` lists their courses under 100 %, in row then column order:
@@ -469,6 +470,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
         name: teacher_name(first.teacher),
         subjects: courses |> Enum.map(& &1.subject) |> Enum.uniq() |> Enum.sort(),
         courses: length(courses),
+        measurable: length(pcts),
+        complete: Enum.count(pcts, &(&1 == 100)),
         entered: Enum.sum_by(courses, & &1.entered),
         expected: Enum.sum_by(courses, & &1.expected),
         pct: if(pcts == [], do: nil, else: div(Enum.sum(pcts), length(pcts))),

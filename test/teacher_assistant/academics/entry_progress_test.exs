@@ -331,6 +331,8 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
 
       # Maths 3e A 3/6 = 50 %, Allemand 4e B 1/1 = 100 %; Maths 5e C has no student.
       assert {head.pct, head.entered, head.expected} == {75, 4, 7}
+      # Two measurable courses (Maths 5e C has no student), one up to date.
+      assert {head.complete, head.measurable} == {1, 2}
       assert [%{class: "3e A", subject: "Maths", missing: 3, pct: 50, assessments: 2}] = head.late
 
       # No assessment at all: 0 % on both courses, nothing to count as missing yet.

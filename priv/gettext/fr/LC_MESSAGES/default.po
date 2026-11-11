@@ -175,7 +175,7 @@ msgstr "Passable"
 msgid "Roster"
 msgstr "Effectif"
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:53
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:54
 #: lib/teacher_assistant_web/live/school/absence_hours_live.ex:176
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:150
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:272
@@ -216,7 +216,7 @@ msgstr "Année"
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:134
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:24
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:57
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:118
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:122
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/note.html.heex:19
 #: lib/teacher_assistant_web/controllers/receipt_print_html/show.html.heex:48
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:39
@@ -394,7 +394,7 @@ msgstr "Effectif"
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:25
 #: lib/teacher_assistant_web/controllers/class_list_print_html/roster.html.heex:52
 #: lib/teacher_assistant_web/controllers/council_print_html/show.html.heex:53
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:68
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:69
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:66
 #: lib/teacher_assistant_web/controllers/timetable_print_html/general.html.heex:36
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:54
@@ -410,8 +410,8 @@ msgstr "Année scolaire"
 
 #: lib/teacher_assistant/accounts/school_role.ex:34
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:49
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:90
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:117
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:91
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:121
 #: lib/teacher_assistant_web/controllers/page_html.ex:145
 #: lib/teacher_assistant_web/controllers/page_html.ex:154
 #: lib/teacher_assistant_web/controllers/page_html.ex:270
@@ -857,7 +857,7 @@ msgstr "Masculin"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:190
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:48
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:119
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:123
 #: lib/teacher_assistant_web/live/school/coefficients_live.ex:85
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:708
 #: lib/teacher_assistant_web/live/school/settings_live.ex:577
@@ -1059,7 +1059,7 @@ msgstr "Félicitations"
 
 #: lib/teacher_assistant_web/components/print_components.ex:51
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:85
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:51
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:52
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/control.html.heex:55
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/warnings.html.heex:41
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:42
@@ -1255,7 +1255,6 @@ msgid "Cette période a des cours à l'emploi du temps et ne peut pas être supp
 msgstr "Cette période a des cours à l'emploi du temps et ne peut pas être supprimée."
 
 #: lib/teacher_assistant/academics/period_kind.ex:5
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:92
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:73
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:623
 #: lib/teacher_assistant_web/live/teacher/statistics_live.ex:238
@@ -1920,7 +1919,7 @@ msgstr "Lycée"
 msgid "Lycée technique"
 msgstr "Lycée technique"
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:91
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:92
 #: lib/teacher_assistant_web/live/school/classes_live.ex:222
 #: lib/teacher_assistant_web/live/school/settings_live.ex:53
 #: lib/teacher_assistant_web/live/school/settings_live.ex:519
@@ -2560,8 +2559,8 @@ msgstr "Récapitulatif"
 
 #: lib/teacher_assistant/report_cards.ex:418
 #: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:7
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:56
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:66
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:57
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:67
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html.ex:16
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:8
 #: lib/teacher_assistant_web/live/school/absences_live.ex:161
@@ -3458,7 +3457,7 @@ msgstr ""
 msgid "Conseils de classe"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:123
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:127
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:628
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:715
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:923
@@ -3488,7 +3487,6 @@ msgstr ""
 msgid "Non enseignée"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:93
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:911
 #, elixir-autogen, elixir-format
 msgid "Notes saisies"
@@ -4062,7 +4060,7 @@ msgid "Oui"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:7
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:66
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:67
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:33
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:41
 #, elixir-autogen, elixir-format
@@ -12587,7 +12585,7 @@ msgstr ""
 msgid "%{sanction} le %{date}"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:60
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:61
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:55
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:60
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:413
@@ -15601,7 +15599,7 @@ msgstr ""
 msgid "Imprimer le relevé"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:140
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:144
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:112
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:110
 #, elixir-autogen, elixir-format
@@ -16101,7 +16099,7 @@ msgstr ""
 msgid "Nettoyage des fichiers suspendu : presque tous semblaient orphelins (base vide ou restauration en cours ?)."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:86
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:87
 #, elixir-autogen, elixir-format
 msgid "Aucun cours n'a d'enseignant."
 msgstr ""
@@ -16111,22 +16109,22 @@ msgstr ""
 msgid "Aucun devoir"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:76
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:77
 #, elixir-autogen, elixir-format
 msgid "Classes complètes"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:120
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:124
 #, elixir-autogen, elixir-format
 msgid "Devoirs"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:80
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:81
 #, elixir-autogen, elixir-format
 msgid "Enseignants en retard"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:110
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:114
 #, elixir-autogen, elixir-format
 msgid "Enseignants n'ayant pas terminé la saisie"
 msgstr ""
@@ -16136,43 +16134,53 @@ msgstr ""
 msgid "Imprimer le suivi"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:142
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:146
 #, elixir-autogen, elixir-format
 msgid "Le Censeur"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:94
-#, elixir-autogen, elixir-format
-msgid "Notes attendues"
-msgstr ""
-
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:121
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Notes manquantes"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:74
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:75
 #, elixir-autogen, elixir-format
 msgid "Saisie globale"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:70
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:71
 #, elixir-autogen, elixir-format
 msgid "Saisie jusqu'au %{date}"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:95
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:122
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:126
 #, elixir-autogen, elixir-format
 msgid "Taux"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:85
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:86
 #, elixir-autogen, elixir-format
 msgid "Taux de saisie par enseignant"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:112
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:116
 #, elixir-autogen, elixir-format
 msgid "Toutes les notes attendues sont saisies."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:93
+#, elixir-autogen, elixir-format
+msgid "Cours à jour"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:94
+#, elixir-autogen, elixir-format
+msgid "Notes saisies / attendues"
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:109
+#, elixir-autogen, elixir-format
+msgid "Taux : moyenne des taux des cours de l'enseignant ; un cours sans devoir compte 0 %, un cours sans élève ne compte pas."
 msgstr ""

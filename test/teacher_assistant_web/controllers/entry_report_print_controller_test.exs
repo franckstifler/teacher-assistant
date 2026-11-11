@@ -43,6 +43,8 @@ defmodule TeacherAssistantWeb.EntryReportPrintControllerTest do
 
     rates = doc |> LazyHTML.query("#entry-report-teachers tbody tr") |> LazyHTML.text()
     assert rates =~ "50 %"
+    assert rates =~ "0 / 1"
+    assert html =~ "un cours sans devoir compte 0 %"
     assert rates =~ "0 %"
 
     late = doc |> LazyHTML.query("#entry-report-late") |> LazyHTML.text()
