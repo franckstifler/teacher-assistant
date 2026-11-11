@@ -213,10 +213,10 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
         </div>
 
         <div :if={@rows != []} class="overflow-x-auto rounded-box border border-base-300">
-          <table id="stats-table" class="table table-sm ta-num">
+          <table id="stats-table" class="table table-sm">
             <thead>
               <tr>
-                <th>{gettext("Cours")}</th>
+                <th class="sticky left-0 z-10 bg-base-100">{gettext("Cours")}</th>
                 <th class="text-right">{gettext("Effectif")}</th>
                 <th class="text-right" title={gettext("Garçons")}>{gettext("G")}</th>
                 <th class="text-right" title={gettext("Filles")}>{gettext("F")}</th>
@@ -230,7 +230,7 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
                 <th class="max-sm:hidden">{gettext("Mentions")}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="ta-num">
               <tr
                 :for={row <- @rows}
                 id={row_id(row)}
@@ -238,7 +238,7 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
                 data-class={row.class_label}
                 class={row.class_label && "text-base-content/80"}
               >
-                <td class="min-w-40">
+                <td class="sticky left-0 z-10 min-w-36 max-w-44 bg-base-100 font-sans">
                   <span :if={is_nil(row.class_label)} class="font-medium">{row.course.title}</span>
                   <span :if={row.class_label} class="pl-4">↳ {row.class_label}</span>
                   <details
