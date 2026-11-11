@@ -273,9 +273,33 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     assert [] = Enrollment.list_roster(scope, cg, on: :all)
   end
 
-  test "a mistaken removal with a sanction on file is refused and says why (A7)", ctx do
+  test "a sanction recorded after the page loaded still refuses the removal and says why (A7)",
+       ctx do
     %{conn: conn, cg: cg, scope: scope, year: year} = ctx
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
+    sanction!(scope, year, e)
+
+    html = view |> element("#remove-mistaken-#{e.id}") |> render_click()
+    assert html =~ "marquez-le parti"
+    assert [_] = Enrollment.list_roster(scope, cg)
+  end
+
+  test "a student without history offers only the removal, one with history only the departure (minors)",
+       ctx do
+    %{conn: conn, cg: cg, scope: scope, year: year} = ctx
+    {:ok, %{enrollment: fresh}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, %{enrollment: known}} = Enrollment.enroll_new(scope, cg, %{full_name: "Bilal", sex: :m})
+    sanction!(scope, year, known)
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
+
+    assert has_element?(view, "#remove-mistaken-#{fresh.id}")
+    refute has_element?(view, "#leave-#{fresh.id}")
+    assert has_element?(view, "#leave-#{known.id}")
+    refute has_element?(view, "#remove-mistaken-#{known.id}")
+  end
+
+  defp sanction!(scope, year, e) do
     :ok = Organization.build_default_calendar(scope, year)
     [seq | _] = Organization.list_sequences(scope, year)
 
@@ -284,16 +308,12 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
         type: :avertissement,
         date: seq.start_date
       })
-
-    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
-    html = view |> element("#remove-mistaken-#{e.id}") |> render_click()
-    assert html =~ "marquez-le parti"
-    assert [_] = Enrollment.list_roster(scope, cg)
   end
 
   test "« Marquer parti » asks a reason and takes the student off today's roster (A7)", ctx do
-    %{conn: conn, cg: cg, scope: scope} = ctx
+    %{conn: conn, cg: cg, scope: scope, year: year} = ctx
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    sanction!(scope, year, e)
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
 
     view |> element("#leave-#{e.id}") |> render_click()

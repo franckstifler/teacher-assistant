@@ -322,7 +322,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          |> put_flash(:info, gettext("Fiche de %{name} supprimée.", name: student.full_name))
          |> push_navigate(to: ~p"/school/students")}
 
-      {:error, blocker} when blocker in [:marks, :attendance, :sanctions, :fee_documents] ->
+      {:error, blocker}
+      when blocker in [:marks, :attendance, :conduct, :sanctions, :fee_documents] ->
         {:noreply,
          socket
          |> assign(deletion_blocker: blocker)
@@ -366,7 +367,13 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   def deletion_blocker_text(:attendance),
     do:
       gettext(
-        "Cet élève figure déjà dans un appel : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
+        "Cet élève figure déjà dans un appel ou un relevé d'absences : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
+      )
+
+  def deletion_blocker_text(:conduct),
+    do:
+      gettext(
+        "Cet élève a déjà une note de conduite : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
       )
 
   def deletion_blocker_text(:sanctions),
@@ -378,7 +385,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
   def deletion_blocker_text(:fee_documents),
     do:
       gettext(
-        "Cet élève a déjà un reçu, un avertissement ou un bon de retour : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
+        "Cet élève a déjà un reçu, un papier de frais, une remise ou un arriéré : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
       )
 
   defp run_on_link(socket, id, fun) do

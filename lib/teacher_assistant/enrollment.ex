@@ -7,7 +7,10 @@ defmodule TeacherAssistant.Enrollment do
     AcademicYear,
     AttendanceEntry,
     ClassGroup,
+    ConductMark,
     Enrollment,
+    FeeAdjustment,
+    FeeSendOut,
     FeeWarning,
     Guardian,
     Mark,
@@ -16,7 +19,9 @@ defmodule TeacherAssistant.Enrollment do
     ReturnNote,
     SanctionEntry,
     Student,
-    StudentGuardian
+    StudentArrear,
+    StudentGuardian,
+    TypedAbsence
   }
 
   alias TeacherAssistant.Academics.TeachingContext
@@ -242,13 +247,11 @@ defmodule TeacherAssistant.Enrollment do
   # --- Student -----------------------------------------------------------
 
   @doc """
-  Deletes a student added by mistake, with their enrolments (and what hangs on them:
-  attendance, conduct, sanctions), parent links and exemptions; the parents
-  themselves stay. Refused once something official exists for them, as
-  `{:error, :marks}`, `:attendance`, `:sanctions` or `:fee_documents`
-  (`student_deletion_blocker/2`);
-  the database refuses it too. Admins only (the student's destroy policy). The photo
-  file stays on disk until the weekly orphan sweep (`TeacherAssistant.StudentPhotos`).
+  Deletes a student added by mistake, with their enrolments, parent links and
+  exemptions; the parents themselves stay. Refused once the student has any history
+  (`student_deletion_blocker/2`); the database refuses it too. Admins only (the
+  student's destroy policy). The photo file stays on disk until the weekly orphan
+  sweep (`TeacherAssistant.StudentPhotos`).
   """
   def delete_student(%Scope{} = scope, %Student{} = s) do
     case student_deletion_blocker(scope, s) do
@@ -257,36 +260,108 @@ defmodule TeacherAssistant.Enrollment do
     end
   end
 
+  # What counts as history, by blocker, in the order a blocker is named: a mark
+  # (read apart: it hangs on the student), then the records hanging on an
+  # enrollment. Deleting an enrollment would delete these with it.
+  @history [
+    attendance: [AttendanceEntry, TypedAbsence],
+    conduct: [ConductMark],
+    sanctions: [SanctionEntry],
+    fee_documents: [Payment, FeeWarning, ReturnNote, FeeAdjustment, FeeSendOut, StudentArrear]
+  ]
+
   @doc """
   Why `student` can no longer be deleted: `:marks` once a mark is entered for them,
-  `:attendance` once a roll call names them, `:sanctions` once they have one (A7),
-  `:fee_documents` once they have a receipt, a warning letter or a return note
-  (numbered papers anyone can check). `nil` while nothing official exists. Counts
-  every record of the school, whatever the reader may see. A student with history
-  is marked as left instead (`leave/3`).
+  `:attendance` once a roll call or typed absence names them, `:conduct` once they
+  have a conduct mark, `:sanctions` once they have one (A7), `:fee_documents` once
+  they have a receipt, a fee paper, an adjustment or an arrear. `nil` while nothing
+  exists. Counts every record of the school, whatever the reader may see. A student
+  with history is marked as left instead (`leave/3`).
   """
   def student_deletion_blocker(%Scope{current_workspace: %{id: ws_id}}, %Student{id: id}) do
     opts = [authorize?: false, tenant: ws_id]
 
-    cond do
-      Mark |> Ash.Query.filter(student_id == ^id) |> Ash.exists?(opts) ->
-        :marks
+    first_blocker(
+      Mark |> Ash.Query.filter(student_id == ^id) |> Ash.exists?(opts),
+      fn resource ->
+        resource |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts)
+      end
+    )
+  end
 
-      AttendanceEntry |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts) ->
-        :attendance
+  @doc """
+  Why `enrollment` cannot be removed as a mistake (`remove_mistaken/2`): the
+  `student_deletion_blocker/2` kinds, counting only this enrollment's records (a mark
+  counts when it is of the enrollment's year), so a mistaken re-enrollment is
+  removable whatever the student did in earlier years.
+  """
+  def enrollment_deletion_blocker(%Scope{current_workspace: %{id: ws_id}}, %Enrollment{} = e) do
+    opts = [authorize?: false, tenant: ws_id]
 
-      SanctionEntry |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts) ->
-        :sanctions
+    first_blocker(
+      Mark
+      |> Ash.Query.filter(
+        student_id == ^e.student_id and
+          assessment.teaching_context.academic_year_id == ^e.academic_year_id
+      )
+      |> Ash.exists?(opts),
+      fn resource ->
+        resource |> Ash.Query.filter(enrollment_id == ^e.id) |> Ash.exists?(opts)
+      end
+    )
+  end
 
-      Enum.any?(
-        [Payment, FeeWarning, ReturnNote],
-        &(&1 |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts))
-      ) ->
-        :fee_documents
+  defp first_blocker(true, _exists?), do: :marks
 
-      true ->
-        nil
-    end
+  defp first_blocker(false, exists?) do
+    Enum.find_value(@history, fn {blocker, resources} ->
+      Enum.any?(resources, exists?) && blocker
+    end)
+  end
+
+  @doc """
+  The ids among `enrollment_ids` that have history (`enrollment_deletion_blocker/2`
+  is not nil), in one read per kind whatever their number: the class page offers
+  « Marquer parti » for those and « Supprimer (erreur de saisie) » for the others.
+  """
+  def enrollments_with_history(%Scope{}, []), do: MapSet.new()
+
+  def enrollments_with_history(%Scope{current_workspace: %{id: ws_id}}, enrollment_ids) do
+    opts = [authorize?: false, tenant: ws_id]
+
+    enrollments =
+      Enrollment
+      |> Ash.Query.filter(id in ^enrollment_ids)
+      |> Ash.Query.select([:id, :student_id, :academic_year_id])
+      |> Ash.read!(opts)
+
+    by_student_year = Map.new(enrollments, &{{&1.student_id, &1.academic_year_id}, &1.id})
+    student_ids = Enum.map(enrollments, & &1.student_id)
+
+    marked =
+      Mark
+      |> Ash.Query.filter(student_id in ^student_ids)
+      |> Ash.Query.select([:student_id])
+      |> Ash.Query.load(assessment: [teaching_context: [:academic_year_id]])
+      |> Ash.read!(opts)
+      |> Enum.flat_map(fn m ->
+        case by_student_year[{m.student_id, m.assessment.teaching_context.academic_year_id}] do
+          nil -> []
+          id -> [id]
+        end
+      end)
+
+    linked =
+      for {_blocker, resources} <- @history,
+          resource <- resources,
+          row <-
+            resource
+            |> Ash.Query.filter(enrollment_id in ^enrollment_ids)
+            |> Ash.Query.select([:enrollment_id])
+            |> Ash.read!(opts),
+          do: row.enrollment_id
+
+    MapSet.new(marked ++ linked)
   end
 
   # --- Retention (spec audit follow-ups A9) ------------------------------------
@@ -836,14 +911,14 @@ defmodule TeacherAssistant.Enrollment do
 
   @doc """
   Deletes an enrollment entered by mistake (A7): refused, with the blocker
-  (`student_deletion_blocker/2`), once the student has any history — mark it as left
-  then. Admins and the class's form master.
+  (`enrollment_deletion_blocker/2`), once this enrollment has any history — mark it
+  as left then. Admins and the class's form master.
   """
   def remove_mistaken(%Scope{} = scope, %Enrollment{} = e) do
     # Who may delete is asked first: a refused member learns nothing of the history.
     cond do
       not Ash.can?({e, :destroy}, scope) -> {:error, Ash.Error.Forbidden.exception([])}
-      blocker = student_deletion_blocker(scope, %Student{id: e.student_id}) -> {:error, blocker}
+      blocker = enrollment_deletion_blocker(scope, e) -> {:error, blocker}
       true -> destroy_enrollment(scope, e)
     end
   end

@@ -124,6 +124,59 @@ defmodule TeacherAssistant.Academics.EnrollmentDepartureTest do
     assert {:error, :attendance} = Enrollment.remove_mistaken(ctx.scope, ctx.awa)
   end
 
+  defp attendance_entry!(ctx, enrollment_id) do
+    :ok = Attendance.build_default_periods(ctx.scope)
+    period = ctx.scope |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))
+
+    {:ok, _} =
+      TeacherAssistant.Academics.AttendanceEntry
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          enrollment_id: enrollment_id,
+          period_id: period.id,
+          date: Reference.today(),
+          status: :absent
+        },
+        scope: ctx.scope
+      )
+      |> Ash.create()
+  end
+
+  test "another enrollment's history does not block removing a mistaken one (minors)", ctx do
+    {:ok, past} =
+      Organization.create_academic_year(ctx.scope, %{
+        name: "2023-2024",
+        start_date: ~D[2023-09-04],
+        end_date: ~D[2024-07-31],
+        active: false
+      })
+
+    {:ok, old_cg} = Enrollment.create_class_group(ctx.scope, past, %{label: "CM2", level: "6ème"})
+
+    {:ok, %{enrollment: old, student: zang}} =
+      Enrollment.enroll_new(ctx.scope, old_cg, %{full_name: "Zang", sex: :f})
+
+    attendance_entry!(ctx, old.id)
+    {:ok, this_year} = Enrollment.enroll_existing(ctx.scope, ctx.cg, zang)
+
+    assert :ok = Enrollment.remove_mistaken(ctx.scope, this_year)
+    assert {:error, :attendance} = Enrollment.remove_mistaken(ctx.scope, old)
+  end
+
+  test "a conduct mark blocks a mistaken removal (minors)", ctx do
+    [seq | _] = Organization.list_sequences(ctx.scope, ctx.year)
+    {:ok, _} = Discipline.set_conduct_marks(ctx.scope, ctx.cg, seq, %{ctx.awa.id => "15"})
+    assert {:error, :conduct} = Enrollment.remove_mistaken(ctx.scope, ctx.awa)
+  end
+
+  test "enrollments_with_history names the class's enrollments that have any (minors)", ctx do
+    attendance_entry!(ctx, ctx.awa.id)
+
+    assert Enrollment.enrollments_with_history(ctx.scope, [ctx.awa.id, ctx.bob.id]) ==
+             MapSet.new([ctx.awa.id])
+  end
+
   test "enrollment_count counts current students only", ctx do
     {:ok, _} = Enrollment.leave(ctx.scope, ctx.awa, %{departure_reason: :dropout})
 

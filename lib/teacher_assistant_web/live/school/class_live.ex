@@ -211,12 +211,13 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 {gettext("Transférer…")}
               </:item>
               <:item
-                :if={@can_manage_classes?}
+                :if={@can_manage_classes? and MapSet.member?(@with_history, row.enrollment.id)}
                 click={JS.push("open_leave", value: %{"enrollment-id" => row.enrollment.id})}
               >
                 {gettext("Marquer parti…")}
               </:item>
               <:item
+                :if={not MapSet.member?(@with_history, row.enrollment.id)}
                 danger
                 click={JS.push("remove_mistaken", value: %{"enrollment-id" => row.enrollment.id})}
                 confirm={gettext("Supprimer cette inscription faite par erreur ?")}
@@ -300,7 +301,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                           {gettext("Transférer…")}
                         </button>
                       </li>
-                      <li :if={@can_manage_classes?}>
+                      <li :if={
+                        @can_manage_classes? and MapSet.member?(@with_history, row.enrollment.id)
+                      }>
                         <button
                           id={"leave-#{row.enrollment.id}"}
                           type="button"
@@ -310,7 +313,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                           {gettext("Marquer parti…")}
                         </button>
                       </li>
-                      <li>
+                      <li :if={not MapSet.member?(@with_history, row.enrollment.id)}>
                         <button
                           id={"remove-mistaken-#{row.enrollment.id}"}
                           type="button"
@@ -493,6 +496,9 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     socket
     |> assign(
       roster: roster,
+      # Spec A7: « Marquer parti » once an enrollment has history, else « Supprimer ».
+      with_history:
+        Enrollment.enrollments_with_history(scope, Enum.map(roster, & &1.enrollment.id)),
       guardians: Enrollment.primary_guardians(scope, Enum.map(roster, & &1.student.id)),
       # Same level first, then the rest by label.
       transfer_targets: Enum.sort_by(others, &{&1.level != cg.level, &1.label})
@@ -590,7 +596,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          :ok <- Enrollment.remove_mistaken(socket.assigns.current_scope, e) do
       {:noreply, socket |> put_flash(:info, gettext("Inscription supprimée.")) |> load_roster()}
     else
-      {:error, blocker} when blocker in [:marks, :attendance, :sanctions, :fee_documents] ->
+      {:error, blocker}
+      when blocker in [:marks, :attendance, :conduct, :sanctions, :fee_documents] ->
         {:noreply, put_flash(socket, :error, StudentLive.deletion_blocker_text(blocker))}
 
       {:error, error} ->
