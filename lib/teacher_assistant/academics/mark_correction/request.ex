@@ -8,7 +8,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Request do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{Assessment, Enrollment, Lock, Mark, StampOperator}
+  alias TeacherAssistant.Academics.{Assessment, Lock, Mark, StampOperator}
   alias TeacherAssistant.Academics.Mark.Journal
 
   @impl true
@@ -66,11 +66,11 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Request do
   # class. Internal read, hence `authorize?: false`; the requester's own rights are checked
   # by the action's policies.
   defp require_enrolled(assessment, student_id, tenant) do
-    with {:ok, %{teaching_context: %{class_group_id: class_group_id}}} <-
-           Ash.load(assessment, :teaching_context, tenant: tenant, authorize?: false) do
-      Enrollment
-      |> Ash.Query.filter(class_group_id == ^class_group_id and student_id == ^student_id)
-      |> Ash.exists?(tenant: tenant, authorize?: false)
+    with {:ok, %{teaching_context: %{class_group_id: class_group_id}, sequence: seq}} <-
+           Ash.load(assessment, [:teaching_context, :sequence], tenant: tenant, authorize?: false) do
+      # The rule of `Mark.StudentEnrolled` (A7): still in the class when the séquence began.
+      student_id
+      |> Mark.StudentEnrolled.enrolled?(class_group_id, seq && seq.start_date, tenant)
       |> if(do: :ok, else: {:error, :student_id, "not enrolled in this class"})
     end
   end

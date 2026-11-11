@@ -351,7 +351,7 @@ defmodule TeacherAssistant.Attendance do
         {cg, tc, group_marks}
       end)
 
-    with :ok <- validate_group_marks(scope, per_group_marks),
+    with :ok <- validate_group_marks(scope, per_group_marks, date),
          :ok <- validate_sent_home_periods(scope, marks, periods, date) do
       run_record_combined_period(
         per_group_marks,
@@ -363,11 +363,12 @@ defmodule TeacherAssistant.Attendance do
     end
   end
 
-  defp validate_group_marks(%Scope{} = scope, per_group_marks) do
+  # A student who left by `date` (A7) is not on the roll.
+  defp validate_group_marks(%Scope{} = scope, per_group_marks, date) do
     Enum.reduce_while(per_group_marks, :ok, fn {cg, _tc, group_marks}, :ok ->
       valid_enrollment_ids =
         scope
-        |> TeacherAssistant.Enrollment.list_roster(cg)
+        |> TeacherAssistant.Enrollment.list_roster(cg, on: date)
         |> MapSet.new(& &1.enrollment.id)
 
       case validate_marks(group_marks, valid_enrollment_ids) do
@@ -445,7 +446,7 @@ defmodule TeacherAssistant.Attendance do
 
     valid_enrollment_ids =
       scope
-      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> TeacherAssistant.Enrollment.list_roster(class_group, on: date)
       |> MapSet.new(& &1.enrollment.id)
 
     with :ok <- validate_marks(marks, valid_enrollment_ids),
@@ -573,7 +574,7 @@ defmodule TeacherAssistant.Attendance do
 
     students =
       scope
-      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> TeacherAssistant.Enrollment.list_roster(class_group, on: date)
       |> Enum.map(fn %{student: student, enrollment: enrollment} ->
         marks = Map.get(cells_by_enrollment, enrollment.id, %{})
         cells = Map.new(period_ids, &{&1, Map.get(marks, &1)})
@@ -672,7 +673,9 @@ defmodule TeacherAssistant.Attendance do
   def class_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple) do
     roster_enrollment_ids =
       scope
-      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> TeacherAssistant.Enrollment.list_roster(class_group,
+        on: Organization.period_first_day(scope, period_tuple)
+      )
       |> Enum.map(& &1.enrollment.id)
 
     zero_map = Map.new(roster_enrollment_ids, &{&1, @zero_totals})
@@ -717,7 +720,7 @@ defmodule TeacherAssistant.Attendance do
         span = typed_span(scope, period)
 
         scope
-        |> roster_records(class_group)
+        |> roster_records(class_group, period)
         |> Map.new(fn {id, records} ->
           {hours, recorded?} =
             case TypedAbsences.hours(records, span, rhythm) do
@@ -742,7 +745,7 @@ defmodule TeacherAssistant.Attendance do
         span = typed_span(scope, period)
 
         scope
-        |> roster_records(class_group)
+        |> roster_records(class_group, period)
         |> Enum.count(fn {_id, records} -> not TypedAbsences.complete?(records, span, rhythm) end)
     end
   end
@@ -754,7 +757,11 @@ defmodule TeacherAssistant.Attendance do
   the roll call's unjustified hours (`app_hours`, also shown as a hint), else nil.
   """
   def typed_absence_sheet(%Scope{} = scope, %ClassGroup{} = class_group, period) do
-    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
+    roster =
+      TeacherAssistant.Enrollment.list_roster(scope, class_group,
+        on: Organization.period_first_day(scope, period)
+      )
+
     records = typed_records_by_enrollment(scope, Enum.map(roster, & &1.enrollment.id))
 
     app =
@@ -808,7 +815,9 @@ defmodule TeacherAssistant.Attendance do
   def save_typed_absences(%Scope{} = scope, %ClassGroup{} = class_group, period, %{} = rows) do
     ids =
       scope
-      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> TeacherAssistant.Enrollment.list_roster(class_group,
+        on: Organization.period_first_day(scope, period)
+      )
       |> MapSet.new(& &1.enrollment.id)
 
     with :ok <- check_in_class(rows, ids),
@@ -931,10 +940,12 @@ defmodule TeacherAssistant.Attendance do
     Map.new(ids, &{&1, Map.get(records, &1, [])})
   end
 
-  defp roster_records(scope, class_group) do
+  defp roster_records(scope, class_group, period) do
     ids =
       scope
-      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> TeacherAssistant.Enrollment.list_roster(class_group,
+        on: Organization.period_first_day(scope, period)
+      )
       |> Enum.map(& &1.enrollment.id)
 
     typed_records_by_enrollment(scope, ids)

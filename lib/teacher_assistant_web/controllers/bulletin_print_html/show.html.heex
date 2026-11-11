@@ -44,6 +44,7 @@
       .identity .cartouche { flex: 1; }
       .cartouche td { padding: 0.6mm 1.2mm; }
       .cartouche .k { color: #444; white-space: nowrap; font-size: 0.92em; }
+      .cartouche .left-on { margin-left: 2mm; font-size: 0.88em; font-style: italic; color: #333; }
       .student-photo { width: 24mm; height: 30mm; object-fit: cover; border: 0.3mm solid #000; }
       table.body { margin-top: 1.5mm; }
       table.body th { background: #eee; font-weight: 700; text-align: center; font-size: 0.9em; }
@@ -103,7 +104,15 @@
         <table class="cartouche">
           <tr>
             <td class="k">{tr(@lang, fn -> gettext("Nom et prénoms") end)}</td>
-            <td colspan="3"><strong>{b.student.full_name}</strong></td>
+            <td colspan="3">
+              <strong>{b.student.full_name}</strong>
+              <%!-- A7: a student who left during the period keeps its bulletin. --%>
+              <span :if={left_on(b.enrollment)} class="left-on">
+                {tr(@lang, fn ->
+                  gettext("Parti(e) le %{date}", date: dmy(left_on(b.enrollment)))
+                end)}
+              </span>
+            </td>
             <td class="k">{tr(@lang, fn -> gettext("Classe") end)}</td>
             <td><strong>{@cg.label}</strong></td>
           </tr>

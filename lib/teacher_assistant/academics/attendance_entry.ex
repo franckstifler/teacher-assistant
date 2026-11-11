@@ -392,7 +392,12 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
     students =
       TeacherAssistant.Academics.Enrollment
-      |> Ash.Query.for_read(:for_class_group, %{class_group_id: class_group.id}, scope: scope)
+      # The class on that day: a student who left by then is not on the roll (A7).
+      |> Ash.Query.for_read(
+        :for_class_group,
+        %{class_group_id: class_group.id, current_on: date},
+        scope: scope
+      )
       |> Ash.read!()
       |> Enum.sort_by(&String.downcase(&1.student.full_name))
       |> Enum.map(fn enrollment ->

@@ -10,7 +10,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
   (so the figure equals the printed bulletin even after later corrections), else
   the bulletin computed now — so no figure here can differ from the bulletin.
   """
-  alias TeacherAssistant.{Assessment, Curriculum, Enrollment, ReportCards, Scope}
+  alias TeacherAssistant.{Assessment, Curriculum, Enrollment, Organization, ReportCards, Scope}
   alias TeacherAssistant.Academics.{Marks, SchoolTemplates, TeacherCourses, TeachingContext}
 
   @type period ::
@@ -24,7 +24,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
   published for the period) or `:mixed`; `members` holds each class's own figures.
   """
   def course(%Scope{} = scope, %TeachingContext{} = ctx, period) do
-    members = scope |> member_contexts(ctx) |> members(scope)
+    members = scope |> member_contexts(ctx) |> members(scope, period)
     stats(scope, members, period, class_results(scope, members, period))
   end
 
@@ -35,7 +35,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
   """
   def table(%Scope{} = scope, teacher, period) do
     courses = TeacherCourses.list(%{scope | current_user: teacher}, nil)
-    per_course = Enum.map(courses, &{&1, members(&1.contexts, scope)})
+    per_course = Enum.map(courses, &{&1, members(&1.contexts, scope, period)})
     results = class_results(scope, Enum.flat_map(per_course, &elem(&1, 1)), period)
 
     Enum.flat_map(per_course, fn {course, members} ->
@@ -70,14 +70,18 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
     |> Enum.sort_by(&SchoolTemplates.class_sort_key(&1.class_group))
   end
 
-  # Each member class with the students taking the subject (exempted ones are out).
-  defp members(contexts, scope) do
+  # Each member class with the students taking the subject (exempted ones are out), as
+  # the class stood on the period's first day (A7: as the bulletin counts them).
+  defp members(contexts, scope, period) do
+    first_day = Organization.period_first_day(scope, period)
+
     Enum.map(contexts, fn ctx ->
       exempt = Curriculum.exempt_student_ids(scope, ctx)
       cg = ctx.class_group
 
       students =
-        for s <- Enrollment.list_students(scope, cg), not MapSet.member?(exempt, s.id) do
+        for s <- Enrollment.list_students(scope, cg, on: first_day),
+            not MapSet.member?(exempt, s.id) do
           %{id: s.id, sex: s.sex, full_name: s.full_name, class_label: cg.label}
         end
 

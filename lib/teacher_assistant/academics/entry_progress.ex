@@ -35,7 +35,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   def grid(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq) do
     class_groups = TeacherAssistant.Enrollment.list_class_groups(scope, year)
     contexts = load_contexts(scope, year)
-    enrolled = load_enrolled(scope, year)
+    enrolled = load_enrolled(scope, year, seq.start_date)
     exempt = load_exempt(scope, contexts)
     assessments = load_assessments(scope, seq)
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
@@ -79,7 +79,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   def context_cells(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, contexts) do
     ids = Enum.map(contexts, & &1.id)
     class_ids = contexts |> Enum.map(& &1.class_group_id) |> Enum.uniq()
-    enrolled = load_enrolled(scope, year, class_ids)
+    enrolled = load_enrolled(scope, year, class_ids, seq.start_date)
     exempt = load_exempt(scope, contexts)
     assessments = load_assessments(scope, seq, ids)
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
@@ -143,7 +143,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       |> Ash.Query.filter(academic_year_id == ^year.id and class_group_id in ^class_ids)
       |> Ash.read!(scope: scope)
 
-    enrolled = load_enrolled(scope, year, class_ids)
+    first_day = sequences |> Enum.map(& &1.start_date) |> Enum.min(Date, fn -> nil end)
+    enrolled = load_enrolled(scope, year, class_ids, first_day)
     exempt = load_exempt(scope, contexts)
 
     assessments =
@@ -199,20 +200,26 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> Ash.read!(scope: scope)
   end
 
-  defp load_enrolled(scope, %AcademicYear{id: year_id}) do
+  # The students a séquence expects (A7): those still in the class on its first day.
+  defp load_enrolled(scope, %AcademicYear{id: year_id}, first_day) do
     Enrollment
     |> Ash.Query.filter(academic_year_id == ^year_id)
-    |> enrolled_by_class(scope)
+    |> enrolled_by_class(scope, first_day)
   end
 
-  defp load_enrolled(scope, %AcademicYear{id: year_id}, class_ids) do
+  defp load_enrolled(scope, %AcademicYear{id: year_id}, class_ids, first_day) do
     Enrollment
     |> Ash.Query.filter(academic_year_id == ^year_id and class_group_id in ^class_ids)
-    |> enrolled_by_class(scope)
+    |> enrolled_by_class(scope, first_day)
   end
 
-  defp enrolled_by_class(query, scope) do
+  defp enrolled_by_class(query, scope, first_day) do
     query
+    |> then(fn q ->
+      if first_day,
+        do: Ash.Query.filter(q, is_nil(left_on) or left_on > ^first_day),
+        else: q
+    end)
     |> Ash.Query.select([:class_group_id, :student_id])
     |> Ash.read!(scope: scope)
     |> Enum.group_by(& &1.class_group_id, & &1.student_id)

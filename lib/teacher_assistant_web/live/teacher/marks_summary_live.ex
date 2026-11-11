@@ -116,7 +116,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   defp assign_summary(socket) do
     %{ctx: ctx, period: period, current_scope: scope} = socket.assigns
     stats = Assessment.course_statistics(scope, ctx, period)
-    assign(socket, summary: stats.summary, source: stats.source)
+    # The period's students (A7: a student who left during it is still ranked).
+    assign(socket, summary: stats.summary, source: stats.source, students: stats.students)
   end
 
   defp period_chosen?({:trimester, %{id: id}}, {:trimester, %{id: id}}), do: true

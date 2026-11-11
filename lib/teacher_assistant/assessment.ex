@@ -1329,7 +1329,13 @@ defmodule TeacherAssistant.Assessment do
   """
   def mark_sheet(%Scope{} = scope, %ClassGroup{} = cg, seqs) do
     rules = grading_rules(scope)
-    students = TeacherAssistant.Enrollment.list_students(scope, cg)
+    first_day = seqs |> Enum.map(& &1.start_date) |> Enum.min(Date, fn -> nil end)
+
+    students =
+      TeacherAssistant.Enrollment.list_students(scope, cg,
+        on: first_day || TeacherAssistant.Academics.Reference.today()
+      )
+
     by_seq = class_subjects_by_sequence(scope, cg, seqs)
 
     subjects =
@@ -1380,20 +1386,26 @@ defmodule TeacherAssistant.Assessment do
 
   # The roster as bulletin inputs. With the conduct gate on (spec I1), each student
   # carries the period's note de conduite, read once for the class.
+  # A7: the class as it stood on the period's first day — a student who left during
+  # the period keeps it; one who left before it began has no bulletin for it.
   defp bulletin_students(scope, cg, period, %GradingRules{distinctions_require_conduct?: true}) do
     conduct = TeacherAssistant.Discipline.class_discipline(scope, cg, period)
 
     scope
-    |> TeacherAssistant.Enrollment.list_roster(cg)
+    |> TeacherAssistant.Enrollment.list_roster(cg,
+      on: TeacherAssistant.Organization.period_first_day(scope, period)
+    )
     |> Enum.map(fn %{student: s, enrollment: e} ->
       note = conduct |> Map.get(e.id, %{}) |> Map.get(:note_de_conduite)
       %{id: s.id, sex: s.sex, name: s.full_name, conduct: note}
     end)
   end
 
-  defp bulletin_students(scope, cg, _period, _rules) do
+  defp bulletin_students(scope, cg, period, _rules) do
     scope
-    |> TeacherAssistant.Enrollment.list_students(cg)
+    |> TeacherAssistant.Enrollment.list_students(cg,
+      on: TeacherAssistant.Organization.period_first_day(scope, period)
+    )
     |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
   end
 

@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.BulletinLive do
 
     with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          access when access != :none <- ReportCards.access(scope, cg),
-         roster = Enrollment.list_roster(scope, cg),
+         roster = Enrollment.list_roster(scope, cg, on: :all),
          %{student: student, enrollment: enrollment} <-
            Enum.find(roster, &(&1.enrollment.id == eid)) do
       year = Organization.class_year(scope, cg)

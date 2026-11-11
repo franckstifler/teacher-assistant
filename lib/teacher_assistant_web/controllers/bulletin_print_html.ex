@@ -220,6 +220,11 @@ defmodule TeacherAssistantWeb.BulletinPrintHTML do
 
   defp repeater?(enrollment), do: Map.get(enrollment, :repeater)
 
+  # Snapshots published before A7 carry no `left_on`.
+  defp left_on(enrollment), do: Map.get(enrollment, :left_on)
+
+  defp dmy(%Date{} = d), do: Calendar.strftime(d, "%d/%m/%Y")
+
   defp grade(template, mark), do: BulletinTemplate.grade(template.grade_scale, mark)
 
   defp fmt(nil), do: "—"

@@ -47,7 +47,8 @@ defmodule TeacherAssistant.ReportCards do
     results = Assessment.class_results_for_period(scope, cg, period)
     conduct = Attendance.bulletin_conduct(scope, cg, period)
     template = scope |> template(cg) |> absences_shown(scope, cg, period, conduct)
-    roster = Enrollment.list_roster(scope, cg)
+    # The class as it stood on the period's first day (A7), as its results.
+    roster = Enrollment.list_roster(scope, cg, on: Organization.period_first_day(scope, period))
     guardians = Enrollment.guardians_for_students(scope, Enum.map(roster, & &1.student.id))
 
     %{
@@ -855,7 +856,8 @@ defmodule TeacherAssistant.ReportCards do
         birth_place: s.birth_place,
         photo_path: s.photo_path
       },
-      enrollment: %{id: e.id, repeater: e.repeater}
+      # `left_on` (A7) prints « Parti(e) le … »; older snapshots lack it (`Map.get`).
+      enrollment: %{id: e.id, repeater: e.repeater, left_on: e.left_on}
     }
   end
 

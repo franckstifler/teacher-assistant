@@ -1,6 +1,8 @@
 defmodule TeacherAssistant.Organization do
   use Ash.Domain, otp_app: :teacher_assistant
 
+  require Ash.Query
+
   alias TeacherAssistant.Academics.{
     AcademicYear,
     CalendarRules,
@@ -359,6 +361,34 @@ defmodule TeacherAssistant.Organization do
 
   def period_date_range(%Scope{} = scope, {:annual, %AcademicYear{} = year}) do
     sequence_date_range(list_sequences(scope, year))
+  end
+
+  @doc """
+  The day a period begins: its first séquence's start (A7). A student who left before
+  it is not in the period; one who left on or after it is. Without séquences, today.
+  """
+  def period_first_day(%Scope{} = _scope, {:sequence, %Sequence{start_date: start}}), do: start
+
+  def period_first_day(%Scope{} = scope, {:trimester, %Term{} = term}) do
+    sequences =
+      case term.sequences do
+        %Ash.NotLoaded{} -> scope |> list_sequences_of_term(term)
+        loaded -> loaded
+      end
+
+    first_start(sequences)
+  end
+
+  def period_first_day(%Scope{} = scope, {:annual, %AcademicYear{} = year}),
+    do: scope |> list_sequences(year) |> first_start()
+
+  defp first_start([]), do: TeacherAssistant.Academics.Reference.today()
+  defp first_start(sequences), do: sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
+
+  defp list_sequences_of_term(scope, %Term{id: term_id, academic_year_id: year_id}) do
+    Sequence
+    |> Ash.Query.filter(term_id == ^term_id and term.academic_year_id == ^year_id)
+    |> Ash.read!(scope: scope)
   end
 
   defp sequence_date_range([]), do: nil
