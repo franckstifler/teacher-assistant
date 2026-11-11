@@ -9,6 +9,7 @@ defmodule TeacherAssistantWeb.PrintComponents do
   and prints it as a computer would.
   """
   use Phoenix.Component
+  use TeacherAssistantWeb, :verified_routes
   use Gettext, backend: TeacherAssistantWeb.Gettext
 
   # Width of each sheet in CSS pixels (96 per inch), matching the page's `@page`.
@@ -31,6 +32,9 @@ defmodule TeacherAssistantWeb.PrintComponents do
 
     ~H"""
     <meta name="viewport" content={"width=#{@width}"} />
+    <%!-- « Imprimer » and the period selects, without inline handlers (CSP, A6). --%>
+    <script defer src={~p"/assets/js/print.js"}>
+    </script>
     <style>
       .print-actions { margin: 0 0 12px; }
       .print-actions button { font: 15px system-ui, sans-serif; padding: 9px 16px; cursor: pointer; }
@@ -44,7 +48,7 @@ defmodule TeacherAssistantWeb.PrintComponents do
   def print_bar(assigns) do
     ~H"""
     <div class="print-actions">
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <button type="button" data-print>{gettext("Imprimer")}</button>
     </div>
     """
   end

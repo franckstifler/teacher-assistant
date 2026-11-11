@@ -58,7 +58,7 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
     assert body =~ "size: A4 landscape"
     # a phone lays it out (and prints it) at the landscape sheet's width
     assert body =~ ~s(<meta name="viewport" content="width=1123">)
-    assert body =~ ~s(onclick="window.print\(\)")
+    assert body =~ ~s(data-print)
   end
 
   test "a holiday prints as a greyed band with its label", %{

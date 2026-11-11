@@ -39,10 +39,10 @@
   </head>
   <body>
     <form class="print-actions" method="get" action={@path}>
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <button type="button" data-print>{gettext("Imprimer")}</button>
       <label>
         {gettext("Période")}
-        <select name="period" onchange="this.form.submit()">
+        <select name="period" data-submit-on-change>
           <option
             :for={choice <- @choices}
             value={Organization.period_param(choice)}

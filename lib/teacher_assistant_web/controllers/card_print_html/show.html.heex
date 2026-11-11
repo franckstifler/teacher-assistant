@@ -82,7 +82,7 @@
   </head>
   <body class={"lang-#{@lang}"}>
     <div class="toolbar print-actions">
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <button type="button" data-print>{gettext("Imprimer")}</button>
       <span>{gettext("Imprimer en A4, échelle 100 %, sans marges.")}</span>
       <span :if={@missing > 0}>
         {ngettext("1 élève sans photo", "%{count} élèves sans photo", @missing)} —

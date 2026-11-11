@@ -43,11 +43,11 @@
   </head>
   <body>
     <form class="print-actions" method="get" action={~p"/school/statistics/me/print"}>
-      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <button type="button" data-print>{gettext("Imprimer")}</button>
       <input :if={@teacher_id} type="hidden" name="teacher" value={@teacher_id} />
       <label>
         {gettext("Période")}
-        <select name="period" onchange="this.form.submit()">
+        <select name="period" data-submit-on-change>
           <option
             :for={{param, label, _} <- @periods}
             value={param}

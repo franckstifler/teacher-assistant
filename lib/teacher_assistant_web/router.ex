@@ -11,7 +11,8 @@ defmodule TeacherAssistantWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {TeacherAssistantWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    # Security headers and the Content-Security-Policy, with a per-request nonce (A6).
+    plug TeacherAssistantWeb.Plug.ContentSecurityPolicy
     # « Rester connecté »: a remember-me cookie signs back in a browser that lost its session.
     plug :sign_in_with_remember_me
     plug :load_from_session
@@ -270,6 +271,7 @@ defmodule TeacherAssistantWeb.Router do
     # ErrorTracker's own screens, in their own live_session and layout; the same
     # guards as the console: signed in (from the session cookie), then operator only.
     error_tracker_dashboard("/admin/errors",
+      csp_nonce_assign_key: :csp_nonce,
       on_mount: [
         AshAuthentication.Phoenix.LiveSession,
         {TeacherAssistantWeb.LiveUserAuth, :live_user_required},
@@ -284,8 +286,12 @@ defmodule TeacherAssistantWeb.Router do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: TeacherAssistantWeb.Telemetry
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
+      live_dashboard "/dashboard",
+        metrics: TeacherAssistantWeb.Telemetry,
+        csp_nonce_assign_key: :csp_nonce
+
+      forward "/mailbox", Plug.Swoosh.MailboxPreview,
+        csp_nonce_assign_key: %{script: :csp_nonce, style: :csp_nonce}
     end
   end
 end

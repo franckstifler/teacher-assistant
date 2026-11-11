@@ -28,7 +28,7 @@ defmodule TeacherAssistantWeb.PrintComponentsTest do
     assigns = %{}
     html = rendered_to_string(~H"<PrintComponents.print_bar />")
     assert html =~ ~s(class="print-actions")
-    assert html =~ ~s(onclick="window.print\(\)")
+    assert html =~ ~s(data-print)
     assert html =~ "Imprimer"
   end
 

@@ -94,7 +94,7 @@
     </div>
 
     <div :if={p.status == :valid} class="actions print-actions">
-      <button type="button" class="primary" onclick="window.print()">
+      <button type="button" class="primary" data-print>
         {gettext("Imprimer le reçu")}
       </button>
       <a
