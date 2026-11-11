@@ -5,6 +5,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   distribution as one stacked bar, the pass rate by sex and the mentions on one
   line each, then the ranking (ordinal ranks, marks under 10 in coral, Rang / A→Z).
   A combined course gathers every member class, each row naming its class.
+
+  Trimester and year chips (spec audit follow-ups A4) show the same figures from the
+  bulletin's subject averages (`Assessment.course_statistics/3`): the published
+  snapshot when the period is published, else computed now and labelled provisional.
   """
   use TeacherAssistantWeb, :live_view
 
@@ -20,6 +24,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
       year = Organization.current_academic_year(scope)
       sequences = if year, do: Organization.list_sequences(scope, year), else: []
+      terms = if year, do: Organization.list_terms(scope, year), else: []
       {title, members} = members(scope, ctx, cg)
 
       {:ok,
@@ -30,6 +35,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
        |> assign(:members, members)
        |> assign(:combined?, length(members) > 1)
        |> assign(:sequences, sequences)
+       |> assign(:terms, terms)
+       |> assign(:year, year)
        |> assign(:students, Enum.flat_map(members, & &1.students))}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -66,51 +73,68 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   end
 
   def handle_params(params, _uri, socket) do
-    %{sequences: sequences} = socket.assigns
-    seq = pick(sequences, params["seq"]) || List.first(sequences)
     sort = if params["sort"] == "az", do: "az", else: "rank"
+    period = pick_period(socket.assigns, params)
+    seq = with {:sequence, seq} <- period, do: seq, else: (_ -> nil)
 
-    {:noreply, socket |> assign(seq: seq, sort: sort) |> assign_summary()}
+    {:noreply, socket |> assign(period: period, seq: seq, sort: sort) |> assign_summary()}
   end
+
+  # `?seq=` wins, then `?period=trim:<id>|annee`, then the first séquence (as before).
+  defp pick_period(%{sequences: sequences} = assigns, params) do
+    cond do
+      seq = pick(sequences, params["seq"]) -> {:sequence, seq}
+      period = resolve(assigns, params["period"]) -> period
+      seq = List.first(sequences) -> {:sequence, seq}
+      true -> nil
+    end
+  end
+
+  defp resolve(_assigns, nil), do: nil
+  defp resolve(%{year: nil}, _param), do: nil
+
+  defp resolve(%{year: year, current_scope: scope}, param),
+    do: Organization.resolve_period(scope, year, param)
 
   defp summary_path(assigns, overrides) do
     params =
-      [seq: assigns.seq && assigns.seq.id, sort: assigns.sort != "rank" && assigns.sort]
+      [
+        seq: assigns.seq && assigns.seq.id,
+        period:
+          is_nil(assigns.seq) && assigns.period && Organization.period_param(assigns.period),
+        sort: assigns.sort != "rank" && assigns.sort
+      ]
       |> Keyword.merge(overrides)
       |> Enum.reject(fn {_k, v} -> v in [nil, false] end)
 
     ~p"/teacher/contexts/#{assigns.ctx.id}/marks/summary?#{params}"
   end
 
-  defp assign_summary(%{assigns: %{seq: nil}} = socket), do: assign(socket, :summary, nil)
+  defp assign_summary(%{assigns: %{period: nil}} = socket),
+    do: assign(socket, summary: nil, source: :live)
 
   defp assign_summary(socket) do
-    %{members: members, seq: seq, students: students, current_scope: scope} = socket.assigns
-
-    assessments = Enum.flat_map(members, &Assessment.list_assessments(scope, &1.ctx, seq))
-
-    summary =
-      if assessments != [] do
-        marks =
-          Enum.flat_map(members, &Assessment.list_marks_for_context_sequence(scope, &1.ctx, seq))
-
-        Marks.summarize(
-          Enum.map(students, &%{id: &1.id, sex: &1.sex, name: &1.full_name}),
-          Enum.map(assessments, &%{id: &1.id, weight: &1.weight, max_score: &1.max_score}),
-          Enum.map(marks, fn m ->
-            %{
-              assessment_id: m.assessment_id,
-              student_id: m.student_id,
-              score: m.score,
-              status: m.status
-            }
-          end),
-          Assessment.grading_rules(scope)
-        )
-      end
-
-    assign(socket, :summary, summary)
+    %{ctx: ctx, period: period, current_scope: scope} = socket.assigns
+    stats = Assessment.course_statistics(scope, ctx, period)
+    assign(socket, summary: stats.summary, source: stats.source)
   end
+
+  defp period_chosen?({:trimester, %{id: id}}, {:trimester, %{id: id}}), do: true
+  defp period_chosen?({:annual, _}, {:annual, _}), do: true
+  defp period_chosen?(_period, _chip), do: false
+
+  defp eyebrow({:sequence, seq}), do: gettext("Résultats · Séquence %{n}", n: seq.number)
+  defp eyebrow({:trimester, term}), do: gettext("Résultats · Trimestre %{n}", n: term.position)
+  defp eyebrow({:annual, _}), do: gettext("Résultats · Année")
+  defp eyebrow(nil), do: gettext("Résultats")
+
+  defp source_line(:published), do: gettext("Chiffres du bulletin publié")
+
+  defp source_line(:mixed),
+    do:
+      gettext("Chiffres en partie provisoires (bulletin publié pour certaines classes seulement)")
+
+  defp source_line(_live), do: gettext("Chiffres provisoires (bulletin non publié)")
 
   defp pick(_list, nil), do: nil
   defp pick(list, id), do: Enum.find(list, &(&1.id == id))
@@ -208,11 +232,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
         <.teaching_nav context_id={@ctx.id} label={@title} current={:summary} />
 
         <header class="hidden sm:block">
-          <p class="ta-eyebrow">
-            {if @seq,
-              do: gettext("Résultats · Séquence %{n}", n: @seq.number),
-              else: gettext("Résultats")}
-          </p>
+          <p class="ta-eyebrow">{eyebrow(@period)}</p>
           <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{@title}</h1>
           <p :if={@summary} class="text-[0.95rem] text-base-content/75">
             {ngettext("%{count} élève", "%{count} élèves", length(@students))} · {ngettext(
@@ -241,7 +261,44 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
           >
             {seq_label(s)}
           </.link>
+          <.link
+            :for={t <- @terms}
+            id={"summary-period-trim-#{t.id}"}
+            role="tab"
+            patch={summary_path(assigns, seq: nil, period: "trim:#{t.id}")}
+            aria-selected={to_string(period_chosen?(@period, {:trimester, t}))}
+            aria-current={period_chosen?(@period, {:trimester, t}) && "true"}
+            class="ta-pill"
+          >
+            {gettext("Trim. %{n}", n: t.position)}
+          </.link>
+          <.link
+            :if={@terms != []}
+            id="summary-period-annee"
+            role="tab"
+            patch={summary_path(assigns, seq: nil, period: "annee")}
+            aria-selected={to_string(period_chosen?(@period, {:annual, nil}))}
+            aria-current={period_chosen?(@period, {:annual, nil}) && "true"}
+            class="ta-pill"
+          >
+            {gettext("Année")}
+          </.link>
         </nav>
+
+        <p
+          :if={is_nil(@seq) and not is_nil(@period)}
+          id="summary-provisional"
+          class={[
+            "flex items-center gap-2 text-sm",
+            if(@source == :published, do: "text-success", else: "text-warning")
+          ]}
+        >
+          <.icon
+            name={if @source == :published, do: "hero-check-badge", else: "hero-clock"}
+            class="size-4"
+          />
+          {source_line(@source)}
+        </p>
 
         <%= if @summary do %>
           <section
@@ -313,9 +370,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
             class="flex items-center gap-2 text-sm text-warning"
           >
             <.icon name="hero-exclamation-triangle" class="size-4" />
-            {gettext("%{count} élève(s) sans note dans cette séquence",
-              count: length(@students) - @summary.graded_count
-            )}
+            {if @seq,
+              do:
+                gettext("%{count} élève(s) sans note dans cette séquence",
+                  count: length(@students) - @summary.graded_count
+                ),
+              else:
+                gettext("%{count} élève(s) sans moyenne sur cette période",
+                  count: length(@students) - @summary.graded_count
+                )}
           </p>
 
           <section id="summary-table" aria-label={gettext("Classement")}>
@@ -384,7 +447,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
           <.empty_state
             :if={@sequences != []}
             icon="hero-pencil-square"
-            title={gettext("Pas encore de notes dans cette séquence")}
+            title={
+              if @seq,
+                do: gettext("Pas encore de notes dans cette séquence"),
+                else: gettext("Pas encore de moyenne sur cette période")
+            }
             message={
               gettext("Saisissez les notes d'une évaluation pour voir les résultats de la séquence.")
             }
@@ -399,6 +466,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
             </:action>
           </.empty_state>
         <% end %>
+
+        <.link
+          :if={@period}
+          id="summary-all"
+          navigate={~p"/school/statistics/me?#{[period: Organization.period_param(@period)]}"}
+          class="flex min-h-11 items-center justify-center gap-2 text-sm font-medium text-primary hover:underline"
+        >
+          <.icon name="hero-chart-bar" class="size-4" />
+          {gettext("Toutes mes statistiques")}
+        </.link>
       </section>
     </Layouts.app>
     """

@@ -192,4 +192,56 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert has_element?(view, "#summary-range", "8 → 17")
     assert has_element?(view, "#summary-table", cg.label)
   end
+
+  describe "trimester and year (A4)" do
+    test "trimester and year chips show the period's figures and their status", ctx do
+      %{conn: conn, ctx: tc, cg: cg, scope: scope} = ctx
+      [term | _] = Organization.list_terms(scope, ctx.year)
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary")
+
+      view |> element("#summary-period-trim-#{term.id}") |> render_click()
+
+      assert_patch(
+        view,
+        ~p"/teacher/contexts/#{tc.id}/marks/summary?#{[period: "trim:#{term.id}"]}"
+      )
+
+      stats = Assessment.course_statistics(scope, tc, {:trimester, term})
+
+      [whole, decimals] =
+        stats.summary.class_average
+        |> Decimal.round(2)
+        |> Decimal.to_string(:normal)
+        |> String.split(".")
+
+      assert has_element?(view, "#summary-class-average", "#{whole},#{decimals}")
+      assert has_element?(view, "#summary-provisional", "provisoires")
+      assert has_element?(view, "header", "Trimestre 1")
+
+      {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, term)
+
+      {:ok, view, _} =
+        live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary?period=trim:#{term.id}")
+
+      assert has_element?(view, "#summary-provisional", "publié")
+    end
+
+    test "the year chip computes on the started séquences only", %{conn: conn, ctx: tc} do
+      {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary?period=annee")
+      assert has_element?(view, "#summary-period-annee[aria-current='true']")
+      assert has_element?(view, "header", "Année")
+      assert has_element?(view, "#summary-stats")
+    end
+
+    test "the way to the full table carries the period", ctx do
+      %{conn: conn, ctx: tc, scope: scope} = ctx
+      [term | _] = Organization.list_terms(scope, ctx.year)
+
+      {:ok, view, _} =
+        live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary?period=trim:#{term.id}")
+
+      assert view |> element("#summary-all") |> render() =~
+               "/school/statistics/me?period=trim%3A#{term.id}"
+    end
+  end
 end
