@@ -15849,7 +15849,7 @@ msgstr "Choose a reason"
 #: lib/teacher_assistant_web/live/school/student_live.ex:937
 #, elixir-autogen, elixir-format
 msgid "De retour"
-msgstr "Back"
+msgstr "Mark as returned"
 
 #: lib/teacher_assistant_web/live/school/student_live.ex:363
 #, elixir-autogen, elixir-format
@@ -15887,7 +15887,7 @@ msgstr "Mark as left"
 #: lib/teacher_assistant_web/live/school/class_live.ex:313
 #, elixir-autogen, elixir-format
 msgid "Marquer parti…"
-msgstr "Mark as left…"
+msgstr "Mark as departed…"
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:412
 #: lib/teacher_assistant_web/live/school/student_live.ex:964
@@ -15904,7 +15904,7 @@ msgstr "Left on %{date}"
 #: lib/teacher_assistant_web/live/school/students_live.ex:322
 #, elixir-autogen, elixir-format
 msgid "Partis"
-msgstr "Left"
+msgstr "Departed"
 
 #: lib/teacher_assistant_web/live/school/student_live.ex:934
 #, elixir-autogen, elixir-format
@@ -15941,13 +15941,13 @@ msgstr "left on %{date}"
 #: lib/teacher_assistant_web/live/school/student_live.ex:350
 #, elixir-autogen, elixir-format
 msgid "Élève de retour."
-msgstr "Student back."
+msgstr "Student marked as returned."
 
 #: lib/teacher_assistant_web/live/school/class_live.ex:626
 #: lib/teacher_assistant_web/live/school/student_live.ex:342
 #, elixir-autogen, elixir-format
 msgid "Élève marqué parti."
-msgstr "Student marked as left."
+msgstr "Student marked as departed."
 
 #: lib/teacher_assistant_web/components/core_components.ex:561
 #, elixir-autogen, elixir-format

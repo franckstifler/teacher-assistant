@@ -149,6 +149,16 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     assert rows =~ "parti(e) le"
   end
 
+  test "in English the pill reads « Departed » (minors)", ctx do
+    %{conn: conn, scope: scope, zoe: zoe} = ctx
+    [e] = Enrollment.student_history(scope, zoe)
+    {:ok, _} = Enrollment.leave(scope, e, %{departure_reason: :transfer})
+    conn = get(conn, ~p"/locale/en")
+
+    {:ok, view, _html} = live(recycle(conn), ~p"/school/students")
+    assert has_element?(view, "#departed-pill", "Departed")
+  end
+
   test "the class select groups classes by level", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/school/students")
     assert has_element?(view, "#students-class-select optgroup[label='6ème'] option", "6e A")

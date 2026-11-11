@@ -51,6 +51,12 @@ checks) at `https://<PHX_HOST>/health`, and the container's own check at
 - **Content-Security-Policy (same release).** Scripts run only from the app itself.
   A page that suddenly does nothing on a click is the first thing to check against
   the browser console's CSP messages.
+  **Before that deploy, in Cloudflare (scolaka.com):** turn off every feature that
+  injects its own inline script into pages, or the policy blocks it and the console
+  fills with CSP errors — Speed → Optimization → **Rocket Loader**, Security → Bots →
+  **Bot Fight Mode** / **JavaScript Detections**, Analytics → **Web Analytics**
+  (automatic setup), Scrape Shield → **Email Address Obfuscation**. Then open the
+  landing, sign in and print one bulletin with the console open: no CSP message.
 
 ## Email with Brevo
 
