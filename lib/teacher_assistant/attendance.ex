@@ -671,7 +671,7 @@ defmodule TeacherAssistant.Attendance do
   roster enrollment of `class_group` within `period_tuple`'s date range, in
   one scoped read. Enrollments with no entries in range get zero totals.
   """
-  def class_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple) do
+  def class_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple, opts \\ []) do
     roster_enrollment_ids =
       scope
       |> TeacherAssistant.Enrollment.list_roster(class_group,
@@ -686,7 +686,7 @@ defmodule TeacherAssistant.Attendance do
         zero_map
 
       {first, last} ->
-        threshold = school_life_rules(scope).late_as_absence_minutes
+        threshold = late_threshold(scope, opts[:profile])
 
         totals_by_enrollment =
           class_group.id
@@ -708,11 +708,11 @@ defmodule TeacherAssistant.Attendance do
   `:recorded?`. A typed class reads only its typed figures (no justified hours, no
   lates), so roll-call hours are never added to them.
   """
-  def bulletin_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period) do
+  def bulletin_conduct(%Scope{} = scope, %ClassGroup{} = class_group, period, opts \\ []) do
     case effective_absence_source(scope, class_group) do
       :roll_call ->
         scope
-        |> class_conduct(class_group, period)
+        |> class_conduct(class_group, period, opts)
         |> Map.new(fn {id, totals} ->
           {id, Map.merge(totals, %{source: :roll_call, recorded?: true})}
         end)
@@ -1201,6 +1201,13 @@ defmodule TeacherAssistant.Attendance do
   end
 
   # --- School-life settings (spec KLM2) ------------------------------------------
+
+  # The late-as-absence threshold, from `profile` when the caller already holds it
+  # (the bulletin view reads the profile once) or from a read of its own.
+  defp late_threshold(scope, nil), do: school_life_rules(scope).late_as_absence_minutes
+
+  defp late_threshold(_scope, profile),
+    do: SchoolLifeRules.from_profile(profile).late_as_absence_minutes
 
   @doc "The school's attendance and discipline settings."
   def school_life_rules(%Scope{} = scope) do

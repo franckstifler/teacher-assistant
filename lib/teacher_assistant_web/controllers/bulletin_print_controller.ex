@@ -128,7 +128,8 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
       teachers: Map.get(view, :teachers) || %{},
       highest: results && Map.get(results, :highest),
       lowest: results && Map.get(results, :lowest),
-      head_name: ReportCards.head_name(scope)
+      # The resolved template names the head; only a snapshot from before that key reads it.
+      head_name: Map.get(view.template.header, :head_name) || ReportCards.head_name(scope)
     )
   end
 

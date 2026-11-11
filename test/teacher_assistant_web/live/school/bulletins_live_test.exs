@@ -169,6 +169,34 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
   end
 
   describe "pilotage redesign (spec §2.3)" do
+    # A8 follow-up: the profile is read once per scope build (dead and connected
+    # passes) and once for the view; the checklist and the conduct figures reuse it.
+    test "the class page and its print read the school profile a bounded number of times", ctx do
+      needle = ~s(FROM "school_profiles")
+      # The access cache reads the profile once per school on a cold miss: warm it first.
+      {:ok, _, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+
+      {_, _, page} =
+        TeacherAssistant.QueryCount.count(
+          fn -> live(ctx.conn, bulletins_path(ctx.cg, ctx.term)) end,
+          [needle]
+        )
+
+      {_, _, print} =
+        TeacherAssistant.QueryCount.count(
+          fn ->
+            get(
+              ctx.conn,
+              ~p"/school/classes/#{ctx.cg.id}/bulletin/print?period=trim:#{ctx.term.id}"
+            )
+          end,
+          [needle]
+        )
+
+      assert page[needle] <= 4
+      assert print[needle] <= 2
+    end
+
     test "a draft trimester shows its banner and checklist", ctx do
       {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
       assert has_element?(view, "#draft-banner", "pas encore publiés")

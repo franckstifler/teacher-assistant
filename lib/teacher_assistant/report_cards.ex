@@ -50,7 +50,7 @@ defmodule TeacherAssistant.ReportCards do
     inputs = shared_inputs(scope, cg, period, profile)
     fm = Enrollment.form_master(scope, cg)
     results = Assessment.class_results_for_period(scope, cg, period, inputs: inputs)
-    conduct = Attendance.bulletin_conduct(scope, cg, period)
+    conduct = Attendance.bulletin_conduct(scope, cg, period, profile: profile)
 
     template =
       scope
@@ -670,7 +670,7 @@ defmodule TeacherAssistant.ReportCards do
       [
         annual_council_check(scope, cg, period, template),
         competences_check(scope, cg, period, template),
-        page_fit_check(scope, period, template, results)
+        page_fit_check(period, template, results, subtotals?(scope, view))
       ],
       &is_nil/1
     )
@@ -706,7 +706,11 @@ defmodule TeacherAssistant.ReportCards do
 
   defp competences_check(_scope, _cg, _period, _template), do: nil
 
-  defp page_fit_check(scope, period, template, results) do
+  # The live view already carries the flag; a checklist without a view reads it.
+  defp subtotals?(_scope, %{group_subtotals?: flag}), do: flag == true
+  defp subtotals?(scope, _view), do: group_subtotals?(scope)
+
+  defp page_fit_check(period, template, results, subtotals?) do
     groups =
       (results && results.per_student |> Map.values() |> List.first() |> then(&(&1 && &1.groups))) ||
         []
@@ -717,7 +721,7 @@ defmodule TeacherAssistant.ReportCards do
         Organization.period_kind(period),
         groups,
         sequences_per_term(period),
-        group_subtotals?(scope)
+        subtotals?
       )
 
     density = BulletinLayout.density(lines, BulletinLayout.identity_rows(template))

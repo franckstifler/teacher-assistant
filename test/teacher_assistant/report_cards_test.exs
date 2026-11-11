@@ -32,6 +32,20 @@ defmodule TeacherAssistant.ReportCardsTest do
   defp moyenne(%{results: r, roster: [%{student: %{id: id}} | _]}),
     do: r.per_student[id].moyenne_generale
 
+  test "live_view reads the school profile once (A8)", %{scope: scope, cg: cg} = ctx do
+    [term | _] = Organization.list_terms(scope, ctx.year)
+    # The access cache reads the profile once per school on a cold miss: warm it first.
+    ReportCards.live_view(scope, cg, {:trimester, term})
+
+    {_view, _total, counts} =
+      TeacherAssistant.QueryCount.count(
+        fn -> ReportCards.live_view(scope, cg, {:trimester, term}) end,
+        [~s(FROM "school_profiles")]
+      )
+
+    assert counts[~s(FROM "school_profiles")] == 1
+  end
+
   test "a draft is live; a séquence is always a draft", %{
     scope: scope,
     cg: cg,

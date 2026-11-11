@@ -5,6 +5,8 @@ defmodule TeacherAssistant.Academics.Sequence do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  @default_grace_days TeacherAssistant.Academics.Reference.entry_grace_days()
+
   alias TeacherAssistant.Accounts.Checks
 
   postgres do
@@ -108,9 +110,22 @@ defmodule TeacherAssistant.Academics.Sequence do
   end
 
   calculations do
+    # The effective grade-entry deadline (spec D3b): the explicit `entry_deadline`, or
+    # `end_date` + the school's `entry_grace_days`. A SQL subselect rather than a
+    # module calculation, so listing séquences costs no second query for the profile;
+    # a school setting, read without policies, as every caller (screens, the marks
+    # lock) must compute the same date.
     calculate :grade_entry_deadline,
               :date,
-              TeacherAssistant.Academics.Sequence.GradeEntryDeadline do
+              expr(
+                fragment(
+                  "coalesce(?, ? + coalesce((select p.entry_grace_days from school_profiles p where p.workspace_id = ?), ?)::integer)",
+                  entry_deadline,
+                  end_date,
+                  workspace_id,
+                  ^@default_grace_days
+                )
+              ) do
       public? true
     end
   end
