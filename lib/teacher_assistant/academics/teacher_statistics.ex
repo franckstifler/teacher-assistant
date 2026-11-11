@@ -51,7 +51,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
             head
             | Enum.map(
                 many,
-                &row(course, &1.class_group.label, &1.students, &1.summary, &1.source)
+                &row(course, &1.class_group, &1.students, &1.summary, &1.source)
               )
           ]
       end
@@ -225,12 +225,13 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
 
   # --- table rows ---------------------------------------------------------------
 
-  defp row(course, class_label, students, summary, source) do
+  defp row(course, class_group, students, summary, source) do
     graded = (summary && summary.graded_count) || 0
 
     %{
       course: course,
-      class_label: class_label,
+      class_id: class_group && class_group.id,
+      class_label: class_group && class_group.label,
       headcount: length(students),
       boys: Enum.count(students, &(&1.sex == :m)),
       girls: Enum.count(students, &(&1.sex == :f)),

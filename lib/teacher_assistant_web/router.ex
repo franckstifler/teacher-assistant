@@ -169,6 +169,7 @@ defmodule TeacherAssistantWeb.Router do
       ] do
       live "/school", School.DashboardLive, :index
       live "/school/courses", School.CoursesLive, :index
+      live "/school/statistics/me", Teacher.StatisticsLive, :index
       live "/school/classes", School.ClassesLive, :index
       live "/school/classes/:id", School.ClassOverviewLive, :show
       live "/school/classes/:id/students", School.ClassLive, :show

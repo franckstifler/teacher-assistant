@@ -111,7 +111,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
       }
 
       assert for(tab <- Spaces.tab_bar(no_timetable).primary, do: tab.label) ==
-               ["Ma journée", "Mes cours", "Bulletins", "Corrections"]
+               ["Ma journée", "Mes cours", "Bulletins", "Stats"]
     end
   end
 
@@ -192,6 +192,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
     assert item_ids(:enseignant, facts([:teacher], teaches?: true)) == [
              "nav-school-today",
              "nav-school-courses",
+             "nav-school-statistics",
              "nav-school-bulletins",
              "nav-school-timetable-me",
              "nav-school-corrections"
@@ -201,6 +202,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
              [
                "nav-school-today",
                "nav-school-courses",
+               "nav-school-statistics",
                "nav-school-classes",
                "nav-school-bulletins",
                "nav-school-timetable-me",
@@ -209,6 +211,8 @@ defmodule TeacherAssistantWeb.SpacesTest do
 
     assert item_ids(:enseignant, facts([:teacher], form_master?: true)) ==
              ["nav-school-classes", "nav-school-bulletins", "nav-school-timetable-me"]
+
+    refute "nav-school-statistics" in item_ids(:intendant, facts([:bursar]))
   end
 
   defp item(key, facts, id),

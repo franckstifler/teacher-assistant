@@ -16,6 +16,7 @@ defmodule TeacherAssistant.Modules do
       W.Teacher.RosterLive,
       W.Teacher.MarksLive,
       W.Teacher.MarksSummaryLive,
+      W.Teacher.StatisticsLive,
       W.School.ResultsLive,
       W.School.BulletinLive,
       W.School.BulletinsLive,

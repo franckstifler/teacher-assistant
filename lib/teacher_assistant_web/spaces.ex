@@ -257,6 +257,7 @@ defmodule TeacherAssistantWeb.Spaces do
       [
         facts.teaches? && my_day(facts[:calls_to_do]),
         facts.teaches? && courses(),
+        facts.teaches? && statistics(),
         facts.form_master? && classes(),
         (facts.teaches? or facts.form_master?) && bulletins(),
         timetable()
@@ -374,6 +375,7 @@ defmodule TeacherAssistantWeb.Spaces do
       "timetable-me" -> gettext("EDT")
       "day" -> gettext("Journée")
       "corrections" -> gettext("Corrections")
+      "statistics" -> gettext("Stats")
       "correction-review" -> gettext("Validations")
       "councils" -> gettext("Conseils")
       "settings" -> gettext("Paramètres")
@@ -460,6 +462,15 @@ defmodule TeacherAssistantWeb.Spaces do
 
   defp courses,
     do: item("courses", gettext("Mes cours"), "hero-academic-cap", ~p"/school/courses")
+
+  defp statistics,
+    do:
+      item(
+        "statistics",
+        gettext("Mes statistiques"),
+        "hero-chart-bar",
+        ~p"/school/statistics/me"
+      )
 
   defp classes,
     do: item("classes", gettext("Classes"), "hero-rectangle-group", ~p"/school/classes")
