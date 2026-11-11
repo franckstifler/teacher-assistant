@@ -27,6 +27,29 @@ defmodule TeacherAssistant.Uploads do
   def resolve(_relative, _workspace_id), do: :error
 
   @doc """
+  Deletes a stored file (A9: anonymisation, the orphan sweep). Same path rules as
+  `resolve/2`; `:ok` when the file is already gone, `:error` for a path outside the
+  school's folder.
+  """
+  def delete(relative, workspace_id) when is_binary(relative) and is_binary(workspace_id) do
+    root = dir()
+    path = Path.expand(Path.join(root, relative))
+
+    with true <- String.starts_with?(path, root <> "/"),
+         [_folder, ^workspace_id, _file] <- path |> Path.relative_to(root) |> Path.split() do
+      case File.rm(path) do
+        :ok -> :ok
+        {:error, :enoent} -> :ok
+        {:error, _} = error -> error
+      end
+    else
+      _ -> :error
+    end
+  end
+
+  def delete(_relative, _workspace_id), do: :error
+
+  @doc """
   Copies an uploaded PNG or JPEG to `folder/workspace_id/` under a name and
   extension chosen here from the file's own bytes — never from the client's
   file name or type, which an uploader controls. Returns `{:ok, relative_path}`

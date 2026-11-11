@@ -26,7 +26,10 @@ config :teacher_assistant, Oban,
        {"30 5 * * 1", TeacherAssistant.Workers.PaperSheetsOverdue},
        {"10 6 * * *", TeacherAssistant.Workers.ExpiredTemporaryPasswords},
        # 07:00 school time: the operators' morning message on Telegram, when set up.
-       {"0 6 * * *", TeacherAssistant.Workers.TelegramDigest}
+       {"0 6 * * *", TeacherAssistant.Workers.TelegramDigest},
+       # Sunday 04:00 school time (A9): students who left three years ago lose what
+       # identifies them.
+       {"0 3 * * 0", TeacherAssistant.Workers.AnonymiseDepartedStudents}
      ]}
   ]
 

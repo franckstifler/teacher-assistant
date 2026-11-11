@@ -1,7 +1,9 @@
 defmodule TeacherAssistant.StudentPhotos do
   @moduledoc """
-  Spec 2026-10-12 §3: student photo files. A file is never overwritten or
-  deleted — published bulletins may still point at it.
+  Spec 2026-10-12 §3: student photo files. A file is never overwritten, and is
+  deleted in two cases only (A9): the student's anonymisation three years after they
+  left, and the weekly sweep of files nothing points at (a published bulletin's
+  snapshot counts as pointing at its photo).
   """
   alias TeacherAssistant.{Enrollment, Scope, Uploads}
   alias TeacherAssistant.Academics.Student

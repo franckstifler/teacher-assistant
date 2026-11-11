@@ -248,7 +248,7 @@ defmodule TeacherAssistant.Enrollment do
   `{:error, :marks}`, `:attendance`, `:sanctions` or `:fee_documents`
   (`student_deletion_blocker/2`);
   the database refuses it too. Admins only (the student's destroy policy). The photo
-  file stays on disk, like every photo (`TeacherAssistant.StudentPhotos`).
+  file stays on disk until the weekly orphan sweep (`TeacherAssistant.StudentPhotos`).
   """
   def delete_student(%Scope{} = scope, %Student{} = s) do
     case student_deletion_blocker(scope, s) do
@@ -287,6 +287,66 @@ defmodule TeacherAssistant.Enrollment do
       true ->
         nil
     end
+  end
+
+  # --- Retention (spec audit follow-ups A9) ------------------------------------
+
+  @anonymised_name "Élève parti"
+  @retention_years 3
+
+  @doc """
+  The school's students whose last enrollment ended — the day they left, else the end
+  of its year — at least #{@retention_years} years before `today`, and not anonymised
+  yet. A student with any enrollment still running is never due. Internal read
+  (the weekly job runs for every school).
+  """
+  def due_for_anonymisation(workspace_id, %Date{} = today) do
+    cutoff = Date.shift(today, year: -@retention_years)
+
+    Enrollment
+    |> Ash.Query.load([:academic_year, :student])
+    |> Ash.read!(tenant: workspace_id, authorize?: false)
+    |> Enum.group_by(& &1.student_id)
+    |> Enum.flat_map(fn {_id, [%{student: student} | _] = enrollments} ->
+      last_day =
+        enrollments
+        |> Enum.map(&(&1.left_on || &1.academic_year.end_date))
+        |> Enum.max(Date)
+
+      if Date.compare(last_day, cutoff) != :gt and student.full_name != @anonymised_name,
+        do: [student],
+        else: []
+    end)
+  end
+
+  @doc """
+  Anonymises every due student of a school (A9): « #{@anonymised_name} », no national
+  id or birth place, parents unlinked (a parent left without a child is deleted; a
+  sibling's stays), photo file deleted. Marks, roll calls, payments and published
+  bulletins stay. Returns `%{anonymised: count}`.
+  """
+  def anonymise_due_students(workspace_id, %Date{} = today \\ Reference.today()) do
+    students = due_for_anonymisation(workspace_id, today)
+    Enum.each(students, &anonymise_student!(&1, workspace_id))
+    %{anonymised: length(students)}
+  end
+
+  defp anonymise_student!(%Student{} = student, workspace_id) do
+    opts = [tenant: workspace_id, authorize?: false]
+
+    {:ok, _} =
+      Ash.transact([Student, StudentGuardian], fn ->
+        StudentGuardian
+        |> Ash.Query.filter(student_id == ^student.id)
+        |> Ash.read!(opts)
+        |> Enum.each(&(&1 |> Ash.Changeset.for_destroy(:unlink, %{}, opts) |> Ash.destroy!()))
+
+        student |> Ash.Changeset.for_update(:anonymise, %{}, opts) |> Ash.update!()
+      end)
+
+    # The file goes once the row no longer names it.
+    if student.photo_path, do: TeacherAssistant.Uploads.delete(student.photo_path, workspace_id)
+    :ok
   end
 
   def fetch_owned_student(%Scope{} = scope, id) do

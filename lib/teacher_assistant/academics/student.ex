@@ -49,6 +49,18 @@ defmodule TeacherAssistant.Academics.Student do
       change set_attribute(:photo_taken_at, nil)
     end
 
+    # A9: three years after a student left, what identifies them goes; the matricule,
+    # sex, birth date, marks and published bulletins stay (statistics, the school's
+    # record). Run by the weekly job only (`authorize?: false`).
+    update :anonymise do
+      accept []
+      change set_attribute(:full_name, "Élève parti")
+      change set_attribute(:national_id, nil)
+      change set_attribute(:birth_place, nil)
+      change set_attribute(:photo_path, nil)
+      change set_attribute(:photo_taken_at, nil)
+    end
+
     read :owned do
       argument :id, :uuid, allow_nil?: false
       filter expr(id == ^arg(:id))
@@ -87,6 +99,10 @@ defmodule TeacherAssistant.Academics.Student do
 
     policy action([:set_photo, :remove_photo]) do
       authorize_if {Checks.SchoolRole, any_of: :conduct}
+    end
+
+    policy action(:anonymise) do
+      forbid_if always()
     end
   end
 
