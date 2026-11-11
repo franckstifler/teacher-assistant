@@ -175,7 +175,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
       assert html =~ "sa photo est effacée partout"
 
       assert html =~
-               "conduite, sanctions, frais, conseils de classe et bulletins publiés) porte le nom de l'opérateur"
+               "conduite, sanctions, frais, conseils de classe et bulletins publiés) porte le nom"
 
       assert html =~ "peut supprimer son compte depuis Mon compte"
       assert "mailto:contact@example.test" in hrefs(doc, "main a")

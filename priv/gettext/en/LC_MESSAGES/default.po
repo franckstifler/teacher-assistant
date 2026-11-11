@@ -16058,21 +16058,21 @@ msgid "Un élève est rendu anonyme trois ans après son départ de l'établisse
 msgstr "A student is made anonymous three years after leaving the school, or after the end of their last year: their name becomes « Élève parti », their birth place and national identification number are erased, their photo is erased everywhere, and a parent with no child left in the school is deleted. Their marks, absences and payments stay for the school's figures. Bulletins already published, receipts and fee papers keep the name they were issued with."
 
 #: lib/teacher_assistant_web/live/school/student_live.ex:387
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Cet élève a déjà un reçu, un papier de frais, une remise ou un arriéré : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
-msgstr "This student already has a receipt, a warning or a return note: they can no longer be deleted. If they left the school, mark them as left."
+msgstr "This student already has a receipt, a fee paper, a reduction or arrears: they can no longer be deleted. If they left the school, mark them as departed."
 
 #: lib/teacher_assistant_web/live/school/student_live.ex:375
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Cet élève a déjà une note de conduite : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
-msgstr "This student is already in a roll call: they can no longer be deleted. If they left the school, mark them as left."
+msgstr "This student already has a conduct mark: they can no longer be deleted. If they left the school, mark them as departed."
 
 #: lib/teacher_assistant_web/live/school/student_live.ex:369
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Cet élève figure déjà dans un appel ou un relevé d'absences : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
-msgstr "This student is already in a roll call: they can no longer be deleted. If they left the school, mark them as left."
+msgstr "This student is already in a roll call or an absence record: they can no longer be deleted. If they left the school, mark them as departed."
 
 #: lib/teacher_assistant_web/controllers/page_html.ex:379
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et ce qui est saisi pendant cet accès (notes, appels, conduite, sanctions, frais, conseils de classe et bulletins publiés) porte le nom de l'opérateur."
-msgstr "For support, the Scolaka team can open a member's space; each access is limited to one hour and recorded in a log, and the marks, roll calls, sanctions and payments entered during that access carry the operator's name."
+msgstr "For support, the Scolaka team can open a member's space; each access is limited to one hour and recorded in a log, and what is entered during that access (marks, roll calls, conduct, sanctions, fees, class councils and published bulletins) carries the operator's name."
