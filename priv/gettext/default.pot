@@ -9473,7 +9473,7 @@ msgstr ""
 msgid "Comptes par téléphone"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:416
+#: lib/teacher_assistant_web/controllers/page_html.ex:414
 #, elixir-autogen, elixir-format
 msgid "Faut-il un ordinateur ?"
 msgstr ""
@@ -9510,7 +9510,7 @@ msgstr ""
 msgid "Invitez l'équipe"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:432
+#: lib/teacher_assistant_web/controllers/page_html.ex:430
 #, elixir-autogen, elixir-format
 msgid "Les établissements anglophones sont-ils pris en charge ?"
 msgstr ""
@@ -9525,7 +9525,7 @@ msgstr ""
 msgid "Questions fréquentes"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:424
+#: lib/teacher_assistant_web/controllers/page_html.ex:422
 #, elixir-autogen, elixir-format
 msgid "Qui voit quoi ?"
 msgstr ""
@@ -9578,7 +9578,7 @@ msgstr ""
 msgid "Aucun établissement"
 msgstr ""
 
-#: lib/teacher_assistant_web/live_user_auth.ex:160
+#: lib/teacher_assistant_web/live_user_auth.ex:163
 #: lib/teacher_assistant_web/plug/school_access.ex:35
 #, elixir-autogen, elixir-format
 msgid "Ce module n'est pas activé pour votre établissement."
@@ -12289,7 +12289,7 @@ msgstr ""
 msgid "Ouvrir en tant que · %{school}"
 msgstr ""
 
-#: lib/teacher_assistant_web/live_user_auth.ex:44
+#: lib/teacher_assistant_web/live_user_auth.ex:47
 #, elixir-autogen, elixir-format
 msgid "Pas pendant que vous agissez en tant que ce membre."
 msgstr ""
@@ -14756,7 +14756,7 @@ msgstr ""
 msgid "Chaque membre se connecte avec son numéro de téléphone et un mot de passe provisoire remis par l'établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:425
+#: lib/teacher_assistant_web/controllers/page_html.ex:423
 #, elixir-autogen, elixir-format
 msgid "Chaque rôle voit ce qui le concerne : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais. Le proviseur voit tout. Les données d'un établissement ne sont visibles que par ses membres."
 msgstr ""
@@ -14856,7 +14856,7 @@ msgstr ""
 msgid "Les appels du jour, les absences à justifier, la conduite et les familles à prévenir."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:420
+#: lib/teacher_assistant_web/controllers/page_html.ex:418
 #, elixir-autogen, elixir-format
 msgid "Les enseignants ont-ils besoin d'une adresse e-mail ?"
 msgstr ""
@@ -14981,7 +14981,7 @@ msgstr ""
 msgid "Un espace par rôle"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:421
+#: lib/teacher_assistant_web/controllers/page_html.ex:419
 #, elixir-autogen, elixir-format
 msgid "Un numéro de téléphone suffit. L'établissement leur remet un mot de passe provisoire ; ils peuvent ensuite choisir le leur."
 msgstr ""
@@ -14996,7 +14996,7 @@ msgstr ""
 msgid "Un seul appel par cours groupé"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:417
+#: lib/teacher_assistant_web/controllers/page_html.ex:415
 #, elixir-autogen, elixir-format
 msgid "Un smartphone suffit pour les enseignants et le surveillant général. Le proviseur et le censeur profitent d'un écran plus large pour l'emploi du temps et les bulletins."
 msgstr ""
@@ -15006,7 +15006,7 @@ msgstr ""
 msgid "Une séquence, de l'appel au bulletin"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:433
+#: lib/teacher_assistant_web/controllers/page_html.ex:431
 #, elixir-autogen, elixir-format
 msgid "Oui : le sous-système anglophone a ses propres niveaux, ses bulletins s'impriment en anglais, et l'application se lit en français ou en anglais, au choix de chacun."
 msgstr ""
@@ -15418,7 +15418,7 @@ msgstr ""
 msgid "Consulter, corriger ou supprimer"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:403
+#: lib/teacher_assistant_web/controllers/page_html.ex:401
 #, elixir-autogen, elixir-format
 msgid "Cookies"
 msgstr ""
@@ -15428,17 +15428,17 @@ msgstr ""
 msgid "En collant vos listes depuis Excel : classes et élèves, puis matières et coefficients. Pendant la phase pilote, nous le faisons avec vous."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:428
+#: lib/teacher_assistant_web/controllers/page_html.ex:426
 #, elixir-autogen, elixir-format
 msgid "Et si le réseau est faible ?"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:429
+#: lib/teacher_assistant_web/controllers/page_html.ex:427
 #, elixir-autogen, elixir-format
 msgid "L'application est légère : moins de 300 Ko au premier chargement, gardés ensuite par le téléphone, puis peu de données à chaque action. Elle a besoin du réseau pour enregistrer et ne fonctionne pas hors ligne. Pour une classe sans réseau, une feuille d'appel imprimée se remplit à la main et se saisit plus tard."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:384
+#: lib/teacher_assistant_web/controllers/page_html.ex:382
 #, elixir-autogen, elixir-format
 msgid "Les bulletins, reçus et cartes scolaires portent un code QR. Celui qui le scanne voit seulement de quoi vérifier que le document est authentique : l'établissement, l'élève, sa classe et ce que dit le document."
 msgstr ""
@@ -15453,12 +15453,12 @@ msgstr ""
 msgid "Les données de votre établissement, et ce que nous en faisons."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:393
+#: lib/teacher_assistant_web/controllers/page_html.ex:391
 #, elixir-autogen, elixir-format
 msgid "Les données sont gardées sur un serveur loué à la société allemande Hetzner. Les pages passent par Cloudflare entre ce serveur et votre téléphone, et les e-mails de Scolaka (invitations, mot de passe oublié) sont envoyés par Brevo, qui reçoit pour cela l'adresse et le message."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:391
+#: lib/teacher_assistant_web/controllers/page_html.ex:389
 #, elixir-autogen, elixir-format
 msgid "Où elles se trouvent"
 msgstr ""
@@ -15478,12 +15478,12 @@ msgstr ""
 msgid "Pour les parents et tuteurs : leur nom, leur lien avec l'élève, leurs numéros de téléphone, leur adresse e-mail et la langue dans laquelle les contacter."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:396
+#: lib/teacher_assistant_web/controllers/page_html.ex:394
 #, elixir-autogen, elixir-format
 msgid "Quand vous envoyez un reçu par WhatsApp, c'est votre téléphone qui l'envoie : Scolaka n'a pas accès à vos conversations."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:376
+#: lib/teacher_assistant_web/controllers/page_html.ex:374
 #, elixir-autogen, elixir-format
 msgid "Qui peut les voir"
 msgstr ""
@@ -15498,12 +15498,12 @@ msgstr ""
 msgid "Scolaka aide les établissements scolaires à tenir l'appel, les notes, les bulletins et les frais. Cette page dit quelles données nous gardons, qui peut les voir et où elles se trouvent."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:405
+#: lib/teacher_assistant_web/controllers/page_html.ex:403
 #, elixir-autogen, elixir-format
 msgid "Scolaka utilise un seul cookie, celui qui garde votre session ouverte et retient votre langue ; Cloudflare peut y ajouter un cookie technique de sécurité. Votre téléphone garde aussi le thème choisi, clair ou sombre. Il n'y a ni publicité ni outil de suivi."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:378
+#: lib/teacher_assistant_web/controllers/page_html.ex:376
 #, elixir-autogen, elixir-format
 msgid "Seuls les membres d'un établissement voient ses données, et chacun selon son rôle : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais, le proviseur tout l'établissement."
 msgstr ""
@@ -15825,7 +15825,7 @@ msgstr ""
 msgid "<p><strong>%{kind}</strong></p><p>À <code>%{source}</code><br />Le %{at}</p><p><a href=\"%{url}\">Voir l'erreur</a></p>"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:381
+#: lib/teacher_assistant_web/controllers/page_html.ex:379
 #, elixir-autogen, elixir-format
 msgid "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et ce qui est saisi pendant cet accès porte le nom de l'opérateur."
 msgstr ""
@@ -16028,7 +16028,7 @@ msgstr ""
 msgid "Vous n'êtes membre d'aucune école."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:369
+#: lib/teacher_assistant_web/controllers/page_html.ex:367
 #, elixir-autogen, elixir-format
 msgid "Chaque semaine, les photos et les fichiers que plus rien n'utilise sont effacés."
 msgstr ""
@@ -16053,7 +16053,7 @@ msgstr ""
 msgid "Mise à jour le 11 novembre 2026"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:366
+#: lib/teacher_assistant_web/controllers/page_html.ex:364
 #, elixir-autogen, elixir-format
 msgid "Un élève est rendu anonyme trois ans après son départ de l'établissement, ou après la fin de sa dernière année : son nom devient « Élève parti », sa photo, son lieu de naissance et son numéro d'identification national sont effacés, et un parent qui n'a plus d'enfant dans l'établissement est supprimé. Ses notes, absences et paiements restent, sans son nom, pour les comptes de l'établissement ; les bulletins déjà publiés restent tels qu'ils ont été remis."
 msgstr ""

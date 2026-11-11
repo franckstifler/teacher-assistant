@@ -360,9 +360,7 @@ defmodule TeacherAssistantWeb.PageHTML do
         id: "retention",
         title: gettext("Combien de temps"),
         paragraphs: [
-          gettext(
-            "Les données d'un établissement restent tant qu'il utilise Scolaka."
-          ),
+          gettext("Les données d'un établissement restent tant qu'il utilise Scolaka."),
           gettext(
             "Un élève est rendu anonyme trois ans après son départ de l'établissement, ou après la fin de sa dernière année : son nom devient « Élève parti », sa photo, son lieu de naissance et son numéro d'identification national sont effacés, et un parent qui n'a plus d'enfant dans l'établissement est supprimé. Ses notes, absences et paiements restent, sans son nom, pour les comptes de l'établissement ; les bulletins déjà publiés restent tels qu'ils ont été remis."
           ),

@@ -36,7 +36,10 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
       # The operator acting as a member never changes that member's password nor
       # deletes their account.
       impersonation &&
-          socket.view in [TeacherAssistantWeb.Account.PasswordLive, TeacherAssistantWeb.Account.AccountLive] ->
+          socket.view in [
+            TeacherAssistantWeb.Account.PasswordLive,
+            TeacherAssistantWeb.Account.AccountLive
+          ] ->
         {:halt,
          socket
          |> Phoenix.LiveView.put_flash(
