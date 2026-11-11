@@ -36,11 +36,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
     today = Reference.today()
     now = Reference.now()
 
-    sequence_rows =
-      case Attendance.current_sequence_range(scope, today) do
-        nil -> []
-        {first, last} -> Attendance.absence_days(scope, first, last, today)
-      end
+    counts = Attendance.absence_counts(scope, today)
 
     assign(socket,
       today: today,
@@ -48,8 +44,8 @@ defmodule TeacherAssistantWeb.School.DayLive do
       day: Attendance.school_day(scope, today, now),
       reminded: Attendance.reminded_slot_ids(scope, today),
       day_off: Attendance.day_off(scope, today),
-      absent_students: sequence_rows |> Enum.filter(&(&1.date == today)) |> length(),
-      to_justify: Enum.count(sequence_rows, &(not &1.justified?)),
+      absent_students: counts.today_absent_students,
+      to_justify: counts.to_justify,
       lates: Attendance.late_count(scope, today),
       sanctions: Enum.take(Discipline.recent_sanctions!(scope: scope), 3),
       missed_shown: 5

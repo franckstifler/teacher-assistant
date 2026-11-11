@@ -144,6 +144,95 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
              Enum.find(rows, &(&1.date == @monday))
   end
 
+  # Queries run by this process during `fun` that read `table` (A3).
+  defp count_queries(table, fun) do
+    parent = self()
+    counter = :counters.new(1, [])
+    needle = ~s(FROM "#{table}")
+
+    handler = {__MODULE__, table, make_ref()}
+
+    :telemetry.attach(
+      handler,
+      [:teacher_assistant, :repo, :query],
+      fn _e, _m, %{query: q}, _ ->
+        if self() == parent and q =~ needle, do: :counters.add(counter, 1, 1)
+      end,
+      nil
+    )
+
+    result = fun.()
+    :telemetry.detach(handler)
+    {result, :counters.get(counter, 1)}
+  end
+
+  test "absences_to_justify reads no student or guardian rows and counts a long late (A3)", ctx do
+    set_school_life(ctx.scope, %{late_as_absence_minutes: 15, absence_alert_hours: 2})
+
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, ~D[2025-09-15], [
+        {ctx.e.id, :late, 30}
+      ])
+
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, ~D[2025-09-22], [
+        {ctx.e.id, :absent}
+      ])
+
+    today = ~D[2025-09-30]
+    {first, last} = Attendance.current_sequence_range(ctx.scope, today)
+    rows = Attendance.absence_days(ctx.scope, first, last, today)
+    assert length(rows) == 2
+
+    {r, student_queries} =
+      count_queries("students", fn -> Attendance.absences_to_justify(ctx.scope, today) end)
+
+    {_, guardian_queries} =
+      count_queries("guardians", fn -> Attendance.absences_to_justify(ctx.scope, today) end)
+
+    assert r.count == 2
+    assert r.flagged_students == 0
+    assert student_queries == 0
+    assert guardian_queries == 0
+  end
+
+  test "absence_counts: today's absent students and the open days (A3)", ctx do
+    {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "Bello", sex: :m})
+
+    %{enrollment: other} =
+      Enum.find(Enrollment.list_roster(ctx.scope, ctx.cg), &(&1.enrollment.id != ctx.e.id))
+
+    today = ~D[2025-09-22]
+
+    {:ok, _} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, ~D[2025-09-15], [
+        {ctx.e.id, :absent}
+      ])
+
+    {:ok, 1} = Attendance.justify_day(ctx.scope, ctx.e, ~D[2025-09-15], :maladie)
+
+    for p <- [ctx.p1, ctx.p2],
+        do:
+          {:ok, _} =
+            Attendance.record_period(ctx.scope, ctx.cg, p, ctx.tc, today, [
+              {ctx.e.id, :absent},
+              {other.id, :absent}
+            ])
+
+    assert %{today_absent_students: 2, to_justify: 2} =
+             Attendance.absence_counts(ctx.scope, today)
+  end
+
+  test "absence_counts and absences_to_justify are zero before the first séquence (A3)", ctx do
+    # before the year's first séquence: the range is empty (first > last)
+    today = ~D[2025-09-01]
+
+    assert %{today_absent_students: 0, to_justify: 0} =
+             Attendance.absence_counts(ctx.scope, today)
+
+    assert %{count: 0, flagged_students: 0} = Attendance.absences_to_justify(ctx.scope, today)
+  end
+
   test "absences_to_justify counts unjustified rows and flagged students", ctx do
     {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "Bello", sex: :m})
 

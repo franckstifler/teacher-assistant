@@ -93,6 +93,7 @@ defmodule TeacherAssistant.Attendance do
   defdelegate absence_days(scope, first, last, today), to: TeacherAssistant.Academics.SchoolLife
   defdelegate current_sequence_range(scope, today), to: TeacherAssistant.Academics.SchoolLife
   defdelegate absences_to_justify(scope, today), to: TeacherAssistant.Academics.SchoolLife
+  defdelegate absence_counts(scope, today), to: TeacherAssistant.Academics.SchoolLife
 
   # --- Periods -------------------------------------------------------------
 

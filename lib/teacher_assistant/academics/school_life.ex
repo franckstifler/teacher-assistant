@@ -355,23 +355,64 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   Drives the dashboard KPI and the « Absences » menu badge.
   """
   def absences_to_justify(%Scope{} = scope, %Date{} = today) do
-    alert_hours = Attendance.school_life_rules(scope).absence_alert_hours
+    rules = Attendance.school_life_rules(scope)
+    open = scope |> open_days(today, rules) |> Enum.reject(& &1.justified?)
 
-    open =
-      case current_sequence_range(scope, today) do
-        nil ->
-          []
+    flagged =
+      case open do
+        [] ->
+          0
 
-        {first, last} ->
-          scope |> absence_days(first, last, today) |> Enum.reject(& &1.justified?)
+        open ->
+          alert = Decimal.new(rules.absence_alert_hours)
+          hours = unjustified_hours(scope, today, rules)
+
+          open
+          |> Enum.map(& &1.enrollment_id)
+          |> Enum.uniq()
+          |> Enum.count(&(Decimal.compare(Map.get(hours, &1, Decimal.new(0)), alert) != :lt))
       end
 
+    %{count: length(open), flagged_students: flagged, alert_hours: rules.absence_alert_hours}
+  end
+
+  @doc """
+  The Surveillant's day counters (A3): students with an absence on `today`, and the
+  current séquence's student-days still to justify — the same figures as
+  `absence_days/4` gives, read without the rows' students and guardians.
+  """
+  def absence_counts(%Scope{} = scope, %Date{} = today) do
+    days = open_days(scope, today, Attendance.school_life_rules(scope))
+
     %{
-      count: length(open),
-      flagged_students:
-        open |> Enum.filter(& &1.flagged?) |> Enum.uniq_by(& &1.enrollment.id) |> length(),
-      alert_hours: alert_hours
+      today_absent_students:
+        days |> Enum.filter(&(&1.date == today)) |> Enum.uniq_by(& &1.enrollment_id) |> length(),
+      to_justify: Enum.count(days, &(not &1.justified?))
     }
+  end
+
+  # The current séquence's student-days with an absence (or a long late), as
+  # `absence_days/4` groups them, from the entries' ids and flags only:
+  # `[%{enrollment_id, date, justified?}]`, a day justified when all its entries are.
+  defp open_days(scope, today, rules) do
+    case current_sequence_range(scope, today) do
+      nil ->
+        []
+
+      {first, last} ->
+        AttendanceEntry
+        |> absences_between(first, last, rules.late_as_absence_minutes)
+        |> Ash.Query.select([:enrollment_id, :date, :justified])
+        |> Ash.read!(scope: scope)
+        |> Enum.group_by(&{&1.enrollment_id, &1.date})
+        |> Enum.map(fn {{enrollment_id, date}, entries} ->
+          %{
+            enrollment_id: enrollment_id,
+            date: date,
+            justified?: Enum.all?(entries, & &1.justified)
+          }
+        end)
+    end
   end
 
   @doc "The current séquence's date range up to `today` (`nil` without one)."
@@ -395,12 +436,16 @@ defmodule TeacherAssistant.Academics.SchoolLife do
         %{}
 
       {first, last} ->
+        # The periods come from the bell schedule (one small read), not a load per row.
+        periods = scope |> Attendance.list_periods() |> Map.new(&{&1.id, &1})
+
         AttendanceEntry
         |> Ash.Query.filter(
           status in [:absent, :late] and justified == false and date >= ^first and date <= ^last
         )
-        |> Ash.Query.load(:period)
+        |> Ash.Query.select([:enrollment_id, :period_id, :status, :late_minutes, :justified])
         |> Ash.read!(scope: scope)
+        |> Enum.map(&%{&1 | period: Map.get(periods, &1.period_id)})
         |> Enum.group_by(& &1.enrollment_id)
         |> Map.new(fn {id, entries} ->
           {id, Conduct.totals(entries, rules.late_as_absence_minutes).unjustified_hours}
