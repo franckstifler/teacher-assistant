@@ -1,6 +1,8 @@
 defmodule TeacherAssistant.Uploads do
   @moduledoc "The uploads directory and the one safe way to turn a stored relative path into a file."
 
+  require Ash.Query
+
   @image_types %{".png" => "image/png", ".jpg" => "image/jpeg", ".jpeg" => "image/jpeg"}
 
   def dir, do: :teacher_assistant |> Application.fetch_env!(:uploads_dir) |> Path.expand()
@@ -77,30 +79,55 @@ defmodule TeacherAssistant.Uploads do
     |> MapSet.new()
   end
 
+  # Read in chunks of publications, so a school's whole history of snapshots is
+  # never held at once.
+  @snapshot_chunk 50
+
   defp snapshot_photos do
     alias TeacherAssistant.Academics.{BulletinPublication, Workspace}
 
     Workspace
     |> Ash.read!(authorize?: false)
     |> Enum.flat_map(fn ws ->
+      opts = [tenant: ws.id, authorize?: false]
+
       BulletinPublication
-      |> Ash.Query.select([:id, :snapshot])
-      |> Ash.read!(tenant: ws.id, authorize?: false)
-      |> Enum.flat_map(fn pub ->
-        for entry <- Map.get(pub.snapshot || %{}, :roster, []),
-            path = get_in(entry, [:student, :photo_path]),
-            do: path
+      |> Ash.Query.select([:id])
+      |> Ash.read!(opts)
+      |> Enum.map(& &1.id)
+      |> Enum.chunk_every(@snapshot_chunk)
+      |> Enum.flat_map(fn ids ->
+        BulletinPublication
+        |> Ash.Query.filter(id in ^ids)
+        |> Ash.Query.select([:id, :snapshot])
+        |> Ash.read!(opts)
+        |> Enum.flat_map(&roster_photos/1)
       end)
     end)
   end
+
+  defp roster_photos(pub) do
+    for entry <- Map.get(pub.snapshot || %{}, :roster, []),
+        path = get_in(entry, [:student, :photo_path]),
+        do: path
+  end
+
+  # Above this many deletions, a sweep that would remove more than half of the files
+  # stops instead: the database is likely empty or not the one these files belong to
+  # (a restore in progress).
+  @refuse_above 10
 
   @doc """
   Deletes the files under `root` (default `dir/0`) that nothing points at
   (`referenced_paths/0`) and that are older than a day — a file stored a moment ago
   may not be on its row yet. Only `folder/workspace_id/file` inside the three upload
   folders is considered; the root and any other folder are left alone. Options:
-  `:referenced` (a set of relative paths), `:older_than` (a `DateTime`). Returns
-  `%{deleted: n, kept: n}`.
+  `:referenced` (a set of relative paths), `:older_than` (a `DateTime`).
+
+  Returns `%{deleted: n, kept: n, failed: n}`; a file that cannot be removed is
+  counted in `failed` and the sweep goes on. When more than #{@refuse_above} files and
+  more than half of all of them would go, nothing is deleted and the result carries
+  `refused: :too_many`.
   """
   def sweep_orphans(root \\ dir(), opts \\ []) do
     referenced = Keyword.get_lazy(opts, :referenced, &referenced_paths/0)
@@ -110,25 +137,24 @@ defmodule TeacherAssistant.Uploads do
       |> Keyword.get_lazy(:older_than, fn -> DateTime.add(DateTime.utc_now(), -1, :day) end)
       |> DateTime.to_unix()
 
-    for folder <- @swept_folders,
-        school <- ls(Path.join(root, folder)),
-        file <- ls(Path.join([root, folder, school])),
-        relative = Path.join([folder, school, file]),
-        path = Path.join(root, relative),
-        reduce: %{deleted: 0, kept: 0} do
-      acc ->
-        case File.stat(path, time: :posix) do
-          {:ok, %{type: :regular, mtime: mtime}} ->
-            if mtime < cutoff and not MapSet.member?(referenced, relative) do
-              File.rm!(path)
-              Map.update!(acc, :deleted, &(&1 + 1))
-            else
-              Map.update!(acc, :kept, &(&1 + 1))
-            end
+    files =
+      for folder <- @swept_folders,
+          school <- ls(Path.join(root, folder)),
+          file <- ls(Path.join([root, folder, school])),
+          relative = Path.join([folder, school, file]),
+          path = Path.join(root, relative),
+          {:ok, %{type: :regular, mtime: mtime}} <- [File.stat(path, time: :posix)],
+          do: {path, mtime < cutoff and not MapSet.member?(referenced, relative)}
 
-          _ ->
-            acc
-        end
+    orphans = for {path, true} <- files, do: path
+    total = length(files)
+
+    if length(orphans) > @refuse_above and length(orphans) * 2 > total do
+      %{deleted: 0, kept: total, failed: 0, refused: :too_many}
+    else
+      failed = Enum.count(orphans, &(File.rm(&1) not in [:ok, {:error, :enoent}]))
+      deleted = length(orphans) - failed
+      %{deleted: deleted, kept: total - deleted, failed: failed}
     end
   end
 

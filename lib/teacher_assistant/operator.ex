@@ -86,13 +86,15 @@ defmodule TeacherAssistant.Operator do
   def digest(now \\ DateTime.utc_now()) do
     profiles = SchoolProfile |> Ash.Query.load(:workspace) |> Ash.read!(@read)
     day_ago = DateTime.add(now, -1, :day)
+    sweep = last_sweep(now)
 
     profiles
     |> attention(live_schools(profiles), activity_per_school(now), now)
     |> Map.merge(%{
       first_steps: first_steps(profiles, day_ago),
       open_errors: open_errors(),
-      swept_files: swept_files(now),
+      swept_files: swept_files(sweep),
+      sweep_refused: match?(%{"refused" => r} when is_binary(r), sweep),
       failed_jobs:
         count(
           from(j in "oban_jobs", where: j.state == "discarded" and j.discarded_at >= ^day_ago)
@@ -518,7 +520,11 @@ defmodule TeacherAssistant.Operator do
   # Unhandled errors not yet resolved (ErrorTracker, /admin/errors); muted ones are
   # known and left aside on purpose.
   # A9: what the latest weekly sweep deleted, if it ran in the last seven days.
-  defp swept_files(now) do
+  defp swept_files(%{"deleted" => n}), do: n
+  defp swept_files(_sweep), do: nil
+
+  # The latest weekly sweep's journaled counts (A9; `refused` set when it stopped).
+  defp last_sweep(now) do
     week_ago = DateTime.add(now, -7, :day)
 
     from(e in "audit_events",
@@ -528,10 +534,6 @@ defmodule TeacherAssistant.Operator do
       select: e.details
     )
     |> Repo.one()
-    |> case do
-      %{"deleted" => n} -> n
-      _ -> nil
-    end
   end
 
   defp open_errors do

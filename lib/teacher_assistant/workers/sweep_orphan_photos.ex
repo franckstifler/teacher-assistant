@@ -1,8 +1,8 @@
 defmodule TeacherAssistant.Workers.SweepOrphanPhotos do
   @moduledoc """
   Weekly (spec audit follow-ups A9): deletes the upload files nothing points at
-  (`Uploads.sweep_orphans/2`) and journals the counts, which the operators' morning
-  digest reports. `args["root"]` overrides the uploads directory (tests).
+  (`Uploads.sweep_orphans/2`) and journals the counts — or that it refused, when most
+  files looked orphaned — which the operators' morning digest reports. `args["root"]` overrides the uploads directory (tests).
   """
   use Oban.Worker, queue: :default, max_attempts: 2
 
@@ -18,11 +18,23 @@ defmodule TeacherAssistant.Workers.SweepOrphanPhotos do
     AuditEvent
     |> Ash.Changeset.for_create(:record, %{
       action: :files_swept,
-      details: %{"deleted" => counts.deleted, "kept" => counts.kept}
+      details: %{
+        "deleted" => counts.deleted,
+        "kept" => counts.kept,
+        "failed" => counts.failed,
+        "refused" => counts[:refused] && to_string(counts[:refused])
+      }
     })
     |> Ash.create!(authorize?: false)
 
-    Logger.info("orphan upload sweep: #{counts.deleted} deleted, #{counts.kept} kept")
+    if counts[:refused] do
+      Logger.warning("orphan upload sweep refused (#{counts.refused}): nothing deleted")
+    else
+      Logger.info(
+        "orphan upload sweep: #{counts.deleted} deleted, #{counts.kept} kept, #{counts.failed} failed"
+      )
+    end
+
     :ok
   end
 end

@@ -3504,7 +3504,7 @@ msgstr "Sequence tracking"
 msgid "aucun élève"
 msgstr "no students"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:110
+#: lib/teacher_assistant/workers/telegram_digest.ex:119
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:239
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:271
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:1081
@@ -15179,15 +15179,15 @@ msgstr "Jobs abandoned since yesterday"
 msgid "Vérifiées, jamais utilisées"
 msgstr "Verified, never used"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:111
+#: lib/teacher_assistant/workers/telegram_digest.ex:120
 #, elixir-autogen, elixir-format
 msgid "depuis %{count} jour"
 msgid_plural "depuis %{count} jours"
 msgstr[0] "since %{count} day"
 msgstr[1] "since %{count} days"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:76
-#: lib/teacher_assistant/workers/telegram_digest.ex:98
+#: lib/teacher_assistant/workers/telegram_digest.ex:85
+#: lib/teacher_assistant/workers/telegram_digest.ex:107
 #, elixir-autogen, elixir-format
 msgid "• et %{count} autres"
 msgstr "• and %{count} more"
@@ -15207,7 +15207,7 @@ msgstr "chat not found, check TELEGRAM_CHAT_ID and message the bot first"
 msgid "jeton du bot refusé, vérifiez TELEGRAM_BOT_TOKEN"
 msgstr "bot token refused, check TELEGRAM_BOT_TOKEN"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:81
+#: lib/teacher_assistant/workers/telegram_digest.ex:90
 #, elixir-autogen, elixir-format
 msgid "Premiers pas depuis hier"
 msgstr "First steps since yesterday"
@@ -15217,22 +15217,22 @@ msgstr "First steps since yesterday"
 msgid "Scolaka a démarré (version %{version})."
 msgstr "Scolaka started (version %{version})."
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:87
+#: lib/teacher_assistant/workers/telegram_digest.ex:96
 #, elixir-autogen, elixir-format
 msgid "premier appel"
 msgstr "first roll call"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:89
+#: lib/teacher_assistant/workers/telegram_digest.ex:98
 #, elixir-autogen, elixir-format
 msgid "premiers bulletins publiés"
 msgstr "first report cards published"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:88
+#: lib/teacher_assistant/workers/telegram_digest.ex:97
 #, elixir-autogen, elixir-format
 msgid "premières notes"
 msgstr "first marks"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:86
+#: lib/teacher_assistant/workers/telegram_digest.ex:95
 #, elixir-autogen, elixir-format
 msgid "élèves inscrits"
 msgstr "students enrolled"
@@ -15969,7 +15969,7 @@ msgstr "First ask the head of school to remove you from the school."
 msgid "Fichiers orphelins supprimés"
 msgstr "Orphan files deleted"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:62
+#: lib/teacher_assistant/workers/telegram_digest.ex:63
 #, elixir-autogen, elixir-format
 msgid "Fichiers orphelins supprimés cette semaine : %{n}"
 msgstr "Orphan files deleted this week: %{n}"
@@ -16087,3 +16087,8 @@ msgstr "Some sequences have not started yet: the figures cover what exists."
 #, elixir-autogen, elixir-format
 msgid "En cours : certaines séquences n'ont pas encore commencé"
 msgstr "In progress: some sequences have not started yet"
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:69
+#, elixir-autogen, elixir-format
+msgid "Nettoyage des fichiers suspendu : presque tous semblaient orphelins (base vide ou restauration en cours ?)."
+msgstr "File clean-up stopped: almost all files looked orphaned (empty database or a restore in progress?)."

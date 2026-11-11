@@ -52,6 +52,7 @@ defmodule TeacherAssistant.Workers.TelegramDigest do
       [gettext("Scolaka · point du matin")] ++
         body ++
         List.wrap(swept(Map.get(digest, :swept_files))) ++
+        List.wrap(sweep_refused(Map.get(digest, :sweep_refused))) ++
         List.wrap(first_steps(digest.first_steps)) ++ [url(~p"/admin")],
       "\n\n"
     )
@@ -62,6 +63,14 @@ defmodule TeacherAssistant.Workers.TelegramDigest do
     do: gettext("Fichiers orphelins supprimés cette semaine : %{n}", n: n)
 
   defp swept(_n), do: nil
+
+  defp sweep_refused(true),
+    do:
+      gettext(
+        "Nettoyage des fichiers suspendu : presque tous semblaient orphelins (base vide ou restauration en cours ?)."
+      )
+
+  defp sweep_refused(_refused), do: nil
 
   # Good news, not something to handle: who to call to help them along.
   defp first_steps([]), do: nil

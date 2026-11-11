@@ -25,4 +25,19 @@ defmodule TeacherAssistant.Workers.SweepOrphanPhotosTest do
 
     assert TeacherAssistant.Operator.digest().swept_files == 1
   end
+
+  test "a refused sweep is journaled and the digest says it stopped (minors)" do
+    root = Path.join(System.tmp_dir!(), "sweep-job-#{System.unique_integer([:positive])}")
+    on_exit(fn -> File.rm_rf!(root) end)
+
+    for _ <- 1..12 do
+      orphan = Path.join([root, "student_photos", Ash.UUIDv7.generate(), "x.jpg"])
+      File.mkdir_p!(Path.dirname(orphan))
+      File.write!(orphan, "x")
+      File.touch!(orphan, {{2020, 1, 1}, {0, 0, 0}})
+    end
+
+    assert :ok = perform_job(SweepOrphanPhotos, %{"root" => root})
+    assert TeacherAssistant.Operator.digest().sweep_refused == true
+  end
 end

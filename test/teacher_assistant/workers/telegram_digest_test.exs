@@ -108,5 +108,20 @@ defmodule TeacherAssistant.Workers.TelegramDigestTest do
       assert TelegramDigest.text(digest, DateTime.utc_now()) =~
                "Fichiers orphelins supprimés cette semaine : 4"
     end
+
+    test "the morning text says when the sweep stopped instead (minors)" do
+      digest = %{
+        pending: [],
+        quiet: [],
+        silent: [],
+        open_errors: 0,
+        failed_jobs: 0,
+        first_steps: [],
+        swept_files: 0,
+        sweep_refused: true
+      }
+
+      assert TelegramDigest.text(digest, DateTime.utc_now()) =~ "Nettoyage des fichiers suspendu"
+    end
   end
 end

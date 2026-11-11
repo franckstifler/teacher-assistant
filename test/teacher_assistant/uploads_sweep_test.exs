@@ -75,4 +75,28 @@ defmodule TeacherAssistant.UploadsSweepTest do
     assert File.exists?(other)
     refute File.exists?(logo)
   end
+
+  test "refuses to delete when most files look orphaned (empty or wrong database) (minors)",
+       ctx do
+    files =
+      for _ <- 1..12,
+          do: put(ctx.root, "student_photos/#{ctx.ws.id}/#{Ash.UUIDv7.generate()}.jpg")
+
+    assert %{deleted: 0, refused: :too_many} =
+             Uploads.sweep_orphans(ctx.root, referenced: MapSet.new())
+
+    assert Enum.all?(files, &File.exists?/1)
+  end
+
+  test "a file that cannot be removed is counted and the sweep goes on (minors)", ctx do
+    locked_dir = Path.join([ctx.root, "school_logos", Ash.UUIDv7.generate()])
+    locked = put(ctx.root, Path.join(Path.relative_to(locked_dir, ctx.root), "a.png"))
+    gone = put(ctx.root, "student_photos/#{ctx.ws.id}/#{Ash.UUIDv7.generate()}.jpg")
+    File.chmod!(locked_dir, 0o500)
+    on_exit(fn -> File.chmod(locked_dir, 0o700) end)
+
+    assert %{deleted: 1, failed: 1} = Uploads.sweep_orphans(ctx.root, referenced: MapSet.new())
+    assert File.exists?(locked)
+    refute File.exists?(gone)
+  end
 end
