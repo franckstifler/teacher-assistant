@@ -362,7 +362,7 @@ defmodule TeacherAssistantWeb.PageHTML do
         paragraphs: [
           gettext("Les données d'un établissement restent tant qu'il utilise Scolaka."),
           gettext(
-            "Un élève est rendu anonyme trois ans après son départ de l'établissement, ou après la fin de sa dernière année : son nom devient « Élève parti », sa photo, son lieu de naissance et son numéro d'identification national sont effacés, et un parent qui n'a plus d'enfant dans l'établissement est supprimé. Ses notes, absences et paiements restent, sans son nom, pour les comptes de l'établissement ; les bulletins déjà publiés restent tels qu'ils ont été remis."
+            "Un élève est rendu anonyme trois ans après son départ de l'établissement, ou après la fin de sa dernière année : son nom devient « Élève parti », son lieu de naissance et son numéro d'identification national sont effacés, sa photo est effacée partout, et un parent qui n'a plus d'enfant dans l'établissement est supprimé. Ses notes, absences et paiements restent pour les comptes de l'établissement. Les bulletins déjà publiés, les reçus et les papiers de frais gardent le nom sous lequel ils ont été remis."
           ),
           gettext(
             "Chaque semaine, les photos et les fichiers que plus rien n'utilise sont effacés."
@@ -377,7 +377,7 @@ defmodule TeacherAssistantWeb.PageHTML do
             "Seuls les membres d'un établissement voient ses données, et chacun selon son rôle : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais, le proviseur tout l'établissement."
           ),
           gettext(
-            "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et ce qui est saisi pendant cet accès porte le nom de l'opérateur."
+            "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et les notes, les appels, les sanctions et les paiements saisis pendant cet accès portent le nom de l'opérateur."
           ),
           gettext(
             "Les bulletins, reçus et cartes scolaires portent un code QR. Celui qui le scanne voit seulement de quoi vérifier que le document est authentique : l'établissement, l'élève, sa classe et ce que dit le document."

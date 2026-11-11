@@ -170,6 +170,10 @@ defmodule TeacherAssistantWeb.PageControllerTest do
       for name <- ["Hetzner", "Cloudflare", "Brevo"], do: assert(html =~ name)
       assert html =~ "limité à une heure et inscrit dans un journal"
       assert html =~ "trois ans après son départ"
+      # what anonymisation leaves as it was, and what an operator's access stamps (review)
+      assert html =~ "les reçus et les papiers de frais gardent le nom"
+      assert html =~ "sa photo est effacée partout"
+      assert html =~ "les notes, les appels, les sanctions et les paiements saisis pendant cet accès"
       assert html =~ "peut supprimer son compte depuis Mon compte"
       assert "mailto:contact@example.test" in hrefs(doc, "main a")
       assert "/" in hrefs(doc, "header a")

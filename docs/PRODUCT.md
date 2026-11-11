@@ -130,13 +130,14 @@ never sells, rents or shares them, nor uses them for advertising.
 
 A departed student is anonymised three years after their last enrollment ended (`left_on`, else
 the end of that academic year): the name becomes « Élève parti », the national id, birth place and
-photo are erased, guardians are unlinked (a guardian left without a child in the school is
-deleted). Marks, roll calls, conduct and payments stay, nameless, for the school's figures;
-published bulletins are frozen documents and stay as they were handed out. Weekly job, Sunday
-03:00 (`AnonymiseDepartedStudents`).
+photo are erased (the photo everywhere, published bulletins included), guardians are unlinked (a
+guardian left without a child in the school is deleted). Marks, roll calls, conduct and payments
+stay for the school's figures. Numbered documents keep the name they were issued with: published
+bulletins (snapshots), receipts, fee warnings and return notes (`student_name` columns). Weekly
+job, Sunday 04:00 school time (`AnonymiseDepartedStudents`, cron in UTC).
 
 Upload files no row refers to any more (student photos, school logos and signatures older than a
-day) are deleted weekly, Sunday 03:30 (`SweepOrphanPhotos`), and counted in the operator digest.
+day) are deleted weekly, Sunday 04:30 school time (`SweepOrphanPhotos`), and counted in the operator digest.
 
 A person who is a member of no school deletes their own account from « Mon compte »: name, e-mail,
 phone and password are erased and every session is revoked; what they entered keeps its place
@@ -144,7 +145,8 @@ under « Compte supprimé ». A member of a school is first removed by the head 
 records keep a name until then.
 
 The operator never sells or shares a school's data. Support opens a member's space only through
-one-hour, journaled impersonation, and whatever is entered then carries the operator's name.
+one-hour, journaled impersonation; marks, roll calls, sanctions and payments entered then carry
+the operator's name (A6).
 
 ## Product quality bar
 

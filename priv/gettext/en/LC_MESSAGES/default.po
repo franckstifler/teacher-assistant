@@ -15829,11 +15829,6 @@ msgstr "(operator %{name})"
 msgid "<p><strong>%{kind}</strong></p><p>À <code>%{source}</code><br />Le %{at}</p><p><a href=\"%{url}\">Voir l'erreur</a></p>"
 msgstr "<p><strong>%{kind}</strong></p><p>At <code>%{source}</code><br />On %{at}</p><p><a href=\"%{url}\">See the error</a></p>"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:379
-#, elixir-autogen, elixir-format
-msgid "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et ce qui est saisi pendant cet accès porte le nom de l'opérateur."
-msgstr "For support, the Scolaka team can open a member's space; each access is limited to one hour and recorded in a log, and what is entered during that access carries the operator's name."
-
 #: lib/teacher_assistant/academics/departure_reason.ex:7
 #, elixir-autogen, elixir-format
 msgid "Abandon"
@@ -16057,11 +16052,6 @@ msgstr "A school's data stays as long as the school uses Scolaka."
 msgid "Mise à jour le 11 novembre 2026"
 msgstr "Updated on 11 November 2026"
 
-#: lib/teacher_assistant_web/controllers/page_html.ex:364
-#, elixir-autogen, elixir-format
-msgid "Un élève est rendu anonyme trois ans après son départ de l'établissement, ou après la fin de sa dernière année : son nom devient « Élève parti », sa photo, son lieu de naissance et son numéro d'identification national sont effacés, et un parent qui n'a plus d'enfant dans l'établissement est supprimé. Ses notes, absences et paiements restent, sans son nom, pour les comptes de l'établissement ; les bulletins déjà publiés restent tels qu'ils ont été remis."
-msgstr "A student is made anonymous three years after leaving the school, or after the end of their last year: their name becomes « Élève parti », their photo, birth place and national identification number are erased, and a parent with no child left in the school is deleted. Their marks, absences and payments stay, without their name, for the school's figures; bulletins already published stay as they were handed out."
-
 #: lib/teacher_assistant_web/components/layouts.ex:979
 #, elixir-autogen, elixir-format
 msgid "Les fiches de vos élèves appartiennent à votre école ; votre compte, lui, est à vous. Une fois retiré de toutes vos écoles, vous pouvez le supprimer."
@@ -16071,3 +16061,13 @@ msgstr "Your students' records belong to your school; your account is yours. Onc
 #, elixir-autogen, elixir-format
 msgid "Votre compte vous appartient."
 msgstr "Your account is yours."
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:379
+#, elixir-autogen, elixir-format
+msgid "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et les notes, les appels, les sanctions et les paiements saisis pendant cet accès portent le nom de l'opérateur."
+msgstr "For support, the Scolaka team can open a member's space; each access is limited to one hour and recorded in a log, and the marks, roll calls, sanctions and payments entered during that access carry the operator's name."
+
+#: lib/teacher_assistant_web/controllers/page_html.ex:364
+#, elixir-autogen, elixir-format
+msgid "Un élève est rendu anonyme trois ans après son départ de l'établissement, ou après la fin de sa dernière année : son nom devient « Élève parti », son lieu de naissance et son numéro d'identification national sont effacés, sa photo est effacée partout, et un parent qui n'a plus d'enfant dans l'établissement est supprimé. Ses notes, absences et paiements restent pour les comptes de l'établissement. Les bulletins déjà publiés, les reçus et les papiers de frais gardent le nom sous lequel ils ont été remis."
+msgstr "A student is made anonymous three years after leaving the school, or after the end of their last year: their name becomes « Élève parti », their birth place and national identification number are erased, their photo is erased everywhere, and a parent with no child left in the school is deleted. Their marks, absences and payments stay for the school's figures. Bulletins already published, receipts and fee papers keep the name they were issued with."
