@@ -23,13 +23,13 @@ defmodule TeacherAssistantWeb.Account.AccountLiveTest do
     end
   end
 
-  test "a user without school deletes their account and lands on the home page" do
+  test "a user without school deletes their account and sees it confirmed on the sign-in page" do
     user = TeacherFixtures.user_fixture()
     conn = Phoenix.ConnTest.build_conn() |> log_in_user(user)
     {:ok, view, _} = live(conn, ~p"/account")
 
-    assert {:error, {:redirect, %{to: "/"}}} =
-             view |> element("#account-delete button") |> render_click()
+    view |> element("#account-delete button") |> render_click()
+    assert {"/sign-in", %{"info" => "Compte supprimé."}} = assert_redirect(view)
 
     assert Ash.get!(TeacherAssistant.Accounts.User, user.id, authorize?: false).email == nil
   end

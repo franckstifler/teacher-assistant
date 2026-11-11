@@ -18,6 +18,7 @@ defmodule TeacherAssistantWeb.Account.AccountLive do
 
     {:ok,
      assign(socket,
+       auth_screen: :account,
        page_title: gettext("Mon compte"),
        display_name: User.display_name(user),
        contact: User.contact(user),
@@ -45,7 +46,7 @@ defmodule TeacherAssistantWeb.Account.AccountLive do
       <.link
         id="account-password"
         navigate={~p"/account/password"}
-        class="flex min-h-12 items-center gap-3 rounded-box border border-base-300 px-4 py-2"
+        class="ta-account-row"
       >
         <.icon name="hero-key" class="size-5 flex-none" />
         <span class="flex-1">{gettext("Mot de passe")}</span>
@@ -53,8 +54,8 @@ defmodule TeacherAssistantWeb.Account.AccountLive do
       </.link>
 
       <div id="account-schools" class="space-y-2">
-        <h2 class="text-sm font-semibold">{gettext("Mes écoles")}</h2>
-        <p :if={@schools == []} class="text-sm text-base-content/70">
+        <h2 class="ta-account-h">{gettext("Mes écoles")}</h2>
+        <p :if={@schools == []} class="ta-auth-sub">
           {gettext("Vous n'êtes membre d'aucune école.")}
         </p>
         <ul :if={@schools != []} class="space-y-1 text-sm">
@@ -65,14 +66,14 @@ defmodule TeacherAssistantWeb.Account.AccountLive do
         </ul>
       </div>
 
-      <div id="account-delete" class="space-y-2 border-t border-base-300 pt-4">
-        <h2 class="text-sm font-semibold">{gettext("Supprimer mon compte")}</h2>
-        <p :if={@schools != []} class="text-sm text-base-content/70">
+      <div id="account-delete" class="ta-account-rule space-y-3 pt-4">
+        <h2 class="ta-account-h">{gettext("Supprimer mon compte")}</h2>
+        <p :if={@schools != []} class="ta-auth-sub">
           {gettext(
             "Tant que vous êtes membre d'une école, demandez d'abord au chef d'établissement de vous retirer de l'école ; vous pourrez ensuite supprimer votre compte ici."
           )}
         </p>
-        <p :if={@schools == []} class="text-sm text-base-content/70">
+        <p :if={@schools == []} class="ta-auth-sub">
           {gettext(
             "Votre nom, votre e-mail, votre téléphone et votre mot de passe sont effacés. Cette action est définitive."
           )}
@@ -82,7 +83,7 @@ defmodule TeacherAssistantWeb.Account.AccountLive do
           type="button"
           phx-click="delete"
           data-confirm={gettext("Supprimer définitivement votre compte ?")}
-          class="btn btn-error btn-outline w-full"
+          class="ta-auth-danger"
         >
           {gettext("Supprimer mon compte")}
         </button>
@@ -97,12 +98,15 @@ defmodule TeacherAssistantWeb.Account.AccountLive do
 
   @impl true
   def handle_event("delete", _params, socket) do
-    case Accounts.delete_own_account(socket.assigns.current_scope) do
+    scope = socket.assigns.current_scope
+
+    case Accounts.delete_own_account(scope, except_page: socket.transport_pid) do
+      # The landing shows no flash; the sign-in page does (as after a password change).
       :ok ->
         {:noreply,
          socket
          |> put_flash(:info, gettext("Compte supprimé."))
-         |> redirect(to: ~p"/")}
+         |> redirect(to: ~p"/sign-in")}
 
       {:error, :has_membership} ->
         {:noreply,

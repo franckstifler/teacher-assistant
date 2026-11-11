@@ -910,7 +910,7 @@ defmodule TeacherAssistantWeb.Layouts do
   #   * `@live_action` is `:register` / `:reset` / `:sign_in` on `SignInLive`
   #     (`:reset` there is the "request a reset link" step, not the token step).
   #   * `@auth_screen` is set by our own pages that borrow this shell
-  #     (`Account.PasswordLive` → `:own_password` / `:change_password`). Such a page renders its own
+  #     (`Account.PasswordLive` → `:own_password` / `:change_password`, `Account.AccountLive` → `:account`). Such a page renders its own
   #     column heading, so its copy has no title/foot, only the brand `panel`.
 
   defp auth_points do
@@ -962,6 +962,22 @@ defmodule TeacherAssistantWeb.Layouts do
             text:
               gettext(
                 "Personne à l'établissement ne connaît votre mot de passe. Changez-le dès que vous pensez qu'il a pu être vu."
+              )
+          }
+        }
+
+      :account ->
+        %{
+          eyebrow: nil,
+          title: nil,
+          sub: nil,
+          foot: nil,
+          panel: %{
+            eyebrow: gettext("Votre compte"),
+            title: gettext("Votre compte vous appartient."),
+            text:
+              gettext(
+                "Les fiches de vos élèves appartiennent à votre école ; votre compte, lui, est à vous. Une fois retiré de toutes vos écoles, vous pouvez le supprimer."
               )
           }
         }

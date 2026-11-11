@@ -607,15 +607,17 @@ defmodule TeacherAssistant.Accounts do
   @doc """
   The signed-in user deletes their own account (A9): refused with
   `{:error, :has_membership}` while a school counts them as a member; otherwise the
-  e-mail, phone, name and password go and every session is signed out.
+  e-mail, phone, name and password go and every session is signed out. The page
+  that asked (`except_page:`, its transport pid) is spared the disconnect so its
+  own redirect reaches the browser.
   """
-  def delete_own_account(%Scope{current_user: %User{} = user}) do
+  def delete_own_account(%Scope{current_user: %User{} = user}, opts \\ []) do
     user
     |> Ash.Changeset.for_update(:delete_own_account, %{}, actor: user)
     |> Ash.update()
     |> case do
       {:ok, deleted} ->
-        _ = revoke_all_sessions(deleted)
+        _ = revoke_all_sessions(deleted, except_page: opts[:except_page])
         :ok
 
       {:error, %Ash.Error.Invalid{} = error} ->

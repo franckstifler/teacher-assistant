@@ -23,6 +23,14 @@ defmodule TeacherAssistant.Accounts.AccountDeletionTest do
     assert {:error, _} = sign_in(to_string(user.email), "password1234")
   end
 
+  test "the deleting page is spared the disconnect its other pages get" do
+    user = TeacherFixtures.user_fixture()
+    TeacherAssistantWeb.Endpoint.subscribe(Accounts.live_socket_id(user))
+
+    assert :ok = Accounts.delete_own_account(%Scope{current_user: user}, except_page: self())
+    refute_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
+  end
+
   test "a member of a school is refused; a deactivated membership no longer blocks" do
     %{scope: head} = TeacherFixtures.setup_complete_school_fixture()
     m = TeacherFixtures.membership_fixture(head, %{roles: [:teacher]})

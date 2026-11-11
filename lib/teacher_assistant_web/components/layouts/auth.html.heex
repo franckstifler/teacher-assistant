@@ -228,6 +228,39 @@
     color: #5A6668;
   }
 
+  /* « Mon compte » (Account.AccountLive): a row to the password page, small section
+     headings, and the account deletion — red outline, filled on hover */
+  .ta-auth-paper .ta-account-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #D7CFBE;
+    border-radius: 0.6rem;
+    color: #1E2A2B;
+  }
+  .ta-auth-paper .ta-account-row:hover { border-color: #0E7A5F; text-decoration: none; }
+  .ta-auth-paper .ta-account-h {
+    margin: 0;
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .ta-auth-paper .ta-account-rule { border-top: 1px solid #E4DDCF; }
+  .ta-auth-paper .ta-auth-danger {
+    width: 100%;
+    min-height: 2.75rem;
+    border: 1px solid #B3452E;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #B3452E;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .ta-auth-paper .ta-auth-danger:hover { background: #B3452E; color: #FFFFFF; }
+
   /* live password checklist — the round mark turns green when met */
   .ta-auth-paper .ta-check {
     display: flex;
