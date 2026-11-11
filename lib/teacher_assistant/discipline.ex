@@ -395,15 +395,17 @@ defmodule TeacherAssistant.Discipline do
 
   @doc """
   Per class of `year`, how many students have a conduct mark over `period_tuple`:
-  `%{class_group_id => %{entered:, effectif:}}` (the bulletins overview), in two reads
-  whatever the number of classes. A class without students is absent.
+  `%{class_group_id => %{entered:, effectif:}}` (the bulletins overview), in a few reads
+  whatever the number of classes. A class counts as it stood on the period's first
+  day (A7), as its bulletin does. A class without students is absent.
   """
-  def conduct_entered_by_class(%Scope{} = scope, %AcademicYear{id: year_id}, period_tuple) do
+  def conduct_entered_by_class(%Scope{} = scope, %AcademicYear{} = year, period_tuple) do
     enrollments =
-      Enrollment
-      |> Ash.Query.filter(academic_year_id == ^year_id)
-      |> Ash.Query.select([:id, :class_group_id])
-      |> Ash.read!(scope: scope)
+      year_enrollments(
+        scope,
+        year,
+        TeacherAssistant.Organization.period_first_day(scope, period_tuple)
+      )
 
     marked =
       scope
@@ -419,6 +421,16 @@ defmodule TeacherAssistant.Discipline do
          effectif: length(list)
        }}
     end)
+  end
+
+  # The year's enrollments still running on `first_day` (A7), every class at once.
+  defp year_enrollments(scope, %AcademicYear{id: year_id}, first_day) do
+    Enrollment
+    |> Ash.Query.filter(
+      academic_year_id == ^year_id and (is_nil(left_on) or left_on > ^first_day)
+    )
+    |> Ash.Query.select([:id, :class_group_id])
+    |> Ash.read!(scope: scope)
   end
 
   # --- Suggested conduct marks (spec KLM3) ---------------------------------------
@@ -469,19 +481,16 @@ defmodule TeacherAssistant.Discipline do
   end
 
   @doc """
-  UX refonte (Conduite): the ids of `year`'s classes whose every enrolled student
-  has a conduct mark for `sequence` — the classes « validées ». Two reads.
+  UX refonte (Conduite): the ids of `year`'s classes whose every student of the
+  séquence (the class on its first day, as `conduct_sheet/3` lists it) has a conduct
+  mark for `sequence` — the classes « validées ». Two reads.
   """
   def validated_conduct_classes(
         %Scope{} = scope,
-        %AcademicYear{id: year_id},
-        %Sequence{id: sequence_id}
+        %AcademicYear{} = year,
+        %Sequence{id: sequence_id, start_date: first_day}
       ) do
-    enrollments =
-      Enrollment
-      |> Ash.Query.filter(academic_year_id == ^year_id)
-      |> Ash.Query.select([:id, :class_group_id])
-      |> Ash.read!(scope: scope)
+    enrollments = year_enrollments(scope, year, first_day)
 
     marked =
       case Enum.map(enrollments, & &1.id) do

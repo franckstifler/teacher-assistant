@@ -164,6 +164,33 @@ defmodule TeacherAssistant.Academics.DeparturePeriodsTest do
     assert EntryProgress.class_rate(ctx.scope, ctx.year, ctx.cg, [ctx.s1]) == 100
   end
 
+  test "conduct completeness counts the séquence's class, not who left before it (review)",
+       ctx do
+    alias TeacherAssistant.Discipline
+
+    bob_e =
+      ctx.scope |> Enrollment.list_roster(ctx.cg) |> Enum.find(&(&1.student.id == ctx.bob.id))
+
+    {:ok, _} =
+      Discipline.set_conduct_marks(ctx.scope, ctx.cg, ctx.s2, %{bob_e.enrollment.id => "16"})
+
+    assert MapSet.member?(
+             Discipline.validated_conduct_classes(ctx.scope, ctx.year, ctx.s2),
+             ctx.cg.id
+           )
+
+    assert %{entered: 1, effectif: 1} =
+             Discipline.conduct_entered_by_class(ctx.scope, ctx.year, {:sequence, ctx.s2})[
+               ctx.cg.id
+             ]
+
+    # The trimester began with S1, when Awa was still there.
+    assert %{effectif: 2} =
+             Discipline.conduct_entered_by_class(ctx.scope, ctx.year, {:trimester, ctx.term})[
+               ctx.cg.id
+             ]
+  end
+
   test "the trimester bulletin keeps her with her departure date", ctx do
     view = TeacherAssistant.ReportCards.live_view(ctx.scope, ctx.cg, {:trimester, ctx.term})
     entry = Enum.find(view.roster, &(&1.student.id == ctx.awa.id))
