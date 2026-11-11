@@ -134,4 +134,9 @@ defmodule TeacherAssistant.Academics.DeparturePeriodsTest do
     entry = Enum.find(view.roster, &(&1.student.id == ctx.awa.id))
     assert entry.enrollment.left_on == ctx.s2.start_date
   end
+
+  test "the trimester view keeps her discipline and conduct rows", ctx do
+    view = TeacherAssistant.ReportCards.live_view(ctx.scope, ctx.cg, {:trimester, ctx.term})
+    assert Map.has_key?(view.discipline, ctx.awa_e.id)
+  end
 end

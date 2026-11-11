@@ -359,7 +359,12 @@ defmodule TeacherAssistant.Discipline do
   enrollments get `%{sanctions: [], consignes_count: 0, note_de_conduite: nil}`.
   """
   def class_discipline(%Scope{} = scope, %ClassGroup{} = class_group, period_tuple) do
-    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
+    # The class on the period's first day (A7), as the bulletin it feeds.
+    roster =
+      TeacherAssistant.Enrollment.list_roster(scope, class_group,
+        on: TeacherAssistant.Organization.period_first_day(scope, period_tuple)
+      )
+
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     entries_by_enrollment =
@@ -426,7 +431,7 @@ defmodule TeacherAssistant.Discipline do
   def conduct_sheet(%Scope{} = scope, %ClassGroup{} = class_group, %Sequence{} = sequence) do
     period = {:sequence, sequence}
     rules = TeacherAssistant.Attendance.school_life_rules(scope)
-    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group)
+    roster = TeacherAssistant.Enrollment.list_roster(scope, class_group, on: sequence.start_date)
     totals = TeacherAssistant.Attendance.bulletin_conduct(scope, class_group, period)
     sanctions = scope |> list_sanctions(class_group, period) |> Enum.group_by(& &1.enrollment_id)
 
@@ -508,7 +513,7 @@ defmodule TeacherAssistant.Discipline do
       ) do
     roster =
       scope
-      |> TeacherAssistant.Enrollment.list_roster(class_group)
+      |> TeacherAssistant.Enrollment.list_roster(class_group, on: sequence.start_date)
       |> Map.new(&{&1.enrollment.id, &1.enrollment})
 
     with {:ok, marks} <- parse_class_marks(values, roster) do
