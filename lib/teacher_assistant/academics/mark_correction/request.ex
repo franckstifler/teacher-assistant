@@ -8,17 +8,18 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Request do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{Assessment, Enrollment, Lock, Mark}
+  alias TeacherAssistant.Academics.{Assessment, Enrollment, Lock, Mark, StampOperator}
   alias TeacherAssistant.Academics.Mark.Journal
 
   @impl true
   def change(changeset, _opts, context) do
     changeset
     |> Ash.Changeset.before_action(&snapshot_current(&1, context))
-    |> Ash.Changeset.after_action(fn _changeset, correction ->
+    |> Ash.Changeset.after_action(fn changeset, correction ->
       Journal.record!(correction.workspace_id, %{
         action: :correction_demandee,
         actor_user_id: correction.requester_user_id,
+        operator_user_id: StampOperator.operator_id(changeset),
         assessment_id: correction.assessment_id,
         student_id: correction.student_id,
         before_status: correction.current_status,

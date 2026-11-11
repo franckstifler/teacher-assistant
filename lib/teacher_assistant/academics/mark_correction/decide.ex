@@ -10,7 +10,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
 
   require Ash.Query
 
-  alias TeacherAssistant.Academics.{Mark, MarkCorrection}
+  alias TeacherAssistant.Academics.{Mark, MarkCorrection, StampOperator}
   alias TeacherAssistant.Academics.Mark.Journal
 
   @impl true
@@ -22,8 +22,8 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
 
     changeset
     |> Ash.Changeset.before_action(&decide(&1, decision, context))
-    |> Ash.Changeset.after_action(fn _changeset, correction ->
-      apply_decision(decision, correction, context)
+    |> Ash.Changeset.after_action(fn changeset, correction ->
+      apply_decision(decision, correction, context, StampOperator.operator_id(changeset))
     end)
   end
 
@@ -80,10 +80,11 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
     current != recorded
   end
 
-  defp apply_decision(:refused, correction, context) do
+  defp apply_decision(:refused, correction, context, operator_id) do
     Journal.record!(correction.workspace_id, %{
       action: :correction_refusee,
       actor_user_id: context.actor.id,
+      operator_user_id: operator_id,
       assessment_id: correction.assessment_id,
       student_id: correction.student_id,
       before_status: correction.current_status,
@@ -96,7 +97,7 @@ defmodule TeacherAssistant.Academics.MarkCorrection.Decide do
     {:ok, correction}
   end
 
-  defp apply_decision(:approved, correction, context) do
+  defp apply_decision(:approved, correction, context, _operator_id) do
     opts = [scope: context, context: %{mark_correction_id: correction.id}]
     attrs = %{status: correction.requested_status, score: correction.requested_score}
 

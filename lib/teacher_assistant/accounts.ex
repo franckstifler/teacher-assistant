@@ -138,6 +138,23 @@ defmodule TeacherAssistant.Accounts do
     end
   end
 
+  @doc """
+  A user's display name by id, whoever they are (a member, or the operator who acted
+  as one); nil when unknown. Internal read: names only, never the account.
+  """
+  def user_name(nil), do: nil
+  def user_name(id), do: Map.get(user_names([id]), id)
+
+  @doc "`%{user id => display name}` for `ids`, in one read (see `user_name/1`)."
+  def user_names([]), do: %{}
+
+  def user_names(ids) do
+    User
+    |> Ash.Query.filter(id in ^Enum.uniq(ids))
+    |> Ash.read!(authorize?: false)
+    |> Map.new(&{&1.id, User.display_name(&1)})
+  end
+
   def list_members(%Scope{} = scope) do
     SchoolMembership
     |> Ash.Query.for_read(:active_for_workspace, %{}, scope: scope)

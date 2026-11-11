@@ -90,6 +90,20 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLiveTest do
     assert Decimal.equal?(mark.score, 12)
   end
 
+  test "a write made while an operator acted as the member names the operator (A6)", ctx do
+    op = TeacherFixtures.admin_user_fixture(%{name: "Opératrice Ndzana"})
+    MarksFixtures.lock!(ctx, Date.add(Reference.today(), 30))
+
+    :ok =
+      Assessment.upsert_marks(impersonating(ctx.t, op), ctx.a, [
+        %{student_id: ctx.s2.id, score: Decimal.new(11)}
+      ])
+
+    {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
+    journal = view |> element("#journal") |> render()
+    assert journal =~ "(opérateur Opératrice Ndzana)"
+  end
+
   test "the journal is on the same page under the cards", ctx do
     {:ok, view, _} = live(ctx.conn, ~p"/school/corrections/review")
     assert has_element?(view, "#journal")

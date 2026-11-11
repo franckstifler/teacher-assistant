@@ -60,6 +60,9 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
           context.actor && context.actor.id
         )
       end
+
+      change {TeacherAssistant.Academics.StampOperator,
+              attribute: :parents_notified_operator_user_id}
     end
 
     # The school's latest sanctions (spec G, "Sanctions récentes").
@@ -143,6 +146,8 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
+
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   validations do
@@ -172,8 +177,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
       constraints: [min: 1, max: 40]
 
     attribute :issued_by_user_id, :uuid, allow_nil?: true, public?: true
+    # The operator acting as the member (A6); no FK: the operator is not of the school.
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
     attribute :parents_notified_on, :date, allow_nil?: true, public?: true
     attribute :parents_notified_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :parents_notified_operator_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end

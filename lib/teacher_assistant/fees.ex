@@ -801,14 +801,7 @@ defmodule TeacherAssistant.Fees do
   end
 
   @doc false
-  def user_name(nil), do: nil
-
-  def user_name(id) do
-    case Ash.get(TeacherAssistant.Accounts.User, id, authorize?: false) do
-      {:ok, user} -> TeacherAssistant.Accounts.User.display_name(user)
-      _ -> nil
-    end
-  end
+  defdelegate user_name(id), to: TeacherAssistant.Accounts
 
   @doc """
   The public check of a receipt (no actor): `{:valid | :cancelled, map}` with only what

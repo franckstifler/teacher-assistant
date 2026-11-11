@@ -293,6 +293,9 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
+
+    # Every roll-call write (creates and upserts); a justification leaves it alone.
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -322,6 +325,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     attribute :justified_by_user_id, :uuid, allow_nil?: true, public?: true
     attribute :justified_at, :utc_datetime, allow_nil?: true, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    # The operator acting as the member (A6); no FK: the operator is not of the school.
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
     # Spec 2026-10-28: typed in from a paper sheet, or taken in the app.
     attribute :source, TeacherAssistant.Academics.AttendanceSource,
       allow_nil?: false,
@@ -492,6 +497,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         :late_minutes,
         :teaching_context_id,
         :recorded_by_user_id,
+        :operator_user_id,
         :source,
         :updated_at
       ],

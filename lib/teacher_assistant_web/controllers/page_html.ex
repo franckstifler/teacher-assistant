@@ -364,7 +364,7 @@ defmodule TeacherAssistantWeb.PageHTML do
             "Seuls les membres d'un établissement voient ses données, et chacun selon son rôle : l'enseignant ses classes, le censeur la pédagogie, l'intendant les frais, le proviseur tout l'établissement."
           ),
           gettext(
-            "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal."
+            "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et ce qui est saisi pendant cet accès porte le nom de l'opérateur."
           ),
           gettext(
             "Les bulletins, reçus et cartes scolaires portent un code QR. Celui qui le scanne voit seulement de quoi vérifier que le document est authentique : l'établissement, l'élève, sa classe et ce que dit le document."

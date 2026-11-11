@@ -29,7 +29,14 @@ defmodule TeacherAssistant.Accounts.AuditEvent do
     # Internal only: written by `AuditEvent.Record` with `authorize?: false`; no
     # policy covers it, so no actor can call it.
     create :record do
-      accept [:actor_user_id, :action, :workspace_id, :target_user_id, :details]
+      accept [
+        :actor_user_id,
+        :operator_user_id,
+        :action,
+        :workspace_id,
+        :target_user_id,
+        :details
+      ]
     end
 
     read :read do
@@ -51,6 +58,8 @@ defmodule TeacherAssistant.Accounts.AuditEvent do
       public?: true
 
     attribute :details, :map, allow_nil?: false, default: %{}, public?: true
+    # The operator acting as the member (A6); the operator's own journal rows leave it nil.
+    attribute :operator_user_id, :uuid, public?: true
     create_timestamp :inserted_at, public?: true
   end
 

@@ -18,6 +18,7 @@ defmodule TeacherAssistant.Accounts.AuditEvent.Record do
       AuditEvent
       |> Ash.Changeset.for_create(:record, %{
         actor_user_id: context.actor && context.actor.id,
+        operator_user_id: changeset.context[:operator_user_id],
         action: action,
         workspace_id: workspace_id(record, changeset),
         target_user_id: target_user_id(changeset, record),

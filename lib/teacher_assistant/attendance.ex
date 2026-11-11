@@ -456,6 +456,7 @@ defmodule TeacherAssistant.Attendance do
         :late_minutes,
         :teaching_context_id,
         :recorded_by_user_id,
+        :operator_user_id,
         :updated_at
       ]
 

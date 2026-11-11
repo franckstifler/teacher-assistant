@@ -84,6 +84,8 @@ defmodule TeacherAssistant.Academics.Payment do
           context.actor && context.actor.id
         )
       end
+
+      change {TeacherAssistant.Academics.StampOperator, attribute: :cancelled_operator_user_id}
     end
 
     read :for_enrollment do
@@ -113,6 +115,7 @@ defmodule TeacherAssistant.Academics.Payment do
 
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -133,6 +136,8 @@ defmodule TeacherAssistant.Academics.Payment do
     attribute :reference, :string, allow_nil?: true, public?: true
     attribute :note, :string, allow_nil?: true, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    # The operator acting as the member (A6); no FK: the operator is not of the school.
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
 
     # Fees 1: the receipt number (`R2026-000123`) from `seq`, per school and year.
     attribute :seq, :integer, allow_nil?: false, public?: true
@@ -153,6 +158,7 @@ defmodule TeacherAssistant.Academics.Payment do
 
     attribute :cancelled_at, :utc_datetime_usec, allow_nil?: true, public?: true
     attribute :cancelled_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :cancelled_operator_user_id, :uuid, allow_nil?: true, public?: true
     attribute :cancel_reason, :string, allow_nil?: true, public?: true
 
     timestamps()

@@ -7,7 +7,7 @@ defmodule TeacherAssistant.Academics.Mark.Journal do
   """
   use Ash.Resource.Change
 
-  alias TeacherAssistant.Academics.MarkEvent
+  alias TeacherAssistant.Academics.{MarkEvent, StampOperator}
 
   @impl true
   def change(changeset, _opts, context) do
@@ -22,6 +22,7 @@ defmodule TeacherAssistant.Academics.Mark.Journal do
         record!(mark.workspace_id, %{
           action: if(correction_id, do: :correction_approuvee, else: :saisie),
           actor_user_id: context.actor && context.actor.id,
+          operator_user_id: StampOperator.operator_id(changeset),
           assessment_id: mark.assessment_id,
           student_id: mark.student_id,
           before_status: before && before.status,

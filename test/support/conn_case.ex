@@ -30,7 +30,7 @@ defmodule TeacherAssistantWeb.ConnCase do
       import TeacherAssistantWeb.ConnCase
 
       import TeacherAssistant.DataCase,
-        only: [school_scope: 2, assert_forbidden: 1, paper_changeset: 4]
+        only: [school_scope: 2, assert_forbidden: 1, paper_changeset: 4, impersonating: 2]
     end
   end
 

@@ -49,7 +49,12 @@ defmodule TeacherAssistant.Scope do
     def get_actor(%{current_user: current_user}), do: {:ok, current_user}
     def get_tenant(%{current_workspace: %{id: id}}), do: {:ok, id}
     def get_tenant(_), do: :error
-    def get_context(%{locale: locale}), do: {:ok, %{shared: %{locale: locale}}}
+    # The operator acting as the member rides along so writes can name them (A6).
+    def get_context(%{locale: locale} = scope),
+      do: {:ok, %{shared: %{locale: locale, operator_user_id: operator_id(scope)}}}
+
+    defp operator_id(%{impersonation: %{operator: %{id: id}}}), do: id
+    defp operator_id(_scope), do: nil
     def get_tracer(_), do: :error
     def get_authorize?(_), do: :error
   end

@@ -46,7 +46,8 @@ defmodule TeacherAssistant.Academics.MarkEvent do
         :after_status,
         :after_score,
         :batch_id,
-        :mark_correction_id
+        :mark_correction_id,
+        :operator_user_id
       ]
     end
   end
@@ -78,6 +79,8 @@ defmodule TeacherAssistant.Academics.MarkEvent do
 
     # nil = the system.
     attribute :actor_user_id, :uuid, public?: true
+    # The operator acting as the member (A6); no FK: the operator is not of the school.
+    attribute :operator_user_id, :uuid, public?: true
     attribute :before_status, TeacherAssistant.Academics.MarkStatus, public?: true
     attribute :before_score, :decimal, public?: true
     attribute :after_status, TeacherAssistant.Academics.MarkStatus, public?: true

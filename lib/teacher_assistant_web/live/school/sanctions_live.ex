@@ -74,8 +74,16 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
         do: %{notify: page.count || 0, all: other},
         else: %{notify: other, all: page.count || 0}
 
+    # The operators who acted as a member (A6) are named next to them.
+    operators =
+      page.results
+      |> Enum.map(& &1.operator_user_id)
+      |> Enum.reject(&is_nil/1)
+      |> Accounts.user_names()
+
     assign(socket,
       page: page,
+      operators: operators,
       selected: selected,
       counts: counts,
       year_total:
@@ -383,6 +391,9 @@ defmodule TeacherAssistantWeb.School.SanctionsLive do
               <span :if={@selected.reason} class="text-sm">{@selected.reason}</span>
               <span :if={@issuers[@selected.issued_by_user_id]} class="text-xs text-base-content/70">
                 {gettext("Par %{name}", name: @issuers[@selected.issued_by_user_id])}
+                <span :if={@operators[@selected.operator_user_id]}>
+                  {gettext("(opérateur %{name})", name: @operators[@selected.operator_user_id])}
+                </span>
               </span>
               <span :if={@selected.parents_notified_on} class="text-sm text-primary">
                 {gettext("Famille prévenue le %{date}", date: date(@selected.parents_notified_on))}

@@ -8,7 +8,8 @@ defmodule TeacherAssistantWeb.Impersonation do
   operator's, so every policy applies as the member and what is entered is theirs. It holds
   only while the signed-in user is still an operator, and for an hour; after
   that `TeacherAssistantWeb.Plug.EndImpersonation` ends it on the next request. Start
-  and end are journaled; the school is never told.
+  and end are journaled for the operators; every write made meanwhile names the
+  operator next to the member (spec audit follow-ups A6), so the school sees who acted.
   """
   import Plug.Conn
 

@@ -56,6 +56,16 @@ defmodule TeacherAssistant.DataCase do
   The real `Workspaces.scope_for/3` scope of `user` in `workspace` — the scope a
   signed-in member gets. Raises when `user` is not an active member.
   """
+  @doc """
+  `scope` while the operator `operator` acts as its member (spec audit follow-ups A6):
+  writes then carry the operator next to the member.
+  """
+  def impersonating(%TeacherAssistant.Scope{} = scope, operator),
+    do: %{
+      scope
+      | impersonation: %{operator: operator, ends_at: DateTime.add(DateTime.utc_now(), 3600)}
+    }
+
   def school_scope(user, %{id: workspace_id}) do
     {:ok, scope} = TeacherAssistant.Accounts.Workspaces.scope_for(user, workspace_id)
     scope

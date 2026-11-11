@@ -9,7 +9,7 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.{Assessment, Organization}
+  alias TeacherAssistant.{Accounts, Assessment, Organization}
   alias TeacherAssistant.Academics.{Lock, MarkCorrectionMotive, MarkEntry, Reference}
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.CorrectionsLive
@@ -183,11 +183,15 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   # Journal lines, newest first: one per save (a batch of marks), per correction step,
   # and one derived "Verrouillage" line per locked séquence at its deadline.
   defp journal(scope) do
+    events = Assessment.list_mark_events(scope)
+
+    operators =
+      events |> Enum.map(& &1.operator_user_id) |> Enum.reject(&is_nil/1) |> Accounts.user_names()
+
     events =
-      scope
-      |> Assessment.list_mark_events()
+      events
       |> Enum.chunk_by(&(&1.batch_id || &1.id))
-      |> Enum.map(&event_line/1)
+      |> Enum.map(&event_line(&1, operators))
 
     locks =
       case scope.current_academic_year do
@@ -214,12 +218,12 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
   defp lock_time(deadline),
     do: deadline |> Date.add(1) |> DateTime.new!(~T[00:00:00]) |> DateTime.add(-3600)
 
-  defp event_line([event]) do
+  defp event_line([event], operators) do
     %{
       id: event.id,
       kind: event.action,
       at: event.inserted_at,
-      who: author(event.actor),
+      who: author(event.actor, operators[event.operator_user_id]),
       what: action_label(event.action),
       detail:
         Enum.join(
@@ -235,12 +239,12 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
     }
   end
 
-  defp event_line([event | _] = batch) do
+  defp event_line([event | _] = batch, operators) do
     %{
       id: event.id,
       kind: event.action,
       at: event.inserted_at,
-      who: author(event.actor),
+      who: author(event.actor, operators[event.operator_user_id]),
       what: action_label(event.action),
       detail:
         Enum.join(
@@ -255,8 +259,18 @@ defmodule TeacherAssistantWeb.School.CorrectionReviewLive do
 
   defp where(_event), do: nil
 
-  defp author(nil), do: gettext("Système")
-  defp author(user), do: User.display_name(user)
+  defp author(user), do: author(user, nil)
+
+  defp author(nil, _operator), do: gettext("Système")
+  defp author(user, nil), do: User.display_name(user)
+
+  # Written while an operator acted as the member (spec audit follow-ups A6).
+  defp author(user, operator),
+    do:
+      gettext("%{member} (opérateur %{operator})",
+        member: User.display_name(user),
+        operator: operator
+      )
 
   defp action_label(:saisie), do: gettext("Saisie")
   defp action_label(:correction_demandee), do: gettext("Correction demandée")
