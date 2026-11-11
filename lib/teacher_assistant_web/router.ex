@@ -126,6 +126,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/school/roll-sheets/print", RollSheetPrintController, :all
     get "/school/classes/:id/mark-sheet/print", MarkSheetPrintController, :class
     get "/school/mark-sheets/print", MarkSheetPrintController, :all
+    get "/school/statistics/me/print", StatisticsPrintController, :show
     get "/school/fees/receipts/:id/print", ReceiptPrintController, :show
     get "/school/fees/notes/:id/print", FeePaperPrintController, :note
     get "/school/fees/warnings/print", FeePaperPrintController, :warnings

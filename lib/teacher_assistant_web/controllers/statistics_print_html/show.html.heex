@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4_landscape} />
+    <title>{gettext("Statistiques")} — {@teacher_name} — {period_label(@period)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
+        color: #111; background: #fff; margin: 0; padding: 12px;
+        font-size: 9pt; line-height: 1.25;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      @page { size: A4 landscape; margin: 8mm 10mm; }
+      @media print { body { padding: 0; } }
+      .print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: system-ui, sans-serif; font-size: 14px; }
+      .print-actions select { font: inherit; padding: 7px 8px; }
+      .header { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; font-size: 0.86em; }
+      .header .col div:first-child { font-weight: bold; text-transform: uppercase; }
+      .header .col div:nth-child(2) { font-style: italic; }
+      .header .col div:nth-child(n+3) { text-transform: uppercase; }
+      .header .mid img { max-height: 16mm; max-width: 30mm; }
+      .header .code { font-weight: 700; margin-top: 1mm; letter-spacing: .02em; }
+      .school { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; margin-top: 1mm; font-size: 0.9em; }
+      .school .name { font-size: 1.15em; font-weight: bold; text-transform: uppercase; }
+      .flag { height: 0.9mm; margin: 1.2mm 0 0;
+              background: linear-gradient(90deg, #007a5e 33.3%, #ce1126 33.3% 66.6%, #fcd116 66.6%); }
+      h1 { text-align: center; font-size: 1.3em; letter-spacing: .04em; margin: 3mm 0 1mm; text-transform: uppercase; }
+      .meta { text-align: center; margin-bottom: 3mm; }
+      table { width: 100%; border-collapse: collapse; }
+      thead { display: table-header-group; }
+      th, td { border: 0.2mm solid #555; padding: 0.8mm 1.4mm; text-align: right; }
+      th { background: #eee; font-size: 0.9em; text-align: center; }
+      th.course, td.course { text-align: left; }
+      td.sub { padding-left: 5mm; color: #333; }
+      td.mentions { text-align: left; font-size: 0.85em; }
+      tr { break-inside: avoid; }
+      .foot { display: flex; justify-content: space-between; gap: 6mm; margin-top: 4mm; }
+      .sign { text-align: center; min-width: 60mm; }
+      .sign .space { height: 16mm; }
+    </style>
+  </head>
+  <body>
+    <form class="print-actions" method="get" action={~p"/school/statistics/me/print"}>
+      <button type="button" onclick="window.print()">{gettext("Imprimer")}</button>
+      <input :if={@teacher_id} type="hidden" name="teacher" value={@teacher_id} />
+      <label>
+        {gettext("Période")}
+        <select name="period" onchange="this.form.submit()">
+          <option
+            :for={{param, label, _} <- @periods}
+            value={param}
+            selected={param == @chosen}
+          >
+            {label}
+          </option>
+        </select>
+      </label>
+      <noscript><button type="submit">{gettext("Afficher")}</button></noscript>
+    </form>
+
+    <.official_header :if={@template} header={@template.header} logo?={@template.header.logo?} />
+
+    <h1>{gettext("Statistiques")} — {@teacher_name} — {period_label(@period)}</h1>
+    <p class="meta">{@school} — {gettext("Année scolaire")} {@year}</p>
+
+    <p :if={@rows == []} id="no-course">{gettext("Aucun cours")}</p>
+
+    <table :if={@rows != []} id="stats-print-table">
+      <thead>
+        <tr>
+          <th class="course">{gettext("Cours")}</th>
+          <th>{gettext("Effectif")}</th>
+          <th>{gettext("G")}</th>
+          <th>{gettext("F")}</th>
+          <th>{gettext("Notés")}</th>
+          <th>{gettext("Moyenne")}</th>
+          <th>{gettext("Réussite")}</th>
+          <th>{gettext("Réussite G")}</th>
+          <th>{gettext("Réussite F")}</th>
+          <th>{gettext("Min")}</th>
+          <th>{gettext("Max")}</th>
+          <th>{gettext("Mentions")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={row <- @rows}>
+          <td :if={is_nil(row.class_label)} class="course">
+            <strong>{row.course.title}</strong>
+          </td>
+          <td :if={row.class_label} class="course sub">↳ {row.class_label}</td>
+          <td>{row.headcount}</td>
+          <td>{row.boys}</td>
+          <td>{row.girls}</td>
+          <td>{row.graded}</td>
+          <td><strong>{fmt(row.average)}</strong></td>
+          <td>{pct(row.pass_rate)}</td>
+          <td>{pct(row.pass_m)}</td>
+          <td>{pct(row.pass_f)}</td>
+          <td>{short(row.lowest)}</td>
+          <td>{short(row.highest)}</td>
+          <td class="mentions">{mentions_text(row.mentions)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="foot">
+      <span>
+        {gettext("Imprimé le %{date}", date: date(@printed_on))} · {source_line(@rows, @period)}
+      </span>
+      <div class="sign">
+        <div>{gettext("L'enseignant(e)")}</div>
+        <div class="space"></div>
+        <div>{@teacher_name}</div>
+      </div>
+    </div>
+  </body>
+</html>

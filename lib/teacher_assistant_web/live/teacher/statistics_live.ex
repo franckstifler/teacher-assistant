@@ -30,19 +30,28 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
      )}
   end
 
-  # Another teacher's page is for the Proviseur and the Censeur only; anyone else is
-  # told so and sees their own figures.
-  defp pick_teacher(socket, scope, id) when id in [nil, ""], do: {scope.current_user, socket}
-
-  defp pick_teacher(socket, %{current_user: %{id: id} = me}, id), do: {me, socket}
-
   defp pick_teacher(socket, scope, id) do
+    case teacher_for(scope, id) do
+      {:ok, user} -> {user, socket}
+      :not_allowed -> {scope.current_user, Authz.put_not_allowed(socket)}
+    end
+  end
+
+  @doc """
+  Whose statistics a request shows: the signed-in member's without `teacher` (or with
+  their own id); another member's for the Proviseur and the Censeur only
+  (`ReportCards.can_publish?/1`). Shared with the print.
+  """
+  def teacher_for(scope, id) when id in [nil, ""], do: {:ok, scope.current_user}
+  def teacher_for(%{current_user: %{id: id} = me}, id), do: {:ok, me}
+
+  def teacher_for(scope, id) do
     with true <- ReportCards.can_publish?(scope),
          %{user: %User{} = user} <-
            Enum.find(Accounts.list_members(scope), &(&1.user_id == id)) do
-      {user, socket}
+      {:ok, user}
     else
-      _ -> {scope.current_user, Authz.put_not_allowed(socket)}
+      _ -> :not_allowed
     end
   end
 
