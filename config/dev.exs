@@ -95,5 +95,6 @@ config :swoosh, :api_client, false
 # The Content-Security-Policy (A6) lets LiveDebugger's script and socket in, in dev only.
 config :teacher_assistant, :csp_extra, %{
   "script-src" => ["http://127.0.0.1:4007", "http://localhost:4007"],
+  "style-src" => ["http://127.0.0.1:4007", "http://localhost:4007"],
   "connect-src" => ["ws://127.0.0.1:4007", "ws://localhost:4007", "ws:"]
 }
