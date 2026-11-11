@@ -145,6 +145,22 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     assert has_element?(view, "#no-class-match")
   end
 
+  test "a form master filters to their classes with f=mine; the pill is absent otherwise (A5)",
+       ctx do
+    %{conn: conn, scope: scope, year: year} = ctx
+    {:ok, a} = Enrollment.create_class_group(scope, year, %{label: "Tle D", level: "Terminale"})
+    {:ok, b} = Enrollment.create_class_group(scope, year, %{label: "1re C", level: "Première"})
+
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    refute has_element?(view, "#filter-mine")
+
+    {:ok, _} = Enrollment.set_form_master(scope, a, scope.current_user.id)
+    {:ok, view, _} = live(conn, ~p"/school/classes?f=mine")
+    assert has_element?(view, "#filter-mine[aria-current]", "1")
+    assert has_element?(view, "#class-row-#{a.id}")
+    refute has_element?(view, "#class-row-#{b.id}")
+  end
+
   test "designation mode sets several form masters in one save", ctx do
     %{conn: conn, scope: scope, year: year} = ctx
     {:ok, a} = Enrollment.create_class_group(scope, year, %{label: "5e A", level: "5ème"})

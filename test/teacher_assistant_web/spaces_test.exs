@@ -2,14 +2,23 @@ defmodule TeacherAssistantWeb.SpacesTest do
   use ExUnit.Case, async: true
   alias TeacherAssistantWeb.Spaces
 
-  defp facts(roles, opts \\ []),
-    do: %{
+  defp facts(roles, opts \\ []) do
+    form_master? = Keyword.get(opts, :form_master?, false)
+
+    classes =
+      Keyword.get_lazy(opts, :form_master_classes, fn ->
+        if form_master?, do: [%{id: "cg-1", label: "6e A"}], else: []
+      end)
+
+    %{
       roles: roles,
       teaches?: Keyword.get(opts, :teaches?, false),
-      form_master?: Keyword.get(opts, :form_master?, false),
+      form_master?: form_master?,
+      form_master_classes: classes,
       pending_corrections: Keyword.get(opts, :pending_corrections, 0),
       decided_corrections: Keyword.get(opts, :decided_corrections, 0)
     }
+  end
 
   defp item_ids(key, facts),
     do: for(section <- Spaces.space(key, facts).sections, item <- section.items, do: item.id)
@@ -63,7 +72,42 @@ defmodule TeacherAssistantWeb.SpacesTest do
                ["Journée", "Absences", "Élèves", "Sanctions"]
 
       assert tab_labels(:enseignant, facts([:teacher], teaches?: true)) ==
-               ["Ma journée", "Mes cours", "Bulletins", "EDT"]
+               ["Ma journée", "Mes cours", "EDT"]
+    end
+
+    test "a form master gets « Ma classe » as third tab, opening the class (A5)" do
+      assert tab_labels(:enseignant, facts([:teacher], teaches?: true, form_master?: true)) ==
+               ["Ma journée", "Mes cours", "Ma classe", "EDT"]
+
+      one = Spaces.space(:enseignant, facts([:teacher], teaches?: true, form_master?: true))
+      assert {_, %{path: "/school/classes/cg-1"}} = owner(one, "nav-school-my-class")
+
+      two =
+        Spaces.space(
+          :enseignant,
+          facts([:teacher],
+            form_master?: true,
+            form_master_classes: [%{id: "a", label: "6e A"}, %{id: "b", label: "6e B"}]
+          )
+        )
+
+      assert {_, %{path: "/school/classes?f=mine"}} = owner(two, "nav-school-my-class")
+      assert for(t <- Spaces.tab_bar(two).primary, do: t.label) == ["Ma classe", "EDT"]
+      assert two.home == "/school/classes?f=mine"
+    end
+
+    test "a head who teaches keeps the proviseur bar and gets the enseignant bar (A5)" do
+      f = facts([:head], teaches?: true)
+      assert Spaces.keys_for(f) == [:proviseur, :enseignant]
+      assert tab_labels(:proviseur, f) == ["Accueil", "Classes", "Élèves", "Bulletins"]
+      assert tab_labels(:enseignant, f) == ["Ma journée", "Mes cours", "EDT"]
+    end
+
+    test "« Ma classe » stays lit on every page of the class or of the list (A5)" do
+      assert Spaces.path_under_item?("/school/classes/cg-1/students", "/school/classes/cg-1")
+      assert Spaces.path_under_item?("/school/classes", "/school/classes?f=mine")
+      assert Spaces.path_under_item?("/school/classes/x/register", "/school/classes?f=mine")
+      refute Spaces.path_under_item?("/school/courses", "/school/classes?f=mine")
     end
 
     test "« Plus » holds the rest of the menu, never a primary tab" do
@@ -89,10 +133,10 @@ defmodule TeacherAssistantWeb.SpacesTest do
       end
     end
 
-    test "missing chosen items are topped up from the menu" do
-      # a form master who does not teach: no « Ma journée », no « Mes cours »
+    test "missing chosen items are topped up from the menu, except the teacher's bar" do
+      # a form master who does not teach: no « Ma journée », no « Mes cours », no top-up
       assert tab_labels(:enseignant, facts([:teacher], form_master?: true)) ==
-               ["Bulletins", "EDT", "Classes"]
+               ["Ma classe", "EDT"]
 
       assert tab_labels(:intendant, facts([:bursar])) == ["Frais", "Classes", "Paramètres"]
     end
@@ -111,7 +155,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
       }
 
       assert for(tab <- Spaces.tab_bar(no_timetable).primary, do: tab.label) ==
-               ["Ma journée", "Mes cours", "Bulletins", "Stats"]
+               ["Ma journée", "Mes cours"]
     end
   end
 
@@ -121,8 +165,8 @@ defmodule TeacherAssistantWeb.SpacesTest do
       assert Spaces.owner_item(intendant, ["fees", "classes"]).path == "/school/fees"
 
       teacher = Spaces.space(:enseignant, facts([:teacher], form_master?: true))
-      assert Spaces.owner_item(teacher, ["fees", "classes"]).path == "/school/classes"
-      assert Spaces.owner_item(teacher, ["fees"]) == nil
+      assert Spaces.owner_item(teacher, ["fees", "my-class"]).path == "/school/classes/cg-1"
+      assert Spaces.owner_item(teacher, ["fees", "classes"]) == nil
     end
   end
 
@@ -193,7 +237,6 @@ defmodule TeacherAssistantWeb.SpacesTest do
              "nav-school-today",
              "nav-school-courses",
              "nav-school-statistics",
-             "nav-school-bulletins",
              "nav-school-timetable-me",
              "nav-school-corrections"
            ]
@@ -203,17 +246,23 @@ defmodule TeacherAssistantWeb.SpacesTest do
                "nav-school-today",
                "nav-school-courses",
                "nav-school-statistics",
-               "nav-school-classes",
-               "nav-school-bulletins",
+               "nav-school-my-class",
                "nav-school-timetable-me",
                "nav-school-corrections"
              ]
 
     assert item_ids(:enseignant, facts([:teacher], form_master?: true)) ==
-             ["nav-school-classes", "nav-school-bulletins", "nav-school-timetable-me"]
+             ["nav-school-my-class", "nav-school-timetable-me"]
 
     refute "nav-school-statistics" in item_ids(:intendant, facts([:bursar]))
   end
+
+  defp owner(space, id),
+    do:
+      Enum.find_value(space.sections, fn section ->
+        item = Enum.find(section.items, &(&1.id == id))
+        item && {section.label, item}
+      end)
 
   defp item(key, facts, id),
     do:

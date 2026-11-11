@@ -109,10 +109,20 @@ defmodule TeacherAssistantWeb.Spaces do
     year = scope.current_academic_year
     teaches? = Curriculum.list_units_for_scope(scope) != []
 
+    form_master_classes =
+      if year,
+        do:
+          for(
+            cg <- Enrollment.list_form_master_classes(scope, year),
+            do: Map.take(cg, [:id, :label])
+          ),
+        else: []
+
     %{
       roles: scope.current_roles || [],
       teaches?: teaches?,
-      form_master?: year != nil and Enrollment.list_form_master_classes(scope, year) != [],
+      form_master?: form_master_classes != [],
+      form_master_classes: form_master_classes,
       # Menu badges (spec D3c), counted only for whom the item shows.
       pending_corrections:
         if(Scope.module?(scope, :notes) and Assessment.can_decide_corrections?(scope),
@@ -258,16 +268,23 @@ defmodule TeacherAssistantWeb.Spaces do
         facts.teaches? && my_day(facts[:calls_to_do]),
         facts.teaches? && courses(),
         facts.teaches? && statistics(),
-        facts.form_master? && classes(),
-        (facts.teaches? or facts.form_master?) && bulletins(),
+        facts.form_master? && my_class(facts[:form_master_classes] || []),
         timetable()
       ]
       |> Enum.filter(& &1)
 
+    # Bulletins left the teacher's menu (spec audit follow-ups A5): the bulletin
+    # timeline lives on « Mes cours »; a published class opens from its class page or
+    # from the publication notice.
     %{
       key: :enseignant,
       label: label(:enseignant),
-      home: if(facts.teaches?, do: ~p"/school/today", else: ~p"/school/classes"),
+      home:
+        cond do
+          facts.teaches? -> ~p"/school/today"
+          facts.form_master? -> my_class_path(facts[:form_master_classes] || [])
+          true -> ~p"/school/classes"
+        end,
       sections:
         [
           section(gettext("Enseignement"), items),
@@ -300,9 +317,13 @@ defmodule TeacherAssistantWeb.Spaces do
 
     chosen = for id <- tab_spec(key), item = by_id["nav-school-" <> id], item != nil, do: item
     taken = MapSet.new(chosen, & &1.id)
+    # The teacher's bar is never topped up (A5): Ma journée · Mes cours · EDT, with
+    # « Ma classe » for a form master; the rest stays under « Plus ».
+    top_up =
+      if key == :enseignant, do: [], else: Enum.reject(items, &MapSet.member?(taken, &1.id))
 
     primary =
-      (chosen ++ Enum.reject(items, &MapSet.member?(taken, &1.id)))
+      (chosen ++ top_up)
       |> Enum.take(4)
       |> Enum.map(&%{&1 | label: tab_label(&1)})
 
@@ -344,6 +365,11 @@ defmodule TeacherAssistantWeb.Spaces do
   # names the editor as its entry (`nav`).
   def path_under_item?(_path, "/school/timetable"), do: false
 
+  # « Ma classe » for a form master of several classes opens the list filtered to
+  # theirs; every class page stays under it.
+  def path_under_item?(path, "/school/classes?" <> _),
+    do: path == "/school/classes" or String.starts_with?(path, "/school/classes/")
+
   def path_under_item?(path, href), do: String.starts_with?(path, href <> "/")
 
   @doc "Whether the space's menu has an entry for `path` (it or a page under it)."
@@ -361,8 +387,8 @@ defmodule TeacherAssistantWeb.Spaces do
   defp tab_spec(:surveillant), do: ["day", "absences", "students", "sanctions"]
 
   # Marks are entered per course, so « Mes cours » covers them (a course's pages
-  # name it as their menu entry); Bulletins gets the third tab.
-  defp tab_spec(:enseignant), do: ["today", "courses", "bulletins", "timetable-me"]
+  # name it as their menu entry); a form master's class gets the third tab.
+  defp tab_spec(:enseignant), do: ["today", "courses", "my-class", "timetable-me"]
   defp tab_spec(_key), do: []
 
   # A tab is a fifth of a phone's width: menu labels longer than a word get a
@@ -376,6 +402,7 @@ defmodule TeacherAssistantWeb.Spaces do
       "day" -> gettext("Journée")
       "corrections" -> gettext("Corrections")
       "statistics" -> gettext("Stats")
+      "my-class" -> gettext("Ma classe")
       "correction-review" -> gettext("Validations")
       "councils" -> gettext("Conseils")
       "settings" -> gettext("Paramètres")
@@ -471,6 +498,13 @@ defmodule TeacherAssistantWeb.Spaces do
         "hero-chart-bar",
         ~p"/school/statistics/me"
       )
+
+  defp my_class(classes),
+    do: item("my-class", gettext("Ma classe"), "hero-user-group", my_class_path(classes))
+
+  # One class: its page; several: the class list filtered to theirs.
+  defp my_class_path([%{id: id}]), do: ~p"/school/classes/#{id}"
+  defp my_class_path(_classes), do: ~p"/school/classes?f=mine"
 
   defp classes,
     do: item("classes", gettext("Classes"), "hero-rectangle-group", ~p"/school/classes")

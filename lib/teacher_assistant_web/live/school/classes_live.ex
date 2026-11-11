@@ -14,7 +14,8 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   alias TeacherAssistant.Academics.{ClassGroup, SchoolTemplates}
   alias TeacherAssistant.Accounts.User
 
-  @filters [:all, :no_pp, :to_assign]
+  # « Mes classes » (A5) is the form master's « Ma classe » entry when they have several.
+  @filters [:all, :mine, :no_pp, :to_assign]
   @other_level "__other__"
 
   def mount(_params, _session, socket) do
@@ -139,6 +140,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             <.filter_pills id="class-filters" class="sm:flex-none">
               <:pill
                 :for={f <- @filters}
+                :if={f != :mine or @counts[:mine] > 0}
                 id={"filter-#{f}"}
                 patch={classes_path(f, @mode)}
                 count={@counts[f]}
@@ -687,6 +689,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
             pp: cg.form_master && User.display_name(cg.form_master),
             unassigned: length(status[cg.id].unassigned),
             assigned: status[cg.id].assigned,
+            mine?: cg.form_master_user_id == scope.current_user.id,
             search: fold("#{cg.label} #{cg.level} #{cg.serie}")
           }
         end)
@@ -707,6 +710,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
   end
 
   defp matches_filter?(_row, :all), do: true
+  defp matches_filter?(row, :mine), do: row.mine?
   defp matches_filter?(row, :no_pp), do: row.cg.form_master_user_id == nil
   defp matches_filter?(row, :to_assign), do: row.unassigned > 0
 
@@ -714,6 +718,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
     do: Map.new(@filters, fn f -> {f, Enum.count(classes, &matches_filter?(&1, f))} end)
 
   defp filter_label(:all), do: gettext("Toutes")
+  defp filter_label(:mine), do: gettext("Mes classes")
   defp filter_label(:no_pp), do: gettext("Sans PP")
   defp filter_label(:to_assign), do: gettext("Matières à affecter")
 

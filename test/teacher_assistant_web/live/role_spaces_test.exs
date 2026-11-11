@@ -79,7 +79,8 @@ defmodule TeacherAssistantWeb.RoleSpacesTest do
     # a course's pages belong to « Mes cours », on the phone and on the rail
     assert has_element?(view, "#tab-nav-school-courses[aria-current=page]")
     assert has_element?(view, "#nav-school-courses[aria-current=page]")
-    assert has_element?(view, "#tab-nav-school-bulletins")
+    assert has_element?(view, "#tab-nav-school-timetable-me")
+    refute has_element?(view, "#tab-nav-school-bulletins")
 
     # its results are a task like its marks (UX refonte): a back arrow, no tab bar
     {:ok, view, _} = live(conn, ~p"/teacher/contexts/#{tc.id}/marks/summary")

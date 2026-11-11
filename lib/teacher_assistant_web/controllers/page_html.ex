@@ -272,7 +272,7 @@ defmodule TeacherAssistantWeb.PageHTML do
           gettext(
             "Sa journée de cours, l'appel, la saisie des notes et les résultats de ses classes."
           ),
-        tabs: [gettext("Ma journée"), gettext("Mes cours"), gettext("Bulletins"), gettext("EDT")]
+        tabs: [gettext("Ma journée"), gettext("Mes cours"), gettext("EDT")]
       },
       %{
         title: gettext("Censeur"),
