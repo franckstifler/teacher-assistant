@@ -121,7 +121,11 @@ defmodule TeacherAssistant.ErrorReportingTest do
       assert_email_sent(fn email ->
         assert email.to == [{"", to_string(operator.email)}]
         assert email.subject == "Nouvelle erreur : RuntimeError"
-        assert email.text_body =~ "mail me"
+        # Pupils are minors: the message stays in the tracker (A6).
+        refute email.text_body =~ "mail me"
+        refute email.html_body =~ "mail me"
+        assert email.text_body =~ "RuntimeError"
+        assert email.text_body =~ "Le "
         assert email.text_body =~ "/admin/errors/#{error.id}"
       end)
 

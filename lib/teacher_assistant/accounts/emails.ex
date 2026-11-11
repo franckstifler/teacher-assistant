@@ -43,16 +43,19 @@ defmodule TeacherAssistant.Accounts.Emails do
 
   @doc """
   To an operator: an unhandled error stored in `/admin/errors`, new or back after being
-  resolved (`TeacherAssistant.Workers.ErrorAlert`).
+  resolved (`TeacherAssistant.Workers.ErrorAlert`). Kind, place, time and the link
+  only: the message may hold a pupil's name or mark, so it stays in the tracker (spec
+  audit follow-ups A6, as the Telegram alert).
   """
   def error_alert(user, error, reopened?, url) do
-    reason = String.slice(error.reason, 0, 500)
     source = "#{error.source_function} (#{error.source_line})"
+    kind = short_kind(error.kind)
+    at = TeacherAssistantWeb.Dates.short_datetime(error.last_occurrence_at)
 
     subject =
       if reopened?,
-        do: gettext("Erreur revenue : %{kind}", kind: short_kind(error.kind)),
-        else: gettext("Nouvelle erreur : %{kind}", kind: short_kind(error.kind))
+        do: gettext("Erreur revenue : %{kind}", kind: kind),
+        else: gettext("Nouvelle erreur : %{kind}", kind: kind)
 
     html = &(&1 |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string())
 
@@ -60,19 +63,19 @@ defmodule TeacherAssistant.Accounts.Emails do
     |> to(to_string(user.email))
     |> subject(subject)
     |> text_body(
-      gettext("%{kind} : %{reason}\n\nÀ %{source}\n\nVoir l'erreur : %{url}",
-        kind: short_kind(error.kind),
-        reason: reason,
+      gettext("%{kind}\n\nÀ %{source}\nLe %{at}\n\nVoir l'erreur : %{url}",
+        kind: kind,
         source: source,
+        at: at,
         url: url
       )
     )
     |> html_body(
       gettext(
-        "<p><strong>%{kind}</strong> : %{reason}</p><p>À <code>%{source}</code></p><p><a href=\"%{url}\">Voir l'erreur</a></p>",
-        kind: html.(short_kind(error.kind)),
-        reason: html.(reason),
+        "<p><strong>%{kind}</strong></p><p>À <code>%{source}</code><br />Le %{at}</p><p><a href=\"%{url}\">Voir l'erreur</a></p>",
+        kind: html.(kind),
         source: html.(source),
+        at: html.(at),
         url: html.(url)
       )
     )
