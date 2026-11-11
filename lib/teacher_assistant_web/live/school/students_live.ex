@@ -28,6 +28,10 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
       is_nil(scope.current_academic_year) ->
         leave(socket, gettext("No active academic year"))
 
+      # A8: the list and its counts are read once, on the connected render.
+      not connected?(socket) ->
+        {:ok, assign(socket, page_title: gettext("Élèves"), loading?: true)}
+
       true ->
         {:ok,
          socket
@@ -37,7 +41,8 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
            can_manage_classes?: Enrollment.can_manage_classes?(scope),
            can_manage_guardians?: Enrollment.can_manage_guardians?(scope),
            exam_photos?: TeacherAssistant.Scope.module?(scope, :photos),
-           drawer: nil
+           drawer: nil,
+           loading?: false
          )
          |> assign_counts()}
     end
@@ -50,6 +55,9 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
     scope = socket.assigns.current_scope
     assign(socket, :counts, Enrollment.student_counts(scope, scope.current_academic_year))
   end
+
+  def handle_params(_params, _uri, %{assigns: %{loading?: true}} = socket),
+    do: {:noreply, socket}
 
   def handle_params(params, _uri, socket) do
     q = params["q"] || ""
@@ -151,6 +159,15 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
 
   defp repeater_label(:f), do: gettext("redoublante")
   defp repeater_label(_sex), do: gettext("redoublant")
+
+  def render(%{loading?: true} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <.page_header title={@page_title} />
+      <.loading_panel id="students-loading" />
+    </Layouts.app>
+    """
+  end
 
   def render(assigns) do
     total = assigns.page.count || 0

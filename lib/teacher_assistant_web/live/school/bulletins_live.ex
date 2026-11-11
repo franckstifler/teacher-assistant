@@ -35,7 +35,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
          periods: periods_for(scope, year),
          can_publish?: ReportCards.can_publish?(scope),
          confirm?: false,
-         withdrawing?: false
+         withdrawing?: false,
+         # A8: the class's figures are computed once, on the connected render.
+         loading?: not connected?(socket)
        )}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
@@ -49,6 +51,12 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     if ReportCards.can_publish?(scope),
       do: periods,
       else: Enum.reject(periods, &match?({_, _, {:sequence, _}}, &1))
+  end
+
+  def handle_params(params, _uri, %{assigns: %{loading?: true}} = socket) do
+    if params["class"] in [nil, ""] and not socket.assigns.can_publish?,
+      do: {:noreply, push_navigate(socket, to: ~p"/school/courses")},
+      else: {:noreply, socket}
   end
 
   def handle_params(params, _uri, socket) do
@@ -562,6 +570,15 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
 
   defp rate_text(nil), do: "—"
   defp rate_text(rate), do: "#{rate} %"
+
+  def render(%{loading?: true} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <.page_header title={@page_title} />
+      <.loading_panel id="bulletins-loading" />
+    </Layouts.app>
+    """
+  end
 
   def render(%{mode: :overview} = assigns) do
     rows = assigns.readiness

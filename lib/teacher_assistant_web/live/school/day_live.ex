@@ -22,7 +22,11 @@ defmodule TeacherAssistantWeb.School.DayLive do
     scope = socket.assigns.current_scope
 
     if scope.current_workspace != nil and Discipline.can_manage_conduct?(scope) do
-      {:ok, socket |> assign(:page_title, gettext("Aujourd'hui")) |> load()}
+      socket =
+        assign(socket, page_title: gettext("Aujourd'hui"), loading?: not connected?(socket))
+
+      # A8: the day's reads run once, on the connected render.
+      {:ok, if(socket.assigns.loading?, do: socket, else: load(socket))}
     else
       {:ok,
        socket
@@ -91,6 +95,15 @@ defmodule TeacherAssistantWeb.School.DayLive do
         {_id, cell} <- Enum.sort_by(row.cells, fn {_id, c} -> c.period.position end),
         cell.status == :on_paper,
         do: cell
+  end
+
+  def render(%{loading?: true} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <.page_header title={@page_title} />
+      <.loading_panel id="day-loading" />
+    </Layouts.app>
+    """
   end
 
   def render(assigns) do

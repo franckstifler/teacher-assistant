@@ -548,6 +548,24 @@ defmodule TeacherAssistantWeb.CoreComponents do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
 
+  @doc """
+  What a heavy page shows on its first, not-yet-connected render (A8): the data is read
+  once, on the connected render, so this pass reads nothing. Words, not only shapes:
+  a page that never connects still says what it is doing.
+  """
+  attr :id, :string, required: true
+
+  def loading_panel(assigns) do
+    ~H"""
+    <div id={@id} class="ta-panel space-y-3" aria-busy="true">
+      <p class="text-sm text-base-content/70">{gettext("Chargement…")}</p>
+      <div class="skeleton h-4 w-3/4"></div>
+      <div class="skeleton h-4 w-full"></div>
+      <div class="skeleton h-4 w-2/3"></div>
+    </div>
+    """
+  end
+
   attr :eyebrow, :string, default: nil
   attr :title, :string, required: true
   attr :subtitle, :string, default: nil

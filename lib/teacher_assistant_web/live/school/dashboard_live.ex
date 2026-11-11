@@ -22,10 +22,15 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
       scope.current_workspace != nil and landing_elsewhere(scope) != nil ->
         {:ok, push_navigate(socket, to: landing_elsewhere(scope))}
 
+      # A8: the dashboard's reads run once, on the connected render.
+      scope.current_workspace != nil and not connected?(socket) ->
+        {:ok, assign(socket, page_title: gettext("Dashboard"), loading?: true)}
+
       scope.current_workspace != nil ->
         {:ok,
          socket
          |> assign(:page_title, gettext("Dashboard"))
+         |> assign(:loading?, false)
          |> assign(:scope, scope)
          |> load_dashboard()}
 
@@ -50,6 +55,15 @@ defmodule TeacherAssistantWeb.School.DashboardLive do
 
   defp landing_elsewhere(%{capabilities: %{space: %{home: home}}}), do: home
   defp landing_elsewhere(_scope), do: nil
+
+  def render(%{loading?: true} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <.page_header title={@page_title} />
+      <.loading_panel id="dashboard-loading" />
+    </Layouts.app>
+    """
+  end
 
   def render(%{open_school_id: _} = assigns) do
     ~H"""

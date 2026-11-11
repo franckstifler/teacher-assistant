@@ -340,8 +340,9 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
   describe "query budget (A3)" do
     alias TeacherAssistant.{Assessment, Attendance, Curriculum, Enrollment, Timetabling}
 
-    # Measured 2026-11-11 on this fixture: 146 (dead render + connected mount; A8 halves it).
-    @budget 155
+    # Measured 2026-11-11 on this fixture: 146 (dead render + connected mount); 98 once
+    # A8 skipped the dead render's reads. Budget: the measurement + 10 %.
+    @budget 108
 
     setup %{conn: conn, actor: head} do
       {:ok, school} =

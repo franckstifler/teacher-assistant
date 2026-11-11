@@ -28,6 +28,10 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
          |> put_flash(:error, gettext("Le suivi des séquences est réservé à l'administration."))
          |> push_navigate(to: ~p"/school")}
 
+      # A8: the entry grid is read once, on the connected render.
+      not connected?(socket) ->
+        {:ok, assign(socket, page_title: gettext("Suivi de la saisie des notes"), loading?: true)}
+
       true ->
         year = scope.current_academic_year
         sequences = if year, do: Organization.list_sequences(scope, year), else: []
@@ -45,10 +49,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            teachers: [],
            view: "teachers",
            q: "",
-           picked: MapSet.new()
+           picked: MapSet.new(),
+           loading?: false
          )}
     end
   end
+
+  def handle_params(_params, _uri, %{assigns: %{loading?: true}} = socket),
+    do: {:noreply, socket}
 
   def handle_params(params, _uri, socket) do
     %{sequences: sequences, year: year, current_scope: scope} = socket.assigns
@@ -350,6 +358,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     else
       _ -> nil
     end
+  end
+
+  def render(%{loading?: true} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
+      <.page_header title={@page_title} />
+      <.loading_panel id="sequence-tracking-loading" />
+    </Layouts.app>
+    """
   end
 
   def render(assigns) do

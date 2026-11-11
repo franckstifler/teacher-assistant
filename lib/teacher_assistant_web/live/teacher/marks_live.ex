@@ -37,6 +37,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     scope = socket.assigns.current_scope
 
     case Curriculum.fetch_assigned_teaching_context(scope, ctx_id) do
+      # A8: the roster, the column and its marks are read once, on the connected render.
+      {:ok, ctx} when is_nil(socket.transport_pid) ->
+        {:ok,
+         assign(socket,
+           page_title: "#{ctx.subject} · #{gettext("Notes")}",
+           loading?: true
+         )}
+
       {:ok, %{combined_course_id: course_id} = ctx} when not is_nil(course_id) ->
         mount_combined(ctx, course_id, socket)
 
@@ -98,6 +106,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
     socket
     |> assign(:page_title, "#{socket.assigns.title} · #{gettext("Notes")}")
+    |> assign(:loading?, false)
     |> assign(:ctx, ctx)
     |> assign(:grading_rules, Assessment.grading_rules(scope))
     |> assign(:sequences, if(year, do: Organization.list_sequences(scope, year), else: []))
@@ -403,6 +412,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp marks_path(socket, seq, assessment_id),
     do:
       ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{assessment_id}"
+
+  def handle_params(_params, _uri, %{assigns: %{loading?: true}} = socket),
+    do: {:noreply, socket}
 
   def handle_params(params, _uri, socket) do
     scope = socket.assigns.current_scope
@@ -933,6 +945,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp save_competence(socket, _text), do: {:noreply, socket}
 
   # --- Render ------------------------------------------------------------------------
+
+  def render(%{loading?: true} = assigns) do
+    ~H"""
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      current_path={@current_path}
+      nav={["courses"]}
+    >
+      <.page_header title={@page_title} />
+      <.loading_panel id="marks-loading" />
+    </Layouts.app>
+    """
+  end
 
   def render(assigns) do
     students = all_students(assigns)
