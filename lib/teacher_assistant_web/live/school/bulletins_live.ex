@@ -11,16 +11,15 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   left before publishing (`ReportCards.readiness/2`, batched), filters, a search and
   « Publier les classes prêtes ». A class opens the per-class view above.
 
-  For a teacher (who cannot publish) the page without `?class=` is the teacher's
-  view (UX refonte 2026-11-03): trimester tabs, the period's steps (séquences
-  locked or open with their J-n, class councils, publication), the teacher's own
-  courses with each séquence's entry, and the classes already published.
+  A teacher (who cannot publish) without `?class=` is sent to « Mes cours », which
+  carries the period's steps since spec audit follow-ups A5; a published class still
+  opens here with `?class=` (from its class page or the publication notice).
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.{Organization, ReportCards}
-  alias TeacherAssistant.Academics.{Lock, Reference, TeacherCourses}
+  alias TeacherAssistant.ReportCards
+  alias TeacherAssistant.Academics.Reference
   alias TeacherAssistantWeb.Dates
 
   def mount(_params, _session, socket) do
@@ -56,45 +55,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     cond do
       params["class"] not in [nil, ""] -> class_params(params, socket)
       socket.assigns.can_publish? -> {:noreply, overview(socket, params)}
-      true -> {:noreply, teacher_view(socket, params)}
+      # A teacher's bulletin road lives on « Mes cours » (spec audit follow-ups A5).
+      true -> {:noreply, push_navigate(socket, to: ~p"/school/courses")}
     end
-  end
-
-  # --- Teacher's view (cannot publish, no class) -------------------------------------
-
-  defp teacher_view(socket, params) do
-    %{periods: periods, current_scope: scope, classes: classes, year: year} = socket.assigns
-
-    {param, _label, period} =
-      Enum.find(periods, &(elem(&1, 0) == params["period"])) || default_period(periods)
-
-    courses = socket.assigns[:courses] || TeacherCourses.list(scope, nil)
-    sequences = period_sequences(scope, year, period)
-    published = ReportCards.published_class_ids(scope, period)
-
-    assign(socket,
-      mode: :teacher,
-      period: period,
-      period_param: param,
-      courses: courses,
-      sequences: sequences,
-      seq_progress: Map.new(sequences, &{&1.id, seq_progress(scope, &1, courses)}),
-      published: Enum.filter(classes, &MapSet.member?(published, &1.id))
-    )
-  end
-
-  defp period_sequences(scope, year, period) do
-    all = Organization.list_sequences(scope, year)
-
-    case period do
-      {:trimester, term} -> Enum.filter(all, &(&1.term_id == term.id))
-      _ -> all
-    end
-  end
-
-  # A séquence not open yet has nothing to read.
-  defp seq_progress(scope, seq, courses) do
-    if Lock.not_started?(seq), do: %{}, else: TeacherCourses.progress(scope, seq, courses)
   end
 
   defp class_params(params, socket) do
@@ -600,147 +563,6 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
   defp rate_text(nil), do: "—"
   defp rate_text(rate), do: "#{rate} %"
 
-  defp step_dot(:done), do: "bg-primary text-primary-content"
-  defp step_dot(:now), do: "border-2 border-warning"
-  defp step_dot(:later), do: "border border-base-300"
-
-  # « S1 ✓ », « S2 · 3/39 », « S2 · à faire », « S3 · — » (not open yet).
-  defp seq_state(seq, nil), do: gettext("S%{n} · —", n: seq.number)
-  defp seq_state(seq, %{assessments: 0}), do: gettext("S%{n} · à faire", n: seq.number)
-
-  defp seq_state(seq, %{entered: e, expected: x}) when e >= x,
-    do: gettext("S%{n} ✓", n: seq.number)
-
-  defp seq_state(seq, %{entered: e, expected: x}), do: "S#{seq.number} · #{e}/#{x}"
-
-  defp seq_tone(nil), do: "text-base-content/60"
-  defp seq_tone(%{assessments: 0}), do: "text-warning"
-  defp seq_tone(%{entered: e, expected: x}) when e >= x, do: "text-primary"
-  defp seq_tone(_progress), do: "text-warning"
-
-  def render(%{mode: :teacher} = assigns) do
-    assigns =
-      assign(assigns,
-        steps:
-          TeacherAssistantWeb.BulletinTimeline.steps(
-            assigns.sequences,
-            assigns.published != [] and length(assigns.published) == length(assigns.classes),
-            Reference.today()
-          )
-      )
-
-    ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_path={@current_path}>
-      <section id="bulletins-teacher" class="mx-auto max-w-2xl space-y-5">
-        <h1 class="text-2xl font-semibold leading-tight sm:text-[2rem]">{gettext("Bulletins")}</h1>
-
-        <nav id="teacher-period-tabs" role="tablist" aria-label={gettext("Période")} class="ta-pills">
-          <.link
-            :for={{param, label, _} <- @periods}
-            id={"period-#{dom_id(param)}"}
-            role="tab"
-            patch={~p"/school/bulletins?#{[period: param]}"}
-            aria-selected={to_string(param == @period_param)}
-            aria-current={param == @period_param && "true"}
-            class="ta-pill"
-          >
-            {label}
-          </.link>
-        </nav>
-
-        <ol id="bulletin-steps" aria-label={gettext("Étapes")} class="flex flex-col">
-          <li
-            :for={{step, i} <- Enum.with_index(@steps)}
-            data-state={step.state}
-            class="flex gap-3"
-          >
-            <span class="flex w-6 flex-col items-center">
-              <span class={[
-                "grid size-6 shrink-0 place-items-center rounded-full text-[0.7rem] font-semibold",
-                step_dot(step.state)
-              ]}>
-                <.icon :if={step.state == :done} name="hero-check-mini" class="size-4" />
-              </span>
-              <span
-                :if={i < length(@steps) - 1}
-                class={[
-                  "min-h-4 w-0.5 flex-1",
-                  if(step.state == :done, do: "bg-primary", else: "bg-base-300")
-                ]}
-              ></span>
-            </span>
-            <span class="flex flex-1 flex-col gap-0.5 pb-3.5">
-              <span class={[
-                "text-[0.92rem] font-semibold",
-                step.state == :later && "text-base-content/70"
-              ]}>
-                {step.title}
-              </span>
-              <span class="ta-num text-xs text-base-content/70">{step.sub}</span>
-            </span>
-          </li>
-        </ol>
-
-        <section :if={@courses != []} id="teacher-courses" class="space-y-2">
-          <h2 class="px-1 text-xs font-semibold uppercase tracking-wide text-base-content/70">
-            {if match?({:annual, _}, @period),
-              do: gettext("Vos notes pour l'année"),
-              else: gettext("Vos notes pour ce trimestre")}
-          </h2>
-          <ul class="ta-section">
-            <li :for={course <- @courses} id={"teacher-course-#{course.id}"}>
-              <.link
-                navigate={~p"/teacher/contexts/#{course.context_id}/marks"}
-                class="ta-list-row"
-              >
-                <%!-- Phones: the séquence states under the course, so its class stays readable. --%>
-                <span class="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                  <span class="min-w-0 flex-1 truncate text-[0.92rem] font-semibold">
-                    {course.title}
-                  </span>
-                  <span class="ta-num flex shrink-0 flex-wrap gap-x-2.5 gap-y-0.5 text-xs sm:justify-end">
-                    <span
-                      :for={seq <- @sequences}
-                      data-seq={seq.number}
-                      class={seq_tone(@seq_progress[seq.id][course.id])}
-                    >
-                      {seq_state(seq, @seq_progress[seq.id][course.id])}
-                    </span>
-                  </span>
-                </span>
-                <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
-              </.link>
-            </li>
-          </ul>
-        </section>
-
-        <section id="published-classes" class="space-y-2">
-          <h2 class="px-1 text-xs font-semibold uppercase tracking-wide text-base-content/70">
-            {gettext("Bulletins publiés")}
-          </h2>
-          <p :if={@published == []} class="ta-leaf text-sm text-base-content/70">
-            {ngettext(
-              "Les bulletins de votre classe s'affichent ici dès leur publication.",
-              "Les bulletins de vos %{count} classes s'affichent ici dès leur publication.",
-              length(@classes)
-            )}
-          </p>
-          <ul :if={@published != []} class="ta-section">
-            <li :for={cg <- @published}>
-              <.list_row
-                id={"published-#{cg.id}"}
-                patch={~p"/school/bulletins?#{[class: cg.id, period: @period_param]}"}
-                title={cg.label}
-                meta={gettext("Publiés")}
-              />
-            </li>
-          </ul>
-        </section>
-      </section>
-    </Layouts.app>
-    """
-  end
-
   def render(%{mode: :overview} = assigns) do
     rows = assigns.readiness
     publishable? = elem(assigns.period, 0) in [:trimester, :annual]
@@ -1042,10 +864,10 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
         <.link
           :if={!@can_publish?}
           id="back-to-teacher"
-          patch={~p"/school/bulletins?#{[period: @period_param]}"}
+          navigate={~p"/school/courses"}
           class="inline-flex items-center gap-1 text-sm font-semibold text-base-content/75 hover:text-primary"
         >
-          <.icon name="hero-arrow-left" class="size-4" /> {gettext("Mes bulletins")}
+          <.icon name="hero-arrow-left" class="size-4" /> {gettext("Mes cours")}
         </.link>
         <.page_header
           eyebrow={gettext("Bulletins · %{class}", class: @cg.label)}

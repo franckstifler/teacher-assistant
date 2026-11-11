@@ -1,9 +1,8 @@
 defmodule TeacherAssistant.Academics.TeacherCourses do
   @moduledoc """
   The signed-in teacher's courses (UX refonte 2026-11-03): one per solo assignment
-  or combined course, with what « Mes cours », the « À faire » card of Ma journée
-  shows of it — member classes, students,
-  coefficient, form-master badge, séquence entry progress and APC competence.
+  or combined course, with what « Mes cours » and the « À faire » card of Ma journée
+  show of it — member classes, students, coefficient, form-master badge, séquence entry progress and APC competence.
   """
   alias TeacherAssistant.{Assessment, Curriculum, Enrollment, Organization, Scope}
 
@@ -58,15 +57,6 @@ defmodule TeacherAssistant.Academics.TeacherCourses do
 
         Enum.map(units, &row(&1, ctx))
     end
-  end
-
-  @doc """
-  Each course's entry progress in another séquence: `%{course id => progress}` (the
-  `progress` map of `list/2`). One batched read for all the courses.
-  """
-  def progress(%Scope{} = scope, seq, courses) do
-    cells = context_progress(scope, seq, Enum.flat_map(courses, & &1.contexts))
-    Map.new(courses, &{&1.id, sum_progress(&1.contexts, cells)})
   end
 
   @doc "The students of the courses' classes, each class counted once."
