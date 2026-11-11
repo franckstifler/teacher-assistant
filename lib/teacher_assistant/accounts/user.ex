@@ -222,6 +222,20 @@ defmodule TeacherAssistant.Accounts.User do
 
     # From the « Mot de passe » row: an ordinary password, replaced only with the
     # current one. The caller then signs the person out everywhere.
+    # A9: the owner of an account no school counts as a member deletes it. The row
+    # stays (journals and old memberships name it); what identifies the person goes,
+    # and so does the password, so it can never sign in again.
+    update :delete_own_account do
+      accept []
+      require_atomic? false
+      validate TeacherAssistant.Accounts.User.Validations.NoActiveMembership
+      change set_attribute(:email, nil)
+      change set_attribute(:phone, nil)
+      change set_attribute(:name, "Compte supprimé")
+      change set_attribute(:hashed_password, nil)
+      change set_attribute(:must_change_password, false)
+    end
+
     update :change_password do
       accept []
       require_atomic? false
@@ -317,6 +331,11 @@ defmodule TeacherAssistant.Accounts.User do
     end
 
     policy action(:change_password) do
+      authorize_if expr(id == ^actor(:id))
+    end
+
+    policy action(:delete_own_account) do
+      forbid_if expr(role == :admin)
       authorize_if expr(id == ^actor(:id))
     end
 

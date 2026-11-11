@@ -3503,7 +3503,7 @@ msgstr "Sequence tracking"
 msgid "aucun élève"
 msgstr "no students"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:102
+#: lib/teacher_assistant/workers/telegram_digest.ex:110
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:239
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:271
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:1081
@@ -5982,6 +5982,7 @@ msgid "Préparer l'année suivante"
 msgstr "Prepare next year"
 
 #: lib/teacher_assistant_web/components/ui_components.ex:87
+#: lib/teacher_assistant_web/live/account/account_live.ex:92
 #: lib/teacher_assistant_web/live/school/new_year_live.ex:319
 #: lib/teacher_assistant_web/live/school/new_year_live.ex:360
 #: lib/teacher_assistant_web/live/school/new_year_live.ex:404
@@ -6292,7 +6293,7 @@ msgstr "Password managed by the person"
 msgid "Mot de passe oublié ?"
 msgstr "Forgot your password?"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:22
+#: lib/teacher_assistant/accounts/audit_event/action.ex:24
 #: lib/teacher_assistant_web/live/school/members_components.ex:534
 #, elixir-autogen, elixir-format
 msgid "Mot de passe réinitialisé"
@@ -9429,8 +9430,7 @@ msgstr "Day"
 msgid "Langue"
 msgstr "Language"
 
-#: lib/teacher_assistant_web/components/layouts.ex:369
-#: lib/teacher_assistant_web/components/layouts.ex:680
+#: lib/teacher_assistant_web/live/account/account_live.ex:51
 #, elixir-autogen, elixir-format
 msgid "Mot de passe"
 msgstr "Password"
@@ -9578,7 +9578,7 @@ msgstr "Roll call and absences"
 msgid "Aucun établissement"
 msgstr "No school"
 
-#: lib/teacher_assistant_web/live_user_auth.ex:158
+#: lib/teacher_assistant_web/live_user_auth.ex:160
 #: lib/teacher_assistant_web/plug/school_access.ex:35
 #, elixir-autogen, elixir-format
 msgid "Ce module n'est pas activé pour votre établissement."
@@ -9619,7 +9619,7 @@ msgstr "Log"
 msgid "Modules"
 msgstr "Modules"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:21
+#: lib/teacher_assistant/accounts/audit_event/action.ex:23
 #, elixir-autogen, elixir-format
 msgid "Modules modifiés"
 msgstr "Modules changed"
@@ -9737,17 +9737,17 @@ msgstr "To verify"
 msgid "Élèves inscrits"
 msgstr "Enrolled students"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:18
+#: lib/teacher_assistant/accounts/audit_event/action.ex:20
 #, elixir-autogen, elixir-format
 msgid "Établissement rejeté"
 msgstr "School rejected"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:20
+#: lib/teacher_assistant/accounts/audit_event/action.ex:22
 #, elixir-autogen, elixir-format
 msgid "Établissement réactivé"
 msgstr "School reactivated"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:19
+#: lib/teacher_assistant/accounts/audit_event/action.ex:21
 #: lib/teacher_assistant_web/live/admin/school_live.ex:439
 #: lib/teacher_assistant_web/live/school/suspended_live.ex:14
 #: lib/teacher_assistant_web/live/school/suspended_live.ex:26
@@ -9755,7 +9755,7 @@ msgstr "School reactivated"
 msgid "Établissement suspendu"
 msgstr "School suspended"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:17
+#: lib/teacher_assistant/accounts/audit_event/action.ex:19
 #, elixir-autogen, elixir-format
 msgid "Établissement vérifié"
 msgstr "School verified"
@@ -11418,6 +11418,7 @@ msgid "Personne à l'établissement ne connaît votre mot de passe. Changez-le d
 msgstr "Nobody at the school knows your password. Change it as soon as you think someone may have seen it."
 
 #: lib/teacher_assistant_web/components/layouts.ex:960
+#: lib/teacher_assistant_web/live/account/account_live.ex:33
 #: lib/teacher_assistant_web/live/account/password_live.ex:60
 #, elixir-autogen, elixir-format
 msgid "Votre compte"
@@ -12258,12 +12259,12 @@ msgstr "Active schools · 7 d"
 msgid "−%{n} par rapport aux 30 jours précédents"
 msgstr "−%{n} on the previous 30 days"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:24
+#: lib/teacher_assistant/accounts/audit_event/action.ex:26
 #, elixir-autogen, elixir-format
 msgid "Accès en tant que"
 msgstr "Acted as"
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:25
+#: lib/teacher_assistant/accounts/audit_event/action.ex:27
 #, elixir-autogen, elixir-format
 msgid "Fin de l'accès en tant que"
 msgstr "Stopped acting as"
@@ -12288,7 +12289,7 @@ msgstr "Open as"
 msgid "Ouvrir en tant que · %{school}"
 msgstr "Open as · %{school}"
 
-#: lib/teacher_assistant_web/live_user_auth.ex:42
+#: lib/teacher_assistant_web/live_user_auth.ex:44
 #, elixir-autogen, elixir-format
 msgid "Pas pendant que vous agissez en tant que ce membre."
 msgstr "Not while you are acting as this member."
@@ -15176,15 +15177,15 @@ msgstr "Jobs abandoned since yesterday"
 msgid "Vérifiées, jamais utilisées"
 msgstr "Verified, never used"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:103
+#: lib/teacher_assistant/workers/telegram_digest.ex:111
 #, elixir-autogen, elixir-format
 msgid "depuis %{count} jour"
 msgid_plural "depuis %{count} jours"
 msgstr[0] "since %{count} day"
 msgstr[1] "since %{count} days"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:68
-#: lib/teacher_assistant/workers/telegram_digest.ex:90
+#: lib/teacher_assistant/workers/telegram_digest.ex:76
+#: lib/teacher_assistant/workers/telegram_digest.ex:98
 #, elixir-autogen, elixir-format
 msgid "• et %{count} autres"
 msgstr "• and %{count} more"
@@ -15204,7 +15205,7 @@ msgstr "chat not found, check TELEGRAM_CHAT_ID and message the bot first"
 msgid "jeton du bot refusé, vérifiez TELEGRAM_BOT_TOKEN"
 msgstr "bot token refused, check TELEGRAM_BOT_TOKEN"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:73
+#: lib/teacher_assistant/workers/telegram_digest.ex:81
 #, elixir-autogen, elixir-format
 msgid "Premiers pas depuis hier"
 msgstr "First steps since yesterday"
@@ -15214,22 +15215,22 @@ msgstr "First steps since yesterday"
 msgid "Scolaka a démarré (version %{version})."
 msgstr "Scolaka started (version %{version})."
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:79
+#: lib/teacher_assistant/workers/telegram_digest.ex:87
 #, elixir-autogen, elixir-format
 msgid "premier appel"
 msgstr "first roll call"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:81
+#: lib/teacher_assistant/workers/telegram_digest.ex:89
 #, elixir-autogen, elixir-format
 msgid "premiers bulletins publiés"
 msgstr "first report cards published"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:80
+#: lib/teacher_assistant/workers/telegram_digest.ex:88
 #, elixir-autogen, elixir-format
 msgid "premières notes"
 msgstr "first marks"
 
-#: lib/teacher_assistant/workers/telegram_digest.ex:78
+#: lib/teacher_assistant/workers/telegram_digest.ex:86
 #, elixir-autogen, elixir-format
 msgid "élèves inscrits"
 msgstr "students enrolled"
@@ -15629,7 +15630,7 @@ msgstr "— : not entered · Abs : absent · Disp : exempt"
 msgid "Indiquez le nom et le prénom."
 msgstr "Enter the full name."
 
-#: lib/teacher_assistant/accounts/audit_event/action.ex:23
+#: lib/teacher_assistant/accounts/audit_event/action.ex:25
 #, elixir-autogen, elixir-format
 msgid "Membre renommé"
 msgstr "Member renamed"
@@ -15975,3 +15976,67 @@ msgstr "Student marked as left."
 #, elixir-autogen, elixir-format
 msgid "Chargement…"
 msgstr "Loading…"
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:104
+#, elixir-autogen, elixir-format
+msgid "Compte supprimé."
+msgstr "Account deleted."
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:113
+#, elixir-autogen, elixir-format
+msgid "Demandez d'abord au chef d'établissement de vous retirer de l'école."
+msgstr "First ask the head of school to remove you from the school."
+
+#: lib/teacher_assistant/accounts/audit_event/action.ex:28
+#, elixir-autogen, elixir-format
+msgid "Fichiers orphelins supprimés"
+msgstr "Orphan files deleted"
+
+#: lib/teacher_assistant/workers/telegram_digest.ex:62
+#, elixir-autogen, elixir-format
+msgid "Fichiers orphelins supprimés cette semaine : %{n}"
+msgstr "Orphan files deleted this week: %{n}"
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:117
+#, elixir-autogen, elixir-format
+msgid "La suppression a échoué. Réessayez."
+msgstr "The deletion failed. Try again."
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:56
+#, elixir-autogen, elixir-format
+msgid "Mes écoles"
+msgstr "My schools"
+
+#: lib/teacher_assistant_web/components/layouts.ex:369
+#: lib/teacher_assistant_web/components/layouts.ex:680
+#: lib/teacher_assistant_web/live/account/account_live.ex:21
+#: lib/teacher_assistant_web/live/account/account_live.ex:34
+#, elixir-autogen, elixir-format
+msgid "Mon compte"
+msgstr "My account"
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:84
+#, elixir-autogen, elixir-format
+msgid "Supprimer définitivement votre compte ?"
+msgstr "Permanently delete your account?"
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:69
+#: lib/teacher_assistant_web/live/account/account_live.ex:87
+#, elixir-autogen, elixir-format
+msgid "Supprimer mon compte"
+msgstr "Delete my account"
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:71
+#, elixir-autogen, elixir-format
+msgid "Tant que vous êtes membre d'une école, demandez d'abord au chef d'établissement de vous retirer de l'école ; vous pourrez ensuite supprimer votre compte ici."
+msgstr "While you are a member of a school, first ask the head of school to remove you from it; you can then delete your account here."
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:76
+#, elixir-autogen, elixir-format
+msgid "Votre nom, votre e-mail, votre téléphone et votre mot de passe sont effacés. Cette action est définitive."
+msgstr "Your name, e-mail, phone and password are erased. This cannot be undone."
+
+#: lib/teacher_assistant_web/live/account/account_live.ex:58
+#, elixir-autogen, elixir-format
+msgid "Vous n'êtes membre d'aucune école."
+msgstr "You are not a member of any school."

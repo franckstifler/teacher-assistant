@@ -364,9 +364,9 @@ defmodule TeacherAssistantWeb.Layouts do
                 </span>
               </div>
               <.theme_toggle id="theme-toggle-rail" />
-              <.link id="rail-password" navigate={~p"/account/password"} class="ta-rail__item">
-                <.icon name="hero-key" class="size-4 flex-none" />
-                <span class="flex-1">{gettext("Mot de passe")}</span>
+              <.link id="rail-account" navigate={~p"/account"} class="ta-rail__item">
+                <.icon name="hero-user-circle" class="size-4 flex-none" />
+                <span class="flex-1">{gettext("Mon compte")}</span>
               </.link>
               <div class="flex items-center gap-1">
                 <.link href={~p"/sign-out"} method="delete" class="ta-rail__item flex-1">
@@ -675,9 +675,9 @@ defmodule TeacherAssistantWeb.Layouts do
           <span class="min-w-0 flex-1 truncate">{ws.name}</span>
           <.icon :if={ws.id == @workspace_id} name="hero-check" class="size-5 text-primary" />
         </.link>
-        <.link navigate={~p"/account/password"} class="ta-sheet__row">
-          <.icon name="hero-key" class="ta-text-2 size-5 flex-none" />
-          <span class="flex-1">{gettext("Mot de passe")}</span>
+        <.link id="sheet-account" navigate={~p"/account"} class="ta-sheet__row">
+          <.icon name="hero-user-circle" class="ta-text-2 size-5 flex-none" />
+          <span class="flex-1">{gettext("Mon compte")}</span>
           <.icon name="hero-chevron-right" class="ta-text-2 size-4" />
         </.link>
         <.link href={~p"/sign-out"} method="delete" class="ta-sheet__row !border-b-0 text-error">

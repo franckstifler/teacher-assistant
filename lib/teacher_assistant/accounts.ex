@@ -605,6 +605,30 @@ defmodule TeacherAssistant.Accounts do
   end
 
   @doc """
+  The signed-in user deletes their own account (A9): refused with
+  `{:error, :has_membership}` while a school counts them as a member; otherwise the
+  e-mail, phone, name and password go and every session is signed out.
+  """
+  def delete_own_account(%Scope{current_user: %User{} = user}) do
+    user
+    |> Ash.Changeset.for_update(:delete_own_account, %{}, actor: user)
+    |> Ash.update()
+    |> case do
+      {:ok, deleted} ->
+        _ = revoke_all_sessions(deleted)
+        :ok
+
+      {:error, %Ash.Error.Invalid{} = error} ->
+        if Enum.any?(error.errors, &match?(%{field: :id}, &1)),
+          do: {:error, :has_membership},
+          else: {:error, error}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
   Revokes every stored token of the user (sign out on every device). With
   `except_page:` (a LiveView's `socket.transport_pid`), that page stays connected
   so it can send the person to sign in again itself.

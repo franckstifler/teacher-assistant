@@ -33,8 +33,10 @@ defmodule TeacherAssistantWeb.LiveUserAuth do
       socket.assigns[:impersonation_ended?] ->
         {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/admin")}
 
-      # The operator acting as a member never changes that member's password.
-      impersonation && socket.view == TeacherAssistantWeb.Account.PasswordLive ->
+      # The operator acting as a member never changes that member's password nor
+      # deletes their account.
+      impersonation &&
+          socket.view in [TeacherAssistantWeb.Account.PasswordLive, TeacherAssistantWeb.Account.AccountLive] ->
         {:halt,
          socket
          |> Phoenix.LiveView.put_flash(
