@@ -72,7 +72,7 @@ defmodule TeacherAssistant.Councils do
         false
 
       term ->
-        case ReportCards.current_publication(scope, cg, {:trimester, term}) do
+        case ReportCards.current_publication(scope, cg, {:trimester, term}, snapshot: true) do
           nil -> false
           pub -> Map.get(pub.snapshot, :annual) != nil
         end

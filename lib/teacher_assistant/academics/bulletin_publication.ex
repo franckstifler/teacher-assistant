@@ -40,13 +40,53 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
     end
   end
 
+  @status_fields [
+    :id,
+    :workspace_id,
+    :class_group_id,
+    :academic_year_id,
+    :term_id,
+    :period_kind,
+    :period_key,
+    :status,
+    :snapshot_version,
+    :published_at,
+    :published_by_user_id,
+    :withdrawn_at,
+    :withdrawn_by_user_id,
+    :withdrawal_reason,
+    :inserted_at,
+    :updated_at
+  ]
+
   actions do
     defaults [:read]
 
+    # A3: the history and the status checks never need the `snapshot` term (hundreds
+    # of KB per class); it is loaded on demand (`Ash.load(pub, :snapshot)`).
     read :for_class do
       argument :class_group_id, :uuid, allow_nil?: false
       filter expr(class_group_id == ^arg(:class_group_id))
-      prepare build(sort: [published_at: :desc], load: [:published_by, :withdrawn_by])
+
+      prepare build(
+                sort: [published_at: :desc],
+                select: @status_fields,
+                load: [:published_by, :withdrawn_by]
+              )
+    end
+
+    # The publication in force for a class and period, without its snapshot.
+    read :current do
+      argument :class_group_id, :uuid, allow_nil?: false
+      argument :period_key, :string, allow_nil?: false
+      get? true
+
+      filter expr(
+               class_group_id == ^arg(:class_group_id) and period_key == ^arg(:period_key) and
+                 status == :published
+             )
+
+      prepare build(select: @status_fields)
     end
 
     create :publish do

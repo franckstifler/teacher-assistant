@@ -150,17 +150,36 @@ defmodule TeacherAssistant.ReportCards do
 
   @doc "The published snapshot when there is one, else the live draft."
   def class_view(%Scope{} = scope, %ClassGroup{} = cg, period) do
-    case current_publication(scope, cg, period) do
+    case current_publication(scope, cg, period, snapshot: true) do
       nil -> {:draft, live_view(scope, cg, period)}
       pub -> {:published, pub, pub.snapshot}
     end
   end
 
-  @doc "The publication in force for the class and period, or nil (always nil for a séquence)."
-  def current_publication(_scope, _cg, {:sequence, _}), do: nil
+  @doc """
+  The publication in force for the class and period, or nil (always nil for a
+  séquence). Read without its `snapshot` (A3) — a status check needs none; pass
+  `snapshot: true` where the frozen view is rendered or printed.
+  """
+  def current_publication(scope, cg, period, opts \\ [])
+  def current_publication(_scope, _cg, {:sequence, _}, _opts), do: nil
 
-  def current_publication(%Scope{} = scope, %ClassGroup{} = cg, period),
-    do: scope |> history(cg, period) |> Enum.find(&(&1.status == :published))
+  def current_publication(%Scope{} = scope, %ClassGroup{id: cg_id}, period, opts) do
+    BulletinPublication
+    |> Ash.Query.for_read(
+      :current,
+      %{class_group_id: cg_id, period_key: Organization.period_param(period)},
+      scope: scope
+    )
+    |> Ash.read_one!()
+    |> case do
+      %BulletinPublication{} = pub when opts != [] ->
+        if Keyword.get(opts, :snapshot), do: Ash.load!(pub, :snapshot, scope: scope), else: pub
+
+      other ->
+        other
+    end
+  end
 
   @doc "Every publication of the class for the period, newest first."
   def history(_scope, _cg, {:sequence, _}), do: []
@@ -326,7 +345,7 @@ defmodule TeacherAssistant.ReportCards do
         class_view(scope, cg, period)
 
       :published ->
-        case current_publication(scope, cg, period) do
+        case current_publication(scope, cg, period, snapshot: true) do
           nil -> :not_published
           pub -> {:published, pub, pub.snapshot}
         end
@@ -787,6 +806,7 @@ defmodule TeacherAssistant.ReportCards do
     BulletinPublication
     |> Ash.Query.for_read(:read, %{}, scope: scope)
     |> Ash.Query.filter(period_key == ^key and status == :published)
+    |> Ash.Query.select([:class_group_id])
     |> Ash.read!()
     |> MapSet.new(& &1.class_group_id)
   end
@@ -918,7 +938,7 @@ defmodule TeacherAssistant.ReportCards do
 
   defp term_results(scope, cg, term) do
     results =
-      case current_publication(scope, cg, {:trimester, term}) do
+      case current_publication(scope, cg, {:trimester, term}, snapshot: true) do
         nil -> Assessment.class_results_for_period(scope, cg, {:trimester, term})
         pub -> pub.snapshot.results
       end

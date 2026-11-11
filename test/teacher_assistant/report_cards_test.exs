@@ -352,7 +352,12 @@ defmodule TeacherAssistant.ReportCardsTest do
 
       {:ok, _} = ReportCards.publish(scope, cg, {:trimester, term})
 
-      assert [current, old] = ReportCards.history(scope, cg, {:trimester, term})
+      # A3: the history carries no snapshot; load it to read the frozen council.
+      assert [current, old] =
+               scope
+               |> ReportCards.history(cg, {:trimester, term})
+               |> Ash.load!(:snapshot, scope: scope)
+
       assert current.snapshot.council.outcomes[st.id].appreciation == "Nouveau"
       assert old.snapshot.council.outcomes[st.id].appreciation == "Bon trimestre"
     end
@@ -375,6 +380,69 @@ defmodule TeacherAssistant.ReportCardsTest do
       seq_data = seq_view.results.per_student[st.id]
       assert ReportCards.final_distinction(seq_view, st.id, seq_data) == seq_data.distinction
       assert ReportCards.outcome(Map.delete(view, :council), st.id) == nil
+    end
+
+    # Queries run by this process during `fun` whose SQL mentions `needle` (A3).
+    defp count_queries(needle, fun) do
+      parent = self()
+      counter = :counters.new(1, [])
+      handler = {__MODULE__, needle, make_ref()}
+
+      :telemetry.attach(
+        handler,
+        [:teacher_assistant, :repo, :query],
+        fn _e, _m, %{query: q}, _ ->
+          if self() == parent and q =~ needle, do: :counters.add(counter, 1, 1)
+        end,
+        nil
+      )
+
+      result = fun.()
+      :telemetry.detach(handler)
+      {result, :counters.get(counter, 1)}
+    end
+
+    test "status checks never read the snapshot column (A3)", ctx do
+      %{scope: scope, cg: cg, term: term} = ctx
+      period = {:trimester, term}
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+
+      {ids, n1} =
+        count_queries(~s("snapshot"), fn -> ReportCards.published_class_ids(scope, period) end)
+
+      {pub, n2} =
+        count_queries(~s("snapshot"), fn -> ReportCards.current_publication(scope, cg, period) end)
+
+      {history, n3} =
+        count_queries(~s("snapshot"), fn -> ReportCards.history(scope, cg, period) end)
+
+      assert ids == MapSet.new([cg.id])
+      assert %{status: :published, snapshot: %Ash.NotLoaded{}} = pub
+      assert [%{snapshot: %Ash.NotLoaded{}}] = history
+      assert {n1, n2, n3} == {0, 0, 0}
+    end
+
+    test "current_publication with snapshot: true returns the frozen view (A3)", ctx do
+      %{scope: scope, cg: cg, term: term} = ctx
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+
+      pub = ReportCards.current_publication(scope, cg, {:trimester, term}, snapshot: true)
+      assert %{results: %{per_student: _}} = pub.snapshot
+
+      assert {:published, _, %{results: _}} =
+               ReportCards.class_view(scope, cg, {:trimester, term})
+    end
+
+    test "withdraw then republish: current is the new one, history has both (A3)", ctx do
+      %{scope: scope, cg: cg, term: term} = ctx
+      period = {:trimester, term}
+      {:ok, first} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+      {:ok, _} = ReportCards.withdraw(scope, first, "erreur")
+      assert nil == ReportCards.current_publication(scope, cg, period)
+      {:ok, second} = TeacherAssistant.TeacherFixtures.publish_trimester(scope, cg, term)
+
+      assert ReportCards.current_publication(scope, cg, period).id == second.id
+      assert length(ReportCards.history(scope, cg, period)) == 2
     end
 
     test "published_class_ids lists the published classes of a period", ctx do

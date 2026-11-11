@@ -83,7 +83,7 @@ defmodule TeacherAssistantWeb.CouncilPrintController do
   # A published period prints the figures frozen with its report cards (I2 snapshot);
   # otherwise the live ones (with the passage proposals for the year, spec I4).
   defp figures(scope, cg, period, council) do
-    case ReportCards.current_publication(scope, cg, period) do
+    case ReportCards.current_publication(scope, cg, period, snapshot: true) do
       %{snapshot: %{council: %{outcomes: outcomes}} = view} ->
         {view.results, outcomes, view.roster}
 
