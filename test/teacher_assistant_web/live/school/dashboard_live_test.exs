@@ -336,4 +336,95 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       refute has_element?(view, "#dashboard-stats")
     end
   end
+
+  describe "query budget (A3)" do
+    alias TeacherAssistant.{Assessment, Attendance, Curriculum, Enrollment, Timetabling}
+
+    # Measured 2026-11-11 on this fixture: 146 (dead render + connected mount; A8 halves it).
+    @budget 155
+
+    setup %{conn: conn, actor: head} do
+      {:ok, school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+          name: "Lycée Budget"
+        })
+
+      scope = school_scope(head, school)
+      :ok = TeacherAssistant.TeacherFixtures.verify_school!(scope)
+
+      {:ok, year} =
+        Organization.create_academic_year(scope, %{
+          name: "2025-2026",
+          start_date: ~D[2025-09-08],
+          end_date: ~D[2026-07-31],
+          active: true
+        })
+
+      :ok = Organization.build_default_calendar(scope, year)
+      :ok = Attendance.build_default_periods(scope)
+      seq = scope |> Organization.list_sequences(year) |> hd()
+      period = scope |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))
+
+      for n <- 1..3 do
+        {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e #{n}", level: "6ème"})
+        {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, false)
+        {:ok, s1} = Enrollment.add_student(scope, cg, %{full_name: "A#{n}", sex: :f})
+        {:ok, _s2} = Enrollment.add_student(scope, cg, %{full_name: "B#{n}", sex: :m})
+        {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+        {:ok, a} = Assessment.create_assessment(scope, tc, seq, %{label: "Devoir 1"})
+        :ok = Assessment.upsert_marks(scope, a, [%{student_id: s1.id, score: Decimal.new(12)}])
+
+        {:ok, _} =
+          Timetabling.place_slot(scope, cg, %{
+            day: :monday,
+            period_id: period.id,
+            teaching_context_id: tc.id
+          })
+
+        [%{enrollment: e} | _] = Enrollment.list_roster(scope, cg)
+
+        {:ok, _} =
+          Attendance.record_period(scope, cg, period, tc, ~D[2025-09-15], [{e.id, :absent}])
+      end
+
+      %{conn: Plug.Conn.put_session(conn, :workspace_id, school.id)}
+    end
+
+    # Queries run by this test or the LiveView it mounts (the view's `$callers` names us).
+    defp count_queries(fun) do
+      parent = self()
+      counter = :counters.new(3, [])
+      handler = {__MODULE__, make_ref()}
+
+      :telemetry.attach(
+        handler,
+        [:teacher_assistant, :repo, :query],
+        fn _e, _m, %{query: q}, _ ->
+          if self() == parent or parent in List.wrap(Process.get(:"$callers")) do
+            :counters.add(counter, 1, 1)
+            if q =~ ~s(FROM "marks"), do: :counters.add(counter, 2, 1)
+
+            if q =~ ~s(FROM "students") or q =~ ~s(FROM "guardians"),
+              do: :counters.add(counter, 3, 1)
+          end
+        end,
+        nil
+      )
+
+      result = fun.()
+      :telemetry.detach(handler)
+      {result, :counters.get(counter, 1), :counters.get(counter, 2), :counters.get(counter, 3)}
+    end
+
+    test "the head's dashboard mounts within budget and reads no mark, student or guardian rows",
+         %{conn: conn} do
+      {{:ok, _view, html}, total, marks, people} =
+        count_queries(fn -> live(conn, ~p"/school") end)
+
+      assert html =~ "Absences"
+      assert marks == 0, "#{marks} mark-row queries"
+      assert people == 0, "#{people} student/guardian queries"
+      assert total <= @budget, "#{total} queries (budget #{@budget})"
+    end
+  end
 end
