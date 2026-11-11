@@ -69,6 +69,7 @@ defmodule TeacherAssistant.Modules do
     {W.MarkSheetPrintController, :class} => :notes,
     {W.MarkSheetPrintController, :all} => :notes,
     {W.StatisticsPrintController, :show} => :notes,
+    {W.EntryReportPrintController, :show} => :notes,
     {W.StudentPhotoController, :frozen} => :notes,
     {W.TimetablePrintController, :class} => :emploi_du_temps,
     {W.TimetablePrintController, :me} => :emploi_du_temps,

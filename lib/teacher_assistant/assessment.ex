@@ -321,6 +321,9 @@ defmodule TeacherAssistant.Assessment do
   def sequence_entry_grid(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq),
     do: EntryProgress.grid(scope, year, seq)
 
+  @doc "Per teacher, from a `sequence_entry_grid/3` (`EntryProgress.teacher_summary/1`)."
+  def teacher_entry_summary(grid), do: EntryProgress.teacher_summary(grid)
+
   # --- Teacher statistics (spec audit follow-ups A4) ---------------------------
 
   @doc """

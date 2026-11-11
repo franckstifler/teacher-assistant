@@ -440,4 +440,62 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   defp teacher_name(nil), do: ""
   defp teacher_name(teacher), do: User.display_name(teacher)
+
+  @doc """
+  Per teacher, from a `grid/3` (the censeur's printed report): `%{teacher_id,
+  teacher, name, subjects, courses, entered, expected, pct, late}`. `pct` is the mean
+  of their courses' % (as a class's rate is; a course with students but no assessment
+  is 0 %), rounded down, nil when no course is measurable; `entered` / `expected` sum
+  the marks. `late` lists their courses under 100 %, in row then column order:
+  `%{class, subject, assessments, entered, expected, missing, pct, last_entry_at}`,
+  `missing` being nil while the course has no assessment. Teachers by name.
+  """
+  def teacher_summary(%{rows: rows, subjects: subjects}) do
+    labels = Map.new(subjects, &{&1.key, &1.label})
+
+    for %{class_group: cg, cells: cells} <- rows,
+        %{key: key} <- subjects,
+        %{teaching_context: %{teacher_user_id: id}} = cell <- [cells[key]],
+        not is_nil(id) do
+      {id, course_line(cell, cg.label, labels[key])}
+    end
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.map(fn {id, [first | _] = courses} ->
+      pcts = for %{pct: pct} <- courses, is_integer(pct), do: pct
+
+      %{
+        teacher_id: id,
+        teacher: first.teacher,
+        name: teacher_name(first.teacher),
+        subjects: courses |> Enum.map(& &1.subject) |> Enum.uniq() |> Enum.sort(),
+        courses: length(courses),
+        entered: Enum.sum_by(courses, & &1.entered),
+        expected: Enum.sum_by(courses, & &1.expected),
+        pct: if(pcts == [], do: nil, else: div(Enum.sum(pcts), length(pcts))),
+        late:
+          for(
+            %{pct: pct} = c <- courses,
+            is_integer(pct) and pct < 100,
+            do: Map.delete(c, :teacher)
+          )
+      }
+    end)
+    |> Enum.sort_by(&{String.downcase(&1.name), &1.teacher_id})
+  end
+
+  defp course_line(cell, class_label, subject_label) do
+    assessments = length(cell.assessments)
+
+    %{
+      teacher: cell.teacher,
+      class: class_label,
+      subject: subject_label,
+      assessments: assessments,
+      entered: cell.entered,
+      expected: cell.expected,
+      missing: if(assessments > 0, do: max(cell.expected - cell.entered, 0)),
+      pct: cell.pct,
+      last_entry_at: cell.last_entry_at
+    }
+  end
 end

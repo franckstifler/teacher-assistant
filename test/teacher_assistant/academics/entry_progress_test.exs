@@ -319,4 +319,38 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
     assert cells[ctx.tc.id].assessments >= 1
     assert map_size(cells) == 1
   end
+
+  describe "teacher_summary/1 (the censeur's printed report)" do
+    test "each teacher's rate is the mean of their courses; unfinished courses are listed", ctx do
+      for st <- [ctx.s1, ctx.s2, ctx.s3], do: mark(ctx, ctx.a1, st)
+      summary = EntryProgress.teacher_summary(grid(ctx))
+      head_id = ctx.head.current_user.id
+
+      head = Enum.find(summary, &(&1.teacher_id == head_id))
+      english = Enum.find(summary, &(&1.teacher_id == ctx.english_teacher.id))
+
+      # Maths 3e A 3/6 = 50 %, Allemand 4e B 1/1 = 100 %; Maths 5e C has no student.
+      assert {head.pct, head.entered, head.expected} == {75, 4, 7}
+      assert [%{class: "3e A", subject: "Maths", missing: 3, pct: 50, assessments: 2}] = head.late
+
+      # No assessment at all: 0 % on both courses, nothing to count as missing yet.
+      assert english.pct == 0
+      assert [%{assessments: 0, missing: nil}, %{assessments: 0, missing: nil}] = english.late
+      # In the grid's row order (the school's class order).
+      rows =
+        for r <- grid(ctx).rows, r.class_group.label in ["3e A", "4e B"], do: r.class_group.label
+
+      assert Enum.map(english.late, & &1.class) == rows
+    end
+
+    test "a teacher whose every course is complete has no late course", ctx do
+      for a <- [ctx.a1, ctx.a2], st <- [ctx.s1, ctx.s2, ctx.s3], do: mark(ctx, a, st)
+      head_id = ctx.head.current_user.id
+
+      head =
+        ctx |> grid() |> EntryProgress.teacher_summary() |> Enum.find(&(&1.teacher_id == head_id))
+
+      assert {head.pct, head.late} == {100, []}
+    end
+  end
 end

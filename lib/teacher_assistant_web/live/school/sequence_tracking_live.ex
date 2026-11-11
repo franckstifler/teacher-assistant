@@ -412,6 +412,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
               </label>
             </form>
             <.link
+              id="print-entry-report"
+              href={~p"/school/sequences/print?#{[seq: @seq.id]}"}
+              target="_blank"
+              class="btn btn-sm btn-ghost"
+            >
+              <.icon name="hero-printer" class="size-4" />
+              {gettext("Imprimer le suivi")}
+            </.link>
+            <.link
               :if={ReportCards.can_publish?(@current_scope)}
               id="print-mark-sheets"
               href={~p"/school/mark-sheets/print?#{[period: "seq:#{@seq.id}"]}"}

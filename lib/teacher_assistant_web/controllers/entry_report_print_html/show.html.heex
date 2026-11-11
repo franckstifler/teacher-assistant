@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang={Gettext.get_locale(TeacherAssistantWeb.Gettext)}>
+  <head>
+    <meta charset="utf-8" />
+    <TeacherAssistantWeb.PrintComponents.setup paper={:a4} />
+    <title>
+      {gettext("Suivi de la saisie des notes")} — {gettext("Séquence %{n}", n: @seq.number)}
+    </title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif;
+        color: #111; background: #fff; margin: 0; padding: 12px;
+        font-size: 9.5pt; line-height: 1.3;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      @page { size: A4 portrait; margin: 10mm 12mm; }
+      @media print { body { padding: 0; } }
+      .print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: system-ui, sans-serif; font-size: 14px; margin-bottom: 8px; }
+      .print-actions select { font: inherit; padding: 7px 8px; }
+      .header { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; font-size: 0.86em; }
+      .header .col div:first-child { font-weight: bold; text-transform: uppercase; }
+      .header .col div:nth-child(2) { font-style: italic; }
+      .header .col div:nth-child(n+3) { text-transform: uppercase; }
+      .header .mid img { max-height: 16mm; max-width: 30mm; }
+      .header .code { font-weight: 700; margin-top: 1mm; letter-spacing: .02em; }
+      .school { display: grid; grid-template-columns: 1fr 36mm 1fr; gap: 2mm; text-align: center; margin-top: 1mm; font-size: 0.9em; }
+      .school .name { font-size: 1.15em; font-weight: bold; text-transform: uppercase; }
+      .flag { height: 0.9mm; margin: 1.2mm 0 0;
+              background: linear-gradient(90deg, #007a5e 33.3%, #ce1126 33.3% 66.6%, #fcd116 66.6%); }
+      h1 { text-align: center; font-size: 1.25em; letter-spacing: .04em; margin: 3mm 0 1mm; text-transform: uppercase; }
+      h2 { font-size: 1.05em; margin: 5mm 0 1.5mm; }
+      .meta { text-align: center; margin: 0 0 1mm; }
+      .totals { display: flex; justify-content: center; gap: 6mm; flex-wrap: wrap; margin: 2mm 0 1mm; }
+      .totals strong { font-size: 1.1em; }
+      table { width: 100%; border-collapse: collapse; }
+      thead { display: table-header-group; }
+      th, td { border: 0.2mm solid #555; padding: 0.9mm 1.5mm; text-align: right; vertical-align: top; }
+      th { background: #eee; font-size: 0.9em; text-align: center; }
+      th.text, td.text { text-align: left; }
+      td.low { font-weight: 700; }
+      tr { break-inside: avoid; }
+      .none { font-style: italic; }
+      .foot { display: flex; justify-content: space-between; gap: 6mm; margin-top: 6mm; }
+      .sign { text-align: center; min-width: 60mm; }
+      .sign .space { height: 18mm; }
+    </style>
+  </head>
+  <body>
+    <form class="print-actions" method="get" action={~p"/school/sequences/print"}>
+      <button type="button" data-print>{gettext("Imprimer")}</button>
+      <label>
+        {gettext("Séquence")}
+        <select name="seq" data-submit-on-change>
+          <option :for={s <- @sequences} value={s.id} selected={s.id == @seq.id}>
+            {gettext("Séquence %{n}", n: s.number)}
+          </option>
+        </select>
+      </label>
+      <noscript><button type="submit">{gettext("Afficher")}</button></noscript>
+    </form>
+
+    <.official_header :if={@template} header={@template.header} logo?={@template.header.logo?} />
+
+    <h1>
+      {gettext("Suivi de la saisie des notes")} — {gettext("Séquence %{n}", n: @seq.number)}
+    </h1>
+    <p class="meta">{@school} — {gettext("Année scolaire")} {@year}</p>
+    <p :if={@seq.grade_entry_deadline} class="meta">
+      {gettext("Saisie jusqu'au %{date}", date: date(@seq.grade_entry_deadline))}
+    </p>
+
+    <div id="entry-report-totals" class="totals">
+      <span>{gettext("Saisie globale")} : <strong>{pct(@grid.overall_pct)}</strong></span>
+      <span>
+        {gettext("Classes complètes")} :
+        <strong>{elem(@grid.complete_classes, 0)} / {elem(@grid.complete_classes, 1)}</strong>
+      </span>
+      <span>
+        {gettext("Enseignants en retard")} :
+        <strong>{length(@late)} / {length(@teachers)}</strong>
+      </span>
+    </div>
+
+    <h2>{gettext("Taux de saisie par enseignant")}</h2>
+    <p :if={@teachers == []} class="none">{gettext("Aucun cours n'a d'enseignant.")}</p>
+    <table :if={@teachers != []} id="entry-report-teachers">
+      <thead>
+        <tr>
+          <th class="text">{gettext("Enseignant")}</th>
+          <th class="text">{gettext("Matières")}</th>
+          <th>{gettext("Cours")}</th>
+          <th>{gettext("Notes saisies")}</th>
+          <th>{gettext("Notes attendues")}</th>
+          <th>{gettext("Taux")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={t <- @teachers}>
+          <td class="text">{t.name}</td>
+          <td class="text">{Enum.join(t.subjects, ", ")}</td>
+          <td>{t.courses}</td>
+          <td>{t.entered}</td>
+          <td>{t.expected}</td>
+          <td class={(t.pct != nil and t.pct < 100) && "low"}>{pct(t.pct)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>{gettext("Enseignants n'ayant pas terminé la saisie")}</h2>
+    <p :if={@late == []} id="entry-report-none-late" class="none">
+      {gettext("Toutes les notes attendues sont saisies.")}
+    </p>
+    <table :if={@late != []} id="entry-report-late">
+      <thead>
+        <tr>
+          <th class="text">{gettext("Enseignant")}</th>
+          <th class="text">{gettext("Classe")}</th>
+          <th class="text">{gettext("Matière")}</th>
+          <th>{gettext("Devoirs")}</th>
+          <th>{gettext("Notes manquantes")}</th>
+          <th>{gettext("Taux")}</th>
+          <th>{gettext("Dernière saisie")}</th>
+        </tr>
+      </thead>
+      <tbody :for={t <- @late}>
+        <tr :for={{c, i} <- Enum.with_index(t.late)}>
+          <td :if={i == 0} class="text" rowspan={length(t.late)}>{t.name}</td>
+          <td class="text">{c.class}</td>
+          <td class="text">{c.subject}</td>
+          <td>{c.assessments}</td>
+          <td>{missing(c)}</td>
+          <td class="low">{pct(c.pct)}</td>
+          <td>{date(c.last_entry_at)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="foot">
+      <span>{gettext("Imprimé le %{date}", date: date(@printed_on))}</span>
+      <div class="sign">
+        <div>{gettext("Le Censeur")}</div>
+        <div class="space"></div>
+      </div>
+    </div>
+  </body>
+</html>
