@@ -221,6 +221,13 @@ defmodule TeacherAssistant.Academics.Mark do
     end
   end
 
+  # A3: the course's class and context, reachable from a mark in one expression, so
+  # `Assessment`'s aggregates can filter on them with `parent/1`.
+  calculations do
+    calculate :class_group_id, :uuid, expr(assessment.teaching_context.class_group_id)
+    calculate :teaching_context_id, :uuid, expr(assessment.teaching_context_id)
+  end
+
   identities do
     identity :unique_mark, [:assessment_id, :student_id]
   end

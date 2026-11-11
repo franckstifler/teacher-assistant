@@ -118,6 +118,25 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
     assert {cell.entered, cell.expected, cell.pct} == {4, 4, 100}
   end
 
+  test "a mark of a student who left the class is not counted (A3)", ctx do
+    for a <- [ctx.a1, ctx.a2], s <- [ctx.s1, ctx.s2, ctx.s3], do: mark(ctx, a, s)
+
+    [%{enrollment: e3}] =
+      ctx.head |> Enrollment.list_roster(ctx.cg) |> Enum.filter(&(&1.student.id == ctx.s3.id))
+
+    :ok = Enrollment.withdraw(ctx.head, e3)
+
+    cell = cell(grid(ctx), ctx.cg, "Maths")
+    assert {cell.entered, cell.expected, cell.pct} == {4, 4, 100}
+  end
+
+  test "the grid reads no mark rows (A3)", ctx do
+    for a <- [ctx.a1, ctx.a2], s <- [ctx.s1, ctx.s2], do: mark(ctx, a, s)
+
+    assert count_queries(fn -> grid(ctx) end, "marks") == 0
+    assert cell(grid(ctx), ctx.cg, "Maths").entered == 4
+  end
+
   test "no assessment = 0 %, no course = nil cell, empty class = nil pct", ctx do
     grid = grid(ctx)
     assert cell(grid, ctx.cg, "Anglais").pct == 0
@@ -218,16 +237,19 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
       id: Ecto.UUID.generate()
     }
 
-  defp count_queries(fun) do
+  # Queries run by this process during `fun`; with `table`, only those reading it.
+  defp count_queries(fun, table \\ nil) do
     ref = make_ref()
     parent = self()
     handler = "entry-progress-#{inspect(ref)}"
+    needle = table && ~s(FROM "#{table}")
 
     :telemetry.attach(
       handler,
       [:teacher_assistant, :repo, :query],
-      fn _event, _measurements, _meta, _ ->
-        if self() == parent, do: send(parent, {ref, :query})
+      fn _event, _measurements, %{query: query}, _ ->
+        if self() == parent and (is_nil(needle) or query =~ needle),
+          do: send(parent, {ref, :query})
       end,
       nil
     )

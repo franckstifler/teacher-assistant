@@ -140,6 +140,7 @@ defmodule TeacherAssistant.Academics.Student do
 
     has_many :enrollments, TeacherAssistant.Academics.Enrollment
     has_many :guardian_links, TeacherAssistant.Academics.StudentGuardian
+    has_many :subject_exemptions, TeacherAssistant.Academics.SubjectExemption
 
     has_one :primary_guardian_link, TeacherAssistant.Academics.StudentGuardian do
       filter expr(primary_contact == true)

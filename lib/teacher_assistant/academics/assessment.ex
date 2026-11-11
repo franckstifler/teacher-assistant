@@ -235,6 +235,37 @@ defmodule TeacherAssistant.Academics.Assessment do
     has_many :marks, TeacherAssistant.Academics.Mark
   end
 
+  # Spec audit follow-ups A3: the entry-tracking figures without loading a mark.
+  # Only the marks of students taking the course count — enrolled in its class and
+  # not exempted from it — as `EntryProgress` always counted them.
+  aggregates do
+    count :marks_count, :marks do
+      filter expr(
+               exists(
+                 student.enrollments,
+                 class_group_id == parent(class_group_id)
+               ) and
+                 not exists(
+                   student.subject_exemptions,
+                   teaching_context_id == parent(teaching_context_id)
+                 )
+             )
+    end
+
+    max :last_mark_at, :marks, :updated_at do
+      filter expr(
+               exists(
+                 student.enrollments,
+                 class_group_id == parent(class_group_id)
+               ) and
+                 not exists(
+                   student.subject_exemptions,
+                   teaching_context_id == parent(teaching_context_id)
+                 )
+             )
+    end
+  end
+
   # --- Combined-assessment helpers -------------------------------------------
 
   # Member contexts of a course that have a class group, in class-label order.

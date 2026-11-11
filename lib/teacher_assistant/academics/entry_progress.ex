@@ -19,7 +19,6 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     Assessment,
     ClassGroup,
     Enrollment,
-    Mark,
     Sequence,
     SubjectExemption,
     TeachingContext
@@ -27,6 +26,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   alias TeacherAssistant.Scope
 
+  # A3: the marks are counted in the database (`Assessment` aggregates), never loaded.
+  @figures [:marks_count, :last_mark_at]
   @doc "Rounded-down percentage; `nil` when nothing is expected."
   def pct(_entered, 0), do: nil
   def pct(entered, expected), do: div(entered * 100, expected)
@@ -37,20 +38,12 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     enrolled = load_enrolled(scope, year)
     exempt = load_exempt(scope, contexts)
     assessments = load_assessments(scope, seq)
-    marks = load_marks(scope, assessments)
-
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
-    marks_by_assessment = Enum.group_by(marks, & &1.assessment_id)
 
     cells =
       Map.new(contexts, fn tc ->
         {{tc.class_group_id, column_key(tc)},
-         cell(
-           tc,
-           taking(tc, enrolled, exempt),
-           Map.get(assessments_by_tc, tc.id, []),
-           marks_by_assessment
-         )}
+         cell(tc, taking(tc, enrolled, exempt), Map.get(assessments_by_tc, tc.id, []))}
       end)
 
     subjects = subjects(contexts)
@@ -89,12 +82,11 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     enrolled = load_enrolled(scope, year, class_ids)
     exempt = load_exempt(scope, contexts)
     assessments = load_assessments(scope, seq, ids)
-    marks_by_assessment = scope |> load_marks(assessments) |> Enum.group_by(& &1.assessment_id)
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
 
     Map.new(contexts, fn tc ->
       tc_assessments = Map.get(assessments_by_tc, tc.id, [])
-      cell = cell(tc, taking(tc, enrolled, exempt), tc_assessments, marks_by_assessment)
+      cell = cell(tc, taking(tc, enrolled, exempt), tc_assessments)
 
       {tc.id,
        cell
@@ -161,7 +153,6 @@ defmodule TeacherAssistant.Academics.EntryProgress do
         Enum.map(contexts, & &1.id)
       )
 
-    marks_by_assessment = scope |> load_marks(assessments) |> Enum.group_by(& &1.assessment_id)
     assessments_by = Enum.group_by(assessments, &{&1.teaching_context_id, &1.sequence_id})
     # One cell per class × subject column, as in `grid/3`.
     courses = Map.new(contexts, &{{&1.class_group_id, column_key(&1)}, &1})
@@ -170,9 +161,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       for seq <- sequences,
           {{cg_id, _column}, tc} <- courses,
           tc_assessments <- [Map.get(assessments_by, {tc.id, seq.id}, [])],
-          %{pct: pct} <- [
-            cell(tc, taking(tc, enrolled, exempt), tc_assessments, marks_by_assessment)
-          ],
+          %{pct: pct} <- [cell(tc, taking(tc, enrolled, exempt), tc_assessments)],
           not is_nil(pct),
           do: {cg_id, pct}
 
@@ -261,24 +250,15 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     Assessment
     |> Ash.Query.filter(sequence_id in ^seq_ids and teaching_context_id in ^context_ids)
     |> Ash.Query.select([:teaching_context_id, :sequence_id])
+    |> Ash.Query.load(@figures)
     |> Ash.read!(scope: scope)
   end
 
   defp sorted_assessments(query, scope) do
     query
     |> Ash.Query.select([:teaching_context_id, :label, :given_on, :inserted_at])
+    |> Ash.Query.load(@figures)
     |> Ash.Query.sort(given_on: :asc_nils_last, inserted_at: :asc)
-    |> Ash.read!(scope: scope)
-  end
-
-  defp load_marks(_scope, []), do: []
-
-  defp load_marks(scope, assessments) do
-    ids = Enum.map(assessments, & &1.id)
-
-    Mark
-    |> Ash.Query.filter(assessment_id in ^ids)
-    |> Ash.Query.select([:assessment_id, :student_id, :updated_at])
     |> Ash.read!(scope: scope)
   end
 
@@ -296,15 +276,10 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> MapSet.difference(Map.get(exempt, tc.id, MapSet.new()))
   end
 
-  defp cell(tc, taking, assessments, marks_by_assessment) do
-    marks =
-      assessments
-      |> Enum.flat_map(&Map.get(marks_by_assessment, &1.id, []))
-      |> Enum.filter(&MapSet.member?(taking, &1.student_id))
-
+  defp cell(tc, taking, assessments) do
     students = MapSet.size(taking)
     expected = students * length(assessments)
-    entered = length(marks)
+    entered = Enum.sum_by(assessments, & &1.marks_count)
 
     %{
       teaching_context: tc,
@@ -314,7 +289,11 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       # A course with students but no assessment yet is "Rien saisi" (0 %).
       pct: if(assessments == [] and students > 0, do: 0, else: pct(entered, expected)),
       assessments: Enum.map(assessments, & &1.label),
-      last_entry_at: marks |> Enum.map(& &1.updated_at) |> Enum.max(DateTime, fn -> nil end)
+      last_entry_at:
+        assessments
+        |> Enum.map(& &1.last_mark_at)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.max(DateTime, fn -> nil end)
     }
   end
 
