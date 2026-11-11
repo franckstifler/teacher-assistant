@@ -83,6 +83,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
         :justification_note,
         :justification_reason,
         :justified_by_user_id,
+        :justified_operator_user_id,
         :justified_at,
         :recorded_by_user_id
       ]
@@ -298,6 +299,12 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
 
     # Every roll-call write (creates and upserts); a justification leaves it alone.
     change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
+
+    # A justification carries the operator acting as the member (A6), nil otherwise;
+    # clearing it clears the stamp (`Attendance.unjustify_day/3` passes nil).
+    change {TeacherAssistant.Academics.StampOperator, attribute: :justified_operator_user_id},
+      on: [:update],
+      where: [changing(:justified_by_user_id), present(:justified_by_user_id)]
   end
 
   multitenancy do
@@ -325,6 +332,7 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
       public?: true
 
     attribute :justified_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :justified_operator_user_id, :uuid, allow_nil?: true, public?: true
     attribute :justified_at, :utc_datetime, allow_nil?: true, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
     # The operator acting as the member (A6); no FK: the operator is not of the school.

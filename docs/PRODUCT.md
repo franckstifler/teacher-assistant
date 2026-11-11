@@ -145,8 +145,9 @@ under « Compte supprimé ». A member of a school is first removed by the head 
 records keep a name until then.
 
 The operator never sells or shares a school's data. Support opens a member's space only through
-one-hour, journaled impersonation; marks, roll calls, sanctions and payments entered then carry
-the operator's name (A6).
+one-hour, journaled impersonation; marks, roll calls and justifications, conduct, sanctions, fee
+records (payments, adjustments, papers, send-outs), councils held and publications entered then
+carry the operator's id (A6).
 
 ## Product quality bar
 

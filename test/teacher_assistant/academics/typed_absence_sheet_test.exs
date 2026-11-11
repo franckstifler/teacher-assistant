@@ -163,4 +163,21 @@ defmodule TeacherAssistant.Academics.TypedAbsenceSheetTest do
     {:ok, cg} = Enrollment.fetch_owned_class_group(ctx.scope, cg.id)
     assert cg.absence_hours_source == :typed_per_sequence
   end
+
+  test "typed absences saved while impersonated carry the operator (minors)", ctx do
+    op = TeacherFixtures.admin_user_fixture()
+
+    :ok =
+      Attendance.save_typed_absences(impersonating(ctx.scope, op), ctx.cg, {:sequence, ctx.s1}, %{
+        ctx.awa.id => "4"
+      })
+
+    [row] =
+      Ash.read!(TeacherAssistant.Academics.TypedAbsence,
+        tenant: ctx.scope.current_workspace.id,
+        authorize?: false
+      )
+
+    assert row.operator_user_id == op.id
+  end
 end

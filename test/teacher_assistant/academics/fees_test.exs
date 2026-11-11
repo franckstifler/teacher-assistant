@@ -229,4 +229,18 @@ defmodule TeacherAssistant.Academics.FeesTest do
     TeacherFixtures.close_year!(ctx.scope, ctx.year)
     assert {:error, _} = Fees.clear_adjustment(ctx.scope, ctx.e, ctx.pta)
   end
+
+  test "an adjustment set while impersonated carries the operator (minors)", ctx do
+    op = TeacherFixtures.admin_user_fixture()
+
+    {:ok, adj} =
+      Fees.set_adjustment(impersonating(ctx.scope, op), ctx.e, ctx.pta, %{
+        amount: 1_000,
+        reason: "x"
+      })
+
+    assert adj.operator_user_id == op.id
+    {:ok, own} = Fees.set_adjustment(ctx.scope, ctx.e, ctx.pta, %{amount: 2_000, reason: "y"})
+    assert own.operator_user_id == nil
+  end
 end

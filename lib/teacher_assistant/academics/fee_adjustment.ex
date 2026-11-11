@@ -47,7 +47,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
 
       upsert? true
       upsert_identity :unique_adjustment
-      upsert_fields [:amount, :reason, :recorded_by_user_id]
+      upsert_fields [:amount, :reason, :recorded_by_user_id, :operator_user_id]
     end
 
     read :for_enrollment do
@@ -79,6 +79,9 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
+
+    # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -92,6 +95,7 @@ defmodule TeacherAssistant.Academics.FeeAdjustment do
     attribute :amount, :integer, allow_nil?: false, public?: true
     attribute :reason, :string, allow_nil?: false, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end

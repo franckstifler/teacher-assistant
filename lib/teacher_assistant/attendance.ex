@@ -627,6 +627,7 @@ defmodule TeacherAssistant.Attendance do
       justification_reason: nil,
       justification_note: nil,
       justified_by_user_id: nil,
+      justified_operator_user_id: nil,
       justified_at: nil
     })
   end

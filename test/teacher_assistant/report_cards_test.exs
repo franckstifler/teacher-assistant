@@ -813,4 +813,19 @@ defmodule TeacherAssistant.ReportCardsTest do
       assert counts[~s(FROM "marks")] == 1
     end
   end
+
+  test "a council held, a publication and its withdrawal carry the operator (minors)", ctx do
+    %{scope: scope, cg: cg, term: term} = ctx
+    op = TeacherFixtures.admin_user_fixture()
+    imp = impersonating(scope, op)
+
+    {:ok, council} = TeacherAssistant.Councils.hold(imp, cg, {:trimester, term})
+    assert council.held_operator_user_id == op.id
+
+    {:ok, pub} = TeacherAssistant.ReportCards.publish(imp, cg, {:trimester, term})
+    assert pub.operator_user_id == op.id
+
+    {:ok, withdrawn} = TeacherAssistant.ReportCards.withdraw(imp, pub, "erreur de saisie")
+    assert withdrawn.withdrawn_operator_user_id == op.id
+  end
 end

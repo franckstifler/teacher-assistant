@@ -63,6 +63,9 @@ defmodule TeacherAssistant.Academics.FeeSendOut do
 
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update, :destroy]
+
+    # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -74,6 +77,7 @@ defmodule TeacherAssistant.Academics.FeeSendOut do
     uuid_v7_primary_key :id
     attribute :date, :date, allow_nil?: false, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
     timestamps()
   end
 

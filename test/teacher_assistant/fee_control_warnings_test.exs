@@ -74,4 +74,14 @@ defmodule TeacherAssistant.FeeControlWarningsTest do
     assert {:ok, %{status: :cancelled}} = FeeControl.cancel_warning(ctx.scope, w, "Erreur")
     assert FeeControl.default_pay_by() == ~D[2025-09-22]
   end
+
+  test "a warning and its cancellation carry the operator (minors)", ctx do
+    op = TeacherFixtures.admin_user_fixture()
+    imp = impersonating(ctx.scope, op)
+
+    {:ok, [w]} = FeeControl.issue_warnings(imp, [ctx.e], @pay_by)
+    assert w.operator_user_id == op.id
+    {:ok, cancelled} = FeeControl.cancel_warning(imp, w, "erreur")
+    assert cancelled.cancelled_operator_user_id == op.id
+  end
 end

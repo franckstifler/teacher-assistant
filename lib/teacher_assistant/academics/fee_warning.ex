@@ -74,6 +74,8 @@ defmodule TeacherAssistant.Academics.FeeWarning do
           context.actor && context.actor.id
         )
       end
+
+      change {TeacherAssistant.Academics.StampOperator, attribute: :cancelled_operator_user_id}
     end
 
     read :for_enrollment_ids do
@@ -99,6 +101,9 @@ defmodule TeacherAssistant.Academics.FeeWarning do
 
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: []}, on: [:create, :update]
+
+    # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -123,6 +128,7 @@ defmodule TeacherAssistant.Academics.FeeWarning do
     attribute :student_name, :string, allow_nil?: false, public?: true
     attribute :class_label, :string, allow_nil?: false, public?: true
     attribute :issued_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
 
     attribute :status, TeacherAssistant.Academics.PaymentStatus,
       allow_nil?: false,
@@ -131,6 +137,7 @@ defmodule TeacherAssistant.Academics.FeeWarning do
 
     attribute :cancelled_at, :utc_datetime_usec, allow_nil?: true, public?: true
     attribute :cancelled_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :cancelled_operator_user_id, :uuid, allow_nil?: true, public?: true
     attribute :cancel_reason, :string, allow_nil?: true, public?: true
 
     timestamps()

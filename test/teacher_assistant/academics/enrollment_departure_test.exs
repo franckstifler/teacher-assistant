@@ -201,4 +201,22 @@ defmodule TeacherAssistant.Academics.EnrollmentDepartureTest do
     TeacherFixtures.close_year!(ctx.scope, ctx.year)
     assert {:error, _} = Enrollment.leave(ctx.scope, ctx.awa, %{departure_reason: :other})
   end
+
+  test "conduct marks saved while impersonated carry the operator (minors)", ctx do
+    op = TeacherFixtures.admin_user_fixture()
+    [seq | _] = Organization.list_sequences(ctx.scope, ctx.year)
+
+    {:ok, _} =
+      Discipline.set_conduct_marks(impersonating(ctx.scope, op), ctx.cg, seq, %{
+        ctx.awa.id => "15"
+      })
+
+    [mark] =
+      Ash.read!(TeacherAssistant.Academics.ConductMark,
+        tenant: ctx.scope.current_workspace.id,
+        authorize?: false
+      )
+
+    assert mark.operator_user_id == op.id
+  end
 end

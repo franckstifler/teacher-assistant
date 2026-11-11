@@ -78,4 +78,17 @@ defmodule TeacherAssistant.FeeControlNotesTest do
     assert p1.number == "R#{ctx.year.start_date.year}-000001"
     assert p2.number == "R#{ctx.year.start_date.year}-000002"
   end
+
+  test "a return note, its cancellation and a send-out carry the operator (minors)", ctx do
+    op = TeacherAssistant.TeacherFixtures.admin_user_fixture()
+    imp = impersonating(ctx.scope, op)
+
+    {:ok, note} = FeeControl.issue_note(imp, ctx.e, promise(~D[2025-09-30]))
+    assert note.operator_user_id == op.id
+    {:ok, cancelled} = FeeControl.cancel_note(imp, note, "erreur")
+    assert cancelled.cancelled_operator_user_id == op.id
+
+    {:ok, send_out} = FeeControl.record_send_out(imp, ctx.e, @today)
+    assert send_out.operator_user_id == op.id
+  end
 end

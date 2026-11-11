@@ -47,6 +47,7 @@ defmodule TeacherAssistant.Academics.ConductMark do
 
       upsert? true
       upsert_identity :unique_conduct_mark
+      upsert_fields [:value, :recorded_by_user_id, :operator_user_id, :updated_at]
     end
 
     read :for_enrollment_sequence do
@@ -87,6 +88,9 @@ defmodule TeacherAssistant.Academics.ConductMark do
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :update, :destroy]
+
+    # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -99,6 +103,7 @@ defmodule TeacherAssistant.Academics.ConductMark do
 
     attribute :value, :decimal, allow_nil?: false, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end

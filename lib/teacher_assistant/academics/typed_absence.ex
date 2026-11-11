@@ -63,7 +63,7 @@ defmodule TeacherAssistant.Academics.TypedAbsence do
       change set_attribute(:recorded_by_user_id, actor(:id))
       upsert? true
       upsert_identity :unique_per_sequence
-      upsert_fields [:hours, :recorded_by_user_id, :updated_at]
+      upsert_fields [:hours, :recorded_by_user_id, :operator_user_id, :updated_at]
     end
 
     create :set_for_term do
@@ -71,7 +71,7 @@ defmodule TeacherAssistant.Academics.TypedAbsence do
       change set_attribute(:recorded_by_user_id, actor(:id))
       upsert? true
       upsert_identity :unique_per_term
-      upsert_fields [:hours, :recorded_by_user_id, :updated_at]
+      upsert_fields [:hours, :recorded_by_user_id, :operator_user_id, :updated_at]
     end
 
     read :for_enrollments do
@@ -92,6 +92,9 @@ defmodule TeacherAssistant.Academics.TypedAbsence do
   changes do
     change {TeacherAssistant.Academics.YearOpen, path: [:enrollment]},
       on: [:create, :destroy]
+
+    # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+    change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}, on: [:create]
   end
 
   multitenancy do
@@ -104,6 +107,7 @@ defmodule TeacherAssistant.Academics.TypedAbsence do
 
     attribute :hours, :decimal, allow_nil?: false, public?: true
     attribute :recorded_by_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end

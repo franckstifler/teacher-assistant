@@ -134,4 +134,21 @@ defmodule TeacherAssistant.Academics.AttendanceLateMinutesTest do
 
     assert Attendance.absence_days(ctx.scope, ~D[2025-09-08], @monday, @monday) == []
   end
+
+  test "a justification made while impersonated carries the operator (minors)", ctx do
+    op = TeacherFixtures.admin_user_fixture()
+
+    {:ok, 1} =
+      Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :absent}])
+
+    {:ok, 1} = Attendance.justify_day(impersonating(ctx.scope, op), ctx.e, @monday, :maladie)
+
+    [entry] =
+      Ash.read!(TeacherAssistant.Academics.AttendanceEntry,
+        tenant: ctx.scope.current_workspace.id,
+        authorize?: false
+      )
+
+    assert entry.justified_operator_user_id == op.id
+  end
 end

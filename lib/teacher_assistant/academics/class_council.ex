@@ -83,12 +83,15 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
       change set_attribute(:status, :held)
       change set_attribute(:held_at, &DateTime.utc_now/0)
       change set_attribute(:held_by_user_id, actor(:id))
+      # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+      change {TeacherAssistant.Academics.StampOperator, attribute: :held_operator_user_id}
     end
 
     update :reopen do
       change set_attribute(:status, :open)
       change set_attribute(:held_at, nil)
       change set_attribute(:held_by_user_id, nil)
+      change set_attribute(:held_operator_user_id, nil)
     end
   end
 
@@ -127,6 +130,8 @@ defmodule TeacherAssistant.Academics.ClassCouncil do
     attribute :attendees, :string, public?: true, constraints: [max_length: 2000]
     attribute :observations, :string, public?: true, constraints: [max_length: 4000]
     attribute :held_at, :utc_datetime_usec, public?: true
+
+    attribute :held_operator_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end

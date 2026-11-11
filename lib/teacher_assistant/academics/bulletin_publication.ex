@@ -52,8 +52,10 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
     :snapshot_version,
     :published_at,
     :published_by_user_id,
+    :operator_user_id,
     :withdrawn_at,
     :withdrawn_by_user_id,
+    :withdrawn_operator_user_id,
     :withdrawal_reason,
     :inserted_at,
     :updated_at
@@ -95,6 +97,8 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
       change set_attribute(:snapshot_version, 5)
       change set_attribute(:published_at, &DateTime.utc_now/0)
       change set_attribute(:published_by_user_id, actor(:id))
+      # Audit follow-ups A6: the operator acting as the member, nil otherwise.
+      change {TeacherAssistant.Academics.StampOperator, attribute: :operator_user_id}
     end
 
     # Atomic: the status check runs against the stored row, so a stale page cannot
@@ -106,6 +110,7 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
       change set_attribute(:withdrawal_reason, arg(:reason))
       change set_attribute(:withdrawn_at, &DateTime.utc_now/0)
       change set_attribute(:withdrawn_by_user_id, actor(:id))
+      change {TeacherAssistant.Academics.StampOperator, attribute: :withdrawn_operator_user_id}
     end
   end
 
@@ -151,6 +156,9 @@ defmodule TeacherAssistant.Academics.BulletinPublication do
     attribute :published_at, :utc_datetime_usec, allow_nil?: false, public?: true
     attribute :withdrawn_at, :utc_datetime_usec, public?: true
     attribute :withdrawal_reason, :string, public?: true
+
+    attribute :operator_user_id, :uuid, allow_nil?: true, public?: true
+    attribute :withdrawn_operator_user_id, :uuid, allow_nil?: true, public?: true
 
     timestamps()
   end
