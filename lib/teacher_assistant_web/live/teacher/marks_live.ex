@@ -946,6 +946,22 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
   # --- Render ------------------------------------------------------------------------
 
+  # One map per row with only that row's values (A8: change tracking per row).
+  defp mark_rows(students, scores, loaded, errors, next_empty) do
+    students
+    |> Enum.with_index(1)
+    |> Enum.map(fn {s, n} ->
+      %{
+        student: s,
+        n: n,
+        value: Map.get(scores, s.id, ""),
+        saved: Map.get(loaded, s.id, ""),
+        error: errors[s.id],
+        next?: s.id == next_empty
+      }
+    end)
+  end
+
   def render(%{loading?: true} = assigns) do
     ~H"""
     <Layouts.app
@@ -1324,6 +1340,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                 </thead>
                 <tbody
                   :for={group <- @groups}
+                  :key={group.class_group.id}
                   id={"marks-class-#{group.class_group.id}"}
                   class="block scroll-mt-2 sm:table-row-group"
                 >
@@ -1346,15 +1363,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                       </span>
                     </th>
                   </tr>
+                  <%!-- A8: each row carries its own values and is keyed, so a save
+                       re-sends only the rows whose values changed. --%>
                   <MarksComponents.mark_row
-                    :for={{s, i} <- Enum.with_index(group.students, 1)}
-                    student={s}
-                    n={i}
-                    value={Map.get(@scores, s.id, "")}
-                    saved={Map.get(@loaded, s.id, "")}
-                    error={@errors[s.id]}
+                    :for={row <- mark_rows(group.students, @scores, @loaded, @errors, @next_empty)}
+                    :key={row.student.id}
+                    student={row.student}
+                    n={row.n}
+                    value={row.value}
+                    saved={row.saved}
+                    error={row.error}
                     locked?={@locked?}
-                    next?={s.id == @next_empty}
+                    next?={row.next?}
                     max={@column.max_score}
                     grading_rules={@grading_rules}
                   />
