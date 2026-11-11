@@ -321,6 +321,22 @@ defmodule TeacherAssistant.Assessment do
   def sequence_entry_grid(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq),
     do: EntryProgress.grid(scope, year, seq)
 
+  # --- Teacher statistics (spec audit follow-ups A4) ---------------------------
+
+  @doc """
+  One course's statistics for a séquence, a trimester or the year. See
+  `TeacherAssistant.Academics.TeacherStatistics.course/3`.
+  """
+  def course_statistics(%Scope{} = scope, ctx, period),
+    do: TeacherAssistant.Academics.TeacherStatistics.course(scope, ctx, period)
+
+  @doc """
+  A teacher's statistics table for a period, a row per course (and per class of a
+  combined course). See `TeacherAssistant.Academics.TeacherStatistics.table/3`.
+  """
+  def teacher_statistics(%Scope{} = scope, teacher, period),
+    do: TeacherAssistant.Academics.TeacherStatistics.table(scope, teacher, period)
+
   @doc "The séquence shown by default on `today` (current, else last started, else first)."
   def default_sequence(sequences, %Date{} = today),
     do: EntryProgress.default_sequence(sequences, today)

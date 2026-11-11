@@ -28,13 +28,26 @@ defmodule TeacherAssistant.Academics.Marks do
         {s.id, subject_average(Map.get(marks_by_student, s.id, []), weights, rules)}
       end)
 
+    from_averages(students, precise, rules)
+  end
+
+  @doc """
+  The summary `summarize/4` returns, from each student's subject average for the
+  period (`%{student_id => Decimal | nil}`): rounded by the school's rule, ranked
+  (rounding ties broken by the given value), with the class and per-sex figures.
+  The trimester and annual statistics pass the bulletin's subject averages, so the
+  figures are the bulletin's (spec audit follow-ups A4).
+  """
+  def from_averages(students, averages, rules \\ %GradingRules{}) do
     ranks =
       students
       |> Enum.map(fn s ->
+        precise = Map.get(averages, s.id)
+
         %{
           id: s.id,
-          average: GradingRules.round_average(precise[s.id], rules),
-          precise: precise[s.id],
+          average: GradingRules.round_average(precise, rules),
+          precise: precise,
           name: Map.get(s, :name, "")
         }
       end)
@@ -42,7 +55,7 @@ defmodule TeacherAssistant.Academics.Marks do
 
     per_student =
       Map.new(students, fn s ->
-        avg = GradingRules.round_average(precise[s.id], rules)
+        avg = GradingRules.round_average(Map.get(averages, s.id), rules)
         {s.id, %{average: avg, mention: mention(avg, rules), rank: ranks[s.id]}}
       end)
 
