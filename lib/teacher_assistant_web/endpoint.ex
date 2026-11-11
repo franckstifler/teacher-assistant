@@ -1,16 +1,20 @@
 defmodule TeacherAssistantWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :teacher_assistant
 
-  # The session will be stored in the cookie and signed,
-  # this means its contents can be read but not tampered with.
-  # Set :encryption_salt if you would also like to encrypt it.
+  # The session is stored in the cookie, signed and encrypted (A6): its contents can be
+  # neither read nor tampered with. Adding the encryption salt signed every member out
+  # once at its first deploy (docs/DEPLOY.md).
   @session_options [
     store: :cookie,
     key: "_teacher_assistant_key",
     signing_salt: "BLqSwa4S",
+    encryption_salt: "q7Zr2vXk9Lm",
     same_site: "Lax",
     secure: Application.compile_env(:teacher_assistant, :secure_session_cookie, false)
   ]
+
+  @doc "The session cookie's options (shared with the LiveView socket)."
+  def session_options, do: @session_options
 
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],
@@ -46,9 +50,12 @@ defmodule TeacherAssistantWeb.Endpoint do
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :teacher_assistant
   end
 
-  plug Phoenix.LiveDashboard.RequestLogger,
-    param_key: "request_logger",
-    cookie_key: "request_logger"
+  # LiveDashboard's request logger serves the dev dashboard only (A6).
+  if Application.compile_env(:teacher_assistant, :dev_routes) do
+    plug Phoenix.LiveDashboard.RequestLogger,
+      param_key: "request_logger",
+      cookie_key: "request_logger"
+  end
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]

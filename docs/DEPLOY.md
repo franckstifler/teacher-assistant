@@ -41,6 +41,17 @@ cookie. Point the uptime monitor (UptimeRobot, Hetzner, or Cloudflare health
 checks) at `https://<PHX_HOST>/health`, and the container's own check at
 `http://127.0.0.1:4000/health`.
 
+## Release notes
+
+- **Encrypted session cookie (2026-11, audit A6).** The first deploy that carries
+  the session `encryption_salt` signs every member out once: their old cookie no longer
+  decrypts. Members who ticked « Rester connecté » are signed back in by the
+  remember-me cookie on their next visit; the others sign in again. Tell the schools
+  the day before.
+- **Content-Security-Policy (same release).** Scripts run only from the app itself.
+  A page that suddenly does nothing on a click is the first thing to check against
+  the browser console's CSP messages.
+
 ## Email with Brevo
 
 The app sends email through Brevo's API (free tier: 300 emails a day).
