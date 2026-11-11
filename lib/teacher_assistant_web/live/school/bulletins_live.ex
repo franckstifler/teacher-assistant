@@ -97,69 +97,6 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     if Lock.not_started?(seq), do: %{}, else: TeacherCourses.progress(scope, seq, courses)
   end
 
-  # The steps of the period: each séquence's marks, the councils, the publication.
-  defp steps(sequences, published?, today) do
-    seq_steps =
-      Enum.map(sequences, fn seq ->
-        deadline = seq.grade_entry_deadline
-
-        cond do
-          Lock.locked?(seq, today) ->
-            %{
-              state: :done,
-              title: gettext("Notes de la séquence %{n}", n: seq.number),
-              sub:
-                gettext("Verrouillées le %{date}",
-                  date: Dates.day_month(Date.add(deadline, 1))
-                )
-            }
-
-          Lock.not_started?(seq, today) ->
-            %{
-              state: :later,
-              title: gettext("Notes de la séquence %{n}", n: seq.number),
-              sub: gettext("Ouvertes à partir du %{date}", date: Dates.day_month(seq.start_date))
-            }
-
-          true ->
-            %{
-              state: :now,
-              title: gettext("Notes de la séquence %{n}", n: seq.number),
-              sub:
-                Enum.join(
-                  [
-                    gettext("Ouvertes jusqu'au %{date}", date: Dates.day_month(deadline)),
-                    Dates.countdown(deadline, today)
-                  ]
-                  |> Enum.reject(&is_nil/1),
-                  " · "
-                )
-            }
-        end
-      end)
-
-    marks_done? = Enum.all?(seq_steps, &(&1.state == :done))
-
-    seq_steps ++
-      [
-        %{
-          state:
-            cond do
-              published? -> :done
-              marks_done? -> :now
-              true -> :later
-            end,
-          title: gettext("Conseils de classe"),
-          sub: gettext("Après la clôture des notes")
-        },
-        %{
-          state: if(published?, do: :done, else: :later),
-          title: gettext("Publication des bulletins"),
-          sub: gettext("Par l'administration")
-        }
-      ]
-  end
-
   defp class_params(params, socket) do
     socket = assign(socket, :mode, :class)
     %{classes: classes, periods: periods} = socket.assigns
@@ -685,7 +622,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
     assigns =
       assign(assigns,
         steps:
-          steps(
+          TeacherAssistantWeb.BulletinTimeline.steps(
             assigns.sequences,
             assigns.published != [] and length(assigns.published) == length(assigns.classes),
             Reference.today()

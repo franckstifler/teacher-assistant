@@ -287,4 +287,68 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
     {:ok, view, _html} = live(conn, ~p"/school/courses")
     refute has_element?(view, "#print-all-class-lists")
   end
+
+  describe "bulletin timeline (A5)" do
+    test "Mes cours shows the trimester pills and the timeline, current step first", ctx do
+      [term | _] = Organization.list_terms(ctx.scope, ctx.year)
+      {:ok, view, _} = live(conn_for(ctx.school, ctx.teacher), ~p"/school/courses")
+
+      assert has_element?(view, "#courses-period-tabs #period-trim-#{term.id}[aria-current]")
+      assert has_element?(view, "#courses-period-tabs #period-annee")
+      refute has_element?(view, "#courses-period-tabs [id^='period-seq-']")
+      assert has_element?(view, "#bulletin-timeline-current", "Notes de la séquence 1")
+      assert has_element?(view, "#bulletin-steps li[data-state=now]", "Notes de la séquence 1")
+
+      assert has_element?(
+               view,
+               "#bulletin-steps li[data-state=later]",
+               "Publication des bulletins"
+             )
+    end
+
+    test "the year pill shows every séquence of the year", ctx do
+      {:ok, view, _} = live(conn_for(ctx.school, ctx.teacher), ~p"/school/courses?period=annee")
+      assert has_element?(view, "#period-annee[aria-current]")
+      n = length(Organization.list_sequences(ctx.scope, ctx.year))
+
+      assert view
+             |> element("#bulletin-steps")
+             |> render()
+             |> then(&(length(String.split(&1, "Notes de la séquence")) - 1)) == n
+    end
+
+    test "the timeline marks a published trimester done", ctx do
+      [term | _] = Organization.list_terms(ctx.scope, ctx.year)
+      :ok = TeacherAssistant.TeacherFixtures.verify_school!(ctx.scope)
+      {:ok, _} = TeacherAssistant.TeacherFixtures.publish_trimester(ctx.scope, ctx.cg, term)
+
+      {:ok, view, _} = live(conn_for(ctx.school, ctx.teacher), ~p"/school/courses")
+
+      assert has_element?(
+               view,
+               "#bulletin-steps li[data-state=done]",
+               "Publication des bulletins"
+             )
+    end
+
+    test "a course row links to its statistics", ctx do
+      {:ok, view, _} = live(conn_for(ctx.school, ctx.teacher), ~p"/school/courses")
+
+      assert view |> element("#course-stats-#{ctx.tc.id}") |> render() =~
+               "/school/statistics/me?period=seq%3A"
+    end
+
+    test "without the notes module there is no timeline and no Stats link", ctx do
+      op = %TeacherAssistant.Scope{
+        current_user: TeacherAssistant.TeacherFixtures.admin_user_fixture()
+      }
+
+      {:ok, _} = Organization.set_modules(op, ctx.school, [:appel])
+
+      {:ok, view, _} = live(conn_for(ctx.school, ctx.teacher), ~p"/school/courses")
+      assert has_element?(view, "#course-#{ctx.tc.id}")
+      refute has_element?(view, "#bulletin-timeline")
+      refute has_element?(view, "#course-stats-#{ctx.tc.id}")
+    end
+  end
 end

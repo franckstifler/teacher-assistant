@@ -2,7 +2,7 @@ defmodule TeacherAssistant.Academics.TeacherCourses do
   @moduledoc """
   The signed-in teacher's courses (UX refonte 2026-11-03): one per solo assignment
   or combined course, with what « Mes cours », the « À faire » card of Ma journée
-  and the teacher's bulletins view show of it — member classes, students,
+  shows of it — member classes, students,
   coefficient, form-master badge, séquence entry progress and APC competence.
   """
   alias TeacherAssistant.{Assessment, Curriculum, Enrollment, Organization, Scope}

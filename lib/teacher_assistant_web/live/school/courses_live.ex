@@ -6,11 +6,17 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   shows its classes, its séquence state (« 3/39 », « 0 éval. ») and, small, the
   coefficient and the form-master badge; results and roster are the course's tabs.
   Filter pills: all, marks to enter, competence to enter (APC schools).
+
+  Above them (spec audit follow-ups A5, from the teacher's former Bulletins view):
+  the trimester / year pills and the road to the period's bulletins — each
+  séquence's marks with its deadline, the councils, the publication — collapsed to
+  the current step on phones. A row links to the course's statistics.
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistant.{Organization, ReportCards, Scope}
   alias TeacherAssistant.Academics.{Lock, Reference, TeacherCourses}
-  alias TeacherAssistantWeb.Dates
+  alias TeacherAssistantWeb.{BulletinTimeline, Dates}
 
   @filters ~w(all marks competence)
 
@@ -35,7 +41,9 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
            "marks" => Enum.count(courses, &TeacherCourses.to_enter?/1),
            "competence" => Enum.count(courses, &(&1.competence == :missing))
          },
-         apc?: Enum.any?(courses, &(&1.competence != nil))
+         apc?: Enum.any?(courses, &(&1.competence != nil)),
+         notes?: Scope.module?(scope, :notes),
+         periods: bulletin_periods(scope)
        )}
     else
       {:ok, push_navigate(socket, to: ~p"/school")}
@@ -44,7 +52,64 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
 
   def handle_params(params, _uri, socket) do
     filter = if params["f"] in @filters, do: params["f"], else: "all"
-    {:noreply, assign(socket, :filter, filter)}
+    {:noreply, socket |> assign(:filter, filter) |> assign_timeline(params["period"])}
+  end
+
+  # Trimesters and the year (the séquences have their own row states), with the
+  # Notes module only.
+  defp bulletin_periods(%Scope{current_academic_year: nil}), do: []
+
+  defp bulletin_periods(%Scope{current_academic_year: year} = scope) do
+    if Scope.module?(scope, :notes),
+      do: scope |> ReportCards.periods(year) |> Enum.reject(&match?({_, _, {:sequence, _}}, &1)),
+      else: []
+  end
+
+  defp assign_timeline(%{assigns: %{periods: []}} = socket, _param),
+    do: assign(socket, period_param: nil, chosen_period: nil, steps: [])
+
+  defp assign_timeline(socket, param) do
+    %{periods: periods, seq: seq, courses: courses, current_scope: scope, today: today} =
+      socket.assigns
+
+    chosen = Enum.find(periods, &(elem(&1, 0) == param))
+    {param, _label, period} = chosen || default_period(periods, seq)
+
+    published = ReportCards.published_class_ids(scope, period)
+    classes = courses |> Enum.flat_map(& &1.classes) |> Enum.uniq_by(& &1.id)
+    published? = classes != [] and Enum.all?(classes, &MapSet.member?(published, &1.id))
+
+    assign(socket,
+      period_param: param,
+      # Kept in the filter links only when the teacher picked it.
+      chosen_period: chosen && param,
+      steps: BulletinTimeline.steps(period_sequences(scope, period), published?, today)
+    )
+  end
+
+  # The trimester of the current séquence, else the year.
+  defp default_period(periods, seq) do
+    (seq &&
+       Enum.find(periods, &match?({_, _, {:trimester, %{id: id}}} when id == seq.term_id, &1))) ||
+      List.last(periods)
+  end
+
+  # `list_sequences` loads each séquence's grade-entry deadline.
+  defp period_sequences(scope, {:trimester, term}),
+    do:
+      scope
+      |> Organization.list_sequences(term_year(scope))
+      |> Enum.filter(&(&1.term_id == term.id))
+
+  defp period_sequences(scope, {:annual, year}), do: Organization.list_sequences(scope, year)
+
+  defp term_year(%Scope{current_academic_year: year}), do: year
+
+  defp period_path(params) do
+    case Enum.reject(params, fn {_k, v} -> v in [nil, "all"] end) do
+      [] -> ~p"/school/courses"
+      query -> ~p"/school/courses?#{query}"
+    end
   end
 
   defp filtered(courses, "marks"), do: Enum.filter(courses, &TeacherCourses.to_enter?/1)
@@ -57,8 +122,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
     courses |> Enum.map(& &1.subject) |> Enum.uniq() |> Enum.map(&{&1, grouped[&1]})
   end
 
-  defp filter_path("all"), do: ~p"/school/courses"
-  defp filter_path(f), do: ~p"/school/courses?f=#{f}"
+  defp filter_path(f, period_param), do: period_path(f: f, period: period_param)
 
   defp coef_label(n), do: TeacherAssistantWeb.Numbers.decimal(n, trim: true)
 
@@ -140,10 +204,20 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
           />
         </div>
 
+        <section :if={@courses != [] and @steps != []} id="courses-bulletins" class="space-y-3">
+          <BulletinTimeline.period_pills
+            id="courses-period-tabs"
+            periods={@periods}
+            current={@period_param}
+            patch={&period_path(f: @filter, period: &1)}
+          />
+          <BulletinTimeline.timeline id="bulletin-timeline" steps={@steps} />
+        </section>
+
         <.filter_pills :if={@courses != [] && @seq} id="course-filters">
           <:pill
             id="filter-all"
-            patch={filter_path("all")}
+            patch={filter_path("all", @chosen_period)}
             count={@counts["all"]}
             current={@filter == "all"}
           >
@@ -151,7 +225,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
           </:pill>
           <:pill
             id="filter-marks"
-            patch={filter_path("marks")}
+            patch={filter_path("marks", @chosen_period)}
             count={@counts["marks"]}
             current={@filter == "marks"}
           >
@@ -160,7 +234,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
           <:pill
             :if={@apc?}
             id="filter-competence"
-            patch={filter_path("competence")}
+            patch={filter_path("competence", @chosen_period)}
             count={@counts["competence"]}
             current={@filter == "competence"}
           >
@@ -227,6 +301,17 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 </span>
                 <.state_pill :if={@seq} progress={course.progress} />
                 <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
+              </.link>
+              <.link
+                :if={@seq && @notes?}
+                id={"course-stats-#{course.id}"}
+                navigate={~p"/school/statistics/me?#{[period: "seq:#{@seq.id}"]}"}
+                aria-label={gettext("Statistiques du cours")}
+                title={gettext("Statistiques du cours")}
+                class="flex min-h-14 shrink-0 items-center gap-1 border-l border-base-300/60 px-3 text-xs font-medium text-primary transition-colors hover:bg-base-content/5"
+              >
+                <.icon name="hero-chart-bar" class="size-4" />
+                <span class="max-sm:hidden">{gettext("Stats")}</span>
               </.link>
             </li>
           </ul>
