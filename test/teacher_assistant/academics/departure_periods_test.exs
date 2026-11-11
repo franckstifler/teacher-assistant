@@ -81,6 +81,17 @@ defmodule TeacherAssistant.Academics.DeparturePeriodsTest do
     assert Organization.period_first_day(ctx.scope, {:trimester, ctx.term}) == ctx.s1.start_date
   end
 
+  test "the year counts the class as on the last trimester's first day (review)", ctx do
+    last_term = ctx.scope |> Organization.list_terms(ctx.year) |> List.last()
+    first_of_last = last_term.sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
+
+    assert Organization.period_first_day(ctx.scope, {:annual, ctx.year}) == first_of_last
+
+    annual = Assessment.class_results_for_period(ctx.scope, ctx.cg, {:annual, ctx.year})
+    refute Map.has_key?(annual.per_student, ctx.awa.id)
+    assert Map.has_key?(annual.per_student, ctx.bob.id)
+  end
+
   test "the roll call of the departure day leaves her out, the day before has her", ctx do
     :ok = Attendance.build_default_periods(ctx.scope)
     period = ctx.scope |> Attendance.list_periods() |> Enum.find(&(&1.kind == :lesson))

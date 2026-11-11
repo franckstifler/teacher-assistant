@@ -364,8 +364,10 @@ defmodule TeacherAssistant.Organization do
   end
 
   @doc """
-  The day a period begins: its first séquence's start (A7). A student who left before
-  it is not in the period; one who left on or after it is. Without séquences, today.
+  The day a period's class is counted on (A7): its first séquence's start — for the
+  year, the last trimester's (the T3 bulletin carries the annual line). A student who
+  left before it is not in the period; one who left on or after it is. Without
+  séquences, today.
   """
   def period_first_day(%Scope{} = _scope, {:sequence, %Sequence{start_date: start}}), do: start
 
@@ -379,8 +381,12 @@ defmodule TeacherAssistant.Organization do
     first_start(sequences)
   end
 
-  def period_first_day(%Scope{} = scope, {:annual, %AcademicYear{} = year}),
-    do: scope |> list_sequences(year) |> first_start()
+  def period_first_day(%Scope{} = scope, {:annual, %AcademicYear{} = year}) do
+    case scope |> list_terms(year) |> List.last() do
+      nil -> first_start([])
+      last_term -> first_start(last_term.sequences)
+    end
+  end
 
   defp first_start([]), do: TeacherAssistant.Academics.Reference.today()
   defp first_start(sequences), do: sequences |> Enum.map(& &1.start_date) |> Enum.min(Date)
