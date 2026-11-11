@@ -118,13 +118,14 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
     assert {cell.entered, cell.expected, cell.pct} == {4, 4, 100}
   end
 
-  test "a mark of a student who left the class is not counted (A3)", ctx do
+  test "a mark of a student who left before the séquence is not counted (A3, A7)", ctx do
     for a <- [ctx.a1, ctx.a2], s <- [ctx.s1, ctx.s2, ctx.s3], do: mark(ctx, a, s)
 
     [%{enrollment: e3}] =
       ctx.head |> Enrollment.list_roster(ctx.cg) |> Enum.filter(&(&1.student.id == ctx.s3.id))
 
-    :ok = Enrollment.withdraw(ctx.head, e3)
+    {:ok, _} =
+      Enrollment.leave(ctx.head, e3, %{departure_reason: :transfer, left_on: ctx.seq.start_date})
 
     cell = cell(grid(ctx), ctx.cg, "Maths")
     assert {cell.entered, cell.expected, cell.pct} == {4, 4, 100}

@@ -40,7 +40,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     {:ok, %{student: s, enrollment: e}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
 
-    :ok = Enrollment.withdraw(scope, e)
+    :ok = Enrollment.remove_mistaken(scope, e)
     {:ok, e2} = Enrollment.enroll_existing(scope, cg2, s)
     assert e2.status == :reinscription and e2.class_group_id == cg2.id
     assert {:error, :already_enrolled} = Enrollment.enroll_existing(scope, cg, s)
@@ -112,7 +112,7 @@ defmodule TeacherAssistant.Academics.EnrollmentsTest do
     {:ok, %{student: _s, enrollment: e}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
 
-    :ok = Enrollment.withdraw(scope, e)
+    :ok = Enrollment.remove_mistaken(scope, e)
     # still-enrolled student → conflict
     {:ok, _} = Enrollment.enroll_new(scope, cg, %{full_name: "Bi", sex: :m, matricule: "M-2"})
 

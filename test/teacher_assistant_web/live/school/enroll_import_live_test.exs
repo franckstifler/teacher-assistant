@@ -45,7 +45,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     {:ok, %{enrollment: e}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f, matricule: "M-1"})
 
-    :ok = Enrollment.withdraw(scope, e)
+    :ok = Enrollment.remove_mistaken(scope, e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/import")
 
@@ -164,7 +164,7 @@ defmodule TeacherAssistantWeb.School.EnrollImportLiveTest do
     {:ok, %{enrollment: e}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Ebogo Sandrine", sex: :f, matricule: "M-7"})
 
-    :ok = Enrollment.withdraw(scope, e)
+    :ok = Enrollment.remove_mistaken(scope, e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/import")
 

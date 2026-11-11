@@ -132,6 +132,23 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     assert view |> element("#student-rows") |> render() =~ "Zoé Abena"
   end
 
+  test "« Partis » lists departed students with their date; the default list hides them (A7)",
+       ctx do
+    %{conn: conn, scope: scope, zoe: zoe} = ctx
+    [e] = Enrollment.student_history(scope, zoe)
+    {:ok, _} = Enrollment.leave(scope, e, %{departure_reason: :transfer})
+
+    {:ok, view, _html} = live(conn, ~p"/school/students")
+    refute view |> element("#student-rows") |> render() =~ "Zoé Abena"
+    assert has_element?(view, "#departed-pill", "1")
+
+    view |> element("#departed-pill") |> render_click()
+    assert_patch(view, ~p"/school/students?departed=1")
+    rows = view |> element("#student-rows") |> render()
+    assert rows =~ "Zoé Abena"
+    assert rows =~ "parti(e) le"
+  end
+
   test "the class select groups classes by level", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/school/students")
     assert has_element?(view, "#students-class-select optgroup[label='6ème'] option", "6e A")

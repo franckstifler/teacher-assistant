@@ -12,8 +12,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
   import TeacherAssistantWeb.Drawer
 
   alias TeacherAssistant.Enrollment
-  alias TeacherAssistant.Academics.Sex
-  alias TeacherAssistantWeb.School.{ClassShell, EnrollDrawer}
+  alias TeacherAssistant.Academics.{DepartureReason, Reference, Sex}
+  alias TeacherAssistantWeb.School.{ClassShell, EnrollDrawer, StudentLive}
   import ClassShell, only: [class_shell: 1]
 
   @roster_filters [:all, :f, :m, :repeaters]
@@ -35,7 +35,8 @@ defmodule TeacherAssistantWeb.School.ClassLive do
          filter: :all,
          rq: "",
          drawer: nil,
-         transferring: nil
+         transferring: nil,
+         leaving: nil
        )
        |> load_roster()}
     else
@@ -210,11 +211,17 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                 {gettext("Transférer…")}
               </:item>
               <:item
-                danger
-                click={JS.push("withdraw", value: %{"enrollment-id" => row.enrollment.id})}
-                confirm={gettext("Retirer cet élève de la classe ?")}
+                :if={@can_manage_classes?}
+                click={JS.push("open_leave", value: %{"enrollment-id" => row.enrollment.id})}
               >
-                {gettext("Retirer de la classe…")}
+                {gettext("Marquer parti…")}
+              </:item>
+              <:item
+                danger
+                click={JS.push("remove_mistaken", value: %{"enrollment-id" => row.enrollment.id})}
+                confirm={gettext("Supprimer cette inscription faite par erreur ?")}
+              >
+                {gettext("Supprimer (erreur de saisie)")}
               </:item>
             </.action_menu>
           </div>
@@ -293,16 +300,26 @@ defmodule TeacherAssistantWeb.School.ClassLive do
                           {gettext("Transférer…")}
                         </button>
                       </li>
+                      <li :if={@can_manage_classes?}>
+                        <button
+                          id={"leave-#{row.enrollment.id}"}
+                          type="button"
+                          phx-click="open_leave"
+                          phx-value-enrollment-id={row.enrollment.id}
+                        >
+                          {gettext("Marquer parti…")}
+                        </button>
+                      </li>
                       <li>
                         <button
-                          id={"withdraw-#{row.enrollment.id}"}
+                          id={"remove-mistaken-#{row.enrollment.id}"}
                           type="button"
                           class="text-error"
-                          phx-click="withdraw"
+                          phx-click="remove_mistaken"
                           phx-value-enrollment-id={row.enrollment.id}
-                          data-confirm={gettext("Retirer cet élève de la classe ?")}
+                          data-confirm={gettext("Supprimer cette inscription faite par erreur ?")}
                         >
-                          {gettext("Retirer de la classe…")}
+                          {gettext("Supprimer (erreur de saisie)")}
                         </button>
                       </li>
                     </ul>
@@ -361,6 +378,59 @@ defmodule TeacherAssistantWeb.School.ClassLive do
           </button>
           <button type="submit" form="transfer-form" class="btn btn-primary btn-sm">
             {gettext("Transférer")}
+          </button>
+        </:footer>
+      </.drawer>
+
+      <%!-- A7: a student who leaves keeps their history; the date and the reason. --%>
+      <.drawer
+        :if={@drawer == :leave and @leaving != nil}
+        id="leave-drawer"
+        eyebrow={@leaving.student.full_name}
+        title={gettext("Marquer parti")}
+        on_close={JS.push("close_drawer")}
+      >
+        <form id="leave-form" phx-submit="leave" class="space-y-2">
+          <input type="hidden" name="enrollment-id" value={@leaving.enrollment.id} />
+          <.input
+            id="leave-reason"
+            type="select"
+            name="departure_reason"
+            label={gettext("Motif")}
+            value={nil}
+            prompt={gettext("Choisir un motif")}
+            required
+            options={for r <- DepartureReason.values(), do: {DepartureReason.label(r), r}}
+          />
+          <.input
+            id="leave-date"
+            type="date"
+            name="left_on"
+            label={gettext("Parti le")}
+            value={Reference.today()}
+            required
+          />
+          <.input
+            id="leave-note"
+            type="text"
+            name="departure_note"
+            label={gettext("Précision (facultatif)")}
+            value=""
+            maxlength="200"
+            placeholder={gettext("Lycée de destination, raison…")}
+          />
+          <p class="text-xs text-base-content/70">
+            {gettext(
+              "Ses notes, appels et bulletins restent. Il quitte les listes et les appels à partir de cette date ; les bulletins des périodes déjà commencées le gardent."
+            )}
+          </p>
+        </form>
+        <:footer>
+          <button type="button" class="btn btn-ghost btn-sm" phx-click="close_drawer">
+            {gettext("Annuler")}
+          </button>
+          <button type="submit" form="leave-form" class="btn btn-primary btn-sm">
+            {gettext("Marquer parti")}
           </button>
         </:footer>
       </.drawer>
@@ -514,10 +584,40 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     end
   end
 
-  def handle_event("withdraw", %{"enrollment-id" => eid}, socket) do
+  # A7: an enrollment entered by mistake, without any history.
+  def handle_event("remove_mistaken", %{"enrollment-id" => eid}, socket) do
     with %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)),
-         :ok <- Enrollment.withdraw(socket.assigns.current_scope, e) do
-      {:noreply, socket |> put_flash(:info, gettext("Enrollment removed.")) |> load_roster()}
+         :ok <- Enrollment.remove_mistaken(socket.assigns.current_scope, e) do
+      {:noreply, socket |> put_flash(:info, gettext("Inscription supprimée.")) |> load_roster()}
+    else
+      {:error, blocker} when blocker in [:marks, :attendance, :sanctions, :fee_documents] ->
+        {:noreply, put_flash(socket, :error, StudentLive.deletion_blocker_text(blocker))}
+
+      {:error, error} ->
+        {:noreply, Authz.put_failure(socket, error)}
+
+      nil ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("open_leave", %{"enrollment-id" => eid}, socket) do
+    case Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)) do
+      nil -> {:noreply, socket}
+      row -> {:noreply, assign(socket, drawer: :leave, leaving: row)}
+    end
+  end
+
+  def handle_event("leave", %{"enrollment-id" => eid} = params, socket) do
+    attrs = Map.take(params, ["departure_reason", "left_on", "departure_note"])
+
+    with %{enrollment: e} <- Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)),
+         {:ok, _} <- Enrollment.leave(socket.assigns.current_scope, e, attrs) do
+      {:noreply,
+       socket
+       |> assign(drawer: nil, leaving: nil)
+       |> put_flash(:info, gettext("Élève marqué parti."))
+       |> load_roster()}
     else
       {:error, error} -> {:noreply, Authz.put_failure(socket, error)}
       nil -> {:noreply, socket}
@@ -532,7 +632,7 @@ defmodule TeacherAssistantWeb.School.ClassLive do
     do: {:noreply, assign(socket, :drawer, :enroll)}
 
   def handle_event("close_drawer", _params, socket),
-    do: {:noreply, assign(socket, drawer: nil, transferring: nil)}
+    do: {:noreply, assign(socket, drawer: nil, transferring: nil, leaving: nil)}
 
   def handle_event("open_transfer", %{"enrollment-id" => eid}, socket) do
     case Enum.find(socket.assigns.roster, &(&1.enrollment.id == eid)) do

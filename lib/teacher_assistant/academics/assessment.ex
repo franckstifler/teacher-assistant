@@ -243,7 +243,8 @@ defmodule TeacherAssistant.Academics.Assessment do
       filter expr(
                exists(
                  student.enrollments,
-                 class_group_id == parent(class_group_id)
+                 class_group_id == parent(class_group_id) and
+                   (is_nil(left_on) or left_on > parent(sequence_start_date))
                ) and
                  not exists(
                    student.subject_exemptions,
@@ -256,7 +257,8 @@ defmodule TeacherAssistant.Academics.Assessment do
       filter expr(
                exists(
                  student.enrollments,
-                 class_group_id == parent(class_group_id)
+                 class_group_id == parent(class_group_id) and
+                   (is_nil(left_on) or left_on > parent(sequence_start_date))
                ) and
                  not exists(
                    student.subject_exemptions,

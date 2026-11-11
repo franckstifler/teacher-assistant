@@ -15,7 +15,8 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
   alias TeacherAssistantWeb.School.EnrollDrawer
 
   @per_page 50
-  @flags [:no_contact, :repeater, :no_photo]
+  # `departed` (A7): the students who left this year, out of the default list.
+  @flags [:no_contact, :repeater, :no_photo, :departed]
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -144,6 +145,9 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
   end
 
   defp class_label(classes, id), do: Enum.find_value(classes, &(&1.id == id && &1.label))
+
+  defp left_label(date),
+    do: gettext("parti(e) le %{date}", date: Calendar.strftime(date, "%d/%m/%Y"))
 
   defp repeater_label(:f), do: gettext("redoublante")
   defp repeater_label(_sex), do: gettext("redoublant")
@@ -292,6 +296,14 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
             >
               {gettext("Sans photo")}
             </:pill>
+            <:pill
+              id="departed-pill"
+              patch={list_path(assigns, departed: not @filters.departed, page: nil)}
+              count={@counts.departed}
+              current={@filters.departed}
+            >
+              {gettext("Partis")}
+            </:pill>
           </.filter_pills>
         </div>
 
@@ -307,6 +319,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
                   [
                     e.class_group.label,
                     e.repeater && repeater_label(e.student.sex),
+                    e.left_on && left_label(e.left_on),
                     case e.student.primary_guardian_link do
                       %{guardian: g} -> g.full_name
                       _ -> gettext("sans contact")
@@ -349,7 +362,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
                       <span class="block text-xs text-base-content/70">
                         {Sex.label(e.student.sex)}<span :if={e.repeater}> · {repeater_label(
                           e.student.sex
-                        )}</span>
+                        )}</span><span :if={e.left_on}> · {left_label(e.left_on)}</span>
                       </span>
                     </span>
                   </span>

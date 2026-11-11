@@ -226,6 +226,8 @@ defmodule TeacherAssistant.Academics.Mark do
   calculations do
     calculate :class_group_id, :uuid, expr(assessment.teaching_context.class_group_id)
     calculate :teaching_context_id, :uuid, expr(assessment.teaching_context_id)
+    # A7: a student who left before this day has no mark counted in the séquence.
+    calculate :sequence_start_date, :date, expr(assessment.sequence.start_date)
   end
 
   identities do

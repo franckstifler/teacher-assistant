@@ -111,7 +111,7 @@ defmodule TeacherAssistant.Academics.Fees2DataTest do
 
   test "a student with a note cannot be withdrawn", ctx do
     {:ok, _} = create(ReturnNote, note_attrs(ctx, 1), ctx.scope)
-    assert {:error, _} = Enrollment.withdraw(ctx.scope, ctx.e)
+    assert {:error, _} = Enrollment.remove_mistaken(ctx.scope, ctx.e)
   end
 
   test "AttendanceStatus has sent_home" do

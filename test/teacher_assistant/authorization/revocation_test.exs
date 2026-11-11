@@ -36,7 +36,7 @@ defmodule TeacherAssistant.Authorization.RevocationTest do
       })
 
     assert Fees.list_payments(ctx.head, ctx.e) != []
-    assert_forbidden(Enrollment.withdraw(ctx.owner, ctx.e))
+    assert_forbidden(Enrollment.remove_mistaken(ctx.owner, ctx.e))
     assert Fees.list_payments(ctx.owner, ctx.e) == []
   end
 

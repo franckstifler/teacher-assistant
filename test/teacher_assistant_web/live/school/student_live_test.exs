@@ -377,7 +377,7 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
       {:ok, view, _html} = live(conn, ~p"/school/students/#{s.id}")
 
       refute has_element?(view, "#student-delete button")
-      assert view |> element("#student-delete") |> render() =~ "Retirer de la classe"
+      assert view |> element("#student-delete") |> render() =~ "marquez-le parti"
     end
 
     test "the head of discipline does not see it", %{scope: scope, school: school, awa: awa} do
@@ -387,6 +387,38 @@ defmodule TeacherAssistantWeb.School.StudentLiveTest do
       refute has_element?(view, "#student-delete")
       assert render_click(view, "delete_student", %{}) =~ "Awa Nkolo"
       assert {:ok, _} = Enrollment.fetch_owned_student(scope, awa.id)
+    end
+  end
+
+  describe "departure (A7)" do
+    test "the head marks the student as left, sees it, and brings them back", ctx do
+      %{conn: conn, scope: scope, awa: awa} = ctx
+      {:ok, view, _html} = live(conn, ~p"/school/students/#{awa.id}")
+      assert has_element?(view, "#student-departure")
+
+      view
+      |> form("#student-leave-form", %{"departure_reason" => "dropout", "departure_note" => ""})
+      |> render_submit()
+
+      assert has_element?(view, "#student-departure", "Parti(e) le")
+      assert has_element?(view, "#student-departure", "Abandon")
+
+      view |> element("#student-return") |> render_click()
+      refute has_element?(view, "#student-departure", "Parti(e) le")
+      [e] = Enrollment.student_history(scope, awa)
+      assert e.left_on == nil
+    end
+
+    test "the head of discipline sees the departure but cannot change it", ctx do
+      %{scope: scope, school: school, awa: awa} = ctx
+      [e] = Enrollment.student_history(scope, awa)
+      {:ok, _} = Enrollment.leave(scope, e, %{departure_reason: :transfer})
+      sg = member_scope_fixture(scope, %{roles: [:discipline_master]})
+      {:ok, view, _html} = live(conn_for(school, sg.current_user), ~p"/school/students/#{awa.id}")
+
+      assert has_element?(view, "#student-departure", "Transfert")
+      refute has_element?(view, "#student-return")
+      refute has_element?(view, "#student-leave-form")
     end
   end
 end

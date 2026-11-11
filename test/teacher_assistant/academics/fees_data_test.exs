@@ -178,7 +178,7 @@ defmodule TeacherAssistant.Academics.FeesDataTest do
 
   test "an enrollment with a payment cannot be withdrawn (its receipts must survive)", ctx do
     {:ok, _} = create(Payment, payment_attrs(ctx, 1), ctx.scope)
-    assert {:error, _} = Enrollment.withdraw(ctx.scope, ctx.e)
+    assert {:error, _} = Enrollment.remove_mistaken(ctx.scope, ctx.e)
     assert {:ok, _} = Enrollment.fetch_owned_enrollment(ctx.scope, ctx.e.id)
   end
 end

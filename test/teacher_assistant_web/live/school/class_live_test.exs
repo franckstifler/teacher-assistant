@@ -195,7 +195,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     {:ok, %{student: s, enrollment: e}} =
       Enrollment.enroll_new(scope, cg, %{full_name: "Awa Zang", sex: :f, matricule: "M-1"})
 
-    :ok = Enrollment.withdraw(scope, e)
+    :ok = Enrollment.remove_mistaken(scope, e)
 
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg2.id}/students")
     view |> element("#enroll-button") |> render_click()
@@ -242,7 +242,7 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
 
     assert has_element?(
              old_view,
-             "#withdraw-#{hd(Enrollment.list_roster(scope, old_cg)).enrollment.id}"
+             "#remove-mistaken-#{hd(Enrollment.list_roster(scope, old_cg, on: :all)).enrollment.id}"
            )
 
     refute has_element?(old_view, "[id^='transfer-']")
@@ -265,11 +265,53 @@ defmodule TeacherAssistantWeb.School.ClassLiveTest do
     assert [_] = Enrollment.list_roster(scope, cg2)
   end
 
-  test "withdraw removes the enrollment", %{conn: conn, cg: cg, scope: scope} do
+  test "« Supprimer (erreur de saisie) » deletes an enrollment without history (A7)", ctx do
+    %{conn: conn, cg: cg, scope: scope} = ctx
     {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
     {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
-    view |> element("#withdraw-#{e.id}") |> render_click()
-    assert [] = Enrollment.list_roster(scope, cg)
+    view |> element("#remove-mistaken-#{e.id}") |> render_click()
+    assert [] = Enrollment.list_roster(scope, cg, on: :all)
+  end
+
+  test "a mistaken removal with a sanction on file is refused and says why (A7)", ctx do
+    %{conn: conn, cg: cg, scope: scope, year: year} = ctx
+    {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    :ok = Organization.build_default_calendar(scope, year)
+    [seq | _] = Organization.list_sequences(scope, year)
+
+    {:ok, _} =
+      TeacherAssistant.Discipline.add_sanction(scope, e, %{
+        type: :avertissement,
+        date: seq.start_date
+      })
+
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
+    html = view |> element("#remove-mistaken-#{e.id}") |> render_click()
+    assert html =~ "marquez-le parti"
+    assert [_] = Enrollment.list_roster(scope, cg)
+  end
+
+  test "« Marquer parti » asks a reason and takes the student off today's roster (A7)", ctx do
+    %{conn: conn, cg: cg, scope: scope} = ctx
+    {:ok, %{enrollment: e}} = Enrollment.enroll_new(scope, cg, %{full_name: "Awa", sex: :f})
+    {:ok, view, _} = live(conn, ~p"/school/classes/#{cg.id}/students")
+
+    view |> element("#leave-#{e.id}") |> render_click()
+    assert has_element?(view, "#leave-drawer", "Awa")
+
+    view
+    |> form("#leave-form", %{
+      "departure_reason" => "transfer",
+      "departure_note" => "Lycée de Mbalmayo"
+    })
+    |> render_submit()
+
+    refute has_element?(view, "#leave-drawer")
+    refute has_element?(view, "#roster-row-#{e.id}")
+    assert render(view) =~ "Élève marqué parti"
+    {:ok, left} = Enrollment.fetch_owned_enrollment(scope, e.id)
+    assert left.departure_reason == :transfer
+    assert left.left_on == TeacherAssistant.Academics.Reference.today()
   end
 
   test "cross-school class id is not found", %{conn: conn, actor: user} do

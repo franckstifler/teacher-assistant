@@ -14,9 +14,11 @@ defmodule TeacherAssistantWeb.School.StudentLive do
 
   alias TeacherAssistant.Academics.{
     ContactLanguage,
+    DepartureReason,
     Guardian,
     GuardianRelationship,
     PassageDecision,
+    Reference,
     Sex
   }
 
@@ -35,6 +37,8 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          student: student,
          access: access,
          can_delete?: Ash.can?({student, :destroy}, scope),
+         # A departure and a return are the Proviseur's and the Censeur's (A7).
+         can_leave?: Enrollment.can_manage_classes?(scope),
          editing: false,
          adding_guardian: false,
          match: [],
@@ -318,7 +322,7 @@ defmodule TeacherAssistantWeb.School.StudentLive do
          |> put_flash(:info, gettext("Fiche de %{name} supprimée.", name: student.full_name))
          |> push_navigate(to: ~p"/school/students")}
 
-      {:error, blocker} when blocker in [:marks, :fee_documents] ->
+      {:error, blocker} when blocker in [:marks, :attendance, :sanctions, :fee_documents] ->
         {:noreply,
          socket
          |> assign(deletion_blocker: blocker)
@@ -329,18 +333,52 @@ defmodule TeacherAssistantWeb.School.StudentLive do
     end
   end
 
+  def handle_event("leave_student", params, socket)
+      when socket.assigns.can_leave? and socket.assigns.current != nil do
+    attrs = Map.take(params, ["departure_reason", "left_on", "departure_note"])
+
+    case Enrollment.leave(socket.assigns.current_scope, socket.assigns.current, attrs) do
+      {:ok, _} -> {:noreply, socket |> put_flash(:info, gettext("Élève marqué parti.")) |> load()}
+      {:error, error} -> {:noreply, Authz.put_failure(socket, error)}
+    end
+  end
+
+  def handle_event("return_student", _params, socket)
+      when socket.assigns.can_leave? and socket.assigns.current != nil do
+    case Enrollment.return(socket.assigns.current_scope, socket.assigns.current) do
+      {:ok, _} -> {:noreply, socket |> put_flash(:info, gettext("Élève de retour.")) |> load()}
+      {:error, error} -> {:noreply, Authz.put_failure(socket, error)}
+    end
+  end
+
   def handle_event(_event, _params, socket), do: {:noreply, Authz.put_not_allowed(socket)}
 
-  defp deletion_blocker_text(:marks),
+  @doc """
+  Why a student added by mistake can no longer be deleted (A7), and what to do instead:
+  mark them as left, which keeps their history.
+  """
+  def deletion_blocker_text(:marks),
     do:
       gettext(
-        "Des notes sont déjà saisies pour cet élève : sa fiche ne peut plus être supprimée. Pour qu'il ne compte plus dans une classe, utilisez « Retirer de la classe » sur la liste des élèves."
+        "Des notes sont déjà saisies pour cet élève : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
       )
 
-  defp deletion_blocker_text(:fee_documents),
+  def deletion_blocker_text(:attendance),
     do:
       gettext(
-        "Cet élève a déjà un reçu, un avertissement ou un bon de retour : sa fiche ne peut plus être supprimée. Pour qu'il ne compte plus dans une classe, utilisez « Retirer de la classe » sur la liste des élèves."
+        "Cet élève figure déjà dans un appel : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
+      )
+
+  def deletion_blocker_text(:sanctions),
+    do:
+      gettext(
+        "Cet élève a déjà une sanction : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
+      )
+
+  def deletion_blocker_text(:fee_documents),
+    do:
+      gettext(
+        "Cet élève a déjà un reçu, un avertissement ou un bon de retour : il ne peut plus être supprimé. S'il a quitté l'établissement, marquez-le parti."
       )
 
   defp run_on_link(socket, id, fun) do
@@ -866,6 +904,74 @@ defmodule TeacherAssistantWeb.School.StudentLive do
             </article>
           </div>
         </div>
+
+        <%!-- A7: a student who leaves keeps their history; the head marks it here. --%>
+        <article
+          :if={@current && (@current.left_on || @can_leave?)}
+          id="student-departure"
+          class="ta-panel space-y-3"
+        >
+          <h2 class="font-display text-lg font-semibold">{gettext("Départ")}</h2>
+          <%= if @current.left_on do %>
+            <p class="text-sm">
+              {gettext("Parti(e) le %{date}", date: Calendar.strftime(@current.left_on, "%d/%m/%Y"))} · {DepartureReason.label(
+                @current.departure_reason
+              )}
+              <span :if={@current.departure_note}>· {@current.departure_note}</span>
+            </p>
+            <button
+              :if={@can_leave?}
+              id="student-return"
+              type="button"
+              phx-click="return_student"
+              data-confirm={gettext("Remettre cet élève dans sa classe ?")}
+              class="btn btn-outline btn-sm"
+            >
+              <.icon name="hero-arrow-uturn-left" class="size-4" /> {gettext("De retour")}
+            </button>
+          <% else %>
+            <p class="text-sm text-base-content/80">
+              {gettext(
+                "L'élève quitte l'établissement : ses notes, appels et bulletins restent ; il sort des listes et des appels à partir de cette date."
+              )}
+            </p>
+            <form
+              id="student-leave-form"
+              phx-submit="leave_student"
+              class="grid gap-2 sm:grid-cols-3 sm:items-end"
+            >
+              <.input
+                id="student-leave-reason"
+                type="select"
+                name="departure_reason"
+                label={gettext("Motif")}
+                value={nil}
+                prompt={gettext("Choisir un motif")}
+                required
+                options={for r <- DepartureReason.values(), do: {DepartureReason.label(r), r}}
+              />
+              <.input
+                id="student-leave-date"
+                type="date"
+                name="left_on"
+                label={gettext("Parti le")}
+                value={Reference.today()}
+                required
+              />
+              <.input
+                id="student-leave-note"
+                type="text"
+                name="departure_note"
+                label={gettext("Précision (facultatif)")}
+                value=""
+                maxlength="200"
+              />
+              <button type="submit" class="btn btn-outline btn-sm sm:col-span-3 sm:justify-self-start">
+                {gettext("Marquer parti")}
+              </button>
+            </form>
+          <% end %>
+        </article>
 
         <article
           :if={@can_delete?}

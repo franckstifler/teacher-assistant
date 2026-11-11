@@ -780,13 +780,15 @@ defmodule TeacherAssistant.Enrollment do
   then. Admins and the class's form master.
   """
   def remove_mistaken(%Scope{} = scope, %Enrollment{} = e) do
-    case student_deletion_blocker(scope, %Student{id: e.student_id}) do
-      nil -> withdraw(scope, e)
-      blocker -> {:error, blocker}
+    # Who may delete is asked first: a refused member learns nothing of the history.
+    cond do
+      not Ash.can?({e, :destroy}, scope) -> {:error, Ash.Error.Forbidden.exception([])}
+      blocker = student_deletion_blocker(scope, %Student{id: e.student_id}) -> {:error, blocker}
+      true -> destroy_enrollment(scope, e)
     end
   end
 
-  def withdraw(%Scope{} = scope, %Enrollment{} = e) do
+  defp destroy_enrollment(%Scope{} = scope, %Enrollment{} = e) do
     case Ash.destroy(e, scope: scope) do
       :ok -> :ok
       {:ok, _} -> :ok
