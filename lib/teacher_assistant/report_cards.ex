@@ -43,23 +43,33 @@ defmodule TeacherAssistant.ReportCards do
 
   @doc "What the report card, class results and print render, computed now."
   def live_view(%Scope{} = scope, %ClassGroup{} = cg, period) do
+    # A8: one profile read and one read of the year's marks for the whole card — the
+    # trimester, the earlier ones and the year are sliced from the same inputs.
+    {:ok, profile} = Accounts.fetch_school_profile(scope)
+    terms = period_terms(scope, period)
+    inputs = shared_inputs(scope, cg, period, profile)
     fm = Enrollment.form_master(scope, cg)
-    results = Assessment.class_results_for_period(scope, cg, period)
+    results = Assessment.class_results_for_period(scope, cg, period, inputs: inputs)
     conduct = Attendance.bulletin_conduct(scope, cg, period)
-    template = scope |> template(cg) |> absences_shown(scope, cg, period, conduct)
+
+    template =
+      scope
+      |> template_with(profile, head_name(scope, profile), cg)
+      |> absences_shown(scope, cg, period, conduct)
+
     # The class as it stood on the period's first day (A7), as its results.
     roster = Enrollment.list_roster(scope, cg, on: Organization.period_first_day(scope, period))
     guardians = Enrollment.guardians_for_students(scope, Enum.map(roster, & &1.student.id))
 
     %{
       results: results,
-      council: council_entry(scope, cg, period, results),
+      council: council_entry(scope, cg, period, results, profile),
       roster: Enum.map(roster, &plain_entry(&1, guardians)),
       # Spec bulletin v2: snapshots published before these keys read them with `Map.get`.
       competences: competences(scope, cg, period),
       sequences_per_term: sequences_per_term(period),
-      prior_terms: prior_terms(scope, cg, period, template),
-      annual: annual_summary(scope, cg, period, template),
+      prior_terms: prior_terms(scope, cg, period, template, {terms, inputs}),
+      annual: annual_summary(scope, cg, period, template, {terms, inputs, profile}),
       conduct: conduct,
       discipline:
         scope
@@ -67,10 +77,31 @@ defmodule TeacherAssistant.ReportCards do
         |> Map.new(fn {id, summary} -> {id, plain_discipline(summary)} end),
       form_master:
         fm && %{name: fm.name, email: fm.email && to_string(fm.email), phone: fm.phone},
-      group_subtotals?: group_subtotals?(scope),
+      group_subtotals?: profile.bulletin_group_subtotals? == true,
       template: template,
       teachers: teachers(scope, cg)
     }
+  end
+
+  # The year's trimesters, read once for the card (prior terms, last-term check).
+  defp period_terms(scope, {:trimester, %Term{academic_year_id: year_id}}),
+    do: Organization.list_terms(scope, %AcademicYear{id: year_id})
+
+  defp period_terms(_scope, _period), do: []
+
+  # The year's séquences, subjects and marks for a trimester or the year; a séquence
+  # card reads its own séquence only.
+  defp shared_inputs(scope, cg, {:trimester, %Term{academic_year_id: year_id}}, profile),
+    do: year_inputs(scope, cg, %AcademicYear{id: year_id}, profile)
+
+  defp shared_inputs(scope, cg, {:annual, %AcademicYear{} = year}, profile),
+    do: year_inputs(scope, cg, year, profile)
+
+  defp shared_inputs(_scope, _cg, _period, _profile), do: nil
+
+  defp year_inputs(scope, cg, year, profile) do
+    seqs = Organization.list_sequences(scope, year)
+    Assessment.period_inputs(scope, cg, seqs, Assessment.grading_rules_of(profile))
   end
 
   # Each subject's teacher by teaching context (the class's own contexts, which the
@@ -814,19 +845,19 @@ defmodule TeacherAssistant.ReportCards do
 
   # Spec I3/I4: trimester and annual report cards carry their class council; the
   # annual one adds each student's passage decision.
-  defp council_entry(scope, cg, {:trimester, %Term{}} = period, results),
+  defp council_entry(scope, cg, {:trimester, %Term{}} = period, results, _profile),
     do: council_map(scope, cg, period, results, nil)
 
-  defp council_entry(scope, cg, {:annual, %AcademicYear{}} = period, results) do
+  defp council_entry(scope, cg, {:annual, %AcademicYear{}} = period, results, profile) do
     passage = %{
-      rules: Assessment.passage_rules(scope),
+      rules: Assessment.passage_rules_of(profile),
       students: TeacherAssistant.Councils.passage_inputs(scope, cg, period)
     }
 
     council_map(scope, cg, period, results, passage)
   end
 
-  defp council_entry(_scope, _cg, _period, _results), do: nil
+  defp council_entry(_scope, _cg, _period, _results, _profile), do: nil
 
   defp council_map(scope, cg, period, results, passage) do
     council = TeacherAssistant.Councils.council(scope, cg, period)
@@ -918,14 +949,13 @@ defmodule TeacherAssistant.ReportCards do
 
   # Earlier trimesters' average and rank per student: the published figures when the
   # term is published (what parents saw), else computed now.
-  defp prior_terms(scope, cg, {:trimester, %Term{} = term}, template) do
+  defp prior_terms(scope, cg, {:trimester, %Term{} = term}, template, {terms, inputs}) do
     if BulletinTemplate.show?(template, :previous_terms) do
-      scope
-      |> Organization.list_terms(%AcademicYear{id: term.academic_year_id})
+      terms
       |> Enum.filter(&(&1.position < term.position))
       |> Enum.reduce(%{}, fn earlier, acc ->
         scope
-        |> term_results(cg, earlier)
+        |> term_results(cg, earlier, inputs)
         |> Enum.reduce(acc, fn {student_id, d}, acc ->
           line = %{position: earlier.position, average: d.moyenne_generale, rank: d.rank}
           Map.update(acc, student_id, [line], &(&1 ++ [line]))
@@ -936,12 +966,12 @@ defmodule TeacherAssistant.ReportCards do
     end
   end
 
-  defp prior_terms(_scope, _cg, _period, _template), do: %{}
+  defp prior_terms(_scope, _cg, _period, _template, _shared), do: %{}
 
-  defp term_results(scope, cg, term) do
+  defp term_results(scope, cg, term, inputs) do
     results =
       case current_publication(scope, cg, {:trimester, term}, snapshot: true) do
-        nil -> Assessment.class_results_for_period(scope, cg, {:trimester, term})
+        nil -> Assessment.class_results_for_period(scope, cg, {:trimester, term}, inputs: inputs)
         pub -> pub.snapshot.results
       end
 
@@ -949,20 +979,21 @@ defmodule TeacherAssistant.ReportCards do
   end
 
   # The last trimester's card carries the year (spec bulletin v2 §5.5).
-  defp annual_summary(scope, cg, {:trimester, %Term{} = term}, template) do
-    if BulletinTemplate.show?(template, :annual_summary) and last_term?(scope, term) do
+  defp annual_summary(scope, cg, {:trimester, %Term{} = term}, template, {terms, inputs, profile}) do
+    if BulletinTemplate.show?(template, :annual_summary) and
+         Enum.all?(terms, &(&1.position <= term.position)) do
       year = {:annual, Organization.class_year(scope, cg)}
-      results = Assessment.class_results_for_period(scope, cg, year)
+      results = Assessment.class_results_for_period(scope, cg, year, inputs: inputs)
 
       %{
         per_student:
           Map.new((results && results.per_student) || %{}, fn {id, d} ->
             {id, %{average: d.moyenne_generale, rank: d.rank}}
           end),
-        council: council_entry(scope, cg, year, results)
+        council: council_entry(scope, cg, year, results, profile)
       }
     end
   end
 
-  defp annual_summary(_scope, _cg, _period, _template), do: nil
+  defp annual_summary(_scope, _cg, _period, _template, _shared), do: nil
 end

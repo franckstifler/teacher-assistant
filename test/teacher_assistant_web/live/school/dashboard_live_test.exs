@@ -390,30 +390,17 @@ defmodule TeacherAssistantWeb.School.DashboardLiveTest do
       %{conn: Plug.Conn.put_session(conn, :workspace_id, school.id)}
     end
 
-    # Queries run by this test or the LiveView it mounts (the view's `$callers` names us).
+    # Queries run by this test or the LiveView it mounts (`TeacherAssistant.QueryCount`).
     defp count_queries(fun) do
-      parent = self()
-      counter = :counters.new(3, [])
-      handler = {__MODULE__, make_ref()}
+      {result, total, counts} =
+        TeacherAssistant.QueryCount.count(fun, [
+          ~s(FROM "marks"),
+          ~s(FROM "students"),
+          ~s(FROM "guardians")
+        ])
 
-      :telemetry.attach(
-        handler,
-        [:teacher_assistant, :repo, :query],
-        fn _e, _m, %{query: q}, _ ->
-          if self() == parent or parent in List.wrap(Process.get(:"$callers")) do
-            :counters.add(counter, 1, 1)
-            if q =~ ~s(FROM "marks"), do: :counters.add(counter, 2, 1)
-
-            if q =~ ~s(FROM "students") or q =~ ~s(FROM "guardians"),
-              do: :counters.add(counter, 3, 1)
-          end
-        end,
-        nil
-      )
-
-      result = fun.()
-      :telemetry.detach(handler)
-      {result, :counters.get(counter, 1), :counters.get(counter, 2), :counters.get(counter, 3)}
+      {result, total, counts[~s(FROM "marks")],
+       counts[~s(FROM "students")] + counts[~s(FROM "guardians")]}
     end
 
     test "the head's dashboard mounts within budget and reads no mark, student or guardian rows",

@@ -839,7 +839,11 @@ defmodule TeacherAssistant.Assessment do
   @doc "The school's averaging rules, from its profile."
   def grading_rules(%Scope{} = scope) do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    grading_rules_of(profile)
+  end
 
+  @doc "The grading rules of an already-read school profile (A8: one read per bulletin)."
+  def grading_rules_of(profile) do
     %GradingRules{
       trimester: profile.trimester_average_rule,
       annual: profile.annual_average_rule,
@@ -978,7 +982,11 @@ defmodule TeacherAssistant.Assessment do
   @doc "The school's passage rules, from its profile."
   def passage_rules(%Scope{} = scope) do
     {:ok, profile} = TeacherAssistant.Accounts.fetch_school_profile(scope)
+    passage_rules_of(profile)
+  end
 
+  @doc "The passage rules of an already-read school profile."
+  def passage_rules_of(profile) do
     %TeacherAssistant.Academics.PassageRules{
       passage_min: profile.passage_min,
       rachat_min: profile.rachat_min,
@@ -1293,26 +1301,49 @@ defmodule TeacherAssistant.Assessment do
   `{:annual, year}`), or nil when the class has no subjects. Trimester/annual
   averages are the mean of the constituent séquence subject-averages that exist.
   """
+  def class_results_for_period(scope, cg, period, opts \\ [])
+
   def class_results_for_period(
         %Scope{} = scope,
         %ClassGroup{} = cg,
-        {:sequence, %Sequence{} = seq}
+        {:sequence, %Sequence{} = seq},
+        _opts
       ) do
     class_results(scope, cg, seq)
   end
 
-  def class_results_for_period(%Scope{} = scope, %ClassGroup{} = cg, {:trimester, %Term{} = term}) do
+  def class_results_for_period(
+        %Scope{} = scope,
+        %ClassGroup{} = cg,
+        {:trimester, %Term{} = term},
+        opts
+      ) do
     seqs = Enum.sort_by(term.sequences, & &1.position_in_term)
-    period_result(scope, cg, {:trimester, term}, seqs, :sequences)
+    period_result(scope, cg, {:trimester, term}, seqs, :sequences, opts[:inputs])
   end
 
   def class_results_for_period(
         %Scope{} = scope,
         %ClassGroup{} = cg,
-        {:annual, %AcademicYear{} = year}
+        {:annual, %AcademicYear{} = year},
+        opts
       ) do
     seqs = TeacherAssistant.Organization.list_sequences(scope, year)
-    period_result(scope, cg, {:annual, year}, seqs, :trimesters)
+    period_result(scope, cg, {:annual, year}, seqs, :trimesters, opts[:inputs])
+  end
+
+  @doc """
+  What every period of a class's year shares (A8): the school's grading rules and each
+  séquence's subjects, marks and exemptions (`class_subjects_by_sequence/3`), read once
+  for `seqs` (the year's séquences). Pass it as `inputs:` to
+  `class_results_for_period/4` so a T3 card computes its trimesters and the year from
+  one read; the figures are those computed alone.
+  """
+  def period_inputs(%Scope{} = scope, %ClassGroup{} = cg, seqs, rules \\ nil) do
+    %{
+      rules: rules || grading_rules(scope),
+      subjects_by_seq: class_subjects_by_sequence(scope, cg, seqs)
+    }
   end
 
   @doc """
@@ -1412,11 +1443,15 @@ defmodule TeacherAssistant.Assessment do
   # Builds a Bulletins result over a set of séquences. `component_kind` selects the
   # breakdown carried on each subject row: :sequences (per séquence, for trimester)
   # or :trimesters (per term, for annual).
-  defp period_result(%Scope{} = scope, cg, period, seqs, component_kind) do
-    rules = grading_rules(scope)
+  defp period_result(%Scope{} = scope, cg, period, seqs, component_kind, inputs) do
+    rules = (inputs && inputs.rules) || grading_rules(scope)
     students = bulletin_students(scope, cg, period, rules)
 
-    subjects_by_seq = class_subjects_by_sequence(scope, cg, seqs)
+    subjects_by_seq =
+      case inputs do
+        %{subjects_by_seq: by_seq} -> Map.take(by_seq, Enum.map(seqs, & &1.id))
+        nil -> class_subjects_by_sequence(scope, cg, seqs)
+      end
 
     # per séquence: %{context_id => %{label, coefficient, per_student_avg}}
     per_seq =

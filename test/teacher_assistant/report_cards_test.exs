@@ -742,4 +742,75 @@ defmodule TeacherAssistant.ReportCardsTest do
       refute Enum.find(checks, &(&1.key == :competences))
     end
   end
+
+  describe "one-pass T3 view (A8)" do
+    setup %{scope: scope, year: year, a: a, st: st, seq: first} do
+      TeacherAssistant.MarksFixtures.start_sequences!(scope, year)
+      tc = tc_of(scope, a)
+
+      for seq <- Organization.list_sequences(scope, year), seq.id != first.id do
+        {:ok, a2} =
+          Assessment.create_assessment(scope, tc, seq, %{
+            label: "D#{seq.number}",
+            max_score: Decimal.new(20)
+          })
+
+        :ok =
+          Assessment.upsert_marks(scope, a2, [
+            %{student_id: st.id, score: Decimal.new(8 + seq.number)}
+          ])
+      end
+
+      :ok
+    end
+
+    test "the T3 view's prior terms and annual summary equal the standalone period results",
+         ctx do
+      %{scope: scope, year: year, cg: cg, st: st} = ctx
+      [t1, t2, t3] = terms(scope, year)
+      view = ReportCards.live_view(scope, cg, {:trimester, t3})
+
+      for {term, position} <- [{t1, 1}, {t2, 2}] do
+        alone = Assessment.class_results_for_period(scope, cg, {:trimester, term})
+        line = Enum.find(view.prior_terms[st.id], &(&1.position == position))
+        assert line.average == alone.per_student[st.id].moyenne_generale
+        assert line.rank == alone.per_student[st.id].rank
+      end
+
+      annual = Assessment.class_results_for_period(scope, cg, {:annual, year})
+      assert view.annual.per_student[st.id].average == annual.per_student[st.id].moyenne_generale
+
+      alone_t3 = Assessment.class_results_for_period(scope, cg, {:trimester, t3})
+
+      assert view.results.per_student[st.id].moyenne_generale ==
+               alone_t3.per_student[st.id].moyenne_generale
+    end
+
+    test "a published T1 still comes from its snapshot in the one-pass view", ctx do
+      %{scope: scope, year: year, cg: cg, st: st, a: a} = ctx
+      [t1, _t2, t3] = terms(scope, year)
+      {:ok, _} = TeacherFixtures.publish_trimester(scope, cg, t1)
+      published = Assessment.class_results_for_period(scope, cg, {:trimester, t1})
+      :ok = Assessment.upsert_marks(scope, a, [%{student_id: st.id, score: Decimal.new(2)}])
+
+      view = ReportCards.live_view(scope, cg, {:trimester, t3})
+      line = Enum.find(view.prior_terms[st.id], &(&1.position == 1))
+      assert line.average == published.per_student[st.id].moyenne_generale
+    end
+
+    test "a T3 view reads the year's marks once", ctx do
+      %{scope: scope, year: year, cg: cg} = ctx
+      [_t1, _t2, t3] = terms(scope, year)
+
+      {_view, _total, counts} =
+        TeacherAssistant.QueryCount.count(
+          fn -> ReportCards.live_view(scope, cg, {:trimester, t3}) end,
+          [~s(FROM "marks")]
+        )
+
+      # Was 4 (T3, T1, T2, the year); the school profile is still read by several
+      # helpers (deferred, see the A8 ledger).
+      assert counts[~s(FROM "marks")] == 1
+    end
+  end
 end
