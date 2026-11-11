@@ -31,10 +31,23 @@ defmodule TeacherAssistantWeb.StudentPhotoController do
     end
   end
 
+  # A8: a photo file never changes (a new photo is a new file name), so its name is
+  # its etag and the browser keeps it a week; a matching `If-None-Match` is a 304.
+  # Only reached after the ownership checks above.
   def send_photo(conn, path) do
-    conn
-    |> put_resp_content_type("image/jpeg")
-    |> put_resp_header("cache-control", "private, max-age=86400")
-    |> send_file(200, path)
+    etag = ~s("#{Path.basename(path, ".jpg")}")
+
+    conn =
+      conn
+      |> put_resp_header("cache-control", "private, max-age=604800")
+      |> put_resp_header("etag", etag)
+
+    if etag in get_req_header(conn, "if-none-match") do
+      send_resp(conn, 304, "")
+    else
+      conn
+      |> put_resp_content_type("image/jpeg")
+      |> send_file(200, path)
+    end
   end
 end

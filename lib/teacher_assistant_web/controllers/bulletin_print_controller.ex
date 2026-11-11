@@ -141,9 +141,15 @@ defmodule TeacherAssistantWeb.BulletinPrintController do
   # none (or a v1–v3 snapshot, which has no key) → no image.
   def photo_url(pub, student) do
     case {Map.get(student, :photo_path), pub} do
-      {nil, _} -> nil
-      {_, nil} -> TeacherAssistantWeb.StudentPhotoComponents.student_photo_url(student)
-      {_, pub} -> ~p"/school/bulletins/#{pub.id}/photo/#{student.id}"
+      {nil, _} ->
+        nil
+
+      {_, nil} ->
+        TeacherAssistantWeb.StudentPhotoComponents.student_photo_url(student)
+
+      # The file's name is its version (A8): a stable cache key for the frozen photo.
+      {path, pub} ->
+        ~p"/school/bulletins/#{pub.id}/photo/#{student.id}?#{[v: Path.basename(path, ".jpg")]}"
     end
   end
 

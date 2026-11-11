@@ -1002,7 +1002,9 @@ defmodule TeacherAssistantWeb.BulletinPrintControllerTest do
       {:ok, second} = TeacherAssistant.StudentPhotos.store(scope, first, second_src)
 
       html = conn |> get(url) |> html_response(200)
-      assert html =~ ~s(src="/school/bulletins/#{pub.id}/photo/#{st.id}")
+      # The frozen file's name versions the URL (A8).
+      assert html =~
+               ~s(src="/school/bulletins/#{pub.id}/photo/#{st.id}?v=#{Path.basename(first.photo_path, ".jpg")}")
 
       frozen = get(conn, ~p"/school/bulletins/#{pub.id}/photo/#{st.id}")
 
