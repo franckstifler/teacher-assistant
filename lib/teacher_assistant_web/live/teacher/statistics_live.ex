@@ -68,7 +68,12 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
 
     rows = if period, do: Assessment.teacher_statistics(scope, teacher, period), else: []
 
-    {:noreply, assign(socket, period: period, rows: rows)}
+    {:noreply,
+     assign(socket,
+       period: period,
+       rows: rows,
+       in_progress?: period != nil and Organization.period_in_progress?(scope, period)
+     )}
   end
 
   defp default(scope) do
@@ -188,6 +193,20 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
             {label}
           </.link>
         </nav>
+
+        <p
+          :if={@in_progress?}
+          id="stats-in-progress"
+          class="flex items-center gap-2 text-sm text-info"
+        >
+          <.icon name="hero-arrow-path" class="size-4" />
+          <span>
+            <span class="font-semibold">{gettext("En cours")}</span>
+            · {gettext(
+              "Certaines séquences n'ont pas encore commencé : les chiffres portent sur ce qui existe."
+            )}
+          </span>
+        </p>
 
         <p
           :if={@source}

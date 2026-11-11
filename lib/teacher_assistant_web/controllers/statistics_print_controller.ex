@@ -35,6 +35,7 @@ defmodule TeacherAssistantWeb.StatisticsPrintController do
         year: year.name,
         school: scope.current_workspace.name,
         template: template,
+        in_progress?: Organization.period_in_progress?(scope, period),
         printed_on: Reference.today()
       )
     else

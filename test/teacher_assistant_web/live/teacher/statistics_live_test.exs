@@ -118,4 +118,17 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLiveTest do
     {:ok, view, _} = live(conn_for(ctx, other.current_user), ~p"/school/statistics/me")
     assert has_element?(view, "#stats-empty")
   end
+
+  test "a period whose séquences have not all started is labelled « en cours » (minors)", ctx do
+    %{conn: conn, scope: scope, seq: seq, year: year} = ctx
+    started? = &(not TeacherAssistant.Academics.Lock.not_started?(&1))
+    assert Enum.any?(Organization.list_sequences(scope, year), &(not started?.(&1)))
+
+    {:ok, view, _} = live(conn, ~p"/school/statistics/me?period=annee")
+    assert has_element?(view, "#stats-in-progress", "En cours")
+
+    param = Organization.period_param({:sequence, seq})
+    {:ok, view, _} = live(conn, ~p"/school/statistics/me?period=#{param}")
+    refute has_element?(view, "#stats-in-progress")
+  end
 end

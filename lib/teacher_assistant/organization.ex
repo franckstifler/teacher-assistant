@@ -364,6 +364,31 @@ defmodule TeacherAssistant.Organization do
   end
 
   @doc """
+  Whether a trimester or the year is « en cours » (spec A4): some of its séquences
+  have not started yet, so its figures cover what exists so far. A séquence never is.
+  """
+  def period_in_progress?(%Scope{} = _scope, {:sequence, _}), do: false
+
+  def period_in_progress?(%Scope{} = scope, period),
+    do:
+      scope
+      |> period_sequences(period)
+      |> Enum.any?(&TeacherAssistant.Academics.Lock.not_started?/1)
+
+  @doc "A period's séquences: the séquence itself, the trimester's, or the year's."
+  def period_sequences(%Scope{} = _scope, {:sequence, %Sequence{} = seq}), do: [seq]
+
+  def period_sequences(%Scope{} = scope, {:trimester, %Term{} = term}) do
+    case term.sequences do
+      %Ash.NotLoaded{} -> list_sequences_of_term(scope, term)
+      loaded -> loaded
+    end
+  end
+
+  def period_sequences(%Scope{} = scope, {:annual, %AcademicYear{} = year}),
+    do: list_sequences(scope, year)
+
+  @doc """
   The day a period's class is counted on (A7): its first séquence's start — for the
   year, the last trimester's (the T3 bulletin carries the annual line). A student who
   left before it is not in the period; one who left on or after it is. Without
@@ -371,15 +396,8 @@ defmodule TeacherAssistant.Organization do
   """
   def period_first_day(%Scope{} = _scope, {:sequence, %Sequence{start_date: start}}), do: start
 
-  def period_first_day(%Scope{} = scope, {:trimester, %Term{} = term}) do
-    sequences =
-      case term.sequences do
-        %Ash.NotLoaded{} -> scope |> list_sequences_of_term(term)
-        loaded -> loaded
-      end
-
-    first_start(sequences)
-  end
+  def period_first_day(%Scope{} = scope, {:trimester, %Term{}} = period),
+    do: scope |> period_sequences(period) |> first_start()
 
   def period_first_day(%Scope{} = scope, {:annual, %AcademicYear{} = year}) do
     case scope |> list_terms(year) |> List.last() do

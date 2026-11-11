@@ -265,7 +265,7 @@ msgstr "Fille"
 #: lib/teacher_assistant_web/live/school/class_live.ex:544
 #: lib/teacher_assistant_web/live/school/results_live.ex:198
 #: lib/teacher_assistant_web/live/teacher/roster_live.ex:72
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:222
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:241
 #, elixir-autogen, elixir-format
 msgid "Filles"
 msgstr "Filles"
@@ -279,7 +279,7 @@ msgstr "Garçon"
 #: lib/teacher_assistant_web/live/school/class_live.ex:545
 #: lib/teacher_assistant_web/live/school/results_live.ex:202
 #: lib/teacher_assistant_web/live/teacher/roster_live.ex:74
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:221
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "Garçons"
 msgstr "Garçons"
@@ -306,7 +306,7 @@ msgstr "Mention"
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:1004
 #: lib/teacher_assistant_web/live/school/council_live.ex:460
 #: lib/teacher_assistant_web/live/teacher/marks_summary_live.ex:311
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:224
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:243
 #, elixir-autogen, elixir-format
 msgid "Moyenne"
 msgstr "Moyenne"
@@ -382,7 +382,7 @@ msgstr "Discipline"
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:74
 #: lib/teacher_assistant_web/live/school/council_live.ex:598
 #: lib/teacher_assistant_web/live/school/results_live.ex:194
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:220
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:239
 #, elixir-autogen, elixir-format
 msgid "Effectif"
 msgstr "Effectif"
@@ -1065,7 +1065,7 @@ msgstr "Félicitations"
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:196
 #: lib/teacher_assistant_web/live/school/timetable_editor_live.ex:627
 #: lib/teacher_assistant_web/live/school/timetable_live.ex:84
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:170
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:175
 #, elixir-autogen, elixir-format
 msgid "Imprimer"
 msgstr "Imprimer"
@@ -1203,7 +1203,7 @@ msgstr "Moy. trim."
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:612
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:263
 #: lib/teacher_assistant_web/live/school/timetable_live.ex:122
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:178
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:183
 #, elixir-autogen, elixir-format
 msgid "Période"
 msgstr "Période"
@@ -1250,7 +1250,7 @@ msgstr "Cette période a des cours à l'emploi du temps et ne peut pas être sup
 #: lib/teacher_assistant/academics/period_kind.ex:5
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:73
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:614
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:219
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:238
 #, elixir-autogen, elixir-format
 msgid "Cours"
 msgstr "Cours"
@@ -2346,7 +2346,7 @@ msgstr ""
 
 #: lib/teacher_assistant_web/live/school/courses_live.ex:168
 #: lib/teacher_assistant_web/live/school/teachings_live.ex:276
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:162
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:167
 #: lib/teacher_assistant_web/spaces.ex:290
 #, elixir-autogen, elixir-format
 msgid "Enseignement"
@@ -3459,6 +3459,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/day_live.ex:761
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:74
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:777
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:204
 #, elixir-autogen, elixir-format
 msgid "En cours"
 msgstr ""
@@ -7074,7 +7075,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:73
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:76
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:291
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:222
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:241
 #, elixir-autogen, elixir-format
 msgid "F"
 msgstr ""
@@ -7087,7 +7088,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:73
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:75
 #: lib/teacher_assistant_web/live/school/enroll_import_live.ex:290
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:221
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "G"
 msgstr ""
@@ -14548,7 +14549,7 @@ msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:79
 #: lib/teacher_assistant_web/live/teacher/marks_summary_live.ex:320
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:225
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:244
 #, elixir-autogen, elixir-format
 msgid "Réussite"
 msgstr ""
@@ -15644,13 +15645,13 @@ msgid "%{count} élève(s) sans moyenne sur cette période"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:68
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:210
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:229
 #, elixir-autogen, elixir-format
 msgid "Aucun cours"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:19
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:118
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:123
 #, elixir-autogen, elixir-format
 msgid "Chiffres des bulletins publiés"
 msgstr ""
@@ -15671,7 +15672,7 @@ msgid "Chiffres en partie provisoires (bulletin publié pour certaines classes s
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:25
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:125
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:130
 #, elixir-autogen, elixir-format
 msgid "Chiffres en partie provisoires (certains bulletins ne sont pas publiés)"
 msgstr ""
@@ -15682,35 +15683,35 @@ msgid "Chiffres provisoires (bulletin non publié)"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:22
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:121
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:126
 #, elixir-autogen, elixir-format
 msgid "Chiffres provisoires (bulletins non publiés)"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:165
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:170
 #, elixir-autogen, elixir-format
 msgid "Effectifs, moyennes et taux de réussite de chaque cours, pour vos fiches."
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:113
+#: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:115
 #, elixir-autogen, elixir-format
 msgid "L'enseignant(e)"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:211
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:230
 #, elixir-autogen, elixir-format
 msgid "Les statistiques apparaissent dès qu'un cours vous est attribué."
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:83
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:229
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:248
 #, elixir-autogen, elixir-format
 msgid "Max"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:84
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:230
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:250
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:249
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:269
 #, elixir-autogen, elixir-format
 msgid "Mentions"
 msgstr ""
@@ -15722,13 +15723,13 @@ msgid "Mes statistiques"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:82
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:228
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:247
 #, elixir-autogen, elixir-format
 msgid "Min"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:77
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:223
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:242
 #, elixir-autogen, elixir-format
 msgid "Notés"
 msgstr ""
@@ -15749,13 +15750,13 @@ msgid "Résultats · Trimestre %{n}"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:81
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:227
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:246
 #, elixir-autogen, elixir-format
 msgid "Réussite F"
 msgstr ""
 
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:80
-#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:226
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:245
 #, elixir-autogen, elixir-format
 msgid "Réussite G"
 msgstr ""
@@ -16065,4 +16066,14 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/page_html.ex:379
 #, elixir-autogen, elixir-format
 msgid "Pour le support, l'équipe Scolaka peut ouvrir l'espace d'un membre ; chaque accès est limité à une heure et inscrit dans un journal, et ce qui est saisi pendant cet accès (notes, appels, conduite, sanctions, frais, conseils de classe et bulletins publiés) porte le nom de l'opérateur."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/teacher/statistics_live.ex:205
+#, elixir-autogen, elixir-format
+msgid "Certaines séquences n'ont pas encore commencé : les chiffres portent sur ce qui existe."
+msgstr ""
+
+#: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:112
+#, elixir-autogen, elixir-format
+msgid "En cours : certaines séquences n'ont pas encore commencé"
 msgstr ""

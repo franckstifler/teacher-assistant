@@ -1291,7 +1291,7 @@ defmodule TeacherAssistant.Assessment do
 
       subjects ->
         rules = grading_rules(scope)
-        students = bulletin_students(scope, cg, {:sequence, seq}, rules)
+        students = bulletin_students(scope, cg, {:sequence, seq}, rules, seq.start_date)
         Bulletins.compile(students, subjects, rules)
     end
   end
@@ -1328,7 +1328,10 @@ defmodule TeacherAssistant.Assessment do
         {:annual, %AcademicYear{} = year},
         opts
       ) do
-    seqs = TeacherAssistant.Organization.list_sequences(scope, year)
+    seqs =
+      (opts[:inputs] && opts[:inputs][:sequences]) ||
+        TeacherAssistant.Organization.list_sequences(scope, year)
+
     period_result(scope, cg, {:annual, year}, seqs, :trimesters, opts[:inputs])
   end
 
@@ -1337,7 +1340,9 @@ defmodule TeacherAssistant.Assessment do
   séquence's subjects, marks and exemptions (`class_subjects_by_sequence/3`), read once
   for `seqs` (the year's séquences). Pass it as `inputs:` to
   `class_results_for_period/4` so a T3 card computes its trimesters and the year from
-  one read; the figures are those computed alone.
+  one read; the figures are those computed alone. A caller computing one period for
+  many classes may add `:sequences` (the year's, for `{:annual, _}`) and `:first_day`
+  (`Organization.period_first_day/2`) so neither is read again per class.
   """
   def period_inputs(%Scope{} = scope, %ClassGroup{} = cg, seqs, rules \\ nil) do
     %{
@@ -1419,12 +1424,18 @@ defmodule TeacherAssistant.Assessment do
   # carries the period's note de conduite, read once for the class.
   # A7: the class as it stood on the period's first day — a student who left during
   # the period keeps it; one who left before it began has no bulletin for it.
-  defp bulletin_students(scope, cg, period, %GradingRules{distinctions_require_conduct?: true}) do
+  defp bulletin_students(
+         scope,
+         cg,
+         period,
+         %GradingRules{distinctions_require_conduct?: true},
+         first_day
+       ) do
     conduct = TeacherAssistant.Discipline.class_discipline(scope, cg, period)
 
     scope
     |> TeacherAssistant.Enrollment.list_roster(cg,
-      on: TeacherAssistant.Organization.period_first_day(scope, period)
+      on: first_day || TeacherAssistant.Organization.period_first_day(scope, period)
     )
     |> Enum.map(fn %{student: s, enrollment: e} ->
       note = conduct |> Map.get(e.id, %{}) |> Map.get(:note_de_conduite)
@@ -1432,10 +1443,10 @@ defmodule TeacherAssistant.Assessment do
     end)
   end
 
-  defp bulletin_students(scope, cg, period, _rules) do
+  defp bulletin_students(scope, cg, period, _rules, first_day) do
     scope
     |> TeacherAssistant.Enrollment.list_students(cg,
-      on: TeacherAssistant.Organization.period_first_day(scope, period)
+      on: first_day || TeacherAssistant.Organization.period_first_day(scope, period)
     )
     |> Enum.map(fn s -> %{id: s.id, sex: s.sex, name: s.full_name} end)
   end
@@ -1445,7 +1456,7 @@ defmodule TeacherAssistant.Assessment do
   # or :trimesters (per term, for annual).
   defp period_result(%Scope{} = scope, cg, period, seqs, component_kind, inputs) do
     rules = (inputs && inputs.rules) || grading_rules(scope)
-    students = bulletin_students(scope, cg, period, rules)
+    students = bulletin_students(scope, cg, period, rules, inputs && inputs[:first_day])
 
     subjects_by_seq =
       case inputs do

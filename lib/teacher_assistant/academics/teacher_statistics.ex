@@ -24,8 +24,9 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
   published for the period) or `:mixed`; `members` holds each class's own figures.
   """
   def course(%Scope{} = scope, %TeachingContext{} = ctx, period) do
-    members = scope |> member_contexts(ctx) |> members(scope, period)
-    stats(scope, members, period, class_results(scope, members, period))
+    shared = shared(scope, period)
+    members = scope |> member_contexts(ctx) |> members(scope, period, shared)
+    stats(scope, members, period, class_results(scope, members, period, shared), shared)
   end
 
   @doc """
@@ -35,11 +36,12 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
   """
   def table(%Scope{} = scope, teacher, period) do
     courses = TeacherCourses.list(%{scope | current_user: teacher}, nil)
-    per_course = Enum.map(courses, &{&1, members(&1.contexts, scope, period)})
-    results = class_results(scope, Enum.flat_map(per_course, &elem(&1, 1)), period)
+    shared = shared(scope, period)
+    per_course = Enum.map(courses, &{&1, members(&1.contexts, scope, period, shared)})
+    results = class_results(scope, Enum.flat_map(per_course, &elem(&1, 1)), period, shared)
 
     Enum.flat_map(per_course, fn {course, members} ->
-      stats = stats(scope, members, period, results)
+      stats = stats(scope, members, period, results, shared)
       head = row(course, nil, stats.students, stats.summary, stats.source)
 
       case stats.members do
@@ -58,6 +60,16 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
     end)
   end
 
+  # What every class of the table shares, read once: the grading rules, the period's
+  # séquences and its first day.
+  defp shared(scope, period) do
+    %{
+      rules: Assessment.grading_rules(scope),
+      sequences: Organization.period_sequences(scope, period),
+      first_day: Organization.period_first_day(scope, period)
+    }
+  end
+
   # --- members ----------------------------------------------------------------
 
   defp member_contexts(scope, %TeachingContext{combined_course_id: nil} = ctx),
@@ -72,9 +84,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
 
   # Each member class with the students taking the subject (exempted ones are out), as
   # the class stood on the period's first day (A7: as the bulletin counts them).
-  defp members(contexts, scope, period) do
-    first_day = Organization.period_first_day(scope, period)
-
+  defp members(contexts, scope, _period, %{first_day: first_day}) do
     Enum.map(contexts, fn ctx ->
       exempt = Curriculum.exempt_student_ids(scope, ctx)
       cg = ctx.class_group
@@ -91,9 +101,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
 
   # --- figures ----------------------------------------------------------------
 
-  defp stats(scope, members, {:sequence, seq}, _results) do
-    rules = Assessment.grading_rules(scope)
-
+  defp stats(scope, members, {:sequence, seq}, _results, %{rules: rules}) do
     per_member =
       Enum.map(members, fn m ->
         assessments = Assessment.list_assessments(scope, m.ctx, seq)
@@ -133,9 +141,7 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
     }
   end
 
-  defp stats(scope, members, _period, results) do
-    rules = Assessment.grading_rules(scope)
-
+  defp stats(_scope, members, _period, results, %{rules: rules}) do
     member_stats =
       Enum.map(members, fn m ->
         {class_results, source} = Map.fetch!(results, m.class_group.id)
@@ -194,16 +200,24 @@ defmodule TeacherAssistant.Academics.TeacherStatistics do
 
   # `%{class id => {results, :published | :live}}` for a trimester or the year; the
   # published snapshot wins. Séquences need none.
-  defp class_results(_scope, _members, {:sequence, _}), do: %{}
+  defp class_results(_scope, _members, {:sequence, _}, _shared), do: %{}
 
-  defp class_results(scope, members, period) do
+  defp class_results(scope, members, period, shared) do
     members
     |> Enum.map(& &1.class_group)
     |> Enum.uniq_by(& &1.id)
     |> Map.new(fn cg ->
       case ReportCards.current_publication(scope, cg, period, snapshot: true) do
-        nil -> {cg.id, {Assessment.class_results_for_period(scope, cg, period), :live}}
-        pub -> {cg.id, {pub.snapshot.results, :published}}
+        nil ->
+          inputs =
+            scope
+            |> Assessment.period_inputs(cg, shared.sequences, shared.rules)
+            |> Map.merge(Map.take(shared, [:sequences, :first_day]))
+
+          {cg.id, {Assessment.class_results_for_period(scope, cg, period, inputs: inputs), :live}}
+
+        pub ->
+          {cg.id, {pub.snapshot.results, :published}}
       end
     end)
   end

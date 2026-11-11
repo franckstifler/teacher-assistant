@@ -62,4 +62,9 @@ defmodule TeacherAssistantWeb.StatisticsPrintControllerTest do
     assert html =~ "Séquence #{seq.number}"
     assert html =~ "Maths · 6e A"
   end
+
+  test "a year whose séquences have not all started prints « en cours » (minors)", %{conn: conn} do
+    html = conn |> get(~p"/school/statistics/me/print?period=annee") |> html_response(200)
+    assert html =~ "En cours"
+  end
 end

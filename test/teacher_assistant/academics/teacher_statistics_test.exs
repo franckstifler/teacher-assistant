@@ -186,6 +186,32 @@ defmodule TeacherAssistant.Academics.TeacherStatisticsTest do
              Assessment.teacher_statistics(scope, other, {:sequence, s2})
   end
 
+  test "a year table reads the school profile and the séquences a fixed number of times, whatever the classes (minors)",
+       ctx do
+    %{scope: scope, head: head, year: year} = ctx
+
+    count = fn ->
+      {_rows, _total, by} =
+        TeacherAssistant.QueryCount.count(
+          fn -> Assessment.teacher_statistics(scope, head, {:annual, year}) end,
+          [~s(FROM "school_profiles"), ~s(FROM "sequences")]
+        )
+
+      by
+    end
+
+    one = count.()
+
+    for label <- ["6e B", "6e C"] do
+      {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: label, level: "6ème"})
+      {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Élève #{label}", sex: :m})
+      {:ok, _} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
+    end
+
+    three = count.()
+    assert three == one
+  end
+
   test "from_averages ranks, mentions and sex-splits like summarize" do
     students = [
       %{id: "a", sex: :f, name: "A"},

@@ -107,7 +107,9 @@
 
     <div class="foot">
       <span>
-        {gettext("Imprimé le %{date}", date: date(@printed_on))} · {source_line(@rows, @period)}
+        {gettext("Imprimé le %{date}", date: date(@printed_on))} · {source_line(@rows, @period)}<span :if={
+          @in_progress?
+        }> · {gettext("En cours : certaines séquences n'ont pas encore commencé")}</span>
       </span>
       <div class="sign">
         <div>{gettext("L'enseignant(e)")}</div>
