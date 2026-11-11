@@ -37,8 +37,8 @@ defmodule TeacherAssistantWeb.SpaceControllerTest do
 
   test "the member stays on their page when the new space's menu has it", ctx do
     member = censeur_who_teaches(ctx)
-    conn = post(member, ~p"/school/space/enseignant?#{[return_to: "/school/bulletins"]}")
-    assert redirected_to(conn) == "/school/bulletins"
+    conn = post(member, ~p"/school/space/enseignant?#{[return_to: "/school/courses"]}")
+    assert redirected_to(conn) == "/school/courses"
 
     # the teacher's menu has no class list (they are not a form master): home
     conn = post(member, ~p"/school/space/enseignant?#{[return_to: "/school/classes/x"]}")
