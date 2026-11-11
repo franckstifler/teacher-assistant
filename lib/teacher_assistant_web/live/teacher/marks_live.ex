@@ -147,22 +147,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   end
 
   # Students whose make-up is still expected on the selected column (make-up rule).
-  defp assign_pending(socket) do
-    %{current_scope: scope, grading_rules: rules} = socket.assigns
-
-    by_student =
-      socket.assigns.column
-      |> column_assessments()
-      |> Enum.flat_map(&Assessment.list_marks(scope, &1))
-      |> Enum.group_by(& &1.student_id)
-
+  # Under the make-up rule, the students whose saved mark in the column is an absence
+  # (A8: from the marks already in memory, `loaded`, never a second read of the column).
+  defp assign_pending(%{assigns: %{grading_rules: %{absence: :makeup}, loaded: loaded}} = socket) do
     pending =
       for s <- all_students(socket.assigns),
-          Marks.makeup_pending?(Map.get(by_student, s.id, []), rules),
+          MarkEntry.parse(Map.get(loaded, s.id)) in [{:ok, :absent}, {:ok, :excused}],
           do: s.full_name
 
     assign(socket, :pending_makeups, pending)
   end
+
+  defp assign_pending(socket), do: assign(socket, :pending_makeups, [])
 
   # "New assessment" params: drop an empty type, name it after its type when the
   # label is blank ("Devoir surveillé 2"), and keep a valid maximum (otherwise the

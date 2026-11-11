@@ -91,6 +91,33 @@ defmodule TeacherAssistantWeb.Teacher.MarksAbsenceTest do
     assert has_element?(view, "#pending-makeups", "Awa")
   end
 
+  test "under the make-up rule, a save that marks a student absent lists them, a mark clears it (A8)",
+       ctx do
+    {:ok, _} = Assessment.update_grading_rules(ctx.scope, %{"absence_rule" => "makeup"})
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+    refute has_element?(view, "#pending-makeups", "Awa")
+
+    blur(view, ctx.awa.id, "abs")
+    assert has_element?(view, "#pending-makeups", "Awa")
+
+    blur(view, ctx.awa.id, "12")
+    refute has_element?(view, "#pending-makeups", "Awa")
+  end
+
+  test "a save does not re-read the column's marks (A8)", ctx do
+    {:ok, _} = Assessment.update_grading_rules(ctx.scope, %{"absence_rule" => "makeup"})
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+
+    # Measured on this fixture before A8: the upsert itself reads the mark once, the
+    # pending list read the column again.
+    {_, _total, counts} =
+      TeacherAssistant.QueryCount.count(fn -> blur(view, ctx.awa.id, "11") end, [
+        ~s(FROM "marks")
+      ])
+
+    assert counts[~s(FROM "marks")] <= 1
+  end
+
   test "a blur on a stale page never touches marks the teacher did not edit", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
 
