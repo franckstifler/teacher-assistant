@@ -5,13 +5,16 @@ defmodule TeacherAssistant.Enrollment do
 
   alias TeacherAssistant.Academics.{
     AcademicYear,
+    AttendanceEntry,
     ClassGroup,
     Enrollment,
     FeeWarning,
     Guardian,
     Mark,
     Payment,
+    Reference,
     ReturnNote,
+    SanctionEntry,
     Student,
     StudentGuardian
   }
@@ -242,7 +245,8 @@ defmodule TeacherAssistant.Enrollment do
   Deletes a student added by mistake, with their enrolments (and what hangs on them:
   attendance, conduct, sanctions), parent links and exemptions; the parents
   themselves stay. Refused once something official exists for them, as
-  `{:error, :marks}` or `{:error, :fee_documents}` (`student_deletion_blocker/2`);
+  `{:error, :marks}`, `:attendance`, `:sanctions` or `:fee_documents`
+  (`student_deletion_blocker/2`);
   the database refuses it too. Admins only (the student's destroy policy). The photo
   file stays on disk, like every photo (`TeacherAssistant.StudentPhotos`).
   """
@@ -255,9 +259,11 @@ defmodule TeacherAssistant.Enrollment do
 
   @doc """
   Why `student` can no longer be deleted: `:marks` once a mark is entered for them,
+  `:attendance` once a roll call names them, `:sanctions` once they have one (A7),
   `:fee_documents` once they have a receipt, a warning letter or a return note
   (numbered papers anyone can check). `nil` while nothing official exists. Counts
-  every record of the school, whatever the reader may see.
+  every record of the school, whatever the reader may see. A student with history
+  is marked as left instead (`leave/3`).
   """
   def student_deletion_blocker(%Scope{current_workspace: %{id: ws_id}}, %Student{id: id}) do
     opts = [authorize?: false, tenant: ws_id]
@@ -265,6 +271,12 @@ defmodule TeacherAssistant.Enrollment do
     cond do
       Mark |> Ash.Query.filter(student_id == ^id) |> Ash.exists?(opts) ->
         :marks
+
+      AttendanceEntry |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts) ->
+        :attendance
+
+      SanctionEntry |> Ash.Query.filter(enrollment.student_id == ^id) |> Ash.exists?(opts) ->
+        :sanctions
 
       Enum.any?(
         [Payment, FeeWarning, ReturnNote],
@@ -542,16 +554,23 @@ defmodule TeacherAssistant.Enrollment do
 
   # --- Enrollment / roster -------------------------------------------------
 
-  def list_students(%Scope{} = scope, %ClassGroup{id: cg_id}) do
+  @doc """
+  The class's students, by name. `on:` (A7) — a `Date` (default today): the class on
+  that day, without the students who left by then; a period's readers pass the
+  period's first day (`Organization.period_first_day/2`). `:all`: everyone enrolled
+  this year, departed or not.
+  """
+  def list_students(%Scope{} = scope, %ClassGroup{id: cg_id}, opts \\ []) do
     cg_id
-    |> roster_query(scope)
+    |> roster_query(scope, Keyword.get_lazy(opts, :on, &Reference.today/0))
     |> Enum.map(& &1.student)
     |> Enum.sort_by(&String.downcase(&1.full_name))
   end
 
-  def list_roster(%Scope{} = scope, %ClassGroup{id: cg_id}) do
+  @doc "`%{student, enrollment}` of the class, by name; `on:` as `list_students/3`."
+  def list_roster(%Scope{} = scope, %ClassGroup{id: cg_id}, opts \\ []) do
     cg_id
-    |> roster_query(scope)
+    |> roster_query(scope, Keyword.get_lazy(opts, :on, &Reference.today/0))
     |> Enum.map(&%{student: &1.student, enrollment: &1})
     |> Enum.sort_by(&String.downcase(&1.student.full_name))
   end
@@ -578,7 +597,8 @@ defmodule TeacherAssistant.Enrollment do
         query: query,
         no_contact: opts[:no_contact] || false,
         repeater: opts[:repeater] || false,
-        no_photo: opts[:no_photo] || false
+        no_photo: opts[:no_photo] || false,
+        departed: opts[:departed] || false
       },
       scope: scope
     )
@@ -600,7 +620,8 @@ defmodule TeacherAssistant.Enrollment do
       total: count.(%{}),
       no_contact: count.(%{no_contact: true}),
       repeater: count.(%{repeater: true}),
-      no_photo: count.(%{no_photo: true})
+      no_photo: count.(%{no_photo: true}),
+      departed: count.(%{departed: true})
     }
   end
 
@@ -631,9 +652,15 @@ defmodule TeacherAssistant.Enrollment do
     end
   end
 
-  defp roster_query(cg_id, %Scope{} = scope) do
+  defp roster_query(cg_id, %Scope{} = scope, on) do
+    current_on = if on == :all, do: nil, else: on
+
     Enrollment
-    |> Ash.Query.for_read(:for_class_group, %{class_group_id: cg_id}, scope: scope)
+    |> Ash.Query.for_read(
+      :for_class_group,
+      %{class_group_id: cg_id, current_on: current_on},
+      scope: scope
+    )
     |> Ash.read!()
   end
 
@@ -725,6 +752,37 @@ defmodule TeacherAssistant.Enrollment do
       update_enrollment(e, %{class_group_id: cg.id}, scope: scope)
     else
       {:error, :different_year}
+    end
+  end
+
+  @doc """
+  Marks a student as having left (spec audit follow-ups A7): `attrs` holds
+  `departure_reason` (required), `left_on` (default today) and `departure_note`. The
+  enrollment and everything on it stay; the student leaves the rosters from
+  `left_on` on and keeps every period that began before it. Proviseur and Censeur.
+  """
+  def leave(%Scope{} = scope, %Enrollment{} = e, attrs) do
+    e
+    |> Ash.Changeset.for_update(:leave, attrs, scope: scope)
+    |> Ash.update()
+  end
+
+  @doc "Brings a departed student back into the same enrollment (A7)."
+  def return(%Scope{} = scope, %Enrollment{} = e) do
+    e
+    |> Ash.Changeset.for_update(:return, %{}, scope: scope)
+    |> Ash.update()
+  end
+
+  @doc """
+  Deletes an enrollment entered by mistake (A7): refused, with the blocker
+  (`student_deletion_blocker/2`), once the student has any history — mark it as left
+  then. Admins and the class's form master.
+  """
+  def remove_mistaken(%Scope{} = scope, %Enrollment{} = e) do
+    case student_deletion_blocker(scope, %Student{id: e.student_id}) do
+      nil -> withdraw(scope, e)
+      blocker -> {:error, blocker}
     end
   end
 

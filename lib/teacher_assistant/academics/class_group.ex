@@ -217,7 +217,10 @@ defmodule TeacherAssistant.Academics.ClassGroup do
 
   aggregates do
     # Spec KLM5 (R05): one query for every class's headcount.
-    count :enrollment_count, :enrollments
+    # A7: the class today, without the students who left.
+    count :enrollment_count, :enrollments do
+      filter expr(is_nil(left_on))
+    end
   end
 
   identities do

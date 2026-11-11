@@ -157,6 +157,14 @@ defmodule TeacherAssistant.CrossWorkspaceGuardTest do
            |> Enum.any?(&(&1.label == "Bogus"))
   end
 
+  test "Enrollment.leave refuses another school's enrollment (A7)", ctx do
+    assert {:error, _} =
+             Enrollment.leave(ctx.scope_b, ctx.enrollment_a, %{departure_reason: :other})
+
+    {:ok, reloaded} = Enrollment.fetch_owned_enrollment(ctx.scope_a, ctx.enrollment_a.id)
+    assert reloaded.left_on == nil
+  end
+
   test "Enrollment.transfer rejects an enrollment/class_group workspace mismatch", ctx do
     assert {:error, _} = Enrollment.transfer(ctx.scope_a, ctx.enrollment_a, ctx.cg_b)
 

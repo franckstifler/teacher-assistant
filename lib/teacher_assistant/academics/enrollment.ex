@@ -54,8 +54,42 @@ defmodule TeacherAssistant.Academics.Enrollment do
 
     read :for_class_group do
       argument :class_group_id, :uuid, allow_nil?: false
+      # The class on that day (A7): a student who left is out from `left_on` on. Nil:
+      # everyone ever enrolled this year, departed or not.
+      argument :current_on, :date
       filter expr(class_group_id == ^arg(:class_group_id))
+      filter expr(is_nil(^arg(:current_on)) or is_nil(left_on) or left_on > ^arg(:current_on))
       prepare build(load: [:student])
+    end
+
+    # Spec audit follow-ups A7: a student who leaves keeps their history. `left_on`
+    # defaults to today; the inscription / réinscription status is untouched.
+    update :leave do
+      require_atomic? false
+      accept [:left_on, :departure_reason, :departure_note]
+      validate {TeacherAssistant.Academics.Enrollment.Departed, departed?: false}
+      validate present(:departure_reason)
+
+      change fn changeset, _context ->
+        if Ash.Changeset.get_attribute(changeset, :left_on),
+          do: changeset,
+          else:
+            Ash.Changeset.force_change_attribute(
+              changeset,
+              :left_on,
+              TeacherAssistant.Academics.Reference.today()
+            )
+      end
+    end
+
+    # The student is back in the same class and year.
+    update :return do
+      require_atomic? false
+      accept []
+      validate {TeacherAssistant.Academics.Enrollment.Departed, departed?: true}
+      change set_attribute(:left_on, nil)
+      change set_attribute(:departure_reason, nil)
+      change set_attribute(:departure_note, nil)
     end
 
     # Spec KLM1 (L3): the school-wide student list, class order then name, paginated.
@@ -69,6 +103,8 @@ defmodule TeacherAssistant.Academics.Enrollment do
       # UX refonte (Élèves): only repeaters / only students without a photo.
       argument :repeater, :boolean, allow_nil?: false, default: false
       argument :no_photo, :boolean, allow_nil?: false, default: false
+      # A7: the students who left (« Partis »); the default list has the others only.
+      argument :departed, :boolean, allow_nil?: false, default: false
 
       pagination offset?: true, countable: true, required?: false, default_limit: 50
 
@@ -82,6 +118,11 @@ defmodule TeacherAssistant.Academics.Enrollment do
 
       filter expr(not (^arg(:repeater)) or repeater == true)
       filter expr(not (^arg(:no_photo)) or is_nil(student.photo_path))
+
+      filter expr(
+               (^arg(:departed) and not is_nil(left_on)) or
+                 (not (^arg(:departed)) and is_nil(left_on))
+             )
 
       filter expr(
                is_nil(^arg(:query)) or
@@ -182,6 +223,11 @@ defmodule TeacherAssistant.Academics.Enrollment do
       authorize_if {Checks.SchoolRole, any_of: :member}
     end
 
+    # A departure and a return are the school's decisions (A7): Proviseur, Censeur.
+    policy action([:leave, :return]) do
+      authorize_if {Checks.SchoolRole, any_of: :admin}
+    end
+
     # Update/destroy are checked against the original record, so a transfer is
     # decided by the source class.
     policy action_type([:create, :update, :destroy]) do
@@ -214,6 +260,12 @@ defmodule TeacherAssistant.Academics.Enrollment do
       public?: true
 
     attribute :repeater, :boolean, allow_nil?: false, default: false, public?: true
+
+    # Spec audit follow-ups A7: the day the student left (nil while enrolled), why,
+    # and a short note (« Lycée de Mbalmayo »).
+    attribute :left_on, :date, public?: true
+    attribute :departure_reason, TeacherAssistant.Academics.DepartureReason, public?: true
+    attribute :departure_note, :string, public?: true, constraints: [max_length: 200]
     timestamps()
   end
 
