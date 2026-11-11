@@ -1,7 +1,7 @@
 <%!--
-  Privacy page: what Scolaka keeps, who sees it, where it lives. Every sentence is
-  something the code does today (no retention periods or deletion promises: the
-  operator has not decided them yet). Same look as the landing, same footer.
+  Privacy page: what Scolaka keeps, how long, who sees it, where it lives. Every
+  sentence is something the code does today (retention: spec audit follow-ups A9).
+  Same look as the landing, same footer.
 --%>
 <div class="ta-landing flex min-h-screen flex-col bg-base-200 text-base-content">
   <header class="border-b border-base-300">
@@ -26,7 +26,7 @@
         "Scolaka aide les établissements scolaires à tenir l'appel, les notes, les bulletins et les frais. Cette page dit quelles données nous gardons, qui peut les voir et où elles se trouvent."
       )}
     </p>
-    <p class="ta-text-2 mt-3 text-sm">{gettext("Mise à jour le 8 novembre 2026")}</p>
+    <p class="ta-text-2 mt-3 text-sm">{gettext("Mise à jour le 11 novembre 2026")}</p>
 
     <div class="mt-10 flex flex-col gap-10">
       <section :for={part <- privacy_sections()} aria-labelledby={"privacy-#{part.id}"}>
@@ -48,7 +48,7 @@
         </h2>
         <p class="ta-landing__lead mt-3 leading-relaxed">
           {gettext(
-            "Les données d'un élève ou d'un parent sont saisies et gérées par son établissement : adressez-vous d'abord à lui. Un membre de l'équipe change lui-même son mot de passe dans son espace."
+            "Les données d'un élève ou d'un parent sont saisies et gérées par son établissement : adressez-vous d'abord à lui. Un membre de l'équipe change lui-même son mot de passe dans son espace. Un membre qui n'appartient plus à aucune école peut supprimer son compte depuis Mon compte."
           )}
         </p>
         <.contact_line class="mt-3" />

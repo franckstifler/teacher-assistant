@@ -160,6 +160,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
             "Ce que nous gardons",
             "Qui peut les voir",
             "Où elles se trouvent",
+            "Combien de temps",
             "Cookies",
             "Consulter, corriger ou supprimer"
           ],
@@ -168,6 +169,8 @@ defmodule TeacherAssistantWeb.PageControllerTest do
       # the services that handle data are named, and the support access is disclosed
       for name <- ["Hetzner", "Cloudflare", "Brevo"], do: assert(html =~ name)
       assert html =~ "limité à une heure et inscrit dans un journal"
+      assert html =~ "trois ans après son départ"
+      assert html =~ "peut supprimer son compte depuis Mon compte"
       assert "mailto:contact@example.test" in hrefs(doc, "main a")
       assert "/" in hrefs(doc, "header a")
     end
@@ -180,6 +183,7 @@ defmodule TeacherAssistantWeb.PageControllerTest do
         |> html_response(200)
 
       assert html =~ "What we keep"
+      assert html =~ "How long"
       refute html =~ "Ce que nous gardons"
     end
 
