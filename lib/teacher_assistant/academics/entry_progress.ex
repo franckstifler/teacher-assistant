@@ -3,11 +3,14 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   Per-course mark-entry progress for one séquence (spec F, N05): a classes ×
   subjects grid where each cell is one course (teaching context).
 
-  A cell's % is marks entered ÷ (students taking the course × the course's
-  assessments in the séquence), rounded down so 100 means complete. Students
-  taking = the class's enrollments minus the course's subject exemptions; only
-  their marks count, whatever the mark's status. Everything is loaded in a
-  fixed number of queries, whatever the number of classes or courses.
+  A cell's % is marks entered ÷ marks expected, rounded down so 100 means
+  complete. Students taking = the class on the séquence's first day (A7) minus the
+  course's subject exemptions; only their marks count, whatever the mark's status.
+  A mark is expected from each of them still in the class today, for every
+  assessment — and from one who has left since only where they have a mark, since
+  the marks grid no longer shows them (so a departure never keeps a class below
+  100 %). Everything is loaded in a fixed number of queries (one more when someone
+  has left), whatever the number of classes or courses.
   """
 
   require Ash.Query
@@ -19,6 +22,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     Assessment,
     ClassGroup,
     Enrollment,
+    Mark,
+    Reference,
     Sequence,
     SubjectExemption,
     TeachingContext
@@ -35,15 +40,22 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   def grid(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq) do
     class_groups = TeacherAssistant.Enrollment.list_class_groups(scope, year)
     contexts = load_contexts(scope, year)
-    enrolled = load_enrolled(scope, year, seq.start_date)
+    enrollments = load_enrollments(scope, year, nil)
+    expected = expected_students(enrollments, seq.start_date)
     exempt = load_exempt(scope, contexts)
     assessments = load_assessments(scope, seq)
+    departed_marks = load_departed_marks(scope, assessments, expected)
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
 
     cells =
       Map.new(contexts, fn tc ->
         {{tc.class_group_id, column_key(tc)},
-         cell(tc, taking(tc, enrolled, exempt), Map.get(assessments_by_tc, tc.id, []))}
+         cell(
+           tc,
+           taking(tc, expected, exempt),
+           Map.get(assessments_by_tc, tc.id, []),
+           departed_marks
+         )}
       end)
 
     subjects = subjects(contexts)
@@ -79,14 +91,15 @@ defmodule TeacherAssistant.Academics.EntryProgress do
   def context_cells(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, contexts) do
     ids = Enum.map(contexts, & &1.id)
     class_ids = contexts |> Enum.map(& &1.class_group_id) |> Enum.uniq()
-    enrolled = load_enrolled(scope, year, class_ids, seq.start_date)
+    expected = scope |> load_enrollments(year, class_ids) |> expected_students(seq.start_date)
     exempt = load_exempt(scope, contexts)
     assessments = load_assessments(scope, seq, ids)
+    departed_marks = load_departed_marks(scope, assessments, expected)
     assessments_by_tc = Enum.group_by(assessments, & &1.teaching_context_id)
 
     Map.new(contexts, fn tc ->
       tc_assessments = Map.get(assessments_by_tc, tc.id, [])
-      cell = cell(tc, taking(tc, enrolled, exempt), tc_assessments)
+      cell = cell(tc, taking(tc, expected, exempt), tc_assessments, departed_marks)
 
       {tc.id,
        cell
@@ -143,8 +156,9 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       |> Ash.Query.filter(academic_year_id == ^year.id and class_group_id in ^class_ids)
       |> Ash.read!(scope: scope)
 
-    first_day = sequences |> Enum.map(& &1.start_date) |> Enum.min(Date, fn -> nil end)
-    enrolled = load_enrolled(scope, year, class_ids, first_day)
+    enrollments = load_enrollments(scope, year, class_ids)
+    # Each séquence expects the class as it stood on its own first day.
+    expected = Map.new(sequences, &{&1.id, expected_students(enrollments, &1.start_date)})
     exempt = load_exempt(scope, contexts)
 
     assessments =
@@ -154,6 +168,9 @@ defmodule TeacherAssistant.Academics.EntryProgress do
         Enum.map(contexts, & &1.id)
       )
 
+    departed_marks =
+      load_departed_marks(scope, assessments, %{all: union_departed(Map.values(expected))})
+
     assessments_by = Enum.group_by(assessments, &{&1.teaching_context_id, &1.sequence_id})
     # One cell per class × subject column, as in `grid/3`.
     courses = Map.new(contexts, &{{&1.class_group_id, column_key(&1)}, &1})
@@ -162,7 +179,8 @@ defmodule TeacherAssistant.Academics.EntryProgress do
       for seq <- sequences,
           {{cg_id, _column}, tc} <- courses,
           tc_assessments <- [Map.get(assessments_by, {tc.id, seq.id}, [])],
-          %{pct: pct} <- [cell(tc, taking(tc, enrolled, exempt), tc_assessments)],
+          taking <- [taking(tc, expected[seq.id], exempt)],
+          %{pct: pct} <- [cell(tc, taking, tc_assessments, departed_marks)],
           not is_nil(pct),
           do: {cg_id, pct}
 
@@ -200,30 +218,68 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> Ash.read!(scope: scope)
   end
 
-  # The students a séquence expects (A7): those still in the class on its first day.
-  defp load_enrolled(scope, %AcademicYear{id: year_id}, first_day) do
+  # The year's enrollments (of `class_ids`, or every class), departures included.
+  defp load_enrollments(scope, %AcademicYear{id: year_id}, class_ids) do
     Enrollment
     |> Ash.Query.filter(academic_year_id == ^year_id)
-    |> enrolled_by_class(scope, first_day)
-  end
-
-  defp load_enrolled(scope, %AcademicYear{id: year_id}, class_ids, first_day) do
-    Enrollment
-    |> Ash.Query.filter(academic_year_id == ^year_id and class_group_id in ^class_ids)
-    |> enrolled_by_class(scope, first_day)
-  end
-
-  defp enrolled_by_class(query, scope, first_day) do
-    query
     |> then(fn q ->
-      if first_day,
-        do: Ash.Query.filter(q, is_nil(left_on) or left_on > ^first_day),
-        else: q
+      if class_ids, do: Ash.Query.filter(q, class_group_id in ^class_ids), else: q
     end)
-    |> Ash.Query.select([:class_group_id, :student_id])
+    |> Ash.Query.select([:class_group_id, :student_id, :left_on])
     |> Ash.read!(scope: scope)
-    |> Enum.group_by(& &1.class_group_id, & &1.student_id)
-    |> Map.new(fn {cg_id, ids} -> {cg_id, MapSet.new(ids)} end)
+  end
+
+  # Per class, the students a séquence starting on `first_day` counts (A7: still in
+  # the class that day), split into those still there today — the marks grid's
+  # roster — and those who have left since.
+  defp expected_students(enrollments, first_day) do
+    today = Reference.today()
+
+    enrollments
+    |> Enum.filter(&after?(&1.left_on, first_day))
+    |> Enum.group_by(& &1.class_group_id)
+    |> Map.new(fn {cg_id, es} ->
+      {current, departed} = Enum.split_with(es, &after?(&1.left_on, today))
+
+      {cg_id,
+       %{
+         current: MapSet.new(current, & &1.student_id),
+         departed: MapSet.new(departed, & &1.student_id)
+       }}
+    end)
+  end
+
+  defp after?(nil, _day), do: true
+  defp after?(left_on, day), do: Date.compare(left_on, day) == :gt
+
+  defp union_departed(expectations) do
+    for by_class <- expectations, %{departed: d} <- Map.values(by_class), reduce: MapSet.new() do
+      acc -> MapSet.union(acc, d)
+    end
+  end
+
+  # `%{assessment id => student ids}` of the marks departed students have in
+  # `assessments`; no query when nobody has left.
+  defp load_departed_marks(scope, assessments, expected) do
+    departed =
+      case expected do
+        %{all: all} -> all
+        by_class -> union_departed([by_class])
+      end
+
+    if MapSet.size(departed) == 0 or assessments == [] do
+      %{}
+    else
+      assessment_ids = Enum.map(assessments, & &1.id)
+      student_ids = MapSet.to_list(departed)
+
+      Mark
+      |> Ash.Query.filter(assessment_id in ^assessment_ids and student_id in ^student_ids)
+      |> Ash.Query.select([:assessment_id, :student_id])
+      |> Ash.read!(scope: scope)
+      |> Enum.group_by(& &1.assessment_id, & &1.student_id)
+      |> Map.new(fn {id, ids} -> {id, MapSet.new(ids)} end)
+    end
   end
 
   defp load_exempt(_scope, []), do: %{}
@@ -276,16 +332,25 @@ defmodule TeacherAssistant.Academics.EntryProgress do
 
   # --- Pure computation ----------------------------------------------------------
 
-  # Students taking the course: its class's enrollments minus its exemptions.
-  defp taking(tc, enrolled, exempt) do
-    enrolled
-    |> Map.get(tc.class_group_id, MapSet.new())
-    |> MapSet.difference(Map.get(exempt, tc.id, MapSet.new()))
+  # Students taking the course: its class's expected students minus its exemptions.
+  defp taking(tc, expected, exempt) do
+    %{current: current, departed: departed} =
+      Map.get(expected, tc.class_group_id, %{current: MapSet.new(), departed: MapSet.new()})
+
+    out = Map.get(exempt, tc.id, MapSet.new())
+    %{current: MapSet.difference(current, out), departed: MapSet.difference(departed, out)}
   end
 
-  defp cell(tc, taking, assessments) do
-    students = MapSet.size(taking)
-    expected = students * length(assessments)
+  defp cell(tc, taking, assessments, departed_marks) do
+    students = MapSet.size(taking.current)
+
+    # A departed student's mark is expected only where they have one.
+    expected =
+      Enum.sum_by(assessments, fn a ->
+        marked = Map.get(departed_marks, a.id, MapSet.new())
+        students + (marked |> MapSet.intersection(taking.departed) |> MapSet.size())
+      end)
+
     entered = Enum.sum_by(assessments, & &1.marks_count)
 
     %{

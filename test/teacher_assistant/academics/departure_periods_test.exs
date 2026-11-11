@@ -7,6 +7,7 @@ defmodule TeacherAssistant.Academics.DeparturePeriodsTest do
 
   alias TeacherAssistant.{Assessment, Attendance, Curriculum, Enrollment, Organization}
   alias TeacherAssistant.{MarksFixtures, TeacherFixtures, Timetabling}
+  alias TeacherAssistant.Academics.EntryProgress
 
   setup do
     %{scope: scope, year: year, head_user: head} = TeacherFixtures.setup_complete_school_fixture()
@@ -127,6 +128,40 @@ defmodule TeacherAssistant.Academics.DeparturePeriodsTest do
 
     assert cell.(ctx.s1).expected == 2
     assert cell.(ctx.s2).expected == 1
+  end
+
+  test "a class with a departed student reaches 100 % over the trimester (review)", ctx do
+    :ok =
+      Assessment.upsert_marks(ctx.scope, ctx.a2, [
+        %{student_id: ctx.bob.id, score: Decimal.new(9)}
+      ])
+
+    rate = fn seqs -> EntryProgress.class_rate(ctx.scope, ctx.year, ctx.cg, seqs) end
+    assert rate.([ctx.s2]) == 100
+    assert rate.([ctx.s1, ctx.s2]) == 100
+  end
+
+  test "a student who left during a séquence without a mark is not expected (review)", ctx do
+    {:ok, %{enrollment: e, student: cleo}} =
+      Enrollment.enroll_new(ctx.scope, ctx.cg, %{full_name: "Cléo", sex: :f})
+
+    {:ok, _} =
+      Enrollment.leave(ctx.scope, e, %{
+        departure_reason: :dropout,
+        left_on: Date.add(ctx.s1.start_date, 3)
+      })
+
+    grid = Assessment.sequence_entry_grid(ctx.scope, ctx.year, ctx.s1)
+    %{key: key} = Enum.find(grid.subjects, &(&1.label == "Maths"))
+    cell = Enum.find(grid.rows, &(&1.class_group.id == ctx.cg.id)).cells[key]
+    assert {cell.entered, cell.expected, cell.pct} == {2, 2, 100}
+    refute Map.has_key?(Map.new(grid.late, &{&1.teacher_id, &1}), ctx.tc.teacher_user_id)
+
+    # Once she has a mark, it counts on both sides.
+    :ok =
+      Assessment.upsert_marks(ctx.scope, ctx.a1, [%{student_id: cleo.id, score: Decimal.new(8)}])
+
+    assert EntryProgress.class_rate(ctx.scope, ctx.year, ctx.cg, [ctx.s1]) == 100
   end
 
   test "the trimester bulletin keeps her with her departure date", ctx do
