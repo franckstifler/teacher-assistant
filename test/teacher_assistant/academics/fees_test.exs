@@ -119,6 +119,25 @@ defmodule TeacherAssistant.Academics.FeesTest do
     assert school.collected == 30_000
   end
 
+  test "a departed student's account closes on the departure day in the recovery (minors)", ctx do
+    {:ok, %{enrollment: e2}} =
+      Enrollment.enroll_new(ctx.scope, ctx.cg, %{full_name: "Bel B", sex: :m})
+
+    {:ok, _} = Fees.record_payment(ctx.scope, e2, cash(10_000))
+    left_on = TeacherAssistant.Academics.Reference.today()
+    due_then = Fees.class_balances(ctx.scope, ctx.cg, left_on)[e2.id].due_to_date
+    {:ok, _} = Enrollment.leave(ctx.scope, e2, %{departure_reason: :transfer, left_on: left_on})
+
+    closed = max(due_then, 10_000)
+    %{classes: classes} = Fees.recovery(ctx.scope, ctx.year, ~D[2025-11-01])
+    row = Enum.find(classes, &(&1.class_group.id == ctx.cg.id))
+
+    # Awa (still there) owes the year; Bel only what was due when he left.
+    assert row.recovery.expected == 60_000 + closed
+    assert row.recovery.expected_to_date == 30_000 + closed
+    assert row.recovery.collected == 10_000
+  end
+
   test "arrears are paid before Frais exigibles", ctx do
     %{next: next} = TeacherFixtures.close_year!(ctx.scope, ctx.year)
     scope = %{ctx.scope | current_academic_year: next}

@@ -93,6 +93,26 @@ defmodule TeacherAssistant.Academics.FeeBalance do
   defp status(_left, paid, due_to_date) when paid >= due_to_date, do: :on_track
   defp status(_left, _paid, _due_to_date), do: :behind
 
+  @doc """
+  A departed student's balance (spec A7): the account closes as it stood on the
+  departure day — what was due then (`due_to_date`, computed on that day) is all that
+  is ever due, all of it due now, and nothing paid beyond it is owed back (no
+  automatic refund).
+  """
+  def close(%{due_to_date: due_then, total_paid: paid} = balance) do
+    total_due = max(due_then, paid)
+    left = total_due - paid
+
+    # Closed: whatever is still owed is due now.
+    %{
+      balance
+      | total_due: total_due,
+        due_to_date: total_due,
+        left: left,
+        status: status(left, paid, total_due)
+    }
+  end
+
   @doc "Recovery figures over students' balances; rates are whole percents (0 with nothing expected)."
   def recovery(balances) do
     expected = sum(balances, :total_due)

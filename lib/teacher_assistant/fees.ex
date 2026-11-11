@@ -867,10 +867,24 @@ defmodule TeacherAssistant.Fees do
     balances(scope, year, enrollments, on_date)
   end
 
-  @doc "Recovery figures for the school and per class (class order)."
+  @doc """
+  Recovery figures for the school and per class (class order). A student who left by
+  `on_date` counts with their account closed on the departure day (spec A7: no
+  automatic refund or arrears): what was due then, and everything they paid.
+  """
   def recovery(%Scope{} = scope, %AcademicYear{} = year, on_date \\ Reference.today()) do
     enrollments = enrollments_of(scope, year)
-    balances = balances(scope, year, enrollments, on_date)
+    departed? = &(&1.left_on && Date.compare(&1.left_on, on_date) != :gt)
+
+    closed = for e <- enrollments, departed?.(e), into: MapSet.new(), do: e.id
+
+    balances =
+      scope
+      |> balances(year, enrollments, &if(departed?.(&1), do: &1.left_on, else: on_date))
+      |> Map.new(fn {id, balance} ->
+        {id, if(MapSet.member?(closed, id), do: FeeBalance.close(balance), else: balance)}
+      end)
+
     by_class = Enum.group_by(enrollments, & &1.class_group_id, &balances[&1.id])
 
     %{
@@ -885,7 +899,8 @@ defmodule TeacherAssistant.Fees do
 
   # --- Balances (shared by setup and payments) ------------------------------------------
 
-  # `%{enrollment_id => FeeBalance.balance/5}` for `enrollments` of `year`, as of `on_date`.
+  # `%{enrollment_id => FeeBalance.balance/5}` for `enrollments` of `year`, as of
+  # `on_date` (a date, or a function giving each enrollment its own).
   @doc false
   # Fees 2 (warnings) reuses the balance computation.
   def balances_for(scope, year, enrollments, on_date),
@@ -914,7 +929,8 @@ defmodule TeacherAssistant.Fees do
           Map.get(adjustments, e.id, %{})
         )
 
-      {e.id, FeeBalance.balance(type_ids, due, Map.get(paid, e.id, %{}), tranches, on_date)}
+      day = if is_function(on_date, 1), do: on_date.(e), else: on_date
+      {e.id, FeeBalance.balance(type_ids, due, Map.get(paid, e.id, %{}), tranches, day)}
     end)
   end
 
