@@ -17,6 +17,9 @@ defmodule TeacherAssistant.Academics.Payment do
       # true` keeps this plain (no automatic `workspace_id` prefix).
       index [:enrollment_id], all_tenants?: true
 
+      # A8: the latest receipts (fees overview, activity).
+      index [:inserted_at]
+
       # Composite-FK target for allocations: attribute multitenancy prefixes this to (workspace_id, id).
       index [:id], unique: true
     end

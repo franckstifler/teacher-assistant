@@ -11,4 +11,11 @@ defmodule TeacherAssistantWeb.EndpointTest do
     conn = get(conn, ~p"/sign-in?request_logger=x")
     refute Map.has_key?(conn.private, :phoenix_request_logger)
   end
+
+  test "the LiveView websocket compresses its frames (A8)" do
+    {_path, _socket, opts} =
+      Enum.find(TeacherAssistantWeb.Endpoint.__sockets__(), &match?({"/live", _, _}, &1))
+
+    assert opts[:websocket][:compress] == true
+  end
 end

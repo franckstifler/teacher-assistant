@@ -27,6 +27,8 @@ defmodule TeacherAssistant.Academics.AttendanceEntry do
     custom_indexes do
       index [:enrollment_id, :date]
       index [:workspace_id, :date]
+      # A8: the school's latest roll calls (operator activity, day views).
+      index [:inserted_at]
       # FK-leading indexes for delete-time FK checks (deleting an Enrollment
       # or a Period must find referencing rows without a workspace_id to
       # scope by) — the tenancy migration replaced these with

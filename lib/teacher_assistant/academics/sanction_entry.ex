@@ -11,6 +11,11 @@ defmodule TeacherAssistant.Academics.SanctionEntry do
     table "sanction_entries"
     repo TeacherAssistant.Repo
 
+    # A8: the latest sanctions (Vie scolaire, the day's view).
+    custom_indexes do
+      index [:inserted_at]
+    end
+
     references do
       reference :enrollment,
         on_delete: :delete,

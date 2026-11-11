@@ -17,7 +17,8 @@ defmodule TeacherAssistantWeb.Endpoint do
   def session_options, do: @session_options
 
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
+    # A8: compressed frames — a marks grid diff is mostly repeated markup.
+    websocket: [compress: true, connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
   # Serve at "/" the static files from "priv/static" directory.

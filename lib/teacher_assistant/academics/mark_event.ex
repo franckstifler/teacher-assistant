@@ -22,6 +22,9 @@ defmodule TeacherAssistant.Academics.MarkEvent do
       # workspace_id); `MarkCorrection` checks whether a correction was applied.
       index [:inserted_at]
       index [:mark_correction_id]
+      # A8: an assessment's or a student's history.
+      index [:assessment_id]
+      index [:student_id]
     end
 
     references do

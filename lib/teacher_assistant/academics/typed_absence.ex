@@ -16,6 +16,13 @@ defmodule TeacherAssistant.Academics.TypedAbsence do
     table "typed_absences"
     repo TeacherAssistant.Repo
 
+    # A8: the register and the bulletin read a séquence's or a trimester's figures
+    # (attribute multitenancy prefixes workspace_id).
+    custom_indexes do
+      index [:sequence_id]
+      index [:term_id]
+    end
+
     references do
       reference :enrollment,
         on_delete: :delete,
