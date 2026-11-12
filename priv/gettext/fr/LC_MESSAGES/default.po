@@ -361,7 +361,7 @@ msgstr "élèves"
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:385
 #: lib/teacher_assistant_web/live/school/fees_live.ex:547
 #: lib/teacher_assistant_web/live/school/register_live.ex:405
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:267
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:269
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:529
 #: lib/teacher_assistant_web/live/school/students_live.ex:356
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1332
@@ -3687,7 +3687,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/day_live.ex:764
 #: lib/teacher_assistant_web/live/school/day_live.ex:796
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:107
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:403
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:417
 #, elixir-autogen, elixir-format
 msgid "À venir"
 msgstr ""
@@ -8619,7 +8619,7 @@ msgstr ""
 
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:94
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:700
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:434
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:448
 #, elixir-autogen, elixir-format
 msgid "Appel fait"
 msgstr ""
@@ -11527,7 +11527,7 @@ msgstr ""
 msgid "A = absent · R = retard"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:414
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:428
 #, elixir-autogen, elixir-format
 msgid "Appel fait dans l'application"
 msgstr ""
@@ -11548,7 +11548,7 @@ msgstr ""
 msgid "Aucune classe"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:379
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:393
 #, elixir-autogen, elixir-format
 msgid "Ces cours ont des absences mais pas « Appel fait » ; ils ne seront pas enregistrés :"
 msgstr ""
@@ -11558,7 +11558,7 @@ msgstr ""
 msgid "Chaque semaine, une feuille d'appel imprimée par classe, saisie par le surveillant. Chaque classe peut aussi le changer dans son cahier d'appel."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:259
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:261
 #, elixir-autogen, elixir-format
 msgid "Cliquez une case : vide → A → R. Cochez « Appel fait » quand le visa y est."
 msgstr ""
@@ -11566,13 +11566,13 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/day_live.ex:806
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:696
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:706
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:443
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:444
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:457
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:458
 #, elixir-autogen, elixir-format
 msgid "Cours non assuré"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:388
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:402
 #, elixir-autogen, elixir-format
 msgid "Enregistrer la semaine"
 msgstr ""
@@ -11604,7 +11604,7 @@ msgid "Feuilles d'appel : toutes saisies"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/register_live.ex:276
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:231
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:233
 #, elixir-autogen, elixir-format
 msgid "Imprimer la feuille"
 msgstr ""
@@ -11617,7 +11617,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/day_live.ex:621
 #: lib/teacher_assistant_web/live/school/day_live.ex:766
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:113
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:453
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:467
 #, elixir-autogen, elixir-format
 msgid "Non assuré"
 msgstr ""
@@ -11627,7 +11627,7 @@ msgstr ""
 msgid "Plus aucune classe sur feuille : les appels non faits dans l'application seront signalés le jour même."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:512
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:526
 #, elixir-autogen, elixir-format
 msgid "Renvoyé"
 msgstr ""
@@ -11638,7 +11638,7 @@ msgstr ""
 msgid "Saisir la feuille"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:237
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:239
 #, elixir-autogen, elixir-format
 msgid "Semaine affichée"
 msgstr ""
@@ -11648,12 +11648,12 @@ msgstr ""
 msgid "Semaine du %{from} au %{to}"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:243
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:245
 #, elixir-autogen, elixir-format
 msgid "Semaine précédente"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:253
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:255
 #, elixir-autogen, elixir-format
 msgid "Semaine suivante"
 msgstr ""
@@ -11672,7 +11672,7 @@ msgstr ""
 msgid "Sur feuille · à saisir"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:416
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:430
 #, elixir-autogen, elixir-format
 msgid "app"
 msgstr ""
@@ -11683,7 +11683,7 @@ msgstr ""
 msgid "sur feuille · à saisir"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:366
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:380
 #, elixir-autogen, elixir-format
 msgid "Sans « Appel fait », ces cours gardent la saisie déjà enregistrée :"
 msgstr ""
@@ -16310,4 +16310,9 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/day_live.ex:777
 #, elixir-autogen, elixir-format
 msgid "à la place de %{subject} · %{teacher}"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:339
+#, elixir-autogen, elixir-format
+msgid "Pas de cours de la classe à cette heure"
 msgstr ""
