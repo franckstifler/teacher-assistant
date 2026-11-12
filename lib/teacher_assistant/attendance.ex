@@ -22,7 +22,9 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.TeachingContext
   alias TeacherAssistant.Academics.TypedAbsence
   alias TeacherAssistant.Academics.TypedAbsences
+  alias TeacherAssistant.Academics.LessonNotHeld
   alias TeacherAssistant.Academics.TimetableSlot
+  alias TeacherAssistant.Discipline
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Scope
 
@@ -1145,6 +1147,67 @@ defmodule TeacherAssistant.Attendance do
     case SchoolCalendar.holiday_on(cal, date) do
       %{label: label} -> {:holiday, label}
       nil -> if SchoolCalendar.lesson_day?(cal, date), do: nil, else: :no_lessons
+    end
+  end
+
+  # --- Roll call outside the timetable (spec 2026-11-12) ------------------------
+
+  @doc """
+  The slot's teacher (or a conduct manager) marks the class's lesson at `vacated` on
+  `date` as held at `held` instead: « non assuré · déplacé à … ». Re-marking updates
+  the motive.
+  """
+  def mark_moved(
+        %Scope{} = scope,
+        %ClassGroup{id: cg_id},
+        %Period{id: vacated},
+        %Date{} = date,
+        %Period{
+          id: held
+        }
+      ) do
+    LessonNotHeld
+    |> Ash.Changeset.for_create(
+      :mark_moved,
+      %{class_group_id: cg_id, period_id: vacated, date: date, moved_to_period_id: held},
+      scope: scope
+    )
+    |> Ash.create()
+  end
+
+  @doc """
+  Removes a « déplacé » marking: a conduct manager any day, the teacher who marked it
+  on that day only (`{:error, :too_late}` afterwards). `:ok` when nothing is marked.
+  """
+  def unmark_moved(
+        %Scope{} = scope,
+        %ClassGroup{id: cg_id},
+        %Period{id: period_id},
+        %Date{} = date
+      ) do
+    marking =
+      LessonNotHeld
+      |> Ash.Query.for_read(
+        :for_classes_range,
+        %{class_group_ids: [cg_id], first: date, last: date},
+        scope: scope
+      )
+      |> Ash.Query.filter(period_id == ^period_id)
+      |> Ash.read_one!()
+
+    cond do
+      marking == nil -> :ok
+      Discipline.can_manage_conduct?(scope) -> destroy_marking(marking, scope)
+      date != Reference.today() -> {:error, :too_late}
+      true -> destroy_marking(marking, scope)
+    end
+  end
+
+  defp destroy_marking(marking, scope) do
+    case Ash.destroy(marking, scope: scope) do
+      :ok -> :ok
+      {:ok, _} -> :ok
+      {:error, error} -> {:error, error}
     end
   end
 
