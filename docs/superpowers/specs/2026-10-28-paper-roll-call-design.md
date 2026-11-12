@@ -181,3 +181,23 @@ treated as late while the sheet is still in the classroom.
   `:missed_roll_calls` with other params.
 - Tests at the usual level (domain, LiveView, print controller), translations FR/EN
   (fill every new fuzzy entry), `mix precommit`.
+
+## Amendment 2026-11-12 — the sheet is the school's week, not the class's timetable
+
+Decided with the user after the first real sheets: the printed sheet and the entry
+screen no longer follow the class's timetable.
+
+- Days: every lesson day of the school calendar (the school's lesson days setting),
+  whether or not the class has a lesson that day. Holidays keep their greyed band.
+- Columns: under each day, one column per lesson period of the school's bell schedule
+  (breaks are not printed); with Wednesday afternoon off, Wednesday stops at noon. The
+  header is the period's hours, « 07:30–08:20 » rotated, the period's name as tooltip.
+  No subject, no teacher: the sheet works whatever the timetable says and whoever took
+  the hour.
+- Entry screen: the same days × periods grid, so the surveillant finds a paper column at
+  the same place. A cell where the class has no timetable lesson is greyed and locked,
+  because a recorded entry needs a subject and teacher behind it. Letting the
+  surveillant pick a subject for such a column (paper's « Autre cours maintenant ») is a
+  later increment.
+- Students, blank rows, the « Visa » row, the week picker and « toutes les classes »
+  are unchanged.
