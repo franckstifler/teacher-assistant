@@ -19,8 +19,12 @@ defmodule TeacherAssistantWeb.RollSheetPrintHTML do
         to: "#{Dates.long(saturday)} #{saturday.year}"
       )
 
+  @doc "« 07:30–08:20 », a column's head on the sheet and the entry screen."
+  def period_hours(%{start_time: from, end_time: to}),
+    do: "#{Calendar.strftime(from, "%H:%M")}–#{Calendar.strftime(to, "%H:%M")}"
+
   # A closed day still takes one column, so its band shows.
-  defp day_span(%{closed: nil, lessons: lessons}), do: max(length(lessons), 1)
+  defp day_span(%{closed: nil, cells: cells}), do: max(length(cells), 1)
   defp day_span(_day), do: 1
 
   # Every row of the body: students, blank rows and the visa row.

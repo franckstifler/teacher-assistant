@@ -54,7 +54,11 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
     assert body =~ "A = absent · R = retard"
     assert body =~ "Visa"
     assert body =~ "Awa"
-    assert body =~ "MATH"
+    # Hours, not subjects, head the columns; every school day prints, lessons or not.
+    refute body =~ "MATH"
+    assert body =~ "07:30–08:20"
+    assert body =~ "Mercredi 17"
+    assert length(String.split(body, "07:30–08:20")) - 1 == 6
     assert body =~ "size: A4 landscape"
     # a phone lays it out (and prints it) at the landscape sheet's width
     assert body =~ ~s(<meta name="viewport" content="width=1123">)
