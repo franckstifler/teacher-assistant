@@ -60,6 +60,33 @@ defmodule TeacherAssistantWeb.School.LessonComponents do
 
   @doc "The roll-call state of a lesson as a small tag (« Appel fait », « En cours »…)."
   attr :status, :atom, required: true
+  # Spec 2026-11-12: a lesson held outside its slot, a slot taken by a colleague, a
+  # slot vacated for another period.
+  attr :moved?, :boolean, default: false
+  attr :covered_by, :string, default: nil
+  attr :moved_to, :string, default: nil
+
+  def status_tag(%{status: :done, moved?: true} = assigns) do
+    ~H"""
+    <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success/15 px-2 py-[3px] text-[0.7rem] font-semibold text-success">
+      <.icon name="hero-arrow-uturn-right-mini" class="size-3.5" /> {gettext("Déplacé")}
+    </span>
+    """
+  end
+
+  def status_tag(%{status: :covered} = assigns) do
+    assigns = assign(assigns, :name, assigns.covered_by || "—")
+
+    ~H"""
+    <.tag tone={:muted}>{gettext("Pris par %{name}", name: @name)}</.tag>
+    """
+  end
+
+  def status_tag(%{status: :not_held, moved_to: time} = assigns) when is_binary(time) do
+    ~H"""
+    <.tag tone={:muted}>{gettext("Non assuré · déplacé à %{time}", time: @moved_to)}</.tag>
+    """
+  end
 
   def status_tag(%{status: :done} = assigns) do
     ~H"""

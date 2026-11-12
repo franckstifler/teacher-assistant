@@ -57,6 +57,31 @@ defmodule TeacherAssistant.Academics.LessonGroupsTest do
     assert Enum.all?(groups, &(&1.hour == 1))
   end
 
+  test "a moved cell groups on its own and keeps the flag; covered sits after not held" do
+    [moved] = LessonGroups.group([lesson(@p4, "6e A", status: :done) |> Map.put(:moved?, true)])
+    assert moved.moved? == true
+    assert moved.status == :done
+
+    [plain] = LessonGroups.group([lesson(@p4, "6e A", status: :done)])
+    assert plain.moved? == false
+
+    [g] =
+      LessonGroups.group([
+        lesson(@p4, "A", course: "c", status: :covered),
+        lesson(@p4, "B", course: "c", status: :upcoming)
+      ])
+
+    assert g.status == :covered
+
+    [g] =
+      LessonGroups.group([
+        lesson(@p4, "A", course: "c", status: :covered),
+        lesson(@p4, "B", course: "c", status: :not_held)
+      ])
+
+    assert g.status == :not_held
+  end
+
   test "slot views without status keep no status" do
     [group] =
       LessonGroups.group([

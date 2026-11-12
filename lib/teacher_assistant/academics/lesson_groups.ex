@@ -14,7 +14,7 @@ defmodule TeacherAssistant.Academics.LessonGroups do
 
   # The lesson's state is its most pressing member's: a roll call left to do in one
   # class keeps the whole lesson « à faire ».
-  @status_order [:in_progress, :missed, :on_paper, :not_held, :upcoming, :done]
+  @status_order [:in_progress, :missed, :on_paper, :not_held, :covered, :upcoming, :done]
 
   @doc """
   The lessons grouped by date, period and course, sorted by date then period: each
@@ -34,7 +34,9 @@ defmodule TeacherAssistant.Academics.LessonGroups do
         date: date,
         period: first.period,
         unit: unit,
-        members: members
+        members: members,
+        # Spec 2026-11-12: a lesson held outside its timetable slot.
+        moved?: Enum.any?(members, &(Map.get(&1, :moved?) == true))
       }
       |> put_status(members)
     end)

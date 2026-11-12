@@ -32,6 +32,13 @@ defmodule TeacherAssistant.Academics.PaperRollCallTest do
     assert PaperRollCall.state(:missed, false, true, ~D[2025-09-15], ~D[2025-09-30]) == :not_held
   end
 
+  test "a covered slot stays covered unless its own roll call or a not-held marking wins" do
+    assert PaperRollCall.state(:covered, true, false, ~D[2025-09-15], ~D[2025-09-22]) == :covered
+    assert PaperRollCall.state(:covered, false, false, ~D[2025-09-15], ~D[2025-09-15]) == :covered
+    assert PaperRollCall.state(:covered, true, true, ~D[2025-09-15], ~D[2025-09-16]) == :not_held
+    assert PaperRollCall.state(:done, true, true, ~D[2025-09-15], ~D[2025-09-16]) == :done
+  end
+
   test "upcoming and in-progress lessons keep their state" do
     assert PaperRollCall.state(:upcoming, true, false, ~D[2025-09-15], ~D[2025-09-15]) ==
              :upcoming

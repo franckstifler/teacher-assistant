@@ -39,11 +39,13 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   def school_day(%Scope{} = scope, %Date{} = date, %NaiveDateTime{} = now) do
     periods = lesson_periods(scope)
     slots = day_slots(scope, date, nil)
-    marks = lesson_marks(scope, slots, date, date)
+    marks = lesson_marks(scope, slots, date, date, entries: held_entries(scope, date, :all))
     cells = Enum.map(slots, &cell(&1, date, now, marks))
 
+    # Spec 2026-11-12: a lesson held outside its slot sits in the grid at its real
+    # period; after the slot cells, so it replaces a « pris par » cell of a swap.
     rows =
-      cells
+      (cells ++ moved_cells(slots, date, marks))
       |> Enum.group_by(& &1.class_group.id)
       |> Enum.map(fn {_id, [first | _] = class_cells} ->
         %{class_group: first.class_group, cells: Map.new(class_cells, &{&1.period.id, &1})}
@@ -146,8 +148,16 @@ defmodule TeacherAssistant.Academics.SchoolLife do
   @doc "The user's slots on `date`, sorted by period, with the same statuses as `school_day/3`."
   def teacher_day(%Scope{} = scope, user, %Date{} = date, %NaiveDateTime{} = now) do
     slots = day_slots(scope, date, user.id)
-    marks = lesson_marks(scope, slots, date, date)
-    slots |> Enum.map(&cell(&1, date, now, marks)) |> sort_cells()
+
+    marks =
+      lesson_marks(scope, slots, date, date,
+        entries: held_entries(scope, date, {:teacher, user.id})
+      )
+
+    moved =
+      slots |> moved_cells(date, marks) |> Enum.filter(&(&1.teacher && &1.teacher.id == user.id))
+
+    (Enum.map(slots, &cell(&1, date, now, marks)) ++ moved) |> sort_cells()
   end
 
   @doc """
@@ -201,7 +211,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       |> slots(dates |> Enum.map(&weekday/1) |> Enum.uniq(), nil, cg.id)
       |> Enum.filter(&SchoolCalendar.open_cell?(cal, &1.day, &1.period))
 
-    marks = lesson_marks(scope, slots, first, last, cg.id)
+    marks = lesson_marks(scope, slots, first, last, class_group_id: cg.id)
     slots_by_day = Enum.group_by(slots, & &1.day)
 
     for(
@@ -210,6 +220,14 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       do: cell(slot, date, now, marks)
     )
     |> sort_cells()
+  end
+
+  # Spec 2026-11-12: lessons held outside their slot are read on lesson days only —
+  # a day off expects no roll call, moved or not (spec J1).
+  defp held_entries(scope, date, entries) do
+    if SchoolCalendar.lesson_day?(Attendance.school_calendar(scope), date),
+      do: entries,
+      else: :slot_classes
   end
 
   # Spec J1: no roll call is expected on a day off, nor in a closed cell.
@@ -230,17 +248,27 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     finish = NaiveDateTime.new!(date, slot.period.end_time)
     key = {slot.class_group_id, slot.period_id, date}
 
-    {status, absent} =
+    # Spec 2026-11-12: a roll call under the slot's own context (or none, the
+    # surveillant's) is the slot's; under another context, the slot is « pris par ».
+    {status, absent, covered_by} =
       case Map.fetch(done, key) do
-        {:ok, absent} -> {:done, absent}
-        :error -> {status(start, finish, now), 0}
+        {:ok, %{context_id: cid} = roll} when is_nil(cid) or cid == slot.teaching_context_id ->
+          {:done, roll.absent, nil}
+
+        {:ok, roll} ->
+          {:covered, 0, %{teacher: roll.teacher, subject: roll.subject}}
+
+        :error ->
+          {status(start, finish, now), 0, nil}
       end
+
+    marking = Map.get(not_held, key)
 
     status =
       PaperRollCall.state(
         status,
         slot.class_group.paper_roll_call,
-        MapSet.member?(not_held, key),
+        marking != nil,
         date,
         NaiveDateTime.to_date(now)
       )
@@ -249,6 +277,7 @@ defmodule TeacherAssistant.Academics.SchoolLife do
 
     %{
       slot_id: slot.id,
+      moved?: false,
       date: date,
       period: slot.period,
       class_group: slot.class_group,
@@ -258,7 +287,50 @@ defmodule TeacherAssistant.Academics.SchoolLife do
       subject: tc && subject_label(tc),
       code: tc && EntryProgress.column_code(tc.catalog_subject, subject_label(tc)),
       status: status,
-      absent: absent
+      absent: absent,
+      covered_by: covered_by,
+      moved_to: marking && marking.moved_to,
+      marked_by_user_id: marking && marking.marked_by_user_id
+    }
+  end
+
+  # Spec 2026-11-12: one cell per roll call of `date` whose context is not the
+  # class's slot's at that period — the lesson as it was really held. `covers` names
+  # the slot it displaced, when there is one.
+  defp moved_cells(slots, date, %{done: done}) do
+    slots_by_key = Map.new(slots, &{{&1.class_group_id, &1.period_id, date}, &1})
+
+    Enum.flat_map(done, fn
+      {{_cg_id, _period_id, ^date} = key,
+       %{context: %{} = tc, period: %{}, class_group: %{}} = roll} ->
+        case Map.get(slots_by_key, key) do
+          %{teaching_context_id: id} when id == tc.id -> []
+          slot -> [moved_cell(roll, tc, slot && slot.teaching_context, date)]
+        end
+
+      _other ->
+        []
+    end)
+  end
+
+  defp moved_cell(roll, tc, covering, date) do
+    %{
+      slot_id: nil,
+      moved?: true,
+      date: date,
+      period: roll.period,
+      class_group: roll.class_group,
+      teacher: tc.teacher,
+      teaching_context_id: tc.id,
+      combined_course_id: tc.combined_course_id,
+      subject: subject_label(tc),
+      code: EntryProgress.column_code(tc.catalog_subject, subject_label(tc)),
+      status: :done,
+      absent: roll.absent,
+      covered_by: nil,
+      covers: covering && %{teacher: covering.teacher, subject: subject_label(covering)},
+      moved_to: nil,
+      marked_by_user_id: nil
     }
   end
 
@@ -504,32 +576,44 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     |> Enum.filter(&(&1.period.kind == :lesson))
   end
 
-  # `done`: {class_group_id, period_id, date} => number of :absent entries, for roll
-  # calls done; `not_held`: the keys marked « cours non assuré ».
-  # With `class_group_id` (one class over a term or a year): a lighter read of the
-  # entries, without their enrollments.
-  defp lesson_marks(scope, slots, first, last, class_group_id \\ nil)
+  # `done`: {class_group_id, period_id, date} => the roll call done there — its
+  # `context_id` (nil for a conduct manager's), `absent` count, and for the moved
+  # cells its `context`, `teacher`, `subject`, `period` and `class_group`;
+  # `not_held`: {key => %{moved_to: %Period{} | nil, marked_by_user_id}} for the
+  # lessons marked « cours non assuré ». Options: `class_group_id:` (one class over a
+  # term or a year: a lighter read of the entries), `entries:` which roll calls to
+  # read beyond the slots' classes — `:all` (the school's day) or `{:teacher, id}`
+  # (the teacher's own, wherever they were held); default the slots' classes only.
+  defp lesson_marks(scope, slots, first, last, opts \\ [])
 
-  defp lesson_marks(_scope, [], _first, _last, _cg_id),
-    do: %{done: %{}, not_held: MapSet.new()}
-
-  defp lesson_marks(scope, slots, first, last, class_group_id) do
+  defp lesson_marks(scope, slots, first, last, opts) do
     class_ids = slots |> Enum.map(& &1.class_group_id) |> Enum.uniq()
+    entries = Keyword.get(opts, :entries, :slot_classes)
 
     not_held =
-      LessonNotHeld
-      |> Ash.Query.for_read(
-        :for_classes_range,
-        %{class_group_ids: class_ids, first: first, last: last},
-        scope: scope
-      )
-      |> Ash.read!()
-      |> MapSet.new(&{&1.class_group_id, &1.period_id, &1.date})
+      if class_ids == [] do
+        %{}
+      else
+        LessonNotHeld
+        |> Ash.Query.for_read(
+          :for_classes_range,
+          %{class_group_ids: class_ids, first: first, last: last},
+          scope: scope
+        )
+        |> Ash.Query.load(:moved_to_period)
+        |> Ash.read!()
+        |> Map.new(
+          &{{&1.class_group_id, &1.period_id, &1.date},
+           %{moved_to: &1.moved_to_period, marked_by_user_id: &1.marked_by_user_id}}
+        )
+      end
 
     done =
-      if class_group_id,
-        do: class_done_roll_calls(scope, class_group_id, first, last),
-        else: done_roll_calls(scope, slots, first, last)
+      cond do
+        opts[:class_group_id] -> class_done_roll_calls(scope, opts[:class_group_id], first, last)
+        class_ids == [] and entries == :slot_classes -> %{}
+        true -> done_roll_calls(scope, class_ids, first, last, entries)
+      end
 
     %{done: done, not_held: not_held}
   end
@@ -539,23 +623,60 @@ defmodule TeacherAssistant.Academics.SchoolLife do
     |> Ash.Query.filter(
       date >= ^first and date <= ^last and enrollment.class_group_id == ^class_group_id
     )
-    |> Ash.Query.select([:period_id, :date, :status])
+    |> Ash.Query.select([:period_id, :date, :status, :teaching_context_id])
     |> Ash.read!(scope: scope)
     |> Enum.group_by(&{class_group_id, &1.period_id, &1.date})
-    |> Map.new(fn {key, entries} -> {key, Enum.count(entries, &(&1.status == :absent))} end)
+    |> Map.new(fn {key, entries} -> {key, roll_of(entries, nil)} end)
   end
 
-  defp done_roll_calls(scope, slots, first, last) do
-    class_ids = slots |> Enum.map(& &1.class_group_id) |> Enum.uniq()
-
+  defp done_roll_calls(scope, class_ids, first, last, entries) do
     AttendanceEntry
-    |> Ash.Query.filter(
-      date >= ^first and date <= ^last and enrollment.class_group_id in ^class_ids
-    )
-    |> Ash.Query.load(:enrollment)
+    |> Ash.Query.filter(date >= ^first and date <= ^last)
+    |> then(fn query ->
+      case entries do
+        :all ->
+          query
+
+        {:teacher, id} ->
+          Ash.Query.filter(
+            query,
+            enrollment.class_group_id in ^class_ids or teaching_context.teacher_user_id == ^id
+          )
+
+        :slot_classes ->
+          Ash.Query.filter(query, enrollment.class_group_id in ^class_ids)
+      end
+    end)
+    |> Ash.Query.load([
+      :period,
+      enrollment: [:class_group],
+      teaching_context: [:teacher, :catalog_subject]
+    ])
     |> Ash.read!(scope: scope)
     |> Enum.group_by(&{&1.enrollment.class_group_id, &1.period_id, &1.date})
-    |> Map.new(fn {key, entries} -> {key, Enum.count(entries, &(&1.status == :absent))} end)
+    |> Map.new(fn {key, [first_entry | _] = entries} ->
+      {key,
+       roll_of(entries, %{
+         period: first_entry.period,
+         class_group: first_entry.enrollment.class_group
+       })}
+    end)
+  end
+
+  # One roll call's facts from its entries: they share one context (written together).
+  defp roll_of(entries, place) do
+    tc = entries |> Enum.map(&Map.get(&1, :teaching_context)) |> Enum.find(&match?(%{id: _}, &1))
+    context_id = (tc && tc.id) || entries |> Enum.map(& &1.teaching_context_id) |> Enum.find(& &1)
+
+    %{
+      context_id: context_id,
+      context: tc,
+      teacher: tc && tc.teacher,
+      subject: tc && subject_label(tc),
+      absent: Enum.count(entries, &(&1.status == :absent)),
+      period: place && place.period,
+      class_group: place && place.class_group
+    }
   end
 
   defp weekday(%Date{} = date), do: Enum.at(@days, Date.day_of_week(date) - 1)

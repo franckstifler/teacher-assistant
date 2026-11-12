@@ -383,6 +383,165 @@ defmodule TeacherAssistant.Academics.SchoolLifeTest do
     end
   end
 
+  describe "roll call outside the timetable (spec 2026-11-12)" do
+    # U (Anglais) has the Monday slot at p3; V has an assignment on 6e A and no slot;
+    # S manages conduct. The head's slots are p1 and p2 (setup).
+    setup %{scope: scope, cg: cg} do
+      [p1, p2, p3, p4 | _] =
+        scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+      year = scope.current_academic_year
+      scope_u = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+      scope_v = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+      scope_s = TeacherFixtures.member_scope_fixture(scope, %{roles: [:discipline_master]})
+
+      {:ok, tc_u} =
+        Curriculum.assign_teacher(scope, cg, scope_u.current_user, %{subject: "Anglais"})
+
+      {:ok, tc_v} = Curriculum.assign_teacher(scope, cg, scope_v.current_user, %{subject: "SVT"})
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :monday,
+          period_id: p3.id,
+          teaching_context_id: tc_u.id
+        })
+
+      %{
+        scope_u: %{scope_u | current_academic_year: year},
+        scope_v: %{scope_v | current_academic_year: year},
+        scope_s: %{scope_s | current_academic_year: year},
+        tc_u: tc_u,
+        tc_v: tc_v,
+        p3: p3,
+        p4: p4,
+        p1: p1,
+        p2: p2
+      }
+    end
+
+    defp cell_of(day, cg, period),
+      do: Enum.find(day.rows, &(&1.class_group.id == cg.id)).cells[period.id]
+
+    test "a roll call under another context covers the slot and adds a moved cell", ctx do
+      # U teaches 6e A at p2, the head's slot.
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_u, ctx.cg, ctx.p2, ctx.tc_u, @monday, [
+          {ctx.e.id, :absent}
+        ])
+
+      now = at(@monday, ~T[09:00:00])
+      day = Attendance.school_day(ctx.scope, @monday, now)
+      held = cell_of(day, ctx.cg, ctx.p2)
+      assert %{status: :done, moved?: true, absent: 1, subject: "Anglais", slot_id: nil} = held
+      assert held.teacher.id == ctx.scope_u.current_user.id
+      assert held.covers.teacher.id == ctx.head.id
+      assert held.covers.subject == "Maths"
+
+      [_p1, p2_cell] = Attendance.teacher_day(ctx.scope, ctx.head, @monday, now)
+      assert %{status: :covered, covered_by: %{subject: "Anglais"}} = p2_cell
+      assert p2_cell.covered_by.teacher.id == ctx.scope_u.current_user.id
+
+      assert [%{moved?: true, status: :done, period: %{id: p2}}] =
+               Attendance.teacher_day(ctx.scope_u, ctx.scope_u.current_user, @monday, now)
+               |> Enum.reject(&(&1.period.id == ctx.p3.id))
+
+      assert p2 == ctx.p2.id
+    end
+
+    test "the swap: both teachers end up done, both vacated slots read déplacé, counts 2/0",
+         ctx do
+      head_scope = ctx.scope
+      # The head teaches 6e A at p3 (U's slot) instead of p1; U teaches at p1 instead of p3.
+      {:ok, _} =
+        Attendance.record_period(head_scope, ctx.cg, ctx.p3, ctx.tc, @monday, [
+          {ctx.e.id, :present}
+        ])
+
+      {:ok, _} = Attendance.mark_moved(head_scope, ctx.cg, ctx.p1, @monday, ctx.p3)
+
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_u, ctx.cg, ctx.p1, ctx.tc_u, @monday, [
+          {ctx.e.id, :present}
+        ])
+
+      {:ok, _} = Attendance.mark_moved(ctx.scope_u, ctx.cg, ctx.p3, @monday, ctx.p1)
+
+      now = at(@monday, ~T[09:00:00])
+      day = Attendance.school_day(ctx.scope, @monday, now)
+      assert %{done: 2, missed: [], expected: 2} = Attendance.roll_call_counts(day)
+      assert %{moved?: true, subject: "Anglais"} = cell_of(day, ctx.cg, ctx.p1)
+      assert %{moved?: true, subject: "Maths"} = cell_of(day, ctx.cg, ctx.p3)
+
+      head_day = Attendance.teacher_day(ctx.scope, ctx.head, @monday, now)
+
+      assert %{status: :not_held, moved_to: %{id: p3}} =
+               Enum.find(head_day, &(&1.period.id == ctx.p1.id and &1.slot_id))
+
+      assert p3 == ctx.p3.id
+      assert %{status: :done, moved?: true} = Enum.find(head_day, &(&1.period.id == ctx.p3.id))
+
+      u_day = Attendance.teacher_day(ctx.scope_u, ctx.scope_u.current_user, @monday, now)
+
+      assert %{status: :not_held, moved_to: %{id: p1}} =
+               Enum.find(u_day, &(&1.period.id == ctx.p3.id and &1.slot_id))
+
+      assert p1 == ctx.p1.id
+    end
+
+    test "a covered slot is neither missed this week nor in the surveillant's missed list", ctx do
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_u, ctx.cg, ctx.p2, ctx.tc_u, @monday, [
+          {ctx.e.id, :present}
+        ])
+
+      tuesday = Date.add(@monday, 1)
+
+      missed =
+        Attendance.teacher_missed_this_week(
+          ctx.scope,
+          ctx.head,
+          tuesday,
+          at(tuesday, ~T[09:00:00])
+        )
+
+      assert Enum.map(missed, & &1.period.id) == [ctx.p1.id]
+
+      day = Attendance.school_day(ctx.scope, @monday, at(@monday, ~T[12:00:00]))
+      assert Enum.map(day.missed, & &1.period.id) == [ctx.p1.id, ctx.p3.id]
+    end
+
+    test "a teacher with no slot sees only their moved cell", ctx do
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_v, ctx.cg, ctx.p4, ctx.tc_v, @monday, [
+          {ctx.e.id, :present}
+        ])
+
+      assert [%{moved?: true, status: :done, subject: "SVT", covers: nil}] =
+               Attendance.teacher_day(
+                 ctx.scope_v,
+                 ctx.scope_v.current_user,
+                 @monday,
+                 at(@monday, ~T[12:00:00])
+               )
+
+      day = Attendance.school_day(ctx.scope, @monday, at(@monday, ~T[12:00:00]))
+      assert %{moved?: true} = cell_of(day, ctx.cg, ctx.p4)
+    end
+
+    test "a conduct manager's roll call (no context) is the slot's own done", ctx do
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_s, ctx.cg, ctx.p2, nil, @monday, [{ctx.e.id, :present}])
+
+      now = at(@monday, ~T[09:00:00])
+
+      assert %{status: :done, moved?: false} =
+               cell_of(Attendance.school_day(ctx.scope, @monday, now), ctx.cg, ctx.p2)
+
+      assert [_, %{status: :done}] = Attendance.teacher_day(ctx.scope, ctx.head, @monday, now)
+    end
+  end
+
   describe "paper roll call (spec 2026-10-28)" do
     setup %{scope: scope, cg: cg} do
       {:ok, cg} = Enrollment.set_paper_roll_call(scope, cg, true)
