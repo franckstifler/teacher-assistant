@@ -125,7 +125,9 @@ defmodule TeacherAssistant.Academics.AttendanceCombinedTest do
       assert entry_maco.teaching_context_id == ctx.tc_maco.id
 
       assert entry_menu.status == :absent
-      assert entry_menu.teaching_context_id == nil
+      # Spec 2026-11-12: a member class with no slot of the course at that period is
+      # written under the course's own member context, not without one.
+      assert entry_menu.teaching_context_id == ctx.tc_menu.id
     end
 
     test "an invalid status for one class rolls back the whole combined session (MACO's valid mark included)",

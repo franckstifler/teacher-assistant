@@ -314,12 +314,13 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     test "an assigned teacher can record the roll on a period with no slot", %{
       school: school,
       cg: cg,
-      date: date,
       other: other,
       free_period: free_period,
       enrollment: enrollment,
       scope: scope
     } do
+      # Spec 2026-11-12: a lesson outside the timetable is recorded within its week.
+      date = ~D[2025-09-15]
       {:ok, tc_other} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
 
       {:ok, view, _html} = live(conn_for(school, other), att_path(cg, free_period, date))
@@ -355,6 +356,70 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       # `period` on `date` is the head's Maths slot (placed in the top-level setup).
       assert {:error, {:live_redirect, %{to: "/school"}}} =
                live(conn_for(school, other), att_path(cg, period, date))
+    end
+
+    test "the slot owner's open is refused when a colleague's entries hold the key; own entries reopen",
+         %{
+           school: school,
+           cg: cg,
+           free_period: free_period,
+           other: other,
+           scope: scope,
+           enrollment: enrollment
+         } do
+      # Today (the week's Monday): two plain teachers, the slot at `free_period` is
+      # T's, `other` (Anglais) held it.
+      date = ~D[2025-09-15]
+      t = TeacherAssistant.TeacherFixtures.user_fixture()
+      {:ok, inv} = Accounts.invite_member(scope, %{email: to_string(t.email), roles: [:teacher]})
+      {:ok, _} = Accounts.accept_invitation(%TeacherAssistant.Scope{current_user: t}, inv.token)
+      {:ok, tc_t} = Curriculum.assign_teacher(scope, cg, t, %{subject: "SVT"})
+
+      {:ok, _} =
+        TeacherAssistant.Timetabling.place_slot(scope, cg, %{
+          day: :monday,
+          period_id: free_period.id,
+          teaching_context_id: tc_t.id
+        })
+
+      {:ok, tc_other} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
+
+      other_scope = %{
+        school_scope(other, school)
+        | current_academic_year: scope.current_academic_year
+      }
+
+      {:ok, _} =
+        Attendance.record_period(other_scope, cg, free_period, tc_other, date, [
+          {enrollment.id, :present}
+        ])
+
+      assert {:error, {:live_redirect, %{to: "/school", flash: flash}}} =
+               live(conn_for(school, t), att_path(cg, free_period, date))
+
+      assert flash["error"] =~ "Un appel a déjà été fait"
+      assert flash["error"] =~ "Anglais"
+
+      # `other` reopens their own entries.
+      {:ok, view, _} = live(conn_for(school, other), att_path(cg, free_period, date))
+      assert has_element?(view, "#class-attendance")
+    end
+
+    test "a teacher's roll call outside the timetable is refused before the current week", %{
+      school: school,
+      cg: cg,
+      date: date,
+      other: other,
+      free_period: free_period,
+      scope: scope
+    } do
+      {:ok, _} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
+
+      # `date` is the Monday before the test clock's week.
+      assert {:error, {:live_redirect, %{to: "/school", flash: flash}}} =
+               live(conn_for(school, other), att_path(cg, free_period, date))
+
+      assert flash["error"] =~ "plus modifiable"
     end
 
     test "a member with no assignment and no slot is redirected", %{

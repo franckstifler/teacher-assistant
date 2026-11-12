@@ -22,32 +22,173 @@ defmodule TeacherAssistantWeb.School.RollCall do
   `{:error, :not_found}` or `{:error, :forbidden}` (neither the course's teacher
   nor a conduct manager).
   """
-  def open(%Scope{} = scope, cg_id, period_id, %Date{} = date, opts \\ []) do
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id),
+  def open(%Scope{} = scope, cg_or_course, period_id, %Date{} = date, opts \\ []) do
+    with {:ok, cg, course} <- fetch_unit(scope, cg_or_course),
          {:ok, period} <- fetch_period(scope, period_id) do
       slot = slot(scope, cg, date, period.id)
-      teaching_context = resolve_teaching_context(scope, cg, slot)
+      conduct? = Discipline.can_manage_conduct?(scope)
 
-      if authorized?(scope, teaching_context) do
-        roll = %{
-          cg: cg,
-          period: period,
-          date: date,
-          teaching_context: teaching_context,
-          course: combined_course_for(scope, teaching_context),
-          # A2: only a page that shows the « aussi pour la 2e heure » box may
-          # write the following hours (Ma journée); the roll-call page never does.
-          offer_following?: Keyword.get(opts, :following, false)
-        }
+      # Spec 2026-11-12: `context: :mine` resolves the actor's own assignment (or
+      # course) whatever the slot holds; a lesson is moved when the slot is not its.
+      # My own earlier roll call at this period reopens under its context (a
+      # reopened moved lesson), whatever the slot says.
+      teaching_context =
+        case {Keyword.get(opts, :context), Attendance.held_context(scope, cg, period, date)} do
+          {_, %{own?: true, context: tc}} -> tc
+          {:mine, _} -> my_context(scope, cg, course)
+          _ -> resolve_teaching_context(scope, cg, slot)
+        end
 
-        {:ok, scope |> reload(roll) |> put_adjacent(scope)}
-      else
-        {:error, :forbidden}
+      course = course || combined_course_for(scope, teaching_context)
+
+      moved? =
+        teaching_context != nil and
+          (slot == nil or slot.teaching_context_id != teaching_context.id)
+
+      held = held_by_other(scope, cg, course, period, date)
+
+      cond do
+        not authorized?(scope, teaching_context) ->
+          {:error, :forbidden}
+
+        held != nil and not conduct? ->
+          {:error, {:held_by, Map.merge(held, %{class: cg.label, time: hm(period.start_time)})}}
+
+        # The date rule binds teachers; a conduct manager corrects any day.
+        moved? and not conduct? and too_early?(period, date) ->
+          {:error, :not_started}
+
+        moved? and not conduct? and too_old?(date) ->
+          {:error, :too_old}
+
+        true ->
+          # A conduct manager correcting a colleague's roll call keeps its context.
+          teaching_context = if held, do: held.context, else: teaching_context
+
+          roll = %{
+            cg: cg,
+            period: period,
+            date: date,
+            teaching_context: teaching_context,
+            course: course,
+            moved?: moved?,
+            # A2: only a page that shows the « aussi pour la 2e heure » box may
+            # write the following hours (Ma journée); a moved lesson has no 2e heure.
+            offer_following?: Keyword.get(opts, :following, false) and not moved?
+          }
+
+          {:ok, scope |> reload(roll) |> put_adjacent(scope) |> put_moved_from(scope)}
       end
     else
       _ -> {:error, :not_found}
     end
   end
+
+  @doc "« À la place de »: `period_id` (one of `roll.moved_from_options`) or `\"\"` for none."
+  def set_moved_from(roll, ""), do: Map.put(roll, :moved_from, nil)
+
+  def set_moved_from(roll, period_id),
+    do:
+      Map.put(
+        roll,
+        :moved_from,
+        Enum.find_value(roll.moved_from_options, &(&1.period.id == period_id && &1.period))
+      )
+
+  @doc "The sentence for an `open/5` or `record/2` refusal (spec 2026-11-12)."
+  def error_message({:held_by, who}),
+    do:
+      gettext("Un appel a déjà été fait pour %{class} à %{time} (%{teacher}, %{subject}).",
+        class: who.class,
+        time: who.time,
+        teacher: TeacherAssistant.Accounts.User.display_name(who.teacher),
+        subject: who.subject
+      )
+
+  def error_message(:not_started), do: gettext("Ce créneau n'a pas encore commencé.")
+
+  def error_message(:too_old),
+    do: gettext("Cette journée n'est plus modifiable depuis le téléphone.")
+
+  # A course param (`"course:<id>"`) opens the roll call of the course's first member
+  # class; a class id, that class.
+  defp fetch_unit(scope, "course:" <> id) do
+    with {:ok, %CombinedCourse{} = course} <- Curriculum.get_course(scope, id),
+         [first | _] <- Curriculum.contexts_of_course!(course.id, scope: scope),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, first.class_group_id) do
+      {:ok, cg, course}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp fetch_unit(scope, cg_id) do
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id), do: {:ok, cg, nil}
+  end
+
+  defp my_context(scope, cg, %CombinedCourse{} = course),
+    do: Enum.find(course_contexts(scope, course), &(&1.class_group_id == cg.id))
+
+  defp my_context(scope, cg, nil), do: resolve_teaching_context(scope, cg, nil)
+
+  defp course_contexts(scope, %CombinedCourse{id: id}),
+    do: Curriculum.contexts_of_course!(id, scope: scope)
+
+  defp held_by_other(scope, cg, nil, period, date),
+    do: Attendance.held_by_other_context(scope, cg, period, date)
+
+  defp held_by_other(scope, _cg, %CombinedCourse{} = course, period, date) do
+    scope
+    |> course_contexts(course)
+    |> Enum.find_value(fn tc ->
+      case Enrollment.fetch_owned_class_group(scope, tc.class_group_id) do
+        {:ok, cg} -> Attendance.held_by_other_context(scope, cg, period, date)
+        _ -> nil
+      end
+    end)
+  end
+
+  # Spec 2026-11-12: today, a moved roll call waits for the period to start; an
+  # earlier day of the current week is open at any period; nothing before Monday.
+  defp too_early?(period, date) do
+    today = TeacherAssistant.Academics.Reference.today()
+
+    case Date.compare(date, today) do
+      :gt ->
+        true
+
+      :eq ->
+        Time.compare(
+          period.start_time,
+          NaiveDateTime.to_time(TeacherAssistant.Academics.Reference.now())
+        ) == :gt
+
+      :lt ->
+        false
+    end
+  end
+
+  defp too_old?(date),
+    do:
+      Date.compare(date, Date.beginning_of_week(TeacherAssistant.Academics.Reference.today())) ==
+        :lt
+
+  defp put_moved_from(%{moved?: false} = roll, _scope),
+    do: Map.merge(roll, %{moved_from_options: [], moved_from: nil})
+
+  defp put_moved_from(roll, scope) do
+    options = Attendance.own_lessons_for_moved_from(scope, unit(roll), roll.date)
+
+    Map.merge(roll, %{
+      moved_from_options: options,
+      moved_from: List.first(options) && hd(options).period
+    })
+  end
+
+  defp unit(%{course: %CombinedCourse{} = course}), do: course
+  defp unit(%{cg: cg, teaching_context: tc}), do: {cg, tc}
+
+  defp hm(time), do: Calendar.strftime(time, "%H:%M")
 
   @doc "Sets one student's status (`\"present\" | \"absent\" | \"late\"`); unknown ids or statuses are ignored."
   def set(roll, enrollment_id, status) do
@@ -126,16 +267,29 @@ defmodule TeacherAssistantWeb.School.RollCall do
             {id, if(status == :late, do: :present, else: status), nil}
           end)
 
-        case write_all(scope, roll, marks, following, following_marks) do
+        result =
+          if roll[:moved?],
+            do:
+              Attendance.record_moved_period(scope, unit(roll), roll.period, roll.date, marks,
+                moved_from: roll[:moved_from]
+              ),
+            else: write_all(scope, roll, marks, following, following_marks)
+
+        case result do
           {:ok, _count} ->
             {:ok,
              scope
              |> reload(roll)
              |> put_adjacent(scope)
+             |> put_moved_from(scope)
              |> Map.put(:saved_periods, 1 + length(following))}
 
           {:error, %Ash.Error.Forbidden{}} ->
             {:error, :forbidden}
+
+          {:error, {:held_by, who}} ->
+            {:error,
+             {:held_by, Map.merge(who, %{class: roll.cg.label, time: hm(roll.period.start_time)})}}
 
           {:error, _reason} ->
             {:error, :failed}
@@ -198,6 +352,9 @@ defmodule TeacherAssistantWeb.School.RollCall do
   # `prefilled_from`: the period right before, when its roll is taken and this one is
   # not — the roll then starts from it. `record_following`: the « aussi pour la 2e
   # heure » box, on by default.
+  defp put_adjacent(%{moved?: true} = roll, _scope),
+    do: Map.merge(roll, %{following: [], prefilled_from: nil, record_following: false})
+
   defp put_adjacent(roll, scope) do
     adjacent =
       Enum.map(

@@ -78,6 +78,181 @@ defmodule TeacherAssistant.Academics.AttendanceTest do
     }
   end
 
+  describe "roll call outside the timetable (spec 2026-11-12)" do
+    # U (Anglais) owns the Monday slot at `other_period`; S manages conduct.
+    setup %{scope: scope, cg: cg, cg_other: cg_other, year: year, other_period: other_period} do
+      scope = %{scope | current_academic_year: year}
+      scope_u = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+      scope_s = TeacherFixtures.member_scope_fixture(scope, %{roles: [:discipline_master]})
+
+      {:ok, tc_u} =
+        Curriculum.assign_teacher(scope, cg, scope_u.current_user, %{subject: "Anglais"})
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :monday,
+          period_id: other_period.id,
+          teaching_context_id: tc_u.id
+        })
+
+      third =
+        scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)) |> Enum.at(2)
+
+      # T: a plain teacher (no conduct rights) with an assignment on 6e A and no slot.
+      scope_t = TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+      {:ok, tc_t} = Curriculum.assign_teacher(scope, cg, scope_t.current_user, %{subject: "SVT"})
+
+      %{
+        scope: scope,
+        scope_u: %{scope_u | current_academic_year: year},
+        scope_s: %{scope_s | current_academic_year: year},
+        scope_t: %{scope_t | current_academic_year: year},
+        tc_u: tc_u,
+        tc_t: tc_t,
+        third: third,
+        cg_other: cg_other
+      }
+    end
+
+    @monday ~D[2025-09-15]
+
+    defp entries_at(scope, cg, period, date) do
+      AttendanceEntry
+      |> Ash.Query.filter(
+        enrollment.class_group_id == ^cg.id and period_id == ^period.id and date == ^date
+      )
+      |> Ash.read!(scope: scope, authorize?: false)
+    end
+
+    test "record_moved_period writes under my context at a colleague's period and marks my vacated slot",
+         ctx do
+      assert {:ok, 2} =
+               Attendance.record_moved_period(
+                 ctx.scope,
+                 {ctx.cg, ctx.tc},
+                 ctx.other_period,
+                 @monday,
+                 [{ctx.enrollment1.id, :absent}, {ctx.enrollment2.id, :present}],
+                 moved_from: ctx.period
+               )
+
+      assert Enum.all?(
+               entries_at(ctx.scope, ctx.cg, ctx.other_period, @monday),
+               &(&1.teaching_context_id == ctx.tc.id)
+             )
+
+      [marking] =
+        TeacherAssistant.Academics.LessonNotHeld
+        |> Ash.Query.filter(class_group_id == ^ctx.cg.id and date == ^@monday)
+        |> Ash.read!(scope: ctx.scope)
+
+      assert {marking.period_id, marking.moved_to_period_id} ==
+               {ctx.period.id, ctx.other_period.id}
+    end
+
+    test "a refused marking rolls the entries back", ctx do
+      # `other_period` is U's slot: T may not mark it.
+      assert {:error, _} =
+               Attendance.record_moved_period(
+                 ctx.scope_t,
+                 {ctx.cg, ctx.tc_t},
+                 ctx.third,
+                 @monday,
+                 [{ctx.enrollment1.id, :present}],
+                 moved_from: ctx.other_period
+               )
+
+      assert entries_at(ctx.scope, ctx.cg, ctx.third, @monday) == []
+    end
+
+    test "a key held by another context is refused, not for a conduct manager", ctx do
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_u, ctx.cg, ctx.period, ctx.tc_u, @monday, [
+          {ctx.enrollment1.id, :present}
+        ])
+
+      assert %{subject: "Anglais", teacher: %{id: u_id}} =
+               Attendance.held_by_other_context(ctx.scope_t, ctx.cg, ctx.period, @monday)
+
+      assert u_id == ctx.scope_u.current_user.id
+      assert Attendance.held_by_other_context(ctx.scope_u, ctx.cg, ctx.period, @monday) == nil
+
+      assert {:error, {:held_by, %{subject: "Anglais"}}} =
+               Attendance.record_moved_period(
+                 ctx.scope_t,
+                 {ctx.cg, ctx.tc_t},
+                 ctx.period,
+                 @monday,
+                 [{ctx.enrollment1.id, :absent}],
+                 []
+               )
+
+      assert Enum.all?(
+               entries_at(ctx.scope, ctx.cg, ctx.period, @monday),
+               &(&1.status == :present)
+             )
+
+      # The surveillant corrects, and the entries keep U's context.
+      assert {:ok, _} =
+               Attendance.record_moved_period(
+                 ctx.scope_s,
+                 {ctx.cg, ctx.tc_u},
+                 ctx.period,
+                 @monday,
+                 [{ctx.enrollment1.id, :absent}],
+                 []
+               )
+
+      assert [%{status: :absent, teaching_context_id: tc_u_id} | _] =
+               entries_at(ctx.scope, ctx.cg, ctx.period, @monday)
+
+      assert tc_u_id == ctx.tc_u.id
+    end
+
+    test "a combined course is written for every member class off-timetable", ctx do
+      {:ok, tc_b} =
+        Curriculum.assign_teacher(ctx.scope, ctx.cg_other, ctx.head, %{subject: "Maths"})
+
+      {:ok, course} = Curriculum.combine_course(ctx.scope, [ctx.tc, tc_b])
+
+      marks = [
+        {ctx.enrollment1.id, :present},
+        {ctx.enrollment2.id, :late, 5},
+        {ctx.other_enrollment.id, :absent}
+      ]
+
+      assert {:ok, 3} =
+               Attendance.record_moved_period(ctx.scope, course, ctx.third, @monday, marks, [])
+
+      assert [%{teaching_context_id: a}, %{teaching_context_id: b}] =
+               entries_at(ctx.scope, ctx.cg, ctx.third, @monday)
+
+      assert {a, b} == {ctx.tc.id, ctx.tc.id}
+
+      assert [%{teaching_context_id: c, status: :absent}] =
+               entries_at(ctx.scope, ctx.cg_other, ctx.third, @monday)
+
+      assert c == tc_b.id
+    end
+
+    test "own lessons for « À la place de » are the same class's own slots of the day, not done nor marked",
+         ctx do
+      assert [%{period: %{id: p}, label: label}] =
+               Attendance.own_lessons_for_moved_from(ctx.scope, {ctx.cg, ctx.tc}, @monday)
+
+      assert p == ctx.period.id
+      assert label =~ "07:30"
+      assert label =~ "Maths"
+
+      {:ok, _} =
+        Attendance.record_period(ctx.scope, ctx.cg, ctx.period, ctx.tc, @monday, [
+          {ctx.enrollment1.id, :present}
+        ])
+
+      assert Attendance.own_lessons_for_moved_from(ctx.scope, {ctx.cg, ctx.tc}, @monday) == []
+    end
+  end
+
   describe "slot_for/4" do
     test "returns the placed slot with teaching_context loaded for a matching weekday", ctx do
       assert {:ok, %TimetableSlot{} = slot} =

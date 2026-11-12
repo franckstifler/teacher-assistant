@@ -30,6 +30,18 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
         {:ok,
          socket |> put_flash(:error, gettext("Access denied.")) |> push_navigate(to: ~p"/school")}
 
+      {:error, reason} when reason in [:not_started, :too_old] ->
+        {:ok,
+         socket
+         |> put_flash(:error, RollCall.error_message(reason))
+         |> push_navigate(to: ~p"/school")}
+
+      {:error, {:held_by, _who} = reason} ->
+        {:ok,
+         socket
+         |> put_flash(:error, RollCall.error_message(reason))
+         |> push_navigate(to: ~p"/school")}
+
       {:error, :not_found} ->
         {:ok, push_navigate(socket, to: ~p"/school/classes")}
     end

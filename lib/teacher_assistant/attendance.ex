@@ -24,6 +24,7 @@ defmodule TeacherAssistant.Attendance do
   alias TeacherAssistant.Academics.TypedAbsences
   alias TeacherAssistant.Academics.LessonNotHeld
   alias TeacherAssistant.Academics.TimetableSlot
+  alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Discipline
   alias TeacherAssistant.Organization
   alias TeacherAssistant.Scope
@@ -340,8 +341,17 @@ defmodule TeacherAssistant.Attendance do
     [first | _] = periods = List.wrap(period_or_periods)
     groups = combined_period_roll(scope, course, first, date)
 
+    # Spec 2026-11-12: a member class with no slot of this course at that period (a
+    # lesson held outside the timetable) writes under the course's own member context.
+    members = Curriculum.contexts_of_course!(course.id, scope: scope)
+
     per_group_marks =
       Enum.map(groups, fn %{class_group: cg, teaching_context: tc, students: students} ->
+        tc =
+          if match?(%TeachingContext{combined_course_id: id} when id == course.id, tc),
+            do: tc,
+            else: Enum.find(members, &(&1.class_group_id == cg.id)) || tc
+
         group_enrollment_ids = MapSet.new(students, & &1.enrollment_id)
 
         group_marks =
@@ -1210,6 +1220,187 @@ defmodule TeacherAssistant.Attendance do
       {:error, error} -> {:error, error}
     end
   end
+
+  @doc """
+  The teaching context of the roll call held at `period` on `date` in `class_group`,
+  with its teacher and subject and whether it is the actor's **own** (their
+  assignment, or a member of their combined course): `nil` when no entry carries a
+  context (nothing recorded, or a conduct manager's roll call). Read without
+  policies: the fact is needed to refuse, whoever asks.
+  """
+  def held_context(%Scope{} = scope, %ClassGroup{id: cg_id}, %Period{id: pid}, %Date{} = date) do
+    AttendanceEntry
+    |> Ash.Query.filter(
+      enrollment.class_group_id == ^cg_id and period_id == ^pid and date == ^date and
+        not is_nil(teaching_context_id)
+    )
+    |> Ash.Query.load(teaching_context: [:teacher, :catalog_subject, :combined_course])
+    |> Ash.Query.limit(1)
+    |> Ash.read_one!(scope: scope, authorize?: false)
+    |> case do
+      %{teaching_context: %TeachingContext{} = tc} ->
+        %{
+          teacher: tc.teacher,
+          subject: context_subject(tc),
+          context: tc,
+          own?: own_context?(scope, tc)
+        }
+
+      _ ->
+        nil
+    end
+  end
+
+  @doc "`held_context/4` when it is **someone else's**, `nil` otherwise (spec 2026-11-12)."
+  def held_by_other_context(
+        %Scope{} = scope,
+        %ClassGroup{} = cg,
+        %Period{} = period,
+        %Date{} = date
+      ) do
+    case held_context(scope, cg, period, date) do
+      %{own?: false} = held -> Map.delete(held, :own?)
+      _ -> nil
+    end
+  end
+
+  @doc """
+  The lessons a moved roll call may stand « à la place de »: the actor's own timetable
+  slots of the unit's class(es) on `date`'s weekday, minus those already done under
+  their context and those already marked not held. One entry per period (a combined
+  course lists its member classes), `label` « 07:30 · Maths », sorted by period.
+  """
+  def own_lessons_for_moved_from(%Scope{} = scope, unit, %Date{} = date) do
+    {classes, context_ids} = unit_parts(scope, unit)
+    cg_ids = Enum.map(classes, & &1.id)
+
+    case SchoolCalendar.weekday(date) do
+      nil ->
+        []
+
+      day ->
+        marked =
+          LessonNotHeld
+          |> Ash.Query.for_read(
+            :for_classes_range,
+            %{class_group_ids: cg_ids, first: date, last: date},
+            scope: scope
+          )
+          |> Ash.read!()
+          |> MapSet.new(&{&1.class_group_id, &1.period_id})
+
+        done =
+          AttendanceEntry
+          |> Ash.Query.filter(
+            date == ^date and enrollment.class_group_id in ^cg_ids and
+              teaching_context_id in ^context_ids
+          )
+          |> Ash.Query.load(:enrollment)
+          |> Ash.read!(scope: scope, authorize?: false)
+          |> MapSet.new(&{&1.enrollment.class_group_id, &1.period_id})
+
+        TimetableSlot
+        |> Ash.Query.filter(
+          class_group_id in ^cg_ids and day == ^day and teaching_context_id in ^context_ids
+        )
+        |> Ash.Query.load([:period, :class_group, teaching_context: [:catalog_subject]])
+        |> Ash.read!(scope: scope)
+        |> Enum.filter(&(&1.period.kind == :lesson))
+        |> Enum.reject(fn slot ->
+          key = {slot.class_group_id, slot.period_id}
+          MapSet.member?(marked, key) or MapSet.member?(done, key)
+        end)
+        |> Enum.group_by(& &1.period.id)
+        |> Enum.map(fn {_id, [first | _] = slots} ->
+          %{
+            period: first.period,
+            class_groups: Enum.map(slots, & &1.class_group),
+            label:
+              "#{Calendar.strftime(first.period.start_time, "%H:%M")} · #{context_subject(first.teaching_context)}"
+          }
+        end)
+        |> Enum.sort_by(& &1.period.position)
+    end
+  end
+
+  @doc """
+  Records a roll call held outside the timetable (spec 2026-11-12): `unit` is
+  `{%ClassGroup{}, %TeachingContext{}}` (the actor's own context on the class) or a
+  `%CombinedCourse{}`; the entries are written under that context at `held`, and with
+  `moved_from: %Period{}` the unit's slot(s) at that period are marked « déplacé à
+  `held` », all in one transaction. `{:error, {:held_by, %{teacher, subject, context}}}`
+  when another teacher's roll call already holds that period, unless the actor manages
+  conduct (whose save keeps the entries' context: pass it as the unit's context).
+  """
+  def record_moved_period(
+        %Scope{} = scope,
+        unit,
+        %Period{} = held,
+        %Date{} = date,
+        marks,
+        opts \\ []
+      )
+      when is_list(marks) do
+    {classes, _context_ids} = unit_parts(scope, unit)
+    conduct? = Discipline.can_manage_conduct?(scope)
+
+    TeacherAssistant.Repo.transaction(fn ->
+      with :ok <- refuse_if_held(scope, classes, held, date, conduct?),
+           {:ok, count} <- write_moved(scope, unit, held, date, marks),
+           :ok <- mark_vacated(scope, classes, opts[:moved_from], date, held) do
+        count
+      else
+        {:error, reason} -> TeacherAssistant.Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp refuse_if_held(_scope, _classes, _held, _date, true), do: :ok
+
+  defp refuse_if_held(scope, classes, held, date, false) do
+    Enum.find_value(classes, :ok, fn cg ->
+      case held_by_other_context(scope, cg, held, date) do
+        nil -> nil
+        who -> {:error, {:held_by, who}}
+      end
+    end)
+  end
+
+  defp write_moved(scope, {%ClassGroup{} = cg, tc}, held, date, marks),
+    do: record_period(scope, cg, held, tc, date, marks)
+
+  defp write_moved(scope, %CombinedCourse{} = course, held, date, marks),
+    do: record_combined_period(scope, course, held, date, marks)
+
+  defp mark_vacated(_scope, _classes, nil, _date, _held), do: :ok
+
+  defp mark_vacated(scope, classes, %Period{} = from, date, held) do
+    Enum.reduce_while(classes, :ok, fn cg, :ok ->
+      case mark_moved(scope, cg, from, date, held) do
+        {:ok, _} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  # `{classes, context_ids}` of a unit: one class and its context, or a course's
+  # member classes and contexts.
+  defp unit_parts(_scope, {%ClassGroup{} = cg, tc}), do: {[cg], List.wrap(tc && tc.id)}
+
+  defp unit_parts(scope, %CombinedCourse{id: id}) do
+    members = Curriculum.contexts_of_course!(id, scope: scope, load: [:class_group])
+    {Enum.map(members, & &1.class_group), Enum.map(members, & &1.id)}
+  end
+
+  defp own_context?(%Scope{current_user: %{id: user_id}}, %TeachingContext{} = tc) do
+    tc.teacher_user_id == user_id or
+      match?(%{teacher_user_id: ^user_id}, tc.combined_course)
+  end
+
+  defp own_context?(_scope, _tc), do: false
+
+  defp context_subject(%{catalog_subject: %{name: name}}) when is_binary(name), do: name
+  defp context_subject(%{subject: subject}), do: subject
 
   # --- Paper roll call (spec 2026-10-28) -----------------------------------------
 
