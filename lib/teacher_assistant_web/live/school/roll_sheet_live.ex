@@ -179,7 +179,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
     end)
   end
 
-  # « Lundi 15 · MATH » for each column with A or R typed but not ticked, apart
+  # « Lundi 15 · 07:30 MATH » for each column with A or R typed but not ticked, apart
   # (`:kept`) when it was typed in earlier: its saved entries stay as they are.
   defp unticked(week, columns) do
     for day <- week.days,
@@ -189,7 +189,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
         reduce: %{new: [], kept: []} do
       acc ->
         group = if lesson.state == :paper, do: :kept, else: :new
-        Map.update!(acc, group, &(&1 ++ ["#{day.label} · #{lesson.code}"]))
+        Map.update!(acc, group, &(&1 ++ ["#{day.label} · #{hour(lesson)} #{lesson.code}"]))
     end
   end
 
@@ -200,7 +200,9 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
   defp cell_id(student, lesson),
     do: "cell-#{student.enrollment_id}-#{lesson.date}-#{lesson.period.id}"
 
-  defp day_span(%{closed: nil, lessons: lessons}), do: max(length(lessons), 1)
+  defp hour(%{period: %{start_time: start}}), do: Calendar.strftime(start, "%H:%M")
+
+  defp day_span(%{closed: nil, cells: cells}), do: max(length(cells), 1)
   defp day_span(_day), do: 1
 
   defp week_path(cg, monday),
@@ -278,24 +280,28 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
                     <th :if={day.closed} class="border-l border-base-300 text-center italic">
                       {day.closed}
                     </th>
-                    <th :if={!day.closed and day.lessons == []} class="border-l border-base-300"></th>
+                    <th :if={!day.closed and day.cells == []} class="border-l border-base-300"></th>
                     <th
-                      :for={lesson <- day.lessons}
-                      class="border-l border-base-300 text-center"
-                      title={lesson.subject}
+                      :for={cell <- day.cells}
+                      class="border-l border-base-300 text-center text-[0.65rem] font-normal"
+                      title={cell.period.label}
                     >
-                      {lesson.code}
+                      {RollSheetPrintHTML.period_hours(cell.period)}
+                      <span :if={cell.lesson} class="block font-semibold" title={cell.lesson.subject}>
+                        {cell.lesson.code}
+                      </span>
                     </th>
                   <% end %>
                 </tr>
                 <tr>
                   <%= for day <- @week.days do %>
-                    <th :if={day.closed != nil or day.lessons == []} class="border-l border-base-300">
+                    <th :if={day.closed != nil or day.cells == []} class="border-l border-base-300">
                     </th>
-                    <th :for={lesson <- day.lessons} class="border-l border-base-300 align-top">
+                    <th :for={cell <- day.cells} class="border-l border-base-300 align-top">
                       <.column_controls
-                        lesson={lesson}
-                        column={Map.get(@columns, key(lesson))}
+                        :if={cell.lesson}
+                        lesson={cell.lesson}
+                        column={Map.get(@columns, key(cell.lesson))}
                         cg={@cg}
                       />
                     </th>
@@ -310,20 +316,28 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
                   </td>
                   <%= for day <- @week.days do %>
                     <td
-                      :if={day.closed != nil or day.lessons == []}
+                      :if={day.closed != nil or day.cells == []}
                       class="border-l border-base-300 bg-base-200/60"
                     >
                     </td>
                     <td
-                      :for={lesson <- day.lessons}
+                      :for={cell <- day.cells}
                       class="border-l border-base-300 p-0.5 text-center"
                     >
                       <.mark_cell
+                        :if={cell.lesson}
                         student={student}
-                        lesson={lesson}
-                        col={@cols[key(lesson)]}
-                        column={Map.get(@columns, key(lesson))}
+                        lesson={cell.lesson}
+                        col={@cols[key(cell.lesson)]}
+                        column={Map.get(@columns, key(cell.lesson))}
                       />
+                      <%!-- No lesson of the class at this hour: nothing can be recorded. --%>
+                      <span
+                        :if={is_nil(cell.lesson)}
+                        id={"free-#{student.enrollment_id}-#{day.date}-#{cell.period.id}"}
+                        class="mx-auto block h-9 min-w-9 rounded bg-base-200/60"
+                        title={gettext("Pas de cours de la classe à cette heure")}
+                      ></span>
                     </td>
                   <% end %>
                 </tr>

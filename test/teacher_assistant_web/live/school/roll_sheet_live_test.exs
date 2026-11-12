@@ -77,6 +77,19 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
     assert by_id == %{ctx.awa.id => :absent, ctx.beti.id => :late}
   end
 
+  test "the grid is the school's: every day, every lesson period, free cells locked", ctx do
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+    [_, p2 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+
+    assert has_element?(view, "#roll-sheet-grid th", "Mercredi 17")
+    assert has_element?(view, "#roll-sheet-grid th[title='Cours 1']", "07:30–08:20")
+    # The screen keeps the subject as a hint under the hours; the paper has none.
+    assert has_element?(view, "#roll-sheet-grid th[title='Cours 1'] span", "MATH")
+    # No lesson of the class at 08:20 on Monday: nothing to type in there.
+    assert has_element?(view, "#free-#{ctx.awa.id}-#{@monday}-#{p2.id}")
+    refute has_element?(view, "#cell-#{ctx.awa.id}-#{@monday}-#{p2.id}")
+  end
+
   test "a cell cycles empty → A → R → empty", ctx do
     {:ok, view, _} = live(ctx.conn, ctx.path)
     target = cell(ctx.awa, ctx.p1)
@@ -135,7 +148,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
     view |> element(cell(ctx.awa, ctx.p1)) |> render_click()
 
     assert has_element?(view, "#unticked-warning", "Lundi 15")
-    assert has_element?(view, "#unticked-warning", "MATH")
+    assert has_element?(view, "#unticked-warning", "07:30 MATH")
   end
 
   test "unticking a saved column says its earlier entry is kept", ctx do
@@ -148,7 +161,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
 
     refute has_element?(view, "#unticked-warning")
     assert has_element?(view, "#kept-warning", "gardent la saisie déjà enregistrée")
-    assert has_element?(view, "#kept-warning", "Lundi 15 · MATH")
+    assert has_element?(view, "#kept-warning", "Lundi 15 · 07:30 MATH")
   end
 
   test "« cours non assuré » saves the lesson as not held", ctx do
