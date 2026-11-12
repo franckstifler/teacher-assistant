@@ -570,7 +570,8 @@ defmodule TeacherAssistantWeb.School.DayLive do
   attr :cell, :map, required: true
   attr :today, :any, required: true
 
-  defp period_class(%{cell: %{status: status}} = assigns) when status in [:upcoming, :not_held] do
+  defp period_class(%{cell: %{status: status}} = assigns)
+       when status in [:upcoming, :not_held, :covered] do
     ~H"""
     <div class="flex min-h-11 items-center gap-3 px-4 text-sm text-base-content/70">
       <span class="flex-1 truncate">{@cell.class_group.label} · {@cell.subject}</span>
@@ -613,7 +614,12 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp cell_state_text(%{status: :in_progress}), do: gettext("En cours")
   defp cell_state_text(%{status: :upcoming}), do: gettext("À venir")
   defp cell_state_text(%{status: :on_paper}), do: gettext("Sur feuille")
+
+  defp cell_state_text(%{status: :not_held, moved_to: %{start_time: t}}),
+    do: gettext("Non assuré · déplacé à %{time}", time: Calendar.strftime(t, "%H:%M"))
+
   defp cell_state_text(%{status: :not_held}), do: gettext("Non assuré")
+  defp cell_state_text(%{status: :covered} = cell), do: covered_text(cell)
 
   # The day's lessons with at least one class, each with its tally and state:
   # `:current` (under way), `:upcoming`, `:complete` (every call in) or `:behind`.
@@ -624,7 +630,7 @@ defmodule TeacherAssistantWeb.School.DayLive do
           |> Enum.map(& &1.cells[p.id])
           |> Enum.reject(&is_nil/1),
         cells != [] do
-      counted = Enum.reject(cells, &(&1.status == :not_held))
+      counted = Enum.reject(cells, &(&1.status in [:not_held, :covered]))
       freq = Enum.frequencies_by(counted, & &1.status)
       count = &Map.get(freq, &1, 0)
 
@@ -714,7 +720,9 @@ defmodule TeacherAssistantWeb.School.DayLive do
         cell_class(@cell)
       ]}
     >
-      {cell_text(@cell)}
+      <span :if={@cell[:moved?]} aria-hidden="true" class="mr-0.5 text-[0.7rem]">↷</span>{cell_text(
+        @cell
+      )}
     </.link>
     """
   end
@@ -733,12 +741,18 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp cell_class(%{status: :not_held}),
     do: "border-dashed border-base-content/20 bg-base-200/40 text-base-content/50"
 
+  # Spec 2026-11-12: a slot a colleague is teaching (muted; the grid shows the held
+  # lesson in its place).
+  defp cell_class(%{status: :covered}),
+    do: "border-base-content/20 bg-base-200 text-base-content/60"
+
   defp cell_text(%{status: :done, absent: n}), do: n
   defp cell_text(%{status: :missed}), do: "!"
   defp cell_text(%{status: :in_progress}), do: "…"
   defp cell_text(%{status: :upcoming}), do: ""
   defp cell_text(%{status: :on_paper}), do: "✎"
   defp cell_text(%{status: :not_held}), do: "—"
+  defp cell_text(%{status: :covered}), do: "↷"
 
   # what a cell of that status shows, so the legend reads like the grid
   defp legend_glyph(:done), do: "2"
@@ -750,6 +764,25 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp legend_label(:upcoming), do: gettext("À venir")
   defp legend_label(:on_paper), do: gettext("Sur feuille")
   defp legend_label(:not_held), do: gettext("Non assuré")
+
+  # Spec 2026-11-12: a lesson held outside its slot, and the slot it stands in for.
+  defp cell_title(%{status: :done, moved?: true, absent: n} = cell) do
+    base =
+      "#{ngettext("%{count} absent", "%{count} absents", n)} · #{gettext("Cours déplacé")} · #{cell_detail(cell)}"
+
+    case cell[:covers] do
+      %{subject: subject, teacher: teacher} ->
+        base <>
+          " · " <>
+          gettext("à la place de %{subject} · %{teacher}",
+            subject: subject,
+            teacher: teacher_name(teacher)
+          )
+
+      _ ->
+        base
+    end
+  end
 
   defp cell_title(%{status: :done, absent: n} = cell),
     do: "#{ngettext("%{count} absent", "%{count} absents", n)} · #{cell_detail(cell)}"
@@ -765,8 +798,19 @@ defmodule TeacherAssistantWeb.School.DayLive do
   defp cell_title(%{status: :on_paper} = cell),
     do: "#{gettext("sur feuille · à saisir")} · #{cell_detail(cell)}"
 
+  defp cell_title(%{status: :not_held, moved_to: %{start_time: t}} = cell),
+    do:
+      "#{gettext("Non assuré · déplacé à %{time}", time: Calendar.strftime(t, "%H:%M"))} · #{cell_detail(cell)}"
+
   defp cell_title(%{status: :not_held} = cell),
     do: "#{gettext("Cours non assuré")} · #{cell_detail(cell)}"
+
+  defp cell_title(%{status: :covered} = cell), do: "#{covered_text(cell)} · #{cell_detail(cell)}"
+
+  defp covered_text(%{covered_by: %{teacher: teacher}}),
+    do: gettext("Pris par %{name}", name: teacher_name(teacher))
+
+  defp covered_text(_cell), do: gettext("Pris par un collègue")
 
   defp cell_detail(cell), do: "#{cell.subject} · #{teacher_name(cell.teacher)}"
 

@@ -489,6 +489,57 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     end
   end
 
+  describe "Aujourd'hui with lessons outside the timetable (spec 2026-11-12)" do
+    setup %{scope: scope, cg: cg} do
+      lessons = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+      [_p1, _p2, p3 | _] = lessons
+      year = Organization.current_academic_year(scope)
+      scope_u = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{roles: [:teacher]})
+
+      {:ok, tc_u} =
+        Curriculum.assign_teacher(scope, cg, scope_u.current_user, %{subject: "Anglais"})
+
+      %{p3: p3, scope_u: %{scope_u | current_academic_year: year}, tc_u: tc_u}
+    end
+
+    test "a vacated slot reads its motive and is not offered to « Relancer »",
+         %{conn: conn} = ctx do
+      {:ok, _} = Attendance.mark_moved(ctx.scope, ctx.cg, ctx.p2, @today, ctx.p3)
+      {:ok, view, _} = live(conn, ~p"/school/day")
+
+      assert has_element?(view, "#roll-call-grid a[title*='Non assuré · déplacé à 09:10']")
+      refute has_element?(view, "#missed-#{ctx.cg.id}-#{ctx.p2.id}")
+      refute has_element?(view, "[id^='remind-']")
+    end
+
+    test "a moved lesson shows at its real period, with the slot it stands in for",
+         %{conn: conn} = ctx do
+      # U teaches 6e A at p2 (the head's slot); the head moved theirs to p3.
+      {:ok, _} = Attendance.mark_moved(ctx.scope, ctx.cg, ctx.p2, @today, ctx.p3)
+
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_u, ctx.cg, ctx.p2, ctx.tc_u, @today, [
+          {ctx.e.id, :present}
+        ])
+
+      {:ok, view, _} = live(conn, ~p"/school/day")
+
+      cell =
+        view
+        |> element(
+          "#roll-call-grid a[href='/school/classes/#{ctx.cg.id}/attendance/#{ctx.p2.id}?date=2025-09-15']"
+        )
+        |> render()
+
+      assert cell =~ "↷"
+      assert cell =~ "Cours déplacé · Anglais"
+      assert cell =~ "à la place de Maths"
+      assert view |> element("#kpi-calls") |> render() =~ "2 / 2"
+      assert has_element?(view, "#period-#{ctx.p2.id}", "1/1")
+      refute has_element?(view, "[id^='remind-']")
+    end
+  end
+
   test "Aujourd'hui: KPIs, grid, « Relancer » and recent sanctions", %{conn: conn} = ctx do
     {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.e, %{type: :avertissement, date: @today})
     {:ok, view, _} = live(conn, ~p"/school/day")

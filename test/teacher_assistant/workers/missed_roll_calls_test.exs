@@ -107,6 +107,18 @@ defmodule TeacherAssistant.Workers.MissedRollCallsTest do
     assert [%{params: %{"half" => "morning"}}] = Notifications.inbox(ctx.sg, 1).results
   end
 
+  test "a vacated slot marked « déplacé » is not reminded; an unmarked one still is", ctx do
+    [_, p2 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    {:ok, _} = Attendance.mark_moved(ctx.scope, ctx.cg, ctx.p1, ~D[2025-09-15], p2)
+
+    assert :ok = perform_job(MissedRollCalls, %{"half" => "morning"})
+    assert Notifications.inbox(ctx.sg, 1).results == []
+
+    :ok = Attendance.unmark_moved(ctx.scope, ctx.cg, ctx.p1, ~D[2025-09-15])
+    assert :ok = perform_job(MissedRollCalls, %{"half" => "morning"})
+    assert [%{kind: :missed_roll_calls}] = Notifications.inbox(ctx.sg, 1).results
+  end
+
   test "nothing when every call is done", ctx do
     {:ok, _} =
       Attendance.record_period(ctx.scope, ctx.cg, ctx.p1, ctx.tc, @monday, [{ctx.e.id, :present}])
