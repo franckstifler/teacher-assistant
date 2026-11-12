@@ -371,15 +371,21 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
       refute has_element?(view, "#other-period option[value='#{ctx.p3.id}'][disabled]")
       assert has_element?(view, "#other-date option[value='2025-09-15'][selected]")
 
+      tc_id =
+        ctx.cg.id
+        |> Timetabling.list_for_class!(scope: ctx.scope)
+        |> hd()
+        |> Map.get(:teaching_context_id)
+
       view
       |> form("#other-lesson-form", %{
-        "class" => ctx.cg.id,
+        "class" => "ctx:#{tc_id}",
         "period" => ctx.p3.id,
         "date" => "2025-09-15"
       })
       |> render_submit()
 
-      assert_patch(view, moved_path(ctx.cg.id, ctx.p3))
+      assert_patch(view, moved_path("ctx:#{tc_id}", ctx.p3))
       assert has_element?(view, "#roll-panel")
     end
 
@@ -411,7 +417,7 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
       assert has_element?(view, "#my-classes", "6e A")
 
       view |> element("#my-class-call-#{ctx.tc_v.id}") |> render_click()
-      assert_patch(view, moved_path(ctx.cg.id, ctx.p6))
+      assert_patch(view, moved_path("ctx:#{ctx.tc_v.id}", ctx.p6))
       assert has_element?(view, "#roll-panel")
       refute has_element?(view, "#moved-from")
 
@@ -457,6 +463,36 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
                )
     end
 
+    test "a teacher with two subjects on one class records the one they picked",
+         %{conn: conn} = ctx do
+      {:ok, tc_phys} =
+        Curriculum.assign_teacher(ctx.scope, ctx.cg, ctx.scope.current_user, %{
+          subject: "Physique"
+        })
+
+      {:ok, view, _} = live(conn, ~p"/school/today?other=1")
+
+      values =
+        ~r/<option value="([^"]+)"/
+        |> Regex.scan(view |> element("#other-class") |> render())
+        |> Enum.map(fn [_, v] -> v end)
+
+      assert length(Enum.uniq(values)) == length(values)
+      assert "ctx:#{tc_phys.id}" in values
+
+      {:ok, view, _} = live(conn, moved_path("ctx:#{tc_phys.id}", ctx.p3))
+      view |> element("#record-roll") |> render_click()
+
+      require Ash.Query
+
+      assert [%{teaching_context_id: id}] =
+               TeacherAssistant.Academics.AttendanceEntry
+               |> Ash.Query.filter(period_id == ^ctx.p3.id and date == ^@today)
+               |> Ash.read!(scope: ctx.scope)
+
+      assert id == tc_phys.id
+    end
+
     test "a combined course moves as one", %{conn: conn} = ctx do
       {:ok, cg_b} =
         Enrollment.create_class_group(ctx.scope, Organization.current_academic_year(ctx.scope), %{
@@ -477,8 +513,16 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
 
       {:ok, course} = Curriculum.combine_course(ctx.scope, [tc, tc_b])
 
+      {:ok, _} =
+        Timetabling.place_slot(ctx.scope, cg_b, %{
+          day: :monday,
+          period_id: ctx.p2.id,
+          teaching_context_id: tc_b.id
+        })
+
       {:ok, view, _} = live(conn, moved_path("course:#{course.id}", ctx.p3))
       assert view |> element("#roll-panel") |> render() =~ course.label
+      assert has_element?(view, "#moved-from option[value='#{ctx.p2.id}'][selected]")
       view |> element("#record-roll") |> render_click()
 
       assert %{students: [%{status: :present}]} =
@@ -486,6 +530,21 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
 
       assert %{students: [%{status: :present}]} =
                Attendance.period_roll(ctx.scope, ctx.cg, ctx.p3, @today)
+
+      require Ash.Query
+
+      marked = fn ->
+        TeacherAssistant.Academics.LessonNotHeld
+        |> Ash.Query.filter(date == ^@today)
+        |> Ash.read!(scope: ctx.scope)
+        |> length()
+      end
+
+      assert marked.() == 2
+
+      # « Annuler » on the combined row clears both member classes.
+      view |> element("#unmark-#{ctx.cg.id}-#{ctx.p2.id}") |> render_click()
+      assert marked.() == 0
     end
   end
 

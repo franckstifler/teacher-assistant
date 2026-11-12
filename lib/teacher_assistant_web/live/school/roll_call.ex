@@ -23,7 +23,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
   nor a conduct manager).
   """
   def open(%Scope{} = scope, cg_or_course, period_id, %Date{} = date, opts \\ []) do
-    with {:ok, cg, course} <- fetch_unit(scope, cg_or_course),
+    with {:ok, cg, course, picked} <- fetch_unit(scope, cg_or_course),
          {:ok, period} <- fetch_period(scope, period_id) do
       slot = slot(scope, cg, date, period.id)
       conduct? = Discipline.can_manage_conduct?(scope)
@@ -35,7 +35,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
       teaching_context =
         case {Keyword.get(opts, :context), Attendance.held_context(scope, cg, period, date)} do
           {_, %{own?: true, context: tc}} -> tc
-          {:mine, _} -> my_context(scope, cg, course)
+          {:mine, _} -> picked || my_context(scope, cg, course)
           _ -> resolve_teaching_context(scope, cg, slot)
         end
 
@@ -110,20 +110,35 @@ defmodule TeacherAssistantWeb.School.RollCall do
   def error_message(:too_old),
     do: gettext("Cette journée n'est plus modifiable depuis le téléphone.")
 
-  # A course param (`"course:<id>"`) opens the roll call of the course's first member
-  # class; a class id, that class.
+  # `{:ok, class, course | nil, picked context | nil}`: a course param
+  # (`"course:<id>"`) opens the roll call of the course's first member class; a context
+  # param (`"ctx:<id>"`, one of my own assignments — a teacher with two subjects on a
+  # class picks the right one) its class; a class id, that class.
   defp fetch_unit(scope, "course:" <> id) do
     with {:ok, %CombinedCourse{} = course} <- Curriculum.get_course(scope, id),
          [first | _] <- Curriculum.contexts_of_course!(course.id, scope: scope),
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, first.class_group_id) do
-      {:ok, cg, course}
+      {:ok, cg, course, nil}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp fetch_unit(scope, "ctx:" <> id) do
+    with %{} = year <- scope.current_academic_year,
+         %TeachingContext{} = tc <-
+           scope
+           |> Curriculum.list_assignments_for_user(year, scope.current_user)
+           |> Enum.find(&(&1.id == id)),
+         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, tc.class_group_id) do
+      {:ok, cg, nil, tc}
     else
       _ -> {:error, :not_found}
     end
   end
 
   defp fetch_unit(scope, cg_id) do
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id), do: {:ok, cg, nil}
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id), do: {:ok, cg, nil, nil}
   end
 
   defp my_context(scope, cg, %CombinedCourse{} = course),

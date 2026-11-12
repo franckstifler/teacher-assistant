@@ -422,6 +422,44 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
       assert flash["error"] =~ "plus modifiable"
     end
 
+    test "« À la place de » on the class page: a change does not crash, none marks nothing", %{
+      school: school,
+      cg: cg,
+      free_period: free_period,
+      other: other,
+      scope: scope,
+      enrollment: enrollment
+    } do
+      date = ~D[2025-09-15]
+      {:ok, tc_other} = Curriculum.assign_teacher(scope, cg, other, %{subject: "Anglais"})
+
+      third =
+        scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)) |> Enum.at(2)
+
+      {:ok, _} =
+        TeacherAssistant.Timetabling.place_slot(scope, cg, %{
+          day: :monday,
+          period_id: third.id,
+          teaching_context_id: tc_other.id
+        })
+
+      {:ok, view, _} = live(conn_for(school, other), att_path(cg, free_period, date))
+      assert has_element?(view, "#moved-from option[value='#{third.id}'][selected]")
+
+      view |> form("#moved-from-form", %{"moved_from" => ""}) |> render_change()
+      assert has_element?(view, "#moved-from option[value=''][selected]")
+
+      view |> element("#att-#{enrollment.id}-absent") |> render_click()
+      view |> element("#record-roll") |> render_click()
+
+      require Ash.Query
+
+      assert [] =
+               TeacherAssistant.Academics.LessonNotHeld
+               |> Ash.Query.filter(class_group_id == ^cg.id)
+               |> Ash.read!(scope: scope)
+    end
+
     test "a member with no assignment and no slot is redirected", %{
       school: school,
       cg: cg,

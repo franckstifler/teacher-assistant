@@ -169,15 +169,31 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         {:noreply,
          push_patch(socket, to: ~p"/school/today?#{[class: class, period: period, date: date]}")}
 
-  def handle_event("unmark_moved", %{"class" => cg_id, "period" => period_id}, socket) do
+  # Every member class of the row (a combined course vacated one slot per class).
+  def handle_event("unmark_moved", %{"classes" => cg_ids, "period" => period_id}, socket) do
     %{current_scope: scope, today: today, lesson_periods: periods} = socket.assigns
 
-    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id),
-         %{} = period <- Enum.find(periods, &(&1.id == period_id)),
-         :ok <- Attendance.unmark_moved(scope, cg, period, today) do
-      {:noreply, socket |> load_day() |> put_flash(:info, gettext("Cours remis à son créneau."))}
-    else
-      _ -> {:noreply, put_flash(socket, :error, gettext("Impossible d'annuler ce déplacement."))}
+    result =
+      with %{} = period <- Enum.find(periods, &(&1.id == period_id)) do
+        cg_ids
+        |> String.split(",", trim: true)
+        |> Enum.reduce_while(:ok, fn cg_id, :ok ->
+          with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id),
+               :ok <- Attendance.unmark_moved(scope, cg, period, today) do
+            {:cont, :ok}
+          else
+            error -> {:halt, error}
+          end
+        end)
+      end
+
+    case result do
+      :ok ->
+        {:noreply,
+         socket |> load_day() |> put_flash(:info, gettext("Cours remis à son créneau."))}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Impossible d'annuler ce déplacement."))}
     end
   end
 
@@ -570,7 +586,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
           id={"unmark-#{@lesson.key}"}
           type="button"
           phx-click="unmark_moved"
-          phx-value-class={hd(@lesson.members).class_group.id}
+          phx-value-classes={Enum.map_join(@lesson.members, ",", & &1.class_group.id)}
           phx-value-period={@lesson.period.id}
           class="btn btn-ghost btn-xs text-base-content/70"
         >
@@ -785,8 +801,10 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     |> Enum.reverse()
   end
 
+  # A course by id, a solo course by its context (a teacher with two subjects on one
+  # class picks the right one).
   defp course_param(%{unit: {:course, %{id: id}}}), do: "course:#{id}"
-  defp course_param(%{classes: [cg | _]}), do: cg.id
+  defp course_param(%{context_id: id}), do: "ctx:#{id}"
 
   attr :courses, :list, required: true
   attr :periods, :list, required: true

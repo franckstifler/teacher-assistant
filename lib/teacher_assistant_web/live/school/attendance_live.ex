@@ -65,6 +65,11 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
     do: {:noreply, update(socket, :roll, &RollCall.toggle(&1, id, status))}
 
+  # « À la place de » (spec 2026-11-12), shown when the roll call is held outside the
+  # teacher's slot.
+  def handle_event("moved_from", %{"moved_from" => period_id}, socket),
+    do: {:noreply, update(socket, :roll, &RollCall.set_moved_from(&1, period_id))}
+
   def handle_event("record", _params, socket) do
     case RollCall.record(socket.assigns.current_scope, socket.assigns.roll) do
       {:ok, roll} ->
