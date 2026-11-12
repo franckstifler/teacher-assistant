@@ -17,4 +17,16 @@ defmodule TeacherAssistantWeb.StaticFilesTest do
              "#{digested} is not served"
     end
   end
+
+  # The home-screen icon opens the member's space, not the public landing; signed
+  # out, that page sends to the sign-in.
+  test "the installed app starts on the member's space", %{conn: conn} do
+    manifest =
+      Application.app_dir(:teacher_assistant, "priv/static/site.webmanifest")
+      |> File.read!()
+      |> Jason.decode!()
+
+    assert manifest["start_url"] == "/school"
+    assert conn |> get(manifest["start_url"]) |> redirected_to() == ~p"/sign-in"
+  end
 end

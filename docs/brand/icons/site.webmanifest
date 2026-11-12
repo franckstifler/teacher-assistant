@@ -2,7 +2,7 @@
   "name": "Scolaka",
   "short_name": "Scolaka",
   "lang": "fr",
-  "start_url": "/",
+  "start_url": "/school",
   "display": "standalone",
   "background_color": "#0E1714",
   "theme_color": "#1F3A2E",
