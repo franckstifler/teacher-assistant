@@ -86,9 +86,35 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
              [{1, "Awa"}, {2, "Beti"}, {3, "Chantal"}]
 
     assert {week.monday, week.saturday} == {@monday, ~D[2025-09-20]}
-    # Only the days this class has lessons on (Monday and Tuesday).
-    assert Enum.map(week.days, & &1.date) == [@monday, @tuesday]
+    # Every lesson day of the school, not only the days this class has lessons on.
+    assert Enum.map(week.days, & &1.date) == Enum.to_list(Date.range(@monday, ~D[2025-09-20]))
     assert %{state: :empty, code: "MATH"} = lesson(week, @monday, ctx.p1)
+  end
+
+  test "each day has one cell per lesson period, the class's lesson in its cell", ctx do
+    week = Attendance.paper_week(ctx.sg, ctx.cg, @monday)
+    lesson_periods = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+    [monday, _, wednesday | _] = week.days
+
+    assert Enum.map(monday.cells, & &1.period.id) == Enum.map(lesson_periods, & &1.id)
+    assert [%{lesson: %{code: "MATH"}} | rest] = monday.cells
+    assert Enum.all?(rest, &is_nil(&1.lesson))
+    # A day without any lesson of the class still has its cells, all free.
+    assert wednesday.lessons == [] and length(wednesday.cells) == length(lesson_periods)
+  end
+
+  test "with Wednesday afternoon off, Wednesday's cells stop at noon", ctx do
+    {:ok, _} =
+      Attendance.update_school_days(ctx.scope, %{
+        "lesson_days" => ~w(monday tuesday wednesday thursday friday saturday),
+        "wednesday_afternoon_off?" => "true",
+        "default_lesson_minutes" => "50"
+      })
+
+    week = Attendance.paper_week(ctx.sg, ctx.cg, @monday)
+    [monday, _, wednesday | _] = week.days
+    assert length(wednesday.cells) < length(monday.cells)
+    assert Enum.all?(wednesday.cells, &(Time.compare(&1.period.start_time, ~T[13:00:00]) == :lt))
   end
 
   test "a typed column records absents, lates and everyone else present", ctx do

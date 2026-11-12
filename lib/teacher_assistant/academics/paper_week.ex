@@ -1,7 +1,10 @@
 defmodule TeacherAssistant.Academics.PaperWeek do
   @moduledoc """
-  Paper roll call (spec 2026-10-28 §2–3): one class's week as the printed sheet and the
-  entry screen show it, and the save of a typed-in sheet.
+  Paper roll call (spec 2026-10-28 §2–3, amended 2026-11-12): one class's week as the
+  printed sheet and the entry screen show it, and the save of a typed-in sheet. The grid
+  is the school's: every lesson day of the calendar, and under each one `cells`, one per
+  lesson period of the bell schedule (none on a Wednesday afternoon off), each holding
+  the class's `lesson` at that hour or nil.
 
   A lesson's `state` is `:app` (taken in the app), `:paper` (typed in from a sheet),
   `:not_held` (« cours non assuré ») or `:empty`. Saving never touches an `:app`
@@ -41,11 +44,20 @@ defmodule TeacherAssistant.Academics.PaperWeek do
 
     # Read once for the week, not once per day.
     calendar = Attendance.school_calendar(scope)
+    periods = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 
     days =
       for date <- Date.range(monday, saturday),
           day =
-            day(scope, calendar, date, Map.get(lessons, date, []), entries, enrollment_ids),
+            day(
+              scope,
+              calendar,
+              periods,
+              date,
+              Map.get(lessons, date, []),
+              entries,
+              enrollment_ids
+            ),
           do: day
 
     %{
@@ -61,28 +73,34 @@ defmodule TeacherAssistant.Academics.PaperWeek do
     }
   end
 
-  # A school day: its open lessons, or `closed` with the holiday's name; nil when the
-  # school, or this class, has no lessons that day.
-  defp day(scope, calendar, date, cells, entries, enrollment_ids) do
+  # A school day: its cells and the class's open lessons, or `closed` with the
+  # holiday's name; nil when the school has no lessons that weekday.
+  defp day(scope, calendar, periods, date, slots, entries, enrollment_ids) do
     case day_off(calendar, date) do
       :no_lessons ->
         nil
 
-      nil when cells == [] ->
-        nil
-
       {:holiday, label} ->
-        %{date: date, label: label(date), closed: label, lessons: []}
+        %{date: date, label: label(date), closed: label, lessons: [], cells: []}
 
       nil ->
         sent_home = FeeControl.sent_home_ids(scope, enrollment_ids, date)
+
+        lessons =
+          Enum.map(slots, &lesson(&1, Map.get(entries, {date, &1.period.id}, []), sent_home))
+
+        by_period = Map.new(lessons, &{&1.period.id, &1})
+        weekday = SchoolCalendar.weekday(date)
 
         %{
           date: date,
           label: label(date),
           closed: nil,
-          lessons:
-            Enum.map(cells, &lesson(&1, Map.get(entries, {date, &1.period.id}, []), sent_home))
+          lessons: lessons,
+          cells:
+            for period <- periods, SchoolCalendar.open_cell?(calendar, weekday, period) do
+              %{period: period, lesson: Map.get(by_period, period.id)}
+            end
         }
     end
   end
