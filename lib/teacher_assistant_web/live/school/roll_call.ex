@@ -645,6 +645,30 @@ defmodule TeacherAssistantWeb.School.RollCall do
         <% end %>
       </div>
 
+      <form
+        :if={@roll[:moved?] and @roll[:moved_from_options] != []}
+        id="moved-from-form"
+        phx-change="moved_from"
+        class="flex flex-col gap-1 border-t border-base-300 px-4 py-3 text-sm sm:px-[18px]"
+      >
+        <label for="moved-from" class="font-medium">{gettext("À la place de")}</label>
+        <select id="moved-from" name="moved_from" class="select select-bordered select-sm w-full">
+          <option value="" selected={is_nil(@roll.moved_from)}>
+            {gettext("Aucun (cours supplémentaire)")}
+          </option>
+          <option
+            :for={option <- @roll.moved_from_options}
+            value={option.period.id}
+            selected={@roll.moved_from && @roll.moved_from.id == option.period.id}
+          >
+            {option.label}
+          </option>
+        </select>
+        <p class="text-[0.78rem] text-base-content/70">
+          {gettext("Le créneau choisi sera marqué « non assuré · déplacé ».")}
+        </p>
+      </form>
+
       <div
         id="roll-footer"
         class="ta-stickyfoot sticky bottom-0 z-10 flex flex-col gap-2 rounded-b-box border-t border-base-300 bg-base-200/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:items-center sm:px-[18px]"

@@ -312,6 +312,183 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert {:error, {:live_redirect, %{to: "/school/fees"}}} = live(conn, ~p"/school/today")
   end
 
+  describe "roll call outside the timetable (spec 2026-11-12)" do
+    # Clock: Monday 2025-09-15 13:00 WAT. The head's slots: p1 (done), p2 (missed).
+    setup %{scope: scope, cg: cg, school: school} do
+      lessons = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
+      [_p1, _p2, p3, _p4, _p5, p6, p7 | _] = lessons
+      year = Organization.current_academic_year(scope)
+
+      teacher_conn = fn roles ->
+        member = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{roles: roles})
+
+        conn =
+          build_conn()
+          |> Phoenix.ConnTest.init_test_session(%{})
+          |> put_user_in_session(member.current_user)
+          |> Plug.Conn.put_session(:workspace_id, school.id)
+
+        {conn, %{member | current_academic_year: year}}
+      end
+
+      {conn_u, scope_u} = teacher_conn.([:teacher])
+      {conn_v, scope_v} = teacher_conn.([:teacher])
+
+      {:ok, tc_u} =
+        Curriculum.assign_teacher(scope, cg, scope_u.current_user, %{subject: "Anglais"})
+
+      {:ok, tc_v} = Curriculum.assign_teacher(scope, cg, scope_v.current_user, %{subject: "SVT"})
+
+      %{
+        p3: p3,
+        p6: p6,
+        p7: p7,
+        conn_u: conn_u,
+        scope_u: scope_u,
+        tc_u: tc_u,
+        conn_v: conn_v,
+        scope_v: scope_v,
+        tc_v: tc_v
+      }
+    end
+
+    defp moved_path(cg_or_course, period, date \\ @today),
+      do:
+        ~p"/school/today?#{[class: cg_or_course, period: period.id, date: Date.to_iso8601(date)]}"
+
+    test "« Autre cours maintenant » lists my classes and today's periods, future ones disabled",
+         %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, ~p"/school/today")
+      assert has_element?(view, "#other-lesson", "Autre cours maintenant")
+
+      view |> element("#other-lesson") |> render_click()
+      assert_patch(view, ~p"/school/today?other=1")
+      assert has_element?(view, "#other-lesson-form")
+      assert has_element?(view, "#other-class option", "6e A")
+      # Cours 6 (11:55) has started and is the last to: preselected; Cours 7 (13:30) has not.
+      assert has_element?(view, "#other-period option[value='#{ctx.p6.id}'][selected]")
+      assert has_element?(view, "#other-period option[value='#{ctx.p7.id}'][disabled]")
+      refute has_element?(view, "#other-period option[value='#{ctx.p3.id}'][disabled]")
+      assert has_element?(view, "#other-date option[value='2025-09-15'][selected]")
+
+      view
+      |> form("#other-lesson-form", %{
+        "class" => ctx.cg.id,
+        "period" => ctx.p3.id,
+        "date" => "2025-09-15"
+      })
+      |> render_submit()
+
+      assert_patch(view, moved_path(ctx.cg.id, ctx.p3))
+      assert has_element?(view, "#roll-panel")
+    end
+
+    test "a moved roll call is saved with its vacated slot and shows both in the timeline",
+         %{conn: conn} = ctx do
+      {:ok, view, _} = live(conn, moved_path(ctx.cg.id, ctx.p3))
+      assert view |> element("#roll-panel") |> render() =~ "Cours déplacé"
+      # p1 is done, so « À la place de » defaults to p2.
+      assert has_element?(view, "#moved-from option[value='#{ctx.p2.id}'][selected]")
+      refute has_element?(view, "#moved-from option[value='#{ctx.p1.id}']")
+
+      view |> element("#att-#{ctx.e.id}-absent") |> render_click()
+      view |> element("#record-roll") |> render_click()
+
+      assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p3.id}") |> render() =~ "Déplacé"
+      assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p3.id}") |> render() =~ "1 absent"
+      assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "déplacé à 09:10"
+      assert has_element?(view, "#my-day header", "3 cours aujourd'hui")
+
+      # « Annuler » the same day puts the vacated slot back.
+      view |> element("#unmark-#{ctx.cg.id}-#{ctx.p2.id}") |> render_click()
+      assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Non fait"
+      refute has_element?(view, "#unmark-#{ctx.cg.id}-#{ctx.p2.id}")
+    end
+
+    test "a teacher without timetable sees Mes classes and takes a roll call", ctx do
+      {:ok, view, _} = live(ctx.conn_v, ~p"/school/today")
+      refute has_element?(view, "#no-lessons")
+      assert has_element?(view, "#my-classes", "6e A")
+
+      view |> element("#my-class-call-#{ctx.tc_v.id}") |> render_click()
+      assert_patch(view, moved_path(ctx.cg.id, ctx.p6))
+      assert has_element?(view, "#roll-panel")
+      refute has_element?(view, "#moved-from")
+
+      view |> element("#record-roll") |> render_click()
+      assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p6.id}") |> render() =~ "Déplacé"
+      refute has_element?(view, "#my-classes")
+    end
+
+    test "a key held by a colleague is refused with their name", ctx do
+      {:ok, _} =
+        Attendance.record_period(ctx.scope_u, ctx.cg, ctx.p3, ctx.tc_u, @today, [
+          {ctx.e.id, :present}
+        ])
+
+      # Refused during mount: the page lands on /school/today with the sentence.
+      assert {:error, {:live_redirect, %{to: "/school/today", flash: flash}}} =
+               live(ctx.conn_v, moved_path(ctx.cg.id, ctx.p3))
+
+      assert flash["error"] =~ "Un appel a déjà été fait pour 6e A à 09:10"
+      assert flash["error"] =~ "Anglais"
+    end
+
+    test "an earlier day of the week is accepted at any period, without a vacated slot offer",
+         %{conn: conn} = ctx do
+      previous = Application.get_env(:teacher_assistant, :school_clock_now)
+      Application.put_env(:teacher_assistant, :school_clock_now, ~U[2025-09-17 12:00:00Z])
+      on_exit(fn -> Application.put_env(:teacher_assistant, :school_clock_now, previous) end)
+
+      tuesday = ~D[2025-09-16]
+      {:ok, view, _} = live(conn, moved_path(ctx.cg.id, ctx.p7, tuesday))
+      assert view |> element("#roll-panel") |> render() =~ "Appel · "
+      refute has_element?(view, "#moved-from")
+
+      view |> element("#record-roll") |> render_click()
+      assert has_element?(view, "#roll-panel", "Appel enregistré")
+
+      assert [%{moved?: true}] =
+               Attendance.teacher_day(
+                 ctx.scope,
+                 ctx.scope.current_user,
+                 tuesday,
+                 ~N[2025-09-17 13:00:00]
+               )
+    end
+
+    test "a combined course moves as one", %{conn: conn} = ctx do
+      {:ok, cg_b} =
+        Enrollment.create_class_group(ctx.scope, Organization.current_academic_year(ctx.scope), %{
+          label: "6e B",
+          level: "6ème"
+        })
+
+      {:ok, _} = Enrollment.add_student(ctx.scope, cg_b, %{full_name: "Bello", sex: :m})
+      tc = ctx.cg.id |> Timetabling.list_for_class!(scope: ctx.scope) |> hd()
+
+      tc =
+        Ash.get!(TeacherAssistant.Academics.TeachingContext, tc.teaching_context_id,
+          scope: ctx.scope
+        )
+
+      {:ok, tc_b} =
+        Curriculum.assign_teacher(ctx.scope, cg_b, ctx.scope.current_user, %{subject: "Maths"})
+
+      {:ok, course} = Curriculum.combine_course(ctx.scope, [tc, tc_b])
+
+      {:ok, view, _} = live(conn, moved_path("course:#{course.id}", ctx.p3))
+      assert view |> element("#roll-panel") |> render() =~ course.label
+      view |> element("#record-roll") |> render_click()
+
+      assert %{students: [%{status: :present}]} =
+               Attendance.period_roll(ctx.scope, cg_b, ctx.p3, @today)
+
+      assert %{students: [%{status: :present}]} =
+               Attendance.period_roll(ctx.scope, ctx.cg, ctx.p3, @today)
+    end
+  end
+
   test "Aujourd'hui: KPIs, grid, « Relancer » and recent sanctions", %{conn: conn} = ctx do
     {:ok, _} = Discipline.add_sanction(ctx.scope, ctx.e, %{type: :avertissement, date: @today})
     {:ok, view, _} = live(conn, ~p"/school/day")

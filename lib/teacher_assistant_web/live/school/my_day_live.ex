@@ -18,7 +18,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   alias TeacherAssistant.{Attendance, Curriculum, Enrollment}
   alias TeacherAssistant.Accounts.User
-  alias TeacherAssistant.Academics.{LessonGroups, Lock, Reference, TeacherCourses}
+  alias TeacherAssistant.Academics.{LessonGroups, Lock, Reference, SchoolCalendar, TeacherCourses}
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.{LessonComponents, RollCall}
 
@@ -43,7 +43,11 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
          labels: LessonComponents.course_labels(units),
          sizes: Enrollment.class_sizes(scope, scope.current_academic_year),
          courses: TeacherCourses.list(scope, seq),
-         breaks: scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :break))
+         breaks: scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :break)),
+         lesson_periods: scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)),
+         calendar: Attendance.school_calendar(scope),
+         other_form?: false,
+         other_date: today
        )
        |> load_day()}
     else
@@ -71,8 +75,32 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   # The roll call opens only on demand (« Faire l'appel », a tap on a lesson):
   # `?slot=` names a lesson whose roll call can be taken (not upcoming). A combined
   # course opens through its first class, and the roll covers every member class.
+  def handle_params(%{"class" => class, "period" => period_id} = params, _uri, socket) do
+    # Spec 2026-11-12: « Autre cours maintenant » — my own context, whatever the
+    # timetable holds at that period, on today or an earlier day of the week.
+    %{current_scope: scope, today: today} = socket.assigns
+    date = parse_date(params["date"], today)
+
+    case RollCall.open(scope, class, period_id, date, context: :mine) do
+      {:ok, roll} ->
+        {:noreply,
+         assign(socket,
+           selected: "#{roll.cg.id}-#{roll.period.id}",
+           roll: roll,
+           other_form?: false
+         )}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, open_error(reason))
+         |> push_patch(to: ~p"/school/today")}
+    end
+  end
+
   def handle_params(params, _uri, socket) do
     %{lessons: lessons, current_scope: scope, today: today} = socket.assigns
+    socket = assign(socket, other_form?: params["other"] == "1")
 
     case Enum.find(lessons, &(&1.status != :upcoming and &1.key == params["slot"])) do
       nil ->
@@ -80,18 +108,37 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
       lesson ->
         [first | _] = lesson.members
+        # A lesson held outside its slot reopens under my own context.
+        opts = if lesson.moved?, do: [context: :mine], else: [following: true]
 
-        roll =
-          case RollCall.open(scope, first.class_group.id, lesson.period.id, today,
-                 following: true
-               ) do
-            {:ok, roll} -> roll
-            {:error, _} -> nil
-          end
+        case RollCall.open(scope, first.class_group.id, lesson.period.id, today, opts) do
+          {:ok, roll} ->
+            {:noreply, assign(socket, selected: lesson.key, roll: roll)}
 
-        {:noreply, assign(socket, selected: roll && lesson.key, roll: roll)}
+          {:error, reason} when reason in [:not_started, :too_old] or is_tuple(reason) ->
+            {:noreply,
+             socket
+             |> assign(selected: nil, roll: nil)
+             |> put_flash(:error, open_error(reason))}
+
+          {:error, _} ->
+            {:noreply, assign(socket, selected: nil, roll: nil)}
+        end
     end
   end
+
+  defp parse_date(nil, today), do: today
+
+  defp parse_date(str, today) do
+    case Date.from_iso8601(str) do
+      {:ok, date} -> date
+      {:error, _} -> today
+    end
+  end
+
+  defp open_error(:forbidden), do: gettext("Access denied.")
+  defp open_error(:not_found), do: gettext("Cours introuvable.")
+  defp open_error(reason), do: RollCall.error_message(reason)
 
   def handle_event("all_present", _params, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.all_present(&1)))}
@@ -105,6 +152,35 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   def handle_event("toggle_following", _params, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.toggle_following(&1)))}
 
+  def handle_event("moved_from", %{"moved_from" => period_id}, socket),
+    do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_moved_from(&1, period_id)))}
+
+  # The « Autre cours » form: a change of day redraws the periods; the submit opens
+  # the roll call.
+  def handle_event("other_lesson_date", %{"date" => date}, socket),
+    do: {:noreply, assign(socket, :other_date, parse_date(date, socket.assigns.today))}
+
+  def handle_event(
+        "other_lesson",
+        %{"class" => class, "period" => period, "date" => date},
+        socket
+      ),
+      do:
+        {:noreply,
+         push_patch(socket, to: ~p"/school/today?#{[class: class, period: period, date: date]}")}
+
+  def handle_event("unmark_moved", %{"class" => cg_id, "period" => period_id}, socket) do
+    %{current_scope: scope, today: today, lesson_periods: periods} = socket.assigns
+
+    with {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, cg_id),
+         %{} = period <- Enum.find(periods, &(&1.id == period_id)),
+         :ok <- Attendance.unmark_moved(scope, cg, period, today) do
+      {:noreply, socket |> load_day() |> put_flash(:info, gettext("Cours remis à son créneau."))}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("Impossible d'annuler ce déplacement."))}
+    end
+  end
+
   def handle_event("record", _params, %{assigns: %{roll: %{}}} = socket) do
     case RollCall.record(socket.assigns.current_scope, socket.assigns.roll) do
       {:ok, roll} ->
@@ -114,8 +190,14 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
          |> load_day()
          |> put_flash(:info, gettext("Appel enregistré"))}
 
-      {:error, reason} ->
-        {:noreply, RollCall.put_error(socket, reason)}
+      {:error, :forbidden} ->
+        {:noreply, RollCall.put_error(socket, :forbidden)}
+
+      {:error, {:held_by, _} = reason} ->
+        {:noreply, put_flash(socket, :error, RollCall.error_message(reason))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("L'appel n'a pas pu être enregistré."))}
     end
   end
 
@@ -149,22 +231,39 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
           <p :if={@lessons != []} class="text-[0.95rem] text-base-content/75">
             {subtitle(@lessons)}
           </p>
+          <div class="pt-1">
+            <.link
+              id="other-lesson"
+              patch={~p"/school/today?other=1"}
+              class="btn btn-outline btn-sm gap-1.5 border-base-300"
+            >
+              <.icon name="hero-arrow-uturn-right" class="size-4" />
+              {gettext("Autre cours maintenant")}
+            </.link>
+          </div>
         </header>
 
-        <div :if={@lessons == []} id="no-lessons">
+        <.other_lesson_form
+          :if={@other_form?}
+          courses={@courses}
+          periods={open_periods(@lesson_periods, @calendar, @other_date)}
+          now={@now}
+          today={@today}
+          date={@other_date}
+          dates={week_dates(@calendar, @today)}
+        />
+
+        <div :if={@lessons == [] && @day_off} id="no-lessons">
           <.empty_state icon="hero-sun" title={no_lessons_title(@day_off)} />
         </div>
 
-        <div
-          :if={@lessons != []}
-          class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]"
-        >
+        <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
           <div class="flex min-w-0 flex-col gap-5">
             <RollCall.roll_panel
               :if={@roll}
               roll={@roll}
               title={roll_title(@roll, @selected_lesson, @labels)}
-              eyebrow={roll_eyebrow(@selected_lesson)}
+              eyebrow={roll_eyebrow(@roll, @selected_lesson, @today)}
             >
               <:actions>
                 <.link
@@ -191,8 +290,15 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
             <.now_card :if={!@roll && @focus} lesson={@focus} labels={@labels} sizes={@sizes} />
 
+            <.my_classes
+              :if={@lessons == [] && !@day_off && !@roll}
+              courses={@courses}
+              period={current_period(@lesson_periods, @now)}
+              today={@today}
+            />
+
             <div
-              :if={!@roll && !@focus}
+              :if={!@roll && !@focus && @lessons != []}
               id="now-card"
               class="ta-panel flex items-center gap-3 text-[0.95rem]"
             >
@@ -211,7 +317,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
           </div>
 
           <div class="flex min-w-0 flex-col gap-4">
-            <section id="today-slots" aria-label={gettext("Aujourd'hui")}>
+            <section :if={@lessons != []} id="today-slots" aria-label={gettext("Aujourd'hui")}>
               <h2 class="px-1 pb-1.5 text-xs font-semibold uppercase tracking-wide text-base-content/70">
                 {gettext("Aujourd'hui")}
               </h2>
@@ -222,6 +328,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
                   selected={@selected}
                   labels={@labels}
                   sizes={@sizes}
+                  user_id={@current_scope.current_user.id}
                 />
               </ol>
             </section>
@@ -427,6 +534,8 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   attr :labels, :map, required: true
   attr :sizes, :map, required: true
 
+  attr :user_id, :string, required: true
+
   defp timeline_item(%{item: {:break, period}} = assigns) do
     assigns = assign(assigns, :period, period)
 
@@ -453,6 +562,21 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         labels={@labels}
         sizes={@sizes}
       />
+      <div
+        :if={@lesson.status == :not_held && moved_to_time(@lesson) && own_marking?(@lesson, @user_id)}
+        class="flex justify-end px-4 pb-2"
+      >
+        <button
+          id={"unmark-#{@lesson.key}"}
+          type="button"
+          phx-click="unmark_moved"
+          phx-value-class={hd(@lesson.members).class_group.id}
+          phx-value-period={@lesson.period.id}
+          class="btn btn-ghost btn-xs text-base-content/70"
+        >
+          {gettext("Annuler le déplacement")}
+        </button>
+      </div>
     </li>
     """
   end
@@ -613,6 +737,15 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
 
   # « En cours · 10:00 – 10:55 » over the panel when its lesson is in progress, else
   # « Cours 2 · 08:55 – 09:50 ».
+  # A lesson held outside its slot says so (spec 2026-11-12); an earlier day names it.
+  defp roll_eyebrow(%{moved?: true, date: date, period: p}, _lesson, today) when date != today,
+    do: gettext("Appel · %{date} · %{period}", date: Dates.long(date), period: p.label)
+
+  defp roll_eyebrow(%{moved?: true, period: p}, _lesson, _today),
+    do: gettext("Cours déplacé · %{period}", period: "#{p.label} · #{hm(p.start_time)}")
+
+  defp roll_eyebrow(_roll, lesson, _today), do: roll_eyebrow(lesson)
+
   defp roll_eyebrow(%{status: :in_progress, period: p}),
     do: gettext("En cours · %{from} – %{to}", from: hm(p.start_time), to: hm(p.end_time))
 
@@ -622,8 +755,146 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp roll_title(_roll, %{} = lesson, labels),
     do: gettext("Appel · %{what}", what: LessonComponents.lesson_title(lesson, labels))
 
+  defp roll_title(%{course: %{label: label}}, nil, _labels) when is_binary(label),
+    do: gettext("Appel · %{what}", what: label)
+
   defp roll_title(roll, nil, _labels),
     do: gettext("Appel · %{what}", what: roll.cg.label)
+
+  # --- « Autre cours maintenant » (spec 2026-11-12) -------------------------------
+
+  # Today's lesson periods open that weekday.
+  defp open_periods(periods, calendar, date) do
+    day = SchoolCalendar.weekday(date)
+    Enum.filter(periods, &(day && SchoolCalendar.open_cell?(calendar, day, &1)))
+  end
+
+  # The period under way, else the last one started today.
+  defp current_period(periods, now) do
+    time = NaiveDateTime.to_time(now)
+    started = Enum.filter(periods, &(Time.compare(&1.start_time, time) != :gt))
+    Enum.find(started, &(Time.compare(time, &1.end_time) == :lt)) || List.last(started)
+  end
+
+  # Today and the earlier lesson days of the current week.
+  defp week_dates(calendar, today) do
+    today
+    |> Date.beginning_of_week()
+    |> Date.range(today)
+    |> Enum.filter(&(&1 == today or SchoolCalendar.lesson_day?(calendar, &1)))
+    |> Enum.reverse()
+  end
+
+  defp course_param(%{unit: {:course, %{id: id}}}), do: "course:#{id}"
+  defp course_param(%{classes: [cg | _]}), do: cg.id
+
+  attr :courses, :list, required: true
+  attr :periods, :list, required: true
+  attr :now, :any, required: true
+  attr :today, :any, required: true
+  attr :date, :any, required: true
+  attr :dates, :list, required: true
+
+  defp other_lesson_form(assigns) do
+    assigns = assign(assigns, :current, current_period(assigns.periods, assigns.now))
+
+    ~H"""
+    <form
+      id="other-lesson-form"
+      phx-change="other_lesson_date"
+      phx-submit="other_lesson"
+      class="ta-panel flex flex-col gap-3"
+    >
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <p class="ta-eyebrow">{gettext("Autre cours maintenant")}</p>
+          <h2 class="text-[1.1rem] font-semibold leading-tight">
+            {gettext("Un cours hors emploi du temps")}
+          </h2>
+        </div>
+        <.link
+          id="close-other-lesson"
+          patch={~p"/school/today"}
+          class="btn btn-ghost btn-sm btn-square"
+          aria-label={gettext("Fermer")}
+        >
+          <.icon name="hero-x-mark" class="size-5" />
+        </.link>
+      </div>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">{gettext("Classe")}</span>
+        <select id="other-class" name="class" class="select select-bordered w-full">
+          <option :for={course <- @courses} value={course_param(course)}>{course.title}</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">{gettext("Jour")}</span>
+        <select id="other-date" name="date" class="select select-bordered w-full">
+          <option :for={d <- @dates} value={Date.to_iso8601(d)} selected={d == @date}>
+            {if d == @today, do: gettext("Aujourd'hui"), else: Dates.long(d)}
+          </option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">{gettext("Heure")}</span>
+        <select id="other-period" name="period" class="select select-bordered w-full">
+          <option
+            :for={p <- @periods}
+            value={p.id}
+            selected={@date == @today && @current && p.id == @current.id}
+            disabled={
+              @date == @today && Time.compare(p.start_time, NaiveDateTime.to_time(@now)) == :gt
+            }
+          >
+            {p.label} · {hm(p.start_time)} – {hm(p.end_time)}
+          </option>
+        </select>
+      </label>
+      <button id="other-lesson-continue" type="submit" class="btn btn-primary h-12">
+        {gettext("Continuer")}
+      </button>
+    </form>
+    """
+  end
+
+  attr :courses, :list, required: true
+  attr :period, :any, required: true
+  attr :today, :any, required: true
+
+  # A teacher with no lesson on the timetable today: their classes, each with a roll
+  # call to take at the current period (spec 2026-11-12).
+  defp my_classes(assigns) do
+    ~H"""
+    <section id="my-classes" aria-label={gettext("Mes classes")} class="ta-section">
+      <h2 class="px-4 pt-3 text-xs font-semibold uppercase tracking-wide text-base-content/70">
+        {gettext("Mes classes")}
+      </h2>
+      <p class="px-4 pb-2 text-[0.85rem] text-base-content/70">
+        {gettext("Aucun cours à l'emploi du temps aujourd'hui. Faites l'appel du cours en cours.")}
+      </p>
+      <ul class="border-t border-base-300">
+        <li :for={course <- @courses} class="ta-list-row">
+          <span class="flex min-w-0 flex-1 flex-col">
+            <span class="text-[0.92rem] font-medium leading-snug">{course.title}</span>
+            <span class="text-[0.75rem] text-base-content/70">
+              {ngettext("%{count} élève", "%{count} élèves", course.students)}
+            </span>
+          </span>
+          <.link
+            :if={@period}
+            id={"my-class-call-#{course.id}"}
+            patch={
+              ~p"/school/today?#{[class: course_param(course), period: @period.id, date: Date.to_iso8601(@today)]}"
+            }
+            class="btn btn-primary btn-sm"
+          >
+            {gettext("Faire l'appel")}
+          </.link>
+        </li>
+      </ul>
+    </section>
+    """
+  end
 
   attr :id, :string, required: true
   attr :lesson, :map, required: true
@@ -648,6 +919,20 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     </div>
     """
   end
+
+  # Group-level facts of the members (spec 2026-11-12).
+  defp covered_by_name(%{members: [%{covered_by: %{teacher: teacher}} | _]}),
+    do: User.display_name(teacher)
+
+  defp covered_by_name(_lesson), do: nil
+
+  defp moved_to_time(%{members: [%{moved_to: %{start_time: t}} | _]}), do: hm(t)
+  defp moved_to_time(_lesson), do: nil
+
+  defp own_marking?(%{members: [%{marked_by_user_id: id} | _]}, user_id) when is_binary(id),
+    do: id == user_id
+
+  defp own_marking?(_lesson, _user_id), do: false
 
   defp row_class,
     do:
@@ -677,7 +962,14 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         </span>
       </span>
     </span>
-    <.status_tag status={@lesson.status} />
+    <span class="flex items-center gap-2">
+      <.status_tag
+        status={@lesson.status}
+        moved?={@lesson.moved?}
+        covered_by={covered_by_name(@lesson)}
+        moved_to={moved_to_time(@lesson)}
+      />
+    </span>
     """
   end
 end
