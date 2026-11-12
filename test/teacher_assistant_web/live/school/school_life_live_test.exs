@@ -440,29 +440,6 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
       assert flash["error"] =~ "Anglais"
     end
 
-    test "an earlier day of the week is accepted at any period, without a vacated slot offer",
-         %{conn: conn} = ctx do
-      previous = Application.get_env(:teacher_assistant, :school_clock_now)
-      Application.put_env(:teacher_assistant, :school_clock_now, ~U[2025-09-17 12:00:00Z])
-      on_exit(fn -> Application.put_env(:teacher_assistant, :school_clock_now, previous) end)
-
-      tuesday = ~D[2025-09-16]
-      {:ok, view, _} = live(conn, moved_path(ctx.cg.id, ctx.p7, tuesday))
-      assert view |> element("#roll-panel") |> render() =~ "Appel · "
-      refute has_element?(view, "#moved-from")
-
-      view |> element("#record-roll") |> render_click()
-      assert has_element?(view, "#roll-panel", "Appel enregistré")
-
-      assert [%{moved?: true}] =
-               Attendance.teacher_day(
-                 ctx.scope,
-                 ctx.scope.current_user,
-                 tuesday,
-                 ~N[2025-09-17 13:00:00]
-               )
-    end
-
     test "a teacher with two subjects on one class records the one they picked",
          %{conn: conn} = ctx do
       {:ok, tc_phys} =

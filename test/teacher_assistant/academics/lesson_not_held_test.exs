@@ -119,20 +119,18 @@ defmodule TeacherAssistant.Academics.LessonNotHeldTest do
     assert {p1, p4} == {ctx.p1.id, ctx.p4.id}
   end
 
-  test "the marker un-marks the same day, not the next", ctx do
+  test "the marker un-marks the same day, not a past one", ctx do
     {:ok, _} = Attendance.mark_moved(ctx.scope_t, ctx.cg, ctx.p1, @monday, ctx.p3)
     assert :ok = Attendance.unmark_moved(ctx.scope_t, ctx.cg, ctx.p1, @monday)
     assert marking(ctx.scope, ctx.cg, ctx.p1, @monday) == nil
 
-    {:ok, _} = Attendance.mark_moved(ctx.scope_t, ctx.cg, ctx.p1, @monday, ctx.p3)
-    previous = Application.get_env(:teacher_assistant, :school_clock_now)
-    Application.put_env(:teacher_assistant, :school_clock_now, ~U[2025-09-16 12:00:00Z])
-    on_exit(fn -> Application.put_env(:teacher_assistant, :school_clock_now, previous) end)
-
-    assert {:error, _} = Attendance.unmark_moved(ctx.scope_t, ctx.cg, ctx.p1, @monday)
-    assert marking(ctx.scope, ctx.cg, ctx.p1, @monday) != nil
+    # The Monday before (the year's first day): marked by T, but not today any more.
+    past = ~D[2025-09-08]
+    {:ok, _} = Attendance.mark_moved(ctx.scope_t, ctx.cg, ctx.p1, past, ctx.p3)
+    assert {:error, _} = Attendance.unmark_moved(ctx.scope_t, ctx.cg, ctx.p1, past)
+    assert marking(ctx.scope, ctx.cg, ctx.p1, past) != nil
     # The surveillant still may.
-    assert :ok = Attendance.unmark_moved(ctx.scope_s, ctx.cg, ctx.p1, @monday)
+    assert :ok = Attendance.unmark_moved(ctx.scope_s, ctx.cg, ctx.p1, past)
   end
 
   test "the teacher of a combined course marks a member class's slot", ctx do
