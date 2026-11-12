@@ -451,6 +451,19 @@ Ordered by value to a Cameroonian school, from the feature pass:
 7. HOD screens (conseil d'enseignement table on A4's aggregates); give
    `guidance_counsellor` and `librarian` a purpose or remove them.
 8. 240 EN entries identical to their FR msgid — a translation pass.
+9. **Roll call outside the timetable** (user, 2026-11-12). Two cases share one
+   mechanism: a teacher who teaches a class at another period than the timetable
+   says (swap, make-up, replacement), and a teacher who has assignments but no
+   timetable at all — today the roll-call page accepts them (`RollCall.open/5`
+   falls back to the teacher's own assignment when the period has no slot), but
+   Ma journée lists timetable lessons only and the class's « Cahier d'appel » tab is
+   for conduct managers, so they have no way in. Minimal shape: an « Autre cours
+   maintenant » action on Ma journée (pick one of my classes, today's period),
+   recorded under **my** teaching context whatever the timetable holds at that
+   period, and the displaced slot marked « cours non assuré » in the same save so
+   the surveillant's day stays honest; a teacher without timetable sees their
+   classes listed on Ma journée with that action instead of lessons. Not a
+   replacement module (the censeur assigning substitutes in advance).
 
 ## Calls made in this document (to check while reading)
 
