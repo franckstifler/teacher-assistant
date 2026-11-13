@@ -71,7 +71,7 @@ defmodule TeacherAssistantWeb.Admin.JournalLive do
             <span :if={e.workspace}> · {e.workspace.name}</span>
             <span :if={e.target_user}> · {Accounts.User.display_name(e.target_user)}</span>
             <span :if={e.details["reason"]}> · {reason(e)}</span>
-            <span :if={e.details["after"]}> · {Enum.join(e.details["after"], ", ")}</span>
+            <span :if={e.details["after"]}> · {change(e.details)}</span>
             <span class="block text-base-content/70">
               {e.actor && Accounts.User.display_name(e.actor)} · {Dates.short_datetime(e.inserted_at)}
             </span>
@@ -103,4 +103,9 @@ defmodule TeacherAssistantWeb.Admin.JournalLive do
   end
 
   defp reason(%{details: %{"reason" => reason}}), do: reason
+
+  # Module changes journal lists (the modules now on); a rename journals the old and
+  # the new name as text.
+  defp change(%{"after" => now}) when is_list(now), do: Enum.join(now, ", ")
+  defp change(%{"before" => was, "after" => now}), do: "#{was} → #{now}"
 end
