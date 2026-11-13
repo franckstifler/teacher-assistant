@@ -1325,7 +1325,13 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               <%!-- `max-sm:block`, not `block sm:table`: daisyUI's `table` class is also
                    Tailwind's `display: table` utility, which comes after `.block` and
                    would keep a real table on phones, as wide as its longest name --%>
-              <table id="marks-table" class="table table-sm max-sm:block" phx-hook=".MarksGrid">
+              <%!-- daisyUI 5.5+ draws a table's lines on the cells: on phones, where a row is
+                   a flex card with its own line, they would show as broken stubs. --%>
+              <table
+                id="marks-table"
+                class="table table-sm max-sm:block max-sm:[&_:is(td,th)]:border-b-0"
+                phx-hook=".MarksGrid"
+              >
                 <thead class="hidden sm:table-header-group">
                   <tr>
                     <th>{gettext("N°")}</th>
