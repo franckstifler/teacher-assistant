@@ -101,8 +101,25 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLiveTest do
     assert render(element(view, "#summary-mentions")) =~ "Bien"
     assert render(element(view, "#summary-mentions")) =~ "Médiocre"
     assert has_element?(view, "#summary-sex", "Réussite filles 100 % · garçons 0 %")
-    # 1 of 3 students has no marks
-    assert has_element?(view, "#summary-missing", "1")
+    # 1 of 3 students has no marks; one student reads singular, with the reasons
+    assert has_element?(
+             view,
+             "#summary-missing",
+             "1 élève sans moyenne dans cette séquence (note manquante ou ABJ)"
+           )
+  end
+
+  # Like « Notes »: the séquence under way, not the first of the year.
+  test "opens on the current séquence", %{conn: conn, ctx: ctx, seq: seq, scope: scope} do
+    today = TeacherAssistant.Academics.Reference.today()
+    TeacherAssistant.MarksFixtures.lock!(%{head: scope, seq: seq}, Date.add(today, -1))
+    year = Organization.current_academic_year(scope)
+    seq2 = TeacherAssistant.MarksFixtures.start_sequences!(scope, year) |> Enum.at(1)
+
+    {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{ctx.id}/marks/summary")
+
+    assert has_element?(view, ~s(#summary-seq-#{seq2.id}[aria-current="true"]))
+    refute has_element?(view, ~s(#summary-seq-#{seq.id}[aria-current="true"]))
   end
 
   test "séquence switcher patches to the chosen séquence", %{conn: conn, ctx: ctx, scope: scope} do

@@ -181,6 +181,31 @@ defmodule TeacherAssistantWeb.School.MyTimetableLiveTest do
     assert has_element?(view, "#lesson-#{cg.id}-#{period.id}.opacity-60")
   end
 
+  # Same tags as « Ma journée » (spec 2026-11-12): a slot vacated for another hour says
+  # where the lesson went.
+  test "a lesson moved to another hour today reads « déplacé à … »", %{
+    conn: conn,
+    cg: cg,
+    period: period,
+    year: year,
+    head: head,
+    school: school
+  } do
+    scope = school_scope(head, school)
+    :ok = Organization.build_default_calendar(scope, year)
+    {:ok, _} = Enrollment.set_paper_roll_call(scope, cg, false)
+    later = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson)) |> Enum.at(2)
+    {:ok, _} = Attendance.mark_moved(scope, cg, period, ~D[2025-09-15], later)
+
+    {:ok, view, _html} = live(conn, ~p"/school/timetable/me")
+
+    assert has_element?(
+             view,
+             "#lesson-#{cg.id}-#{period.id}",
+             "Non assuré · déplacé à #{Calendar.strftime(later.start_time, "%H:%M")}"
+           )
+  end
+
   describe "weekly load header" do
     setup %{tc: tc, head: head, school: school} do
       scope = school_scope(head, school)

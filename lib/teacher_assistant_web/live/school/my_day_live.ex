@@ -22,7 +22,8 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.{LessonComponents, RollCall}
 
-  import LessonComponents, only: [hm: 1, status_tag: 1]
+  import LessonComponents,
+    only: [hm: 1, status_tag: 1, covered_by_name: 1, moved_to_time: 1]
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -937,15 +938,6 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
     </div>
     """
   end
-
-  # Group-level facts of the members (spec 2026-11-12).
-  defp covered_by_name(%{members: [%{covered_by: %{teacher: teacher}} | _]}),
-    do: User.display_name(teacher)
-
-  defp covered_by_name(_lesson), do: nil
-
-  defp moved_to_time(%{members: [%{moved_to: %{start_time: t}} | _]}), do: hm(t)
-  defp moved_to_time(_lesson), do: nil
 
   defp own_marking?(%{members: [%{marked_by_user_id: id} | _]}, user_id) when is_binary(id),
     do: id == user_id

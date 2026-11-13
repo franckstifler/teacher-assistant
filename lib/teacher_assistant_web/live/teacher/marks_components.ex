@@ -554,7 +554,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
           <p id="keypad-student" class="line-clamp-2 text-[1.375rem] font-semibold leading-tight">
             {@focus.student.full_name}
           </p>
-          <div class="ta-num flex items-baseline gap-1.5">
+          <%!-- A long mention (« Absent — rattrapage possible ») next to ABS does not fit
+               a narrow phone: it moves under the mark, right-aligned, instead of being
+               cut, and « / 20 » never breaks. --%>
+          <div class="ta-num flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
             <output
               id={"keypad-value-#{@focus.student.id}"}
               phx-update="ignore"
@@ -562,13 +565,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksComponents do
               class={["min-w-[2ch] text-5xl font-semibold leading-none", mark_tone(@state)]}
             >{display_value(@value)}</output>
             <span class="h-10 w-0.5 animate-pulse self-center bg-primary" aria-hidden="true"></span>
-            <span class="text-lg text-base-content/70">/ {max_text(@column)}</span>
-            <span class="flex-1"></span>
+            <span class="whitespace-nowrap text-lg text-base-content/70">/ {max_text(@column)}</span>
             <span
               id={"keypad-mention-#{@focus.student.id}"}
               phx-update="ignore"
               data-keypad-mention
-              class="truncate font-sans text-sm text-base-content/70"
+              class="ml-auto font-sans text-sm text-base-content/70"
             >{@mention}</span>
           </div>
           <p :if={@error} id="keypad-error" class="text-sm font-semibold text-error">{@error}</p>

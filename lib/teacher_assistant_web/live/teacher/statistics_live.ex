@@ -236,12 +236,13 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
             <thead>
               <tr>
                 <th class="sticky left-0 z-10 bg-base-100">{gettext("Cours")}</th>
+                <%!-- the two figures that matter first: on a phone, the rest scrolls --%>
+                <th class="text-right">{gettext("Moyenne")}</th>
+                <th class="text-right">{gettext("Réussite")}</th>
                 <th class="text-right">{gettext("Effectif")}</th>
                 <th class="text-right" title={gettext("Garçons")}>{gettext("G")}</th>
                 <th class="text-right" title={gettext("Filles")}>{gettext("F")}</th>
                 <th class="text-right">{gettext("Notés")}</th>
-                <th class="text-right">{gettext("Moyenne")}</th>
-                <th class="text-right">{gettext("Réussite")}</th>
                 <th class="text-right">{gettext("Réussite G")}</th>
                 <th class="text-right">{gettext("Réussite F")}</th>
                 <th class="text-right">{gettext("Min")}</th>
@@ -271,10 +272,6 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
                     <p class="text-xs">{mentions_text(row.mentions)}</p>
                   </details>
                 </td>
-                <td class="text-right" data-col="headcount">{row.headcount}</td>
-                <td class="text-right" data-col="boys">{row.boys}</td>
-                <td class="text-right" data-col="girls">{row.girls}</td>
-                <td class="text-right" data-col="graded">{row.graded}</td>
                 <td
                   class={[
                     "text-right font-semibold",
@@ -285,6 +282,10 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLive do
                   {fmt(row.average)}
                 </td>
                 <td class="text-right" data-col="pass">{pct(row.pass_rate)}</td>
+                <td class="text-right" data-col="headcount">{row.headcount}</td>
+                <td class="text-right" data-col="boys">{row.boys}</td>
+                <td class="text-right" data-col="girls">{row.girls}</td>
+                <td class="text-right" data-col="graded">{row.graded}</td>
                 <td class="text-right" data-col="pass-m">{pct(row.pass_m)}</td>
                 <td class="text-right" data-col="pass-f">{pct(row.pass_f)}</td>
                 <td class="text-right" data-col="min">{short(row.lowest)}</td>

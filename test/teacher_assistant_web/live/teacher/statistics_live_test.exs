@@ -71,6 +71,17 @@ defmodule TeacherAssistantWeb.Teacher.StatisticsLiveTest do
     assert has_element?(view, "#stats-row-#{ctx.maths.id} [data-col=pass-m]", "0 %")
   end
 
+  # On a phone only the first columns show: the average and pass rate come right after
+  # the course (the printed fiche keeps the official order).
+  test "the average and pass rate are the first columns", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/statistics/me")
+
+    assert has_element?(view, "#stats-row-#{ctx.maths.id} td:nth-child(2)[data-col=average]")
+    assert has_element?(view, "#stats-row-#{ctx.maths.id} td:nth-child(3)[data-col=pass]")
+    assert has_element?(view, "#stats-table thead th:nth-child(2)", "Moyenne")
+    assert has_element?(view, "#stats-table thead th:nth-child(3)", "Réussite")
+  end
+
   test "the period selector patches to a trimester and shows its status line", ctx do
     [term | _] = Organization.list_terms(ctx.scope, ctx.year)
     {:ok, view, _} = live(ctx.conn, ~p"/school/statistics/me")

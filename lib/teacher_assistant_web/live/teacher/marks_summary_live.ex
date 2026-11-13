@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
   import TeacherAssistantWeb.TeachingNav
 
   alias TeacherAssistant.{Assessment, Curriculum, Enrollment, Organization}
-  alias TeacherAssistant.Academics.{Lock, Marks, SchoolTemplates}
+  alias TeacherAssistant.Academics.{Lock, Marks, Reference, SchoolTemplates}
 
   def mount(%{"id" => ctx_id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -80,12 +80,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
     {:noreply, socket |> assign(period: period, seq: seq, sort: sort) |> assign_summary()}
   end
 
-  # `?seq=` wins, then `?period=trim:<id>|annee`, then the first séquence (as before).
+  # `?seq=` wins, then `?period=trim:<id>|annee`, then the séquence under way (as « Notes »).
   defp pick_period(%{sequences: sequences} = assigns, params) do
     cond do
       seq = pick(sequences, params["seq"]) -> {:sequence, seq}
       period = resolve(assigns, params["period"]) -> period
-      seq = List.first(sequences) -> {:sequence, seq}
+      seq = Assessment.default_sequence(sequences, Reference.today()) -> {:sequence, seq}
       true -> nil
     end
   end
@@ -371,14 +371,19 @@ defmodule TeacherAssistantWeb.Teacher.MarksSummaryLive do
             class="flex items-center gap-2 text-sm text-warning"
           >
             <.icon name="hero-exclamation-triangle" class="size-4" />
+            <%!-- an ABJ alone leaves no average either, so « sans moyenne », not « sans note » --%>
             {if @seq,
               do:
-                gettext("%{count} élève(s) sans note dans cette séquence",
-                  count: length(@students) - @summary.graded_count
+                ngettext(
+                  "%{count} élève sans moyenne dans cette séquence (note manquante ou ABJ)",
+                  "%{count} élèves sans moyenne dans cette séquence (notes manquantes ou ABJ)",
+                  length(@students) - @summary.graded_count
                 ),
               else:
-                gettext("%{count} élève(s) sans moyenne sur cette période",
-                  count: length(@students) - @summary.graded_count
+                ngettext(
+                  "%{count} élève sans moyenne sur cette période",
+                  "%{count} élèves sans moyenne sur cette période",
+                  length(@students) - @summary.graded_count
                 )}
           </p>
 

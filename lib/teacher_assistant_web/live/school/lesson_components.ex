@@ -7,6 +7,7 @@ defmodule TeacherAssistantWeb.School.LessonComponents do
   use TeacherAssistantWeb, :html
 
   alias TeacherAssistant.Academics.{CombinedCourse, LessonGroups}
+  alias TeacherAssistant.Accounts.User
 
   @doc "The combined courses' labels by id, from `Curriculum.list_units_for_scope/1`."
   def course_labels(units),
@@ -57,6 +58,16 @@ defmodule TeacherAssistantWeb.School.LessonComponents do
 
   defp class_label(%{class_group: %{label: label}}), do: label
   defp class_label(%{class_label: label}), do: label
+
+  @doc "Who took the group's slot for their moved lesson (`:covered`), else nil."
+  def covered_by_name(%{members: [%{covered_by: %{teacher: teacher}} | _]}),
+    do: User.display_name(teacher)
+
+  def covered_by_name(_lesson), do: nil
+
+  @doc "The hour the group's lesson was moved to (« 09:10 »), else nil."
+  def moved_to_time(%{members: [%{moved_to: %{start_time: t}} | _]}), do: hm(t)
+  def moved_to_time(_lesson), do: nil
 
   @doc "The roll-call state of a lesson as a small tag (« Appel fait », « En cours »…)."
   attr :status, :atom, required: true

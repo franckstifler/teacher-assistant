@@ -13,7 +13,8 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
   alias TeacherAssistant.Academics.{DayOfWeek, LessonGroups, Reference, SchoolCalendar}
   alias TeacherAssistantWeb.School.LessonComponents
 
-  import LessonComponents, only: [hm: 1, status_tag: 1]
+  import LessonComponents,
+    only: [hm: 1, status_tag: 1, covered_by_name: 1, moved_to_time: 1]
 
   @weekdays [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday, :sunday]
 
@@ -72,14 +73,15 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
     end)
   end
 
-  # Today's roll-call states by lesson key (`%{}` on a day without lessons).
+  # Today's lessons with their roll-call state, by lesson key (`%{}` on a day without
+  # lessons): the state, and whether the slot was moved or taken by a colleague.
   defp today_roll(_scope, grid, _calendar, _today, _now) when map_size(grid) == 0, do: %{}
 
   defp today_roll(scope, _grid, calendar, today, now) do
     if SchoolCalendar.lesson_day?(calendar, today) do
       scope
       |> Attendance.teacher_lessons(scope.current_user, today, now)
-      |> Map.new(&{&1.key, &1.status})
+      |> Map.new(&{&1.key, &1})
     else
       %{}
     end
@@ -362,8 +364,10 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
       assign(assigns,
         lesson: lesson,
         timing: timing,
-        status: assigns.today? && Map.get(assigns.roll, lesson.key)
+        state: assigns.today? && Map.get(assigns.roll, lesson.key)
       )
+
+    assigns = assign(assigns, :status, assigns.state && assigns.state.status)
 
     ~H"""
     <li
@@ -392,8 +396,13 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
       >
         {gettext("Faire l'appel")}
       </.link>
-      <span :if={@status in [:done, :on_paper, :not_held]} class="shrink-0">
-        <.status_tag status={@status} />
+      <span :if={@status in [:done, :on_paper, :not_held, :covered]} class="shrink-0">
+        <.status_tag
+          status={@status}
+          moved?={@state.moved?}
+          covered_by={covered_by_name(@state)}
+          moved_to={moved_to_time(@state)}
+        />
       </span>
     </li>
     """
